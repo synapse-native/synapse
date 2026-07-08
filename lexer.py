@@ -24,6 +24,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'inseguro': TokenID.INSEGURO,
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
+        'coincidir': TokenID.MATCH,
     },
     'en': {
         'if': TokenID.IF,
@@ -46,6 +47,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'unsafe': TokenID.INSEGURO,
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
+        'match': TokenID.MATCH,
     },
     'fr': {
         'si': TokenID.IF,
@@ -68,6 +70,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'dangereux': TokenID.INSEGURO,
         'importer_c': TokenID.IMPORTAR_C,
         'externe': TokenID.EXTERNO,
+        'correspondre': TokenID.MATCH,
     },
     'pt': {
         'se': TokenID.IF,
@@ -90,6 +93,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'inseguro': TokenID.INSEGURO,
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
+        'coincidir': TokenID.MATCH,
     },
     'de': {
         'wenn': TokenID.IF,
@@ -112,6 +116,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'unsicher': TokenID.INSEGURO,
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
+        'entsprechen': TokenID.MATCH,
     },
     'it': {
         'se': TokenID.IF,
@@ -134,6 +139,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'non_sicuro': TokenID.INSEGURO,
         'importa_c': TokenID.IMPORTAR_C,
         'esterno': TokenID.EXTERNO,
+        'corrispondere': TokenID.MATCH,
     },
 }
 
@@ -177,6 +183,7 @@ TOKEN_UNICARACTER: dict[str, TokenID] = {
 
 TOKEN_BICARACTER: dict[str, TokenID] = {
     '->': TokenID.ARROW,
+    '=>': TokenID.ARROW_RIGHT,
     '==': TokenID.EQUALS,
     '!=': TokenID.NOT_EQUALS,
     '<=': TokenID.LESS_EQUALS,

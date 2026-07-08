@@ -63,12 +63,14 @@ funcion buscar_simbolo(analizador: AnalizadorSemantico, nombre: texto) -> Simbol
 
 funcion validar_acceso(analizador: AnalizadorSemantico, nombre: texto) -> nulo:
     simbolo = buscar_simbolo(analizador, nombre)
+    log("Validando acceso: " + nombre + ", Vivo: " + (si simbolo.vivo entonces "true" sino "false"))
     si simbolo.nombre == "" o simbolo.vivo == falso:
         error_semantico("Acceso a variable fuera de scope o movida")
 
 funcion marcar_movido(analizador: AnalizadorSemantico, nombre: texto) -> nulo:
     simbolo = buscar_simbolo(analizador, nombre)
     si simbolo.nombre != "":
+        log("Moviendo variable: " + nombre)
         simbolo.vivo = falso
 
 funcion analizar_expresion(analizador: AnalizadorSemantico, expr: Nodo) -> nulo:
@@ -83,9 +85,13 @@ funcion analizar_expresion(analizador: AnalizadorSemantico, expr: Nodo) -> nulo:
         retornar
 
     si expr.tipo == "LlamadaFuncion":
+        // Analizar argumentos primero
         actual = expr.argumentos
         mientras actual.cabeza.tipo != "":
             analizar_expresion(analizador, actual.cabeza)
+            // Si la llamada es a una función que consume (ejemplo: consumir), marcar movimiento
+            si expr.nombre == "consumir" y actual.cabeza.tipo == "Identificador":
+                marcar_movido(analizador, actual.cabeza.nombre)
             actual = actual.cola
         retornar
 

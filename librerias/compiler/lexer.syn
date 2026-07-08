@@ -25,10 +25,15 @@ funcion siguiente_token() -> Token:
     //   3) Detectar literales de cadena entre comillas dobles y simples.
     //   4) Detectar números enteros y de punto flotante.
     //   5) Detectar identificadores y palabras clave multilingües.
-    //   6) Detectar operadores de dos caracteres: `->`, `==`, `!=`, `<=`, `>=`.
+    //      - TOKEN_COINCIDIR  (es: 'coincidir', en: 'match', etc.)
+    //   6) Detectar operadores de dos caracteres: `->`, `=>`, `==`, `!=`, `<=`, `>=`.
+    //      - TOKEN_FLECHA  => (operador de rama en bloque coincidir)
+    //      - Si el puntero lee '=' y el siguiente carácter es '>': emitir TOKEN_FLECHA.
+    //      - Si el puntero lee '=' y el siguiente carácter NO es '>': emitir TOKEN_ASIGNACION.
     //   7) Detectar tokens de un carácter: `() , . : + - * / % & < > =`.
     //   8) Generar NEWLINE, INDENT y DEDENT según la indentación en bloques.
     //   9) Al final de entrada generar `EOF`.
+
     retornar Token()
 
 funcion lexar(codigo_fuente: texto) -> ListaToken:

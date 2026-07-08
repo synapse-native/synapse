@@ -1,0 +1,4 @@
+#lang: es
+funcion principal() -> nulo:
+    coincidir resultado:
+        ok(v) => escribir_linea(v)
