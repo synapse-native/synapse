@@ -10,6 +10,7 @@ from ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     ImportarC, DeclaracionExterna,
+    NodoCaso, NodoCoincidir,
 )
 
 
@@ -310,6 +311,8 @@ class GeneradorC:
                     es_puntero = True
             sep = '->' if es_puntero else '.'
             self._push(f"{obj}{sep}{nodo.nombre_campo} = {val};")
+        elif isinstance(nodo, NodoCoincidir):
+            self._visitar_coincidir(nodo)
 
     def _visitar_funcion(self, nodo: DefinicionFuncion):
         if nodo.nombre in self._funciones_emitidas:
@@ -1834,6 +1837,45 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 self._visitar(s)
             self.indent -= 1
         self._push("}")
+
+    def _visitar_coincidir(self, nodo: NodoCoincidir):
+        import re
+        
+        # Evaluar la expresión objetivo y guardarla en variable temporal
+        expr_c = self._expr_a_c(nodo.expresion)
+        temp_var = f"_match_tmp_{nodo.linea}"
+        self._push(f"/* coincidir: evaluando expresión */")
+        self._push(f"auto {temp_var} = {expr_c};")
+        
+        # Iterar sobre los casos
+        for i, caso in enumerate(nodo.casos):
+            # Extraer tag y variable del patrón (ej. "ok(v)" -> tag="ok", var="v")
+            patron = caso.patron
+            match = re.match(r'(\w+)\((\w+)\)', patron)
+            if not match:
+                raise SyntaxError(f"Patrón inválido en coincidir: {patron}")
+            
+            tag_nombre = match.group(1)  # ej. "ok" o "err"
+            var_nombre = match.group(2)  # ej. "v" o "e"
+            
+            # Generar bloque C con if/else if
+            if i == 0:
+                self._push(f"if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
+            else:
+                self._push(f"else if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
+            
+            self.indent += 1
+            
+            # Declarar variable desempaquetada
+            # Nota: El tipo exacto se resolverá en fase semántica, usamos auto por ahora
+            self._push(f"auto {var_nombre} = {temp_var}.data.{tag_nombre}_val;")
+            
+            # Visitar sentencias del cuerpo del caso
+            for stmt in caso.cuerpo:
+                self._visitar(stmt)
+            
+            self.indent -= 1
+            self._push("}")
 
     def _visitar_estructura(self, nodo: DefinicionEstructura):
         campos_pointer: set[str] = set()
