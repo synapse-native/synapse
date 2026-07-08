@@ -20,6 +20,7 @@ MAPA_TIPOS_C: dict[str, str] = {
     'nulo': 'void',
     'decimal': 'float',
     'real': 'float',
+    'flotante': 'float',
     'Tensor': 'Tensor',
     'tensor': 'Tensor',
     'Canal': 'Canal',

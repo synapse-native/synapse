@@ -63,6 +63,7 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
 }
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "axon_modules/std.tensor/std_tensor_helper.h"
 int crear_tensor_2d(int filas, int columnas) {
     return _syn_crear_tensor_2d(filas, columnas);
@@ -72,15 +73,36 @@ void liberar_tensor(int id) {
     _syn_liberar_tensor(id);
 }
 
+void escribir_tensor(int id, int f, int c, float val) {
+    _syn_tensor_escribir(id, f, c, val);
+}
+
+float leer_tensor(int id, int f, int c) {
+    return _syn_tensor_leer(id, f, c);
+}
+
+void multiplicar_tensor(int id_A, int id_B, int id_C) {
+    _syn_tensor_matmul(id_A, id_B, id_C);
+}
+
 void principal(void) {
-    int id = crear_tensor_2d(10, 10);
-    if ((id >= 0)) {
-        printf("Tensor 10x10 creado con ID:  %d\n", id);
-        liberar_tensor(id);
-        printf("Tensor liberado correctamente\n");
-    } else {
-        printf("ERROR: No se pudo crear el tensor\n");
-    }
+    int A = crear_tensor_2d(2, 2);
+    int B = crear_tensor_2d(2, 2);
+    int C = crear_tensor_2d(2, 2);
+    escribir_tensor(A, 0, 0, 1.0f);
+    escribir_tensor(A, 0, 1, 2.0f);
+    escribir_tensor(A, 1, 0, 3.0f);
+    escribir_tensor(A, 1, 1, 4.0f);
+    escribir_tensor(B, 0, 0, 5.0f);
+    escribir_tensor(B, 0, 1, 6.0f);
+    escribir_tensor(B, 1, 0, 7.0f);
+    escribir_tensor(B, 1, 1, 8.0f);
+    multiplicar_tensor(A, B, C);
+    float v = leer_tensor(C, 0, 0);
+    printf("C[0,0] =  %f\n", v);
+    liberar_tensor(A);
+    liberar_tensor(B);
+    liberar_tensor(C);
 }
 
 int main(int argc, char** argv) {

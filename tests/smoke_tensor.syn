@@ -2,10 +2,29 @@
 importar std.tensor
 
 funcion principal() -> nulo:
-    id = crear_tensor_2d(10, 10)
-    si id >= 0:
-        log("Tensor 10x10 creado con ID: ", id)
-        liberar_tensor(id)
-        log("Tensor liberado correctamente")
-    sino:
-        log("ERROR: No se pudo crear el tensor")
+    // Crear tensores A y B de 2x2
+    A = crear_tensor_2d(2, 2)
+    B = crear_tensor_2d(2, 2)
+    C = crear_tensor_2d(2, 2)
+
+    // A = [[1, 2], [3, 4]]
+    escribir_tensor(A, 0, 0, 1.0)
+    escribir_tensor(A, 0, 1, 2.0)
+    escribir_tensor(A, 1, 0, 3.0)
+    escribir_tensor(A, 1, 1, 4.0)
+
+    // B = [[5, 6], [7, 8]]
+    escribir_tensor(B, 0, 0, 5.0)
+    escribir_tensor(B, 0, 1, 6.0)
+    escribir_tensor(B, 1, 0, 7.0)
+    escribir_tensor(B, 1, 1, 8.0)
+
+    // C = A * B
+    multiplicar_tensor(A, B, C)
+
+    v = leer_tensor(C, 0, 0)
+    log("C[0,0] = ", v)
+
+    liberar_tensor(A)
+    liberar_tensor(B)
+    liberar_tensor(C)
