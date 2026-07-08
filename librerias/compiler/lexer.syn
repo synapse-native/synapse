@@ -1,7 +1,48 @@
 #lang: es
-// lexer.syn — Tokenizador para el compilador Synapse (auto-hospedaje)
-// La implementacion real en C es emitida por el generador.
-// Este archivo define la interfaz publica del modulo.
+// lexer.syn — Lexer nativo de Synapse (fase de diseño)
+// Este archivo define las estructuras y la interfaz base para el tokenizador.
 
-funcion tokenizar(fuente: texto) -> int:
-    retornar 0
+estructura Token:
+    tipo: entero
+    valor: texto
+    linea: entero
+    columna: entero
+
+estructura ListaToken:
+    cabeza: Token
+    cola: ListaToken
+
+funcion siguiente_token() -> Token:
+    // Estado interno del lexer:
+    //   - fuente: texto completo de entrada
+    //   - i: índice del carácter actual
+    //   - linea: número de línea
+    //   - columna: número de columna
+    //   - nivel_indent: pila de niveles de indentación
+    // Reglas de escaneo:
+    //   1) Ignorar espacios y tabulaciones internas.
+    //   2) Omitir comentarios de línea con `//`.
+    //   3) Detectar literales de cadena entre comillas dobles y simples.
+    //   4) Detectar números enteros y de punto flotante.
+    //   5) Detectar identificadores y palabras clave multilingües.
+    //   6) Detectar operadores de dos caracteres: `->`, `==`, `!=`, `<=`, `>=`.
+    //   7) Detectar tokens de un carácter: `() , . : + - * / % & < > =`.
+    //   8) Generar NEWLINE, INDENT y DEDENT según la indentación en bloques.
+    //   9) Al final de entrada generar `EOF`.
+    retornar Token()
+
+funcion lexar(codigo_fuente: texto) -> ListaToken:
+    // Inicializa el estado de lexer:
+    //   fuente = codigo_fuente
+    //   i = 0
+    //   linea = 1
+    //   columna = 1
+    //   lista_tokens = ListaToken()
+    // Pasos principales:
+    //   1) Validar declaración `#lang:` en la primera línea.
+    //   2) Iterar los caracteres hasta fin de archivo.
+    //   3) En cada paso invocar `siguiente_token()`.
+    //   4) Gestionar niveles de indentación con una pila.
+    //   5) Añadir `NEWLINE` al final de cada línea relevante.
+    //   6) Generar `EOF` al terminar.
+    retornar ListaToken()

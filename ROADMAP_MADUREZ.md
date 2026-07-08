@@ -15,7 +15,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 ## Fase 1: Self-Hosting (El rito de iniciación)
 *Objetivo: Reescribir el Front-end (Lexer/Parser) en Synapse para eliminar Python.*
 - [x] Auditoría de tokens actuales en `lexer.py`.
-- [ ] Definición de gramática en `lexer.syn` (migración del stub).
+- [x] Definición de gramática en `lexer.syn` (migración del stub).
 - [ ] Implementación de parser recursivo descendente en `parser.syn`.
 - [ ] Validación: Compilación del parser utilizando el binario actual.
 
