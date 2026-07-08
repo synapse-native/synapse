@@ -11,6 +11,7 @@ from ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia, TipoPuntero,
     ImportarC, DeclaracionExterna,
+    NodoCaso, NodoCoincidir,
 )
 from lexer import OPERADORES_BINARIOS
 from diagnostics import DiagnosticManager, ErrorCodes
@@ -97,6 +98,8 @@ class Parser:
             return self._parsear_importar()
         elif t.tipo == TokenID.EXTERNO:
             return self._parsear_declaracion_externa()
+        elif t.tipo == TokenID.MATCH:
+            return self._parsear_coincidir()
         elif t.tipo == TokenID.INDENT:
             return None
         elif t.tipo == TokenID.NEWLINE:
@@ -687,3 +690,108 @@ class Parser:
                                    esperado='DEDENT', encontrado=token_dedent.tipo.name)
                 self._sincronizar(_SYNC_BLOCK)
         return stmts
+
+    def _parsear_coincidir(self) -> Optional[NodoCoincidir]:
+        tok_coincidir = self._esperar(TokenID.MATCH)
+        if tok_coincidir is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        
+        # a) Consumir la expresión objetivo
+        expresion = self._parsear_expresion()
+        
+        # b) Exigir TOKEN_COLON (:)
+        if self._esperar(TokenID.COLON) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado=':', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_STMT)
+            return None
+        
+        # c) Exigir TOKEN_NEWLINE seguido de TOKEN_INDENT
+        if self._esperar(TokenID.NEWLINE) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado='NEWLINE', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_BLOCK)
+            return None
+        if self._esperar(TokenID.INDENT) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado='INDENT', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_BLOCK)
+            return None
+        
+        # d) Iterar consumiendo los patrones
+        casos: List[NodoCaso] = []
+        while self._mirar().tipo not in (TokenID.DEDENT, TokenID.EOF):
+            # Consumir NEWLINE si está presente al inicio de cada caso
+            if self._mirar().tipo == TokenID.NEWLINE:
+                self._avanzar()
+                continue
+            
+            # Parsear patrón: identificador + paréntesis
+            tok_patron = self._esperar(TokenID.IDENTIFIER)
+            if tok_patron is None:
+                self._sincronizar(_SYNC_BLOCK)
+                break
+            
+            nombre_patron = tok_patron.valor
+            
+            # Exigir LPAREN
+            if self._esperar(TokenID.LPAREN) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado='(', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+            
+            # Consumir identificador dentro del paréntesis (ej. v en ok(v))
+            tok_var = self._esperar(TokenID.IDENTIFIER)
+            if tok_var is None:
+                self._sincronizar(_SYNC_BLOCK)
+                break
+            
+            var_patron = tok_var.valor
+            
+            # Exigir RPAREN
+            if self._esperar(TokenID.RPAREN) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado=')', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+            
+            # Construir string del patrón completo (ej. "ok(v)")
+            patron_completo = f"{nombre_patron}({var_patron})"
+            
+            # Exigir TOKEN_FLECHA (=>)
+            if self._esperar(TokenID.ARROW_RIGHT) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado='=>', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+            
+            # e) Parsear el bloque de sentencias del caso
+            cuerpo_caso: List[Nodo] = []
+            while self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
+                stmt = self._parsear_sentencia()
+                if stmt is not None:
+                    cuerpo_caso.append(stmt)
+                else:
+                    self._avanzar()
+            
+            # Crear NodoCaso
+            caso = NodoCaso(
+                patron=patron_completo,
+                cuerpo=cuerpo_caso,
+                linea=tok_patron.linea,
+                columna=tok_patron.columna,
+            )
+            casos.append(caso)
+        
+        # e) Consumir TOKEN_DEDENT final
+        if self._mirar().tipo != TokenID.EOF:
+            self._esperar(TokenID.DEDENT)
+        
+        return NodoCoincidir(
+            expresion=expresion,
+            casos=casos,
+            linea=tok_coincidir.linea,
+            columna=tok_coincidir.columna,
+        )

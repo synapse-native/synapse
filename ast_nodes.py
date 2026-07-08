@@ -41,6 +41,8 @@ class TokenID(Enum):
     SLASH = auto()
     MODULO = auto()
     ARROW = auto()
+    MATCH = auto()
+    ARROW_RIGHT = auto()
 
     LPAREN = auto()
     RPAREN = auto()
@@ -263,3 +265,15 @@ class AsignacionCampo(Nodo):
     objeto: Optional[Nodo] = None
     nombre_campo: str = ''
     expresion: Optional[Nodo] = None
+
+
+@dataclass
+class NodoCaso(Nodo):
+    patron: str = ''
+    cuerpo: List[Nodo] = field(default_factory=list)
+
+
+@dataclass
+class NodoCoincidir(Nodo):
+    expresion: Optional[Nodo] = None
+    casos: List[NodoCaso] = field(default_factory=list)
