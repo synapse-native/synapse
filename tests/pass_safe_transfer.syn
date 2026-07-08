@@ -1,5 +1,6 @@
 #lang: es
 
 funcion principal() -> nulo:
-    t = crear_tensor(10)
-    escribir_linea(t.datos[0]) // ACCESO VÁLIDO: dueño activo
+    t = crear_tensor(1, 1)
+    // Acceso permitido, no hubo transferencia de propiedad
+    t2 = t

@@ -73,10 +73,6 @@ def build():
     # Copy runtime headers (preserving relative structure for #include "librerias/...")
     lib_librerias = os.path.join(lib_dir, "librerias")
     shutil.copytree(os.path.join(PROJECT_ROOT, "librerias"), lib_librerias)
-    # Copy std library files
-    std_dir = os.path.join(lib_dir, "std")
-    shutil.copytree(os.path.join(PROJECT_ROOT, "std"), std_dir)
-
     # Generate install script
     generate_install_ps1(DIST_DIR)
 

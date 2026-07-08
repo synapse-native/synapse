@@ -1,0 +1,13 @@
+#lang: es
+importar std.io
+
+estructura Resultado:
+    tag: entero
+    valor: entero
+
+funcion principal() -> nulo:
+    resultado = Resultado()
+    resultado.tag = 0
+    resultado.valor = 5
+    coincidir resultado:
+        ok(v) => escribir_linea(v)

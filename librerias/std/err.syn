@@ -1,0 +1,43 @@
+#lang: es
+// std.err — Tipos Algebraicos para manejo de errores (Resultado, Opcion)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.err
+//   resultado = dividir(10, 2)
+//   coincidir resultado:
+//       ok(v) => escribir_linea(v)
+//       err(e) => escribir_linea(e)
+
+// Resultado<T, E> — Unión etiquetada para operaciones que pueden fallar
+// TAG_OK: indica éxito, contiene el valor exitoso
+// TAG_ERR: indica error, contiene el mensaje o causa del error
+estructura Resultado:
+    tag: entero
+    data: DatosResultado
+
+estructura DatosResultado:
+    ok_val: entero
+    err_val: texto
+
+// Opcion<T> — Unión etiquetada para valores que pueden estar ausentes
+// TAG_ALGUNO: indica valor presente
+// TAG_NINGUNO: indica valor ausente
+estructura Opcion:
+    tag: entero
+    data: DatosOpcion
+
+estructura DatosOpcion:
+    algun_val: entero
+
+// Constructores (documentación - implementados nativamente en el compilador)
+// ok(valor) -> Resultado con TAG_OK
+// err(mensaje) -> Resultado con TAG_ERR
+// alguno(valor) -> Opcion con TAG_ALGUNO
+// ninguno() -> Opcion con TAG_NINGUNO
+
+// Constantes de tags (definidas en C como enums)
+// TAG_OK = 0
+// TAG_ERR = 1
+// TAG_ALGUNO = 0
+// TAG_NINGUNO = 1

@@ -1,0 +1,204 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer",
+        "parametros": [
+          {
+            "nombre": "canal",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar",
+        "parametros": [
+          {
+            "nombre": "canal",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Resultado",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "Resultado",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "resultado"
+            },
+            "nombre_campo": "tag",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "resultado"
+            },
+            "nombre_campo": "valor",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 5
+            }
+          },
+          {
+            "_tipo": "NodoCoincidir",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "resultado"
+            },
+            "casos": [
+              {
+                "_tipo": "NodoCaso",
+                "patron": "ok(v)",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "escribir_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "v"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

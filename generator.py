@@ -219,6 +219,12 @@ class GeneradorC:
         self._push("#define POOL_BLOQUES 64")
         self._push("#define TAMANO_BLOQUE 4096")
         self._push("")
+        self._push("// Constantes de tags para uniones etiquetadas (ADTs)")
+        self._push("#define TAG_OK 0")
+        self._push("#define TAG_ERR 1")
+        self._push("#define TAG_ALGUNO 0")
+        self._push("#define TAG_NINGUNO 1")
+        self._push("")
         self._push("// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---")
         self._push("extern void pool_init(uint32_t total_blocks, uint32_t block_size);")
         self._push("extern void pool_free(void* ptr);")
@@ -1843,9 +1849,10 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         
         # Evaluar la expresión objetivo y guardarla en variable temporal
         expr_c = self._expr_a_c(nodo.expresion)
+        expr_tipo = self._tipo_de_expr(nodo.expresion)
         temp_var = f"_match_tmp_{nodo.linea}"
         self._push(f"/* coincidir: evaluando expresión */")
-        self._push(f"auto {temp_var} = {expr_c};")
+        self._push(f"{expr_tipo} {temp_var} = {expr_c};")
         
         # Iterar sobre los casos
         for i, caso in enumerate(nodo.casos):
@@ -1866,9 +1873,9 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             
             self.indent += 1
             
-            # Declarar variable desempaquetada
-            # Nota: El tipo exacto se resolverá en fase semántica, usamos auto por ahora
-            self._push(f"auto {var_nombre} = {temp_var}.data.{tag_nombre}_val;")
+            # Declarar variable desempaquetada con tipo inferido
+            # Usamos int como fallback por ahora, la fase semántica mejorará esto
+            self._push(f"int {var_nombre} = {temp_var}.valor;")
             
             # Visitar sentencias del cuerpo del caso
             for stmt in caso.cuerpo:

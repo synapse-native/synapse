@@ -1,10 +1,10 @@
 #lang: es
 
 funcion consumir(t: Tensor) -> nulo:
-    // Simula transferencia de propiedad
+    // Consumo
     retornar
 
 funcion principal() -> nulo:
-    t = crear_tensor(10)
+    t = crear_tensor(1, 1)
     consumir(t)
-    escribir_linea(t.datos[0]) // ERROR ESPERADO: use after move
+    consumir(t) // ERROR ESPERADO: use after move (t ya fue movido en el primer consumir)

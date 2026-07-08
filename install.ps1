@@ -50,21 +50,6 @@ if ($CurrentPath -split ";" -notcontains $BinPath) {
     Write-Host " ya presente" -ForegroundColor Yellow
 }
 
-Write-Host "[4/4] Instalando extension VS Code..." -NoNewline
-$VscodeExtDir = "$env:USERPROFILE\.vscode\extensions\synapse-lang"
-$VscodeSource = Join-Path $InstallDir "vscode-extension"
-if (Test-Path $VscodeSource) {
-    if (Test-Path $VscodeExtDir) {
-        Remove-Item -Path "$VscodeExtDir\*" -Recurse -Force -ErrorAction SilentlyContinue
-    } else {
-        New-Item -ItemType Directory -Path $VscodeExtDir -Force | Out-Null
-    }
-    Copy-Item -Path "$VscodeSource\*" -Destination $VscodeExtDir -Recurse -Force
-    Write-Host " OK" -ForegroundColor Green
-} else {
-    Write-Host " no encontrada" -ForegroundColor Yellow
-}
-
 Write-Host ""
 Write-Host "Synapse $Version instalado correctamente." -ForegroundColor Green
 Write-Host "Reinicia tu terminal para usar el comando 'synapse'." -ForegroundColor Cyan

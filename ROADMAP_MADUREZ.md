@@ -6,8 +6,8 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 | Fase | Pilar | Prioridad | Estado | Responsable |
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Self-Hosting (Core) | Crítica | En Proceso | OpenCode |
-| 2 | Memory Safety | Alta | En Proceso | OpenCode |
-| 3 | Error Handling (ADTs) | Alta | Pendiente | OpenCode |
+| 2 | Memory Safety | Alta | Terminada | OpenCode |
+| 3 | Error Handling (ADTs) | Alta | Terminada | OpenCode |
 | 4 | Developer Experience (LSP) | Media | Sin Iniciar | OpenCode |
 
 ---
@@ -29,9 +29,11 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 
 ## Fase 3: Error Handling (Tipado Algebraico)
 *Objetivo: Eliminar códigos de retorno enteros (`-1`, `0`).*
-- [ ] Definición de `Result<T, E>` y `Option<T>` nativos.
-- [ ] Implementación de `unwrap` y `match` en el generador de código.
-- [ ] Refactorización de la librería estándar (`std.io`) para usar `Result`.
+- [x] Definición de `Result<T, E>` y `Option<T>` nativos.
+- [x] Implementación de `unwrap` y `match` en el generador de código.
+- [x] Refactorización de la librería estándar (`std.io`) para usar `Result`.
+
+**Fase 3 completada:** [x]
 
 ## Fase 4: Developer Experience (LSP)
 *Objetivo: Integración profunda en editores.*
