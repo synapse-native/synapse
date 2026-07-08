@@ -1,25 +1,76 @@
 #lang: es
-// generator.syn — Generador de codigo C nativo (auto-hospedaje)
-// Recibe un AST (Programa), lo recorre con el patron Visitor,
-// y escribe codigo C en el archivo de salida.
+// generator.syn — Generador de código C nativo para Synapse.
+// Define la interfaz y la estructura del ciclo de Self-Hosting.
 
 importar compiler.ast_nodes
 
-funcion _expr_a_c(nodo: Nodo, buf: texto) -> nulo:
+estructura Generador:
+    buffer: texto
+    indentacion: entero
+
+funcion crear_generador() -> Generador:
+    // Inicializa el buffer de salida y el nivel de indentación.
+    generador = Generador()
+    generador.buffer = ""
+    generador.indentacion = 0
+    retornar generador
+
+funcion escribir_linea(generador: Generador, linea: texto) -> nulo:
+    // Añade una línea al buffer con la indentación actual.
     retornar
 
-funcion _visitar_nodo(nodo: Nodo, out: Canal) -> nulo:
+funcion aumentar_indentacion(generador: Generador) -> nulo:
+    generador.indentacion = generador.indentacion + 1
+
+funcion disminuir_indentacion(generador: Generador) -> nulo:
+    generador.indentacion = generador.indentacion - 1
+    si generador.indentacion < 0:
+        generador.indentacion = 0
+
+funcion generar_codigo(nodo: Nodo, programa: Programa) -> texto:
+    // Recorre el AST y construye el código C en el buffer.
+    generador = crear_generador()
+    escribir_linea(generador, "#include <stdio.h>")
+    escribir_linea(generador, "#include <stdlib.h>")
+    escribir_linea(generador, "#include <stdint.h>")
+    escribir_linea(generador, "#include <string.h>")
+    escribir_linea(generador, "")
+    visitar_programa(generador, programa)
+    retornar generador.buffer
+
+funcion visitar_programa(generador: Generador, programa: Programa) -> nulo:
+    // Recorre las sentencias del programa principal.
     retornar
 
-funcion _visitar_lista(lista: ListaNodo, out: Canal) -> nulo:
+funcion visitar_definicion_funcion(generador: Generador, funcion: DefinicionFuncion) -> nulo:
+    // Genera la firma de función y su bloque de cuerpo.
     retornar
 
-funcion _visitar_programa(programa: Programa, out: Canal) -> nulo:
+funcion visitar_sentencia(generador: Generador, sentencia: Nodo) -> nulo:
+    // Enruta a la función específica según el tipo de sentencia.
     retornar
 
-funcion generar(programa: Programa, ruta: texto) -> int:
-    retornar 0
+funcion visitar_expresion(generador: Generador, expresion: Nodo) -> texto:
+    // Convierte expresiones del AST a código C válido.
+    retornar ""
 
-funcion _traducir_tipo_c(tipo_synapse: texto) -> texto:
+funcion visitar_literal(generador: Generador, literal: Nodo) -> texto:
+    // Convierte literales de número, cadena o booleano.
+    retornar ""
+
+funcion visitar_bloque(generador: Generador, cuerpo: ListaNodo) -> nulo:
+    // Genera el contenido de un bloque indentado.
+    retornar
+
+funcion traducir_tipo_c(tipo_synapse: texto) -> texto:
+    // Mapea tipos Synapse a tipos C nativos.
+    si tipo_synapse == "entero":
+        retornar "int"
+    si tipo_synapse == "decimal":
+        retornar "float"
+    si tipo_synapse == "texto":
+        retornar "CadenaSegura"
+    si tipo_synapse == "tensor":
+        retornar "Tensor"
     retornar tipo_synapse
 

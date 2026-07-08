@@ -17,7 +17,9 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 - [x] Auditoría de tokens actuales en `lexer.py`.
 - [x] Definición de gramática en `lexer.syn` (migración del stub).
 - [x] Implementación de parser recursivo descendente en `parser.syn`.
-- [ ] Validación: Compilación del parser utilizando el binario actual.
+- [x] Validación: Compilación del parser utilizando el binario actual.
+
+**Fase 1 completada:** [x]
 
 ## Fase 2: Memory Safety (Ownership & Borrowing)
 *Objetivo: Eliminar fugas y eliminar dependencia de `malloc`/`free` manual.*
