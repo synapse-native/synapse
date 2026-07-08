@@ -16,7 +16,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 *Objetivo: Reescribir el Front-end (Lexer/Parser) en Synapse para eliminar Python.*
 - [x] Auditoría de tokens actuales en `lexer.py`.
 - [x] Definición de gramática en `lexer.syn` (migración del stub).
-- [ ] Implementación de parser recursivo descendente en `parser.syn`.
+- [x] Implementación de parser recursivo descendente en `parser.syn`.
 - [ ] Validación: Compilación del parser utilizando el binario actual.
 
 ## Fase 2: Memory Safety (Ownership & Borrowing)

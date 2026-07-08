@@ -1,8 +1,50 @@
 #lang: es
-// parser.syn — Analizador sintactico
-// Retorna un AST (Programa) a partir del texto fuente.
+// parser.syn — Analizador sintáctico nativo de Synapse
+// Define el parser recursivo descendente y los nodos básicos para construir el AST.
 
 importar compiler.ast_nodes
 
+estructura Parser:
+    tokens: ListaToken
+    posicion: entero
+    linea_actual: entero
+    columna_actual: entero
+
+funcion crear_parser(tokens: ListaToken) -> Parser:
+    // Inicializa el estado del parser con la lista completa de tokens.
+    retornar Parser()
+
+funcion mirar(parser: Parser) -> Token:
+    // Retorna el token actual sin consumirlo.
+    retornar Token()
+
+funcion avanzar(parser: Parser) -> Token:
+    // Consume el token actual y avanza la posición.
+    retornar Token()
+
+funcion parsear_programa(parser: Parser) -> Programa:
+    // Punto de entrada: parsea todas las declaraciones y definiciones.
+    retornar Programa()
+
+funcion parsear_funcion(parser: Parser) -> DefinicionFuncion:
+    // Parsear una definición de función con firma y cuerpo indentado.
+    retornar DefinicionFuncion()
+
+funcion parsear_bloque(parser: Parser) -> ListaNodo:
+    // Parsea un bloque a partir de ':' e INDENT/DEDENT.
+    retornar ListaNodo()
+
+funcion parsear_sentencia(parser: Parser) -> Nodo:
+    // Stub para parseo de sentencias individuales.
+    retornar Nodo()
+
+funcion parsear_expresion(parser: Parser) -> Nodo:
+    // Stub para parseo de expresiones.
+    retornar Nodo()
+
 funcion parsear(fuente: texto) -> Programa:
-    retornar nulo
+    // Entrada principal: lexar la fuente, crear parser y parsear el programa completo.
+    lista_tokens = lexar(fuente)
+    parser = crear_parser(lista_tokens)
+    programa = parsear_programa(parser)
+    retornar programa
