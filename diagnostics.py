@@ -16,6 +16,7 @@ class ErrorCodes(Enum):
     ERR_INDENT_INCONSISTENT = auto()
     ERR_STRING_UNCLOSED = auto()
     ERR_LEX_CHAR_UNEXPECTED = auto()
+    ERR_LEX = auto()
     ERR_FILE_NOT_FOUND = auto()
     ERR_CANONICAL_FORMAT = auto()
     ERR_SEM_VAR_NO_DECLARADA = auto()
@@ -39,6 +40,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "La indentación debe ser múltiplo de 4 espacios",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Nivel de indentación inconsistente",
         ErrorCodes.ERR_STRING_UNCLOSED: "Cadena sin cerrar",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Caracter inesperado '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "Archivo no encontrado: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Formato canónico no reconocido o corrupto",
@@ -61,6 +63,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "Indentation must be a multiple of 4 spaces",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Inconsistent indentation level",
         ErrorCodes.ERR_STRING_UNCLOSED: "Unclosed string literal",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Unexpected character '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "File not found: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Unrecognized or corrupted canonical format",
@@ -83,6 +86,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "L'indentation doit etre un multiple de 4 espaces",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Niveau d'indentation incoherent",
         ErrorCodes.ERR_STRING_UNCLOSED: "Chaine non fermee",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Caractere inattendu '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "Fichier non trouve: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Format canonique non reconnu ou corrompu",
@@ -105,6 +109,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "A indentacao deve ser multipla de 4 espacos",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Nivel de indentacao inconsistente",
         ErrorCodes.ERR_STRING_UNCLOSED: "String nao fechada",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Caractere inesperado '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "Arquivo nao encontrado: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Formato canonico nao reconhecido ou corrompido",
@@ -127,6 +132,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "Einrueckung muss ein Vielfaches von 4 Leerzeichen sein",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Inkonsistente Einrueckungsebene",
         ErrorCodes.ERR_STRING_UNCLOSED: "Nicht geschlossener String",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Unerwartetes Zeichen '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "Datei nicht gefunden: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Nicht erkanntes oder beschaeigtes kanonisches Format",
@@ -149,6 +155,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_INDENT_INVALID: "L'indentazione deve essere un multiplo di 4 spazi",
         ErrorCodes.ERR_INDENT_INCONSISTENT: "Livello di indentazione incoerente",
         ErrorCodes.ERR_STRING_UNCLOSED: "Stringa non chiusa",
+        ErrorCodes.ERR_LEX: "{mensaje}",
         ErrorCodes.ERR_LEX_CHAR_UNEXPECTED: "Carattere inaspettato '{char}'",
         ErrorCodes.ERR_FILE_NOT_FOUND: "File non trovato: {archivo}",
         ErrorCodes.ERR_CANONICAL_FORMAT: "Formato canonico non riconosciuto o corrotto",

@@ -1,14 +1,9 @@
-# Ocultar basura de Python
+paquetes_oficiales/
+axon_modules/
+axon_src/
 __pycache__/
-*.pyc
-
-# Ocultar binarios compilados locales
+dist/
 *.exe
 *.o
-*.out
-
-# Ocultar carpetas temporales
-temp_test*/
-
-# Ocultar distribución empaquetada (binarios)
-dist/    
+build/
+*.zip

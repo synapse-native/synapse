@@ -1,0 +1,10 @@
+#lang: es
+importar std.net
+
+funcion principal() -> nulo:
+    r = iniciar_red()
+    log("iniciar_red: ", r)
+    s = crear_socket()
+    log("socket: ", s)
+    cerrar_red()
+    log("red cerrada")

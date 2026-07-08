@@ -39,12 +39,30 @@ def build():
 
     bin_dir = os.path.join(DIST_DIR, "bin")
     lib_dir = os.path.join(DIST_DIR, "lib")
-    os.makedirs(bin_dir)
+    os.makedirs(bin_dir, exist_ok=True)
     os.makedirs(lib_dir)
 
     # Copy compiler executable
     shutil.copy2(os.path.join(PROJECT_ROOT, "synapse.exe"),
                  os.path.join(bin_dir, "synapse.exe"))
+
+    # Build Axon package manager executable
+    axon_py = os.path.join(PROJECT_ROOT, "axon_src", "axon.py")
+    if os.path.exists(axon_py):
+        import subprocess
+        axon_exe = os.path.join(bin_dir, "axon.exe")
+        try:
+            subprocess.run(
+                ["pyinstaller", "--onefile", "--distpath", bin_dir,
+                 "--specpath", os.path.join(PROJECT_ROOT, "build"),
+                 "--workpath", os.path.join(PROJECT_ROOT, "build"),
+                 "--name", "axon", axon_py],
+                check=True, capture_output=True, text=True, cwd=PROJECT_ROOT
+            )
+            print(f"[+] axon.exe generado en: {axon_exe}")
+        except Exception as e:
+            print(f"[!] PyInstaller fallo, copiando axon.py directamente: {e}")
+            shutil.copy2(axon_py, os.path.join(bin_dir, "axon.py"))
 
     # Copy runtime object and header
     shutil.copy2(os.path.join(PROJECT_ROOT, "synapse_rt.o"),

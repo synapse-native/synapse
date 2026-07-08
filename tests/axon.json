@@ -1,0 +1,11 @@
+{
+  "paquete": "nuevo_proyecto",
+  "version": "1.0.0",
+  "tipo": "ejecutable",
+  "entrada": "principal.syn",
+  "dependencias": {
+    "std.net": "1.0.0",
+    "std.json": "1.0.0",
+    "std.tensor": "1.0.0"
+  }
+}

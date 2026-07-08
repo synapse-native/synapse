@@ -1,0 +1,11 @@
+#lang: es
+importar std.tensor
+
+funcion principal() -> nulo:
+    id = crear_tensor_2d(10, 10)
+    si id >= 0:
+        log("Tensor 10x10 creado con ID: ", id)
+        liberar_tensor(id)
+        log("Tensor liberado correctamente")
+    sino:
+        log("ERROR: No se pudo crear el tensor")

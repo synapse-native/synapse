@@ -358,20 +358,37 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
 
 
 # ============================================================
-# IMPORT SYSTEM
+# IMPORT SYSTEM — Resolución estricta con integración Axon
 # ============================================================
+AXON_MODULES = "axon_modules"
+SYNAPSE_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 def _resolver_ruta_import(ruta_import: str, dir_base: str) -> str:
     ruta_rel = ruta_import.replace('.', '/') + '.syn'
-    ruta1 = os.path.normpath(os.path.join(dir_base, ruta_rel))
-    if os.path.exists(ruta1):
-        return ruta1
-    ruta2 = os.path.normpath(os.path.join(dir_base, 'librerias', ruta_rel))
-    if os.path.exists(ruta2):
-        return ruta2
-    ruta3 = os.path.normpath(os.path.join(os.getcwd(), 'librerias', ruta_rel))
-    if ruta3 != ruta2 and os.path.exists(ruta3):
-        return ruta3
-    return ruta1
+
+    # Prioridad 1 — Local: ./paquete.syn
+    ruta_local = os.path.normpath(os.path.join(dir_base, ruta_rel))
+    if os.path.exists(ruta_local):
+        return ruta_local
+
+    # Prioridad 2 — Ecosistema Axon: ./axon_modules/paquete/principal.syn
+    ruta_axon = os.path.normpath(os.path.join(dir_base, AXON_MODULES, ruta_import, "principal.syn"))
+    if os.path.exists(ruta_axon):
+        return ruta_axon
+
+    # Prioridad 3 — Librería del Sistema: [SYNAPSE_ROOT]/librerias/paquete.syn
+    ruta_sistema = os.path.normpath(os.path.join(SYNAPSE_ROOT, 'librerias', ruta_rel))
+    if os.path.exists(ruta_sistema):
+        return ruta_sistema
+    ruta_sistema2 = os.path.normpath(os.path.join(dir_base, 'librerias', ruta_rel))
+    if ruta_sistema2 != ruta_sistema and os.path.exists(ruta_sistema2):
+        return ruta_sistema2
+
+    # No encontrado en ningún nivel — error semántico limpio
+    raise FileNotFoundError(
+        f"ERROR: Módulo '{ruta_import}' no encontrado. "
+        f"¿Olvidaste ejecutar 'axon instalar {ruta_import}'?"
+    )
 
 
 def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
@@ -392,7 +409,7 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()
     except SyntaxError as e:
-        diag_local.reportar(ErrorCodes.ERR_LANG_MISSING, Token(TokenID.EOF, 1, 0))
+        diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0), mensaje=str(e))
         return Programa(), diag_local
 
     if mostrar_tokens:
@@ -406,7 +423,12 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
     nuevas_sentencias: List[Nodo] = []
     for stmt in ast.sentencias:
         if isinstance(stmt, SentenciaImportar):
-            ruta_importada = _resolver_ruta_import(stmt.ruta, dir_base)
+            try:
+                ruta_importada = _resolver_ruta_import(stmt.ruta, dir_base)
+            except FileNotFoundError:
+                print(f"ERROR: Módulo '{stmt.ruta}' no encontrado. ¿Olvidaste ejecutar 'axon instalar {stmt.ruta}'?", file=sys.stderr)
+                diag_local.errores.append({'codigo': ErrorCodes.ERR_FILE_NOT_FOUND, 'linea': 0, 'columna': 0, 'mensaje': ''})
+                return Programa(), diag_local
             if mostrar_tokens:
                 print(f"\n[Importando: {stmt.ruta} -> {ruta_importada}]")
             ast_importado, _ = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, diag_local)
@@ -470,10 +492,23 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
         ruta_c = ruta_base + ".c"
         ruta_json = ruta_base + ".syn.json"
+        ruta_exe = ruta_base + ".exe"
 
         with open(ruta_c, 'w', encoding='utf-8') as f:
             f.write(codigo_c)
         print(f"[OK] Codigo C generado: {ruta_c}")
+
+        linker_extra = generador.linker_flags
+        synapse_rt = os.path.join(SYNAPSE_ROOT, "synapse_rt.o")
+        if not os.path.exists(synapse_rt):
+            synapse_rt = os.path.join(SYNAPSE_ROOT, "dist", "lib", "synapse_rt.o")
+        gcc_cmd = f'gcc -O2 "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_extra}'.strip()
+        print(f"[OK] GCC: {gcc_cmd}")
+        rc = os.system(gcc_cmd)
+        if rc != 0:
+            print(f"[!] GCC fallo con codigo {rc}", file=sys.stderr)
+        else:
+            print(f"[OK] Ejecutable generado: {ruta_exe}")
 
         canonico = ast_a_canonico(ast)
         with open(ruta_json, 'w', encoding='utf-8') as f:

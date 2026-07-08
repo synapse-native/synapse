@@ -267,15 +267,39 @@ class Lexer:
             if texto[i] in ('"', "'"):
                 comilla = texto[i]
                 inicio = i
+                escapando = False
+                valor_chars = []
                 i += 1
-                while i < len(texto) and texto[i] != comilla:
+                while i < len(texto):
+                    ch = texto[i]
+                    if escapando:
+                        if ch == 'n':
+                            valor_chars.append('\n')
+                        elif ch == 't':
+                            valor_chars.append('\t')
+                        elif ch == '\\':
+                            valor_chars.append('\\')
+                        elif ch == comilla:
+                            valor_chars.append(comilla)
+                        else:
+                            valor_chars.append('\\' + ch)
+                        escapando = False
+                        i += 1
+                        continue
+                    if ch == '\\':
+                        escapando = True
+                        i += 1
+                        continue
+                    if ch == comilla:
+                        i += 1
+                        break
+                    valor_chars.append(ch)
                     i += 1
-                if i >= len(texto):
+                else:
                     raise SyntaxError(
                         f"Error Léxico (línea {self.linea_actual}): Cadena sin cerrar"
                     )
-                i += 1
-                valor = texto[inicio+1:i-1]
+                valor = ''.join(valor_chars)
                 self.tokens.append(
                     Token(TokenID.STRING, linea=self.linea_actual, columna=inicio, valor=valor)
                 )

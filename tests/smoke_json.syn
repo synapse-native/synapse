@@ -1,0 +1,7 @@
+#lang: es
+importar std.json
+
+funcion principal() -> nulo:
+    json = "{\"paquete\": \"synapse\", \"version\": \"1.0\"}"
+    v = extraer_valor(json, "paquete")
+    log("extraido: ", v)

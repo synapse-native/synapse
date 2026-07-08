@@ -118,6 +118,7 @@ class GeneradorC:
         self._gen_tok_emitido = False
         self._externas: dict[str, List[str]] = {}
         self._gen_parse_emitido = False
+        self._linker_libs: set[str] = set()
         self._gen_defs_emitido = False
         self._estructuras: dict[str, list] = {}
         self._func_return_types: dict[str, str] = {}
@@ -286,6 +287,8 @@ class GeneradorC:
         elif isinstance(nodo, ImportarC):
             if nodo.es_sistema:
                 self._push(f'#include <{nodo.ruta}>')
+                if nodo.ruta == 'winsock2.h':
+                    self._linker_libs.add('ws2_32')
             else:
                 self._push(f'#include "{nodo.ruta}"')
         elif isinstance(nodo, DeclaracionExterna):
@@ -1810,6 +1813,12 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         for ln in H.strip().split('\n'):
             self.lineas.append(ln)
 
+    @property
+    def linker_flags(self) -> str:
+        if not self._linker_libs:
+            return ""
+        return " ".join(f"-l{lib}" for lib in sorted(self._linker_libs))
+
     def _visitar_si(self, nodo: SentenciaSi):
         cond = self._expr_a_c(nodo.condicion)
         self._push(f"if ({cond}) {{")
@@ -2054,8 +2063,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, LiteralDecimal):
             return f"{nodo.valor}f"
         if isinstance(nodo, LiteralCadena):
-            val = nodo.valor
-            return f'(CadenaSegura){{ .longitud = {len(val)}, .datos = "{val}" }}'
+            val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"')
+            return f'(CadenaSegura){{ .longitud = {len(nodo.valor)}, .datos = "{val}" }}'
         if isinstance(nodo, Identificador):
             return "NULL" if nodo.nombre == "nulo" else nodo.nombre
         if isinstance(nodo, ExprTensor):

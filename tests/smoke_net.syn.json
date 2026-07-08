@@ -1,0 +1,621 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "ImportarC",
+        "ruta": "winsock2.h",
+        "es_sistema": true
+      },
+      {
+        "_tipo": "ImportarC",
+        "ruta": "windows.h",
+        "es_sistema": true
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DatosRed",
+        "campos": [
+          {
+            "nombre": "d0",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d1",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d2",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d3",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d4",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d5",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d6",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d7",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d8",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d9",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d10",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d11",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d12",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d13",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d14",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d15",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d16",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d17",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d18",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d19",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d20",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d21",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d22",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d23",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d24",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d25",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d26",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d27",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d28",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d29",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d30",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d31",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d32",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d33",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d34",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d35",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d36",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d37",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d38",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d39",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d40",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d41",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d42",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d43",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d44",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d45",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d46",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d47",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d48",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d49",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d50",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d51",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d52",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d53",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d54",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d55",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d56",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d57",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d58",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d59",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d60",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d61",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d62",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d63",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d64",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d65",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d66",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d67",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d68",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d69",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d70",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d71",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d72",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d73",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d74",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d75",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d76",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d77",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d78",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d79",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d80",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d81",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d82",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d83",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d84",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d85",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d86",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d87",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d88",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d89",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d90",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d91",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d92",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d93",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d94",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d95",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d96",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d97",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d98",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "d99",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "WSAStartup",
+        "parametros": [
+          {
+            "nombre": "version",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "datos",
+            "tipo": "void*"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "WSACleanup",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "socket",
+        "parametros": [
+          {
+            "nombre": "af",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "tipo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "protocolo",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "iniciar_red",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "datos",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "DatosRed",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "WSAStartup",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 514
+                },
+                {
+                  "_tipo": "ExprObtenerDireccion",
+                  "expr": {
+                    "_tipo": "Identificador",
+                    "nombre": "datos"
+                  }
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar_red",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "WSACleanup",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "crear_socket",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "socket",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 2
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "iniciar_red",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "iniciar_red: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "r"
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "s",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_socket",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "socket: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "s"
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cerrar_red",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "red cerrada"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

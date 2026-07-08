@@ -1,0 +1,194 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "ImportarC",
+        "ruta": "stdlib.h",
+        "es_sistema": true
+      },
+      {
+        "_tipo": "ImportarC",
+        "ruta": "axon_modules/std.tensor/std_tensor_helper.h",
+        "es_sistema": false
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_crear_tensor_2d",
+        "parametros": [
+          {
+            "nombre": "filas",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columnas",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_liberar_tensor",
+        "parametros": [
+          {
+            "nombre": "id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "crear_tensor_2d",
+        "parametros": [
+          {
+            "nombre": "filas",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columnas",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_crear_tensor_2d",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "filas"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "columnas"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "liberar_tensor",
+        "parametros": [
+          {
+            "nombre": "id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_liberar_tensor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "id"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "id",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_tensor_2d",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 10
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 10
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "id"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Tensor 10x10 creado con ID: "
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "id"
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "liberar_tensor",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "id"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Tensor liberado correctamente"
+                  }
+                ]
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ERROR: No se pudo crear el tensor"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
