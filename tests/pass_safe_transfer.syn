@@ -1,0 +1,5 @@
+#lang: es
+
+funcion principal() -> nulo:
+    t = crear_tensor(10)
+    escribir_linea(t.datos[0]) // ACCESO VÁLIDO: dueño activo

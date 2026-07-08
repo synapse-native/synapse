@@ -1,0 +1,142 @@
+#lang: es
+// src/analizador_semantico.syn — Analizador semántico nativo para Ownership y Borrowing.
+
+importar compiler.ast_nodes
+
+estructura Simbolo:
+    nombre: texto
+    tipo: texto
+    scope_nivel: entero
+    vivo: booleano
+
+estructura ListaSimbolo:
+    cabeza: Simbolo
+    cola: ListaSimbolo
+
+estructura TablaSimbolos:
+    simbolos: ListaSimbolo
+    scope_actual: entero
+
+estructura NodoBloque:
+    tipo: texto
+    sentencias: ListaNodo
+
+estructura AnalizadorSemantico:
+    programa: Programa
+    tabla: TablaSimbolos
+
+funcion crear_tabla_simbolos() -> TablaSimbolos:
+    tabla = TablaSimbolos()
+    tabla.simbolos = ListaSimbolo()
+    tabla.scope_actual = 0
+    retornar tabla
+
+funcion crear_analizador(programa: Programa) -> AnalizadorSemantico:
+    analizador = AnalizadorSemantico()
+    analizador.programa = programa
+    analizador.tabla = crear_tabla_simbolos()
+    retornar analizador
+
+funcion error_semantico(mensaje: texto) -> nulo:
+    // Este stub se enlazará con el manejador de diagnósticos del compilador.
+    retornar
+
+funcion registrar_variable(analizador: AnalizadorSemantico, nombre: texto, tipo: texto) -> nulo:
+    simbolo = Simbolo()
+    simbolo.nombre = nombre
+    simbolo.tipo = tipo
+    simbolo.scope_nivel = analizador.tabla.scope_actual
+    simbolo.vivo = verdadero
+
+    nodo = ListaSimbolo()
+    nodo.cabeza = simbolo
+    nodo.cola = analizador.tabla.simbolos
+    analizador.tabla.simbolos = nodo
+
+funcion buscar_simbolo(analizador: AnalizadorSemantico, nombre: texto) -> Simbolo:
+    actual = analizador.tabla.simbolos
+    mientras actual.cabeza.nombre != "":
+        si actual.cabeza.nombre == nombre:
+            retornar actual.cabeza
+        actual = actual.cola
+    retornar Simbolo()
+
+funcion validar_acceso(analizador: AnalizadorSemantico, nombre: texto) -> nulo:
+    simbolo = buscar_simbolo(analizador, nombre)
+    si simbolo.nombre == "" o simbolo.vivo == falso:
+        error_semantico("Acceso a variable fuera de scope o movida")
+
+funcion marcar_movido(analizador: AnalizadorSemantico, nombre: texto) -> nulo:
+    simbolo = buscar_simbolo(analizador, nombre)
+    si simbolo.nombre != "":
+        simbolo.vivo = falso
+
+funcion analizar_expresion(analizador: AnalizadorSemantico, expr: Nodo) -> nulo:
+    si expr.tipo == "Identificador":
+        validar_acceso(analizador, expr.nombre)
+        retornar
+
+    si expr.tipo == "ArgumentoTransferido":
+        si expr.expr.tipo == "Identificador":
+            validar_acceso(analizador, expr.expr.nombre)
+            marcar_movido(analizador, expr.expr.nombre)
+        retornar
+
+    si expr.tipo == "LlamadaFuncion":
+        actual = expr.argumentos
+        mientras actual.cabeza.tipo != "":
+            analizar_expresion(analizador, actual.cabeza)
+            actual = actual.cola
+        retornar
+
+funcion analizar_sentencia(analizador: AnalizadorSemantico, nodo: Nodo) -> nulo:
+    si nodo.tipo == "AsignacionVariable":
+        si nodo.expresion.tipo == "Identificador":
+            validar_acceso(analizador, nodo.expresion.nombre)
+        registrar_variable(analizador, nodo.nombre, "desconocido")
+        retornar
+
+    si nodo.tipo == "SentenciaExpr":
+        analizar_expresion(analizador, nodo.expr)
+        retornar
+
+    si nodo.tipo == "SentenciaRetornar" y nodo.expr.tipo == "Identificador":
+        validar_acceso(analizador, nodo.expr.nombre)
+        retornar
+
+    si nodo.tipo == "SentenciaSi" o nodo.tipo == "SentenciaMientras":
+        bloquear = NodoBloque()
+        bloquear.tipo = "NodoBloque"
+        bloquear.sentencias = nodo.cuerpo
+        analizar_bloque(analizador, bloquear)
+        si nodo.cuerpo_sino:
+            bloquear2 = NodoBloque()
+            bloquear2.tipo = "NodoBloque"
+            bloquear2.sentencias = nodo.cuerpo_sino
+            analizar_bloque(analizador, bloquear2)
+        retornar
+
+    si nodo.tipo == "BloqueInseguro":
+        bloquear = NodoBloque()
+        bloquear.tipo = "NodoBloque"
+        bloquear.sentencias = nodo.cuerpo
+        analizar_bloque(analizador, bloquear)
+        retornar
+
+funcion analizar_bloque(analizador: AnalizadorSemantico, bloque: NodoBloque) -> nulo:
+    analizador.tabla.scope_actual = analizador.tabla.scope_actual + 1
+    actual = bloque.sentencias
+    mientras actual.cabeza.tipo != "":
+        analizar_sentencia(analizador, actual.cabeza)
+        actual = actual.cola
+    analizador.tabla.scope_actual = analizador.tabla.scope_actual - 1
+    si analizador.tabla.scope_actual < 0:
+        analizador.tabla.scope_actual = 0
+
+funcion analizar(analizador: AnalizadorSemantico) -> nulo:
+    programa = analizador.programa
+    bloque = NodoBloque()
+    bloque.tipo = "NodoBloque"
+    bloque.sentencias = programa.sentencias
+    analizar_bloque(analizador, bloque)
+    retornar

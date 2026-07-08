@@ -1,0 +1,10 @@
+#lang: es
+
+funcion consumir(t: Tensor) -> nulo:
+    // Simula transferencia de propiedad
+    retornar
+
+funcion principal() -> nulo:
+    t = crear_tensor(10)
+    consumir(t)
+    escribir_linea(t.datos[0]) // ERROR ESPERADO: use after move

@@ -6,7 +6,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 | Fase | Pilar | Prioridad | Estado | Responsable |
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | Self-Hosting (Core) | Crítica | En Proceso | OpenCode |
-| 2 | Memory Safety | Alta | Pendiente | OpenCode |
+| 2 | Memory Safety | Alta | En Proceso | OpenCode |
 | 3 | Error Handling (ADTs) | Alta | Pendiente | OpenCode |
 | 4 | Developer Experience (LSP) | Media | Sin Iniciar | OpenCode |
 
@@ -24,7 +24,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 ## Fase 2: Memory Safety (Ownership & Borrowing)
 *Objetivo: Eliminar fugas y eliminar dependencia de `malloc`/`free` manual.*
 - [ ] Diseño del sistema de tipos de posesión (Ownership).
-- [ ] Implementación del "Borrow Checker" en el analizador semántico.
+- [ ] Implementación del "Borrow Checker" en el analizador semántico. [En Proceso]
 - [ ] Migración de `synapse_rt.c` a un modelo de memoria administrado por el compilador.
 
 ## Fase 3: Error Handling (Tipado Algebraico)
