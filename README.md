@@ -21,13 +21,13 @@
 Abre PowerShell y ejecuta:
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/gedeon1972-svg/synapse-lang/main/install.ps1" -UseBasicParsing | Invoke-Expression
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/synapse-native/core/main/install.ps1" -UseBasicParsing | Invoke-Expression
 ```
 
 El script descargará la última versión, la instalará en `C:\Synapse`, configurará el PATH del usuario y activará el coloreado sintáctico en VS Code automáticamente.
 
 ## Instalación Manual
-1. Descarga `synapse-v1.5.0-windows-x64.zip` desde [Releases](https://github.com/gedeon1972-svg/synapse-lang/releases).
+1. Descarga `synapse-v1.5.0-windows-x64.zip` desde [Releases](https://github.com/synapse-native/core/releases).
 2. Extrae en `C:\Synapse`.
 3. Ejecuta `install.ps1` (clic derecho → "Ejecutar con PowerShell").
 4. Reinicia tu terminal. Ahora `synapse` está disponible globalmente.
