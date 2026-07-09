@@ -1,6 +1,7 @@
 import sys
 import json
 from typing import Optional, Any
+from exceptions import SynapseError
 
 # ──────────────────────────────────────────────────────────────────────
 # Synapse LSP Server — JSON-RPC 2.0 daemon over stdin/stdout
@@ -67,8 +68,9 @@ def _leer_mensaje() -> Optional[dict]:
 
 def _enviar_respuesta(respuesta: dict) -> None:
     cuerpo = json.dumps(respuesta, ensure_ascii=False)
-    raw = f"Content-Length: {len(cuerpo)}\r\n\r\n{cuerpo}"
-    sys.stdout.buffer.write(raw.encode("utf-8"))
+    cuerpo_bytes = cuerpo.encode("utf-8")
+    raw = f"Content-Length: {len(cuerpo_bytes)}\r\n\r\n".encode("utf-8") + cuerpo_bytes
+    sys.stdout.buffer.write(raw)
     sys.stdout.buffer.flush()
 
 
@@ -105,39 +107,73 @@ def _errores_a_diagnostics(errores: list) -> list:
 # Compilación exprés (solo para diagnostics — no genera .c ni .exe)
 # ═══════════════════════════════════════════════════════════════════════
 
-def _compilar_archivo(texto: str, ruta: str) -> list:
-    from lexer import Lexer
-    from parser import Parser
+def validar_documento(uri: str, codigo_fuente: str) -> list:
+    """Ejecuta la cadena de validación completa del compilador.
+    Retorna la lista de errores internos (cada uno con 'codigo', 'linea', 'columna', 'mensaje').
+    Nunca lanza excepción.
+    """
+    import traceback
+    try:
+        from lexer import Lexer
+    except Exception as e:
+        sys.stderr.write(f"[LSP] ERROR importing Lexer: {e}\n{traceback.format_exc()}\n")
+        sys.stderr.flush()
+        return []
+    try:
+        from parser import Parser
+    except Exception as e:
+        sys.stderr.write(f"[LSP] ERROR importing Parser: {e}\n")
+        sys.stderr.flush()
+        return []
     from diagnostics import DiagnosticManager
-    from analizador_semantico import AnalizadorSemantico
+    try:
+        from analizador_semantico import AnalizadorSemantico
+    except Exception as e:
+        sys.stderr.write(f"[LSP] ERROR importing AnalizadorSemantico: {e}\n")
+        sys.stderr.flush()
+        return []
 
-    fuente_lineas = texto.split("\n")
-    diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo=ruta)
+    fuente_lineas = codigo_fuente.split("\n")
+    diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo=uri)
 
     try:
-        lexer = Lexer(texto, diag)
+        lexer = Lexer(codigo_fuente)
         tokens = lexer.tokenizar()
-    except Exception:
+    except SynapseError as e:
+        _agregar_error_syntax(diag, e)
+        return diag.errores
+    except Exception as exc:
+        sys.stderr.write(f"[LSP] Lexer exception: {exc}\n{traceback.format_exc()}\n")
+        sys.stderr.flush()
         return diag.errores
 
     try:
         parser = Parser(tokens, diag)
         ast = parser.parsear()
-    except Exception:
+    except Exception as exc:
+        sys.stderr.write(f"[LSP] Parser exception: {exc}\n{traceback.format_exc()}\n")
+        sys.stderr.flush()
         return diag.errores
 
     try:
         analizador = AnalizadorSemantico(ast, diag)
         analizador.analizar()
-    except Exception:
-        pass
+    except Exception as exc:
+        sys.stderr.write(f"[LSP] Semantic exception: {exc}\n{traceback.format_exc()}\n")
+        sys.stderr.flush()
 
     return diag.errores
 
 
+def _agregar_error_syntax(diag, error):
+    from diagnostics import ErrorCodes
+    from ast_nodes import Token, TokenID
+    diag.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, error.linea, error.columna), mensaje=error.mensaje)
+
+
 def _enviar_diagnostics_archivo(uri: str, texto: str) -> None:
     try:
-        errores = _compilar_archivo(texto, uri)
+        errores = validar_documento(uri, texto)
         lsp_diags = _errores_a_diagnostics(errores) if errores else []
         _enviar_notificacion("textDocument/publishDiagnostics", {
             "uri": uri,

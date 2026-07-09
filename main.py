@@ -15,6 +15,7 @@ from ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
 )
 from lexer import Lexer, DICCIONARIOS, DICCIONARIOS_INVERSO
+from exceptions import SynapseError
 from parser import Parser
 from generator import GeneradorC
 from diagnostics import DiagnosticManager, ErrorCodes
@@ -410,6 +411,9 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
         tokens = lexer.tokenizar()
     except SyntaxError as e:
         diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0), mensaje=str(e))
+        return Programa(), diag_local
+    except SynapseError as e:
+        diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, e.linea, e.columna), mensaje=e.mensaje)
         return Programa(), diag_local
 
     if mostrar_tokens:

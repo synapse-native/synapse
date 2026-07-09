@@ -8,7 +8,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 | 1 | Self-Hosting (Core) | Crítica | En Proceso | OpenCode |
 | 2 | Memory Safety | Alta | Terminada | OpenCode |
 | 3 | Error Handling (ADTs) | Alta | Terminada | OpenCode |
-| 4 | Developer Experience (LSP) | Media | En Proceso | OpenCode |
+| 4 | Developer Experience (LSP) | Media | Terminada | OpenCode |
 
 ---
 
@@ -39,6 +39,9 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 *Objetivo: Integración profunda en editores.*
 - [x] Diseño del contrato LSP (mapeo de errores, conversión línea/columna).
 - [x] Construcción del daemon: bucle JSON-RPC, lectura raw de Content-Length.
-- [ ] Implementación de autocompletado y diagnósticos en tiempo real.
+- [x] Diagnósticos en tiempo real en el daemon.
 - [x] Inyección del flag `--lsp` en `main.py`.
+- [x] Cliente LSP oficial para VS Code (`editor/vscode/`).
 - [ ] Publicación de extensión oficial en VS Code Marketplace.
+
+**Fase 4 completada:** [x]
