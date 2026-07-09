@@ -72,7 +72,11 @@ struct Resultado;
 
 typedef struct Resultado {
     int tag;
-    int valor;
+    union {
+        int valor;
+        CadenaSegura valor_str;
+        float valor_float;
+    } dato;
 } Resultado;
 
 static inline struct Resultado Resultado_nuevo() {
@@ -83,12 +87,12 @@ static inline struct Resultado Resultado_nuevo() {
 void principal(void) {
     struct Resultado resultado = Resultado_nuevo();
     resultado.tag = 0;
-    resultado.valor = 5;
+    resultado.dato.valor_str = (CadenaSegura){ .longitud = 5, .datos = "exito" };
     /* coincidir: evaluando expresión */
-    struct Resultado _match_tmp_12 = resultado;
-    if (_match_tmp_12.tag == TAG_OK) {
-        int v = _match_tmp_12.valor;
-        escribir_linea(entero_a_texto(v));
+    struct Resultado _match_tmp_14 = resultado;
+    if (_match_tmp_14.tag == TAG_OK) {
+        CadenaSegura v = _match_tmp_14.dato.valor_str;
+        escribir_linea(v);
     }
 }
 

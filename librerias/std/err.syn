@@ -12,23 +12,21 @@
 // Resultado<T, E> — Unión etiquetada para operaciones que pueden fallar
 // TAG_OK: indica éxito, contiene el valor exitoso
 // TAG_ERR: indica error, contiene el mensaje o causa del error
+// NOTA: El generador traduce los campos (excepto 'tag') a una union { ... } dato;
 estructura Resultado:
     tag: entero
-    data: DatosResultado
-
-estructura DatosResultado:
-    ok_val: entero
-    err_val: texto
+    valor: entero
+    valor_str: texto
+    valor_float: decimal
 
 // Opcion<T> — Unión etiquetada para valores que pueden estar ausentes
 // TAG_ALGUNO: indica valor presente
 // TAG_NINGUNO: indica valor ausente
 estructura Opcion:
     tag: entero
-    data: DatosOpcion
-
-estructura DatosOpcion:
-    algun_val: entero
+    valor: entero
+    valor_str: texto
+    valor_float: decimal
 
 // Constructores (documentación - implementados nativamente en el compilador)
 // ok(valor) -> Resultado con TAG_OK

@@ -4,10 +4,12 @@ importar std.io
 estructura Resultado:
     tag: entero
     valor: entero
+    valor_str: texto
+    valor_float: decimal
 
 funcion principal() -> nulo:
     resultado = Resultado()
     resultado.tag = 0
-    resultado.valor = 5
+    resultado.valor_str = "exito"
     coincidir resultado:
         ok(v) => escribir_linea(v)

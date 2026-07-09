@@ -127,6 +127,14 @@
           {
             "nombre": "valor",
             "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
           }
         ]
       },
@@ -163,10 +171,10 @@
               "_tipo": "Identificador",
               "nombre": "resultado"
             },
-            "nombre_campo": "valor",
+            "nombre_campo": "valor_str",
             "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 5
+              "_tipo": "LiteralCadena",
+              "valor": "exito"
             }
           },
           {
@@ -193,7 +201,8 @@
                       ]
                     }
                   }
-                ]
+                ],
+                "tipo_extraido": "texto"
               }
             ]
           }

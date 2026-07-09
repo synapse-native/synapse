@@ -11,6 +11,7 @@ from ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
     Token, TokenID, DeclaracionExterna,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
+    NodoCoincidir, NodoCaso,
 )
 from diagnostics import DiagnosticManager, ErrorCodes
 from symbol_table import SymbolTable, Simbolo
@@ -98,6 +99,8 @@ class AnalizadorSemantico:
         self.tabla.entrar_scope()
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre
+        # Rastrear asignaciones de campos para inferencia de tipos en coincidir
+        self._asignaciones_campos: Dict[str, Dict[str, str]] = {}  # var -> campo -> tipo
         for p in nodo.parametros:
             self.tabla.declarar(p.nombre, p.tipo, nodo)
         for s in nodo.cuerpo:
@@ -105,6 +108,7 @@ class AnalizadorSemantico:
         self.tabla.salir_scope()
         self._func_retorno = None
         self._func_actual = None
+        self._asignaciones_campos = {}
 
     def _analizar_sentencia(self, nodo: Nodo):
         if isinstance(nodo, AsignacionVariable):
@@ -138,6 +142,12 @@ class AnalizadorSemantico:
                                 self._token(nodo.linea, nodo.columna),
                                 tipo1=tipo_expr, tipo2=campo_val.tipo, operacion='asignacion campo'
                             )
+                        # Rastrear asignación de campo para inferencia en coincidir
+                        if isinstance(nodo.objeto, Identificador):
+                            var_nombre = nodo.objeto.nombre
+                            if var_nombre not in self._asignaciones_campos:
+                                self._asignaciones_campos[var_nombre] = {}
+                            self._asignaciones_campos[var_nombre][nodo.nombre_campo] = campo_val.tipo
         elif isinstance(nodo, SentenciaSi):
             tipo_cond = self._inferir_tipo(nodo.condicion)
             if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float'):
@@ -202,6 +212,51 @@ class AnalizadorSemantico:
         elif isinstance(nodo, LogLlamada):
             for a in nodo.argumentos:
                 self._inferir_tipo(a)
+        elif isinstance(nodo, NodoCoincidir):
+            # Analizar la expresión objetivo
+            tipo_expr = self._inferir_tipo(nodo.expresion)
+            
+            # Para cada caso, extraer el nombre de variable y asignar tipo
+            import re
+            for caso in nodo.casos:
+                match = re.match(r'(\w+)\((\w+)\)', caso.patron)
+                if match:
+                    var_nombre = match.group(2)  # ej. "v" en "ok(v)"
+                    
+                    # Inferir tipo del valor extraído
+                    # Heurística mejorada: buscar asignaciones de campos específicas
+                    tipo_extraido = 'int'  # fallback
+                    
+                    if tipo_expr:
+                        # Extraer nombre de struct (con o sin prefijo 'struct ')
+                        nombre_struct = tipo_expr
+                        if nombre_struct.startswith('struct '):
+                            nombre_struct = nombre_struct[7:]
+                        if nombre_struct in self._estructuras:
+                            struct_def = self._estructuras[nombre_struct]
+                            # Priorizar campos de tipo texto, luego decimal
+                            for campo in struct_def.campos:
+                                if campo.tipo == 'texto':
+                                    tipo_extraido = 'texto'
+                                    break
+                                elif campo.tipo == 'decimal' and tipo_extraido == 'int':
+                                    tipo_extraido = 'decimal'
+                    elif tipo_expr == 'texto':
+                        tipo_extraido = 'texto'
+                    elif tipo_expr == 'decimal':
+                        tipo_extraido = 'decimal'
+                    
+                    # Almacenar el tipo resuelto en el nodo AST
+                    caso.tipo_extraido = tipo_extraido
+                    
+                    # Declarar la variable en la tabla de símbolos
+                    self.tabla.declarar(var_nombre, tipo_extraido, nodo)
+                    
+                    # Analizar el cuerpo del caso
+                    self.tabla.entrar_scope()
+                    for stmt in caso.cuerpo:
+                        self._analizar_sentencia(stmt)
+                    self.tabla.salir_scope()
 
     def _inferir_tipo(self, nodo: Nodo) -> Optional[str]:
         if isinstance(nodo, LiteralNumero):

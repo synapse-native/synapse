@@ -271,6 +271,7 @@ class AsignacionCampo(Nodo):
 class NodoCaso(Nodo):
     patron: str = ''
     cuerpo: List[Nodo] = field(default_factory=list)
+    tipo_extraido: str = ''  # Tipo resuelto de la variable extraída (ej. 'cadena', 'entero', 'flotante')
 
 
 @dataclass

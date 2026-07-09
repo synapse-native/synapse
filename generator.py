@@ -310,13 +310,20 @@ class GeneradorC:
             val = self._expr_a_c(nodo.expresion)
             obj_tipo = self._tipo_de_expr(nodo.objeto)
             es_puntero = obj_tipo.endswith('*')
+            nombre_struct = ''
             if not es_puntero and obj_tipo.startswith('struct '):
                 nombre_struct = obj_tipo[7:]
                 info = self._estructuras.get(nombre_struct)
                 if info and nodo.nombre_campo in info.get('campos_pointer', set()):
                     es_puntero = True
             sep = '->' if es_puntero else '.'
-            self._push(f"{obj}{sep}{nodo.nombre_campo} = {val};")
+            # ADT: encerrar campo de datos dentro de .dato.
+            es_adt = bool(self._estructuras.get(nombre_struct, {}).get('es_adt'))
+            campo_es_tag = (nodo.nombre_campo == 'tag' and es_adt)
+            if es_adt and not campo_es_tag:
+                self._push(f"{obj}{sep}dato.{nodo.nombre_campo} = {val};")
+            else:
+                self._push(f"{obj}{sep}{nodo.nombre_campo} = {val};")
         elif isinstance(nodo, NodoCoincidir):
             self._visitar_coincidir(nodo)
 
@@ -1873,9 +1880,20 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             
             self.indent += 1
             
-            # Declarar variable desempaquetada con tipo inferido
-            # Usamos int como fallback por ahora, la fase semántica mejorará esto
-            self._push(f"int {var_nombre} = {temp_var}.valor;")
+            # Usar el tipo resuelto del análisis semántico
+            tipo_resuelto = caso.tipo_extraido if caso.tipo_extraido else 'int'
+            tipo_c = _traducir_tipo_c(tipo_resuelto)
+            
+            # Generar desempaquetado desde la union .dato.
+            if tipo_c == 'CadenaSegura':
+                self._push(f"CadenaSegura {var_nombre} = {temp_var}.dato.valor_str;")
+            elif tipo_c == 'float':
+                self._push(f"float {var_nombre} = {temp_var}.dato.valor_float;")
+            else:
+                self._push(f"{tipo_c} {var_nombre} = {temp_var}.dato.valor;")
+            
+            # Registrar la variable extraída para que _tipo_de_expr funcione correctamente
+            self._variables[var_nombre] = tipo_c
             
             # Visitar sentencias del cuerpo del caso
             for stmt in caso.cuerpo:
@@ -1889,21 +1907,46 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         for c in nodo.campos:
             if c.tipo in self._estructuras or c.tipo == nodo.nombre:
                 campos_pointer.add(c.nombre)
+        # Detectar ADTs (struct con campo 'tag' + campos de datos)
+        es_adt = any(c.nombre == 'tag' and c.tipo in ('entero', 'int') for c in nodo.campos)
         self._estructuras[nodo.nombre] = {
             'campos': [(c.nombre, c.tipo) for c in nodo.campos],
             'campos_pointer': campos_pointer,
+            'es_adt': es_adt,
         }
         self._push(f"typedef struct {nodo.nombre} {{")
         self.indent += 1
-        for c in nodo.campos:
-            if c.nombre in campos_pointer:
-                self._push(f"struct {c.tipo}* {c.nombre};")
-            else:
-                tipo_c = MAPA_TIPOS_C.get(c.tipo)
-                if tipo_c is not None:
-                    self._push(f"{tipo_c} {c.nombre};")
-                else:
+        if es_adt:
+            # Emitir tag por separado y union para el resto
+            for c in nodo.campos:
+                if c.nombre == 'tag' and c.tipo in ('entero', 'int'):
+                    self._push(f"int tag;")
+                    break
+            self._push("union {")
+            self.indent += 1
+            for c in nodo.campos:
+                if c.nombre == 'tag' and c.tipo in ('entero', 'int'):
+                    continue
+                if c.nombre in campos_pointer:
                     self._push(f"struct {c.tipo}* {c.nombre};")
+                else:
+                    tipo_c = MAPA_TIPOS_C.get(c.tipo)
+                    if tipo_c is not None:
+                        self._push(f"{tipo_c} {c.nombre};")
+                    else:
+                        self._push(f"struct {c.tipo}* {c.nombre};")
+            self.indent -= 1
+            self._push("} dato;")
+        else:
+            for c in nodo.campos:
+                if c.nombre in campos_pointer:
+                    self._push(f"struct {c.tipo}* {c.nombre};")
+                else:
+                    tipo_c = MAPA_TIPOS_C.get(c.tipo)
+                    if tipo_c is not None:
+                        self._push(f"{tipo_c} {c.nombre};")
+                    else:
+                        self._push(f"struct {c.tipo}* {c.nombre};")
         self.indent -= 1
         self._push(f"}} {nodo.nombre};")
         self._push("")
@@ -2170,12 +2213,17 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             obj = self._expr_a_c(nodo.objeto)
             obj_tipo = self._tipo_de_expr(nodo.objeto)
             es_puntero = obj_tipo.endswith('*')
+            nombre_struct = ''
             if not es_puntero and obj_tipo.startswith('struct '):
                 nombre_struct = obj_tipo[7:]
                 info = self._estructuras.get(nombre_struct)
                 if info and nodo.nombre_campo in info.get('campos_pointer', set()):
                     es_puntero = True
             sep = '->' if es_puntero else '.'
+            es_adt = bool(self._estructuras.get(nombre_struct, {}).get('es_adt'))
+            campo_es_tag = (nodo.nombre_campo == 'tag' and es_adt)
+            if es_adt and not campo_es_tag:
+                return f"{obj}{sep}dato.{nodo.nombre_campo}"
             return f"{obj}{sep}{nodo.nombre_campo}"
         if isinstance(nodo, OpBinaria):
             izq = self._expr_a_c(nodo.izquierdo)
