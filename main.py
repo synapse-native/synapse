@@ -539,8 +539,13 @@ if __name__ == "__main__":
                         help="Archivo fuente .syn (o .syn.json para canonico)")
     parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
     parser.add_argument("--lang", type=str, default=None,
-                        help="Idioma de salida (es, en). Si no se da, solo genera C + JSON canonico.")
+                        help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
+    parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
     args = parser.parse_args()
 
-    codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens, output_lang=args.lang)
-    sys.exit(codigo)
+    if args.lsp:
+        from synapse_lsp.server import iniciar
+        iniciar()
+    else:
+        codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens, output_lang=args.lang)
+        sys.exit(codigo)
