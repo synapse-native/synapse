@@ -9,6 +9,7 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 | 2 | Memory Safety | Alta | Terminada | OpenCode |
 | 3 | Error Handling (ADTs) | Alta | Terminada | OpenCode |
 | 4 | Developer Experience (LSP) | Media | Terminada | OpenCode |
+| 5 | Axon (Ecosistema) | Media | Pendiente de Inicio | OpenCode |
 
 ---
 
@@ -23,9 +24,11 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 
 ## Fase 2: Memory Safety (Ownership & Borrowing)
 *Objetivo: Eliminar fugas y eliminar dependencia de `malloc`/`free` manual.*
-- [ ] Diseño del sistema de tipos de posesión (Ownership).
-- [ ] Implementación del "Borrow Checker" en el analizador semántico. [En Proceso]
-- [ ] Migración de `synapse_rt.c` a un modelo de memoria administrado por el compilador.
+- [x] Diseño del sistema de tipos de posesión (Ownership).
+- [x] Implementación del "Borrow Checker" en el analizador semántico.
+- [x] Migración de `synapse_rt.c` a un modelo de memoria administrado por el compilador.
+
+**Fase 2 completada:** [x]
 
 ## Fase 3: Error Handling (Tipado Algebraico)
 *Objetivo: Eliminar códigos de retorno enteros (`-1`, `0`).*
@@ -45,3 +48,12 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 - [ ] Publicación de extensión oficial en VS Code Marketplace.
 
 **Fase 4 completada:** [x]
+
+## Fase 5: Axon (Ecosistema)
+*Objetivo: Integración con el sistema de módulos Axon y publicación del ecosistema.*
+- [ ] Definición del formato de paquete Axon (`.axon`).
+- [ ] Implementación del gestor de paquetes (`axon install`, `axon publish`).
+- [ ] Repositorio público de paquetes (registro central).
+- [ ] Documentación oficial y tutoriales.
+
+**Fase 5 completada:** [ ]
