@@ -454,7 +454,8 @@ def compilar_desde_canonico(ruta_json: str) -> Programa:
 # MAIN ENTRY POINT
 # ============================================================
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
-                        output_lang: Optional[str] = None) -> int:
+                        output_lang: Optional[str] = None,
+                        dump_ast: bool = False) -> int:
     diag = DiagnosticManager()
 
     try:
@@ -489,6 +490,10 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         if diag.hay_errores():
             print(f"\n[ERROR] Análisis semántico fallido — {diag.resumen()}", file=sys.stderr)
             return diag.codigo_salida()
+
+        if dump_ast:
+            imprimir_ast(ast)
+            return 0
 
         generador = GeneradorC(ast)
         codigo_c = generador.generar()
@@ -545,11 +550,13 @@ if __name__ == "__main__":
     parser.add_argument("--lang", type=str, default=None,
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
     parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
+    parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
     args = parser.parse_args()
 
     if args.lsp:
         from synapse_lsp.server import iniciar
         iniciar()
     else:
-        codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens, output_lang=args.lang)
+        codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens,
+                                     output_lang=args.lang, dump_ast=args.dump_ast)
         sys.exit(codigo)

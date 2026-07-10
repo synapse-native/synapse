@@ -16,6 +16,12 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
 
+// Constantes de tags para uniones etiquetadas (ADTs)
+#define TAG_OK 0
+#define TAG_ERR 1
+#define TAG_ALGUNO 0
+#define TAG_NINGUNO 1
+
 // --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void pool_free(void* ptr);
@@ -482,23 +488,94 @@ static inline struct DeclaracionExterna DeclaracionExterna_nuevo() {
     return _r;
 }
 
-void _expr_a_c(struct Nodo nodo, CadenaSegura buf) {
-    return;
+int tokenizar(CadenaSegura fuente) {
+    int _i = 0;
+    int _linea = 1;
+    int _columna = 1;
+    int _token_count = 0;
+    while (_i < fuente.longitud) {
+        char _c = fuente.datos[_i];
+        if (_c == ' ' || _c == '\t') { _i++; _columna++; continue; }
+        if (_c == '\r') { _i++; continue; }
+        if (_c == '\n') { _i++; _linea++; _columna = 1; continue; }
+        if (_c == '/' && _i + 1 < fuente.longitud && fuente.datos[_i + 1] == '/') {
+            while (_i < fuente.longitud && fuente.datos[_i] != '\n') { _i++; }
+            continue;
+        }
+        if (_c == '"' || _c == '\'') {
+            char _q = _c; int _start = _i; _i++; _columna++;
+            while (_i < fuente.longitud && fuente.datos[_i] != _q) { _i++; _columna++; }
+            if (_i >= fuente.longitud) {
+                fprintf(stderr, "  TOKEN STRING_UNCLOSED L%d:%d\n", _linea, _columna);
+                break;
+            }
+            _i++; _columna++;
+            _token_count++;
+            fprintf(stderr, "  TOKEN STRING L%d:%d\n", _linea, _columna);
+        }
+        else if (_c >= '0' && _c <= '9') {
+            int _start = _i;
+            while (_i < fuente.longitud && fuente.datos[_i] >= '0' && fuente.datos[_i] <= '9') { _i++; }
+            _columna += _i - _start;
+            _token_count++;
+            fprintf(stderr, "  TOKEN NUMBER L%d:%d\n", _linea, _columna);
+        }
+        else if ((_c >= 'a' && _c <= 'z') || (_c >= 'A' && _c <= 'Z') || _c == '_') {
+            int _start = _i;
+            while (_i < fuente.longitud && (
+                (fuente.datos[_i] >= 'a' && fuente.datos[_i] <= 'z') ||
+                (fuente.datos[_i] >= 'A' && fuente.datos[_i] <= 'Z') ||
+                (fuente.datos[_i] >= '0' && fuente.datos[_i] <= '9') ||
+                fuente.datos[_i] == '_'
+            )) { _i++; }
+            int _len_id = _i - _start;
+            char _buf_id[256]; int _clip = _len_id < 255 ? _len_id : 255;
+            strncpy(_buf_id, fuente.datos + _start, _clip); _buf_id[_clip] = 0;
+            _columna += _len_id;
+            _token_count++;
+            typedef struct { const char* p; int t; } _KWE;
+            static const _KWE _kws[] = {
+                {"si",1},{"if",1},{"se",1},{"wenn",1},
+                {"sino",2},{"else",2},{"sinon",2},{"senao",2},{"sonst",2},{"altrimenti",2},
+                {"funcion",3},{"function",3},{"fonction",3},{"funcao",3},{"funktion",3},{"funzione",3},
+                {"retornar",4},{"return",4},{"retourner",4},{"rueckgabe",4},{"restituisci",4},
+                {"lanzar",5},{"spawn",5},{"lancer",5},{"lancar",5},{"starten",5},{"lancia",5},
+                {"recuperar",6},{"recover",6},{"recuperer",6},{"wiederherstellen",6},{"recupera",6},
+                {"escuchar",7},{"listen",7},{"ecouter",7},{"escutar",7},{"hoeren",7},{"ascolta",7},
+                {"mientras",8},{"while",8},{"tantque",8},{"enquanto",8},{"waehrend",8},{"mentre",8},
+                {"importar",9},{"import",9},{"importer",9},{"importieren",9},{"importa",9},
+                {"romper",10},{"break",10},{"rompre",10},{"parar",10},{"abbrechen",10},{"interrompi",10},
+                {"siguiente",11},{"continue",11},{"continuer",11},{"continuar",11},{"fortsetzen",11},{"continua",11},
+                {"estructura",37},{"struct",37},{"structure",37},{"estrutura",37},{"struktur",37},{"struttura",37},
+                {"y",38},{"and",38},{"et",38},{"e",38},{"und",38},
+                {"o",39},{"or",39},{"ou",39},{"oder",39},
+                {"no",40},{"not",40},{"non",40},{"nao",40},{"nicht",40},
+                {"verdadero",41},{"true",41},{"vrai",41},{"verdadeiro",41},{"wahr",41},{"vero",41},
+                {"falso",42},{"false",42},{"faux",42},{"falsch",42},
+                {"inseguro",43},{"unsafe",43},
+                {"importar_c",44},{"import_c",44},{"importer_c",44},{"importa_c",44},
+                {"externo",46},{"extern",46},{"externe",46},{"esterno",46},
+                {NULL,0}
+            };
+            int _kt = 0;
+            for (int _ki = 0; _kws[_ki].p; _ki++) {
+                if (strcmp(_buf_id, _kws[_ki].p) == 0) { _kt = _kws[_ki].t; break; }
+            }
+            if (_kt)
+                fprintf(stderr, "  TOKEN %d L%d:%d\n", _kt, _linea, _columna);
+            else
+                fprintf(stderr, "  TOKEN IDENTIFIER L%d:%d\n", _linea, _columna);
+        }
+        else {
+            _i++; _columna++;
+            _token_count++;
+            fprintf(stderr, "  TOKEN CHAR(%c) L%d:%d\n", _c, _linea, _columna);
+        }
+    }
+    fprintf(stderr, "Total tokens: %d\n", _token_count);
+    return _token_count;
 }
 
-void _visitar_nodo(struct Nodo nodo, Canal out) {
-    return;
-}
-
-void _visitar_lista(struct ListaNodo lista, Canal out) {
-    return;
-}
-
-void _visitar_programa(struct Programa programa, Canal out) {
-    return;
-}
-
-// --- Generador de C ---
 // --- Token IDs ---
 #define T_IF 1
 #define T_ELSE 2
@@ -1183,6 +1260,16 @@ static struct Programa _P_programa() {
     p.tipo=_P_cs("Programa"); p.sentencias=lst;
     return p;
 }
+struct Programa parsear(CadenaSegura fuente) {
+    _P_ntks = 0; _P_tpos = 0; _P_p_err = 0; _P_nivel_pila = 0;
+    _P_pila_indent[0] = 0;
+    _P_tokenizar(fuente.datos, fuente.longitud);
+    _P_procesar_indentacion_final();
+    struct Programa _prog = _P_programa();
+    return _prog;
+}
+
+// --- Generador de C ---
 // --- AST Walker ---
 static int _G_indent = 0;
 static FILE* _G_out = NULL;
@@ -1511,25 +1598,205 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     fprintf(stderr, "OK: %s\n", out_exe);
     return 0;
 }
-CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse) {
-    return tipo_synapse;
+void _volcar_nodo(struct Nodo* nodo, int nivel) {
+    if (!nodo) { printf("(null)\n"); return; }
+    for (int _i = 0; _i < nivel; _i++) printf("  ");
+    printf("[%s]\n", nodo->tipo.datos);
+    if (strcmp(nodo->tipo.datos, "Token") == 0) {
+        printf("  tipo: %d\n", ((struct Token*)nodo)->tipo);
+        printf("  lexema: %s\n", ((struct Token*)nodo)->lexema.datos);
+        printf("  linea: %d\n", ((struct Token*)nodo)->linea);
+        printf("  columna: %d\n", ((struct Token*)nodo)->columna);
+    }
+    else if (strcmp(nodo->tipo.datos, "ListaNodo") == 0) {
+        _volcar_nodo(((struct ListaNodo*)nodo)->cabeza, nivel + 1);
+        { struct ListaNodo* _cur = ((struct ListaNodo*)nodo)->cola; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "Programa") == 0) {
+        printf("  tipo: %s\n", ((struct Programa*)nodo)->tipo.datos);
+        { struct ListaNodo* _cur = ((struct Programa*)nodo)->sentencias; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "Identificador") == 0) {
+        printf("  tipo: %s\n", ((struct Identificador*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct Identificador*)nodo)->nombre.datos);
+    }
+    else if (strcmp(nodo->tipo.datos, "LiteralNumero") == 0) {
+        printf("  tipo: %s\n", ((struct LiteralNumero*)nodo)->tipo.datos);
+        printf("  valor: %d\n", ((struct LiteralNumero*)nodo)->valor);
+    }
+    else if (strcmp(nodo->tipo.datos, "LiteralCadena") == 0) {
+        printf("  tipo: %s\n", ((struct LiteralCadena*)nodo)->tipo.datos);
+        printf("  valor: %s\n", ((struct LiteralCadena*)nodo)->valor.datos);
+    }
+    else if (strcmp(nodo->tipo.datos, "OpBinaria") == 0) {
+        printf("  tipo: %s\n", ((struct OpBinaria*)nodo)->tipo.datos);
+        _volcar_nodo(((struct OpBinaria*)nodo)->izquierdo, nivel + 1);
+        _volcar_nodo(((struct OpBinaria*)nodo)->operador, nivel + 1);
+        _volcar_nodo(((struct OpBinaria*)nodo)->derecho, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "OpUnaria") == 0) {
+        printf("  tipo: %s\n", ((struct OpUnaria*)nodo)->tipo.datos);
+        _volcar_nodo(((struct OpUnaria*)nodo)->operador, nivel + 1);
+        _volcar_nodo(((struct OpUnaria*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "LlamadaFuncion") == 0) {
+        printf("  tipo: %s\n", ((struct LlamadaFuncion*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct LlamadaFuncion*)nodo)->nombre.datos);
+        { struct ListaNodo* _cur = ((struct LlamadaFuncion*)nodo)->argumentos; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "ExprAccesoCampo") == 0) {
+        printf("  tipo: %s\n", ((struct ExprAccesoCampo*)nodo)->tipo.datos);
+        printf("  nombre_campo: %s\n", ((struct ExprAccesoCampo*)nodo)->nombre_campo.datos);
+        _volcar_nodo(((struct ExprAccesoCampo*)nodo)->objeto, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "AsignacionVariable") == 0) {
+        printf("  tipo: %s\n", ((struct AsignacionVariable*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct AsignacionVariable*)nodo)->nombre.datos);
+        _volcar_nodo(((struct AsignacionVariable*)nodo)->expresion, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "AsignacionCampo") == 0) {
+        printf("  tipo: %s\n", ((struct AsignacionCampo*)nodo)->tipo.datos);
+        printf("  nombre_campo: %s\n", ((struct AsignacionCampo*)nodo)->nombre_campo.datos);
+        _volcar_nodo(((struct AsignacionCampo*)nodo)->objeto, nivel + 1);
+        _volcar_nodo(((struct AsignacionCampo*)nodo)->expresion, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaSi") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaSi*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaSi*)nodo)->condicion, nivel + 1);
+        { struct ListaNodo* _cur = ((struct SentenciaSi*)nodo)->cuerpo; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+        { struct ListaNodo* _cur = ((struct SentenciaSi*)nodo)->cuerpo_sino; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaMientras") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaMientras*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaMientras*)nodo)->condicion, nivel + 1);
+        { struct ListaNodo* _cur = ((struct SentenciaMientras*)nodo)->cuerpo; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaRetornar") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaRetornar*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaRetornar*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaExpr") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaExpr*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaExpr*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "LogLlamada") == 0) {
+        printf("  tipo: %s\n", ((struct LogLlamada*)nodo)->tipo.datos);
+        { struct ListaNodo* _cur = ((struct LogLlamada*)nodo)->argumentos; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "Parametro") == 0) {
+        printf("  tipo: %s\n", ((struct Parametro*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct Parametro*)nodo)->nombre.datos);
+        printf("  tipo_param: %s\n", ((struct Parametro*)nodo)->tipo_param.datos);
+        printf("  es_transferencia: %d\n", ((struct Parametro*)nodo)->es_transferencia);
+    }
+    else if (strcmp(nodo->tipo.datos, "ListaParametro") == 0) {
+        _volcar_nodo(((struct ListaParametro*)nodo)->cabeza, nivel + 1);
+        { struct ListaParametro* _cur = ((struct ListaParametro*)nodo)->cola; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "DefinicionFuncion") == 0) {
+        printf("  tipo: %s\n", ((struct DefinicionFuncion*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct DefinicionFuncion*)nodo)->nombre.datos);
+        printf("  tipo_retorno: %s\n", ((struct DefinicionFuncion*)nodo)->tipo_retorno.datos);
+        { struct ListaParametro* _cur = ((struct DefinicionFuncion*)nodo)->parametros; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+        { struct ListaNodo* _cur = ((struct DefinicionFuncion*)nodo)->cuerpo; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "DefinicionEstructura") == 0) {
+        printf("  tipo: %s\n", ((struct DefinicionEstructura*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct DefinicionEstructura*)nodo)->nombre.datos);
+        { struct ListaParametro* _cur = ((struct DefinicionEstructura*)nodo)->campos; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaRomper") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaRomper*)nodo)->tipo.datos);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaSiguiente") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaSiguiente*)nodo)->tipo.datos);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaLanzar") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaLanzar*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaLanzar*)nodo)->llamada, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaRecuperar") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaRecuperar*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaRecuperar*)nodo)->accion_critica, nivel + 1);
+        _volcar_nodo(((struct SentenciaRecuperar*)nodo)->plan_b, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaEscuchar") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaEscuchar*)nodo)->tipo.datos);
+        _volcar_nodo(((struct SentenciaEscuchar*)nodo)->canal, nivel + 1);
+        _volcar_nodo(((struct SentenciaEscuchar*)nodo)->respuesta, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "ExprTensor") == 0) {
+        printf("  tipo: %s\n", ((struct ExprTensor*)nodo)->tipo.datos);
+        _volcar_nodo(((struct ExprTensor*)nodo)->filas, nivel + 1);
+        _volcar_nodo(((struct ExprTensor*)nodo)->columnas, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "ExprIndice") == 0) {
+        printf("  tipo: %s\n", ((struct ExprIndice*)nodo)->tipo.datos);
+        _volcar_nodo(((struct ExprIndice*)nodo)->expr, nivel + 1);
+        _volcar_nodo(((struct ExprIndice*)nodo)->indice, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "ArgumentoTransferido") == 0) {
+        printf("  tipo: %s\n", ((struct ArgumentoTransferido*)nodo)->tipo.datos);
+        _volcar_nodo(((struct ArgumentoTransferido*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "SentenciaImportar") == 0) {
+        printf("  tipo: %s\n", ((struct SentenciaImportar*)nodo)->tipo.datos);
+        printf("  ruta: %s\n", ((struct SentenciaImportar*)nodo)->ruta.datos);
+    }
+    else if (strcmp(nodo->tipo.datos, "ExprObtenerDireccion") == 0) {
+        printf("  tipo: %s\n", ((struct ExprObtenerDireccion*)nodo)->tipo.datos);
+        _volcar_nodo(((struct ExprObtenerDireccion*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "ExprDereferencia") == 0) {
+        printf("  tipo: %s\n", ((struct ExprDereferencia*)nodo)->tipo.datos);
+        _volcar_nodo(((struct ExprDereferencia*)nodo)->expr, nivel + 1);
+    }
+    else if (strcmp(nodo->tipo.datos, "ImportarC") == 0) {
+        printf("  tipo: %s\n", ((struct ImportarC*)nodo)->tipo.datos);
+        printf("  ruta: %s\n", ((struct ImportarC*)nodo)->ruta.datos);
+        printf("  es_sistema: %d\n", ((struct ImportarC*)nodo)->es_sistema);
+    }
+    else if (strcmp(nodo->tipo.datos, "DeclaracionExterna") == 0) {
+        printf("  tipo: %s\n", ((struct DeclaracionExterna*)nodo)->tipo.datos);
+        printf("  nombre: %s\n", ((struct DeclaracionExterna*)nodo)->nombre.datos);
+        printf("  tipo_retorno: %s\n", ((struct DeclaracionExterna*)nodo)->tipo_retorno.datos);
+        { struct ListaParametro* _cur = ((struct DeclaracionExterna*)nodo)->parametros; while (_cur) { _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; } }
+    }
+    else { printf("  (tipo desconocido)\n"); }
 }
 
-struct Programa parsear(CadenaSegura fuente) {
-    _P_ntks = 0; _P_tpos = 0; _P_p_err = 0; _P_nivel_pila = 0;
-    _P_pila_indent[0] = 0;
-    _P_tokenizar(fuente.datos, fuente.longitud);
-    _P_procesar_indentacion_final();
-    struct Programa _prog = _P_programa();
-    return _prog;
+void volcar_ast(struct Nodo* nodo, int nivel) { _volcar_nodo(nodo, nivel); }
+
+int crear_analizador(struct Programa programa) {
+    return 0;
+}
+
+void analizar(int analizador) {
+    return;
+}
+
+void ejecutar_dump(CadenaSegura ruta) {
+    Canal canal = abrir(ruta, (CadenaSegura){ .longitud = 1, .datos = "r" });
+    CadenaSegura fuente = leer(canal);
+    cerrar(canal);
+    struct Programa programa = parsear(fuente);
+    volcar_ast((&programa), 0);
+    /* ADVERTENCIA: canal 'canal' no fue cerrado explicitamente */
+    if (canal.stream) { fclose(canal.stream); canal.es_valido = 0; }
+    free((void*)fuente.datos);
 }
 
 void principal(void) {
     if ((_argc() < 2)) {
-        printf("Uso: main <archivo.syn>\n");
+        printf("Uso: main <archivo.syn> [--dump-ast]\n");
         salir(1);
     }
     CadenaSegura ruta = _argv(1);
+    int modo_dump = ((_argc() >= 3) && (strcmp(_argv(2).datos, (CadenaSegura){ .longitud = 10, .datos = "--dump-ast" }.datos) == 0));
+    if (modo_dump) {
+        ejecutar_dump(ruta);
+        salir(0);
+    }
     printf("Compilando: %s\n", (ruta).datos);
     Canal canal = abrir((CadenaSegura){ .longitud = 32, .datos = "librerias/compiler/ast_nodes.syn" }, (CadenaSegura){ .longitud = 1, .datos = "r" });
     CadenaSegura lib_ast = leer(canal);
@@ -1549,11 +1816,16 @@ void principal(void) {
     canal = abrir((CadenaSegura){ .longitud = 21, .datos = "librerias/std/mem.syn" }, (CadenaSegura){ .longitud = 1, .datos = "r" });
     CadenaSegura lib_mem = leer(canal);
     cerrar(canal);
+    canal = abrir((CadenaSegura){ .longitud = 28, .datos = "src/analizador_semantico.syn" }, (CadenaSegura){ .longitud = 1, .datos = "r" });
+    CadenaSegura lib_semantico = leer(canal);
+    cerrar(canal);
     canal = abrir(ruta, (CadenaSegura){ .longitud = 1, .datos = "r" });
     CadenaSegura fuente = leer(canal);
     cerrar(canal);
-    CadenaSegura fuente_completa = concat(concat(concat(concat(concat(concat(lib_ast, lib_parse), lib_gen), lib_io), lib_math), lib_mem), fuente);
+    CadenaSegura fuente_completa = concat(concat(concat(concat(concat(concat(concat(lib_ast, lib_parse), lib_gen), lib_io), lib_math), lib_mem), lib_semantico), fuente);
     struct Programa programa = parsear(fuente_completa);
+    int analizador = crear_analizador(programa);
+    analizar(analizador);
     int errores = generar(programa, ruta);
     if ((errores > 0)) {
         printf("Error: %d %s\n", errores, ((CadenaSegura){ .longitud = 8, .datos = "fallo(s)" }).datos);
@@ -1562,13 +1834,14 @@ void principal(void) {
     printf("OK: %s\n", (ruta).datos);
     /* ADVERTENCIA: canal 'canal' no fue cerrado explicitamente */
     if (canal.stream) { fclose(canal.stream); canal.es_valido = 0; }
-    free((void*)lib_parse.datos);
-    free((void*)lib_ast.datos);
+    free((void*)lib_semantico.datos);
+    free((void*)lib_mem.datos);
     free((void*)fuente.datos);
     free((void*)lib_math.datos);
-    free((void*)lib_gen.datos);
+    free((void*)lib_ast.datos);
     free((void*)lib_io.datos);
-    free((void*)lib_mem.datos);
+    free((void*)lib_parse.datos);
+    free((void*)lib_gen.datos);
 }
 
 int main(int argc, char** argv) {

@@ -332,7 +332,7 @@ class GeneradorC:
             return
         self._funciones_emitidas.add(nodo.nombre)
 
-        if nodo.nombre in ('tokenizar', 'parsear', 'generar'):
+        if nodo.nombre in ('tokenizar', 'parsear', 'generar', 'volcar_ast'):
             getattr(self, f'_emitir_{nodo.nombre}')(nodo)
             return
         if nodo.nombre in _RUNTIME_BUILTINS:
@@ -833,6 +833,63 @@ class GeneradorC:
         self._push("return _prog;")
         self.indent -= 1
         self._push("}")
+        self._push("")
+
+    def _emitir_volcar_ast(self, nodo: DefinicionFuncion):
+        self._push("void _volcar_nodo(struct Nodo* nodo, int nivel) {")
+        self.indent += 1
+        self._push('if (!nodo) { printf("(null)\\n"); return; }')
+        self._push("for (int _i = 0; _i < nivel; _i++) printf(\"  \");")
+        self._push('printf("[%s]\\n", nodo->tipo.datos);')
+        branches = []
+        for nombre, info in self._estructuras.items():
+            if nombre in ('Nodo', 'ListaSimbolo',
+                          'NodoBloque', 'BloqueInseguro', 'ListaToken', 'Simbolo',
+                          'Generador', 'AnalizadorSemantico', 'TablaSimbolos', 'Parser'):
+                continue
+            campos = info.get('campos', [])
+            is_adt = info.get('es_adt', False)
+            printable = []
+            children_list = []
+            children_single = []
+            for c_nombre, c_tipo in campos:
+                if c_nombre in info.get('campos_pointer', set()):
+                    if c_tipo in ('ListaNodo', 'ListaParametro', 'ListaToken', 'ListaSimbolo'):
+                        children_list.append((c_nombre, c_tipo))
+                    else:
+                        children_single.append(c_nombre)
+                elif c_tipo in ('entero', 'int'):
+                    printable.append((c_nombre, 'int'))
+                elif c_tipo == 'texto':
+                    printable.append((c_nombre, 'CadenaSegura'))
+                elif c_tipo == 'booleano':
+                    printable.append((c_nombre, 'int'))
+            if not printable and not children_list and not children_single:
+                continue
+            branches.append((nombre, printable, children_list, children_single, is_adt))
+        for idx, (nombre, printable, children_list, children_single, is_adt) in enumerate(branches):
+            if idx == 0:
+                self._push(f'if (strcmp(nodo->tipo.datos, "{nombre}") == 0) {{')
+            else:
+                self._push(f'else if (strcmp(nodo->tipo.datos, "{nombre}") == 0) {{')
+            self.indent += 1
+            for c_nombre, c_tipo in printable:
+                if c_tipo == 'CadenaSegura':
+                    self._push(f'printf("  {c_nombre}: %s\\n", ((struct {nombre}*)nodo)->{c_nombre}.datos);')
+                else:
+                    self._push(f'printf("  {c_nombre}: %d\\n", ((struct {nombre}*)nodo)->{c_nombre});')
+            for c_nombre in children_single:
+                self._push(f'_volcar_nodo(((struct {nombre}*)nodo)->{c_nombre}, nivel + 1);')
+            for c_nombre, c_tipo in children_list:
+                self._push(f'{{ struct {c_tipo}* _cur = ((struct {nombre}*)nodo)->{c_nombre}; while (_cur) {{ _volcar_nodo(_cur->cabeza, nivel + 1); _cur = _cur->cola; }} }}')
+            self.indent -= 1
+            self._push("}")
+        self._push('else { printf("  (tipo desconocido)\\n"); }')
+        self.indent -= 1
+        self._push("}")
+        self._push("")
+        self._externas['volcar_ast'] = ['struct Nodo*', 'int']
+        self._push("void volcar_ast(struct Nodo* nodo, int nivel) { _volcar_nodo(nodo, nivel); }")
         self._push("")
 
     def _gen_tok_c(self):
@@ -2228,6 +2285,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, OpBinaria):
             izq = self._expr_a_c(nodo.izquierdo)
             der = self._expr_a_c(nodo.derecho)
+            tipo_izq = self._tipo_de_expr(nodo.izquierdo)
+            tipo_der = self._tipo_de_expr(nodo.derecho)
+            if nodo.operador in ('==', '!=') and tipo_izq == 'CadenaSegura' and tipo_der == 'CadenaSegura':
+                op = '!=' if nodo.operador == '!=' else '=='
+                return f"(strcmp({izq}.datos, {der}.datos) {op} 0)"
             return f"({izq} {nodo.operador} {der})"
         if isinstance(nodo, OpUnaria):
             return f"({nodo.operador}{self._expr_a_c(nodo.expr)})"

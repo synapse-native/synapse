@@ -3,15 +3,43 @@
 // Recibe: main <archivo.syn>
 // Flujo: leer fuente -> parsear (AST) -> generar (C)
 
-importar compiler.generator
-importar compiler.parser
-importar std.io
+importar compiler.ast_nodes
+
+// Stubs para activar las implementaciones C incrustadas en generator.py
+funcion tokenizar(fuente: texto) -> int:
+    retornar 0
+
+funcion parsear(fuente: texto) -> Programa:
+    retornar Programa()
+
+funcion generar(programa: Programa, ruta: texto) -> int:
+    retornar 0
+
+funcion volcar_ast(nodo: Nodo, nivel: entero) -> nulo:
+    retornar
+
+funcion crear_analizador(programa: Programa) -> int:
+    retornar 0
+
+funcion analizar(analizador: int) -> nulo:
+    retornar
+
+funcion ejecutar_dump(ruta: texto) -> nulo:
+    canal = abrir(ruta, "r")
+    fuente = leer(canal)
+    cerrar(canal)
+    programa = parsear(fuente)
+    volcar_ast(programa, 0)
 
 funcion principal() -> nulo:
     si _argc() < 2:
-        log("Uso: main <archivo.syn>")
+        log("Uso: main <archivo.syn> [--dump-ast]")
         salir(1)
     ruta = _argv(1)
+    modo_dump = _argc() >= 3 y _argv(2) == "--dump-ast"
+    si modo_dump:
+        ejecutar_dump(ruta)
+        salir(0)
     log("Compilando:", ruta)
     canal = abrir("librerias/compiler/ast_nodes.syn", "r")
     lib_ast = leer(canal)
@@ -40,7 +68,7 @@ funcion principal() -> nulo:
     fuente_completa = concat(concat(concat(concat(concat(concat(concat(lib_ast, lib_parse), lib_gen), lib_io), lib_math), lib_mem), lib_semantico), fuente)
     programa = parsear(fuente_completa)
     analizador = crear_analizador(programa)
-    analizador.analizar()
+    analizar(analizador)
     errores = generar(programa, ruta)
     si errores > 0:
         log("Error:", errores, "fallo(s)")
