@@ -63,7 +63,7 @@ funcion buscar_simbolo(analizador: AnalizadorSemantico, nombre: texto) -> Simbol
 
 funcion validar_acceso(analizador: AnalizadorSemantico, nombre: texto) -> nulo:
     simbolo = buscar_simbolo(analizador, nombre)
-    log("Validando acceso: " + nombre + ", Vivo: " + (si simbolo.vivo entonces "true" sino "false"))
+    log("Validando acceso: " + nombre)
     si simbolo.nombre == "" o simbolo.vivo == falso:
         error_semantico("Acceso a variable fuera de scope o movida")
 

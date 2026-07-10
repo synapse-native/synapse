@@ -42,9 +42,7 @@ funcion parsear_expresion(parser: Parser) -> Nodo:
     // Stub para parseo de expresiones.
     retornar Nodo()
 
-funcion parsear(fuente: texto) -> Programa:
-    // Entrada principal: lexar la fuente, crear parser y parsear el programa completo.
-    lista_tokens = lexar(fuente)
-    parser = crear_parser(lista_tokens)
-    programa = parsear_programa(parser)
-    retornar programa
+funcion volcar_ast(nodo: Nodo, nivel: entero) -> nulo:
+    // Vuelca el AST por stdout con indentacion jerarquica.
+    // Implementacion nativa incrustada en la generacion C.
+    retornar

@@ -1313,24 +1313,23 @@ static struct Nodo* """ + _P + """sentencia() {
         n->nombre=""" + _P + """cs(_vn); n->expresion=val;
         return (struct Nodo*)n;
     }
-    if (t->tipo == T_IDENT && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_DOT) {
-        char _vn[256]; strcpy(_vn, t->val);
-        """ + _P + """avanzar(); """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo == T_IDENT) {
-            char _cn[256]; strcpy(_cn, """ + _P + """mirar()->val);
-            if (""" + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
-                """ + _P + """avanzar(); """ + _P + """avanzar();
-                struct Nodo* val=""" + _P + """expr();
-                struct Identificador* obj = (struct Identificador*)calloc(1,sizeof(struct Identificador));
-                obj->tipo=""" + _P + """cs("Identificador"); obj->nombre=""" + _P + """cs(_vn);
+    { struct Nodo* e=""" + _P + """expr();
+        if (e && """ + _P + """mirar()->tipo == T_ASSIGN) {
+            """ + _P + """avanzar();
+            struct Nodo* val=""" + _P + """expr();
+            if (strcmp(e->tipo.datos,"Identificador")==0) {
+                struct AsignacionVariable* n = (struct AsignacionVariable*)calloc(1,sizeof(struct AsignacionVariable));
+                n->tipo=""" + _P + """cs("AsignacionVariable");
+                n->nombre=((struct Identificador*)e)->nombre; n->expresion=val;
+                return (struct Nodo*)n;
+            }
+            if (strcmp(e->tipo.datos,"ExprAccesoCampo")==0) {
                 struct AsignacionCampo* n = (struct AsignacionCampo*)calloc(1,sizeof(struct AsignacionCampo));
                 n->tipo=""" + _P + """cs("AsignacionCampo");
-                n->objeto=(struct Nodo*)obj; n->nombre_campo=""" + _P + """cs(_cn); n->expresion=val;
+                n->objeto=((struct ExprAccesoCampo*)e)->objeto; n->nombre_campo=((struct ExprAccesoCampo*)e)->nombre_campo; n->expresion=val;
                 return (struct Nodo*)n;
             }
         }
-    }
-    { struct Nodo* e=""" + _P + """expr();
         struct SentenciaExpr* n = (struct SentenciaExpr*)calloc(1,sizeof(struct SentenciaExpr));
         n->tipo=""" + _P + """cs("SentenciaExpr"); n->expr=e;
         return (struct Nodo*)n;
@@ -1490,13 +1489,20 @@ static struct Nodo* """ + _P + """prim() {
             return (struct Nodo*)n;
         }
         if (""" + _P + """mirar()->tipo==T_DOT) {
-            """ + _P + """avanzar();
-            if (""" + _P + """mirar()->tipo==T_IDENT) {
-                struct Identificador* obj=(struct Identificador*)calloc(1,sizeof(struct Identificador));
-                obj->tipo=""" + _P + """cs("Identificador"); obj->nombre=""" + _P + """cs(_nm);
+            /* Build chain: a.b.c -> ExprAccesoCampo(ExprAccesoCampo(Ident("a"), "b"), "c") */
+            struct Nodo* prev=(struct Nodo*)NULL;
+            while (""" + _P + """mirar()->tipo==T_DOT) {
+                """ + _P + """avanzar();
+                if (""" + _P + """mirar()->tipo!=T_IDENT) break;
+                if (!prev) {
+                    struct Identificador* obj=(struct Identificador*)calloc(1,sizeof(struct Identificador));
+                    obj->tipo=""" + _P + """cs("Identificador"); obj->nombre=""" + _P + """cs(_nm);
+                    prev=(struct Nodo*)obj;
+                }
                 strcpy(_nm, """ + _P + """mirar()->val); """ + _P + """avanzar();
-                if (""" + _P + """mirar()->tipo==T_LPAREN) {
-                    free(obj);
+                if (""" + _P + """mirar()->tipo==T_LPAREN && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo!=T_DOT) {
+                    /* method call on last segment */
+                    if(prev) free(prev);
                     """ + _P + """avanzar();
                     struct ListaNodo* args=NULL; struct ListaNodo** acur=&args;
                     if (""" + _P + """mirar()->tipo!=T_RPAREN) {
@@ -1518,10 +1524,12 @@ static struct Nodo* """ + _P + """prim() {
                     n->tipo=""" + _P + """cs("LlamadaFuncion"); n->nombre=""" + _P + """cs(_nm); n->argumentos=args;
                     return (struct Nodo*)n;
                 }
-                struct ExprAccesoCampo* n=(struct ExprAccesoCampo*)calloc(1,sizeof(struct ExprAccesoCampo));
-                n->tipo=""" + _P + """cs("ExprAccesoCampo"); n->objeto=(struct Nodo*)obj; n->nombre_campo=""" + _P + """cs(_nm);
-                return (struct Nodo*)n;
+                struct ExprAccesoCampo* ac=(struct ExprAccesoCampo*)calloc(1,sizeof(struct ExprAccesoCampo));
+                ac->tipo=""" + _P + """cs("ExprAccesoCampo"); ac->objeto=prev; ac->nombre_campo=""" + _P + """cs(_nm);
+                prev=(struct Nodo*)ac;
+                if (""" + _P + """mirar()->tipo!=T_DOT) break;
             }
+            return prev;
         }
         struct Identificador* n=(struct Identificador*)calloc(1,sizeof(struct Identificador));
         n->tipo=""" + _P + """cs("Identificador"); n->nombre=""" + _P + """cs(_nm);
@@ -1564,6 +1572,8 @@ static char {_PH}ret_type[64];
 static char {_PH}extern_names[64][64];
 static char {_PH}extern_params[64][256];
 static int {_PH}nextern = 0;
+static char {_PH}snames[64][64];
+static int {_PH}nsnames = 0;
 
 static void {_PH}reset() {{ {_PH}nv = 0; }}
 static int {_PH}find(const char* n) {{ for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
@@ -1603,6 +1613,7 @@ static const char* {_PH}tex(struct Nodo* n) {{
         if(strcmp(m,"texto_a_entero")==0) return "int";
         if(strcmp(m,"texto_a_decimal")==0) return "float";
         if(strcmp(m,"decimal_a_texto")==0) return "CadenaSegura";
+        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0) {{ static char _sret[64]; snprintf(_sret,sizeof(_sret),"struct %s",m); return _sret; }} }}
         return "int";
     }}
     if(strcmp(t,"ExprAccesoCampo")==0||strcmp(t,"ArgumentoTransferido")==0) return "int";
@@ -1647,6 +1658,9 @@ static void {_PH}ea(struct Nodo* n, char* b, int sz) {{
     if(strcmp(t,"LlamadaFuncion")==0){{
         struct LlamadaFuncion* x=(struct LlamadaFuncion*)n; {_PH}cp(m,x->nombre);
         {{ char* _p=m; while(*_p){{ if(*_p=='.') *_p='_'; _p++; }} }}
+        int _is_struct = 0;
+        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0){{ _is_struct=1; break; }} }}
+        if(_is_struct && !x->argumentos){{ snprintf(b,sz,"%s_nuevo()",m); return; }}
         int _coer = (strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0||strcmp(m,"abrir")==0||strcmp(m,"concat")==0);
         char a[4096]=""; int p=0; int aidx=0; struct ListaNodo* c=x->argumentos;
         while(c){{ if(p>0){{ a[p++]=','; a[p++]=' '; }}
@@ -1713,6 +1727,7 @@ static void {_PH}vest(struct DefinicionEstructura* n) {{
     snprintf(ln,sizeof(ln),"static inline struct %s %s_nuevo() {{",n->nombre.datos,n->nombre.datos); {_PH}emit(ln);
     {_PH}indent++; snprintf(ln,sizeof(ln),"struct %s _r={{0}}; return _r;",n->nombre.datos); {_PH}emit(ln);
     {_PH}indent--; {_PH}emit("}}");
+    if({_PH}nsnames<64){{ strcpy({_PH}snames[{_PH}nsnames],n->nombre.datos); {_PH}nsnames++; }}
 }}
 
 static void {_PH}v(struct Nodo* n) {{

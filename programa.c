@@ -16,6 +16,12 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
 
+// Constantes de tags para uniones etiquetadas (ADTs)
+#define TAG_OK 0
+#define TAG_ERR 1
+#define TAG_ALGUNO 0
+#define TAG_NINGUNO 1
+
 // --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void pool_free(void* ptr);
@@ -35,6 +41,10 @@ extern Tensor suma(Tensor a, Tensor b);
 extern Tensor producto(Tensor a, Tensor b);
 extern int texto_a_entero(CadenaSegura str);
 extern float texto_a_decimal(CadenaSegura str);
+extern CadenaSegura decimal_a_texto(float n);
+extern CadenaSegura entero_a_texto(int n);
+extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
+extern void synapse_esperar_hilos(void);
 
 static int _g_argc;
 static char** _g_argv;
@@ -50,7 +60,7 @@ void salir(int codigo) { exit(codigo); }
 CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     int _tl = a.longitud + b.longitud;
     char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"ESCAPA_DEL_ALCANCE: malloc fallo en concat\n"); exit(1); }
+    if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\n"); exit(1); }
     memcpy(_buf, a.datos, a.longitud);
     memcpy(_buf + a.longitud, b.datos, b.longitud);
     _buf[_tl] = 0;
@@ -64,8 +74,9 @@ Tensor generar_tensor(void) {
 }
 
 void principal(void) {
-    int matriz = generar_tensor();
+    Tensor matriz = generar_tensor();
     printf("Tensor recibido y memoria gestionada correctamente.\n");
+    pool_free(matriz.datos);
 }
 
 int main(int argc, char** argv) {
@@ -73,5 +84,6 @@ int main(int argc, char** argv) {
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     principal();
+    synapse_esperar_hilos();
     return 0;
 }

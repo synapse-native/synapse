@@ -43,6 +43,9 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'texto_a_entero': (['texto'], 'int'),
     'texto_a_decimal': (['texto'], 'decimal'),
     'decimal_a_texto': (['decimal'], 'texto'),
+    'volcar_ast': (['Programa', 'int'], 'nulo'),
+    'crear_analizador': (['Programa'], 'int'),
+    'analizar': (['int'], 'nulo'),
 }
 
 
@@ -308,6 +311,8 @@ class AnalizadorSemantico:
                     return 'decimal'
                 if norm_izq == 'float' and norm_der == 'float':
                     return 'decimal'
+                if norm_izq == 'CadenaSegura' and norm_der == 'CadenaSegura' and nodo.operador in ('==', '!='):
+                    return 'int'
                 if norm_izq != norm_der:
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -315,16 +320,9 @@ class AnalizadorSemantico:
                         tipo1=tipo_izq, tipo2=tipo_der, operacion=nodo.operador
                     )
                     return None
-                if norm_izq not in ('int', 'float'):
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                        self._token(nodo.linea, nodo.columna),
-                        tipo1=tipo_izq, tipo2='int', operacion=nodo.operador
-                    )
-                    return None
-            if norm_izq == 'float' or norm_der == 'float':
-                return 'decimal'
-            return 'int'
+                if norm_izq in ('int', 'float'):
+                    return 'decimal' if (norm_izq == 'float' or norm_der == 'float') else 'int'
+                return None
         elif isinstance(nodo, OpUnaria):
             tipo_expr = self._inferir_tipo(nodo.expr)
             if tipo_expr and _tipo_normalizado(tipo_expr) not in ('int', 'float'):

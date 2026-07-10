@@ -318,6 +318,10 @@
           {
             "nombre": "tipo_param",
             "tipo": "texto"
+          },
+          {
+            "nombre": "es_transferencia",
+            "tipo": "booleano"
           }
         ]
       },
@@ -358,6 +362,240 @@
           {
             "nombre": "cuerpo",
             "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DefinicionEstructura",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "campos",
+            "tipo": "ListaParametro"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaRomper",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaSiguiente",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaLanzar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "llamada",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaRecuperar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "accion_critica",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "plan_b",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaEscuchar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "canal",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "respuesta",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprTensor",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "filas",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "columnas",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprIndice",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ArgumentoTransferido",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaImportar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "BloqueInseguro",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "cuerpo",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprObtenerDireccion",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprDereferencia",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ImportarC",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "es_sistema",
+            "tipo": "booleano"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DeclaracionExterna",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "parametros",
+            "tipo": "ListaParametro"
+          },
+          {
+            "nombre": "tipo_retorno",
+            "tipo": "texto"
           }
         ]
       }

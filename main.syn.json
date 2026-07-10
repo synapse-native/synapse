@@ -601,84 +601,43 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "_expr_a_c",
+        "nombre": "tokenizar",
         "parametros": [
           {
-            "nombre": "nodo",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "buf",
+            "nombre": "fuente",
             "tipo": "texto"
           }
         ],
-        "tipo_retorno": "nulo",
+        "tipo_retorno": "int",
         "cuerpo": [
           {
             "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
             "es_transferencia": false
           }
         ]
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "_visitar_nodo",
+        "nombre": "parsear",
         "parametros": [
           {
-            "nombre": "nodo",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "out",
-            "tipo": "Canal"
+            "nombre": "fuente",
+            "tipo": "texto"
           }
         ],
-        "tipo_retorno": "nulo",
+        "tipo_retorno": "Programa",
         "cuerpo": [
           {
             "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "_visitar_lista",
-        "parametros": [
-          {
-            "nombre": "lista",
-            "tipo": "ListaNodo"
-          },
-          {
-            "nombre": "out",
-            "tipo": "Canal"
-          }
-        ],
-        "tipo_retorno": "nulo",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "_visitar_programa",
-        "parametros": [
-          {
-            "nombre": "programa",
-            "tipo": "Programa"
-          },
-          {
-            "nombre": "out",
-            "tipo": "Canal"
-          }
-        ],
-        "tipo_retorno": "nulo",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "Programa",
+              "argumentos": []
+            },
             "es_transferencia": false
           }
         ]
@@ -710,155 +669,38 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "_traducir_tipo_c",
+        "nombre": "volcar_ast",
         "parametros": [
           {
-            "nombre": "tipo_synapse",
-            "tipo": "texto"
+            "nombre": "nodo",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "nivel",
+            "tipo": "entero"
           }
         ],
-        "tipo_retorno": "texto",
+        "tipo_retorno": "nulo",
         "cuerpo": [
           {
             "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "tipo_synapse"
-            },
             "es_transferencia": false
           }
         ]
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear",
-        "parametros": [
-          {
-            "nombre": "fuente",
-            "tipo": "texto"
-          }
-        ],
-        "tipo_retorno": "Programa",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nulo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "abrir",
+        "nombre": "ejecutar_dump",
         "parametros": [
           {
             "nombre": "ruta",
             "tipo": "texto"
-          },
-          {
-            "nombre": "modo",
-            "tipo": "texto"
-          }
-        ],
-        "tipo_retorno": "Canal",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "leer",
-        "parametros": [
-          {
-            "nombre": "canal",
-            "tipo": "Canal"
-          }
-        ],
-        "tipo_retorno": "texto",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "LiteralCadena",
-              "valor": ""
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "cerrar",
-        "parametros": [
-          {
-            "nombre": "canal",
-            "tipo": "Canal"
           }
         ],
         "tipo_retorno": "nulo",
         "cuerpo": [
           {
             "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "escribir",
-        "parametros": [
-          {
-            "nombre": "texto",
-            "tipo": "texto"
-          }
-        ],
-        "tipo_retorno": "nulo",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "escribir_linea",
-        "parametros": [
-          {
-            "nombre": "texto",
-            "tipo": "texto"
-          }
-        ],
-        "tipo_retorno": "nulo",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "leer_linea",
-        "parametros": [],
-        "tipo_retorno": "texto",
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "LiteralCadena",
-              "valor": ""
-            },
             "es_transferencia": false
           }
         ]
@@ -890,7 +732,7 @@
                 "argumentos": [
                   {
                     "_tipo": "LiteralCadena",
-                    "valor": "Uso: main <archivo.syn>"
+                    "valor": "Uso: main <archivo.syn> [--dump-ast]"
                   }
                 ]
               },
@@ -922,6 +764,58 @@
                 }
               ]
             }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "modo_dump",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_argc",
+                "argumentos": []
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "Identificador",
+              "nombre": "modo_dump"
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "ejecutar_dump",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "ruta"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "salir",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  ]
+                }
+              }
+            ]
           },
           {
             "_tipo": "LogLlamada",

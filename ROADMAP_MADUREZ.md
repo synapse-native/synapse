@@ -9,7 +9,10 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 | 2 | Memory Safety | Alta | Terminada | OpenCode |
 | 3 | Error Handling (ADTs) | Alta | Terminada | OpenCode |
 | 4 | Developer Experience (LSP) | Media | Terminada | OpenCode |
-| 5 | Axon (Ecosistema) | Media | Pendiente de Inicio | OpenCode |
+| TQC | Sanitización y Fuzzing | Alta | Pendiente | OpenCode |
+| Pacto | El Pacto y Concurrencia | Alta | Pendiente | OpenCode |
+| DX | DX y Telemetría | Media | Pendiente | OpenCode |
+| Axon | Axon (Ecosistema) | Media | Pendiente de Inicio | OpenCode |
 
 ---
 
@@ -49,11 +52,26 @@ Cualquier cambio de estado debe ser registrado aquí por el agente de IA (OpenCo
 
 **Fase 4 completada:** [x]
 
-## Fase 5: Axon (Ecosistema)
-*Objetivo: Integración con el sistema de módulos Axon y publicación del ecosistema.*
+## Fase Nueva (TQC - Sanitización y Fuzzing)
+*Objetivo: Integrar ASan/TSan en el generador C y crear banco de regresión.*
+- [ ] Integrar ASan/TSan en el generador C.
+- [ ] Crear banco de regresión.
+
+## Fase Nueva (El Pacto y Concurrencia)
+*Objetivo: Implementar Contratos Lógicos (requiere/garantiza), prohibir estado mutable en lanzar e implementar Canales.*
+- [ ] Implementar Contratos Lógicos (requiere/garantiza).
+- [ ] Prohibir estado mutable en lanzar.
+- [ ] Implementar Canales.
+
+## Fase Nueva (DX y Telemetría)
+*Objetivo: Diagnósticos enriquecidos (LSP avanzado).*
+- [ ] Diagnósticos enriquecidos (LSP avanzado).
+
+## Fase Axon (Ecosistema)
+*Objetivo: Integración con el sistema de módulos Axon y publicación del ecosistema. Queda desplazada hasta que las fases anteriores estén en verde.*
 - [ ] Definición del formato de paquete Axon (`.axon`).
 - [ ] Implementación del gestor de paquetes (`axon install`, `axon publish`).
 - [ ] Repositorio público de paquetes (registro central).
 - [ ] Documentación oficial y tutoriales.
 
-**Fase 5 completada:** [ ]
+**Fase Axon completada:** [ ]

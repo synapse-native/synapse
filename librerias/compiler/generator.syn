@@ -42,7 +42,7 @@ funcion visitar_programa(generador: Generador, programa: Programa) -> nulo:
     // Recorre las sentencias del programa principal.
     retornar
 
-funcion visitar_definicion_funcion(generador: Generador, funcion: DefinicionFuncion) -> nulo:
+funcion visitar_definicion_funcion(generador: Generador, fn: DefinicionFuncion) -> nulo:
     // Genera la firma de función y su bloque de cuerpo.
     retornar
 
