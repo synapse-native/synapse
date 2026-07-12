@@ -1,47 +1,33 @@
-name: Deploy mdBook
+name: Despliegue mdBook
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - "docs/**"
-      - "book.toml"
+      - 'docs/**'
+      - '.github/workflows/deploy-docs.yml'
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install mdBook
-        run: |
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.45/mdbook-v0.4.45-x86_64-unknown-linux-gnu.tar.gz \
-            | tar xz -C /usr/local/bin mdbook
-
-      - name: Build book
-        run: mdbook build
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./book
-
   deploy:
     runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar mdBook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: 'latest'
+
+      - name: Construir el Libro
+        run: mdbook build docs
+
+      - name: Desplegar a gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/book
