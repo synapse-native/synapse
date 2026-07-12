@@ -1,0 +1,12 @@
+#lang: es
+// std.cripto — Funciones criptográficas (SHA-256)
+//
+// Uso desde Synapse:
+//   importar std.cripto
+//   hash = sha256_texto("datos")
+//   log("SHA-256: ", hash)
+
+externo funcion _syn_sha256_texto(datos: texto) -> texto
+
+funcion sha256_texto(datos: texto) -> texto:
+    retornar _syn_sha256_texto(datos)

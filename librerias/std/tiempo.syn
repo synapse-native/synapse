@@ -1,0 +1,19 @@
+#lang: es
+// std.tiempo — Medición de tiempo y suspensión de hilos
+//
+// Uso desde Synapse:
+//   importar std.tiempo
+//   inicio = ahora_ms()
+//   dormir_ms(100)
+//   fin = ahora_ms()
+//   log("Tardo: ", fin - inicio, " ms")
+
+externo funcion _syn_ahora_ms() -> entero
+externo funcion _syn_dormir_ms(ms: entero) -> nulo
+
+funcion ahora_ms() -> entero:
+    retornar _syn_ahora_ms()
+
+funcion dormir_ms(ms: entero) -> nulo:
+    _syn_dormir_ms(ms)
+    retornar
