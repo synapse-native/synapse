@@ -1,0 +1,12 @@
+[book]
+title = "El Lenguaje de Programación Synapse"
+authors = ["Synapse Native Team"]
+language = "es"
+
+[output.html]
+site-url = "https://synapse-native.github.io/synapse/"
+edit-url-template = "https://github.com/synapse-native/synapse/edit/main/docs/{path}"
+
+[output.html.fold]
+enable = true
+level = 1
