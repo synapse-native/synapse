@@ -34,6 +34,21 @@ float texto_a_decimal(CadenaSegura str);
 CadenaSegura decimal_a_texto(float n);
 CadenaSegura entero_a_texto(int n);
 
+// --- CanalConcurrencia API (Zero-Copy, Thread-Safe) ---
+typedef struct {
+    int es_ok;
+    union {
+        void* ok_valor;
+        const char* err_mensaje;
+    } datos;
+} Resultado_T;
+
+typedef struct CanalConcurrencia CanalConcurrencia;
+CanalConcurrencia* canal_crear(uint32_t capacidad);
+void canal_enviar(CanalConcurrencia* canal, void* paquete);
+void* canal_recibir(CanalConcurrencia* canal);
+void canal_destruir(CanalConcurrencia* canal);
+
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);
 

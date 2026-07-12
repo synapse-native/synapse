@@ -1,0 +1,12 @@
+#lang: es
+
+funcion prueba_contrato(x: entero) -> entero:
+    requiere:
+        x > 0
+    garantiza:
+        x * 2 > 0
+    retornar x * 2
+
+funcion principal() -> nulo:
+    valor = prueba_contrato(5)
+    log("Resultado: %d", valor)

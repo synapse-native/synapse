@@ -1,0 +1,32 @@
+#lang: es
+// std.toml — Deserializador TOML para el gestor Axon
+// Integrante de la Biblioteca Estandar de Synapse v1.5.0
+//
+// Soporta el subconjunto de TOML requerido por axon.toml:
+//   - Secciones: [proyecto], [dependencias]
+//   - Cadenas: clave = "valor"
+//   - Tablas en linea: clave = { anidada = "valor" }
+//   - Comentarios: # hasta fin de linea
+
+importar std.err
+
+estructura ParToml:
+    clave: texto
+    valor: NodoToml
+
+estructura NodoToml:
+    tipo: entero          // -1=Error, 0=Nulo, 1=Tabla, 2=Cadena, 3=TablaEnLinea
+    valor_str: texto
+    pares: ParToml
+    longitud: entero
+
+externo funcion _toml_parse(entrada: texto) -> NodoToml
+externo funcion _toml_nodo_new() -> NodoToml
+externo funcion _toml_nodo_liberar(n: NodoToml) -> nulo
+externo funcion _toml_object_get(nodo: NodoToml, clave: texto) -> NodoToml
+
+funcion desde_texto(entrada: cadena) -> NodoToml:
+    retornar _toml_parse(entrada)
+
+funcion obtener_campo(nodo: NodoToml, clave: cadena) -> NodoToml:
+    retornar _toml_object_get(nodo, clave)

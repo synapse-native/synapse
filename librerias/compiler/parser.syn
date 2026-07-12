@@ -34,9 +34,18 @@ funcion parsear_bloque(parser: Parser) -> ListaNodo:
     // Parsea un bloque a partir de ':' e INDENT/DEDENT.
     retornar ListaNodo()
 
-funcion parsear_sentencia(parser: Parser) -> Nodo:
-    // Stub para parseo de sentencias individuales.
-    retornar Nodo()
+función parsear_sentencia(parser: Parser) -> Nodo:
+    // Detectar sentencias de canal y delegar al parser correspondiente.
+    token_actual = mirar(parser)
+    si token_actual.tipo == TokenID.ARROW_LEFT:
+        // canal <- valor
+        retornar parsear_enviar_canal(parser)
+    sino si token_actual.tipo == TokenID.ARROW_RIGHT:
+        // canal ->
+        retornar parsear_recibir_canal(parser)
+    sino:
+        // Otras sentencias (placeholder)
+        retornar Nodo()
 
 funcion parsear_expresion(parser: Parser) -> Nodo:
     // Stub para parseo de expresiones.
@@ -46,3 +55,34 @@ funcion volcar_ast(nodo: Nodo, nivel: entero) -> nulo:
     // Vuelca el AST por stdout con indentacion jerarquica.
     // Implementacion nativa incrustada en la generacion C.
     retornar
+
+función parsear_crear_canal(parser: Parser) -> ExprCrearCanal:
+    // Sintaxis: crear_canal<T>(capacidad)
+    // Consume 'crear_canal' token, tipo genérico y capacidad
+    retornar ExprCrearCanal()
+
+función parsear_enviar_canal(parser: Parser) -> SentenciaEnviarCanal:
+    // Sintaxis: canal <- valor
+    // Consume canal, operador ARROW_LEFT, valor
+    retornar SentenciaEnviarCanal()
+
+función parsear_recibir_canal(parser: Parser) -> ExprRecibirCanal:
+    // Sintaxis: canal ->
+    // Consume canal, operador ARROW_RIGHT
+    retornar ExprRecibirCanal()
+
+función parsear_contrato_requiere(parser: Parser) -> ListaNodo:
+    // Bloque que comienza con palabra clave 'requiere' seguido de ':' e INDENT/DEDENT
+    retornar ListaNodo()
+
+función parsear_contrato_garantiza(parser: Parser) -> ListaNodo:
+    // Bloque que comienza con palabra clave 'garantiza' seguido de ':' e INDENT/DEDENT
+    retornar ListaNodo()
+
+// Extiende parsear_funcion para reconocer contratos
+función parsear_funcion(parser: Parser) -> DefinicionFuncion:
+    // Parsear una definición de función con firma y cuerpo indentado.
+    // Primero parsear firma habitual (nombre, parámetros, tipo retorno)
+    // Luego opcionalmente parsear bloques 'requiere' y 'garantiza'
+    // Finalmente parsear cuerpo del bloque.
+    retornar DefinicionFuncion()

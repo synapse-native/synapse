@@ -11,6 +11,7 @@ from ast_nodes import (
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
+    ExprCrearCanal, SentenciaEnviarCanal, ExprRecibirCanal,
 )
 
 
@@ -58,6 +59,9 @@ _BUILTINS: dict[str, str] = {
     '_argc': 'int',
     '_argv': 'CadenaSegura',
     'salir': 'void',
+    'canal_crear': 'CanalConcurrencia*',
+    'canal_enviar': 'void',
+    'canal_recibir': 'void*',
     'texto_a_entero': 'int',
     'texto_a_decimal': 'float',
     'decimal_a_texto': 'CadenaSegura',
@@ -70,8 +74,24 @@ _RUNTIME_BUILTINS: frozenset = frozenset({
     'crear_tensor', 'suma_tensor', 'producto_punto', 'relu',
     'reserva', 'libera', 'suma', 'producto',
     'texto_a_entero', 'texto_a_decimal', 'decimal_a_texto',
-    'salir',
+    'salir', 'canal_crear', 'canal_enviar', 'canal_recibir',
 })
+
+
+def _prim_int_to_ptr(value: str) -> str:
+    return f"_synapse_box_int({value})"
+
+
+def _prim_float_to_ptr(value: str) -> str:
+    return f"_synapse_box_float({value})"
+
+
+def _ptr_to_prim_int(ptr: str) -> str:
+    return f"_synapse_unbox_int({ptr})"
+
+
+def _ptr_to_prim_float(ptr: str) -> str:
+    return f"_synapse_unbox_float({ptr})"
 
 # Tabla de coerción: (tipo_origen, tipo_destino) -> funcion_coercion
 _TABLA_COERCION: dict[tuple[str, str], str] = {
@@ -86,6 +106,10 @@ _FUNCIONES_ESPERAN_TEXTO: set[str] = {
 
 
 def _traducir_tipo_c(tipo_synapse: str) -> str:
+    if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
+        return 'CanalConcurrencia*'
+    if tipo_synapse.startswith('Resultado<'):
+        return 'Resultado_T'
     tipo_c = MAPA_TIPOS_C.get(tipo_synapse)
     if tipo_c is not None:
         return tipo_c
@@ -115,8 +139,15 @@ class GeneradorC:
         self._tensor_vars_transferidas: set[str] = set()
         self._canal_vars: set[str] = set()
         self._canal_vars_cerradas: set[str] = set()
-        self._strings_heap: set[str] = set()
         self._listener_funciones: List[str] = []
+        self._scope_stack: list[dict[str, str]] = []
+        self._destructor_map: dict[str, str] = {
+            'CadenaSegura': '_syn_texto_liberar',
+            'NodoJson': '_json_nodo_liberar',
+            'struct NodoJson': '_json_nodo_liberar',
+            'NodoToml': '_toml_nodo_liberar',
+            'struct NodoToml': '_toml_nodo_liberar',
+        }
         self._gen_tok_emitido = False
         self._externas: dict[str, List[str]] = {}
         self._gen_parse_emitido = False
@@ -125,6 +156,7 @@ class GeneradorC:
         self._estructuras: dict[str, list] = {}
         self._func_return_types: dict[str, str] = {}
         self._in_function_scope = False
+        self._garantizas_actuales: List[Nodo] = []
 
     def _push(self, linea: str = ""):
         if linea == "":
@@ -134,6 +166,35 @@ class GeneradorC:
 
     def _push_expr(self, expr: str):
         self._push(expr)
+
+    def _push_scope(self):
+        self._scope_stack.append({})
+
+    def _pop_scope(self):
+        scope = self._scope_stack.pop() if self._scope_stack else {}
+        for var_name in reversed(list(scope.keys())):
+            dtor = self._destructor_map.get(scope[var_name])
+            if dtor:
+                self._push(f"{dtor}({var_name});")
+
+    def _emit_all_destructors(self, exclude_var: str = ''):
+        for scope in reversed(self._scope_stack):
+            for var_name in reversed(list(scope.keys())):
+                if var_name == exclude_var:
+                    continue
+                dtor = self._destructor_map.get(scope[var_name])
+                if dtor:
+                    self._push(f"{dtor}({var_name});")
+        for scope in self._scope_stack:
+            scope.clear()
+
+    def _register_var(self, nombre: str, tipo: str, desde_llamada: bool):
+        if self._scope_stack and desde_llamada and tipo in self._destructor_map:
+            self._scope_stack[-1][nombre] = tipo
+
+    def _unregister_var(self, nombre: str):
+        for scope in self._scope_stack:
+            scope.pop(nombre, None)
 
     def _encontrar_principal(self) -> Optional[str]:
         for s in self.programa.sentencias:
@@ -146,6 +207,8 @@ class GeneradorC:
         self._func_return_types = {}
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
+                self._func_return_types[s.nombre] = s.tipo_retorno
+            elif isinstance(s, DeclaracionExterna):
                 self._func_return_types[s.nombre] = s.tipo_retorno
         self._emitir_encabezado()
         # Builtins de sistema siempre presentes
@@ -175,6 +238,20 @@ class GeneradorC:
         self.indent -= 1
         self._push("}")
         self._push("")
+        # Pre-pass: register all struct definitions
+        for s in self.programa.sentencias:
+            if isinstance(s, DefinicionEstructura):
+                es_adt = any(c.nombre == 'tag' and c.tipo in ('entero', 'int') for c in s.campos)
+                self._estructuras[s.nombre] = {
+                    'campos': [(c.nombre, c.tipo) for c in s.campos],
+                    'campos_pointer': set(),
+                    'es_adt': es_adt,
+                }
+        # Second pass: compute campos_pointer with full _estructuras available
+        for nombre, info in self._estructuras.items():
+            for c_nombre, c_tipo in info['campos']:
+                if c_tipo in self._estructuras or c_tipo == nombre:
+                    info['campos_pointer'].add(c_nombre)
         # Forward declarations for structs
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionEstructura):
@@ -208,6 +285,7 @@ class GeneradorC:
         self._push("#include <stdint.h>")
         self._push("#include <pthread.h>")
         self._push("#include <string.h>")
+        self._push("#include <assert.h>")
         self._push("")
         self._push("typedef struct { int longitud; const char* datos; } CadenaSegura;")
         self._push("")
@@ -224,6 +302,21 @@ class GeneradorC:
         self._push("#define TAG_ERR 1")
         self._push("#define TAG_ALGUNO 0")
         self._push("#define TAG_NINGUNO 1")
+        self._push("")
+        self._push("// --- Helpers de serialización primitiva para canales (Zero-Copy) ---")
+        self._push("static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }")
+        self._push("static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }")
+        self._push("static inline void* _synapse_box_float(float v) {")
+        self._push("    float* _p = (float*)malloc(sizeof(float));")
+        self._push('    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\\n"); exit(1); }')
+        self._push("    *_p = v;")
+        self._push("    return (void*)_p;")
+        self._push("}")
+        self._push("static inline float _synapse_unbox_float(void* p) {")
+        self._push("    float _v = *(float*)p;")
+        self._push("    free(p);")
+        self._push("    return _v;")
+        self._push("}")
         self._push("")
         self._push("// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---")
         self._push("extern void pool_init(uint32_t total_blocks, uint32_t block_size);")
@@ -248,6 +341,15 @@ class GeneradorC:
         self._push("extern CadenaSegura entero_a_texto(int n);")
         self._push("extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);")
         self._push("extern void synapse_esperar_hilos(void);")
+        self._push("extern void _syn_texto_liberar(CadenaSegura s);")
+        self._push("")
+        self._push("// --- Declaraciones extern de canales (CanalConcurrencia) ---")
+        self._push("typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;")
+        self._push("typedef struct CanalConcurrencia CanalConcurrencia;")
+        self._push("extern CanalConcurrencia* canal_crear(uint32_t capacidad);")
+        self._push("extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
+        self._push("extern void* canal_recibir(CanalConcurrencia* canal);")
+        self._push("extern void canal_destruir(CanalConcurrencia* canal);")
         self._push("")
 
     def _visitar(self, nodo: Nodo):
@@ -280,8 +382,10 @@ class GeneradorC:
         elif isinstance(nodo, BloqueInseguro):
             self._push("{ /* unsafe */")
             self.indent += 1
+            self._push_scope()
             for s in nodo.cuerpo:
                 self._visitar(s)
+            self._pop_scope()
             self.indent -= 1
             self._push("}")
         elif isinstance(nodo, SentenciaExpr):
@@ -290,6 +394,20 @@ class GeneradorC:
             self._visitar_asignacion(nodo)
         elif isinstance(nodo, LogLlamada):
             self._visitar_log(nodo)
+        elif isinstance(nodo, SentenciaEnviarCanal):
+            canal = self._expr_a_c(nodo.canal)
+            valor = self._expr_a_c(nodo.valor)
+            tipo_valor = self._tipo_de_expr(nodo.valor)
+            if tipo_valor == 'int':
+                self._push(f"canal_enviar({canal}, {_prim_int_to_ptr(valor)});")
+            elif tipo_valor == 'float':
+                self._push(f"canal_enviar({canal}, {_prim_float_to_ptr(valor)});")
+            else:
+                self._push(f"canal_enviar({canal}, (void*)({valor}));")
+            # Move semantics: null out variable after channel send to prevent double-free
+            if isinstance(nodo.valor, Identificador) and tipo_valor in self._destructor_map:
+                self._push(f"{valor} = ({{0}});")
+                self._unregister_var(nodo.valor.nombre)
         elif isinstance(nodo, DefinicionEstructura):
             self._visitar_estructura(nodo)
         elif isinstance(nodo, ImportarC):
@@ -301,6 +419,18 @@ class GeneradorC:
                 self._push(f'#include "{nodo.ruta}"')
         elif isinstance(nodo, DeclaracionExterna):
             self._externas[nodo.nombre] = [p.tipo for p in nodo.parametros]
+            if not self._in_function_scope:
+                tipo_ret_c = _traducir_tipo_c(nodo.tipo_retorno.replace('*', '')) + ('*' if '*' in nodo.tipo_retorno else '')
+                params_c_parts = []
+                for p in nodo.parametros:
+                    base_tipo = p.tipo.replace('*', '')
+                    es_puntero = '*' in p.tipo
+                    tipo_c = _traducir_tipo_c(base_tipo)
+                    if es_puntero:
+                        tipo_c += '*'
+                    params_c_parts.append(f"{tipo_c} {p.nombre}")
+                params_c = ", ".join(params_c_parts) if params_c_parts else "void"
+                self._push(f"extern {tipo_ret_c} {nodo.nombre}({params_c});")
 
         elif isinstance(nodo, AsignacionCampo):
             if not self._in_function_scope:
@@ -352,6 +482,25 @@ class GeneradorC:
         params = ", ".join(f"{_traducir_tipo_c(p.tipo)} {p.nombre}" for p in nodo.parametros) if nodo.parametros else "void"
         self._push(f"{tipo} {nodo.nombre}({params}) {{")
         self.indent += 1
+        self._push_scope()
+        
+        # Register transfer parameters (->) that own heap memory
+        for p in nodo.parametros:
+            if p.es_transferencia:
+                tipo_c = _traducir_tipo_c(p.tipo)
+                if tipo_c in self._destructor_map:
+                    self._scope_stack[-1][p.nombre] = tipo_c
+        
+        # Inyectar asertos de contrato (requiere)
+        for expr in nodo.requiere:
+            expr_c = self._expr_a_c(expr)
+            self._push("#ifndef SYNAPSE_RELEASE")
+            self._push(f"assert(({expr_c}) && \"Fallo en contrato: requiere\");")
+            self._push("#endif")
+        
+        # Guardar los contratos garantiza para usar en retornos
+        self._garantizas_actuales = nodo.garantiza
+        
         for s in nodo.cuerpo:
             self._visitar(s)
         for var in self._tensor_vars:
@@ -361,13 +510,12 @@ class GeneradorC:
             if var not in self._canal_vars_cerradas:
                 self._push(f"/* ADVERTENCIA: canal '{var}' no fue cerrado explicitamente */")
                 self._push(f"if ({var}.stream) {{ fclose({var}.stream); {var}.es_valido = 0; }}")
-        for var in self._strings_heap:
-            self._push(f"free((void*){var}.datos);")
+        self._pop_scope()
         self._tensor_vars.clear()
         self._tensor_vars_transferidas.clear()
         self._canal_vars.clear()
         self._canal_vars_cerradas.clear()
-        self._strings_heap.clear()
+        self._garantizas_actuales = []
         self._in_function_scope = False
         self.indent -= 1
         self._push("}")
@@ -1888,7 +2036,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     }} else {{
         snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
     }}
-    snprintf(cmd, sizeof(cmd), "gcc \\"%s\\" \\"C:\\\\Synapse\\\\lib\\\\synapse_rt.o\\" -o \\"%s\\" -lpthread -lm", sal, out_exe);
+    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \\"%s\\" \\"C:\\\\Synapse\\\\lib\\\\synapse_rt.o\\" -o \\"%s\\" -lpthread -lm", sal, out_exe);
     int rc = system(cmd);
     if (rc != 0) {{
         fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\\n", rc);
@@ -1912,14 +2060,18 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         cond = self._expr_a_c(nodo.condicion)
         self._push(f"if ({cond}) {{")
         self.indent += 1
+        self._push_scope()
         for s in nodo.cuerpo:
             self._visitar(s)
+        self._pop_scope()
         self.indent -= 1
         if nodo.cuerpo_sino:
             self._push("} else {")
             self.indent += 1
+            self._push_scope()
             for s in nodo.cuerpo_sino:
                 self._visitar(s)
+            self._pop_scope()
             self.indent -= 1
         self._push("}")
 
@@ -1945,10 +2097,16 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             var_nombre = match.group(2)  # ej. "v" o "e"
             
             # Generar bloque C con if/else if
-            if i == 0:
-                self._push(f"if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
+            if expr_tipo == 'Resultado_T':
+                if i == 0:
+                    self._push(f"if ({temp_var}.es_ok == 1) {{")
+                else:
+                    self._push(f"else if ({temp_var}.es_ok == 0) {{")
             else:
-                self._push(f"else if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
+                if i == 0:
+                    self._push(f"if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
+                else:
+                    self._push(f"else if ({temp_var}.tag == TAG_{tag_nombre.upper()}) {{")
             
             self.indent += 1
             
@@ -1956,20 +2114,37 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             tipo_resuelto = caso.tipo_extraido if caso.tipo_extraido else 'int'
             tipo_c = _traducir_tipo_c(tipo_resuelto)
             
-            # Generar desempaquetado desde la union .dato.
-            if tipo_c == 'CadenaSegura':
-                self._push(f"CadenaSegura {var_nombre} = {temp_var}.dato.valor_str;")
-            elif tipo_c == 'float':
-                self._push(f"float {var_nombre} = {temp_var}.dato.valor_float;")
+            if expr_tipo == 'Resultado_T':
+                if tag_nombre == 'ok':
+                    if tipo_c == 'CadenaSegura':
+                        self._push(f"CadenaSegura {var_nombre} = *({tipo_c}*){temp_var}.datos.ok_valor;")
+                    elif tipo_c == 'float':
+                        self._push(f"float {var_nombre} = _ptr_to_prim_float({temp_var}.datos.ok_valor);")
+                    elif tipo_c == 'int':
+                        self._push(f"int {var_nombre} = _ptr_to_prim_int({temp_var}.datos.ok_valor);")
+                    else:
+                        self._push(f"{tipo_c} {var_nombre} = *({tipo_c}*){temp_var}.datos.ok_valor;")
+                else:
+                    self._push(f"const char* {var_nombre} = {temp_var}.datos.err_mensaje;")
             else:
-                self._push(f"{tipo_c} {var_nombre} = {temp_var}.dato.valor;")
+                # Generar desempaquetado desde la union .dato.
+                if tipo_c == 'CadenaSegura':
+                    self._push(f"CadenaSegura {var_nombre} = {temp_var}.dato.valor_str;")
+                elif tipo_c == 'float':
+                    self._push(f"float {var_nombre} = {temp_var}.dato.valor_float;")
+                else:
+                    self._push(f"{tipo_c} {var_nombre} = {temp_var}.dato.valor;")
             
             # Registrar la variable extraída para que _tipo_de_expr funcione correctamente
             self._variables[var_nombre] = tipo_c
             
             # Visitar sentencias del cuerpo del caso
+            self._push_scope()
+            if tipo_c in self._destructor_map:
+                self._scope_stack[-1][var_nombre] = tipo_c
             for stmt in caso.cuerpo:
                 self._visitar(stmt)
+            self._pop_scope()
             
             self.indent -= 1
             self._push("}")
@@ -2057,11 +2232,20 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         self._push("}")
 
     def _visitar_retornar(self, nodo: SentenciaRetornar):
+        excl = ''
+        if nodo.expr and isinstance(nodo.expr, Identificador):
+            excl = nodo.expr.nombre
+            self._tensor_vars_transferidas.add(excl)
+
         if nodo.expr:
-            if nodo.es_transferencia and isinstance(nodo.expr, Identificador):
-                self._tensor_vars_transferidas.add(nodo.expr.nombre)
-            self._push(f"return {self._expr_a_c(nodo.expr)};")
+            ret_tipo = self._tipo_de_expr(nodo.expr)
+            ret_expr = self._expr_a_c(nodo.expr)
+            temp = f"_ret_{nodo.linea or 0}"
+            self._push(f"{ret_tipo} {temp} = {ret_expr};")
+            self._emit_all_destructors(exclude_var=excl)
+            self._push(f"return {temp};")
         else:
+            self._emit_all_destructors(exclude_var=excl)
             self._push("return;")
 
     def _visitar_escuchar(self, nodo: SentenciaEscuchar):
@@ -2102,6 +2286,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     def _visitar_asignacion(self, nodo: AsignacionVariable):
         tipo = self._tipo_de_expr(nodo.expresion)
         val = self._expr_a_c(nodo.expresion)
+        desde_llamada = isinstance(nodo.expresion, LlamadaFuncion)
         if nodo.nombre not in self._variables:
             self._variables[nodo.nombre] = tipo
             self._push(f"{tipo} {nodo.nombre} = {val};")
@@ -2109,17 +2294,24 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 self._tensor_vars.add(nodo.nombre)
             elif tipo == 'Canal':
                 self._canal_vars.add(nodo.nombre)
+            else:
+                self._register_var(nodo.nombre, tipo, desde_llamada)
         else:
+            old_tipo = self._variables.get(nodo.nombre)
+            if old_tipo in self._destructor_map:
+                dtor = self._destructor_map[old_tipo]
+                self._push(f"{dtor}({nodo.nombre});")
+                self._unregister_var(nodo.nombre)
             if nodo.nombre in self._tensor_vars and tipo == 'Tensor':
                 self._push(f"free({nodo.nombre}.datos);")
             self._push(f"{nodo.nombre} = {val};")
+            self._variables[nodo.nombre] = tipo
             if tipo == 'Tensor':
                 self._tensor_vars.add(nodo.nombre)
             elif tipo == 'Canal':
                 self._canal_vars.add(nodo.nombre)
-        if (isinstance(nodo.expresion, LlamadaFuncion)
-                and nodo.expresion.nombre == 'leer'):
-            self._strings_heap.add(nodo.nombre)
+            else:
+                self._register_var(nodo.nombre, tipo, desde_llamada)
 
     def _visitar_log(self, nodo: LogLlamada):
         fmt_parts: List[str] = []
@@ -2174,6 +2366,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, OpBinaria):
             tipo_izq = self._tipo_de_expr(nodo.izquierdo)
             tipo_der = self._tipo_de_expr(nodo.derecho)
+            if tipo_izq == 'CadenaSegura' and tipo_der == 'CadenaSegura' and nodo.operador == '+':
+                return 'CadenaSegura'
             if 'float' in (tipo_izq, tipo_der):
                 return 'float'
             return 'int'
@@ -2186,6 +2380,10 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return f"{self._tipo_de_expr(nodo.expr)}*"
         if isinstance(nodo, ExprDereferencia):
             return self._tipo_de_expr(nodo.expr).rstrip('*')
+        if isinstance(nodo, ExprCrearCanal):
+            return 'CanalConcurrencia*'
+        if isinstance(nodo, ExprRecibirCanal):
+            return 'Resultado_T'
         if isinstance(nodo, LlamadaFuncion):
             if nodo.nombre in _BUILTINS:
                 return _BUILTINS[nodo.nombre]
@@ -2217,8 +2415,10 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         cond = self._expr_a_c(nodo.condicion)
         self._push(f"while ({cond}) {{")
         self.indent += 1
+        self._push_scope()
         for s in nodo.cuerpo:
             self._visitar(s)
+        self._pop_scope()
         self.indent -= 1
         self._push("}")
 
@@ -2229,7 +2429,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return f"{nodo.valor}f"
         if isinstance(nodo, LiteralCadena):
             val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"')
-            return f'(CadenaSegura){{ .longitud = {len(nodo.valor)}, .datos = "{val}" }}'
+            encoded = nodo.valor.encode('utf-8')
+            return f'(CadenaSegura){{ .longitud = {len(encoded)}, .datos = "{val}" }}'
         if isinstance(nodo, Identificador):
             return "NULL" if nodo.nombre == "nulo" else nodo.nombre
         if isinstance(nodo, ExprTensor):
@@ -2305,6 +2506,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             if nodo.operador in ('==', '!=') and tipo_izq == 'CadenaSegura' and tipo_der == 'CadenaSegura':
                 op = '!=' if nodo.operador == '!=' else '=='
                 return f"(strcmp({izq}.datos, {der}.datos) {op} 0)"
+            if nodo.operador == '+' and tipo_izq == 'CadenaSegura' and tipo_der == 'CadenaSegura':
+                return f"concat({izq}, {der})"
             return f"({izq} {nodo.operador} {der})"
         if isinstance(nodo, OpUnaria):
             return f"({nodo.operador}{self._expr_a_c(nodo.expr)})"
@@ -2312,4 +2515,10 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return f"(&{self._expr_a_c(nodo.expr)})"
         if isinstance(nodo, ExprDereferencia):
             return f"(*{self._expr_a_c(nodo.expr)})"
+        if isinstance(nodo, ExprCrearCanal):
+            cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"
+            return f"canal_crear({cap})"
+        if isinstance(nodo, ExprRecibirCanal):
+            canal = self._expr_a_c(nodo.canal)
+            return f"(Resultado_T){{ .es_ok = 1, .datos = {{ .ok_valor = canal_recibir({canal}) }} }}"
         return "/* error en traduccion */"

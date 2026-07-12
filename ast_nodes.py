@@ -55,6 +55,10 @@ class TokenID(Enum):
     INSEGURO = auto()
     IMPORTAR_C = auto()
     EXTERNO = auto()
+    ARROW_LEFT = auto()   # <-  operador de envío de canal
+    REQUIERE = auto()     # palabra clave bloque de contrato
+    GARANTIZA = auto()    # palabra clave bloque de contrato
+    CANAL = auto()        # tipo Canal<T>
 
     EOF = auto()
 
@@ -95,6 +99,8 @@ class DefinicionFuncion(Nodo):
     nombre: str = ''
     parametros: List[Parametro] = field(default_factory=list)
     tipo_retorno: str = ''
+    requiere: List[Nodo] = field(default_factory=list)
+    garantiza: List[Nodo] = field(default_factory=list)
     cuerpo: List[Nodo] = field(default_factory=list)
 
 
@@ -278,3 +284,18 @@ class NodoCaso(Nodo):
 class NodoCoincidir(Nodo):
     expresion: Optional[Nodo] = None
     casos: List[NodoCaso] = field(default_factory=list)
+
+@dataclass
+class ExprCrearCanal(Nodo):
+    tipo_contenido: str = ''
+    capacidad: Optional[Nodo] = None
+
+@dataclass
+class SentenciaEnviarCanal(Nodo):
+    canal: Optional[Nodo] = None
+    valor: Optional[Nodo] = None
+
+@dataclass
+class ExprRecibirCanal(Nodo):
+    canal: Optional[Nodo] = None
+

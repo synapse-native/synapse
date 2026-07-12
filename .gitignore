@@ -1,9 +1,45 @@
-paquetes_oficiales/
-axon_modules/
-axon_src/
-__pycache__/
-dist/
+﻿# Binarios
 *.exe
 *.o
-build/
+*.obj
+*.lib
+*.dll
+*.pdb
 *.zip
+
+# Generados por compilador
+src/main.c
+src/main.exe
+src/main.syn.json
+*.syn.json
+
+# Temp
+_temp_*
+_out_*
+salida_*
+*.bak
+*.bak2
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Axon dependencies
+axon_modules/
+axon_src/
+paquetes_oficiales/
+
+# Build output
+build/
+dist/
+
+# Editor
+.editorconfig

@@ -9,10 +9,125 @@
 #include <pthread.h>
 #include "librerias/embedded_libs.h"
 
+#ifdef _WIN32
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+#else
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+  #include <unistd.h>
+#endif
+
+
+#ifdef SYNAPSE_DEBUG_MEM
+#define MAX_WATCHDOG_ENTRIES 100000
+
+typedef struct {
+    void* ptr;
+    size_t size;
+    const char* file;
+    int line;
+} WatchdogEntry;
+
+static WatchdogEntry watchdog_entries[MAX_WATCHDOG_ENTRIES];
+static int watchdog_count = 0;
+static pthread_mutex_t watchdog_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void* watchdog_malloc(size_t size, const char* file, int line) {
+    void* ptr = malloc(size);
+    if (!ptr) return NULL;
+    pthread_mutex_lock(&watchdog_mutex);
+    if (watchdog_count < MAX_WATCHDOG_ENTRIES) {
+        watchdog_entries[watchdog_count].ptr = ptr;
+        watchdog_entries[watchdog_count].size = size;
+        watchdog_entries[watchdog_count].file = file;
+        watchdog_entries[watchdog_count].line = line;
+        watchdog_count++;
+    }
+    pthread_mutex_unlock(&watchdog_mutex);
+    return ptr;
+}
+
+void* watchdog_calloc(size_t n, size_t size, const char* file, int line) {
+    void* ptr = calloc(n, size);
+    if (!ptr) return NULL;
+    pthread_mutex_lock(&watchdog_mutex);
+    if (watchdog_count < MAX_WATCHDOG_ENTRIES) {
+        watchdog_entries[watchdog_count].ptr = ptr;
+        watchdog_entries[watchdog_count].size = n * size;
+        watchdog_entries[watchdog_count].file = file;
+        watchdog_entries[watchdog_count].line = line;
+        watchdog_count++;
+    }
+    pthread_mutex_unlock(&watchdog_mutex);
+    return ptr;
+}
+
+void watchdog_free(void* ptr, const char* file, int line) {
+    if (!ptr) return;
+    pthread_mutex_lock(&watchdog_mutex);
+    for (int i = 0; i < watchdog_count; i++) {
+        if (watchdog_entries[i].ptr == ptr) {
+            watchdog_entries[i] = watchdog_entries[watchdog_count - 1];
+            watchdog_count--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&watchdog_mutex);
+    free(ptr);
+}
+
+void watchdog_report() {
+    pthread_mutex_lock(&watchdog_mutex);
+    if (watchdog_count == 0) {
+        fprintf(stderr, "0 bytes perdidos\n");
+    } else {
+        size_t total = 0;
+        for (int i = 0; i < watchdog_count; i++) {
+            fprintf(stderr, "Fuga detectada: %zu bytes en %s:%d\n", watchdog_entries[i].size, watchdog_entries[i].file, watchdog_entries[i].line);
+            total += watchdog_entries[i].size;
+        }
+        fprintf(stderr, "%zu bytes perdidos en total\n", total);
+    }
+    pthread_mutex_unlock(&watchdog_mutex);
+}
+
+#define malloc(size) watchdog_malloc(size, __FILE__, __LINE__)
+#define calloc(n, size) watchdog_calloc(n, size, __FILE__, __LINE__)
+#define free(ptr) watchdog_free(ptr, __FILE__, __LINE__)
+
+#else
+#define watchdog_report()
+#endif
+
+
+
 // --- Type definitions (deben coincidir exactamente con las emitidas por el generador) ---
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
+
+// --- Resultado<T, E> (Tagged Union para manejo de errores de canal) ---
+typedef struct {
+    int es_ok; // 1 = ok, 0 = error
+    union {
+        void* ok_valor;
+        const char* err_mensaje;
+    } datos;
+} Resultado_T;
+
+// --- CanalConcurrencia (Buffer circular thread-safe para canales) ---
+typedef struct {
+    void** buffer;
+    uint32_t capacidad;
+    uint32_t cabeza;  // índice de escritura
+    uint32_t cola;    // índice de lectura
+    uint32_t contador; // número de elementos en el buffer
+    pthread_mutex_t mutex;
+    pthread_cond_t no_vacio;  // señal para receptores
+    pthread_cond_t no_lleno;  // señal para emisores
+} CanalConcurrencia;
 
 // --- Memory pool ---
 #define POOL_BLOQUES 64
@@ -282,6 +397,103 @@ CadenaSegura entero_a_texto(int n) {
     return (CadenaSegura){ .longitud = len, .datos = data };
 }
 
+// --- CanalConcurrencia API (Zero-Copy, Thread-Safe) ---
+
+CanalConcurrencia* canal_crear(uint32_t capacidad) {
+    if (capacidad == 0) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: capacidad del canal debe ser > 0\n");
+        return NULL;
+    }
+    
+    CanalConcurrencia* canal = (CanalConcurrencia*)malloc(sizeof(CanalConcurrencia));
+    if (!canal) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_crear\n");
+        return NULL;
+    }
+    
+    canal->buffer = (void**)malloc(capacidad * sizeof(void*));
+    if (!canal->buffer) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_crear (buffer)\n");
+        free(canal);
+        return NULL;
+    }
+    
+    canal->capacidad = capacidad;
+    canal->cabeza = 0;
+    canal->cola = 0;
+    canal->contador = 0;
+    
+    pthread_mutex_init(&canal->mutex, NULL);
+    pthread_cond_init(&canal->no_vacio, NULL);
+    pthread_cond_init(&canal->no_lleno, NULL);
+    
+    return canal;
+}
+
+void canal_enviar(CanalConcurrencia* canal, void* paquete) {
+    if (!canal) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: canal nulo en canal_enviar\n");
+        return;
+    }
+    
+    pthread_mutex_lock(&canal->mutex);
+    
+    // Esperar si el buffer está lleno
+    while (canal->contador == canal->capacidad) {
+        pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+    }
+    
+    // Escribir en la cabeza del buffer circular (Zero-Copy)
+    canal->buffer[canal->cabeza] = paquete;
+    canal->cabeza = (canal->cabeza + 1) % canal->capacidad;
+    canal->contador++;
+    
+    // Señalar a receptores que hay datos
+    pthread_cond_signal(&canal->no_vacio);
+    
+    pthread_mutex_unlock(&canal->mutex);
+}
+
+void* canal_recibir(CanalConcurrencia* canal) {
+    if (!canal) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: canal nulo en canal_recibir\n");
+        return NULL;
+    }
+    
+    pthread_mutex_lock(&canal->mutex);
+    
+    // Esperar si el buffer está vacío
+    while (canal->contador == 0) {
+        pthread_cond_wait(&canal->no_vacio, &canal->mutex);
+    }
+    
+    // Leer de la cola del buffer circular (Zero-Copy)
+    void* paquete = canal->buffer[canal->cola];
+    canal->cola = (canal->cola + 1) % canal->capacidad;
+    canal->contador--;
+    
+    // Señalar a emisores que hay espacio
+    pthread_cond_signal(&canal->no_lleno);
+    
+    pthread_mutex_unlock(&canal->mutex);
+    
+    return paquete;
+}
+
+void canal_destruir(CanalConcurrencia* canal) {
+    if (!canal) return;
+    
+    pthread_mutex_destroy(&canal->mutex);
+    pthread_cond_destroy(&canal->no_vacio);
+    pthread_cond_destroy(&canal->no_lleno);
+    
+    if (canal->buffer) {
+        free(canal->buffer);
+    }
+    
+    free(canal);
+}
+
 // --- Thread tracker ---
 static int hilos_activos = 0;
 static pthread_mutex_t hilo_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -326,4 +538,778 @@ void synapse_esperar_hilos(void) {
         pthread_cond_wait(&hilo_cond, &hilo_mutex);
     }
     pthread_mutex_unlock(&hilo_mutex);
+
+#ifdef SYNAPSE_DEBUG_MEM
+    if (_g_pool.pool_base) {
+        free(_g_pool.pool_base);
+        _g_pool.pool_base = NULL;
+    }
+    if (_g_pool.bitmap) {
+        free(_g_pool.bitmap);
+        _g_pool.bitmap = NULL;
+    }
+#endif
+
+    watchdog_report();
+}
+
+// ============================================================
+// std.net — Socket helpers (TCP client)
+// ============================================================
+
+int _syn_iniciar_red(void) {
+#ifdef _WIN32
+    WSADATA wsa;
+    return WSAStartup(MAKEWORD(2,2), &wsa);
+#else
+    return 0;
+#endif
+}
+
+int _syn_cerrar_red(void) {
+#ifdef _WIN32
+    return WSACleanup();
+#else
+    return 0;
+#endif
+}
+
+int _syn_socket(void) {
+    return (int)socket(AF_INET, SOCK_STREAM, 0);
+}
+
+int _syn_conectar(int fd, const char* ip, int puerto) {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((unsigned short)puerto);
+    addr.sin_addr.s_addr = inet_addr(ip);
+    if (addr.sin_addr.s_addr == INADDR_NONE)
+        return -1;
+    return connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+}
+
+int _syn_enviar(int fd, const char* datos, int lon) {
+    return (int)send(fd, datos, (size_t)lon, 0);
+}
+
+int _syn_recibir(int fd, char* buf, int lon) {
+    return (int)recv(fd, buf, (size_t)lon, 0);
+}
+
+int _syn_cerrar_socket(int fd) {
+#ifdef _WIN32
+    return closesocket(fd);
+#else
+    return close(fd);
+#endif
+}
+
+// --- Buffer helpers for std.net FFI (receive path) ---
+void* _syn_buffer_alloc(int tamano) {
+    return _pool_malloc((size_t)tamano);
+}
+
+void _syn_buffer_free(void* ptr) {
+    if (ptr) pool_free(ptr);
+}
+
+// Receive up to tamano bytes, return as CadenaSegura (heap-allocated datos).
+// On failure returns empty CadenaSegura (datos="") — caller checks via == "".
+// On success caller MUST call _syn_texto_liberar() when done.
+CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
+    char* buf = (char*)_pool_malloc((size_t)(tamano + 1));
+    int n = (int)recv(fd, buf, (size_t)tamano, 0);
+    if (n <= 0) {
+        pool_free(buf);
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    buf[n] = '\0';
+    return (CadenaSegura){ .longitud = n, .datos = buf };
+}
+
+void _syn_texto_liberar(CadenaSegura s) {
+    if (s.datos) pool_free((void*)s.datos);
+}
+
+// ============================================================
+// std.json — JSON Parser (Deserializador Determinista)
+// ============================================================
+
+typedef struct ParJson ParJson;
+typedef struct NodoJson NodoJson;
+
+struct ParJson {
+    CadenaSegura clave;
+    NodoJson* valor;
+};
+
+struct NodoJson {
+    int tipo;                // -1=Error, 0=Nulo, 1=Booleano, 2=Numero, 3=Cadena, 4=Arreglo, 5=Objeto
+    int valor_bool;
+    float valor_num;
+    CadenaSegura valor_str;
+    NodoJson* arreglo_hijos;
+    ParJson* objeto_pares;
+    int longitud;
+};
+
+// --- Dynamic array helpers (internal) ---
+
+typedef struct {
+    NodoJson* items;
+    int count;
+    int cap;
+} NodoArr;
+
+static void nodo_arr_init(NodoArr* a) { a->items = NULL; a->count = 0; a->cap = 0; }
+
+static void nodo_arr_append(NodoArr* a, NodoJson item) {
+    if (a->count >= a->cap) {
+        a->cap = a->cap ? a->cap * 2 : 8;
+        NodoJson* new = (NodoJson*)malloc(a->cap * sizeof(NodoJson));
+        if (a->items) { memcpy(new, a->items, a->count * sizeof(NodoJson)); free(a->items); }
+        a->items = new;
+    }
+    a->items[a->count++] = item;
+}
+
+static NodoJson* nodo_arr_detach(NodoArr* a) {
+    NodoJson* p = a->items;
+    a->items = NULL;
+    a->count = 0;
+    a->cap = 0;
+    return p;
+}
+
+typedef struct {
+    ParJson* items;
+    int count;
+    int cap;
+} ParArr;
+
+static void par_arr_init(ParArr* a) { a->items = NULL; a->count = 0; a->cap = 0; }
+
+static void par_arr_append(ParArr* a, CadenaSegura clave, NodoJson* valor) {
+    if (a->count >= a->cap) {
+        a->cap = a->cap ? a->cap * 2 : 8;
+        ParJson* new = (ParJson*)malloc(a->cap * sizeof(ParJson));
+        if (a->items) { memcpy(new, a->items, a->count * sizeof(ParJson)); free(a->items); }
+        a->items = new;
+    }
+    a->items[a->count].clave = clave;
+    a->items[a->count].valor = valor;
+    a->count++;
+}
+
+static ParJson* par_arr_detach(ParArr* a) {
+    ParJson* p = a->items;
+    a->items = NULL;
+    a->count = 0;
+    a->cap = 0;
+    return p;
+}
+
+// --- Parser state ---
+
+static CadenaSegura _p_input;
+static int _p_pos;
+
+void _json_init(CadenaSegura s) {
+    _p_input = s;
+    _p_pos = 0;
+}
+
+NodoJson _json_nodo_new() {
+    NodoJson n = {0};
+    return n;
+}
+
+void _json_nodo_liberar(NodoJson n) {
+    if (n.tipo == 3) {
+        if (n.valor_str.datos) { free((void*)n.valor_str.datos); n.valor_str.datos = NULL; }
+    } else if (n.tipo == 4) {
+        if (n.arreglo_hijos) {
+            for (int i = 0; i < n.longitud; i++) _json_nodo_liberar(n.arreglo_hijos[i]);
+            free(n.arreglo_hijos); n.arreglo_hijos = NULL;
+        }
+    } else if (n.tipo == 5) {
+        if (n.objeto_pares) {
+            for (int i = 0; i < n.longitud; i++) {
+                if (n.objeto_pares[i].clave.datos) free((void*)n.objeto_pares[i].clave.datos);
+                _json_nodo_liberar(*n.objeto_pares[i].valor);
+                free(n.objeto_pares[i].valor);
+            }
+            free(n.objeto_pares); n.objeto_pares = NULL;
+        }
+    }
+}
+
+// --- Lexer helpers ---
+
+static int _peek() {
+    if (_p_pos < 0 || _p_pos >= _p_input.longitud) return -1;
+    return (unsigned char)_p_input.datos[_p_pos];
+}
+
+static int _advance() {
+    if (_p_pos < 0 || _p_pos >= _p_input.longitud) return -1;
+    return (unsigned char)_p_input.datos[_p_pos++];
+}
+
+static void _skip_ws() {
+    while (_p_pos < _p_input.longitud) {
+        char c = _p_input.datos[_p_pos];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') _p_pos++;
+        else break;
+    }
+}
+
+static int _match_str(const char* expected) {
+    int len = (int)strlen(expected);
+    if (_p_pos + len > _p_input.longitud) return 0;
+    if (strncmp(_p_input.datos + _p_pos, expected, len) == 0) {
+        _p_pos += len;
+        return 1;
+    }
+    return 0;
+}
+
+static CadenaSegura _parse_string_value() {
+    if (_advance() != '"') return (CadenaSegura){0};
+    int start = _p_pos;
+    while (_p_pos < _p_input.longitud) {
+        char c = _p_input.datos[_p_pos];
+        if (c == '"') break;
+        if (c == '\\') _p_pos++;
+        _p_pos++;
+    }
+    if (_p_pos >= _p_input.longitud) return (CadenaSegura){0};
+    int end = _p_pos;
+    _p_pos++;
+    int len = end - start;
+    char* dup = (char*)malloc(len + 1);
+    if (!dup) return (CadenaSegura){0};
+    memcpy(dup, _p_input.datos + start, len);
+    dup[len] = '\0';
+    return (CadenaSegura){ .longitud = len, .datos = dup };
+}
+
+static float _parse_number_value() {
+    int start = _p_pos;
+    if (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] == '-') _p_pos++;
+    while (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] >= '0' && _p_input.datos[_p_pos] <= '9') _p_pos++;
+    if (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] == '.') {
+        _p_pos++;
+        while (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] >= '0' && _p_input.datos[_p_pos] <= '9') _p_pos++;
+    }
+    if (_p_pos < _p_input.longitud && (_p_input.datos[_p_pos] == 'e' || _p_input.datos[_p_pos] == 'E')) {
+        _p_pos++;
+        if (_p_pos < _p_input.longitud && (_p_input.datos[_p_pos] == '+' || _p_input.datos[_p_pos] == '-')) _p_pos++;
+        while (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] >= '0' && _p_input.datos[_p_pos] <= '9') _p_pos++;
+    }
+    int len = _p_pos - start;
+    char* buf = (char*)malloc(len + 1);
+    if (!buf) return 0.0f;
+    memcpy(buf, _p_input.datos + start, len);
+    buf[len] = '\0';
+    float val = (float)strtod(buf, NULL);
+    free(buf);
+    return val;
+}
+
+// Forward declaration
+static NodoJson _parse_value();
+
+static NodoJson _parse_object() {
+    NodoJson n = {0};
+    n.tipo = 5;
+    _advance();
+    _skip_ws();
+    if (_peek() == '}') { _advance(); return n; }
+    ParArr pares;
+    par_arr_init(&pares);
+    while (1) {
+        _skip_ws();
+        if (_peek() == '}') break;
+        if (pares.count > 0) {
+            if (_peek() != ',') break;
+            _advance();
+            _skip_ws();
+        }
+        CadenaSegura key = _parse_string_value();
+        if (key.datos == NULL) {
+            n.tipo = -1;
+            n.valor_str = (CadenaSegura){ .longitud = 27, .datos = "fjson: clave de objeto invalida" };
+            return n;
+        }
+        _skip_ws();
+        if (_advance() != ':') {
+            free((void*)key.datos);
+            n.tipo = -1;
+            n.valor_str = (CadenaSegura){ .longitud = 25, .datos = "fjson: se esperaba ':'" };
+            return n;
+        }
+        NodoJson val = _parse_value();
+        if (val.tipo < 0) {
+            free((void*)key.datos);
+            _json_nodo_liberar(val);
+            return val; // propagate error
+        }
+        NodoJson* val_ptr = (NodoJson*)malloc(sizeof(NodoJson));
+        if (val_ptr) *val_ptr = val;
+        par_arr_append(&pares, key, val_ptr);
+    }
+    _skip_ws();
+    if (_peek() == '}') _advance();
+    n.longitud = pares.count;
+    n.objeto_pares = par_arr_detach(&pares);
+    return n;
+}
+
+static NodoJson _parse_array() {
+    NodoJson n = {0};
+    n.tipo = 4;
+    _advance();
+    _skip_ws();
+    if (_peek() == ']') { _advance(); return n; }
+    NodoArr arr;
+    nodo_arr_init(&arr);
+    while (1) {
+        _skip_ws();
+        if (_peek() == ']') break;
+        if (arr.count > 0) {
+            if (_peek() != ',') break;
+            _advance();
+            _skip_ws();
+        }
+        NodoJson val = _parse_value();
+        if (val.tipo < 0) {
+            _json_nodo_liberar(val);
+            return val; // propagate error
+        }
+        nodo_arr_append(&arr, val);
+    }
+    _skip_ws();
+    if (_peek() == ']') _advance();
+    n.longitud = arr.count;
+    n.arreglo_hijos = nodo_arr_detach(&arr);
+    return n;
+}
+
+static NodoJson _parse_value() {
+    NodoJson n = {0};
+    _skip_ws();
+    int c = _peek();
+    if (c == '{') return _parse_object();
+    if (c == '[') return _parse_array();
+    if (c == '"') {
+        CadenaSegura s = _parse_string_value();
+        if (s.datos == NULL) { n.tipo = -1; n.valor_str = (CadenaSegura){ .longitud = 25, .datos = "fjson: cadena sin cerrar" }; return n; }
+        n.tipo = 3;
+        n.valor_str = s;
+        return n;
+    }
+    if (c == 't') { if (_match_str("true")) { n.tipo = 1; n.valor_bool = 1; return n; } }
+    if (c == 'f') { if (_match_str("false")) { n.tipo = 1; n.valor_bool = 0; return n; } }
+    if (c == 'n') { if (_match_str("null")) { n.tipo = 0; return n; } }
+    if (c == '-' || (c >= '0' && c <= '9')) {
+        n.tipo = 2;
+        n.valor_num = _parse_number_value();
+        return n;
+    }
+    n.tipo = -1;
+    n.valor_str = (CadenaSegura){ .longitud = 22, .datos = "fjson: valor inesperado" };
+    return n;
+}
+
+NodoJson _json_parse(CadenaSegura entrada) {
+    _json_init(entrada);
+    NodoJson resultado = _parse_value();
+    if (resultado.tipo < 0) { _json_nodo_liberar(resultado); return resultado; }
+    _skip_ws();
+    if (_peek() != -1) {
+        _json_nodo_liberar(resultado);
+        NodoJson e = {0};
+        e.tipo = -1;
+        e.valor_str = (CadenaSegura){ .longitud = 39, .datos = "fjson: contenido extra despues del valor" };
+        return e;
+    }
+    return resultado;
+}
+
+// --- Deep clone for safe getter returns ---
+
+NodoJson _json_nodo_clonar(NodoJson src) {
+    NodoJson n = src;
+    if (n.tipo == 3 && n.valor_str.datos) {
+        char* dup = (char*)malloc(n.valor_str.longitud + 1);
+        if (dup) memcpy(dup, n.valor_str.datos, n.valor_str.longitud + 1);
+        n.valor_str.datos = dup;
+    } else if (n.tipo == 4 && n.arreglo_hijos) {
+        n.arreglo_hijos = (NodoJson*)malloc(n.longitud * sizeof(NodoJson));
+        for (int i = 0; i < n.longitud; i++)
+            n.arreglo_hijos[i] = _json_nodo_clonar(src.arreglo_hijos[i]);
+    } else if (n.tipo == 5 && n.objeto_pares) {
+        n.objeto_pares = (ParJson*)malloc(n.longitud * sizeof(ParJson));
+        for (int i = 0; i < n.longitud; i++) {
+            n.objeto_pares[i].clave = src.objeto_pares[i].clave;
+            if (n.objeto_pares[i].clave.datos) {
+                char* dup = (char*)malloc(n.objeto_pares[i].clave.longitud + 1);
+                if (dup) memcpy(dup, n.objeto_pares[i].clave.datos, n.objeto_pares[i].clave.longitud + 1);
+                n.objeto_pares[i].clave.datos = dup;
+            }
+            n.objeto_pares[i].valor = (NodoJson*)malloc(sizeof(NodoJson));
+            if (n.objeto_pares[i].valor)
+                *n.objeto_pares[i].valor = _json_nodo_clonar(*src.objeto_pares[i].valor);
+        }
+    }
+    return n;
+}
+
+NodoJson _json_array_get(NodoJson nodo, int indice) {
+    if (nodo.tipo != 4 || indice < 0 || indice >= nodo.longitud)
+        return (NodoJson){0};
+    return _json_nodo_clonar(nodo.arreglo_hijos[indice]);
+}
+
+NodoJson _json_object_get(NodoJson nodo, CadenaSegura clave) {
+    if (nodo.tipo != 5)
+        return (NodoJson){0};
+    for (int i = 0; i < nodo.longitud; i++) {
+        ParJson* p = &nodo.objeto_pares[i];
+        if (p->clave.longitud == clave.longitud &&
+            (clave.longitud == 0 || strncmp(p->clave.datos, clave.datos, clave.longitud) == 0))
+            return _json_nodo_clonar(*p->valor);
+    }
+    return (NodoJson){0};
+}
+
+// ============================================================
+// std.toml — TOML Parser (Subset para Axon)
+// ============================================================
+
+typedef struct ParToml ParToml;
+typedef struct NodoToml NodoToml;
+
+struct ParToml {
+    CadenaSegura clave;
+    NodoToml* valor;
+};
+
+struct NodoToml {
+    int tipo;           // -1=Error, 0=Nulo, 1=Tabla, 2=Cadena, 3=TablaEnLinea
+    CadenaSegura valor_str;
+    ParToml* pares;
+    int longitud;
+};
+
+// --- TOML parser state ---
+static CadenaSegura _t_input;
+static int _t_pos;
+static int _t_linea;
+static int _t_error;
+
+static int _t_peek(void) {
+    if (_t_pos >= _t_input.longitud) return -1;
+    return (unsigned char)_t_input.datos[_t_pos];
+}
+
+static void _t_advance(void) {
+    if (_t_pos < _t_input.longitud) _t_pos++;
+}
+
+static void _t_skip_ws(void) {
+    while (_t_pos < _t_input.longitud) {
+        char c = _t_input.datos[_t_pos];
+        if (c == ' ' || c == '\t') { _t_pos++; continue; }
+        break;
+    }
+}
+
+static void _t_skip_line(void) {
+    while (_t_pos < _t_input.longitud && _t_input.datos[_t_pos] != '\n') _t_pos++;
+    if (_t_pos < _t_input.longitud) _t_pos++;
+    _t_linea++;
+}
+
+static int _t_skip_newline(void) {
+    if (_t_peek() == '\r') { _t_advance(); }
+    if (_t_peek() == '\n') { _t_advance(); _t_linea++; return 1; }
+    return 0;
+}
+
+static NodoToml _t_parse_inline_table(void);
+
+static CadenaSegura _t_strdup_c(const char* src, int len) {
+    if (len <= 0) return (CadenaSegura){0};
+    char* buf = (char*)malloc(len + 1);
+    if (!buf) return (CadenaSegura){0};
+    memcpy(buf, src, len);
+    buf[len] = '\0';
+    return (CadenaSegura){ .longitud = len, .datos = buf };
+}
+
+static CadenaSegura _t_parse_bare_key(void) {
+    int start = _t_pos;
+    while (_t_pos < _t_input.longitud) {
+        char c = _t_input.datos[_t_pos];
+        if (c == '=' || c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '#' || c == '}' || c == ',' || c == ']')
+            break;
+        _t_pos++;
+    }
+    int len = _t_pos - start;
+    if (len == 0) return (CadenaSegura){0};
+    return _t_strdup_c(_t_input.datos + start, len);
+}
+
+static CadenaSegura _t_parse_string(void) {
+    if (_t_peek() != '"') {
+        _t_error = 1;
+        return (CadenaSegura){0};
+    }
+    _t_advance();
+    int start = _t_pos;
+    while (_t_pos < _t_input.longitud && _t_input.datos[_t_pos] != '"') {
+        if (_t_input.datos[_t_pos] == '\\') _t_pos++;
+        _t_pos++;
+    }
+    if (_t_pos >= _t_input.longitud) {
+        _t_error = 1;
+        return (CadenaSegura){0};
+    }
+    int raw_len = _t_pos - start;
+    char* buf = (char*)malloc(raw_len + 1);
+    int wi = 0;
+    for (int i = 0; i < raw_len; i++) {
+        if (_t_input.datos[start + i] == '\\' && i + 1 < raw_len) {
+            i++;
+            switch (_t_input.datos[start + i]) {
+                case '"': buf[wi++] = '"'; break;
+                case '\\': buf[wi++] = '\\'; break;
+                case 'n': buf[wi++] = '\n'; break;
+                case 't': buf[wi++] = '\t'; break;
+                default: buf[wi++] = _t_input.datos[start + i]; break;
+            }
+        } else {
+            buf[wi++] = _t_input.datos[start + i];
+        }
+    }
+    buf[wi] = '\0';
+    _t_advance();
+    return (CadenaSegura){ .longitud = wi, .datos = buf };
+}
+
+static NodoToml _t_parse_value(void) {
+    _t_skip_ws();
+    int c = _t_peek();
+    if (c == '"') {
+        CadenaSegura s = _t_parse_string();
+        return (NodoToml){ .tipo = 2, .valor_str = s };
+    }
+    if (c == '{') {
+        return _t_parse_inline_table();
+    }
+    // Bare value (treat as string for now)
+    CadenaSegura s = _t_parse_bare_key();
+    if (_t_error || s.longitud == 0) {
+        if (s.datos) free((void*)s.datos);
+        _t_error = 1;
+        return (NodoToml){ .tipo = -1 };
+    }
+    return (NodoToml){ .tipo = 2, .valor_str = s };
+}
+
+static void _t_nodo_liberar_internal(NodoToml n);
+
+static NodoToml _t_parse_inline_table(void) {
+    _t_advance();
+    NodoToml tbl = { .tipo = 3 };
+    int cap = 0;
+    while (_t_pos < _t_input.longitud && !_t_error) {
+        _t_skip_ws();
+        int c = _t_peek();
+        if (c == '}') { _t_advance(); break; }
+        if (c == ',' || c == '\n' || c == '\r') { _t_advance(); continue; }
+
+        CadenaSegura key = _t_parse_bare_key();
+        if (_t_error || key.longitud == 0) { free((void*)key.datos); break; }
+        _t_skip_ws();
+        if (_t_peek() != '=') { _t_error = 1; free((void*)key.datos); break; }
+        _t_advance();
+
+        NodoToml val = _t_parse_value();
+        if (_t_error) { free((void*)key.datos); _t_nodo_liberar_internal(val); break; }
+
+        if (tbl.longitud >= cap) {
+            cap = cap == 0 ? 4 : cap * 2;
+            tbl.pares = (ParToml*)realloc(tbl.pares, cap * sizeof(ParToml));
+        }
+        ParToml* p = &tbl.pares[tbl.longitud++];
+        p->clave = key;
+        p->valor = (NodoToml*)malloc(sizeof(NodoToml));
+        *p->valor = val;
+
+        _t_skip_ws();
+        if (_t_peek() == '}') { _t_advance(); break; }
+        if (_t_peek() == ',') _t_advance();
+    }
+    return tbl;
+}
+
+static CadenaSegura _t_parse_section_key(void) {
+    _t_skip_ws();
+    int start = _t_pos;
+    while (_t_pos < _t_input.longitud) {
+        char c = _t_input.datos[_t_pos];
+        if (c == ']' || c == '\n' || c == '\r') break;
+        _t_pos++;
+    }
+    int end = _t_pos;
+    while (end > start && (_t_input.datos[end-1] == ' ' || _t_input.datos[end-1] == '\t')) end--;
+    if (_t_peek() != ']') return (CadenaSegura){0};
+    return _t_strdup_c(_t_input.datos + start, end - start);
+}
+
+static NodoToml* _t_find_or_create_table(NodoToml* root, CadenaSegura name) {
+    for (int i = 0; i < root->longitud; i++) {
+        ParToml* p = &root->pares[i];
+        if (p->clave.longitud == name.longitud &&
+            (name.longitud == 0 || strncmp(p->clave.datos, name.datos, name.longitud) == 0)) {
+            return p->valor;
+        }
+    }
+    NodoToml* tbl = (NodoToml*)calloc(1, sizeof(NodoToml));
+    tbl->tipo = 1;
+    if (root->longitud >= 0) {
+        root->pares = (ParToml*)realloc(root->pares, (root->longitud + 1) * sizeof(ParToml));
+        root->pares[root->longitud].clave = _t_strdup_c(name.datos, name.longitud);
+        root->pares[root->longitud].valor = tbl;
+        root->longitud++;
+    }
+    return tbl;
+}
+
+static void _t_nodo_liberar_internal(NodoToml n) {
+    if (n.tipo == 2 || n.tipo == -1) {
+        // NOTA: NO liberamos n.valor_str.datos aquí porque la propiedad
+        // se transfiere al llamante cuando accede a campo.valor_str.
+    } else if (n.tipo == 1 || n.tipo == 3) {
+        if (n.pares) {
+            for (int i = 0; i < n.longitud; i++) {
+                if (n.pares[i].clave.datos) free((void*)n.pares[i].clave.datos);
+                if (n.pares[i].valor) {
+                    _t_nodo_liberar_internal(*n.pares[i].valor);
+                    free(n.pares[i].valor);
+                    n.pares[i].valor = NULL;
+                }
+            }
+            free(n.pares);
+            n.pares = NULL;
+        }
+    }
+}
+
+NodoToml _toml_nodo_new(void) {
+    return (NodoToml){0};
+}
+
+void _toml_nodo_liberar(NodoToml n) {
+    _t_nodo_liberar_internal(n);
+}
+
+static NodoToml _t_nodo_clonar(NodoToml src) {
+    NodoToml n = { .tipo = src.tipo, .longitud = 0 };
+    if (src.tipo == 2 || src.tipo == -1) {
+        n.valor_str = _t_strdup_c(src.valor_str.datos, src.valor_str.longitud);
+    } else if (src.tipo == 1 || src.tipo == 3) {
+        if (src.pares && src.longitud > 0) {
+            n.pares = (ParToml*)malloc(src.longitud * sizeof(ParToml));
+            n.longitud = src.longitud;
+            for (int i = 0; i < src.longitud; i++) {
+                n.pares[i].clave = _t_strdup_c(src.pares[i].clave.datos, src.pares[i].clave.longitud);
+                n.pares[i].valor = (NodoToml*)malloc(sizeof(NodoToml));
+                *n.pares[i].valor = _t_nodo_clonar(*src.pares[i].valor);
+            }
+        }
+    }
+    return n;
+}
+
+NodoToml _toml_object_get(NodoToml nodo, CadenaSegura clave) {
+    if (nodo.tipo != 1 && nodo.tipo != 3)
+        return (NodoToml){0};
+    for (int i = 0; i < nodo.longitud; i++) {
+        ParToml* p = &nodo.pares[i];
+        if (p->clave.longitud == clave.longitud &&
+            (clave.longitud == 0 || strncmp(p->clave.datos, clave.datos, clave.longitud) == 0))
+            return _t_nodo_clonar(*p->valor);
+    }
+    return (NodoToml){0};
+}
+
+NodoToml _toml_parse(CadenaSegura entrada) {
+    _t_input = entrada;
+    _t_pos = 0;
+    _t_linea = 1;
+    _t_error = 0;
+
+    NodoToml root = { .tipo = 1 };
+    NodoToml* current = &root;
+
+    while (_t_pos < _t_input.longitud && !_t_error) {
+        _t_skip_ws();
+        int c = _t_peek();
+        if (c < 0) break;
+        if (c == '\n' || c == '\r') { _t_skip_newline(); continue; }
+        if (c == '#') { _t_skip_line(); continue; }
+
+        if (c == '[') {
+            _t_advance();
+            CadenaSegura sec_name = _t_parse_section_key();
+            if (_t_error || sec_name.longitud == 0) {
+                _t_error = 1;
+                break;
+            }
+            _t_advance();
+            NodoToml* tbl = _t_find_or_create_table(&root, sec_name);
+            free((void*)sec_name.datos);
+            current = tbl ? tbl : &root;
+            _t_skip_line();
+            continue;
+        }
+
+        // Key-value pair
+        CadenaSegura key = _t_parse_bare_key();
+        _t_skip_ws();
+        if (_t_peek() != '=') { _t_error = 1; free((void*)key.datos); break; }
+        _t_advance();
+        NodoToml val = _t_parse_value();
+        if (_t_error) {
+            free((void*)key.datos);
+            _t_nodo_liberar_internal(val);
+            break;
+        }
+
+        if (current->longitud >= 0) {
+            current->pares = (ParToml*)realloc(current->pares, (current->longitud + 1) * sizeof(ParToml));
+            current->pares[current->longitud].clave = key;
+            current->pares[current->longitud].valor = (NodoToml*)malloc(sizeof(NodoToml));
+            *current->pares[current->longitud].valor = val;
+            current->longitud++;
+        }
+        _t_skip_line();
+    }
+
+    if (_t_error) {
+        _t_nodo_liberar_internal(root);
+        char err_buf[128];
+        int err_len = snprintf(err_buf, sizeof(err_buf),
+            "Error TOML linea %d", _t_linea);
+        NodoToml err = { .tipo = -1 };
+        err.valor_str = _t_strdup_c(err_buf, err_len);
+        return err;
+    }
+
+    return root;
 }

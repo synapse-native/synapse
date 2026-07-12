@@ -1,0 +1,21 @@
+#lang: es
+importar std.net
+
+funcion principal() -> nulo:
+    iniciar_red()
+    r = conectar("1.1.1.1", 80)
+    si r.tag == 0:
+        fd = r.valor
+        s = SocketTCP()
+        s.descriptor = fd
+        enviar_datos(fd, "GET / HTTP/1.1\r\nHost: 1.1.1.1\r\nConnection: close\r\n\r\n", 52)
+        respuesta = recibir_datos(s, 512)
+        si respuesta.tag == 0:
+            log("HTTP: ", respuesta.valor_str)
+            liberar_texto(-> respuesta.valor_str)
+        sino:
+            log("recibir_datos fallo")
+        cerrar_socket(fd)
+    sino:
+        log("conectar fallo: ", r.valor)
+    cerrar_red()

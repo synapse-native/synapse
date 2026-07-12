@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import argparse
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 
 from ast_nodes import (
     TokenID, Token, Nodo, Programa, Parametro,
@@ -20,6 +20,9 @@ from parser import Parser
 from generator import GeneradorC
 from diagnostics import DiagnosticManager, ErrorCodes
 from analizador_semantico import AnalizadorSemantico
+import resolvedor_axon
+from resolvedor_axon import DepNoDeclaradaError
+
 
 
 # ============================================================
@@ -359,42 +362,61 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
 
 
 # ============================================================
-# IMPORT SYSTEM — Resolución estricta con integración Axon
+# IMPORT SYSTEM — Bifurcación estricta Sysroot / Axon
 # ============================================================
-AXON_MODULES = "axon_modules"
-SYNAPSE_ROOT = os.path.dirname(os.path.abspath(__file__))
+SYNAPSE_BIN = os.path.dirname(os.path.abspath(__file__))
 
-def _resolver_ruta_import(ruta_import: str, dir_base: str) -> str:
-    ruta_rel = ruta_import.replace('.', '/') + '.syn'
+# Rastro de módulos importados para resolución de dependencias nativas (Auto-Linker)
+_imports_usados: set[str] = set()
 
-    # Prioridad 1 — Local: ./paquete.syn
-    ruta_local = os.path.normpath(os.path.join(dir_base, ruta_rel))
-    if os.path.exists(ruta_local):
-        return ruta_local
+def _resolver_ruta_sysroot(ruta_import: str) -> str:
+    if not ruta_import.startswith('std.'):
+        raise ValueError(f"No es una ruta de sysroot: {ruta_import}")
+    sub_ruta = ruta_import[len('std.'):]
+    sub_ruta_rel = sub_ruta.replace('.', '/') + '.syn'
 
-    # Prioridad 2 — Ecosistema Axon: ./axon_modules/paquete/principal.syn
-    ruta_axon = os.path.normpath(os.path.join(dir_base, AXON_MODULES, ruta_import, "principal.syn"))
-    if os.path.exists(ruta_axon):
-        return ruta_axon
+    sysroot_base = os.environ.get('SYNAPSE_LIB_PATH')
+    if sysroot_base:
+        sysroot_base = os.path.abspath(sysroot_base)
+    else:
+        sysroot_base = os.path.normpath(os.path.join(SYNAPSE_BIN, '..', 'std'))
 
-    # Prioridad 3 — Librería del Sistema: [SYNAPSE_ROOT]/librerias/paquete.syn
-    ruta_sistema = os.path.normpath(os.path.join(SYNAPSE_ROOT, 'librerias', ruta_rel))
-    if os.path.exists(ruta_sistema):
-        return ruta_sistema
-    ruta_sistema2 = os.path.normpath(os.path.join(dir_base, 'librerias', ruta_rel))
-    if ruta_sistema2 != ruta_sistema and os.path.exists(ruta_sistema2):
-        return ruta_sistema2
+    bases = [sysroot_base]
+    if not os.environ.get('SYNAPSE_LIB_PATH'):
+        bases.append(os.path.join(SYNAPSE_BIN, 'librerias'))
 
-    # No encontrado en ningún nivel — error semántico limpio
+    for base in bases:
+        # For librerias/ fallback, keep the std. prefix as a directory
+        if base.endswith('librerias'):
+            ruta_archivo = os.path.normpath(
+                os.path.join(base, ruta_import.replace('.', '/') + '.syn')
+            )
+            if os.path.exists(ruta_archivo):
+                return ruta_archivo
+            ruta_directorio = os.path.normpath(
+                os.path.join(base, ruta_import.replace('.', '/'), 'principal.syn')
+            )
+            if os.path.exists(ruta_directorio):
+                return ruta_directorio
+        else:
+            ruta_archivo = os.path.normpath(os.path.join(base, sub_ruta_rel))
+            if os.path.exists(ruta_archivo):
+                return ruta_archivo
+            ruta_directorio = os.path.normpath(
+                os.path.join(base, sub_ruta, 'principal.syn')
+            )
+            if os.path.exists(ruta_directorio):
+                return ruta_directorio
+
     raise FileNotFoundError(
-        f"ERROR: Módulo '{ruta_import}' no encontrado. "
-        f"¿Olvidaste ejecutar 'axon instalar {ruta_import}'?"
+        f"Módulo estándar '{ruta_import}' no encontrado en sysroot"
     )
 
 
 def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
                           dir_base: str = '', mostrar_tokens: bool = False,
-                          diag: Optional[DiagnosticManager] = None) -> Tuple[Programa, DiagnosticManager]:
+                          diag: Optional[DiagnosticManager] = None,
+                          dependencias: Optional[Dict[str, str]] = None) -> Tuple[Programa, DiagnosticManager]:
     ruta_abs = os.path.abspath(ruta_archivo)
     if ruta_abs in archivos_procesados:
         return Programa(), diag or DiagnosticManager()
@@ -427,15 +449,33 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
     nuevas_sentencias: List[Nodo] = []
     for stmt in ast.sentencias:
         if isinstance(stmt, SentenciaImportar):
+            _imports_usados.add(stmt.ruta)
             try:
-                ruta_importada = _resolver_ruta_import(stmt.ruta, dir_base)
+                if stmt.ruta.startswith('std.'):
+                    ruta_importada = _resolver_ruta_sysroot(stmt.ruta)
+                else:
+                    ruta_importada = resolvedor_axon.resolver(stmt.ruta, dir_base, dependencias)
+            except DepNoDeclaradaError:
+                diag_local.reportar(
+                    ErrorCodes.ERR_DEP_NOT_DECLARED,
+                    Token(TokenID.IDENTIFIER, stmt.linea, stmt.columna),
+                    modulo=stmt.ruta,
+                )
+                return Programa(), diag_local
             except FileNotFoundError:
-                print(f"ERROR: Módulo '{stmt.ruta}' no encontrado. ¿Olvidaste ejecutar 'axon instalar {stmt.ruta}'?", file=sys.stderr)
-                diag_local.errores.append({'codigo': ErrorCodes.ERR_FILE_NOT_FOUND, 'linea': 0, 'columna': 0, 'mensaje': ''})
+                if stmt.ruta.startswith('std.'):
+                    codigo = ErrorCodes.ERR_MODULE_STD_NOT_FOUND
+                else:
+                    codigo = ErrorCodes.ERR_MODULE_AXON_NOT_FOUND
+                diag_local.reportar(
+                    codigo,
+                    Token(TokenID.IDENTIFIER, stmt.linea, stmt.columna),
+                    modulo=stmt.ruta,
+                )
                 return Programa(), diag_local
             if mostrar_tokens:
                 print(f"\n[Importando: {stmt.ruta} -> {ruta_importada}]")
-            ast_importado, _ = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, diag_local)
+            ast_importado, _ = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, diag_local, dependencias)
             for s in ast_importado.sentencias:
                 nuevas_sentencias.append(s)
         else:
@@ -455,7 +495,8 @@ def compilar_desde_canonico(ruta_json: str) -> Programa:
 # ============================================================
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         output_lang: Optional[str] = None,
-                        dump_ast: bool = False) -> int:
+                        dump_ast: bool = False,
+                        dependencias: Optional[Dict[str, str]] = None) -> int:
     diag = DiagnosticManager()
 
     try:
@@ -478,7 +519,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 return diag.codigo_salida()
 
             ast, diag = compilar_desde_texto(ruta_archivo, archivos_procesados,
-                                              dir_base, mostrar_tokens)
+                                              dir_base, mostrar_tokens,
+                                              dependencias=dependencias)
 
         if diag.hay_errores():
             print(f"\n[ERROR] Compilación abortada — {diag.resumen()}", file=sys.stderr)
@@ -508,10 +550,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         print(f"[OK] Codigo C generado: {ruta_c}")
 
         linker_extra = generador.linker_flags
-        synapse_rt = os.path.join(SYNAPSE_ROOT, "synapse_rt.o")
+        synapse_rt = os.path.join(SYNAPSE_BIN, "synapse_rt.o")
         if not os.path.exists(synapse_rt):
             synapse_rt = os.path.join(SYNAPSE_ROOT, "dist", "lib", "synapse_rt.o")
-        gcc_cmd = f'gcc -O2 "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_extra}'.strip()
+        linker_net = "-lws2_32" if sys.platform == "win32" else ""
+        gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] GCC: {gcc_cmd}")
         rc = os.system(gcc_cmd)
         if rc != 0:
@@ -543,6 +586,87 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "construir":
+        construir_args = [a for a in sys.argv[2:] if a != "--tokens" and a != "--dump-ast"]
+        tokens_flag = "--tokens" in sys.argv
+        dump_flag = "--dump-ast" in sys.argv
+        lang_val = None
+        for i, a in enumerate(sys.argv):
+            if a == "--lang" and i + 1 < len(sys.argv):
+                lang_val = sys.argv[i + 1]
+
+        # Native build orchestrator (Fase 8)
+        axon_exe = os.path.join(os.path.dirname(__file__), "axon_build.exe")
+        if not os.path.exists(axon_exe):
+            print(f"ERROR: '{axon_exe}' no encontrado. Compilar con: gcc -o axon_build.exe axon_build.c", file=sys.stderr)
+            sys.exit(1)
+
+        out_path = os.path.join(os.environ.get('TEMP', '.'), f"axon_out_{os.getpid()}.txt")
+        cmd = axon_exe + ' "' + os.getcwd() + '" > "' + out_path + '"'
+        ret = os.system(cmd)
+
+        if ret != 0:
+            try:
+                with open(out_path, 'r') as f:
+                    err_line = f.read().strip()
+                os.remove(out_path)
+            except (FileNotFoundError, OSError):
+                err_line = ""
+
+            if ret == 1:  # MANIFEST_NOT_FOUND
+                diag = DiagnosticManager()
+                diag.reportar(ErrorCodes.ERR_MANIFEST_NOT_FOUND, Token(TokenID.EOF, 0, 0))
+                print(diag.resumen(), file=sys.stderr)
+                sys.exit(diag.codigo_salida())
+            elif ret == 3:  # MISSING_PUNTO_ENTRADA
+                print(f"ERROR: El manifiesto axon.toml debe tener '[proyecto]' con clave 'punto_entrada'", file=sys.stderr)
+                sys.exit(1)
+            elif ret == 4:  # GIT_FAILURE
+                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
+                diag = DiagnosticManager()
+                diag.reportar(ErrorCodes.ERR_GIT_FAILURE, Token(TokenID.EOF, 0, 0), modulo=dep_name)
+                print(diag.resumen(), file=sys.stderr)
+                sys.exit(diag.codigo_salida())
+            elif ret == 5:  # LOCK_MISMATCH
+                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
+                diag = DiagnosticManager()
+                diag.reportar(ErrorCodes.ERR_LOCK_HASH_MISMATCH, Token(TokenID.EOF, 0, 0), modulo=dep_name)
+                print(diag.resumen(), file=sys.stderr)
+                sys.exit(diag.codigo_salida())
+            else:
+                print(f"ERROR: Fallo en construccion (codigo {ret})", file=sys.stderr)
+                sys.exit(1)
+
+        # Parse output from native binary
+        lineas = []
+        try:
+            with open(out_path, 'r') as f:
+                lineas = [l.strip() for l in f if l.strip()]
+            os.remove(out_path)
+        except (FileNotFoundError, OSError):
+            pass
+
+        punto_entrada = ""
+        dependencias: Dict[str, Any] = {}
+        for ln in lineas:
+            if ln.startswith("punto_entrada="):
+                punto_entrada = ln.split("=", 1)[1]
+            else:
+                dependencias[ln] = True
+
+        ruta_entrada = os.path.normpath(os.path.join(os.getcwd(), punto_entrada))
+        if not os.path.exists(ruta_entrada):
+            diag = DiagnosticManager()
+            diag.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,
+                          Token(TokenID.EOF, 0, 0), archivo=ruta_entrada)
+            print(diag.resumen(), file=sys.stderr)
+            sys.exit(diag.codigo_salida())
+
+        codigo = ejecutar_compilador(ruta_entrada, mostrar_tokens=tokens_flag,
+                                     output_lang=lang_val, dump_ast=dump_flag,
+                                     dependencias=dependencias)
+        sys.exit(codigo)
+
     parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota")
     parser.add_argument("archivo", nargs="?", default="programa.syn",
                         help="Archivo fuente .syn (o .syn.json para canonico)")

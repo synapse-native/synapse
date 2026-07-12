@@ -202,12 +202,25 @@ void liberar_texto(CadenaSegura t) {
 }
 
 void principal(void) {
-    int r = iniciar_red();
-    printf("iniciar_red:  %d\n", r);
-    int s = crear_socket();
-    printf("socket:  %d\n", s);
+    iniciar_red();
+    struct Resultado r = conectar((CadenaSegura){ .longitud = 7, .datos = "1.1.1.1" }, 80);
+    if ((r.tag == 0)) {
+        int fd = r.dato.valor;
+        struct SocketTCP s = SocketTCP_nuevo();
+        s.descriptor = fd;
+        enviar_datos(fd, (CadenaSegura){ .longitud = 52, .datos = "GET / HTTP/1.1\r\nHost: 1.1.1.1\r\nConnection: close\r\n\r\n" }, 52);
+        struct Resultado respuesta = recibir_datos(s, 512);
+        if ((respuesta.tag == 0)) {
+            printf("HTTP:  %s\n", (respuesta.dato.valor_str).datos);
+            liberar_texto(respuesta.dato.valor_str);
+        } else {
+            printf("recibir_datos fallo\n");
+        }
+        cerrar_socket(fd);
+    } else {
+        printf("conectar fallo:  %d\n", r.dato.valor);
+    }
     cerrar_red();
-    printf("red cerrada\n");
 }
 
 int main(int argc, char** argv) {

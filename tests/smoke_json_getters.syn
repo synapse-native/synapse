@@ -1,0 +1,61 @@
+#lang: es
+importar std.json
+
+funcion principal() -> nulo:
+    arr = desde_texto("[10, 20, 30]")
+    e0 = obtener_elemento(arr, 0)
+    si e0.tipo >= 0:
+        log("arr[0] OK")
+    sino:
+        log("FALLO arr[0]")
+    liberar_nodo(-> e0)
+
+    e1 = obtener_elemento(arr, 1)
+    si e1.tipo >= 0:
+        log("arr[1] OK")
+    sino:
+        log("FALLO arr[1]")
+    liberar_nodo(-> e1)
+
+    e99 = obtener_elemento(arr, 99)
+    si e99.tipo == 0:
+        log("out-of-bounds devuelve Nulo OK")
+    sino:
+        log("FALLO out-of-bounds")
+    liberar_nodo(-> e99)
+
+    // Element from non-array returns Nulo
+    no_arr = desde_texto("42")
+    mal = obtener_elemento(no_arr, 0)
+    si mal.tipo == 0:
+        log("no-array devuelve Nulo OK")
+    sino:
+        log("FALLO no-array")
+    liberar_nodo(-> mal)
+    liberar_nodo(-> no_arr)
+    liberar_nodo(-> arr)
+
+    obj = desde_texto("{\"nombre\": \"Synapse\", \"version\": 1}")
+    nom = obtener_campo(obj, "nombre")
+    si nom.tipo == 3:
+        log("campo nombre OK")
+    sino:
+        log("FALLO campo nombre")
+    liberar_nodo(-> nom)
+
+    ver = obtener_campo(obj, "version")
+    si ver.tipo == 2:
+        log("campo version OK")
+    sino:
+        log("FALLO campo version")
+    liberar_nodo(-> ver)
+
+    missing = obtener_campo(obj, "no_existe")
+    si missing.tipo == 0:
+        log("campo faltante devuelve Nulo OK")
+    sino:
+        log("FALLO campo faltante")
+    liberar_nodo(-> missing)
+    liberar_nodo(-> obj)
+
+    log("FIN")

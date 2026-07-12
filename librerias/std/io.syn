@@ -11,10 +11,10 @@
 funcion abrir(ruta: texto, modo: texto) -> Canal:
     retornar 0
 
-funcion leer(canal: Canal) -> texto:
+funcion leer(c: Canal) -> texto:
     retornar ""
 
-funcion cerrar(-> canal: Canal) -> nulo:
+funcion cerrar(-> c: Canal) -> nulo:
     retornar
 
 funcion escribir(texto: texto) -> nulo:

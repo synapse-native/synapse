@@ -1,0 +1,81 @@
+#lang: es
+// std.net — Socket TCP cliente con Ownership y Tipos Algebraicos
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.net
+//   iniciar_red()
+//   fd = conectar("127.0.0.1", 8080)
+//   si fd >= 0:
+//       enviar_datos(fd, "Hola", 4)
+//       cerrar_socket(fd)
+//   cerrar_red()
+
+importar std.err
+
+estructura SocketTCP:
+    descriptor: entero
+
+externo funcion _syn_iniciar_red() -> entero
+externo funcion _syn_cerrar_red() -> entero
+externo funcion _syn_socket() -> entero
+externo funcion _syn_conectar(fd: entero, ip: char*, puerto: entero) -> entero
+externo funcion _syn_enviar(fd: entero, datos: char*, lon: entero) -> entero
+externo funcion _syn_recibir(fd: entero, buf: char*, lon: entero) -> entero
+externo funcion _syn_cerrar_socket(fd: entero) -> entero
+externo funcion _syn_recibir_como_texto(fd: entero, tamano: entero) -> texto
+externo funcion _syn_texto_liberar(t: texto) -> nulo
+
+funcion iniciar_red() -> entero:
+    retornar _syn_iniciar_red()
+
+funcion cerrar_red() -> nulo:
+    _syn_cerrar_red()
+    retornar
+
+funcion crear_socket() -> entero:
+    retornar _syn_socket()
+
+// conectar devuelve Resultado con tag=0 (ok) y valor=fd, o tag=1 (error)
+funcion conectar(ip: texto, puerto: entero) -> Resultado:
+    r = Resultado()
+    fd = _syn_socket()
+    si fd < 0:
+        r.tag = 1
+        r.valor = fd
+        retornar r
+
+    res = _syn_conectar(fd, ip, puerto)
+    si res < 0:
+        _syn_cerrar_socket(fd)
+        r.tag = 1
+        r.valor = res
+        retornar r
+
+    r.tag = 0
+    r.valor = fd
+    retornar r
+
+funcion enviar_datos(fd: entero, datos: texto, lon: entero) -> entero:
+    retornar _syn_enviar(fd, datos, lon)
+
+// recibir_datos: recibe datos del socket.
+// Devuelve Resultado con tag=0 (ok, valor_str = texto recibido) o tag=1 (error).
+// El texto recibido debe liberarse con liberar_texto() cuando ya no se necesite.
+funcion recibir_datos(socket: SocketTCP, tamano_maximo: entero) -> Resultado:
+    r = Resultado()
+    recibido = _syn_recibir_como_texto(socket.descriptor, tamano_maximo)
+    si recibido == "":
+        r.tag = 1
+        r.valor = -1
+        retornar r
+    r.tag = 0
+    r.valor_str = recibido
+    retornar r
+
+funcion cerrar_socket(fd: entero) -> entero:
+    retornar _syn_cerrar_socket(fd)
+
+funcion liberar_texto(-> t: texto) -> nulo:
+    _syn_texto_liberar(t)
+    retornar

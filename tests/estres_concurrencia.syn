@@ -1,0 +1,11 @@
+#lang: es
+funcion productor(c: Canal<entero>) -> nulo:
+    requiere: c != nulo
+    garantiza: nulo
+    valor = 10
+    c <- valor  // <-- Aquí debe haber un nodo SentenciaEnviarCanal
+
+funcion consumidor(c: Canal<entero>) -> nulo:
+    resultado = c -> // <-- Aquí debe haber un nodo ExprRecibirCanal
+    coincidir resultado:
+        ok(v) => // ...

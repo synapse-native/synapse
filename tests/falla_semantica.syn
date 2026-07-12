@@ -1,0 +1,16 @@
+#lang: es
+
+funcion principal() -> nulo:
+    // Usamos una variable como canal (el parser espera identificador)
+    ch = 0
+    paquete = 42
+    
+    // 1. Envío válido (transfiere ownership)
+    ch <- paquete
+    
+    // 2. INFRACCIÓN E-502: Use-After-Move
+    log("El paquete es: %d", paquete)
+    
+    // 3. INFRACCIÓN E-503: Recepción sin coincidir
+    valor = ch ->
+    log("Valor: %d", valor)

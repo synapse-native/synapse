@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <string.h>
+#include <assert.h>
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
@@ -15,6 +16,27 @@ typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtua
 // Constantes del pool de memoria (definidas en synapse_rt.c)
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
+
+// Constantes de tags para uniones etiquetadas (ADTs)
+#define TAG_OK 0
+#define TAG_ERR 1
+#define TAG_ALGUNO 0
+#define TAG_NINGUNO 1
+
+// --- Helpers de serialización primitiva para canales (Zero-Copy) ---
+static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
+static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
+static inline void* _synapse_box_float(float v) {
+    float* _p = (float*)malloc(sizeof(float));
+    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\n"); exit(1); }
+    *_p = v;
+    return (void*)_p;
+}
+static inline float _synapse_unbox_float(void* p) {
+    float _v = *(float*)p;
+    free(p);
+    return _v;
+}
 
 // --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
@@ -39,6 +61,14 @@ extern CadenaSegura decimal_a_texto(float n);
 extern CadenaSegura entero_a_texto(int n);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
+
+// --- Declaraciones extern de canales (CanalConcurrencia) ---
+typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;
+typedef struct CanalConcurrencia CanalConcurrencia;
+extern CanalConcurrencia* canal_crear(uint32_t capacidad);
+extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
+extern void* canal_recibir(CanalConcurrencia* canal);
+extern void canal_destruir(CanalConcurrencia* canal);
 
 static int _g_argc;
 static char** _g_argv;

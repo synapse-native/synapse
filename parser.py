@@ -12,6 +12,7 @@ from ast_nodes import (
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia, TipoPuntero,
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
+    ExprCrearCanal, SentenciaEnviarCanal, ExprRecibirCanal,
 )
 from lexer import OPERADORES_BINARIOS
 from diagnostics import DiagnosticManager, ErrorCodes
@@ -109,6 +110,10 @@ class Parser:
         elif t.tipo == TokenID.EOF:
             return None
         else:
+            if (t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL)
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.ARROW_LEFT):
+                return self._parsear_enviar_canal()
             if (t.tipo == TokenID.IDENTIFIER
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ASSIGN):
@@ -140,11 +145,7 @@ class Parser:
                 self._sincronizar(_SYNC_STMT)
                 return None
             self._esperar(TokenID.COLON)
-            tok_tipo = self._esperar(TokenID.IDENTIFIER)
-            tipo = tok_tipo.valor if tok_tipo else 'int'
-            if self._mirar().tipo == TokenID.STAR:
-                self._avanzar()
-                tipo += '*'
+            tipo = self._parsear_tipo_parametro()
             params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
             while self._mirar().tipo == TokenID.COMMA:
                 self._avanzar()
@@ -153,8 +154,7 @@ class Parser:
                 if tok_nombre_param is None:
                     break
                 self._esperar(TokenID.COLON)
-                tok_tipo = self._esperar(TokenID.IDENTIFIER)
-                tipo = tok_tipo.valor if tok_tipo else 'int'
+                tipo = self._parsear_tipo_parametro()
                 params.append(Parametro(nombre=tok_nombre_param.valor, tipo=tipo, es_transferencia=es_trans))
         if self._esperar(TokenID.RPAREN) is None:
             self._sincronizar(_SYNC_STMT)
@@ -169,11 +169,73 @@ class Parser:
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        cuerpo = self._parsear_bloque() or []
+        # --- parsear bloques de contrato opcionales (requiere / garantiza) ---
+        # Primero consumir el NEWLINE + INDENT del cuerpo de la función
+        requiere: List[Nodo] = []
+        garantiza: List[Nodo] = []
+        # Saltamos NEWLINE
+        if self._mirar().tipo == TokenID.NEWLINE:
+            self._avanzar()
+        # Entramos al INDENT del cuerpo
+        if self._mirar().tipo == TokenID.INDENT:
+            self._avanzar()  # consume INDENT
+            # Detectar bloques de contrato opcionales dentro del cuerpo
+            while self._mirar().tipo in (TokenID.REQUIERE, TokenID.GARANTIZA):
+                tok_contrato = self._mirar()
+                self._avanzar()   # consume 'requiere' o 'garantiza'
+                if self._esperar(TokenID.COLON) is None:
+                    self._sincronizar(_SYNC_STMT)
+                    break
+                exprs = []
+                # Saltar NEWLINE del contrato de una sola línea
+                while self._mirar().tipo == TokenID.NEWLINE:
+                    self._avanzar()
+                # Parsear las expresiones del contrato (pueden venir en la misma
+                # línea o en un sub-bloque indentado)
+                if self._mirar().tipo == TokenID.INDENT:
+                    self._avanzar()
+                    while self._mirar().tipo not in (TokenID.DEDENT, TokenID.EOF):
+                        if self._mirar().tipo == TokenID.NEWLINE:
+                            self._avanzar()
+                            continue
+                        e = self._parsear_expresion()
+                        if e:
+                            exprs.append(e)
+                    if self._mirar().tipo == TokenID.DEDENT:
+                        self._avanzar()
+                else:
+                    # Contrato de una sola expresión en la misma línea
+                    while self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
+                        e = self._parsear_expresion()
+                        if e:
+                            exprs.append(e)
+                        else:
+                            break
+                    if self._mirar().tipo == TokenID.NEWLINE:
+                        self._avanzar()
+                if tok_contrato.tipo == TokenID.REQUIERE:
+                    requiere = exprs
+                else:
+                    garantiza = exprs
+            # Parsear el cuerpo real de la función (estamos dentro del INDENT)
+            cuerpo: List[Nodo] = []
+            while self._mirar().tipo not in (TokenID.DEDENT, TokenID.EOF):
+                stmt = self._parsear_sentencia()
+                if stmt is not None:
+                    cuerpo.append(stmt)
+                else:
+                    self._avanzar()
+            if self._mirar().tipo == TokenID.DEDENT:
+                self._avanzar()  # consume DEDENT del cuerpo
+        else:
+            cuerpo = []
+
         return DefinicionFuncion(
             nombre=tok_nombre.valor,
             parametros=params,
             tipo_retorno=tok_retorno.valor,
+            requiere=requiere,
+            garantiza=garantiza,
             cuerpo=cuerpo,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
@@ -374,13 +436,20 @@ class Parser:
     def _parsear_asignacion(self) -> AsignacionVariable:
         tok_id = self._avanzar()
         self._esperar(TokenID.ASSIGN)
-        expr = self._parsear_expresion()
+        # Detectar recepción de canal: resultado = c ->
+        if (self._mirar().tipo in (TokenID.IDENTIFIER, TokenID.CANAL)
+                and self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+            expr = self._parsear_recibir_canal()
+        else:
+            expr = self._parsear_expresion()
         return AsignacionVariable(
             nombre=tok_id.valor,
             expresion=expr,
             linea=tok_id.linea,
             columna=tok_id.columna,
         )
+
 
     def _parsear_expr_o_recuperar(self) -> Nodo:
         expr = self._parsear_expresion()
@@ -532,13 +601,14 @@ class Parser:
         if t.tipo == TokenID.FALSE:
             self._avanzar()
             return LiteralNumero(valor=0, linea=t.linea, columna=t.columna)
-        if t.tipo == TokenID.IDENTIFIER:
+        if t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL):
             self._avanzar()
+            nombre = t.valor if t.tipo == TokenID.IDENTIFIER else 'canal'
             if self._mirar().tipo == TokenID.LPAREN:
-                if t.valor == 'tensor':
+                if nombre == 'tensor':
                     return self._parsear_tensor(t)
-                return self._parsear_llamada(Identificador(nombre=t.valor, linea=t.linea, columna=t.columna))
-            expr: Nodo = Identificador(nombre=t.valor, linea=t.linea, columna=t.columna)
+                return self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
+            expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
             while self._mirar().tipo == TokenID.DOT:
                 self._avanzar()
                 tok_campo = self._esperar(TokenID.IDENTIFIER)
@@ -795,3 +865,96 @@ class Parser:
             linea=tok_coincidir.linea,
             columna=tok_coincidir.columna,
         )
+
+    # ------------------------------------------------------------------
+    # Canales: envío y recepción
+    # ------------------------------------------------------------------
+
+    def _parsear_enviar_canal(self) -> Optional[SentenciaEnviarCanal]:
+        """canal <- valor   → SentenciaEnviarCanal"""
+        tok_canal = self._esperar(TokenID.IDENTIFIER)
+        if tok_canal is None:
+            return None
+        canal_nodo = Identificador(nombre=tok_canal.valor,
+                                   linea=tok_canal.linea,
+                                   columna=tok_canal.columna)
+        if self._esperar(TokenID.ARROW_LEFT) is None:
+            return None
+        valor = self._parsear_expresion()
+        return SentenciaEnviarCanal(
+            canal=canal_nodo,
+            valor=valor,
+            linea=tok_canal.linea,
+            columna=tok_canal.columna,
+        )
+
+    def _parsear_recibir_canal(self) -> Optional[ExprRecibirCanal]:
+        """var = canal ->   → ExprRecibirCanal  (llamado desde _parsear_asignacion)"""
+        tok_canal = self._esperar(TokenID.IDENTIFIER)
+        if tok_canal is None:
+            return None
+        canal_nodo = Identificador(nombre=tok_canal.valor,
+                                   linea=tok_canal.linea,
+                                   columna=tok_canal.columna)
+        if self._esperar(TokenID.ARROW) is None:
+            return None
+        return ExprRecibirCanal(
+            canal=canal_nodo,
+            linea=tok_canal.linea,
+            columna=tok_canal.columna,
+        )
+
+    # ------------------------------------------------------------------
+    # Bloques de expresiones para contratos (requiere / garantiza)
+    # ------------------------------------------------------------------
+
+    def _parsear_bloque_expresiones(self) -> List[Nodo]:
+        """Parsea un bloque indentado de expresiones (una por línea)."""
+        nodos: List[Nodo] = []
+        if self._mirar().tipo == TokenID.NEWLINE:
+            self._avanzar()
+        if self._mirar().tipo != TokenID.INDENT:
+            # contrato de una sola línea (sin bloque indentado)
+            expr = self._parsear_expresion()
+            if expr:
+                nodos.append(expr)
+            return nodos
+        self._avanzar()   # consume INDENT
+        while self._mirar().tipo not in (TokenID.DEDENT, TokenID.EOF):
+            if self._mirar().tipo == TokenID.NEWLINE:
+                self._avanzar()
+                continue
+            expr = self._parsear_expresion()
+            if expr:
+                nodos.append(expr)
+        if self._mirar().tipo == TokenID.DEDENT:
+            self._avanzar()   # consume DEDENT
+        return nodos
+
+    # ------------------------------------------------------------------
+    # Tipos genéricos en parámetros: Canal<entero>, etc.
+    # ------------------------------------------------------------------
+
+    def _parsear_tipo_parametro(self) -> str:
+        """Lee un tipo de parámetro, soportando genéricos: Canal<entero> o T*"""
+        tok_tipo = self._esperar(TokenID.IDENTIFIER)
+        if tok_tipo is None:
+            return 'int'
+        tipo = tok_tipo.valor
+        # Genérico: Canal<entero>
+        if self._mirar().tipo == TokenID.LESS:
+            self._avanzar()   # consume '<'
+            partes = [tipo, '<']
+            # Consumir hasta '>' o EOF
+            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF,
+                                              TokenID.NEWLINE, TokenID.RPAREN):
+                partes.append(str(self._avanzar().valor or ''))
+            if self._mirar().tipo == TokenID.GREATER:
+                self._avanzar()   # consume '>'
+            partes.append('>')
+            tipo = ''.join(partes)
+        # Puntero: T*
+        elif self._mirar().tipo == TokenID.STAR:
+            self._avanzar()
+            tipo += '*'
+        return tipo

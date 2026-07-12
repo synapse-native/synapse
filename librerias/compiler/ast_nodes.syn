@@ -103,6 +103,8 @@ estructura DefinicionFuncion:
     nombre: texto
     parametros: ListaParametro
     tipo_retorno: texto
+    requiere: ListaNodo
+    garantiza: ListaNodo
     cuerpo: ListaNodo
 
 estructura DefinicionEstructura:
@@ -170,3 +172,17 @@ estructura DeclaracionExterna:
     nombre: texto
     parametros: ListaParametro
     tipo_retorno: texto
+
+estructura ExprCrearCanal:
+    tipo: texto
+    tipo_contenido: texto
+    capacidad: Nodo
+
+estructura SentenciaEnviarCanal:
+    tipo: texto
+    canal: Nodo
+    valor: Nodo
+
+estructura ExprRecibirCanal:
+    tipo: texto
+    canal: Nodo

@@ -2,6 +2,67 @@
 importar std.json
 
 funcion principal() -> nulo:
-    json = "{\"paquete\": \"synapse\", \"version\": \"1.0\"}"
-    v = extraer_valor(json, "paquete")
-    log("extraido: ", v)
+    nodo = desde_texto("42")
+    si nodo.tipo >= 0:
+        log("entero OK")
+    sino:
+        log("FALLO entero")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("3.14")
+    si nodo.tipo >= 0:
+        log("decimal OK")
+    sino:
+        log("FALLO decimal")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("true")
+    si nodo.tipo >= 0:
+        log("bool true OK")
+    sino:
+        log("FALLO bool")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("false")
+    si nodo.tipo >= 0:
+        log("bool false OK")
+    sino:
+        log("FALLO bool false")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("null")
+    si nodo.tipo >= 0:
+        log("null OK")
+    sino:
+        log("FALLO null")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("[1, 2, 3]")
+    si nodo.tipo >= 0:
+        log("array OK len=", nodo.longitud)
+    sino:
+        log("FALLO array")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("[[1, 2], [3, 4]]")
+    si nodo.tipo >= 0:
+        log("nested array OK len=", nodo.longitud)
+    sino:
+        log("FALLO nested array")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("{}")
+    si nodo.tipo >= 0:
+        log("objeto vacio OK")
+    sino:
+        log("FALLO objeto vacio")
+    liberar_nodo(-> nodo)
+
+    nodo = desde_texto("{mal}")
+    si nodo.tipo < 0:
+        log("error OK: ", nodo.valor_str)
+    sino:
+        log("FALLO: debio dar error")
+    liberar_nodo(-> nodo)
+
+    log("FIN")

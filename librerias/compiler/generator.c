@@ -1202,6 +1202,40 @@ static const char* _G_decl(const char* n, const char* t) {
     return t;
 }
 
+// --- RAII Scope Tracking ---
+static void _G_emit(const char* s);  // forward declaration
+#define _G_MAX_SCOPE 256
+static int _G_scope_mark[_G_MAX_SCOPE];
+static int _G_scope_depth = 0;
+
+static void _G_push_scope() {
+    if (_G_scope_depth < _G_MAX_SCOPE)
+        _G_scope_mark[_G_scope_depth++] = _G_nv;
+}
+
+static void _G_emit_dtor_for(const char* type, const char* name) {
+    char buf[256];
+    if (strcmp(type, "CadenaSegura") == 0)
+        { snprintf(buf, sizeof(buf), "_syn_texto_liberar(%s);", name); _G_emit(buf); }
+    else if (strcmp(type, "NodoJson") == 0 || strcmp(type, "struct NodoJson") == 0)
+        { snprintf(buf, sizeof(buf), "_json_nodo_liberar(%s);", name); _G_emit(buf); }
+    else if (strcmp(type, "NodoToml") == 0 || strcmp(type, "struct NodoToml") == 0)
+        { snprintf(buf, sizeof(buf), "_toml_nodo_liberar(%s);", name); _G_emit(buf); }
+}
+
+static void _G_pop_scope() {
+    if (_G_scope_depth <= 0) return;
+    _G_scope_depth--;
+    int mark = _G_scope_mark[_G_scope_depth];
+    for (int i = _G_nv - 1; i >= mark; i--)
+        _G_emit_dtor_for(_G_vt[i], _G_vn[i]);
+    _G_nv = mark;
+}
+
+static void _G_pop_all_scopes() {
+    while (_G_scope_depth > 0) _G_pop_scope();
+}
+
 static void _G_emit(const char* s) {
     for(int i=0;i<_G_indent;i++) fprintf(_G_out,"    ");
     fprintf(_G_out,"%s\n",s);
@@ -1215,7 +1249,13 @@ static const char* _G_tex(struct Nodo* n) {
     if(strcmp(t,"LiteralNumero")==0) return "int";
     if(strcmp(t,"LiteralCadena")==0) return "CadenaSegura";
     if(strcmp(t,"Identificador")==0) { struct Identificador* i=(struct Identificador*)n; char m[256]; _G_cp(m,i->nombre); int j=_G_find(m); return j>=0?_G_vt[j]:"int"; }
-    if(strcmp(t,"OpBinaria")==0||strcmp(t,"OpUnaria")==0) return "int";
+    if(strcmp(t,"OpUnaria")==0) return "int";
+    if(strcmp(t,"OpBinaria")==0) {
+        struct OpBinaria* x=(struct OpBinaria*)n;
+        char _o[16]; _G_cp(_o,x->operador->lexema);
+        if(_o[0]=='+'&&_o[1]==0&&strcmp(_G_tex(x->izquierdo),"CadenaSegura")==0&&strcmp(_G_tex(x->derecho),"CadenaSegura")==0) return "CadenaSegura";
+        return "int";
+    }
     if(strcmp(t,"LlamadaFuncion")==0) {
         struct LlamadaFuncion* l=(struct LlamadaFuncion*)n;
         char m[256]; _G_cp(m,l->nombre);
@@ -1269,9 +1309,9 @@ static void _G_ea(struct Nodo* n, char* b, int sz) {
     if(!n){ snprintf(b,sz,"0"); return; }
     const char* t=n->tipo.datos;
     if(strcmp(t,"LiteralNumero")==0){ struct LiteralNumero* x=(struct LiteralNumero*)n; snprintf(b,sz,"%d",x->valor); return; }
-    if(strcmp(t,"LiteralCadena")==0){ struct LiteralCadena* x=(struct LiteralCadena*)n; snprintf(b,sz,"(CadenaSegura){.longitud=%d,.datos=\"%.*s\"}",x->valor.longitud,x->valor.longitud,x->valor.datos); return; }
+    if(strcmp(t,"LiteralCadena")==0){ struct LiteralCadena* x=(struct LiteralCadena*)n; int _blen=(int)strlen(x->valor.datos); char _esc[512]; int _ep=0; for(int _ei=0;_ei<_blen&&_ep<510;_ei++){ char _ec=x->valor.datos[_ei]; if(_ec=='\\'||_ec=='"'){_esc[_ep++]='\\';} _esc[_ep++]=_ec; } _esc[_ep]=0; snprintf(b,sz,"(CadenaSegura){.longitud=%d,.datos=\"%s\"}",_blen,_esc); return; }
     if(strcmp(t,"Identificador")==0){ struct Identificador* x=(struct Identificador*)n; char _tmp_nm[256]; _G_cp(_tmp_nm,x->nombre); if(strcmp(_tmp_nm,"nulo")==0) strcpy(b,"NULL"); else strcpy(b,_tmp_nm); return; }
-    if(strcmp(t,"OpBinaria")==0){ struct OpBinaria* x=(struct OpBinaria*)n; _G_ea(x->izquierdo,i,512); _G_ea(x->derecho,d,512); char _o[16]; _G_cp(_o,x->operador->lexema); snprintf(b,sz,"(%s %s %s)",i,_o,d); return; }
+    if(strcmp(t,"OpBinaria")==0){ struct OpBinaria* x=(struct OpBinaria*)n; _G_ea(x->izquierdo,i,512); _G_ea(x->derecho,d,512); char _o[16]; _G_cp(_o,x->operador->lexema); if(strcmp(_o,"+")==0&&strcmp(_G_tex(x->izquierdo),"CadenaSegura")==0&&strcmp(_G_tex(x->derecho),"CadenaSegura")==0){ snprintf(b,sz,"concat(%s,%s)",i,d); }else{ snprintf(b,sz,"(%s %s %s)",i,_o,d); } return; }
     if(strcmp(t,"OpUnaria")==0){ struct OpUnaria* x=(struct OpUnaria*)n; _G_ea(x->expr,i,512); char _o[16]; _G_cp(_o,x->operador->lexema); snprintf(b,sz,"(%s%s)",_o,i); return; }
     if(strcmp(t,"LlamadaFuncion")==0){
         struct LlamadaFuncion* x=(struct LlamadaFuncion*)n; _G_cp(m,x->nombre);
@@ -1371,13 +1411,13 @@ static void _G_v(struct Nodo* n) {
     }
     if(strcmp(t,"SentenciaSi")==0){
         struct SentenciaSi* s=(struct SentenciaSi*)n; _G_ea(s->condicion,b,4096);
-        snprintf(b2,sizeof(b2),"if (%s) {",b); _G_emit(b2); _G_indent++; _G_vl(s->cuerpo); _G_indent--;
-        if(s->cuerpo_sino){ _G_emit("} else {"); _G_indent++; _G_vl(s->cuerpo_sino); _G_indent--; }
+        snprintf(b2,sizeof(b2),"if (%s) {",b); _G_emit(b2); _G_indent++; _G_push_scope(); _G_vl(s->cuerpo); _G_pop_scope(); _G_indent--;
+        if(s->cuerpo_sino){ _G_emit("} else {"); _G_indent++; _G_push_scope(); _G_vl(s->cuerpo_sino); _G_pop_scope(); _G_indent--; }
         _G_emit("}"); return;
     }
     if(strcmp(t,"SentenciaMientras")==0){
         struct SentenciaMientras* s=(struct SentenciaMientras*)n; _G_ea(s->condicion,b,4096);
-        snprintf(b2,sizeof(b2),"while (%s) {",b); _G_emit(b2); _G_indent++; _G_vl(s->cuerpo); _G_indent--; _G_emit("}"); return;
+        snprintf(b2,sizeof(b2),"while (%s) {",b); _G_emit(b2); _G_indent++; _G_push_scope(); _G_vl(s->cuerpo); _G_pop_scope(); _G_indent--; _G_emit("}"); return;
     }
     if(strcmp(t,"AsignacionVariable")==0){
         struct AsignacionVariable* a=(struct AsignacionVariable*)n; _G_cp(m,a->nombre); _G_ea(a->expresion,v,4096);
@@ -1393,10 +1433,21 @@ static void _G_v(struct Nodo* n) {
     }
     if(strcmp(t,"SentenciaRetornar")==0){
         struct SentenciaRetornar* r=(struct SentenciaRetornar*)n;
-        if(r->expr){ _G_ea(r->expr,v,4096);
-            if(strcmp(v,"nulo")==0||strcmp(v,"0")==0||strcmp(v,"NULL")==0){ if(_G_ret_type[0]&&strcmp(_G_ret_type,"void")!=0){ snprintf(b,sizeof(b),"return (%s){0};",_G_ret_type); }else snprintf(b,sizeof(b),"return;"); }
-            else snprintf(b,sizeof(b),"return %s;",v);
-        }else snprintf(b,sizeof(b),"return;");
+        if(r->expr){
+            _G_ea(r->expr,v,4096);
+            if(_G_ret_type[0]&&strcmp(_G_ret_type,"void")!=0){
+                snprintf(b,sizeof(b),"%s _ret_sv = %s;",_G_ret_type,v);
+                _G_emit(b);
+                _G_pop_all_scopes();
+                snprintf(b,sizeof(b),"return _ret_sv;");
+            }else{
+                _G_pop_all_scopes();
+                snprintf(b,sizeof(b),"return;");
+            }
+        }else{
+            _G_pop_all_scopes();
+            snprintf(b,sizeof(b),"return;");
+        }
         _G_emit(b); return;
     }
     if(strcmp(t,"SentenciaExpr")==0){ struct SentenciaExpr* e=(struct SentenciaExpr*)n; if(e->expr){ if(strcmp(e->expr->tipo.datos,"LogLlamada")==0){ _G_v_log((struct LogLlamada*)e->expr); } else { _G_ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); _G_emit(b); } } return; }
@@ -1428,7 +1479,7 @@ static void _G_v(struct Nodo* n) {
         /* C declaration comes from #include via importar_c */
         return;
     }
-    if(strcmp(t,"BloqueInseguro")==0){ struct BloqueInseguro* x=(struct BloqueInseguro*)n; _G_emit("{ /* unsafe */"); _G_indent++; _G_vl(x->cuerpo); _G_indent--; _G_emit("}"); return; }
+    if(strcmp(t,"BloqueInseguro")==0){ struct BloqueInseguro* x=(struct BloqueInseguro*)n; _G_emit("{ /* unsafe */"); _G_indent++; _G_push_scope(); _G_vl(x->cuerpo); _G_pop_scope(); _G_indent--; _G_emit("}"); return; }
     _G_emit("/* ??? */");
 }
 
@@ -1502,7 +1553,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     } else {
         snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
     }
-    snprintf(cmd, sizeof(cmd), "gcc \"%s\" \"C:\\Synapse\\lib\\synapse_rt.o\" -o \"%s\" -lpthread -lm", sal, out_exe);
+    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \"%s\" synapse_rt.c -I. -o \"%s\" -lpthread -lws2_32", sal, out_exe);
     int rc = system(cmd);
     if (rc != 0) {
         fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\n", rc);
@@ -1515,10 +1566,162 @@ CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse) {
     return tipo_synapse;
 }
 
+// ============================================================
+// Minimal TOML reader for axon.toml (construir subcommand)
+// ============================================================
+static char* _toml_read_section_value(const char* content, const char* section, const char* key) {
+    if (!content || !section || !key) return NULL;
+    // Skip UTF-8 BOM
+    if ((unsigned char)content[0] == 0xEF && (unsigned char)content[1] == 0xBB && (unsigned char)content[2] == 0xBF)
+        content += 3;
+    // Find [section]
+    char sec_buf[256];
+    snprintf(sec_buf, sizeof(sec_buf), "\n[%s]", section);
+    const char* sec = strstr(content, sec_buf);
+    if (!sec) {
+        // Try at beginning of file (no leading \n)
+        char sec_buf2[256];
+        snprintf(sec_buf2, sizeof(sec_buf2), "[%s]", section);
+        if (strncmp(content, sec_buf2, strlen(sec_buf2)) == 0) sec = content;
+        else return NULL;
+    }
+    // Move past the section header to the body
+    sec = strchr(sec, '\n');
+    if (!sec) sec = content + strlen(content);
+    else sec++;
+    // Find key = "value" within the section (stop at next [ or end)
+    char key_buf[256];
+    int key_len = snprintf(key_buf, sizeof(key_buf), "%s = \"", key);
+    const char* kpos = sec;
+    while (kpos && *kpos) {
+        // Stop at next section
+        if (*kpos == '[') break;
+        const char* eq = strstr(kpos, key_buf);
+        if (!eq) break;
+        // Verify it's within the same section (no [ before it since last newline)
+        const char* nl_before = eq;
+        while (nl_before > sec && *nl_before != '\n') nl_before--;
+        if (nl_before > sec && *(nl_before-1) == '[') { kpos = eq + 1; continue; }
+        if (nl_before > sec) { const char* br = nl_before - 1; while (br > sec && *br != '\n') br--; if (*br == '[') { kpos = eq + 1; continue; } }
+        // Found! Extract value
+        const char* vstart = eq + key_len;
+        const char* vend = strchr(vstart, '"');
+        if (!vend) return NULL;
+        int vlen = (int)(vend - vstart);
+        char* result = (char*)malloc(vlen + 1);
+        if (!result) return NULL;
+        // Handle escape sequences
+        int wi = 0;
+        for (int i = 0; i < vlen; i++) {
+            if (vstart[i] == '\\' && i + 1 < vlen) {
+                i++;
+                switch (vstart[i]) {
+                    case '"': result[wi++] = '"'; break;
+                    case '\\': result[wi++] = '\\'; break;
+                    case 'n': result[wi++] = '\n'; break;
+                    case 't': result[wi++] = '\t'; break;
+                    case 'r': result[wi++] = '\r'; break;
+                    default: result[wi++] = vstart[i]; break;
+                }
+            } else {
+                result[wi++] = vstart[i];
+            }
+        }
+        result[wi] = '\0';
+        return result;
+    }
+    return NULL;
+}
+
 int main(int argc, char** argv) {
-    _g_argc = argc;
-    _g_argv = argv;
-    pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    synapse_esperar_hilos();
+    if (argc > 1 && strcmp(argv[1], "construir") == 0) {
+        const char* proj_dir = (argc > 2) ? argv[2] : ".";
+        char toml_path[4096];
+        snprintf(toml_path, sizeof(toml_path), "%s/axon.toml", proj_dir);
+        
+        FILE* f = fopen(toml_path, "rb");
+        if (!f) {
+            fprintf(stderr, "ERROR:%d\n", 1);
+            return 1;
+        }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        rewind(f);
+        char* content = (char*)malloc(sz + 1);
+        size_t nread = fread(content, 1, sz, f);
+        content[nread] = '\0';
+        fclose(f);
+        
+        char* punto_entrada = _toml_read_section_value(content, "proyecto", "punto_entrada");
+        if (!punto_entrada) {
+            fprintf(stderr, "ERROR:%d\n", 3);
+            free(content);
+            return 3;
+        }
+        
+        char syn_path[4096];
+        snprintf(syn_path, sizeof(syn_path), "%s/%s", proj_dir, punto_entrada);
+        free(punto_entrada);
+        
+        FILE* sf = fopen(syn_path, "rb");
+        if (!sf) {
+            fprintf(stderr, "ERROR: archivo '%s' no encontrado\n", syn_path);
+            free(content);
+            return 1;
+        }
+        fseek(sf, 0, SEEK_END);
+        long slen = ftell(sf);
+        rewind(sf);
+        char* src = (char*)malloc(slen + 1);
+        fread(src, 1, slen, sf);
+        src[slen] = '\0';
+        fclose(sf);
+        
+        // Tokenize and parse
+        _P_ntks = 0; _P_tpos = 0; _P_p_err = 0;
+        _P_nivel_pila = 0; _P_pila_indent[0] = 0;
+        _P_tokenizar(src, slen);
+        struct Programa prog = _P_programa();
+        free(src);
+        
+        // Generate C and compile
+        CadenaSegura ruta_salida;
+        ruta_salida.datos = syn_path;
+        ruta_salida.longitud = (int)strlen(syn_path);
+        generar(prog, ruta_salida);
+        
+        free(content);
+        return 0;
+    }
+    
+    printf("Synapse v2.0 — Self-Hosted Compiler\n");
+    printf("Uso: synapse_v2.exe construir [directorio]\n");
+    printf("     synapse_v2.exe <archivo.syn>\n");
+    
+    if (argc > 1) {
+        // Compile a single file directly
+        char* src_path = argv[1];
+        FILE* sf = fopen(src_path, "rb");
+        if (!sf) { fprintf(stderr, "ERROR: archivo '%s' no encontrado\n", src_path); return 1; }
+        fseek(sf, 0, SEEK_END);
+        long slen = ftell(sf);
+        rewind(sf);
+        char* src = (char*)malloc(slen + 1);
+        fread(src, 1, slen, sf);
+        src[slen] = '\0';
+        fclose(sf);
+        
+        _P_ntks = 0; _P_tpos = 0; _P_p_err = 0;
+        _P_nivel_pila = 0; _P_pila_indent[0] = 0;
+        _P_tokenizar(src, slen);
+        struct Programa prog = _P_programa();
+        free(src);
+        
+        CadenaSegura ruta;
+        ruta.datos = src_path;
+        ruta.longitud = (int)strlen(src_path);
+        return generar(prog, ruta);
+    }
+    
     return 0;
 }

@@ -12,6 +12,7 @@ from ast_nodes import (
     Token, TokenID, DeclaracionExterna,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     NodoCoincidir, NodoCaso,
+    SentenciaEnviarCanal, ExprRecibirCanal, ExprCrearCanal,
 )
 from diagnostics import DiagnosticManager, ErrorCodes
 from symbol_table import SymbolTable, Simbolo
@@ -46,6 +47,9 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'volcar_ast': (['Programa', 'int'], 'nulo'),
     'crear_analizador': (['Programa'], 'int'),
     'analizar': (['int'], 'nulo'),
+    'canal_crear': (['int'], 'CanalConcurrencia*'),
+    'canal_enviar': (['CanalConcurrencia*', 'void*'], 'nulo'),
+    'canal_recibir': (['CanalConcurrencia*'], 'void*'),
 }
 
 
@@ -61,6 +65,7 @@ class AnalizadorSemantico:
         self._func_retorno: Optional[str] = None
         self._func_actual: Optional[str] = None
         self._estructuras: Dict[str, DefinicionEstructura] = {}
+        self._en_coincidir: bool = False
 
     def _token(self, linea: int, columna: int) -> Token:
         return Token(TokenID.IDENTIFIER, linea, columna)
@@ -212,16 +217,27 @@ class AnalizadorSemantico:
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
             self.tabla.salir_scope()
+        elif isinstance(nodo, SentenciaEnviarCanal):
+            self._inferir_tipo(nodo.canal) if nodo.canal else None
+            if nodo.valor and isinstance(nodo.valor, Identificador):
+                self._inferir_tipo(nodo.valor)
+                self.tabla.marcar_movido(nodo.valor.nombre)
         elif isinstance(nodo, LogLlamada):
             for a in nodo.argumentos:
                 self._inferir_tipo(a)
         elif isinstance(nodo, NodoCoincidir):
-            # Analizar la expresión objetivo
+            self._en_coincidir = True
             tipo_expr = self._inferir_tipo(nodo.expresion)
             
             # Para cada caso, extraer el nombre de variable y asignar tipo
             import re
             for caso in nodo.casos:
+                if caso.patron == '_':
+                    self.tabla.entrar_scope()
+                    for stmt in caso.cuerpo:
+                        self._analizar_sentencia(stmt)
+                    self.tabla.salir_scope()
+                    continue
                 match = re.match(r'(\w+)\((\w+)\)', caso.patron)
                 if match:
                     var_nombre = match.group(2)  # ej. "v" en "ok(v)"
@@ -261,6 +277,8 @@ class AnalizadorSemantico:
                         self._analizar_sentencia(stmt)
                     self.tabla.salir_scope()
 
+            self._en_coincidir = False
+
     def _inferir_tipo(self, nodo: Nodo) -> Optional[str]:
         if isinstance(nodo, LiteralNumero):
             return 'int'
@@ -277,6 +295,12 @@ class AnalizadorSemantico:
                     nombre=nodo.nombre
                 )
                 return None
+            if self.tabla.esta_movido(nodo.nombre):
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_VAR_MOVIDA,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=nodo.nombre
+                )
             return sim.tipo
         elif isinstance(nodo, OpBinaria):
             tipo_izq = self._inferir_tipo(nodo.izquierdo)
@@ -313,6 +337,8 @@ class AnalizadorSemantico:
                     return 'decimal'
                 if norm_izq == 'CadenaSegura' and norm_der == 'CadenaSegura' and nodo.operador in ('==', '!='):
                     return 'int'
+                if norm_izq == 'CadenaSegura' and norm_der == 'CadenaSegura' and nodo.operador == '+':
+                    return 'texto'
                 if norm_izq != norm_der:
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -388,6 +414,18 @@ class AnalizadorSemantico:
                 )
                 return None
             return campo.tipo
+        elif isinstance(nodo, ExprCrearCanal):
+            if nodo.capacidad:
+                self._inferir_tipo(nodo.capacidad)
+            return 'CanalConcurrencia*'
+        elif isinstance(nodo, ExprRecibirCanal):
+            self._inferir_tipo(nodo.canal)
+            if not self._en_coincidir:
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR,
+                    self._token(nodo.linea, nodo.columna)
+                )
+            return 'Resultado'
         return None
 
     def _inferir_tipo_llamada(self, nodo: LlamadaFuncion) -> Optional[str]:

@@ -1,3 +1,4 @@
+
 import sys
 from enum import Enum, auto
 from typing import Optional, List, Dict
@@ -27,6 +28,15 @@ class ErrorCodes(Enum):
     ERR_SEM_ARGUMENTOS_INVALIDOS = auto()
     ERR_SEM_ESTRUCTURA_NO_DEFINIDA = auto()
     ERR_SEM_CAMPO_NO_EXISTE = auto()
+    ERR_SEM_VAR_MOVIDA = auto()
+    ERR_SEM_ACCESO_MEMORIA_MOVIDA = auto()
+    ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = auto()
+    ERR_MANIFEST_NOT_FOUND = auto()
+    ERR_MODULE_STD_NOT_FOUND = auto()
+    ERR_MODULE_AXON_NOT_FOUND = auto()
+    ERR_DEP_NOT_DECLARED = auto()
+    ERR_LOCK_HASH_MISMATCH = auto()
+    ERR_GIT_FAILURE = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -52,6 +62,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Cantidad de argumentos inválida para '{nombre}': se esperaban {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Estructura '{nombre}' no definida",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "La estructura '{struct}' no tiene un campo '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Uso ilegal de variable ya movida '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acceso prohibido a memoria movida '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultado de canal sin desempaquetar '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifiesto axon.toml no encontrado en el directorio actual (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Módulo estándar '{modulo}' no encontrado. Sysroot corrupto (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependencia '{modulo}' no encontrada en axon_modules. Ejecute 'synapse construir' para descargar (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependencia '{modulo}' importada en el código pero no declarada en el manifiesto axon.toml (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Infracción criptográfica. El hash de la dependencia '{modulo}' no coincide con axon.lock (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Error de red o revisión Git inválida para la dependencia '{modulo}' (E-605)",
     },
     'en': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Expected {esperado}, found '{encontrado}'",
@@ -75,6 +94,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Invalid argument count for '{nombre}': expected {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Struct '{nombre}' not defined",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "Struct '{struct}' has no field '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Illegal use of already moved variable '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Forbidden access to moved memory '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Unpacked channel result '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "axon.toml manifest not found in current directory (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Standard module '{modulo}' not found. Corrupt Sysroot (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependency '{modulo}' not found in axon_modules. Run 'synapse construir' to download (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependency '{modulo}' imported in code but not declared in axon.toml manifest (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Cryptographic breach. Hash of dependency '{modulo}' does not match axon.lock (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Network error or invalid Git revision for dependency '{modulo}' (E-605)",
     },
     'fr': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Attendu {esperado}, trouve '{encontrado}'",
@@ -98,6 +126,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Nombre d'arguments invalide pour '{nombre}': attendu {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Structure '{nombre}' non definie",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "La structure '{struct}' n'a pas de champ '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Utilisation illegale de variable deja deplacee '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acces interdit a la memoire deplacee '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultat de canal non depaquete '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifest axon.toml introuvable dans le repertoire actuel (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Module standard '{modulo}' introuvable. Sysroot corrompu (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependance '{modulo}' introuvable dans axon_modules. Executez 'synapse construire' pour telecharger (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependance '{modulo}' importee dans le code mais non declaree dans le manifest axon.toml (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Breche cryptographique. Le hachage de la dependance '{modulo}' ne correspond pas a axon.lock (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Erreur reseau ou revision Git invalide pour la dependance '{modulo}' (E-605)",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -121,6 +158,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Numero de argumentos invalido para '{nombre}': esperado {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Estrutura '{nombre}' nao definida",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "A estrutura '{struct}' nao tem campo '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Uso ilegal de variavel ja movida '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acesso proibido a memoria movida '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultado de canal nao desempacotado '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifesto axon.toml nao encontrado no diretorio atual (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Modulo padrao '{modulo}' nao encontrado. Sysroot corrompido (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependencia '{modulo}' nao encontrada em axon_modules. Execute 'synapse construir' para baixar (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependencia '{modulo}' importada no codigo mas nao declarada no manifesto axon.toml (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violacao criptografica. O hash da dependencia '{modulo}' nao corresponde ao axon.lock (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Erro de rede ou revisao Git invalida para a dependencia '{modulo}' (E-605)",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -144,6 +190,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Ungueltige Argumentanzahl fuer '{nombre}': erwartet {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Struktur '{nombre}' nicht definiert",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "Struktur '{struct}' hat kein Feld '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Ungueltige Verwendung bereits verschobener Variable '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Verbotener Zugriff auf verschobenen Speicher '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Nicht entpacktes Kanal-Ergebnis '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "axon.toml-Manifest im aktuellen Verzeichnis nicht gefunden (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Standardmodul '{modulo}' nicht gefunden. Sysroot beschaeigt (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Abhaengigkeit '{modulo}' nicht in axon_modules gefunden. Fuehren Sie 'synapse construir' zum Herunterladen aus (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Abhaengigkeit '{modulo}' im Code importiert aber nicht im axon.toml-Manifest deklariert (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Kryptographische Sicherheitsverletzung. Der Hash der Abhaengigkeit '{modulo}' stimmt nicht mit axon.lock ueberein (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Netzwerkfehler oder ungueltige Git-Revision fuer Abhaengigkeit '{modulo}' (E-605)",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -167,6 +222,15 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS: "Numero di argomenti non valido per '{nombre}': previsti {esperados}",
         ErrorCodes.ERR_SEM_ESTRUCTURA_NO_DEFINIDA: "Struttura '{nombre}' non definita",
         ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE: "La struttura '{struct}' non ha un campo '{campo}'",
+        ErrorCodes.ERR_SEM_VAR_MOVIDA: "Uso illegale di variabile gia spostata '{nombre}' (E-501)",
+        ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Accesso vietato alla memoria spostata '{nombre}' (E-502)",
+        ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Risultato canale non spacchettato '{nombre}' (E-503)",
+        ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifesto axon.toml non trovato nella directory corrente (E-600)",
+        ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Modulo standard '{modulo}' non trovato. Sysroot corrotto (E-601)",
+        ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dipendenza '{modulo}' non trovata in axon_modules. Eseguire 'synapse costruire' per scaricare (E-602)",
+        ErrorCodes.ERR_DEP_NOT_DECLARED: "Dipendenza '{modulo}' importata nel codice ma non dichiarata nel manifesto axon.toml (E-603)",
+        ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violazione crittografica. L'hash della dipendenza '{modulo}' non corrisponde a axon.lock (E-604)",
+        ErrorCodes.ERR_GIT_FAILURE: "Errore di rete o revisione Git non valida per la dipendenza '{modulo}' (E-605)",
     },
 }
 

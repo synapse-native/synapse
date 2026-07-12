@@ -13,6 +13,29 @@ from exceptions import SynapseError
 
 _SERVER_RUNNING = True
 
+# ──────────────────────────────────────────────────────────────────────
+# Document Store — mantiene el AST en memoria para hover, completions, etc.
+# Restricción arquitectónica: máximo 100 documentos abiertos para evitar
+# degradación de RAM.
+# ──────────────────────────────────────────────────────────────────────
+
+_MAX_DOCS = 100
+_DOCS: dict[str, dict] = {}  # uri -> {texto, ast, version}
+
+
+def _almacenar_documento(uri: str, texto: str, ast=None, version: int = 1) -> None:
+    if len(_DOCS) >= _MAX_DOCS:
+        _DOCS.pop(next(iter(_DOCS)))
+    _DOCS[uri] = {"texto": texto, "ast": ast, "version": version}
+
+
+def _eliminar_documento(uri: str) -> None:
+    _DOCS.pop(uri, None)
+
+
+def _obtener_documento(uri: str) -> Optional[dict]:
+    return _DOCS.get(uri)
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Transport Layer — raw stdin reader for Content-Length framing
@@ -80,7 +103,18 @@ def _enviar_notificacion(metodo: str, params: Any) -> None:
 
 # ═══════════════════════════════════════════════════════════════════════
 # Conversión de errores internos → Diagnostics LSP
+#
+# Los errores de ownership (E-501, E-502, E-503) se convierten con
+# severidad 1 (Error) para que aparezcan como líneas rojas onduladas
+# en el editor en el momento exacto de la infracción.
 # ═══════════════════════════════════════════════════════════════════════
+
+_CODIGOS_OWNERSHIP = frozenset({
+    "ERR_SEM_VAR_MOVIDA",
+    "ERR_SEM_ACCESO_MEMORIA_MOVIDA",
+    "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR",
+})
+
 
 def _errores_a_diagnostics(errores: list) -> list:
     lsp_diags = []
@@ -90,13 +124,15 @@ def _errores_a_diagnostics(errores: list) -> list:
         codigo = err.get("codigo", "")
         if hasattr(codigo, "name"):
             codigo = codigo.name
+        codigo_str = str(codigo)
+
         lsp_diags.append({
             "range": {
                 "start": {"line": max(0, syn_linea - 1), "character": syn_columna},
                 "end": {"line": max(0, syn_linea - 1), "character": syn_columna + 1},
             },
             "severity": 1,
-            "code": str(codigo),
+            "code": codigo_str,
             "source": "synapse",
             "message": err.get("mensaje", "Error desconocido"),
         })
@@ -162,6 +198,9 @@ def validar_documento(uri: str, codigo_fuente: str) -> list:
         sys.stderr.write(f"[LSP] Semantic exception: {exc}\n{traceback.format_exc()}\n")
         sys.stderr.flush()
 
+    # Almacenar el AST en el document store para hover/completions
+    _almacenar_documento(uri, codigo_fuente, ast)
+
     return diag.errores
 
 
@@ -181,6 +220,186 @@ def _enviar_diagnostics_archivo(uri: str, texto: str) -> None:
         })
     except Exception:
         pass
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Manejador de Hover — expone contratos (requiere/garantiza)
+#
+# Cuando el usuario pasa el cursor sobre una función, el LSP responde
+# con su firma completa y los bloques de requiere/garantiza.
+# ═══════════════════════════════════════════════════════════════════════
+
+def _nodo_a_texto(expr) -> str:
+    """Convierte un nodo de expresión a su representación Synapse."""
+    from ast_nodes import (
+        LiteralNumero, LiteralDecimal, LiteralCadena, Identificador,
+        OpBinaria, OpUnaria, LlamadaFuncion, ExprAccesoCampo,
+    )
+    if isinstance(expr, LiteralNumero):
+        return str(expr.valor)
+    if isinstance(expr, LiteralDecimal):
+        return str(expr.valor)
+    if isinstance(expr, LiteralCadena):
+        return f'"{expr.valor}"'
+    if isinstance(expr, Identificador):
+        return expr.nombre
+    if isinstance(expr, OpBinaria):
+        izq = _nodo_a_texto(expr.izquierdo)
+        der = _nodo_a_texto(expr.derecho)
+        return f"({izq} {expr.operador} {der})"
+    if isinstance(expr, OpUnaria):
+        return f"({expr.operador}{_nodo_a_texto(expr.expr)})"
+    if isinstance(expr, LlamadaFuncion):
+        args = ", ".join(_nodo_a_texto(a) for a in expr.argumentos)
+        return f"{expr.nombre}({args})"
+    if isinstance(expr, ExprAccesoCampo):
+        return f"{_nodo_a_texto(expr.objeto)}.{expr.nombre_campo}"
+    return "?"
+
+
+def _construir_hover_funcion(fn) -> Optional[dict]:
+    """Construye contenido hover para una DefinicionFuncion."""
+    from ast_nodes import DefinicionFuncion
+    if not isinstance(fn, DefinicionFuncion):
+        return None
+
+    params_str = ", ".join(f"{p.nombre}: {p.tipo}" for p in fn.parametros)
+    ret = fn.tipo_retorno if fn.tipo_retorno else "nulo"
+
+    lines = [f"```synapse"]
+    lines.append(f"funcion {fn.nombre}({params_str}) -> {ret}")
+
+    if fn.requiere:
+        lines.append("    requiere:")
+        for r in fn.requiere:
+            lines.append(f"        {_nodo_a_texto(r)}")
+
+    if fn.garantiza:
+        lines.append("    garantiza:")
+        for g in fn.garantiza:
+            lines.append(f"        {_nodo_a_texto(g)}")
+
+    lines.append("```")
+    markdown = "\n".join(lines)
+
+    return {
+        "contents": {
+            "kind": "markdown",
+            "value": markdown,
+        }
+    }
+
+
+def _manejar_hover(msg: dict) -> Optional[dict]:
+    """Responde a textDocument/hover buscando la función en la posición del cursor."""
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+    pos = params.get("position", {})
+    linea = pos.get("line", 0)      # 0-based
+    columna = pos.get("character", 0)  # 0-based
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None or doc_info["ast"] is None:
+        return None
+
+    from ast_nodes import Programa, DefinicionFuncion, LlamadaFuncion
+
+    ast = doc_info["ast"]
+    if not isinstance(ast, Programa):
+        return None
+
+    texto = doc_info["texto"]
+    lineas = texto.split("\n")
+
+    from ast_nodes import DefinicionFuncion as _DF
+
+    # Buscar la función en cuyo rango de definición cae el cursor
+    for s in ast.sentencias:
+        if isinstance(s, _DF):
+            fn_linea = s.linea - 1
+            if fn_linea == linea:
+                resultado = _construir_hover_funcion(s)
+                if resultado:
+                    return resultado
+
+            # Buscar llamadas dentro del cuerpo de la función
+            for stmt in s.cuerpo:
+                resultado = _buscar_llamada_en_nodo(stmt, linea, columna, ast)
+                if resultado:
+                    return resultado
+
+    return None
+
+
+def _buscar_llamada_en_nodo(nodo, linea: int, columna: int, programa) -> Optional[dict]:
+    """Busca recursivamente una LlamadaFuncion en la posición dada y resuelve su definición."""
+    from ast_nodes import (
+        DefinicionFuncion, LlamadaFuncion, SentenciaExpr, AsignacionVariable,
+        SentenciaSi, SentenciaMientras, SentenciaRetornar,
+        OpBinaria, OpUnaria, ExprAccesoCampo,
+    )
+
+    if hasattr(nodo, 'linea') and hasattr(nodo, 'columna'):
+        if nodo.linea - 1 == linea:
+            pass  # podría estar en la línea correcta
+
+    if isinstance(nodo, LlamadaFuncion):
+        if nodo.linea - 1 == linea:
+            # Resolver la definición de la función llamada
+            for s in programa.sentencias:
+                if isinstance(s, DefinicionFuncion) and s.nombre == nodo.nombre:
+                    return _construir_hover_funcion(s)
+        return None
+
+    # Recorrer hijos según el tipo de nodo
+    if isinstance(nodo, SentenciaExpr):
+        return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
+
+    if isinstance(nodo, AsignacionVariable):
+        return _buscar_llamada_en_nodo(nodo.expresion, linea, columna, programa)
+
+    if type(nodo).__name__ == 'SentenciaRetornar':
+        if nodo.expr:
+            return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
+
+    if isinstance(nodo, OpBinaria):
+        r = _buscar_llamada_en_nodo(nodo.izquierdo, linea, columna, programa)
+        if r:
+            return r
+        return _buscar_llamada_en_nodo(nodo.derecho, linea, columna, programa)
+
+    if isinstance(nodo, OpUnaria):
+        return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
+
+    if isinstance(nodo, ExprAccesoCampo):
+        return _buscar_llamada_en_nodo(nodo.objeto, linea, columna, programa)
+
+    if isinstance(nodo, SentenciaSi):
+        r = _buscar_llamada_en_nodo(nodo.condicion, linea, columna, programa)
+        if r:
+            return r
+        for s in (nodo.cuerpo or []):
+            r = _buscar_llamada_en_nodo(s, linea, columna, programa)
+            if r:
+                return r
+        for s in (nodo.cuerpo_sino or []):
+            r = _buscar_llamada_en_nodo(s, linea, columna, programa)
+            if r:
+                return r
+        return None
+
+    if isinstance(nodo, SentenciaMientras):
+        r = _buscar_llamada_en_nodo(nodo.condicion, linea, columna, programa)
+        if r:
+            return r
+        for s in (nodo.cuerpo or []):
+            r = _buscar_llamada_en_nodo(s, linea, columna, programa)
+            if r:
+                return r
+        return None
+
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -204,10 +423,11 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
                         "change": 1,
                         "save": {"includeText": True},
                     },
+                    "hoverProvider": True,
                 },
                 "serverInfo": {
                     "name": "synapse-lsp",
-                    "version": "0.1.0",
+                    "version": "0.2.0",
                 },
             },
         }
@@ -217,6 +437,7 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
 
     if metodo == "shutdown":
         _SERVER_RUNNING = False
+        _DOCS.clear()
         return {"jsonrpc": "2.0", "id": msg_id, "result": None}
 
     if metodo == "exit":
@@ -238,6 +459,7 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
 
     if metodo == "textDocument/didClose":
         uri = msg.get("params", {}).get("textDocument", {}).get("uri", "")
+        _eliminar_documento(uri)
         notif = {
             "jsonrpc": "2.0",
             "method": "textDocument/publishDiagnostics",
@@ -245,6 +467,14 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
         }
         _enviar_respuesta(notif)
         return None
+
+    if metodo == "textDocument/hover":
+        resultado = _manejar_hover(msg)
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": resultado,
+        }
 
     if msg_id is not None:
         return {"jsonrpc": "2.0", "id": msg_id, "result": None}

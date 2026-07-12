@@ -1,0 +1,14 @@
+#lang: es
+
+funcion productor(ch: CanalConcurrencia*) -> nulo:
+    x = 42
+    ch <- x
+
+funcion consumidor(ch: CanalConcurrencia*) -> nulo:
+    resultado = ch ->
+    log("Recibido")
+
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar productor(ch)
+    lanzar consumidor(ch)

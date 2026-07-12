@@ -1,0 +1,39 @@
+#lang: es
+// std.json — Deserializador JSON mediante Tipos Algebraicos (ADT)
+// Integrante de la Biblioteca Estandar de Synapse v1.5.0
+
+importar std.err
+
+estructura ParJson:
+    clave: texto
+    valor: NodoJson
+
+estructura NodoJson:
+    tipo: entero
+    valor_bool: entero
+    valor_num: decimal
+    valor_str: texto
+    arreglo_hijos: NodoJson
+    objeto_pares: ParJson
+    longitud: entero
+
+// Constantes de tipo (usar enteros literales: 0=Nulo, 1=Booleano, etc.)
+
+externo funcion _json_parse(entrada: texto) -> NodoJson
+externo funcion _json_nodo_new() -> NodoJson
+externo funcion _json_nodo_liberar(n: NodoJson) -> nulo
+externo funcion _json_array_get(nodo: NodoJson, indice: entero) -> NodoJson
+externo funcion _json_object_get(nodo: NodoJson, clave: texto) -> NodoJson
+
+funcion desde_texto(entrada: cadena) -> NodoJson:
+    retornar _json_parse(entrada)
+
+funcion liberar_nodo(-> n: NodoJson) -> nulo:
+    _json_nodo_liberar(n)
+    retornar
+
+funcion obtener_elemento(nodo: NodoJson, indice: entero) -> NodoJson:
+    retornar _json_array_get(nodo, indice)
+
+funcion obtener_campo(nodo: NodoJson, clave: cadena) -> NodoJson:
+    retornar _json_object_get(nodo, clave)

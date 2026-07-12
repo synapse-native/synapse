@@ -26,6 +26,9 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
         'coincidir': TokenID.MATCH,
+        'requiere': TokenID.REQUIERE,
+        'garantiza': TokenID.GARANTIZA,
+        'canal': TokenID.CANAL,
     },
     'en': {
         'if': TokenID.IF,
@@ -189,6 +192,7 @@ TOKEN_BICARACTER: dict[str, TokenID] = {
     '!=': TokenID.NOT_EQUALS,
     '<=': TokenID.LESS_EQUALS,
     '>=': TokenID.GREATER_EQUALS,
+    '<-': TokenID.ARROW_LEFT,
 }
 
 
@@ -285,6 +289,8 @@ class Lexer:
                             valor_chars.append('\n')
                         elif ch == 't':
                             valor_chars.append('\t')
+                        elif ch == 'r':
+                            valor_chars.append('\r')
                         elif ch == '\\':
                             valor_chars.append('\\')
                         elif ch == comilla:

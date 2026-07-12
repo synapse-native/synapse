@@ -1,0 +1,4 @@
+[proyecto]
+nombre = "synapse"
+version = "2.0.0"
+punto_entrada = "src/main.syn"

@@ -1,7 +1,13 @@
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import List, Dict, Optional
 
 from ast_nodes import Nodo
+
+
+class Propiedad(Enum):
+    VIVO = auto()
+    MOVIDO = auto()
 
 
 @dataclass
@@ -10,6 +16,7 @@ class Simbolo:
     tipo: str
     nodo: Optional[Nodo] = None
     scope_level: int = 0
+    propiedad: Propiedad = Propiedad.VIVO
 
 
 class SymbolTable:
@@ -38,3 +45,16 @@ class SymbolTable:
             if nombre in scope:
                 return scope[nombre]
         return None
+
+    def marcar_movido(self, nombre: str) -> bool:
+        sim = self.buscar(nombre)
+        if sim is None:
+            return False
+        sim.propiedad = Propiedad.MOVIDO
+        return True
+
+    def esta_movido(self, nombre: str) -> bool:
+        sim = self.buscar(nombre)
+        if sim is None:
+            return False
+        return sim.propiedad == Propiedad.MOVIDO
