@@ -4,7 +4,7 @@ import stat
 import zipfile
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-VERSION = "v1.5.0"
+VERSION = "v2.0.0"
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 
 def remove_readonly(func, path, excinfo):
