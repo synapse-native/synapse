@@ -1,0 +1,50 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            artifact_name: synapse-linux-amd64
+            ext: ""
+
+          - os: macos-latest
+            cc: clang
+            artifact_name: synapse-darwin-arm64
+            ext: ""
+
+          - os: windows-latest
+            cc: gcc
+            artifact_name: synapse-windows-amd64
+            ext: .exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar dependencias (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y gcc libpthread-stubs0-dev
+
+      - name: Compilar runtime
+        run: ${{ matrix.cc }} -c synapse_rt.c -o synapse_rt.o -lpthread
+
+      - name: Compilar binario principal
+        run: ${{ matrix.cc }} -o ${{ matrix.artifact_name }}${{ matrix.ext }} main.c synapse_rt.o -lpthread
+
+      - name: Subir artefacto al Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ matrix.artifact_name }}${{ matrix.ext }}
