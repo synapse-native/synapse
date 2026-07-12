@@ -1,5 +1,5 @@
 # ROADMAP DE MADUREZ: Synapse Native 
-**Estado Actual:** Release Candidate (v2.0.0-rc1)
+**Estado Actual:** Estable (v2.0.0)
 **Objetivo:** Lenguaje de Sistemas de Grado Industrial, Auto-Alojado, con Cero Fugas de Memoria.
 
 | Fase | Hito Principal | Estado | Verificación |
@@ -19,5 +19,5 @@
 * **Prioridad Cero (P0):** Ninguna.
 * **Prioridad Baja (P3):** Implementar monomorfización de genéricos en C a largo plazo (actualmente mitigado mediante abstracción segura y type-casting encapsulado en FFI).
 
-## Hitos de la Versión 2.0 (Lanzamiento Inminente)
+## Hitos de la Versión 2.0 (Lanzamiento Estable)
 El compilador ahora es un Monolito Operativo. El gestor Axon, la librería estándar de red, los parsers de JSON/TOML y el generador con recolección de basura estática (RAII) están integrados en un único binario ejecutable independiente del SO anfitrión.

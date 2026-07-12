@@ -5,7 +5,7 @@
 Un solo comando:
 
 ```powershell
-powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.0.0-rc1/instalar.ps1 | iex"
+powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.0.0/instalar.ps1 | iex"
 ```
 
 Esto descarga el binario a `C:\Synapse\synapse.exe` y agrega el directorio al `PATH` del usuario.

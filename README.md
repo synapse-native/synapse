@@ -1,55 +1,53 @@
-# Synapse v1.5.0 — Lenguaje políglota de sistemas para inferencia local
+Synapse Native | Infraestructura para la Soberanía
+Bienvenido a la casa del ecosistema Synapse v2.0.
 
-## Características Clave
-- **Hilos asíncronos nativos (`lanzar`):** Ejecuta funciones en hilos del sistema operativo con un solo comando. La concurrencia es un ciudadano de primera clase.
-- **Auto-Wait automático:** El runtime espera a que todos los hilos lanzados finalicen antes de cerrar el proceso principal, eliminando bucles de espera activa.
-- **Auto-Linker integrado con GCC:** El compilador invoca GCC automáticamente para producir el ejecutable final. No hay pasos manuales de linkeo.
-- **I/O thread-safe:** Las funciones de entrada/salida (`log`, `escribir`) están protegidas por mutex, seguras para usar desde múltiples hilos.
-- **Pool Allocator seguro para hilos (Mutex):** Gestión de memoria determinista con bloques fijos y protección pthread, sin GC ni malloc/free caótico.
-- **Compilación directa a C nativo:** Sin dependencias pesadas. El binario del compilador es autocontenido y genera C puro vinculable a un runtime propio.
-- **Evaluación lógica de cortocircuito:** Los operadores `y`/`o` evalúan en cortocircuito, optimizando flujos booleanos sin efectos secundarios innecesarios.
-- **Tensor como ciudadano de primera clase:** Tipo `Tensor` 2D con producto punto, suma y ReLU como operaciones nativas del lenguaje.
+Synapse no es un experimento. Es un lenguaje de programación de sistemas de grado industrial, 100% auto-alojado, diseñado para resolver la crisis de soberanía de datos y la ineficiencia de los entornos de ejecución modernos. Nuestro objetivo es simple: llevar el máximo rendimiento nativo a la infraestructura crítica y la Inteligencia Artificial del borde (Edge AI), sin la burocracia de los intérpretes ni el peso de las máquinas virtuales.
 
-## Novedades v1.5.0
-- **Modo de Memoria Insegura y FFI:** Soporte oficial para `importar_c`, `externo`, bloques `inseguro` y punteros nativos `*` / `&`.
-- **Layouts de memoria estrictos:** Control explícito de estructuras y acceso de punteros para interoperabilidad binaria segura.
-- **Librería estándar del sistema:** Incluye los módulos `std.fs` y `std.sys` para operaciones de archivos y sistema desde Synapse.
-- **Compatibilidad ampliada:** El compilador ahora empaqueta la carpeta `std/` junto al runtime para su distribución.
+⚡ La Visión
+El software moderno ha olvidado cómo hablar con el silicio. Hemos construido una torre de abstracciones (intérpretes, recolectores de basura, gestores de paquetes pesados) que sacrifican el control del hardware en favor de una comodidad ilusoria.
 
-## Instalación Rápida (One-Liner)
+Synapse rompe este paradigma garantizando:
 
-Abre PowerShell y ejecuta:
+El Monolito Operativo (Cero Dependencias): Todo el ecosistema (Compilador, Lexer, Parser, Analizador Semántico y Linker) vive en un solo binario autónomo (synapse.exe). No requiere Python, ni C, ni librerías dinámicas externas.
 
-```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/synapse-native/core/main/install.ps1" -UseBasicParsing | Invoke-Expression
-```
+Seguridad Zero-Cost (RAII Estático): Memoria determinista sin Recolector de Basura (GC). El compilador es consciente del ámbito y teje la red de seguridad inyectando destructores automáticamente en tiempo de compilación. Cero fugas, cero pausas.
 
-El script descargará la última versión, la instalará en `C:\Synapse`, configurará el PATH del usuario y activará el coloreado sintáctico en VS Code automáticamente.
+Concurrencia Zero-Copy: El paso de mensajes a través de canales sin estado compartido. El Analizador Semántico previene las condiciones de carrera (data races) por diseño estructural.
 
-## Instalación Manual
-1. Descarga `synapse-v1.5.0-windows-x64.zip` desde [Releases](https://github.com/synapse-native/core/releases).
-2. Extrae en `C:\Synapse`.
-3. Ejecuta `install.ps1` (clic derecho → "Ejecutar con PowerShell").
-4. Reinicia tu terminal. Ahora `synapse` está disponible globalmente.
+Gestión Criptográfica (Axon): Gestor de dependencias integrado nativamente. Las librerías se fijan mediante hashes inmutables SHA-256 (axon.lock), garantizando compilaciones 100% reproducibles.
 
-## Synapse v1.4.0 — Concurrencia Nativa
+📦 Arquitectura del Repositorio Único
+En Synapse no fragmentamos el conocimiento. Todo el ecosistema reside en este único repositorio, garantizando que el compilador y su librería estándar evolucionen en perfecta sincronía:
 
-Synapse ahora soporta hilos asíncronos reales del sistema operativo mediante la instrucción `lanzar`, con protección automática de I/O y sincronización de ciclo de vida.
+/src: El código fuente del compilador (ahora escrito íntegramente en Synapse puro).
 
-```synapse
-lanzar hilo_trabajador(parametro)
+/librerias/std: El Sysroot nativo. Incluye redes TCP (std.net), deserializadores sin memoria dinámica manual (std.json, std.toml), interacción con el SO y fundaciones de tensores matemáticos.
 
-# Al finalizar principal(), el runtime
-# espera automáticamente todos los hilos
-```
+/vscode-extension: Nuestro cliente LSP (Language Server Protocol) para una experiencia de desarrollo (DX) impecable.
 
-### Mecanismo Interno
-- **Thread Tracker:** Contador atómico de hilos activos con variable de condición (`pthread_cond_t`). Cuando un hilo termina, decrementa el contador y emite broadcast si llega a cero.
-- **synapse_esperar_hilos():** Se inyecta automáticamente al final de `main()` en el C generado. Bloquea con `pthread_cond_wait` hasta que todos los hilos lancen hayan finalizado.
-- **synapse_lanzar_hilo():** Reserva un `_HiloArgs`, llama a `pthread_create` con un wrapper interno y hace `pthread_detach`. La función wrapper ejecuta el closure del usuario y gestiona el contador.
-- **Auto-Linker:** El generador invoca GCC automáticamente tras escribir el `.c`, sin intervención manual.
-- **I/O Thread-Safe:** `escribir()` y `escribir_linea()` usan `io_mutex` global para evitar entremezclado de salida entre hilos.
+/docs: El código fuente de "El Libro de Synapse" (nuestra especificación oficial).
 
-## Arquitectura Interna
-- **Frontend:** Python (lexer, parser, generador de AST canónico en JSON).
-- **Backend:** Generación de C puro + runtime propio (`synapse_rt.o`) con pool allocator, tensores y concurrencia pthread.
+🚀 Instalación de Fricción Cero
+Instala Synapse v2.0 y configúralo en tu sistema operativo en menos de 5 segundos con un solo comando:
+
+Windows (PowerShell Administrador):
+
+PowerShell
+powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.0.0/instalar.ps1 | iex"
+(Nota: El compilador ahora distribuye binarios nativos multiplataforma para Windows, Linux y macOS ARM64).
+
+🛡️ Filosofía de Colaboración
+No construimos para "lo que está de moda". Construimos para lo que es técnicamente superior y perdurable:
+
+Estabilidad antes que características: Preferimos un lenguaje pequeño, estricto y predecible a uno masivo y caótico.
+
+Soberanía del Código: Nuestra librería estándar no depende de librerías de terceros (cero left-pad). Synapse puede compilarse en entornos air-gapped (sin internet).
+
+Auditoría y Transparencia: Todo el código en esta organización debe ser auditable a nivel de puntero de C, limpio y brutalmente eficiente.
+
+📄 Licencia y Documentación
+Licencia: Distribuido bajo la Licencia MIT. Creemos en el software como herramienta de libertad tecnológica.
+
+Aprende Synapse: Lee nuestra documentación oficial y domina el manejo de memoria en El Libro de Synapse.
+
+¿Quieres ser parte de la infraestructura del futuro? Únete a la singularidad.

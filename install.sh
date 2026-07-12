@@ -3,7 +3,7 @@ set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/lib/synapse}"
 BIN_PATH="/usr/local/bin/synapse"
-VERSION="v2.0.0-rc1"
+VERSION="v2.0.0"
 REPO="synapse-native/synapse"
 DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/synapse-windows-amd64.exe"
 

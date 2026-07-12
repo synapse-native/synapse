@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $InstallDir = "C:\Synapse"
-$ExeUrl = "https://github.com/synapse-native/synapse/releases/download/v2.0.0-rc1/synapse-windows-amd64.exe"
+$ExeUrl = "https://github.com/synapse-native/synapse/releases/download/v2.0.0/synapse-windows-amd64.exe"
 $ExePath = "$InstallDir\synapse.exe"
 
 Write-Host "Synapse v2.0 - Instalador Automatico" -ForegroundColor Cyan
