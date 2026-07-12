@@ -43,3 +43,11 @@ dist/
 
 # Editor
 .editorconfig
+
+# Node
+node_modules/
+package-lock.json
+
+# VS Code extension build
+vscode-extension/out/
+*.vsix
