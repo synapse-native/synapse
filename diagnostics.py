@@ -37,6 +37,7 @@ class ErrorCodes(Enum):
     ERR_DEP_NOT_DECLARED = auto()
     ERR_LOCK_HASH_MISMATCH = auto()
     ERR_GIT_FAILURE = auto()
+    ERR_SEM_ASM_FUERA_INSEGURO = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -71,6 +72,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependencia '{modulo}' importada en el código pero no declarada en el manifiesto axon.toml (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Infracción criptográfica. El hash de la dependencia '{modulo}' no coincide con axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Error de red o revisión Git inválida para la dependencia '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
     },
     'en': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Expected {esperado}, found '{encontrado}'",
@@ -103,6 +105,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependency '{modulo}' imported in code but not declared in axon.toml manifest (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Cryptographic breach. Hash of dependency '{modulo}' does not match axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Network error or invalid Git revision for dependency '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
     },
     'fr': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Attendu {esperado}, trouve '{encontrado}'",
@@ -135,6 +138,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependance '{modulo}' importee dans le code mais non declaree dans le manifest axon.toml (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Breche cryptographique. Le hachage de la dependance '{modulo}' ne correspond pas a axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Erreur reseau ou revision Git invalide pour la dependance '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() ne peut etre utilise qu'a l'interieur d'un bloc 'dangereux:'",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -167,6 +171,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Dependencia '{modulo}' importada no codigo mas nao declarada no manifesto axon.toml (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violacao criptografica. O hash da dependencia '{modulo}' nao corresponde ao axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Erro de rede ou revisao Git invalida para a dependencia '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() so pode ser usado dentro de um bloco 'inseguro:'",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -199,6 +204,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Abhaengigkeit '{modulo}' im Code importiert aber nicht im axon.toml-Manifest deklariert (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Kryptographische Sicherheitsverletzung. Der Hash der Abhaengigkeit '{modulo}' stimmt nicht mit axon.lock ueberein (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Netzwerkfehler oder ungueltige Git-Revision fuer Abhaengigkeit '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() kann nur innerhalb eines 'unsicher:' Blocks verwendet werden",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -231,6 +237,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_DEP_NOT_DECLARED: "Dipendenza '{modulo}' importata nel codice ma non dichiarata nel manifesto axon.toml (E-603)",
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violazione crittografica. L'hash della dipendenza '{modulo}' non corrisponde a axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Errore di rete o revisione Git non valida per la dipendenza '{modulo}' (E-605)",
+        ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() puo essere usato solo all'interno di un blocco 'non_sicuro:'",
     },
 }
 

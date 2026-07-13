@@ -1,0 +1,6 @@
+#lang: es
+#pragma: no_std
+
+funcion principal() -> nulo:
+    inseguro:
+        asm("nop")

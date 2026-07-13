@@ -1,9 +1,9 @@
 $ErrorActionPreference = "Stop"
 $InstallDir = "C:\Synapse"
-$ExeUrl = "https://github.com/synapse-native/synapse/releases/download/v2.0.0/synapse-windows-amd64.exe"
+$ExeUrl = "https://github.com/synapse-native/synapse/releases/download/v2.1.0/synapse-windows-amd64.exe"
 $ExePath = "$InstallDir\synapse.exe"
 
-Write-Host "Synapse v2.0 - Instalador Automatico" -ForegroundColor Cyan
+Write-Host "Synapse v2.1 - Instalador Automatico" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
 
 if (-not (Test-Path $InstallDir)) {
@@ -34,5 +34,5 @@ try {
 }
 
 Write-Host ""
-Write-Host "🚀 Synapse v2.0 instalado con éxito." -ForegroundColor Green
+Write-Host "🚀 Synapse v2.1 instalado con éxito." -ForegroundColor Green
 Write-Host "Reinicia tu terminal para usar el comando 'synapse'." -ForegroundColor Cyan

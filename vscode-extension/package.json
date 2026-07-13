@@ -2,7 +2,7 @@
     "name": "synapse-native",
     "displayName": "Synapse Language",
     "description": "Synapse programming language support - syntax highlighting and LSP client",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "publisher": "synapse-native",
     "license": "MIT",
     "repository": {

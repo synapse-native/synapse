@@ -1,5 +1,5 @@
 # ROADMAP DE MADUREZ: Synapse Native 
-**Estado Actual:** Estable (v2.0.0)
+**Estado Actual:** Estable (v2.1.0)
 **Objetivo:** Lenguaje de Sistemas de Grado Industrial, Auto-Alojado, con Cero Fugas de Memoria.
 
 | Fase | Hito Principal | Estado | Verificación |

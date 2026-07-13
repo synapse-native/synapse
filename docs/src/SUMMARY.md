@@ -9,3 +9,4 @@
 - [Integración con C](integracion-c.md)
 - [El Ecosistema Axon](ecosistema-axon.md)
 - [Librería Estándar](libreria-estandar.md)
+- [Programación Bare-Metal (Ring 0)](programacion-bare-metal.md)

@@ -1,5 +1,5 @@
 Synapse Native | Infraestructura para la Soberanía
-Bienvenido a la casa del ecosistema Synapse v2.0.
+Bienvenido a la casa del ecosistema Synapse v2.1.
 
 Synapse no es un experimento. Es un lenguaje de programación de sistemas de grado industrial, 100% auto-alojado, diseñado para resolver la crisis de soberanía de datos y la ineficiencia de los entornos de ejecución modernos. Nuestro objetivo es simple: llevar el máximo rendimiento nativo a la infraestructura crítica y la Inteligencia Artificial del borde (Edge AI), sin la burocracia de los intérpretes ni el peso de las máquinas virtuales.
 
@@ -16,6 +16,8 @@ Concurrencia Zero-Copy: El paso de mensajes a través de canales sin estado comp
 
 Gestión Criptográfica (Axon): Gestor de dependencias integrado nativamente. Las librerías se fijan mediante hashes inmutables SHA-256 (axon.lock), garantizando compilaciones 100% reproducibles.
 
+Ring 0 / Bare-Metal: Synapse ahora compila para entornos sin sistema operativo (bare-metal). La directiva `#pragma: no_std` elimina toda dependencia de la biblioteca estándar de C, activa el modo `-ffreestanding` y genera un `main(void)` minimalista. Incluye soporte para ensamblador inline (`inseguro: asm("...")`) y la capacidad de reemplazar el asignador de memoria global mediante `__syn_asignar`/`__syn_liberar`, ideal para desarrollo de kernels, bootloaders y firmware.
+
 📦 Arquitectura del Repositorio Único
 En Synapse no fragmentamos el conocimiento. Todo el ecosistema reside en este único repositorio, garantizando que el compilador y su librería estándar evolucionen en perfecta sincronía:
 
@@ -28,12 +30,12 @@ En Synapse no fragmentamos el conocimiento. Todo el ecosistema reside en este ú
 /docs: El código fuente de "El Libro de Synapse" (nuestra especificación oficial).
 
 🚀 Instalación de Fricción Cero
-Instala Synapse v2.0 y configúralo en tu sistema operativo en menos de 5 segundos con un solo comando:
+Instala Synapse v2.1 y configúralo en tu sistema operativo en menos de 5 segundos con un solo comando:
 
 Windows (PowerShell Administrador):
 
 PowerShell
-powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.0.0/instalar.ps1 | iex"
+powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.1.0/instalar.ps1 | iex"
 (Nota: El compilador ahora distribuye binarios nativos multiplataforma para Windows, Linux y macOS ARM64).
 
 🛡️ Filosofía de Colaboración

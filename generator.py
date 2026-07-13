@@ -12,6 +12,7 @@ from ast_nodes import (
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
     ExprCrearCanal, SentenciaEnviarCanal, ExprRecibirCanal,
+    ExprAsm,
 )
 
 
@@ -34,6 +35,7 @@ MAPA_TIPOS_C: dict[str, str] = {
     'void': 'void',
     'char': 'char',
     'double': 'double',
+    'puntero': 'void*',
 }
 
 
@@ -158,6 +160,32 @@ class GeneradorC:
         self._in_function_scope = False
         self._garantizas_actuales: List[Nodo] = []
 
+    # --- Allocator helper: redirects to __syn_asignar/__syn_liberar in no_std ---
+    def _syn_malloc(self, size_expr: str) -> str:
+        if self.programa.is_no_std:
+            return f'__syn_asignar({size_expr})'
+        return f'malloc({size_expr})'
+
+    def _syn_calloc(self, n_expr: str, size_expr: str) -> str:
+        if self.programa.is_no_std:
+            return f'__syn_asignar({n_expr} * {size_expr})'
+        return f'calloc({n_expr}, {size_expr})'
+
+    def _syn_free(self, ptr_expr: str) -> str:
+        if self.programa.is_no_std:
+            return f'__syn_liberar({ptr_expr})'
+        return f'free({ptr_expr})'
+
+    def _syn_pool_alloc(self, size_expr: str) -> str:
+        if self.programa.is_no_std:
+            return f'__syn_asignar({size_expr})'
+        return f'_pool_malloc({size_expr})'
+
+    def _syn_pool_free(self, ptr_expr: str) -> str:
+        if self.programa.is_no_std:
+            return f'__syn_liberar({ptr_expr})'
+        return f'pool_free({ptr_expr})'
+
     def _push(self, linea: str = ""):
         if linea == "":
             self.lineas.append("")
@@ -211,33 +239,34 @@ class GeneradorC:
             elif isinstance(s, DeclaracionExterna):
                 self._func_return_types[s.nombre] = s.tipo_retorno
         self._emitir_encabezado()
-        # Builtins de sistema siempre presentes
-        self._push("static int _g_argc;")
-        self._push("static char** _g_argv;")
-        self._push("int _argc() { return _g_argc; }")
-        self._push("")
-        self._push("CadenaSegura _argv(int i) {")
-        self.indent += 1
-        self._push("if (i < 0 || i >= _g_argc) return (CadenaSegura){0, \"\"};")
-        self._push("return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]), .datos = _g_argv[i] };")
-        self.indent -= 1
-        self._push("}")
-        self._push("")
-        self._push("void salir(int codigo) { exit(codigo); }")
-        self._push("")
-        self._push("CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
-        self.indent += 1
-        self._push("int _tl = a.longitud + b.longitud;")
-        self._push("char* _buf = (char*)malloc(_tl + 1);")
-        self._push('if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\\n"); exit(1); }')
-        self._push("memcpy(_buf, a.datos, a.longitud);")
-        self._push("memcpy(_buf + a.longitud, b.datos, b.longitud);")
-        self._push("_buf[_tl] = 0;")
-        self._push("CadenaSegura _r = { .longitud = _tl, .datos = _buf };")
-        self._push("return _r;")
-        self.indent -= 1
-        self._push("}")
-        self._push("")
+        # Builtins de sistema (omitir en modo no_std/bare-metal)
+        if not self.programa.is_no_std:
+            self._push("static int _g_argc;")
+            self._push("static char** _g_argv;")
+            self._push("int _argc() { return _g_argc; }")
+            self._push("")
+            self._push("CadenaSegura _argv(int i) {")
+            self.indent += 1
+            self._push("if (i < 0 || i >= _g_argc) return (CadenaSegura){0, \"\"};")
+            self._push("return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]), .datos = _g_argv[i] };")
+            self.indent -= 1
+            self._push("}")
+            self._push("")
+            self._push("void salir(int codigo) { exit(codigo); }")
+            self._push("")
+            self._push("CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
+            self.indent += 1
+            self._push("int _tl = a.longitud + b.longitud;")
+            self._push("char* _buf = (char*)malloc(_tl + 1);")
+            self._push('if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\\n"); exit(1); }')
+            self._push("memcpy(_buf, a.datos, a.longitud);")
+            self._push("memcpy(_buf + a.longitud, b.datos, b.longitud);")
+            self._push("_buf[_tl] = 0;")
+            self._push("CadenaSegura _r = { .longitud = _tl, .datos = _buf };")
+            self._push("return _r;")
+            self.indent -= 1
+            self._push("}")
+            self._push("")
         # Pre-pass: register all struct definitions
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionEstructura):
@@ -264,35 +293,53 @@ class GeneradorC:
             self._push(func)
             self._push("")
         principal = self._encontrar_principal()
-        self._push("int main(int argc, char** argv) {")
-        self.indent += 1
-        self._push("_g_argc = argc;")
-        self._push("_g_argv = argv;")
-        self._push("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
-        if principal:
-            self._push(f"{principal}();")
-        self._push("synapse_esperar_hilos();")
-        self._push("return 0;")
-        self.indent -= 1
-        self._push("}")
+        if self.programa.is_no_std:
+            # Bare-metal minimal entry point: no argc/argv, no pool, no thread sync
+            self._push("int main(void) {")
+            self.indent += 1
+            if principal:
+                self._push(f"{principal}();")
+            self._push("return 0;")
+            self.indent -= 1
+            self._push("}")
+        else:
+            self._push("int main(int argc, char** argv) {")
+            self.indent += 1
+            self._push("_g_argc = argc;")
+            self._push("_g_argv = argv;")
+            self._push("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
+            if principal:
+                self._push(f"{principal}();")
+            self._push("synapse_esperar_hilos();")
+            self._push("return 0;")
+            self.indent -= 1
+            self._push("}")
         return "\n".join(self.lineas)
 
     def _emitir_encabezado(self):
         self._push("// salida_metal.c - Generado por Synapse Compilador")
         self._push("// Lenguaje: Synapse v1.0 (#lang: es)")
-        self._push("#include <stdio.h>")
-        self._push("#include <stdlib.h>")
-        self._push("#include <stdint.h>")
-        self._push("#include <pthread.h>")
-        self._push("#include <string.h>")
-        self._push("#include <assert.h>")
+        
+        # Conditionally include system headers based on no_std mode
+        if not self.programa.is_no_std:
+            self._push("#include <stdio.h>")
+            self._push("#include <stdlib.h>")
+            self._push("#include <stdint.h>")
+            self._push("#include <pthread.h>")
+            self._push("#include <string.h>")
+            self._push("#include <assert.h>")
+        else:
+            # In no_std mode, only include minimal headers needed for bare-metal
+            self._push("#include <stdint.h>")
+            self._push("#include <stddef.h>")
         self._push("")
         self._push("typedef struct { int longitud; const char* datos; } CadenaSegura;")
         self._push("")
         self._push("typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;")
         self._push("")
-        self._push("typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
-        self._push("")
+        if not self.programa.is_no_std:
+            self._push("typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
+            self._push("")
         self._push("// Constantes del pool de memoria (definidas en synapse_rt.c)")
         self._push("#define POOL_BLOQUES 64")
         self._push("#define TAMANO_BLOQUE 4096")
@@ -303,54 +350,63 @@ class GeneradorC:
         self._push("#define TAG_ALGUNO 0")
         self._push("#define TAG_NINGUNO 1")
         self._push("")
-        self._push("// --- Helpers de serialización primitiva para canales (Zero-Copy) ---")
-        self._push("static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }")
-        self._push("static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }")
-        self._push("static inline void* _synapse_box_float(float v) {")
-        self._push("    float* _p = (float*)malloc(sizeof(float));")
-        self._push('    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\\n"); exit(1); }')
-        self._push("    *_p = v;")
-        self._push("    return (void*)_p;")
-        self._push("}")
-        self._push("static inline float _synapse_unbox_float(void* p) {")
-        self._push("    float _v = *(float*)p;")
-        self._push("    free(p);")
-        self._push("    return _v;")
-        self._push("}")
-        self._push("")
+        if not self.programa.is_no_std:
+            self._push("// --- Helpers de serialización primitiva para canales (Zero-Copy) ---")
+            self._push("static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }")
+            self._push("static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }")
+            self._push("static inline void* _synapse_box_float(float v) {")
+            self._push("    float* _p = (float*)malloc(sizeof(float));")
+            self._push('    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\\n"); exit(1); }')
+            self._push("    *_p = v;")
+            self._push("    return (void*)_p;")
+            self._push("}")
+            self._push("static inline float _synapse_unbox_float(void* p) {")
+            self._push("    float _v = *(float*)p;")
+            self._push("    free(p);")
+            self._push("    return _v;")
+            self._push("}")
+            self._push("")
         self._push("// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---")
         self._push("extern void pool_init(uint32_t total_blocks, uint32_t block_size);")
         self._push("extern void pool_free(void* ptr);")
-        self._push("extern void escribir(CadenaSegura contenido);")
-        self._push("extern void escribir_linea(CadenaSegura contenido);")
-        self._push("extern CadenaSegura leer_linea(void);")
-        self._push("extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);")
-        self._push("extern CadenaSegura leer(Canal canal);")
-        self._push("extern void cerrar(Canal canal);")
-        self._push("extern Tensor crear_tensor(int filas, int columnas);")
-        self._push("extern Tensor suma_tensor(Tensor a, Tensor b);")
-        self._push("extern Tensor producto_punto(Tensor a, Tensor b);")
-        self._push("extern Tensor relu(Tensor a);")
-        self._push("extern Tensor reserva(int tamano);")
-        self._push("extern void libera(Tensor bloque);")
-        self._push("extern Tensor suma(Tensor a, Tensor b);")
-        self._push("extern Tensor producto(Tensor a, Tensor b);")
-        self._push("extern int texto_a_entero(CadenaSegura str);")
-        self._push("extern float texto_a_decimal(CadenaSegura str);")
-        self._push("extern CadenaSegura decimal_a_texto(float n);")
-        self._push("extern CadenaSegura entero_a_texto(int n);")
-        self._push("extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);")
-        self._push("extern void synapse_esperar_hilos(void);")
-        self._push("extern void _syn_texto_liberar(CadenaSegura s);")
-        self._push("")
-        self._push("// --- Declaraciones extern de canales (CanalConcurrencia) ---")
-        self._push("typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;")
-        self._push("typedef struct CanalConcurrencia CanalConcurrencia;")
-        self._push("extern CanalConcurrencia* canal_crear(uint32_t capacidad);")
-        self._push("extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
-        self._push("extern void* canal_recibir(CanalConcurrencia* canal);")
-        self._push("extern void canal_destruir(CanalConcurrencia* canal);")
-        self._push("")
+        if self.programa.is_no_std:
+            self._push("// --- Hooks de asignacion global (proporcionados por el desarrollador del SO) ---")
+            self._push("extern void* __syn_asignar(int tamano);")
+            self._push("extern void __syn_liberar(void* ptr);")
+            self._push("")
+        
+        # Only include stdlib-dependent functions in non-no_std mode
+        if not self.programa.is_no_std:
+            self._push("extern void escribir(CadenaSegura contenido);")
+            self._push("extern void escribir_linea(CadenaSegura contenido);")
+            self._push("extern CadenaSegura leer_linea(void);")
+            self._push("extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);")
+            self._push("extern CadenaSegura leer(Canal canal);")
+            self._push("extern void cerrar(Canal canal);")
+            self._push("extern Tensor crear_tensor(int filas, int columnas);")
+            self._push("extern Tensor suma_tensor(Tensor a, Tensor b);")
+            self._push("extern Tensor producto_punto(Tensor a, Tensor b);")
+            self._push("extern Tensor relu(Tensor a);")
+            self._push("extern Tensor reserva(int tamano);")
+            self._push("extern void libera(Tensor bloque);")
+            self._push("extern Tensor suma(Tensor a, Tensor b);")
+            self._push("extern Tensor producto(Tensor a, Tensor b);")
+            self._push("extern int texto_a_entero(CadenaSegura str);")
+            self._push("extern float texto_a_decimal(CadenaSegura str);")
+            self._push("extern CadenaSegura decimal_a_texto(float n);")
+            self._push("extern CadenaSegura entero_a_texto(int n);")
+            self._push("extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);")
+            self._push("extern void synapse_esperar_hilos(void);")
+            self._push("extern void _syn_texto_liberar(CadenaSegura s);")
+        if not self.programa.is_no_std:
+            self._push("")
+            self._push("// --- Declaraciones extern de canales (CanalConcurrencia) ---")
+            self._push("typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;")
+            self._push("typedef struct CanalConcurrencia CanalConcurrencia;")
+            self._push("extern CanalConcurrencia* canal_crear(uint32_t capacidad);")
+            self._push("extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
+            self._push("extern void* canal_recibir(CanalConcurrencia* canal);")
+            self._push("extern void canal_destruir(CanalConcurrencia* canal);")
 
     def _visitar(self, nodo: Nodo):
         _ejecutables = (SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
@@ -505,7 +561,7 @@ class GeneradorC:
             self._visitar(s)
         for var in self._tensor_vars:
             if var not in self._tensor_vars_transferidas:
-                self._push(f"pool_free({var}.datos);")
+                self._push(f"{self._syn_pool_free(f'{var}.datos')};")
         for var in self._canal_vars:
             if var not in self._canal_vars_cerradas:
                 self._push(f"/* ADVERTENCIA: canal '{var}' no fue cerrado explicitamente */")
@@ -528,7 +584,7 @@ class GeneradorC:
         self._push("Tensor _bloque;")
         self._push("_bloque.filas = tamano;")
         self._push("_bloque.columnas = 1;")
-        self._push("_bloque.datos = _pool_malloc(tamano);")
+        self._push(f"_bloque.datos = {self._syn_pool_alloc('tamano')};")
         self._push("return _bloque;")
         self.indent -= 1
         self._push("}")
@@ -540,7 +596,7 @@ class GeneradorC:
         self.indent += 1
         self._push("if (bloque.datos) {")
         self.indent += 1
-        self._push("pool_free(bloque.datos);")
+        self._push(f"{self._syn_pool_free('bloque.datos')};")
         self.indent -= 1
         self._push("}")
         self.indent -= 1
@@ -661,14 +717,14 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = a.filas;")
         self._push("r.columnas = a.columnas;")
-        self._push("r.datos = _pool_malloc(r.filas * r.columnas * sizeof(float));")
+        self._push(f"r.datos = {self._syn_pool_alloc('r.filas * r.columnas * sizeof(float)')};")
         self._push("for (int _i = 0; _i < r.filas * r.columnas; _i++) {")
         self.indent += 1
         self._push("r.datos[_i] = a.datos[_i] + b.datos[_i];")
         self.indent -= 1
         self._push("}")
-        self._push("pool_free(a.datos);")
-        self._push("pool_free(b.datos);")
+        self._push(f"{self._syn_pool_free('a.datos')};")
+        self._push(f"{self._syn_pool_free('b.datos')};")
         self._push("return r;")
         self.indent -= 1
         self._push("}")
@@ -686,7 +742,8 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = a.filas;")
         self._push("r.columnas = b.columnas;")
-        self._push("r.datos = (float*)calloc(r.filas * r.columnas, sizeof(float));")
+        _calloc = self._syn_calloc('r.filas * r.columnas', 'sizeof(float)')
+        self._push(f"r.datos = (float*){_calloc};")
         self._push("for (int _i = 0; _i < r.filas; _i++) {")
         self.indent += 1
         self._push("for (int _j = 0; _j < r.columnas; _j++) {")
@@ -702,8 +759,8 @@ class GeneradorC:
         self._push("}")
         self.indent -= 1
         self._push("}")
-        self._push("pool_free(a.datos);")
-        self._push("pool_free(b.datos);")
+        self._push(f"{self._syn_pool_free('a.datos')};")
+        self._push(f"{self._syn_pool_free('b.datos')};")
         self._push("return r;")
         self.indent -= 1
         self._push("}")
@@ -715,13 +772,13 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = a.filas;")
         self._push("r.columnas = a.columnas;")
-        self._push("r.datos = _pool_malloc(a.filas * a.columnas * sizeof(float));")
+        self._push(f"r.datos = {self._syn_pool_alloc('a.filas * a.columnas * sizeof(float)')};")
         self._push("for (int _i = 0; _i < a.filas * a.columnas; _i++) {")
         self.indent += 1
         self._push("r.datos[_i] = (a.datos[_i] > 0) ? a.datos[_i] : 0.0f;")
         self.indent -= 1
         self._push("}")
-        self._push("pool_free(a.datos);")
+        self._push(f"{self._syn_pool_free('a.datos')};")
         self._push("return r;")
         self.indent -= 1
         self._push("}")
@@ -733,7 +790,7 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = filas;")
         self._push("r.columnas = columnas;")
-        self._push("r.datos = _pool_malloc(filas * columnas * sizeof(float));")
+        self._push(f"r.datos = {self._syn_pool_alloc('filas * columnas * sizeof(float)')};")
         self._push("memset(r.datos, 0, filas * columnas * sizeof(float));")
         self._push("return r;")
         self.indent -= 1
@@ -752,14 +809,14 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = a.filas;")
         self._push("r.columnas = a.columnas;")
-        self._push("r.datos = _pool_malloc(r.filas * r.columnas * sizeof(float));")
+        self._push(f"r.datos = {self._syn_pool_alloc('r.filas * r.columnas * sizeof(float)')};")
         self._push("for (int _i = 0; _i < r.filas * r.columnas; _i++) {")
         self.indent += 1
         self._push("r.datos[_i] = a.datos[_i] + b.datos[_i];")
         self.indent -= 1
         self._push("}")
-        self._push("pool_free(a.datos);")
-        self._push("pool_free(b.datos);")
+        self._push(f"{self._syn_pool_free('a.datos')};")
+        self._push(f"{self._syn_pool_free('b.datos')};")
         self._push("return r;")
         self.indent -= 1
         self._push("}")
@@ -777,7 +834,8 @@ class GeneradorC:
         self._push("Tensor r;")
         self._push("r.filas = a.filas;")
         self._push("r.columnas = b.columnas;")
-        self._push("r.datos = (float*)calloc(r.filas * r.columnas, sizeof(float));")
+        _calloc = self._syn_calloc('r.filas * r.columnas', 'sizeof(float)')
+        self._push(f"r.datos = (float*){_calloc};")
         self._push("for (int _i = 0; _i < r.filas; _i++) {")
         self.indent += 1
         self._push("for (int _j = 0; _j < r.columnas; _j++) {")
@@ -793,8 +851,8 @@ class GeneradorC:
         self._push("}")
         self.indent -= 1
         self._push("}")
-        self._push("pool_free(a.datos);")
-        self._push("pool_free(b.datos);")
+        self._push(f"{self._syn_pool_free('a.datos')};")
+        self._push(f"{self._syn_pool_free('b.datos')};")
         self._push("return r;")
         self.indent -= 1
         self._push("}")
@@ -2303,7 +2361,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 self._push(f"{dtor}({nodo.nombre});")
                 self._unregister_var(nodo.nombre)
             if nodo.nombre in self._tensor_vars and tipo == 'Tensor':
-                self._push(f"free({nodo.nombre}.datos);")
+                self._push(f"{self._syn_free(f'{nodo.nombre}.datos')};")
             self._push(f"{nodo.nombre} = {val};")
             self._variables[nodo.nombre] = tipo
             if tipo == 'Tensor':
@@ -2348,6 +2406,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, ExprTensor):
             return 'Tensor'
         if isinstance(nodo, Identificador):
+            if nodo.nombre == 'nulo':
+                return 'void*'
             return self._variables.get(nodo.nombre, 'int')
         if isinstance(nodo, ArgumentoTransferido):
             return self._tipo_de_expr(nodo.expr)
@@ -2380,6 +2440,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return f"{self._tipo_de_expr(nodo.expr)}*"
         if isinstance(nodo, ExprDereferencia):
             return self._tipo_de_expr(nodo.expr).rstrip('*')
+        if isinstance(nodo, ExprAsm):
+            return 'void'
         if isinstance(nodo, ExprCrearCanal):
             return 'CanalConcurrencia*'
         if isinstance(nodo, ExprRecibirCanal):
@@ -2436,7 +2498,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, ExprTensor):
             filas = self._expr_a_c(nodo.filas)
             cols = self._expr_a_c(nodo.columnas)
-            return f'(Tensor){{ .filas = {filas}, .columnas = {cols}, .datos = (float*)calloc({filas} * {cols}, sizeof(float)) }}'
+            _calloc = self._syn_calloc(f'{filas} * {cols}', 'sizeof(float)')
+            return f'(Tensor){{ .filas = {filas}, .columnas = {cols}, .datos = (float*){_calloc} }}'
         if isinstance(nodo, LlamadaFuncion):
             if nodo.nombre in self._estructuras and not nodo.argumentos:
                 return f"{nodo.nombre}_nuevo()"
@@ -2515,6 +2578,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return f"(&{self._expr_a_c(nodo.expr)})"
         if isinstance(nodo, ExprDereferencia):
             return f"(*{self._expr_a_c(nodo.expr)})"
+        if isinstance(nodo, ExprAsm):
+            return f'__asm__ volatile("{nodo.instruccion}")'
         if isinstance(nodo, ExprCrearCanal):
             cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"
             return f"canal_crear({cap})"

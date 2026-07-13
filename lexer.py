@@ -29,6 +29,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'requiere': TokenID.REQUIERE,
         'garantiza': TokenID.GARANTIZA,
         'canal': TokenID.CANAL,
+        'asm': TokenID.ASM,
     },
     'en': {
         'if': TokenID.IF,
@@ -52,6 +53,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
         'match': TokenID.MATCH,
+        'asm': TokenID.ASM,
     },
     'fr': {
         'si': TokenID.IF,
@@ -75,6 +77,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'importer_c': TokenID.IMPORTAR_C,
         'externe': TokenID.EXTERNO,
         'correspondre': TokenID.MATCH,
+        'asm': TokenID.ASM,
     },
     'pt': {
         'se': TokenID.IF,
@@ -98,6 +101,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
         'coincidir': TokenID.MATCH,
+        'asm': TokenID.ASM,
     },
     'de': {
         'wenn': TokenID.IF,
@@ -121,6 +125,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
         'entsprechen': TokenID.MATCH,
+        'asm': TokenID.ASM,
     },
     'it': {
         'se': TokenID.IF,
@@ -144,6 +149,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'importa_c': TokenID.IMPORTAR_C,
         'esterno': TokenID.EXTERNO,
         'corrispondere': TokenID.MATCH,
+        'asm': TokenID.ASM,
     },
 }
 
@@ -206,6 +212,7 @@ class Lexer:
         self.pila_indent = [0]
         self.diccionario = diccionario
         self.idioma = idioma
+        self.is_no_std = False
 
     def tokenizar(self) -> List[Token]:
         self._detectar_idioma()
@@ -234,6 +241,12 @@ class Lexer:
                     f"Idioma '{codigo}' no soportado. Soporte: {', '.join(DICCIONARIOS)}", 1, 0
                 )
             self.diccionario = DICCIONARIOS[codigo]
+        
+        # Detect #pragma: no_std directive (line 2)
+        if len(self.lineas) >= 2:
+            segunda = self.lineas[1].strip()
+            if segunda == '#pragma: no_std':
+                self.is_no_std = True
 
     def _procesar_lineas(self):
         for i, linea in enumerate(self.lineas):

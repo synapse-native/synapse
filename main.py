@@ -443,7 +443,7 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
         for t in tokens:
             print(f"  {t}")
 
-    parser = Parser(tokens, diag_local)
+    parser = Parser(tokens, diag_local, is_no_std=lexer.is_no_std)
     ast = parser.parsear()
 
     nuevas_sentencias: List[Nodo] = []
@@ -452,6 +452,14 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
             _imports_usados.add(stmt.ruta)
             try:
                 if stmt.ruta.startswith('std.'):
+                    # Check for no_std mode: disallow std imports except core
+                    if ast.is_no_std and not stmt.ruta.startswith('std.core'):
+                        diag_local.reportar(
+                            ErrorCodes.ERR_MODULE_STD_NOT_FOUND,
+                            Token(TokenID.IDENTIFIER, stmt.linea, stmt.columna),
+                            modulo=stmt.ruta,
+                        )
+                        return Programa(), diag_local
                     ruta_importada = _resolver_ruta_sysroot(stmt.ruta)
                 else:
                     ruta_importada = resolvedor_axon.resolver(stmt.ruta, dir_base, dependencias)
@@ -554,7 +562,13 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         if not os.path.exists(synapse_rt):
             synapse_rt = os.path.join(SYNAPSE_ROOT, "dist", "lib", "synapse_rt.o")
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
-        gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
+        # Add no_std flags if compiling in bare-metal mode
+        if ast.is_no_std:
+            no_std_flags = "-ffreestanding -fno-builtin"
+            # Bare-metal: no runtime object, no pthreads, no networking
+            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp {no_std_flags} "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
+        else:
+            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] GCC: {gcc_cmd}")
         rc = os.system(gcc_cmd)
         if rc != 0:

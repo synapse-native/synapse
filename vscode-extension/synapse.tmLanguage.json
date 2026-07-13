@@ -3,6 +3,9 @@
     "name": "Synapse",
     "patterns": [
         {
+            "include": "#preprocessor"
+        },
+        {
             "include": "#comments"
         },
         {
@@ -25,6 +28,14 @@
         }
     ],
     "repository": {
+        "preprocessor": {
+            "patterns": [
+                {
+                    "match": "^#pragma:\\s*no_std\\b.*$",
+                    "name": "keyword.control.directive.synapse"
+                }
+            ]
+        },
         "comments": {
             "patterns": [
                 {
@@ -59,7 +70,7 @@
         "keywords": {
             "patterns": [
                 {
-                    "match": "\\b(funcion|si|sino|mientras|retornar|lanzar|recuperar|escuchar|importar|estructura|romper|siguiente|principal|log)\\b",
+                    "match": "\\b(funcion|si|sino|mientras|retornar|lanzar|recuperar|escuchar|importar|estructura|romper|siguiente|principal|log|inseguro|asm)\\b",
                     "name": "keyword.control.synapse"
                 },
                 {

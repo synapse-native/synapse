@@ -59,6 +59,7 @@ class TokenID(Enum):
     REQUIERE = auto()     # palabra clave bloque de contrato
     GARANTIZA = auto()    # palabra clave bloque de contrato
     CANAL = auto()        # tipo Canal<T>
+    ASM = auto()          # asm("instruccion")
 
     EOF = auto()
 
@@ -85,6 +86,7 @@ class Nodo:
 @dataclass
 class Programa(Nodo):
     sentencias: List[Nodo] = field(default_factory=list)
+    is_no_std: bool = False
 
 
 @dataclass
@@ -284,6 +286,10 @@ class NodoCaso(Nodo):
 class NodoCoincidir(Nodo):
     expresion: Optional[Nodo] = None
     casos: List[NodoCaso] = field(default_factory=list)
+
+@dataclass
+class ExprAsm(Nodo):
+    instruccion: str = ''
 
 @dataclass
 class ExprCrearCanal(Nodo):

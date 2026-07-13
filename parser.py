@@ -13,6 +13,7 @@ from ast_nodes import (
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
     ExprCrearCanal, SentenciaEnviarCanal, ExprRecibirCanal,
+    ExprAsm,
 )
 from lexer import OPERADORES_BINARIOS
 from diagnostics import DiagnosticManager, ErrorCodes
@@ -27,10 +28,11 @@ _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
 
 
 class Parser:
-    def __init__(self, tokens: List[Token], diag: DiagnosticManager):
+    def __init__(self, tokens: List[Token], diag: DiagnosticManager, is_no_std: bool = False):
         self.tokens = tokens
         self.pos = 0
         self.diag = diag
+        self.is_no_std = is_no_std
 
     def _mirar(self) -> Token:
         return self.tokens[self.pos] if self.pos < len(self.tokens) else Token(TokenID.EOF, 0, 0)
@@ -62,7 +64,7 @@ class Parser:
         return self._avanzar()
 
     def parsear(self) -> Programa:
-        prog = Programa(linea=1, columna=0)
+        prog = Programa(linea=1, columna=0, is_no_std=self.is_no_std)
         while self._mirar().tipo != TokenID.EOF:
             stmt = self._parsear_sentencia()
             if stmt is not None:
@@ -601,6 +603,13 @@ class Parser:
         if t.tipo == TokenID.FALSE:
             self._avanzar()
             return LiteralNumero(valor=0, linea=t.linea, columna=t.columna)
+        if t.tipo == TokenID.ASM:
+            self._avanzar()
+            self._esperar(TokenID.LPAREN)
+            tok_str = self._esperar(TokenID.STRING)
+            instruccion = tok_str.valor if tok_str else ''
+            self._esperar(TokenID.RPAREN)
+            return ExprAsm(instruccion=instruccion, linea=t.linea, columna=t.columna)
         if t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL):
             self._avanzar()
             nombre = t.valor if t.tipo == TokenID.IDENTIFIER else 'canal'

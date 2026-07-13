@@ -13,6 +13,7 @@ from ast_nodes import (
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     NodoCoincidir, NodoCaso,
     SentenciaEnviarCanal, ExprRecibirCanal, ExprCrearCanal,
+    ExprAsm,
 )
 from diagnostics import DiagnosticManager, ErrorCodes
 from symbol_table import SymbolTable, Simbolo
@@ -66,6 +67,7 @@ class AnalizadorSemantico:
         self._func_actual: Optional[str] = None
         self._estructuras: Dict[str, DefinicionEstructura] = {}
         self._en_coincidir: bool = False
+        self._dentro_de_inseguro: bool = False
 
     def _token(self, linea: int, columna: int) -> Token:
         return Token(TokenID.IDENTIFIER, linea, columna)
@@ -214,8 +216,11 @@ class AnalizadorSemantico:
             self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
         elif isinstance(nodo, BloqueInseguro):
             self.tabla.entrar_scope()
+            _prev_inseguro = self._dentro_de_inseguro
+            self._dentro_de_inseguro = True
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
+            self._dentro_de_inseguro = _prev_inseguro
             self.tabla.salir_scope()
         elif isinstance(nodo, SentenciaEnviarCanal):
             self._inferir_tipo(nodo.canal) if nodo.canal else None
@@ -287,6 +292,8 @@ class AnalizadorSemantico:
         elif isinstance(nodo, LiteralCadena):
             return 'texto'
         elif isinstance(nodo, Identificador):
+            if nodo.nombre == 'nulo':
+                return 'puntero'
             sim = self.tabla.buscar(nodo.nombre)
             if sim is None:
                 self.diag.reportar(
@@ -382,6 +389,13 @@ class AnalizadorSemantico:
             return 'tensor'
         elif isinstance(nodo, ArgumentoTransferido):
             return self._inferir_tipo(nodo.expr)
+        elif isinstance(nodo, ExprAsm):
+            if not self._dentro_de_inseguro:
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO,
+                    self._token(nodo.linea, nodo.columna),
+                )
+            return 'nulo'
         elif isinstance(nodo, ExprObtenerDireccion):
             tipo_base = self._inferir_tipo(nodo.expr)
             if tipo_base:

@@ -1,0 +1,5 @@
+#lang: es
+#pragma: no_std
+
+funcion principal() -> nulo:
+    x = 42
