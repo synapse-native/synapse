@@ -7,6 +7,7 @@ from parser import Parser
 from analizador_semantico import AnalizadorSemantico
 from generator import GeneradorC
 from diagnostics import DiagnosticManager
+from exceptions import SynapseError
 
 
 class TestIntegrationEndToEnd:
@@ -255,8 +256,8 @@ class TestIntegrationEndToEnd:
         
         try:
             codigo_c, diag = self._compilar_synapse(fuente)
-        except SyntaxError:
-            # Error léxico lanza SyntaxError antes de llegar a diagnostics
+        except (SyntaxError, SynapseError):
+            # Error léxico lanza SyntaxError/SynapseError antes de llegar a diagnostics
             return
         
         assert diag.hay_errores()

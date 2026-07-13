@@ -7,6 +7,7 @@ from ast_nodes import TokenID, Token, Programa
 from lexer import Lexer
 from parser import Parser
 from diagnostics import DiagnosticManager, ErrorCodes
+from exceptions import SynapseError
 
 # Reuse the canonical encoder from main.py
 from main import _nodo_a_dict
@@ -23,7 +24,7 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
     try:
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()
-    except SyntaxError as e:
+    except (SyntaxError, SynapseError) as e:
         mensaje = str(e)
         token = Token(TokenID.EOF, linea=1, columna=0)
         if 'indentaci' in mensaje:

@@ -1,6 +1,7 @@
 import pytest
 from lexer import Lexer, DICCIONARIOS, TOKEN_UNICARACTER, TOKEN_BICARACTER
 from ast_nodes import TokenID, Token
+from exceptions import SynapseError
 
 
 class TestLexerBasico:
@@ -8,25 +9,25 @@ class TestLexerBasico:
     
     def test_tokenizar_vacio(self):
         """Test que archivo vacío lanza error"""
-        with pytest.raises(SyntaxError, match="Error Crítico: Falta declaración de idioma"):
+        with pytest.raises(SynapseError, match="Falta declaración de idioma"):
             lexer = Lexer("")
             lexer.tokenizar()
     
     def test_falta_lang(self):
         """Test que falta #lang lanza error"""
-        with pytest.raises(SyntaxError, match="Error Crítico: Falta declaración de idioma"):
+        with pytest.raises(SynapseError, match="Falta declaración de idioma"):
             lexer = Lexer("x = 1")
             lexer.tokenizar()
     
     def test_lang_vacio(self):
         """Test que #lang vacío lanza error"""
-        with pytest.raises(SyntaxError, match="Error Crítico: Código de idioma vacío"):
+        with pytest.raises(SynapseError, match="Código de idioma vacío"):
             lexer = Lexer("#lang:")
             lexer.tokenizar()
     
     def test_lang_no_soportado(self):
         """Test que idioma no soportado lanza error"""
-        with pytest.raises(SyntaxError, match="Error Crítico: Idioma 'xx' no soportado"):
+        with pytest.raises(SynapseError, match="Idioma 'xx' no soportado"):
             lexer = Lexer("#lang: xx")
             lexer.tokenizar()
 
@@ -86,7 +87,7 @@ class TestLexerCadenas:
     
     def test_cadena_sin_cerrar(self):
         """Test cadena sin cerrar lanza error"""
-        with pytest.raises(SyntaxError, match="Error Léxico.*Cadena sin cerrar"):
+        with pytest.raises(SynapseError, match="Cadena sin cerrar"):
             lexer = Lexer('#lang: es\nx = "abierto')
             lexer.tokenizar()
 
@@ -240,13 +241,13 @@ class TestLexerIndentacion:
     
     def test_indentacion_invalida(self):
         """Test indentación no múltiplo de 4 lanza error"""
-        with pytest.raises(SyntaxError, match="Error.*indentación debe ser múltiplo de 4"):
+        with pytest.raises(SynapseError, match="múltiplo de 4 espacios"):
             lexer = Lexer("#lang: es\nsi True:\n  x = 1")
             lexer.tokenizar()
     
     def test_indentacion_inconsistente(self):
         """Test indentación inconsistente lanza error"""
-        with pytest.raises(SyntaxError, match="Error.*La indentación debe ser múltiplo de 4 espacios"):
+        with pytest.raises(SynapseError, match="múltiplo de 4 espacios"):
             lexer = Lexer("#lang: es\nsi True:\n    x = 1\n  y = 2")
             lexer.tokenizar()
     
@@ -339,6 +340,6 @@ class TestLexerCaracterInvalido:
     
     def test_caracter_invalido(self):
         """Test carácter inválido lanza error"""
-        with pytest.raises(SyntaxError, match="Error Léxico.*Carácter inesperado"):
+        with pytest.raises(SynapseError, match="Carácter inesperado"):
             lexer = Lexer("#lang: es\nx = @")
             lexer.tokenizar()

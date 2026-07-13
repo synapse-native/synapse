@@ -1,1 +1,58 @@
-{"_tipo": "Programa", "sentencias": [{"_tipo": "DefinicionFuncion", "nombre": "test", "parametros": [{"nombre": "x", "tipo": "int"}], "tipo_retorno": "nulo", "cuerpo": [{"_tipo": "SentenciaSi", "condicion": {"_tipo": "OpBinaria", "izquierdo": {"_tipo": "Identificador", "nombre": "x"}, "operador": ">", "derecho": {"_tipo": "LiteralNumero", "valor": 0}}, "cuerpo": [{"_tipo": "LogLlamada", "argumentos": [{"_tipo": "LiteralCadena", "valor": "pos"}]}], "cuerpo_sino": [{"_tipo": "LogLlamada", "argumentos": [{"_tipo": "LiteralCadena", "valor": "neg"}]}]}]}]}
+{
+  "_tipo": "Programa",
+  "sentencias": [
+    {
+      "_tipo": "DefinicionFuncion",
+      "nombre": "test",
+      "parametros": [
+        {
+          "nombre": "x",
+          "tipo": "int"
+        }
+      ],
+      "tipo_retorno": "nulo",
+      "requiere": [],
+      "garantiza": [],
+      "cuerpo": [
+        {
+          "_tipo": "SentenciaSi",
+          "condicion": {
+            "_tipo": "OpBinaria",
+            "izquierdo": {
+              "_tipo": "Identificador",
+              "nombre": "x"
+            },
+            "operador": ">",
+            "derecho": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          "cuerpo": [
+            {
+              "_tipo": "LogLlamada",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "pos"
+                }
+              ]
+            }
+          ],
+          "cuerpo_sino": [
+            {
+              "_tipo": "LogLlamada",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "neg"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "is_no_std": false
+}

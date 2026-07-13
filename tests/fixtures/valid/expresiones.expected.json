@@ -1,1 +1,52 @@
-{"_tipo": "Programa", "sentencias": [{"_tipo": "DefinicionFuncion", "nombre": "expr", "parametros": [], "tipo_retorno": "int", "cuerpo": [{"_tipo": "AsignacionVariable", "nombre": "x", "expresion": {"_tipo": "OpUnaria", "operador": "-", "expr": {"_tipo": "LiteralNumero", "valor": 5}}}, {"_tipo": "SentenciaRetornar", "expr": {"_tipo": "OpBinaria", "izquierdo": {"_tipo": "Identificador", "nombre": "x"}, "operador": "*", "derecho": {"_tipo": "OpBinaria", "izquierdo": {"_tipo": "LiteralNumero", "valor": 2}, "operador": "+", "derecho": {"_tipo": "LiteralNumero", "valor": 3}}}, "es_transferencia": false}]}]}
+{
+  "_tipo": "Programa",
+  "sentencias": [
+    {
+      "_tipo": "DefinicionFuncion",
+      "nombre": "expr",
+      "parametros": [],
+      "tipo_retorno": "int",
+      "requiere": [],
+      "garantiza": [],
+      "cuerpo": [
+        {
+          "_tipo": "AsignacionVariable",
+          "nombre": "x",
+          "expresion": {
+            "_tipo": "OpUnaria",
+            "operador": "-",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 5
+            }
+          }
+        },
+        {
+          "_tipo": "SentenciaRetornar",
+          "expr": {
+            "_tipo": "OpBinaria",
+            "izquierdo": {
+              "_tipo": "Identificador",
+              "nombre": "x"
+            },
+            "operador": "*",
+            "derecho": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              }
+            }
+          },
+          "es_transferencia": false
+        }
+      ]
+    }
+  ],
+  "is_no_std": false
+}

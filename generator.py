@@ -2490,7 +2490,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, LiteralDecimal):
             return f"{nodo.valor}f"
         if isinstance(nodo, LiteralCadena):
-            val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"')
+            val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
             encoded = nodo.valor.encode('utf-8')
             return f'(CadenaSegura){{ .longitud = {len(encoded)}, .datos = "{val}" }}'
         if isinstance(nodo, Identificador):

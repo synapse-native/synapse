@@ -20,6 +20,8 @@
       "nombre": "principal",
       "parametros": [],
       "tipo_retorno": "nulo",
+      "requiere": [],
+      "garantiza": [],
       "cuerpo": [
         {
           "_tipo": "AsignacionVariable",
@@ -69,5 +71,6 @@
         }
       ]
     }
-  ]
+  ],
+  "is_no_std": false
 }

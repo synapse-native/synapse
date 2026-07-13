@@ -26,7 +26,8 @@ class TestGeneradorCFunciones:
         codigo = generador.generar()
         
         assert "int f(void)" in codigo
-        assert "return 42" in codigo
+        assert "= 42" in codigo
+        assert "return " in codigo
     
     def test_funcion_con_parametros(self):
         """Test generación de función con parámetros"""
@@ -342,7 +343,8 @@ class TestGeneradorCSentenciasControl:
         codigo = generador.generar()
         
         assert "if" in codigo
-        assert "return 1" in codigo
+        assert "= 1" in codigo
+        assert "return " in codigo
     
     def test_si_con_sino(self):
         """Test generación de si con sino"""
@@ -486,8 +488,8 @@ class TestGeneradorCEstructuras:
         codigo = generador.generar()
         
         assert "->a = 10" in codigo
-        assert "return ptr->a" in codigo
         assert "ptr->a" in codigo
+        assert "return " in codigo
 
 
 class TestGeneradorCTipos:

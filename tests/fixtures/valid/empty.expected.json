@@ -1,1 +1,5 @@
-{"_tipo": "Programa", "sentencias": []}
+{
+  "_tipo": "Programa",
+  "sentencias": [],
+  "is_no_std": false
+}
