@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Librería Estándar - El Lenguaje de Programación Synapse</title>
+        <title>Programación Bare-Metal (Ring 0) - El Lenguaje de Programación Synapse</title>
 
 
         <!-- Custom HTML head -->
@@ -143,7 +143,7 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/libreria-estandar.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/programacion-bare-metal.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -177,91 +177,97 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="librería-estándar-sysroot"><a class="header" href="#librería-estándar-sysroot">Librería Estándar (Sysroot)</a></h1>
-<p>La librería estándar incluye:</p>
+                        <h1 id="programación-bare-metal-ring-0"><a class="header" href="#programación-bare-metal-ring-0">Programación Bare-Metal (Ring 0)</a></h1>
+<p>Synapse v2.1 extiende su alcance más allá de las aplicaciones con sistema operativo. La directiva <code>#pragma: no_std</code> transforma el compilador en una herramienta de desarrollo de sistemas de bajo nivel, ideal para kernels, bootloaders, firmware embebido y entornos de tiempo real (RTOS).</p>
+<h2 id="pragma-no_std"><a class="header" href="#pragma-no_std"><code>#pragma: no_std</code></a></h2>
+<p>Al colocar <code>#pragma: no_std</code> en la primera línea del archivo fuente, el compilador:</p>
+<ul>
+<li>Omite la inclusión de <code>&lt;stdio.h&gt;</code>, <code>&lt;stdlib.h&gt;</code>, <code>&lt;string.h&gt;</code>, <code>&lt;pthread.h&gt;</code> y <code>&lt;assert.h&gt;</code>.</li>
+<li>Desactiva las estructuras del runtime (<code>Canal</code>, <code>Tensor</code>, <code>CadenaSegura</code> con soporte de E/S).</li>
+<li>Compila con las banderas <code>-ffreestanding -fno-builtin</code>.</li>
+<li>Genera un punto de entrada <code>main(void)</code> sin argumentos, sin inicialización del pool de memoria y sin sincronización de hilos.</li>
+<li>No enlaza <code>synapse_rt.o</code> ni las librerías <code>-lpthread</code> / <code>-lws2_32</code>.</li>
+</ul>
+<pre><code class="language-synapse">#lang: es
+#pragma: no_std
+
+funcion principal() -&gt; entero:
+    retornar 0
+</code></pre>
+<p>El código C generado contendrá únicamente las cabeceras <code>&lt;stdint.h&gt;</code> y <code>&lt;stddef.h&gt;</code>, junto con las definiciones mínimas de <code>CadenaSegura</code> y <code>Tensor</code>.</p>
+<h2 id="ensamblador-inline-asm"><a class="header" href="#ensamblador-inline-asm">Ensamblador Inline (<code>asm</code>)</a></h2>
+<p>El compilador expone la palabra reservada <code>asm</code> para insertar instrucciones de ensamblador directamente en el código generado. Por seguridad, <code>asm</code> solo puede utilizarse dentro de un bloque <code>inseguro:</code>.</p>
+<pre><code class="language-synapse">#lang: es
+#pragma: no_std
+
+funcion principal() -&gt; entero:
+    inseguro:
+        asm("nop")
+    retornar 0
+</code></pre>
+<p>El generador traduce <code>asm("instruccion")</code> a <code>__asm__ volatile("instruccion")</code>. Cualquier uso de <code>asm</code> fuera de un bloque <code>inseguro:</code> produce el error semántico <code>ERR_SEM_ASM_FUERA_INSEGURO</code>.</p>
+<h2 id="asignador-de-memoria-global"><a class="header" href="#asignador-de-memoria-global">Asignador de Memoria Global</a></h2>
+<p>En modo <code>no_std</code>, las funciones de asignación dinámica (<code>malloc</code>/<code>free</code>/<code>calloc</code>/<code>_pool_malloc</code>/<code>pool_free</code>) son redirigidas automáticamente a dos hooks que debe implementar el desarrollador del sistema:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Módulo</th><th>Descripción</th></tr>
+<tr><th>Hook</th><th>Firma</th><th>Propósito</th></tr>
 </thead>
 <tbody>
-<tr><td><code>std.io</code></td><td>Entrada/salida por terminal (<code>escribir</code>, <code>leer_linea</code>)</td></tr>
-<tr><td><code>std.mem</code></td><td>Gestión de memoria raw (<code>reserva</code>, <code>libera</code>)</td></tr>
-<tr><td><code>std.net</code></td><td>Sockets TCP cliente (<code>conectar</code>, <code>enviar</code>, <code>recibir</code>)</td></tr>
-<tr><td><code>std.json</code></td><td>Parseo de JSON (<code>desde_texto</code>, <code>obtener_campo</code>)</td></tr>
-<tr><td><code>std.toml</code></td><td>Parseo de TOML</td></tr>
-<tr><td><code>std.math</code></td><td>Operaciones con tensores (<code>crear_tensor</code>, <code>producto_punto</code>, <code>relu</code>)</td></tr>
-<tr><td><code>std.err</code></td><td>Tipos algebraicos (<code>Resultado</code>, <code>Opcion</code>)</td></tr>
-<tr><td><code>std.tiempo</code></td><td>Medición de tiempo y suspensión (<code>ahora_ms</code>, <code>dormir_ms</code>)</td></tr>
-<tr><td><code>std.cripto</code></td><td>Criptografía SHA-256 (<code>sha256_texto</code>)</td></tr>
-<tr><td><code>std.http</code></td><td>Servidor HTTP minimalista (<code>iniciar_servidor</code>, <code>aceptar</code>, <code>responder</code>)</td></tr>
+<tr><td><code>__syn_asignar</code></td><td><code>(tamano: entero) -&gt; puntero</code></td><td>Reservar un bloque de memoria</td></tr>
+<tr><td><code>__syn_liberar</code></td><td><code>(ptr: puntero) -&gt; nulo</code></td><td>Liberar un bloque de memoria</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="stdtiempo"><a class="header" href="#stdtiempo">std.tiempo</a></h2>
-<p>Funciones para medir tiempo de ejecución y suspender hilos:</p>
-<pre><code class="language-synapse">importar std.tiempo
+<p>El compilador declara estas funciones como <code>extern</code>; el desarrollador las define en el código Synapse y el vinculador las resuelve.</p>
+<pre><code class="language-synapse">#lang: es
+#pragma: no_std
 
-inicio = ahora_ms()
-dormir_ms(100)
-fin = ahora_ms()
-log("Tardo: ", fin - inicio, " ms")
-</code></pre>
-<p><code>ahora_ms()</code> retorna el timestamp UNIX en milisegundos con precisión de sistema. <code>dormir_ms()</code> suspende el hilo actual de forma cruzada (Windows: <code>Sleep</code>, POSIX: <code>nanosleep</code>).</p>
-<h2 id="stdcripto"><a class="header" href="#stdcripto">std.cripto</a></h2>
-<p>Implementación SHA-256 según FIPS 180-4, sin dependencias externas:</p>
-<pre><code class="language-synapse">importar std.cripto
+var memoria_estatica[1024] = 0
+var indice: entero = 0
 
-hash = sha256_texto("datos a hashear")
-log("SHA-256: ", hash)
-// "db2c1e2c..." (64 caracteres hexadecimales)
-</code></pre>
-<p>El digest se retorna como <code>texto</code> (64 caracteres hex en minúsculas). La memoria del resultado es gestionada automáticamente por el RAII del compilador.</p>
-<h2 id="stdhttp"><a class="header" href="#stdhttp">std.http</a></h2>
-<p>Servidor HTTP/1.1 minimalista, síncrono, single-thread:</p>
-<pre><code class="language-synapse">importar std.http
-importar std.json
+funcion __syn_asignar(tamano: entero) -&gt; puntero:
+    ptr = &amp;memoria_estatica[indice]
+    indice = indice + tamano
+    retornar ptr
 
-fd_srv = iniciar_servidor(8080)
-mientras verdadero:
-    fd_cli = aceptar(fd_srv)
-    peticion = leer_peticion(fd_cli)
-    responder(fd_cli, 200, "application/json", "{\"status\":\"ok\"}")
+funcion __syn_liberar(ptr: puntero) -&gt; nulo:
+    retornar
+
+funcion principal() -&gt; entero:
+    t = tensor(16, 16)
+    retornar 0
 </code></pre>
+<h3 id="cuándo-se-invoca-cada-hook"><a class="header" href="#cuándo-se-invoca-cada-hook">¿Cuándo se invoca cada hook?</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Función</th><th>Descripción</th></tr>
+<tr><th>Contexto</th><th>Llamada original</th><th>Llamada en <code>no_std</code></th></tr>
 </thead>
 <tbody>
-<tr><td><code>iniciar_servidor(puerto)</code></td><td>Crea socket de escucha en el puerto</td></tr>
-<tr><td><code>aceptar(fd_servidor)</code></td><td>Bloquea hasta recibir conexión, retorna fd del cliente</td></tr>
-<tr><td><code>leer_peticion(fd_cliente)</code></td><td>Lee la petición HTTP cruda</td></tr>
-<tr><td><code>responder(fd, codigo, tipo, cuerpo)</code></td><td>Envía respuesta HTTP/1.1 completa y cierra conexión</td></tr>
-<tr><td><code>cerrar_cliente(fd)</code></td><td>Cierra socket del cliente</td></tr>
-<tr><td><code>cerrar_servidor(fd)</code></td><td>Cierra socket del servidor</td></tr>
+<tr><td>Literal <code>tensor(f, c)</code></td><td><code>calloc(f * c, sizeof(float))</code></td><td><code>__syn_asignar(f * c * sizeof(float))</code></td></tr>
+<tr><td>Reasignación de variable <code>Tensor</code></td><td><code>free(v.datos)</code></td><td><code>__syn_liberar(v.datos)</code></td></tr>
+<tr><td>Destructor RAII (fin de ámbito)</td><td><code>pool_free(v.datos)</code></td><td><code>__syn_liberar(v.datos)</code></td></tr>
+<tr><td>Operaciones tensoriales (<code>suma</code>, etc.)</td><td><code>_pool_malloc(n) / pool_free(p)</code></td><td><code>__syn_asignar(n) / __syn_liberar(p)</code></td></tr>
 </tbody>
 </table>
 </div>
-<p>Todas las funciones que asignan recursos requieren liberación explícita mediante transferencia de ownership:</p>
-<pre><code class="language-synapse">importar std.json
-
-nodo = desde_texto("{\"clave\": \"valor\"}")
-escribir("campo: ", obtener_campo(nodo, "clave"))
-liberar_nodo(-&gt; nodo)
-</code></pre>
+<h2 id="consideraciones-para-el-desarrollador"><a class="header" href="#consideraciones-para-el-desarrollador">Consideraciones para el Desarrollador</a></h2>
+<ol>
+<li><strong>No hay E/S estándar</strong>: Sin <code>#pragma: no_std</code>, las funciones <code>escribir</code>, <code>leer_linea</code>, <code>abrir</code>, <code>cerrar</code> y los canales no están disponibles. Para depuración temprana, utilice <code>asm("outb ...")</code> o rutinas de puerto serie definidas por el desarrollador.</li>
+<li><strong>Memoria</strong>: El asignador global (<code>__syn_asignar</code>/<code>__syn_liberar</code>) debe gestionar un heap estático o direcciones de memoria física. No hay llamadas al sistema (<code>sbrk</code>/<code>mmap</code>).</li>
+<li><strong>Threading</strong>: Las funciones <code>synapse_lanzar_hilo</code> y <code>synapse_esperar_hilos</code> no están declaradas. Para concurrencia en bare-metal, implemente su propio scheduler o utilice interrupciones.</li>
+<li><strong>Pool de memoria</strong>: La inicialización del pool (<code>pool_init</code>) no se ejecuta. Toda la asignación dinámica queda bajo control exclusivo de los hooks <code>__syn_asignar</code>/<code>__syn_liberar</code>.</li>
+</ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="ecosistema-axon.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="libreria-estandar.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="programacion-bare-metal.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -269,13 +275,10 @@ liberar_nodo(-&gt; nodo)
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="ecosistema-axon.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="libreria-estandar.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="programacion-bare-metal.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                    </a>
             </nav>
 
         </div>
