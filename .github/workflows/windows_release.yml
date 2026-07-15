@@ -22,6 +22,7 @@ jobs:
       uses: egor-tensin/setup-mingw@v2
       with:
         platform: x64
+        static: 0
 
     - name: Bootstrap — Generar código C nativo
       run: python main.py opensyn/principal.syn
