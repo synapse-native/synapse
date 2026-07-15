@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e5460344.js";
+            window.path_to_searchindex_js = "searchindex-23834598.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2c17e8d9.js"></script>
+        <script src="toc-ba1d74ee.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -644,6 +644,393 @@ funcion principal() -&gt; entero:
 <li><strong>Threading</strong>: Las funciones <code>synapse_lanzar_hilo</code> y <code>synapse_esperar_hilos</code> no están declaradas. Para concurrencia en bare-metal, implemente su propio scheduler o utilice interrupciones.</li>
 <li><strong>Pool de memoria</strong>: La inicialización del pool (<code>pool_init</code>) no se ejecuta. Toda la asignación dinámica queda bajo control exclusivo de los hooks <code>__syn_asignar</code>/<code>__syn_liberar</code>.</li>
 </ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="opensyn-el-orquestador-autónomo"><a class="header" href="#opensyn-el-orquestador-autónomo">OpenSyn: El Orquestador Autónomo</a></h1>
+<p><strong>OpenSyn</strong> es el orquestador autónomo que cierra el ciclo de vida del desarrollo de software: un LLM genera código Synapse, el compilador nativo lo audita, y si hay errores, el bucle retroalimenta al modelo para que se corrija a sí mismo — todo sin intervención humana.</p>
+<pre><code>Prompt ──► LLM ──► Código ──► Compilador ──► ✅ Binario
+  ▲                      │         │
+  └── retroalimentación ◄┘         └── ❌ Error → reformular prompt
+</code></pre>
+<h2 id="filosofía-1"><a class="header" href="#filosofía-1">Filosofía</a></h2>
+<p>OpenSyn descansa sobre tres principios:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Principio</th><th>Implicación</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Auto-corrección</strong></td><td>El sistema no falla en el primer error; reformula el prompt con el diagnóstico del compilador y lo reintenta hasta <code>MAX_INTENTOS</code> (3) veces.</td></tr>
+<tr><td><strong>Sin intermediarios</strong></td><td>No se necesita un humano leyendo errores de compilación. El LLM lee el error Synapse directamente y lo resuelve.</td></tr>
+<tr><td><strong>Soberanía del binario</strong></td><td>El producto final es un <code>.exe</code> nativo de C, sin runtime, sin VM, sin dependencias.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="arquitectura"><a class="header" href="#arquitectura">Arquitectura</a></h2>
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│                   opensyn/principal.syn                   │
+│  (punto de entrada: main → principal)                     │
+└──────────────────┬───────────────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────────────┐
+│               std.oraculo: generar_codigo()               │
+│  (bucle principal con telemetría)                         │
+└──┬───────────────┬──────────────────┬────────────────────┘
+   │               │                  │
+   ▼               ▼                  ▼
+┌────────┐   ┌───────────┐   ┌──────────────┐
+│ modelo │   │ extraer   │   │ compilar     │
+│ .syn   │   │ bloque    │   │ helper       │
+│ infer. │   │ código    │   │ .py          │
+└────────┘   └───────────┘   └──────────────┘
+</code></pre>
+<h2 id="flujo-detallado"><a class="header" href="#flujo-detallado">Flujo detallado</a></h2>
+<ol>
+<li><strong>Carga del modelo</strong>: <code>_syn_modelo_cargar("modelo_synapse.gguf")</code> abre y mapea en memoria un transformer completo.</li>
+<li><strong>Construcción del prompt</strong>: Se inyecta <code>SYSTEM_PROMPT</code> (reglas del lenguaje Synapse) + instrucción del usuario.</li>
+<li><strong>Generación de texto</strong>: El transformer produce tokens autoregresivamente con muestreo top-k / top-p.</li>
+<li><strong>Extracción de código</strong>: <code>_syn_extraer_bloque_codigo()</code> extrae el contenido entre marcadores <code>```synapse ```</code>.</li>
+<li><strong>Compilación interna</strong>: <code>_syn_compilar_codigo()</code> escribe un archivo temporal, invoca <code>_compilar_helper.py</code> vía <code>_popen</code>, y parsea el JSON de resultado.</li>
+<li><strong>Retroalimentación</strong>: Si falla, se concatena el error de línea al prompt y se reintenta (hasta 3 veces).</li>
+</ol>
+<h2 id="binario-generado"><a class="header" href="#binario-generado">Binario generado</a></h2>
+<pre><code class="language-c">// principal.c — generado por Synapse
+int main(int argc, char** argv) {
+    pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
+    principal();
+    synapse_esperar_hilos();
+    return 0;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="bucle-del-oráculo"><a class="header" href="#bucle-del-oráculo">Bucle del Oráculo</a></h1>
+<p>El <strong>bucle del Oráculo</strong> es el mecanismo de auto-corrección que permite a un LLM generar código Synapse funcional sin intervención humana.</p>
+<h2 id="vista-general"><a class="header" href="#vista-general">Vista general</a></h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[Instrucción usuario] --&gt; B[Construir prompt&lt;br/&gt;System Prompt + instrucción]
+    B --&gt; C[Invocar LLM&lt;br/&gt;_syn_modelo_generar_texto]
+    C --&gt; D[Extraer bloque código&lt;br/&gt;_syn_extraer_bloque_codigo]
+    D --&gt; E[Compilar código&lt;br/&gt;_syn_compilar_codigo]
+    E --&gt; F{¿Compilación exitosa?}
+    F --&gt;|Sí| G[✅ Retornar código generado]
+    F --&gt;|No| H[Capturar error&lt;br/&gt;línea + mensaje]
+    H --&gt; I{¿intento &lt; MAX_INTENTOS?}
+    I --&gt;|Sí| J[Retroalimentar prompt&lt;br/&gt;con error detectado]
+    J --&gt; B
+    I --&gt;|No| K[❌ Retornar cadena vacía]
+</code></pre>
+<h2 id="implementación-en-synapse-oraculosyn"><a class="header" href="#implementación-en-synapse-oraculosyn">Implementación en Synapse (<code>oraculo.syn</code>)</a></h2>
+<h3 id="generar_codigomodelo-instruccion-max_intentos"><a class="header" href="#generar_codigomodelo-instruccion-max_intentos"><code>generar_codigo(modelo, instruccion, max_intentos)</code></a></h3>
+<pre><code>1. prompt = SYSTEM_PROMPT + "Instrucción: " + instruccion
+          + "Genera SOLO el código Synapse:"
+
+2. PARA intento = 0,1,...,max_intentos-1:
+   a. respuesta = generar_texto(modelo, prompt, 256, 0.7, 40, 0.9)
+   b. código = extraer_bloque_codigo(respuesta)
+   c. SI código vacío: código = respuesta
+   d. resultado = compilar_codigo(código)
+   e. SI resultado == 0: retornar código
+   f. prompt += "Error: " + obtener_error() + " Corrige:"
+   g. siguiente intento
+
+3. retornar ""
+</code></pre>
+<h3 id="system-prompt"><a class="header" href="#system-prompt">System Prompt</a></h3>
+<p>El <code>SYSTEM_PROMPT</code> define 15 reglas sintácticas y semánticas del lenguaje Synapse que el modelo debe respetar:</p>
+<ul>
+<li>Indentación: múltiplos de 4 espacios (no tabs)</li>
+<li>No se usan llaves <code>{}</code> para bloques</li>
+<li><code>#lang: es</code> al inicio</li>
+<li>Bloques por indentación</li>
+<li><code>funcion nombre(param: tipo) -&gt; tipo:</code> para funciones</li>
+<li><code>si condicion:</code> para condicionales</li>
+<li><code>mientras condicion:</code> para bucles</li>
+<li><code>retornar expr</code> para valores de retorno</li>
+<li>Tipos: <code>entero</code>, <code>decimal</code>, <code>texto</code>, <code>booleano</code>, <code>puntero</code>, <code>tensor</code>, <code>nulo</code></li>
+<li>Strings entre comillas dobles</li>
+<li>Sin punto y coma al final de línea</li>
+<li><code>verdadero</code> / <code>falso</code> para booleanos</li>
+<li><code>nulo</code> para puntero nulo</li>
+</ul>
+<h2 id="compilación-interna-_syn_compilar_codigo"><a class="header" href="#compilación-interna-_syn_compilar_codigo">Compilación interna (<code>_syn_compilar_codigo</code>)</a></h2>
+<pre><code class="language-c">int _syn_compilar_codigo(CadenaSegura fuente) {
+    // 1. Escribir fuente a oraculo_temp.syn
+    // 2. Ejecutar helper vía _popen:
+    //      py -3 _compilar_helper.py oraculo_temp.syn
+    // 3. Leer JSON de stdout
+    // 4. Parsear resultado
+    // 5. Cachear código C o errores
+    // 6. Limpiar archivo temporal
+    // 7. Retornar 0 (éxito) o 1 (error)
+}
+</code></pre>
+<p>El helper <code>_compilar_helper.py</code> ejecuta el pipeline completo de Synapse (Lexer → Parser → AnalizadorSemántico → GeneradorC) y devuelve JSON estructurado:</p>
+<p><strong>Éxito:</strong></p>
+<pre><code class="language-json">{"exito": true, "codigo_c": "#include &lt;stdio.h&gt;\n..."}
+</code></pre>
+<p><strong>Error:</strong></p>
+<pre><code class="language-json">{"exito": false, "errores": [
+    {"linea": 5, "columna": 8, "mensaje": "Variable no declarada"}
+]}
+</code></pre>
+<h2 id="extracción-de-bloques-de-código"><a class="header" href="#extracción-de-bloques-de-código">Extracción de bloques de código</a></h2>
+<pre><code class="language-c">CadenaSegura _syn_extraer_bloque_codigo(CadenaSegura texto) {
+    // Busca marcadores ```...``` en el texto
+    // Si encuentra uno, extrae el contenido interior
+    // Si no encuentra, retorna cadena vacía
+    // (el llamador usa texto completo como fallback)
+}
+</code></pre>
+<h2 id="telemetría"><a class="header" href="#telemetría">Telemetría</a></h2>
+<p>El bucle imprime logs en consola para seguimiento:</p>
+<pre><code>[Oráculo] Generando código... (Intento 1/3)
+[Compilador] Error detectado: Re-inyectando contexto...
+[Oráculo] Generando código... (Intento 2/3)
+[Compilador] Éxito. Binario generado.
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tokenizador-bpe-byte-pair-encoding"><a class="header" href="#tokenizador-bpe-byte-pair-encoding">Tokenizador BPE (Byte-Pair Encoding)</a></h1>
+<p>El tokenizador BPE es el componente que convierte texto en secuencias de enteros (tokens) que el transformer puede procesar, y viceversa.</p>
+<h2 id="arquitectura-1"><a class="header" href="#arquitectura-1">Arquitectura</a></h2>
+<pre><code>Texto ──► Pre-tokenización ──► BPE merge ──► IDs de token
+              │                      │
+        división por           fusión iterativa
+        whitespace y           del par con menor
+        puntuación             rango (rank)
+</code></pre>
+<h2 id="estructuras-de-datos"><a class="header" href="#estructuras-de-datos">Estructuras de datos</a></h2>
+<h3 id="bpecontext"><a class="header" href="#bpecontext">BpeContext</a></h3>
+<pre><code class="language-c">typedef struct {
+    int vocab_size;        // tamaño total del vocabulario
+    char** tokens;         // arreglo [vocab_size] de strings de token
+    int num_merges;        // cantidad de reglas de fusión
+    BpeMerge* merges;      // reglas de fusión (first, second → result)
+    int bos_id, eos_id;    // tokens especiales BOS/EOS
+} BpeContext;
+</code></pre>
+<h3 id="bpemerge"><a class="header" href="#bpemerge">BpeMerge</a></h3>
+<pre><code class="language-c">typedef struct {
+    int first;   // ID del primer token del par
+    int second;  // ID del segundo token del par
+    int result;  // ID del token resultado de la fusión
+} BpeMerge;
+</code></pre>
+<h2 id="carga-desde-gguf"><a class="header" href="#carga-desde-gguf">Carga desde GGUF</a></h2>
+<pre><code>_syn_gguf_abrir()
+    │
+    ├── tokenizer.ggml.tokens  →  BpeContext.tokens[]
+    ├── tokenizer.ggml.merges  →  BpeContext.merges[]
+    ├── tokenizer.ggml.bos_id  →  BpeContext.bos_id
+    └── tokenizer.ggml.eos_id  →  BpeContext.eos_id
+</code></pre>
+<p>Las reglas de fusión se cargan desde el metadato ARRAY <code>tokenizer.ggml.merges</code>. Cada entrada es un string con formato <code>"tokenA tokenB"</code>. Se parsea dividiendo por el último espacio y haciendo lookup de cada token en el vocabulario base para obtener su ID.</p>
+<h2 id="pre-tokenización-gpt-2-style"><a class="header" href="#pre-tokenización-gpt-2-style">Pre-tokenización (GPT-2 style)</a></h2>
+<p>Antes de aplicar BPE, el texto se segmenta en unidades atómicas:</p>
+<ol>
+<li>División por <strong>whitespace</strong> (<code> </code>, <code>\t</code>, <code>\n</code>, <code>\r</code>)</li>
+<li>Cada palabra se subdivide en segmentos de <strong>letras</strong>, <strong>dígitos</strong> y <strong>puntuación</strong></li>
+<li>Cada segmento se codifica independientemente con BPE</li>
+</ol>
+<pre><code>"¡Hola, mundo!"  →  ["¡Hola", ",", "mundo", "!"]
+</code></pre>
+<h2 id="algoritmo-bpe"><a class="header" href="#algoritmo-bpe">Algoritmo BPE</a></h2>
+<pre><code>función codificar_palabra(palabra, ctx):
+    // Fase 1: mapear caracteres a tokens base
+    tokens = []
+    para cada char en palabra:
+        si char está en el vocabulario:
+            tokens.append(id[char])
+        sino:
+            tokens.append(UNK=0)
+
+    // Fase 2: fusionar iterativamente
+    mientras True:
+            mejor_par = encontrar_par_con_menor_rank(tokens, ctx.merges)
+            si no hay par fusionable:
+                romper
+            reemplazar par en tokens con token_resultado
+
+    retornar tokens
+</code></pre>
+<h3 id="búsqueda-de-mejor-par-_bpe_mejor_fusion"><a class="header" href="#búsqueda-de-mejor-par-_bpe_mejor_fusion">Búsqueda de mejor par (<code>_bpe_mejor_fusion</code>)</a></h3>
+<p>Recorre linealmente todas las reglas de fusión (<code>merges[]</code>) buscando el par <code>(tokens[i], tokens[i+1])</code> que tenga el <strong>índice de merge más bajo</strong> (menor rank = mayor prioridad).</p>
+<pre><code class="language-c">static int _bpe_mejor_fusion(BpeContext* ctx, int* tokens, int n) {
+    int mejor_rank = ctx-&gt;num_merges;  // peor caso
+    int mejor_pos = -1;
+    for (int i = 0; i &lt; n - 1; i++) {
+        for (int m = 0; m &lt; ctx-&gt;num_merges; m++) {
+            if (ctx-&gt;merges[m].first == tokens[i] &amp;&amp;
+                ctx-&gt;merges[m].second == tokens[i+1] &amp;&amp;
+                m &lt; mejor_rank) {
+                mejor_rank = m;
+                mejor_pos = i;
+            }
+        }
+    }
+    return mejor_pos;  // -1 si no hay fusión
+}
+</code></pre>
+<h2 id="api-pública"><a class="header" href="#api-pública">API pública</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Función</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr><td><code>_syn_modelo_codificar_contar(ctx, texto)</code></td><td>Codifica el texto y devuelve la cantidad de tokens. El resultado se cachea en <code>ctx-&gt;ultima_codificacion</code>.</td></tr>
+<tr><td><code>_syn_modelo_codificar_obtener(ctx, i)</code></td><td>Devuelve el i-ésimo token de la última codificación.</td></tr>
+<tr><td><code>_syn_modelo_decodificar_token(ctx, id)</code></td><td>Devuelve el string asociado a un ID de token.</td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="inferencia-nativa-transformers-en-c"><a class="header" href="#inferencia-nativa-transformers-en-c">Inferencia Nativa (Transformers en C)</a></h1>
+<p>El motor de inferencia de Synapse ejecuta transformers completos en C nativo, sin dependencias externas (ni Python, ni CUDA, ni ONNX Runtime).</p>
+<h2 id="pipeline-de-inferencia"><a class="header" href="#pipeline-de-inferencia">Pipeline de Inferencia</a></h2>
+<pre><code>Token ID ──► Embedding ──► Transformer ──► Logits ──► Sampling ──► Token ID
+                │           │                           │
+           w_emb[]      n_layers capas              top-k / top-p
+                        │                           + temperature
+                    RMSNorm + RoPE
+                    QKV proyecciones
+                    Attention (GQA)
+                    SwiGLU FFN
+</code></pre>
+<h2 id="modelocontexto"><a class="header" href="#modelocontexto">ModeloContexto</a></h2>
+<pre><code class="language-c">typedef struct {
+    // Buffers de trabajo (heap)
+    float* w_hidden, *w_attn_norm, *w_ffn_norm;
+    float* w_q, *w_k, *w_v, *w_attn_out;
+    float* w_gate, *w_up, *w_down, *w_scores;
+
+    // Arquitectura
+    int n_layers, n_heads, n_kv_heads, n_embd, n_ff;
+    float rope_theta;
+    int max_seq_len;
+
+    // KV cache (n_layers * n_kv_heads * max_seq_len * head_dim)
+    float* k_cache, *v_cache;
+    int n_past;
+
+    // Tokenizador BPE
+    BpeContext* bpe;
+    TokenArray ultima_codificacion;
+
+    // Peso del LM head
+    float* output_weight;
+
+    // GGUF subyacente
+    void* datos_internos;
+} ModeloContexto;
+</code></pre>
+<h2 id="forward-pass-_modelo_evaluar_token"><a class="header" href="#forward-pass-_modelo_evaluar_token">Forward Pass (<code>_modelo_evaluar_token</code>)</a></h2>
+<h3 id="1-embedding"><a class="header" href="#1-embedding">1. Embedding</a></h3>
+<p>Cada token ID se convierte en un vector <code>w_emb[token_id]</code> (una fila de la matriz de embeddings).</p>
+<h3 id="2-capa-del-transformer-para-cada-una-de-n_layers"><a class="header" href="#2-capa-del-transformer-para-cada-una-de-n_layers">2. Capa del transformer (para cada una de <code>n_layers</code>)</a></h3>
+<pre><code>a. RMSNorm pre-attention
+   an = rmsnorm(hidden, w_attn_norm[l])
+   función rmsnorm(x, weight):
+       ss = mean(x²) + 1e-6
+       return weight * x / sqrt(ss)
+
+b. Proyecciones QKV (con sesgo de 1:1 para V)
+   Q = an @ w_q[l]^T
+   K = an @ w_k[l]^T
+   V = an @ w_v[l]^T
+
+c. RoPE (Rotary Position Embedding)
+   para cada head h en Q, K:
+       para cada par (d, d+1) en head_dim:
+           θ = pos / (rope_theta^(2d/head_dim))
+           rotar(Q[h][d], Q[h][d+1], cos(θ), sin(θ))
+           rotar(K[h][d], K[h][d+1], cos(θ), sin(θ))
+
+d. KV cache
+   k_cache[l][head][pos][:] = K[head][:]
+   v_cache[l][head][pos][:] = V[head][:]
+
+e. Atención GQA (Grouped-Query Attention)
+   n_groups = n_heads / n_kv_heads
+   para cada grupo g:
+       para cada kv_head:
+           scores = Q[g*n_groups + hq] @ k_cache[pos]^T
+           scores /= sqrt(head_dim)
+           attn = softmax(scores)
+           out += attn @ v_cache[pos]
+       out = out @ w_attn_out[l]^T
+
+f. Residual
+   hidden = hidden + attention_output
+
+g. RMSNorm pre-FFN
+   an = rmsnorm(hidden, w_ffn_norm[l])
+
+h. SwiGLU FFN (SwiGLU = silu(gate) * up)
+   gate = silu(an @ w_gate[l]^T)   donde silu(x) = x / (1 + exp(-x))
+   up   = an @ w_up[l]^T
+   hidden = (gate * up) @ w_down[l]^T
+
+i. Residual
+   hidden = hidden + ffn_output
+</code></pre>
+<h3 id="3-finalización"><a class="header" href="#3-finalización">3. Finalización</a></h3>
+<pre><code>hidden = rmsnorm(hidden, w_output_norm)
+logits = hidden @ output_weight^T   (LM head)
+</code></pre>
+<h2 id="sampling"><a class="header" href="#sampling">Sampling</a></h2>
+<pre><code class="language-c">int _syn_modelo_generar(ctx, token_id, temperature, top_k, top_p) {
+    // 1. Forward pass (token_id → logits)
+    Tensor logits = _syn_modelo_evaluar(ctx, token_id);
+
+    // 2. Top-K: solo los K logits más altos
+    _filtro_top_k(logits, top_k);
+
+    // 3. Top-P: solo el conjunto más pequeño con P acumulada
+    //    Aplica softmax, ordena, acumula, filtra
+    _filtro_top_p(logits, top_p);
+
+    // 4. Escala por temperatura
+    for (i = 0; i &lt; n; i++)
+        logits[i] /= temperature;
+
+    // 5. Muestreo multinomial
+    prob = softmax(logits);
+    r = uniforme(0, 1);
+    acum = 0;
+    for (i = 0; i &lt; n; i++) {
+        acum += prob[i];
+        if (r &lt; acum) return i;
+    }
+    return n - 1;
+}
+</code></pre>
+<h2 id="generación-de-texto-_syn_modelo_generar_texto"><a class="header" href="#generación-de-texto-_syn_modelo_generar_texto">Generación de texto (<code>_syn_modelo_generar_texto</code>)</a></h2>
+<pre><code>1. prompt → BPE tokenizer → token_ids[]
+2. Para cada token_id en prompt_ids:
+       _syn_modelo_generar(ctx, token_id, temp, top_k, top_p)
+3. Mientras nuevo_token != EOS y count &lt; max_tokens:
+       nuevo_token = _syn_modelo_generar(ctx, último, temp, ...)
+       token_str = _syn_modelo_decodificar_token(ctx, nuevo_token)
+       salida.append(token_str)
+4. Retornar salida como CadenaSegura
+</code></pre>
+<h2 id="formatos-de-cuantización-soportados"><a class="header" href="#formatos-de-cuantización-soportados">Formatos de cuantización soportados</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Tipo GGML</th><th>ID</th><th>Soportado</th></tr>
+</thead>
+<tbody>
+<tr><td>F32</td><td>0</td><td>✅ Sí</td></tr>
+<tr><td>F16</td><td>1</td><td>❌ No</td></tr>
+<tr><td>Q4_0</td><td>2</td><td>❌ No</td></tr>
+<tr><td>Q4_1</td><td>3</td><td>❌ No</td></tr>
+<tr><td>Q5_0</td><td>6</td><td>❌ No</td></tr>
+<tr><td>Q5_1</td><td>7</td><td>❌ No</td></tr>
+<tr><td>Q8_0</td><td>8</td><td>❌ No</td></tr>
+</tbody>
+</table>
+</div>
 
                     </main>
 

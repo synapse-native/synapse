@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introducción - El Lenguaje de Programación Synapse</title>
+        <title>Bucle del Oráculo - El Lenguaje de Programación Synapse</title>
 
 
         <!-- Custom HTML head -->
@@ -143,7 +143,7 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/introduccion.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/bucle-oraculo.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -177,29 +177,101 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="introducción"><a class="header" href="#introducción">Introducción</a></h1>
-<p>Synapse es un lenguaje de sistemas moderno, compilado, determinista y seguro, diseñado para ofrecer el control del hardware con las garantías de un lenguaje de alto nivel. Su compilador es 100% auto-alojado (self-hosted) y genera código C directamente, sin runtime ni máquina virtual.</p>
-<h2 id="filosofía"><a class="header" href="#filosofía">Filosofía</a></h2>
+                        <h1 id="bucle-del-oráculo"><a class="header" href="#bucle-del-oráculo">Bucle del Oráculo</a></h1>
+<p>El <strong>bucle del Oráculo</strong> es el mecanismo de auto-corrección que permite a un LLM generar código Synapse funcional sin intervención humana.</p>
+<h2 id="vista-general"><a class="header" href="#vista-general">Vista general</a></h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[Instrucción usuario] --&gt; B[Construir prompt&lt;br/&gt;System Prompt + instrucción]
+    B --&gt; C[Invocar LLM&lt;br/&gt;_syn_modelo_generar_texto]
+    C --&gt; D[Extraer bloque código&lt;br/&gt;_syn_extraer_bloque_codigo]
+    D --&gt; E[Compilar código&lt;br/&gt;_syn_compilar_codigo]
+    E --&gt; F{¿Compilación exitosa?}
+    F --&gt;|Sí| G[✅ Retornar código generado]
+    F --&gt;|No| H[Capturar error&lt;br/&gt;línea + mensaje]
+    H --&gt; I{¿intento &lt; MAX_INTENTOS?}
+    I --&gt;|Sí| J[Retroalimentar prompt&lt;br/&gt;con error detectado]
+    J --&gt; B
+    I --&gt;|No| K[❌ Retornar cadena vacía]
+</code></pre>
+<h2 id="implementación-en-synapse-oraculosyn"><a class="header" href="#implementación-en-synapse-oraculosyn">Implementación en Synapse (<code>oraculo.syn</code>)</a></h2>
+<h3 id="generar_codigomodelo-instruccion-max_intentos"><a class="header" href="#generar_codigomodelo-instruccion-max_intentos"><code>generar_codigo(modelo, instruccion, max_intentos)</code></a></h3>
+<pre><code>1. prompt = SYSTEM_PROMPT + "Instrucción: " + instruccion
+          + "Genera SOLO el código Synapse:"
+
+2. PARA intento = 0,1,...,max_intentos-1:
+   a. respuesta = generar_texto(modelo, prompt, 256, 0.7, 40, 0.9)
+   b. código = extraer_bloque_codigo(respuesta)
+   c. SI código vacío: código = respuesta
+   d. resultado = compilar_codigo(código)
+   e. SI resultado == 0: retornar código
+   f. prompt += "Error: " + obtener_error() + " Corrige:"
+   g. siguiente intento
+
+3. retornar ""
+</code></pre>
+<h3 id="system-prompt"><a class="header" href="#system-prompt">System Prompt</a></h3>
+<p>El <code>SYSTEM_PROMPT</code> define 15 reglas sintácticas y semánticas del lenguaje Synapse que el modelo debe respetar:</p>
 <ul>
-<li><strong>Cero-cost abstractions</strong>: toda abstracción se resuelve en tiempo de compilación.</li>
-<li><strong>Determinismo</strong>: no hay recolector de basura ni comportamientos impredecibles.</li>
-<li><strong>Seguridad por diseño</strong>: el sistema de ownership y el analizador semántico previenen fugas de memoria, use-after-free y data races en compilación.</li>
-<li><strong>Concurrencia sin estado compartido</strong>: la comunicación vía canales es el mecanismo único de interacción entre hilos.</li>
+<li>Indentación: múltiplos de 4 espacios (no tabs)</li>
+<li>No se usan llaves <code>{}</code> para bloques</li>
+<li><code>#lang: es</code> al inicio</li>
+<li>Bloques por indentación</li>
+<li><code>funcion nombre(param: tipo) -&gt; tipo:</code> para funciones</li>
+<li><code>si condicion:</code> para condicionales</li>
+<li><code>mientras condicion:</code> para bucles</li>
+<li><code>retornar expr</code> para valores de retorno</li>
+<li>Tipos: <code>entero</code>, <code>decimal</code>, <code>texto</code>, <code>booleano</code>, <code>puntero</code>, <code>tensor</code>, <code>nulo</code></li>
+<li>Strings entre comillas dobles</li>
+<li>Sin punto y coma al final de línea</li>
+<li><code>verdadero</code> / <code>falso</code> para booleanos</li>
+<li><code>nulo</code> para puntero nulo</li>
 </ul>
-<h2 id="objetivos"><a class="header" href="#objetivos">Objetivos</a></h2>
-<ul>
-<li>Ser un reemplazo directo de C/C++ para sistemas embebidos, redes y computación de alto rendimiento.</li>
-<li>Mantener compatibilidad FFI completa con C.</li>
-<li>Proveer un ecosistema de paquetes (Axon) con verificación criptográfica SHA-256.</li>
-<li>Ofrecer tooling moderno: LSP, extensión VS Code, instalador zero-friction.</li>
-</ul>
+<h2 id="compilación-interna-_syn_compilar_codigo"><a class="header" href="#compilación-interna-_syn_compilar_codigo">Compilación interna (<code>_syn_compilar_codigo</code>)</a></h2>
+<pre><code class="language-c">int _syn_compilar_codigo(CadenaSegura fuente) {
+    // 1. Escribir fuente a oraculo_temp.syn
+    // 2. Ejecutar helper vía _popen:
+    //      py -3 _compilar_helper.py oraculo_temp.syn
+    // 3. Leer JSON de stdout
+    // 4. Parsear resultado
+    // 5. Cachear código C o errores
+    // 6. Limpiar archivo temporal
+    // 7. Retornar 0 (éxito) o 1 (error)
+}
+</code></pre>
+<p>El helper <code>_compilar_helper.py</code> ejecuta el pipeline completo de Synapse (Lexer → Parser → AnalizadorSemántico → GeneradorC) y devuelve JSON estructurado:</p>
+<p><strong>Éxito:</strong></p>
+<pre><code class="language-json">{"exito": true, "codigo_c": "#include &lt;stdio.h&gt;\n..."}
+</code></pre>
+<p><strong>Error:</strong></p>
+<pre><code class="language-json">{"exito": false, "errores": [
+    {"linea": 5, "columna": 8, "mensaje": "Variable no declarada"}
+]}
+</code></pre>
+<h2 id="extracción-de-bloques-de-código"><a class="header" href="#extracción-de-bloques-de-código">Extracción de bloques de código</a></h2>
+<pre><code class="language-c">CadenaSegura _syn_extraer_bloque_codigo(CadenaSegura texto) {
+    // Busca marcadores ```...``` en el texto
+    // Si encuentra uno, extrae el contenido interior
+    // Si no encuentra, retorna cadena vacía
+    // (el llamador usa texto completo como fallback)
+}
+</code></pre>
+<h2 id="telemetría"><a class="header" href="#telemetría">Telemetría</a></h2>
+<p>El bucle imprime logs en consola para seguimiento:</p>
+<pre><code>[Oráculo] Generando código... (Intento 1/3)
+[Compilador] Error detectado: Re-inyectando contexto...
+[Oráculo] Generando código... (Intento 2/3)
+[Compilador] Éxito. Binario generado.
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="sumilla-opensyn.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                            <a rel="next prefetch" href="empezando.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="tokenizador-bpe.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -209,8 +281,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="sumilla-opensyn.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                    <a rel="next prefetch" href="empezando.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="tokenizador-bpe.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

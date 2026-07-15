@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introducción - El Lenguaje de Programación Synapse</title>
+        <title>Tokenizador BPE - El Lenguaje de Programación Synapse</title>
 
 
         <!-- Custom HTML head -->
@@ -143,7 +143,7 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
                         </a>
-                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/introduccion.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/synapse-native/synapse/edit/main/docs/src/tokenizador-bpe.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
                         </a>
 
@@ -177,29 +177,110 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="introducción"><a class="header" href="#introducción">Introducción</a></h1>
-<p>Synapse es un lenguaje de sistemas moderno, compilado, determinista y seguro, diseñado para ofrecer el control del hardware con las garantías de un lenguaje de alto nivel. Su compilador es 100% auto-alojado (self-hosted) y genera código C directamente, sin runtime ni máquina virtual.</p>
-<h2 id="filosofía"><a class="header" href="#filosofía">Filosofía</a></h2>
-<ul>
-<li><strong>Cero-cost abstractions</strong>: toda abstracción se resuelve en tiempo de compilación.</li>
-<li><strong>Determinismo</strong>: no hay recolector de basura ni comportamientos impredecibles.</li>
-<li><strong>Seguridad por diseño</strong>: el sistema de ownership y el analizador semántico previenen fugas de memoria, use-after-free y data races en compilación.</li>
-<li><strong>Concurrencia sin estado compartido</strong>: la comunicación vía canales es el mecanismo único de interacción entre hilos.</li>
-</ul>
-<h2 id="objetivos"><a class="header" href="#objetivos">Objetivos</a></h2>
-<ul>
-<li>Ser un reemplazo directo de C/C++ para sistemas embebidos, redes y computación de alto rendimiento.</li>
-<li>Mantener compatibilidad FFI completa con C.</li>
-<li>Proveer un ecosistema de paquetes (Axon) con verificación criptográfica SHA-256.</li>
-<li>Ofrecer tooling moderno: LSP, extensión VS Code, instalador zero-friction.</li>
-</ul>
+                        <h1 id="tokenizador-bpe-byte-pair-encoding"><a class="header" href="#tokenizador-bpe-byte-pair-encoding">Tokenizador BPE (Byte-Pair Encoding)</a></h1>
+<p>El tokenizador BPE es el componente que convierte texto en secuencias de enteros (tokens) que el transformer puede procesar, y viceversa.</p>
+<h2 id="arquitectura"><a class="header" href="#arquitectura">Arquitectura</a></h2>
+<pre><code>Texto ──► Pre-tokenización ──► BPE merge ──► IDs de token
+              │                      │
+        división por           fusión iterativa
+        whitespace y           del par con menor
+        puntuación             rango (rank)
+</code></pre>
+<h2 id="estructuras-de-datos"><a class="header" href="#estructuras-de-datos">Estructuras de datos</a></h2>
+<h3 id="bpecontext"><a class="header" href="#bpecontext">BpeContext</a></h3>
+<pre><code class="language-c">typedef struct {
+    int vocab_size;        // tamaño total del vocabulario
+    char** tokens;         // arreglo [vocab_size] de strings de token
+    int num_merges;        // cantidad de reglas de fusión
+    BpeMerge* merges;      // reglas de fusión (first, second → result)
+    int bos_id, eos_id;    // tokens especiales BOS/EOS
+} BpeContext;
+</code></pre>
+<h3 id="bpemerge"><a class="header" href="#bpemerge">BpeMerge</a></h3>
+<pre><code class="language-c">typedef struct {
+    int first;   // ID del primer token del par
+    int second;  // ID del segundo token del par
+    int result;  // ID del token resultado de la fusión
+} BpeMerge;
+</code></pre>
+<h2 id="carga-desde-gguf"><a class="header" href="#carga-desde-gguf">Carga desde GGUF</a></h2>
+<pre><code>_syn_gguf_abrir()
+    │
+    ├── tokenizer.ggml.tokens  →  BpeContext.tokens[]
+    ├── tokenizer.ggml.merges  →  BpeContext.merges[]
+    ├── tokenizer.ggml.bos_id  →  BpeContext.bos_id
+    └── tokenizer.ggml.eos_id  →  BpeContext.eos_id
+</code></pre>
+<p>Las reglas de fusión se cargan desde el metadato ARRAY <code>tokenizer.ggml.merges</code>. Cada entrada es un string con formato <code>"tokenA tokenB"</code>. Se parsea dividiendo por el último espacio y haciendo lookup de cada token en el vocabulario base para obtener su ID.</p>
+<h2 id="pre-tokenización-gpt-2-style"><a class="header" href="#pre-tokenización-gpt-2-style">Pre-tokenización (GPT-2 style)</a></h2>
+<p>Antes de aplicar BPE, el texto se segmenta en unidades atómicas:</p>
+<ol>
+<li>División por <strong>whitespace</strong> (<code> </code>, <code>\t</code>, <code>\n</code>, <code>\r</code>)</li>
+<li>Cada palabra se subdivide en segmentos de <strong>letras</strong>, <strong>dígitos</strong> y <strong>puntuación</strong></li>
+<li>Cada segmento se codifica independientemente con BPE</li>
+</ol>
+<pre><code>"¡Hola, mundo!"  →  ["¡Hola", ",", "mundo", "!"]
+</code></pre>
+<h2 id="algoritmo-bpe"><a class="header" href="#algoritmo-bpe">Algoritmo BPE</a></h2>
+<pre><code>función codificar_palabra(palabra, ctx):
+    // Fase 1: mapear caracteres a tokens base
+    tokens = []
+    para cada char en palabra:
+        si char está en el vocabulario:
+            tokens.append(id[char])
+        sino:
+            tokens.append(UNK=0)
+
+    // Fase 2: fusionar iterativamente
+    mientras True:
+            mejor_par = encontrar_par_con_menor_rank(tokens, ctx.merges)
+            si no hay par fusionable:
+                romper
+            reemplazar par en tokens con token_resultado
+
+    retornar tokens
+</code></pre>
+<h3 id="búsqueda-de-mejor-par-_bpe_mejor_fusion"><a class="header" href="#búsqueda-de-mejor-par-_bpe_mejor_fusion">Búsqueda de mejor par (<code>_bpe_mejor_fusion</code>)</a></h3>
+<p>Recorre linealmente todas las reglas de fusión (<code>merges[]</code>) buscando el par <code>(tokens[i], tokens[i+1])</code> que tenga el <strong>índice de merge más bajo</strong> (menor rank = mayor prioridad).</p>
+<pre><code class="language-c">static int _bpe_mejor_fusion(BpeContext* ctx, int* tokens, int n) {
+    int mejor_rank = ctx-&gt;num_merges;  // peor caso
+    int mejor_pos = -1;
+    for (int i = 0; i &lt; n - 1; i++) {
+        for (int m = 0; m &lt; ctx-&gt;num_merges; m++) {
+            if (ctx-&gt;merges[m].first == tokens[i] &amp;&amp;
+                ctx-&gt;merges[m].second == tokens[i+1] &amp;&amp;
+                m &lt; mejor_rank) {
+                mejor_rank = m;
+                mejor_pos = i;
+            }
+        }
+    }
+    return mejor_pos;  // -1 si no hay fusión
+}
+</code></pre>
+<h2 id="api-pública"><a class="header" href="#api-pública">API pública</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Función</th><th>Descripción</th></tr>
+</thead>
+<tbody>
+<tr><td><code>_syn_modelo_codificar_contar(ctx, texto)</code></td><td>Codifica el texto y devuelve la cantidad de tokens. El resultado se cachea en <code>ctx-&gt;ultima_codificacion</code>.</td></tr>
+<tr><td><code>_syn_modelo_codificar_obtener(ctx, i)</code></td><td>Devuelve el i-ésimo token de la última codificación.</td></tr>
+<tr><td><code>_syn_modelo_decodificar_token(ctx, id)</code></td><td>Devuelve el string asociado a un ID de token.</td></tr>
+</tbody>
+</table>
+</div>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="bucle-oraculo.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
 
-                            <a rel="next prefetch" href="empezando.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="inferencia-nativa.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -209,8 +290,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="bucle-oraculo.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
 
-                    <a rel="next prefetch" href="empezando.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="inferencia-nativa.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
