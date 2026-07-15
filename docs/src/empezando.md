@@ -1,5 +1,17 @@
 # Empezando
 
+## ⚡ Interruptor de Soberanía
+
+OpenSyn v1.1.0 introduce el **Interruptor de Soberanía**: la IA es 100% Opt-In.
+
+En la primera ejecución, se te preguntará:
+- **Modo Lenguaje Puro** — Compilador Synapse standalone, sin IA.
+- **Modo Oráculo (IA Local)** — Orquestador autónomo con LLM local.
+
+Tu elección se guarda en `.synapse_config`. Elimínalo para cambiar de modo.
+
+---
+
 ## Instalación Zero-Friction (Windows)
 
 Un solo comando:

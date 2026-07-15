@@ -41,6 +41,25 @@ paquetes_oficiales/
 build/
 dist/
 
+# Orquestador generated files
+opensyn/principal.c
+opensyn/principal.exe
+
+# Test artifacts
+tests/*.c
+tests/*.syn
+tests/*.gguf
+tests/*.json
+tests/*_lib.py
+
+# Misc generated
+*.syn.c
+modo_oraculo=*
+_compilar_output.json
+_*.json
+opensyn_stdout.txt
+opensyn_stderr.txt
+
 # Editor
 .editorconfig
 

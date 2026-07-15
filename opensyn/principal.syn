@@ -1,41 +1,197 @@
 #lang: es
-// opensyn/principal.syn — Orquestador Autonomo (Fase 11: Ignicion)
-// Bucle del Oraculo: importar std.oraculo y ejecutar generar_codigo()
+// opensyn/principal.syn — Interruptor de Soberania (v1.1.0)
+// First-Run Experience: .synapse_config decide modo compilador vs oraculo IA
+//   - Modo Lenguaje Puro: compila archivos .syn directamente
+//   - Modo Oraculo: genera y compila codigo via LLM local
 
 importar std.oraculo
 importar std.sistema
 
-funcion principal() -> entero:
-    escribir_linea("=== OpenSyn: Orquestador Autonomo ===")
+constante ARCHIVO_CONFIG = ".synapse_config"
+
+// --- Funciones auxiliares de configuracion ---
+
+funcion leer_modo_config() -> texto:
+    contenido = leer_archivo(ARCHIVO_CONFIG)
+    // Contenido vacio = archivo no existe o config vacia
+    si contenido == "":
+        retornar ""
+    si contenido == "modo_oraculo=verdadero" o contenido == "modo_oraculo=true":
+        retornar "oraculo"
+    retornar "compilador"
+
+funcion guardar_modo_config(modo: texto) -> entero:
+    linea = concat("modo_oraculo=", modo)
+    retornar escribir_archivo(ARCHIVO_CONFIG, linea)
+
+// --- Menu de Inicializacion de Entorno Soberano ---
+
+funcion mostrar_menu_bienvenida() -> texto:
+    escribir_linea("============================================")
+    escribir_linea("  OPEN Synapse v1.1.0  -  ENTORNO SOBERANO")
+    escribir_linea("============================================")
+    escribir_linea("")
+    escribir_linea("  Synapse: lenguaje de sistemas soberano")
+    escribir_linea("  con compilacion nativa a C.")
+    escribir_linea("")
+    escribir_linea("  Selecciona tu modo de operacion:")
+    escribir_linea("")
+    escribir_linea("    [1] Modo Lenguaje Puro")
+    escribir_linea("        Compilador Synapse standalone.")
+    escribir_linea("        Ideal para desarrolladores C/Rust.")
+    escribir_linea("        Sin consumo extra de recursos.")
+    escribir_linea("")
+    escribir_linea("    [2] Modo Oraculo (IA Local)")
+    escribir_linea("        Orquestador autonomo con LLM local.")
+    escribir_linea("        El modelo escribe y corrige codigo")
+    escribir_linea("        por ti. Requiere modelo GGUF.")
+    escribir_linea("")
+    escribir_linea("  Opcion [1/2]: ")
+
+    entrada = leer_linea()
+
+    mientras entrada != "1" y entrada != "2":
+        escribir_linea("  Entrada invalida. Ingresa 1 o 2.")
+        escribir_linea("  Opcion [1/2]: ")
+        entrada = leer_linea()
+
+    retornar entrada
+
+// --- Modo Compilador Puro ---
+
+funcion modo_compilador() -> entero:
+    escribir_linea("")
+    escribir_linea("=== Synapse: Modo Lenguaje Puro ===")
     escribir_linea("")
 
-    // Cargar modelo GGUF
-    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
-    si ctx == nulo:
-        escribir_linea("[Error] No se pudo cargar el modelo 'modelo_synapse.gguf'")
+    si _argc() < 2:
+        escribir_linea("Uso: opensyn <archivo.syn>")
+        escribir_linea("")
+        escribir_linea("Ejemplos:")
+        escribir_linea("  opensyn programa.syn")
+        escribir_linea("  opensyn main.syn")
+        escribir_linea("")
+        escribir_linea("Tambien disponible via Python:")
+        escribir_linea("  python main.py <archivo.syn>")
+        escribir_linea("")
+        escribir_linea("Documentacion: https://synapse-native.github.io/synapse/")
+        escribir_linea("")
+        retornar 0
+
+    ruta = _argv(1)
+    escribir_linea(concat("  Compilando: ", ruta))
+    escribir_linea("")
+
+    fuente = leer_archivo(ruta)
+    si fuente == "":
+        escribir_linea(concat("  [Error] No se pudo leer: ", ruta))
         retornar 1
 
-    escribir_linea("[OK] Modelo cargado exitosamente.")
+    res = compilar_codigo(fuente)
+    si res == 0:
+        codigo_c = obtener_codigo_generado()
+        nombre_c = concat(ruta, ".c")
+        escribir_archivo(nombre_c, codigo_c)
+        escribir_linea("  [OK] Compilacion exitosa.")
+        escribir_linea(concat("  [OK] Codigo C generado: ", nombre_c))
+        escribir_linea("")
+        escribir_linea("  Para compilar a binario nativo:")
+        escribir_linea(concat(concat("    gcc -o programa.exe ", nombre_c), " synapse_rt.o -lws2_32"))
+        escribir_linea("")
+        retornar 0
 
-    // Prompt de prueba: Escribir archivo con "Soberania Digital"
+    error_msg = obtener_error_compilacion()
+    linea_err = obtener_linea_error()
+    escribir_linea(concat(concat(concat("  [Error] Linea ", entero_a_texto(linea_err)), ": "), error_msg))
+    escribir_linea("")
+    retornar 1
+
+// --- Modo Oraculo (IA Local) ---
+
+funcion modo_oraculo() -> entero:
+    escribir_linea("")
+    escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
+    escribir_linea("")
+
+    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    si ctx == nulo:
+        escribir_linea("  [!] No se encontro 'modelo_synapse.gguf'")
+        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF.")
+        escribir_linea("")
+        escribir_linea("  Descarga un modelo compatible (ej. Qwen2.5-Coder-0.5B)")
+        escribir_linea("  y colocalo como 'modelo_synapse.gguf' en la raiz.")
+        escribir_linea("")
+        escribir_linea("  Luego ejecuta: opensyn")
+        escribir_linea("")
+        si _argc() >= 2 y _argv(1) == "--download-model":
+            escribir_linea("  [*] Iniciando descarga del modelo por defecto...")
+            res = ejecutar_comando("python opensyn/download_model.py")
+            si res == 0:
+                escribir_linea("  [OK] Modelo descargado. Re-ejecuta el orquestador.")
+                retornar 0
+            escribir_linea("  [Error] Fallo la descarga automatica.")
+            retornar 1
+        retornar 1
+
+    escribir_linea("  [OK] Modelo cargado exitosamente.")
+    escribir_linea("")
+
     prompt = "Escribe un programa en Synapse que abra un archivo llamado 'reporte.txt', escriba la frase 'Soberania Digital' dentro de el, y lo cierre. Usa la libreria std.fs y std.io."
 
-    escribir_linea("")
     escribir_linea("[Oraculo] Iniciando generacion de codigo...")
-    escribir_linea(concat(concat("Prompt: ", prompt), ""))
+    escribir_linea(concat("  Prompt: ", prompt))
     escribir_linea("")
 
     codigo_generado = generar_codigo(ctx, prompt, 3)
-
     _syn_modelo_cerrar(ctx)
 
     escribir_linea("")
     si codigo_generado != "":
-        escribir_linea("[OK] Codigo generado y compilado exitosamente.")
-        res = _syn_escribir_archivo("generado.syn", codigo_generado)
-        si res == 0:
-            escribir_linea("[OK] Codigo fuente guardado en 'generado.syn'")
+        escribir_linea("  [OK] Codigo generado y compilado exitosamente.")
+        res_guardar = escribir_archivo("generado.syn", codigo_generado)
+        si res_guardar == 0:
+            escribir_linea("  [OK] Codigo fuente guardado en 'generado.syn'")
         retornar 0
-    sino:
-        escribir_linea("[Error] No se pudo generar codigo valido tras 3 intentos.")
-        retornar 1
+
+    escribir_linea("  [Error] No se pudo generar codigo valido tras 3 intentos.")
+    retornar 1
+
+// --- Punto de entrada principal ---
+
+funcion principal() -> entero:
+    escribir_linea("=== OpenSyn v1.1.0 — Orquestador Autonomo ===")
+    escribir_linea("")
+
+    // Leer configuracion existente
+    modo = leer_modo_config()
+
+    si modo == "":
+        // Primera ejecucion: mostrar menu de bienvenida
+        opcion = mostrar_menu_bienvenida()
+
+        si opcion == "2":
+            guardar_modo_config("verdadero")
+            escribir_linea("")
+            escribir_linea("  [OK] Preferencia guardada: Modo Oraculo")
+            retornar modo_oraculo()
+
+        guardar_modo_config("falso")
+        escribir_linea("")
+        escribir_linea("  [OK] Preferencia guardada: Modo Lenguaje Puro")
+        escribir_linea("  [OK] Synapse funcionara como compilador standalone.")
+        escribir_linea("  [OK] Para cambiar de modo, elimina .synapse_config")
+        escribir_linea("       y ejecuta opensyn nuevamente.")
+        escribir_linea("")
+        retornar modo_compilador()
+
+    si modo == "oraculo":
+        escribir_linea("  [OK] Modo: Oraculo (IA Local)")
+        escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
+        escribir_linea("")
+        retornar modo_oraculo()
+
+    // modo == "compilador"
+    escribir_linea("  [OK] Modo: Lenguaje Puro")
+    escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
+    escribir_linea("")
+    retornar modo_compilador()

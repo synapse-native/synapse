@@ -1,9 +1,24 @@
-# OpenSyn v1.0.0 — Orquestador Autónomo de Código
+# OpenSyn v1.1.0 — Orquestador Autónomo de Código
 
 > **Prompt → Inferencia Nativa → AST → Auto-Corrección → Binario.**
 > Sin Python en producción. Sin VM. Sin dependencias.
 
 OpenSyn es el primer orquestador autónomo que cierra el ciclo: un LLM escribe código Synapse, el compilador lo audita nativamente en C, y si hay errores, el bucle retroalimenta al modelo para que se corrija a sí mismo. El producto final es siempre un binario nativo.
+
+---
+
+### ⚡ Interruptor de Soberanía (v1.1.0)
+
+**La IA es 100% Opt-In.** En la primera ejecución, OpenSyn muestra un menú para elegir entre:
+
+| Modo | Descripción |
+|------|-------------|
+| **Lenguaje Puro** | Compilador Synapse standalone. Sin IA, sin GPU, sin descargas. Ideal para C/Rust developers. |
+| **Oráculo (IA Local)** | Orquestador autónomo con LLM local. Genera y corrige código por ti. Requiere modelo GGUF. |
+
+La preferencia se guarda en `.synapse_config`. Para cambiar, elimina el archivo y re-ejecuta.
+
+> **Synapse no consume recursos en segundo plano.** Sin IA a menos que tú lo decidas.
 
 ---
 

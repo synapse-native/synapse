@@ -6,11 +6,33 @@ Has pasado años escribiendo código para máquinas virtuales pesadas, lidiando 
 
 Eso termina hoy.
 
-Bienvenido a **Synapse**. Un lenguaje de sistemas diseñado para hablar directamente con el hardware. Aquí compilamos a binarios nativos puros y descargamos paquetes desde una red descentralizada. 
+Bienvenido a **Synapse**. Un lenguaje de sistemas diseñado para hablar directamente con el hardware. Aquí compilamos a binarios nativos puros y descargamos paquetes desde una red descentralizada.
 
 ---
 
-### 1. El Arsenal: Preparando tu Entorno
+### 0. El Interruptor de Soberanía (First-Run Experience)
+
+**Synapse respeta tu privacidad y recursos.** Por diseño, la IA es 100% **Opt-In**.
+
+En la primera ejecución del orquestador (`opensyn`), se te presentará un menú para elegir tu modo de operación:
+
+```
+  [1] Modo Lenguaje Puro
+      Compilador Synapse standalone.
+      Sin consumo extra de recursos.
+      Ideal para desarrolladores C/Rust.
+
+  [2] Modo Oraculo (IA Local)
+      Orquestador autonomo con LLM local.
+      El modelo escribe y corrige codigo por ti.
+      Requiere modelo GGUF.
+```
+
+Tu elección se guarda en `.synapse_config`. Puedes cambiar de modo eliminando este archivo y re-ejecutando `opensyn`.
+
+> **Para desarrolladores C/Rust:** Synapse funciona como compilador puro sin IA, sin GPU, sin descargas de modelos. Solo tú y tu código.
+
+---
 
 Para forjar tu primer programa, necesitas el motor principal y nuestro gestor de paquetes.
 
