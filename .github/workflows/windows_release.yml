@@ -1,0 +1,38 @@
+name: Compilación Windows (Cero Fricción)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Clonar repositorio
+      uses: actions/checkout@v4
+
+    - name: Configurar Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Configurar Entorno C (MinGW)
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        platform: x64
+
+    - name: Bootstrap — Generar código C nativo
+      run: python main.py opensyn/principal.syn
+
+    - name: Compilar OpenSyn (Windows Binario Estático)
+      run: gcc -O3 -static -o opensyn.exe opensyn/principal.c synapse_rt.c -I. -lws2_32
+
+    - name: Adjuntar ejecutable al Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: opensyn.exe
+        tag_name: v1.1.0-Sovereignty-Update
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
