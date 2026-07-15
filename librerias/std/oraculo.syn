@@ -1,0 +1,97 @@
+#lang: es
+// std.oraculo — Bucle del Oráculo (Generación + Compilación + Feedback Loop)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.oraculo
+//   codigo = generar_codigo(modelo, "Escribe un hola mundo")
+//   si codigo != "":
+//       // usar codigo generado
+
+importar std.modelo
+
+// --- Constantes del Oráculo ---
+
+constante MAX_TOKENS_GENERAR = 256
+
+constante SYSTEM_PROMPT = "Eres un asistente que escribe codigo en Synapse.#10El lenguaje Synapse usa las siguientes reglas:#10- Indentacion: multiplos de 4 espacios (no tabs)#10- No uses llaves {} para bloques de control#10- Usa #lang: es al inicio del codigo#10- Los bloques se definen por indentacion#10- Usa 'funcion nombre(param: tipo) -> tipo:' para definir funciones#10- Usa 'si condicion:' para condicionales#10- Usa 'mientras condicion:' para bucles#10- Usa 'retornar expr' para valores de retorno#10- Variables: 'nombre = expr'#10- Tipos: entero, decimal, texto, booleano, puntero, tensor, nulo#10- Los strings se escriben entre comillas dobles#10- No uses punto y coma al final de lineas#10- 'verdadero' y 'falso' para booleanos#10- 'nulo' para puntero nulo"
+
+// --- Funciones externas de compilación ---
+
+externo funcion _syn_compilar_codigo(fuente: texto) -> entero
+externo funcion _syn_obtener_codigo_generado() -> texto
+externo funcion _syn_obtener_error_compilacion() -> texto
+externo funcion _syn_obtener_linea_error() -> entero
+externo funcion _syn_extraer_bloque_codigo(texto: texto) -> texto
+externo funcion _syn_modelo_generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto
+
+// --- Wrappers públicos ---
+
+funcion compilar_codigo(fuente: texto) -> entero:
+    retornar _syn_compilar_codigo(fuente)
+
+funcion obtener_codigo_generado() -> texto:
+    retornar _syn_obtener_codigo_generado()
+
+funcion obtener_error_compilacion() -> texto:
+    retornar _syn_obtener_error_compilacion()
+
+funcion obtener_linea_error() -> entero:
+    retornar _syn_obtener_linea_error()
+
+funcion extraer_bloque_codigo(texto: texto) -> texto:
+    retornar _syn_extraer_bloque_codigo(texto)
+
+funcion generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto:
+    retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
+
+// --- Bucle del Oráculo ---
+
+// Genera código Synapse a partir de una instrucción usando el modelo,
+// lo compila, y si hay errores, retroalimenta al modelo para corregirlos.
+// Retorna el código fuente Synapse generado (cadena vacía si falla tras MAX_INTENTOS).
+funcion generar_codigo(modelo: puntero, instruccion: texto, max_intentos: entero) -> texto:
+    prompt_completo = SYSTEM_PROMPT
+    prompt_completo = concat(prompt_completo, "#10#10Instruccion del usuario: ")
+    prompt_completo = concat(prompt_completo, instruccion)
+    prompt_completo = concat(prompt_completo, "#10#10Genera SOLO el codigo Synapse (sin explicaciones):")
+
+    intento = 0
+    ultimo_error = ""
+
+    mientras intento < max_intentos:
+        escribir_linea(concat("[Oraculo] Generando codigo... (Intento ", entero_a_texto(intento + 1)))
+        escribir_linea(concat(concat(concat("/", entero_a_texto(max_intentos)), ")"), ""))
+
+        si intento > 0:
+            prompt_completo = concat(prompt_completo, "#10#10El compilador rechazo el codigo con el siguiente error: ")
+            prompt_completo = concat(prompt_completo, ultimo_error)
+            prompt_completo = concat(prompt_completo, "#10#10Reescribe la funcion corrigiendo la infraccion. Genera SOLO el codigo corregido:")
+
+        // Generar texto con el modelo
+        respuesta = generar_texto(modelo, prompt_completo, MAX_TOKENS_GENERAR, 0.7, 40, 0.9)
+
+        // Extraer bloque de código
+        codigo_generado = extraer_bloque_codigo(respuesta)
+        si codigo_generado == "":
+            codigo_generado = respuesta  // usar respuesta completa si no hay bloque
+
+        // Compilar el código
+        res = compilar_codigo(codigo_generado)
+
+        si res == 0:
+            escribir_linea("[Compilador] Exito. Binario generado.")
+            retornar codigo_generado  // éxito
+
+        // Capturar error para retroalimentación
+        error_msg = obtener_error_compilacion()
+        linea_err = obtener_linea_error()
+        escribir_linea("[Compilador] Error detectado: Re-inyectando contexto...")
+        ultimo_error = concat("Linea ", entero_a_texto(linea_err))
+        ultimo_error = concat(ultimo_error, ": ")
+        ultimo_error = concat(ultimo_error, error_msg)
+
+        intento = intento + 1
+
+    escribir_linea("[Oraculo] Limite de intentos alcanzado.")
+    retornar ""  // fallo tras max_intentos

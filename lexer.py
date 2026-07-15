@@ -30,6 +30,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'garantiza': TokenID.GARANTIZA,
         'canal': TokenID.CANAL,
         'asm': TokenID.ASM,
+        'constante': TokenID.CONSTANTE,
     },
     'en': {
         'if': TokenID.IF,
@@ -54,6 +55,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'extern': TokenID.EXTERNO,
         'match': TokenID.MATCH,
         'asm': TokenID.ASM,
+        'constant': TokenID.CONSTANTE,
     },
     'fr': {
         'si': TokenID.IF,
@@ -78,6 +80,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'externe': TokenID.EXTERNO,
         'correspondre': TokenID.MATCH,
         'asm': TokenID.ASM,
+        'constante': TokenID.CONSTANTE,
     },
     'pt': {
         'se': TokenID.IF,
@@ -102,6 +105,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'externo': TokenID.EXTERNO,
         'coincidir': TokenID.MATCH,
         'asm': TokenID.ASM,
+        'constante': TokenID.CONSTANTE,
     },
     'de': {
         'wenn': TokenID.IF,
@@ -126,6 +130,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'extern': TokenID.EXTERNO,
         'entsprechen': TokenID.MATCH,
         'asm': TokenID.ASM,
+        'konstante': TokenID.CONSTANTE,
     },
     'it': {
         'se': TokenID.IF,
@@ -150,6 +155,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'esterno': TokenID.EXTERNO,
         'corrispondere': TokenID.MATCH,
         'asm': TokenID.ASM,
+        'costante': TokenID.CONSTANTE,
     },
 }
 

@@ -1,0 +1,56 @@
+#lang: es
+// std.modelo — Inferencia de modelos de lenguaje (transformers)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.modelo
+//   ctx = cargar_modelo("modelo.gguf")
+//   si ctx != nulo:
+//       logits = evaluar(ctx, token_id)
+//       token = argmax(logits)
+//       texto = decodificar_token(ctx, token)
+//   cerrar_modelo(ctx)
+
+externo funcion _syn_modelo_cargar(ruta: texto) -> puntero
+externo funcion _syn_modelo_cerrar(ctx: puntero) -> nulo
+externo funcion _syn_modelo_evaluar(ctx: puntero, token_id: entero) -> tensor
+externo funcion _syn_modelo_generar(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero
+externo funcion _syn_modelo_n_past(ctx: puntero) -> entero
+externo funcion _syn_modelo_reiniciar(ctx: puntero) -> nulo
+
+funcion cargar_modelo(ruta: texto) -> puntero:
+    retornar _syn_modelo_cargar(ruta)
+
+funcion cerrar_modelo(ctx: puntero) -> nulo:
+    _syn_modelo_cerrar(ctx)
+    retornar
+
+funcion evaluar(ctx: puntero, token_id: entero) -> tensor:
+    retornar _syn_modelo_evaluar(ctx, token_id)
+
+funcion generar_token(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
+    retornar _syn_modelo_generar(ctx, token_id, temperatura, top_k, top_p)
+
+funcion n_past(ctx: puntero) -> entero:
+    retornar _syn_modelo_n_past(ctx)
+
+funcion reiniciar(ctx: puntero) -> nulo:
+    _syn_modelo_reiniciar(ctx)
+    retornar
+
+externo funcion _syn_modelo_decodificar_token(ctx: puntero, token_id: entero) -> texto
+externo funcion _syn_modelo_vocab_tamano(ctx: puntero) -> entero
+externo funcion _syn_modelo_codificar_contar(ctx: puntero, texto: texto) -> entero
+externo funcion _syn_modelo_codificar_obtener(ctx: puntero, indice: entero) -> entero
+
+funcion decodificar_token(ctx: puntero, token_id: entero) -> texto:
+    retornar _syn_modelo_decodificar_token(ctx, token_id)
+
+funcion vocab_tamano(ctx: puntero) -> entero:
+    retornar _syn_modelo_vocab_tamano(ctx)
+
+funcion codificar_contar(ctx: puntero, texto: texto) -> entero:
+    retornar _syn_modelo_codificar_contar(ctx, texto)
+
+funcion codificar_obtener(ctx: puntero, indice: entero) -> entero:
+    retornar _syn_modelo_codificar_obtener(ctx, indice)

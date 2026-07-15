@@ -1,0 +1,56 @@
+#lang: es
+// std.tensor — Operaciones tensoriales avanzadas
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.tensor
+//   a = crear_tensor(256, 256)
+//   b = crear_tensor(256, 256)
+//   llenar_tensor_constante(a, 1.0)
+//   llenar_tensor_constante(b, 2.0)
+//   c = multiplicar_matrices(a, b)
+
+externo funcion _syn_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo
+externo funcion _syn_multiplicar_matrices(a: tensor, b: tensor) -> tensor
+externo funcion _syn_extraer_fila(salida: tensor, tabla_embeddings: tensor, indice_token: entero) -> nulo
+externo funcion _syn_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo
+externo funcion _syn_silu(salida: tensor, entrada: tensor) -> nulo
+externo funcion _syn_rope(tensor: tensor, posicion_token: entero, head_dim: entero, theta_base: decimal) -> nulo
+externo funcion _syn_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo
+externo funcion _syn_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo
+externo funcion _syn_fijar_elemento(t: tensor, indice: entero, valor: decimal) -> nulo
+
+funcion llenar_tensor_constante(t: tensor, valor: decimal) -> nulo:
+    _syn_llenar_tensor_constante(t, valor)
+    retornar
+
+funcion multiplicar_matrices(a: tensor, b: tensor) -> tensor:
+    retornar _syn_multiplicar_matrices(a, b)
+
+funcion extraer_fila(salida: tensor, tabla_embeddings: tensor, indice_token: entero) -> nulo:
+    _syn_extraer_fila(salida, tabla_embeddings, indice_token)
+    retornar
+
+funcion rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo:
+    _syn_rmsnorm(salida, entrada, peso_normalizacion, epsilon)
+    retornar
+
+funcion silu(salida: tensor, entrada: tensor) -> nulo:
+    _syn_silu(salida, entrada)
+    retornar
+
+funcion rope(tensor: tensor, posicion_token: entero, head_dim: entero, theta_base: decimal) -> nulo:
+    _syn_rope(tensor, posicion_token, head_dim, theta_base)
+    retornar
+
+funcion softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo:
+    _syn_softmax_escalado(tensor, factor_escala)
+    retornar
+
+funcion multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo:
+    _syn_multiplicar_matrices_transpuesta_b(a, b, salida)
+    retornar
+
+funcion fijar_elemento(t: tensor, indice: entero, valor: decimal) -> nulo:
+    _syn_fijar_elemento(t, indice, valor)
+    retornar

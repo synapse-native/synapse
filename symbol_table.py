@@ -17,6 +17,7 @@ class Simbolo:
     nodo: Optional[Nodo] = None
     scope_level: int = 0
     propiedad: Propiedad = Propiedad.VIVO
+    es_constante: bool = False
 
 
 class SymbolTable:

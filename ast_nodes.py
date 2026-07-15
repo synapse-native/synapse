@@ -60,6 +60,7 @@ class TokenID(Enum):
     GARANTIZA = auto()    # palabra clave bloque de contrato
     CANAL = auto()        # tipo Canal<T>
     ASM = auto()          # asm("instruccion")
+    CONSTANTE = auto()    # constante IDENTIFICADOR = EXPR
 
     EOF = auto()
 
@@ -273,6 +274,13 @@ class AsignacionCampo(Nodo):
     objeto: Optional[Nodo] = None
     nombre_campo: str = ''
     expresion: Optional[Nodo] = None
+
+
+@dataclass
+class StmtConstante(Nodo):
+    nombre: str = ''
+    tipo: str = ''      # opcional, vacio si se infiere
+    valor: Optional[Nodo] = None
 
 
 @dataclass

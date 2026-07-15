@@ -3,6 +3,7 @@ from typing import List, Optional, Set
 from ast_nodes import (
     TokenID, Token, Nodo, Programa, Parametro,
     DefinicionFuncion, DefinicionEstructura, ExprAccesoCampo, AsignacionCampo,
+    StmtConstante,
     SentenciaSi, SentenciaLanzar, SentenciaRetornar,
     SentenciaEscuchar, SentenciaMientras, SentenciaImportar,
     AsignacionVariable, SentenciaRecuperar, LogLlamada, SentenciaExpr,
@@ -101,6 +102,8 @@ class Parser:
             return self._parsear_importar()
         elif t.tipo == TokenID.EXTERNO:
             return self._parsear_declaracion_externa()
+        elif t.tipo == TokenID.CONSTANTE:
+            return self._parsear_constante()
         elif t.tipo == TokenID.MATCH:
             return self._parsear_coincidir()
         elif t.tipo == TokenID.INDENT:
@@ -410,6 +413,32 @@ class Parser:
             nombre=tok_nombre.valor,
             parametros=params,
             tipo_retorno=tok_retorno.valor,
+            linea=tok_nombre.linea,
+            columna=tok_nombre.columna,
+        )
+
+    def _parsear_constante(self) -> Optional[StmtConstante]:
+        if self._esperar(TokenID.CONSTANTE) is None:
+            return None
+        tok_nombre = self._esperar(TokenID.IDENTIFIER)
+        if tok_nombre is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        tipo: str = ''
+        if self._posible(TokenID.COLON) is not None:
+            tok_tipo = self._esperar(TokenID.IDENTIFIER)
+            tipo = tok_tipo.valor if tok_tipo else ''
+        if self._esperar(TokenID.ASSIGN) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        valor = self._parsear_expresion()
+        if valor is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        return StmtConstante(
+            nombre=tok_nombre.valor,
+            tipo=tipo,
+            valor=valor,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
         )

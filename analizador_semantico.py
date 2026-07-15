@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Tuple
 
 from ast_nodes import (
     Nodo, Programa, DefinicionFuncion, DefinicionEstructura,
-    ExprAccesoCampo, AsignacionCampo,
+    ExprAccesoCampo, AsignacionCampo, StmtConstante,
     SentenciaSi, SentenciaLanzar,
     SentenciaRecuperar, SentenciaRetornar, SentenciaEscuchar,
     SentenciaMientras, SentenciaRomper, SentenciaSiguiente,
@@ -16,7 +16,7 @@ from ast_nodes import (
     ExprAsm,
 )
 from diagnostics import DiagnosticManager, ErrorCodes
-from symbol_table import SymbolTable, Simbolo
+from symbol_table import SymbolTable, Simbolo, Propiedad
 from generator import MAPA_TIPOS_C
 
 
@@ -44,6 +44,7 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'concat': (['texto', 'texto'], 'texto'),
     'texto_a_entero': (['texto'], 'int'),
     'texto_a_decimal': (['texto'], 'decimal'),
+    'entero_a_texto': (['int'], 'texto'),
     'decimal_a_texto': (['decimal'], 'texto'),
     'volcar_ast': (['Programa', 'int'], 'nulo'),
     'crear_analizador': (['Programa'], 'int'),
@@ -100,6 +101,19 @@ class AnalizadorSemantico:
                         self._token(s.linea, s.columna),
                         nombre=s.nombre
                     )
+            elif isinstance(s, StmtConstante):
+                tipo_const = self._inferir_tipo(s.valor)
+                if tipo_const:
+                    sim = Simbolo(s.nombre, tipo_const, s, es_constante=True)
+                    cur = self.tabla._scopes[-1]
+                    if s.nombre in cur:
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_REDEFINICION,
+                            self._token(s.linea, s.columna),
+                            nombre=s.nombre
+                        )
+                    else:
+                        cur[s.nombre] = sim
         # Third pass: analyze function bodies
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre not in _FUNCIONES_BUILTIN:
@@ -122,9 +136,31 @@ class AnalizadorSemantico:
 
     def _analizar_sentencia(self, nodo: Nodo):
         if isinstance(nodo, AsignacionVariable):
+            # Check if variable already exists and is constant
+            sim_existente = self.tabla.buscar(nodo.nombre)
+            if sim_existente and sim_existente.es_constante:
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=nodo.nombre
+                )
+                return
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
                 self.tabla.declarar(nodo.nombre, tipo_expr, nodo)
+        elif isinstance(nodo, StmtConstante):
+            tipo_const = self._inferir_tipo(nodo.valor)
+            if tipo_const:
+                sim = Simbolo(nodo.nombre, tipo_const, nodo, es_constante=True)
+                cur = self.tabla._scopes[-1]
+                if nodo.nombre in cur:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(nodo.linea, nodo.columna),
+                        nombre=nodo.nombre
+                    )
+                else:
+                    cur[nodo.nombre] = sim
         elif isinstance(nodo, AsignacionCampo):
             tipo_obj = self._inferir_tipo(nodo.objeto)
             if tipo_obj:

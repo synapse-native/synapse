@@ -2,6 +2,7 @@ from typing import List, Optional, Set
 from ast_nodes import (
     Nodo, Programa, Parametro,
     DefinicionFuncion, DefinicionEstructura, ExprAccesoCampo, AsignacionCampo,
+    StmtConstante,
     SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
     SentenciaRetornar, SentenciaEscuchar, SentenciaMientras,
     SentenciaRomper, SentenciaSiguiente,
@@ -67,6 +68,7 @@ _BUILTINS: dict[str, str] = {
     'texto_a_entero': 'int',
     'texto_a_decimal': 'float',
     'decimal_a_texto': 'CadenaSegura',
+    'entero_a_texto': 'CadenaSegura',
 }
 
 _RUNTIME_BUILTINS: frozenset = frozenset({
@@ -136,6 +138,7 @@ class GeneradorC:
         self._contador_thread = 0
         self._contador_listener = 0
         self._variables: dict[str, str] = {}
+        self._const_types: dict[str, str] = {}
         self._funciones_emitidas: set[str] = set()
         self._tensor_vars: set[str] = set()
         self._tensor_vars_transferidas: set[str] = set()
@@ -335,7 +338,7 @@ class GeneradorC:
         self._push("")
         self._push("typedef struct { int longitud; const char* datos; } CadenaSegura;")
         self._push("")
-        self._push("typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;")
+        self._push("typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;")
         self._push("")
         if not self.programa.is_no_std:
             self._push("typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
@@ -488,6 +491,16 @@ class GeneradorC:
                 params_c = ", ".join(params_c_parts) if params_c_parts else "void"
                 self._push(f"extern {tipo_ret_c} {nodo.nombre}({params_c});")
 
+        elif isinstance(nodo, StmtConstante):
+            valor_c = self._expr_a_c(nodo.valor)
+            tipo_inferido = nodo.tipo if nodo.tipo else self._tipo_de_expr(nodo.valor)
+            tipo_c = _traducir_tipo_c(tipo_inferido or 'int')
+            if not self._in_function_scope:
+                self._push(f"#define {nodo.nombre} ({valor_c})")
+            else:
+                self._push(f"const {tipo_c} {nodo.nombre} = {valor_c};")
+            self._const_types[nodo.nombre] = tipo_inferido or 'int'
+
         elif isinstance(nodo, AsignacionCampo):
             if not self._in_function_scope:
                 raise SyntaxError(
@@ -561,7 +574,7 @@ class GeneradorC:
             self._visitar(s)
         for var in self._tensor_vars:
             if var not in self._tensor_vars_transferidas:
-                self._push(f"{self._syn_pool_free(f'{var}.datos')};")
+                self._push(f"if (!{var}.es_mapeado) {{ {self._syn_pool_free(f'{var}.datos')}; }}")
         for var in self._canal_vars:
             if var not in self._canal_vars_cerradas:
                 self._push(f"/* ADVERTENCIA: canal '{var}' no fue cerrado explicitamente */")
@@ -2033,7 +2046,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     fprintf({_PH}out,"// Generado por Synapse (auto-hospedado)\\n");
     fprintf({_PH}out,"#include <stdio.h>\\n#include <stdlib.h>\\n#include <stdint.h>\\n#include <string.h>\\n#include <pthread.h>\\n");
     fprintf({_PH}out,"typedef struct {{int longitud;const char* datos;}} CadenaSegura;\\n");
-    fprintf({_PH}out,"typedef struct {{uint32_t filas;uint32_t columnas;float* datos;}} Tensor;\\n");
+    fprintf({_PH}out,"typedef struct {{uint32_t filas;uint32_t columnas;float* datos;int es_mapeado;}} Tensor;\\n");
     fprintf({_PH}out,"typedef struct {{FILE* stream;int es_valido;int es_virtual;const char* virtual_data;int virtual_len;}} Canal;\\n");
     fprintf({_PH}out,"#define POOL_BLOQUES 64\\n#define TAMANO_BLOQUE 4096\\n");
     fprintf({_PH}out,"#define nulo ((void*)0)\\n");
@@ -2408,7 +2421,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, Identificador):
             if nodo.nombre == 'nulo':
                 return 'void*'
-            return self._variables.get(nodo.nombre, 'int')
+            if nodo.nombre in self._variables:
+                return self._variables[nodo.nombre]
+            if nodo.nombre in self._const_types:
+                return self._const_types[nodo.nombre]
+            return 'int'
         if isinstance(nodo, ArgumentoTransferido):
             return self._tipo_de_expr(nodo.expr)
         if isinstance(nodo, ExprAccesoCampo):

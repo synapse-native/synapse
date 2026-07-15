@@ -1,0 +1,41 @@
+#lang: es
+// opensyn/principal.syn — Orquestador Autonomo (Fase 11: Ignicion)
+// Bucle del Oraculo: importar std.oraculo y ejecutar generar_codigo()
+
+importar std.oraculo
+importar std.sistema
+
+funcion principal() -> entero:
+    escribir_linea("=== OpenSyn: Orquestador Autonomo ===")
+    escribir_linea("")
+
+    // Cargar modelo GGUF
+    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    si ctx == nulo:
+        escribir_linea("[Error] No se pudo cargar el modelo 'modelo_synapse.gguf'")
+        retornar 1
+
+    escribir_linea("[OK] Modelo cargado exitosamente.")
+
+    // Prompt de prueba: Escribir archivo con "Soberania Digital"
+    prompt = "Escribe un programa en Synapse que abra un archivo llamado 'reporte.txt', escriba la frase 'Soberania Digital' dentro de el, y lo cierre. Usa la libreria std.fs y std.io."
+
+    escribir_linea("")
+    escribir_linea("[Oraculo] Iniciando generacion de codigo...")
+    escribir_linea(concat(concat("Prompt: ", prompt), ""))
+    escribir_linea("")
+
+    codigo_generado = generar_codigo(ctx, prompt, 3)
+
+    _syn_modelo_cerrar(ctx)
+
+    escribir_linea("")
+    si codigo_generado != "":
+        escribir_linea("[OK] Codigo generado y compilado exitosamente.")
+        res = _syn_escribir_archivo("generado.syn", codigo_generado)
+        si res == 0:
+            escribir_linea("[OK] Codigo fuente guardado en 'generado.syn'")
+        retornar 0
+    sino:
+        escribir_linea("[Error] No se pudo generar codigo valido tras 3 intentos.")
+        retornar 1

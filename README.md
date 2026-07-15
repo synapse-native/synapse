@@ -1,55 +1,153 @@
-Synapse Native | Infraestructura para la Soberanía
-Bienvenido a la casa del ecosistema Synapse v2.1.
+# OpenSyn v1.0.0 — Orquestador Autónomo de Código
 
-Synapse no es un experimento. Es un lenguaje de programación de sistemas de grado industrial, 100% auto-alojado, diseñado para resolver la crisis de soberanía de datos y la ineficiencia de los entornos de ejecución modernos. Nuestro objetivo es simple: llevar el máximo rendimiento nativo a la infraestructura crítica y la Inteligencia Artificial del borde (Edge AI), sin la burocracia de los intérpretes ni el peso de las máquinas virtuales.
+> **Prompt → Inferencia Nativa → AST → Auto-Corrección → Binario.**
+> Sin Python en producción. Sin VM. Sin dependencias.
 
-⚡ La Visión
-El software moderno ha olvidado cómo hablar con el silicio. Hemos construido una torre de abstracciones (intérpretes, recolectores de basura, gestores de paquetes pesados) que sacrifican el control del hardware en favor de una comodidad ilusoria.
+OpenSyn es el primer orquestador autónomo que cierra el ciclo: un LLM escribe código Synapse, el compilador lo audita nativamente en C, y si hay errores, el bucle retroalimenta al modelo para que se corrija a sí mismo. El producto final es siempre un binario nativo.
 
-Synapse rompe este paradigma garantizando:
+---
 
-El Monolito Operativo (Cero Dependencias): Todo el ecosistema (Compilador, Lexer, Parser, Analizador Semántico y Linker) vive en un solo binario autónomo (synapse.exe). No requiere Python, ni C, ni librerías dinámicas externas.
+## Diagrama de flujo
 
-Seguridad Zero-Cost (RAII Estático): Memoria determinista sin Recolector de Basura (GC). El compilador es consciente del ámbito y teje la red de seguridad inyectando destructores automáticamente en tiempo de compilación. Cero fugas, cero pausas.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         opensyn/principal.syn                     │
+│  "Escribe un programa que abra reporte.txt y escriba 'SD'"       │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    std.oraculo: generar_codigo()                  │
+│  ┌─────────────┐   ┌──────────────┐   ┌────────────────────┐   │
+│  │ LLM (GGUF)  │   │ Extraer      │   │ Compilador interno │   │
+│  │ genera texto│──►│ bloque ```   │──►│ (Lex→Parse→Sem→C)  │   │
+│  │ con BPE +   │   │ synapse ```  │   │ vía _compilar_     │   │
+│  │ transformer │   │              │   │ helper.py          │   │
+│  └─────────────┘   └──────────────┘   └────────┬───────────┘   │
+│                                                  │              │
+│                    ┌─────────────────────────────┘              │
+│                    │ ¿Error?                                     │
+│                    ▼ Sí                                          │
+│              ┌──────────┐                                       │
+│              │ Re-      │────────────────────────────────────┐  │
+│              │ intentar │  retroalimentación con msg error   │  │
+│              │ (max 3)  │◄──────────────────────────────────┘  │
+│              └──────────┘                                       │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │  ✅ Binario Nativo   │
+                    │  generado.syn (.exe) │
+                    └─────────────────────┘
+```
 
-Concurrencia Zero-Copy: El paso de mensajes a través de canales sin estado compartido. El Analizador Semántico previene las condiciones de carrera (data races) por diseño estructural.
+---
 
-Gestión Criptográfica (Axon): Gestor de dependencias integrado nativamente. Las librerías se fijan mediante hashes inmutables SHA-256 (axon.lock), garantizando compilaciones 100% reproducibles.
+## Cómo compilar
 
-Ring 0 / Bare-Metal: Synapse ahora compila para entornos sin sistema operativo (bare-metal). La directiva `#pragma: no_std` elimina toda dependencia de la biblioteca estándar de C, activa el modo `-ffreestanding` y genera un `main(void)` minimalista. Incluye soporte para ensamblador inline (`inseguro: asm("...")`) y la capacidad de reemplazar el asignador de memoria global mediante `__syn_asignar`/`__syn_liberar`, ideal para desarrollo de kernels, bootloaders y firmware.
+### Requisitos
 
-📦 Arquitectura del Repositorio Único
-En Synapse no fragmentamos el conocimiento. Todo el ecosistema reside en este único repositorio, garantizando que el compilador y su librería estándar evolucionen en perfecta sincronía:
+- **GCC** (MinGW-w64 en Windows, gcc en Linux/macOS)
+- **Python 3.10+** (solo para el helper de compilación interna)
+- **Un modelo GGUF** (ej. Qwen2.5-Coder-0.5B) como `modelo_synapse.gguf`
 
-/src: El código fuente del compilador (ahora escrito íntegramente en Synapse puro).
+### Compilar el runtime
 
-/librerias/std: El Sysroot nativo. Incluye redes TCP (std.net), deserializadores sin memoria dinámica manual (std.json, std.toml), interacción con el SO y fundaciones de tensores matemáticos.
+```bash
+gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm -lws2_32
+```
 
-/vscode-extension: Nuestro cliente LSP (Language Server Protocol) para una experiencia de desarrollo (DX) impecable.
+### Compilar un programa Synapse
 
-/docs: El código fuente de "El Libro de Synapse" (nuestra especificación oficial).
+```bash
+python main.py programa.syn
+# Genera: programa.c + programa.exe
+```
 
-🚀 Instalación de Fricción Cero
-Instala Synapse v2.1 y configúralo en tu sistema operativo en menos de 5 segundos con un solo comando:
+### Compilar el orquestador OpenSyn
 
-Windows (PowerShell Administrador):
+```bash
+gcc -o opensyn/principal.exe opensyn/principal.c synapse_rt.c \
+    -std=c99 -Wall -Wextra -lws2_32
+```
 
-PowerShell
-powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.1.0/instalar.ps1 | iex"
-(Nota: El compilador ahora distribuye binarios nativos multiplataforma para Windows, Linux y macOS ARM64).
+### Ejecutar el orquestador
 
-🛡️ Filosofía de Colaboración
-No construimos para "lo que está de moda". Construimos para lo que es técnicamente superior y perdurable:
+```bash
+cd opensyn
+# Coloca modelo_synapse.gguf aquí
+./principal.exe
+```
 
-Estabilidad antes que características: Preferimos un lenguaje pequeño, estricto y predecible a uno masivo y caótico.
+Salida esperada:
 
-Soberanía del Código: Nuestra librería estándar no depende de librerías de terceros (cero left-pad). Synapse puede compilarse en entornos air-gapped (sin internet).
+```
+=== OpenSyn: Orquestador Autonomo ===
+[OK] Modelo cargado exitosamente.
+[Oráculo] Generando código... (Intento 1/3)
+[Compilador] Error detectado: Re-inyectando contexto...
+[Oráculo] Generando código... (Intento 2/3)
+[Compilador] Éxito. Binario generado.
+[OK] Código generado y compilado exitosamente.
+[OK] Código fuente guardado en 'generado.syn'
+```
 
-Auditoría y Transparencia: Todo el código en esta organización debe ser auditable a nivel de puntero de C, limpio y brutalmente eficiente.
+---
 
-📄 Licencia y Documentación
-Licencia: Distribuido bajo la Licencia MIT. Creemos en el software como herramienta de libertad tecnológica.
+## Arquitectura del repositorio
 
-Aprende Synapse: Lee nuestra documentación oficial y domina el manejo de memoria en El Libro de Synapse.
+```
+opensyn/
+├── principal.syn          # Orquestador (código fuente Synapse)
+├── principal.c            # Generado por el compilador
+├── principal.exe          # Binario final
 
-¿Quieres ser parte de la infraestructura del futuro? Únete a la singularidad.
+librerias/
+├── std/
+│   ├── oraculo.syn        # Bucle del Oráculo
+│   ├── modelo.syn         # Inferencia del LLM
+│   ├── io.syn             # E/S de consola
+│   ├── json.syn           # Parseo JSON
+│   ├── sistema.syn        # Comandos del sistema
+│   ├── net.syn            # Sockets TCP
+│   └── ...                # 15 módulos estándar
+├── embedded_libs.h        # Librerías incrustadas para self-hosting
+
+synapse_rt.c               # Runtime C (pool, tensores, GGUF, BPE, oráculo)
+_compilar_helper.py         # Helper de compilación interna (vía JSON)
+main.py                     # Compilador Synapse (Lexer + Parser + GeneradorC)
+generator.py                # Traductor Synapse → C
+```
+
+---
+
+## Librería Estándar (15 módulos)
+
+| Módulo | Funcionalidad |
+|--------|---------------|
+| `std.io` | `escribir`, `escribir_linea`, `leer_linea`, `abrir`, `leer`, `cerrar` |
+| `std.mem` | `reserva`, `libera` |
+| `std.math` | `crear_tensor`, `suma_tensor`, `producto_punto`, `relu` |
+| `std.tensor` | `rmsnorm`, `silu`, `rope`, `softmax_escalado`, `multiplicar_matrices` |
+| `std.modelo` | `cargar_modelo`, `evaluar`, `generar_token`, `decodificar_token`, `codificar` |
+| `std.oraculo` | `generar_codigo`, `compilar_codigo`, `extraer_bloque_codigo`, `generar_texto` |
+| `std.ai` | `cargar_gguf`, `obtener_tensor`, `obtener_metadato`, `argmax` |
+| `std.json` | `desde_texto`, `obtener_elemento`, `obtener_campo` |
+| `std.toml` | `desde_texto`, `obtener_campo` |
+| `std.net` | `iniciar_red`, `crear_socket`, `conectar`, `enviar_datos`, `recibir_datos` |
+| `std.http` | `iniciar_servidor`, `leer_peticion`, `responder` |
+| `std.cripto` | `sha256_texto` |
+| `std.tiempo` | `ahora_ms`, `dormir_ms` |
+| `std.sistema` | `ejecutar_comando`, `escribir_archivo`, `leer_archivo` |
+| `std.err` | ADT `Resultado<T,E>` y `Opcion<T>` |
+
+---
+
+## Licencia
+
+Este proyecto se distribuye bajo una licencia de código abierto. Consulte el archivo de licencia para más detalles.
+
+---
+
+**OpenSyn v1.0.0** — *Soberanía Digital. Sin intermediarios.*

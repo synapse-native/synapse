@@ -731,7 +731,7 @@ class TestGeneradorCHeaders:
         generador = GeneradorC(prog)
         codigo = generador.generar()
         
-        assert "typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;" in codigo
+        assert "typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;" in codigo
     
     def test_typedef_canal(self):
         """Test que se define Canal"""

@@ -38,6 +38,7 @@ class ErrorCodes(Enum):
     ERR_LOCK_HASH_MISMATCH = auto()
     ERR_GIT_FAILURE = auto()
     ERR_SEM_ASM_FUERA_INSEGURO = auto()
+    ERR_SEM_CONSTANTE_INMUTABLE = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -73,6 +74,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Infracción criptográfica. El hash de la dependencia '{modulo}' no coincide con axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Error de red o revisión Git inválida para la dependencia '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
     },
     'en': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Expected {esperado}, found '{encontrado}'",
@@ -106,6 +108,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Cryptographic breach. Hash of dependency '{modulo}' does not match axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Network error or invalid Git revision for dependency '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
     },
     'fr': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Attendu {esperado}, trouve '{encontrado}'",
@@ -139,6 +142,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Breche cryptographique. Le hachage de la dependance '{modulo}' ne correspond pas a axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Erreur reseau ou revision Git invalide pour la dependance '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() ne peut etre utilise qu'a l'interieur d'un bloc 'dangereux:'",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossible de reassigner la constante '{nombre}'",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -172,6 +176,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violacao criptografica. O hash da dependencia '{modulo}' nao corresponde ao axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Erro de rede ou revisao Git invalida para a dependencia '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() so pode ser usado dentro de um bloco 'inseguro:'",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Nao e possivel reatribuir a constante '{nombre}'",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -205,6 +210,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Kryptographische Sicherheitsverletzung. Der Hash der Abhaengigkeit '{modulo}' stimmt nicht mit axon.lock ueberein (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Netzwerkfehler oder ungueltige Git-Revision fuer Abhaengigkeit '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() kann nur innerhalb eines 'unsicher:' Blocks verwendet werden",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Konstante '{nombre}' kann nicht neu zugewiesen werden",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -238,6 +244,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_LOCK_HASH_MISMATCH: "Violazione crittografica. L'hash della dipendenza '{modulo}' non corrisponde a axon.lock (E-604)",
         ErrorCodes.ERR_GIT_FAILURE: "Errore di rete o revisione Git non valida per la dipendenza '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() puo essere usato solo all'interno di un blocco 'non_sicuro:'",
+        ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossibile riassegnare la costante '{nombre}'",
     },
 }
 

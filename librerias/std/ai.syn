@@ -1,0 +1,73 @@
+#lang: es
+// std.ai — Inteligencia Artificial nativa: carga de modelos GGUF
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.ai
+//   ctx = cargar_gguf("modelo.gguf")
+//   si ctx.es_valido:
+//       log("Modelo: ", ctx.cantidad_tensores, " tensores, ",
+//           ctx.tamano_total, " bytes mapeados")
+//   cerrar_gguf(ctx)
+//
+// Tipos de datos GGML (usados en cabeceras de tensores):
+//   GGML_TYPE_F32 = 0    # Coma flotante 32 bits (soportado)
+//   GGML_TYPE_F16 = 1    # Coma flotante 16 bits
+//   GGML_TYPE_Q4_0 = 2   # Cuantizacion 4-bit (bloque 32)
+//   GGML_TYPE_Q4_1 = 3   # Cuantizacion 4-bit (bloque 32, sesgo)
+//   GGML_TYPE_Q5_0 = 6   # Cuantizacion 5-bit
+//   GGML_TYPE_Q5_1 = 7   # Cuantizacion 5-bit con sesgo
+//   GGML_TYPE_Q8_0 = 8   # Cuantizacion 8-bit
+
+constante GGML_TYPE_F32 = 0
+constante GGML_TYPE_F16 = 1
+constante GGML_TYPE_Q4_0 = 2
+constante GGML_TYPE_Q4_1 = 3
+constante GGML_TYPE_Q5_0 = 6
+constante GGML_TYPE_Q5_1 = 7
+constante GGML_TYPE_Q8_0 = 8
+
+estructura GGUF_Contexto:
+    es_valido: logico
+    version: entero
+    cantidad_tensores: entero
+    datos_mmap: puntero
+    tamano_total: entero
+    tamano_mmap: entero
+    handle_plataforma: puntero
+    handle_archivo: puntero
+    datos_internos: puntero
+
+externo funcion _syn_gguf_abrir(ruta: texto) -> GGUF_Contexto
+externo funcion _syn_gguf_cerrar_contex(ctx: GGUF_Contexto) -> nulo
+externo funcion _syn_gguf_obtener_tensor(datos_internos: puntero, nombre: texto) -> tensor
+externo funcion _syn_gguf_obtener_metadato(datos_internos: puntero, clave: texto) -> texto
+externo funcion _syn_gguf_obtener_arquitectura(datos_internos: puntero) -> texto
+externo funcion _syn_argmax(t: tensor) -> entero
+externo funcion _syn_vocab_tamano(datos_internos: puntero) -> entero
+externo funcion _syn_decodificar_token(datos_internos: puntero, token_id: entero) -> texto
+
+funcion cargar_gguf(ruta: texto) -> GGUF_Contexto:
+    retornar _syn_gguf_abrir(ruta)
+
+funcion cerrar_gguf(ctx: GGUF_Contexto) -> nulo:
+    _syn_gguf_cerrar_contex(ctx)
+    retornar
+
+funcion obtener_tensor(ctx: GGUF_Contexto, nombre: texto) -> tensor:
+    retornar _syn_gguf_obtener_tensor(ctx.datos_internos, nombre)
+
+funcion obtener_metadato(ctx: GGUF_Contexto, clave: texto) -> texto:
+    retornar _syn_gguf_obtener_metadato(ctx.datos_internos, clave)
+
+funcion obtener_arquitectura(ctx: GGUF_Contexto) -> texto:
+    retornar _syn_gguf_obtener_arquitectura(ctx.datos_internos)
+
+funcion argmax(t: tensor) -> entero:
+    retornar _syn_argmax(t)
+
+funcion vocab_tamano(ctx: GGUF_Contexto) -> entero:
+    retornar _syn_vocab_tamano(ctx.datos_internos)
+
+funcion decodificar_token(ctx: GGUF_Contexto, token_id: entero) -> texto:
+    retornar _syn_decodificar_token(ctx.datos_internos, token_id)
