@@ -1,0 +1,7 @@
+#lang: es
+
+funcion principal() -> nulo:
+    a=10; b=20
+    si a<=b: escribir_linea("OK_LE")
+    si a!=b: escribir_linea("OK_NE")
+    si -a==-10: escribir_linea("OK_UN")

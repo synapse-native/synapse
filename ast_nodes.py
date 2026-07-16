@@ -61,6 +61,7 @@ class TokenID(Enum):
     CANAL = auto()        # tipo Canal<T>
     ASM = auto()          # asm("instruccion")
     CONSTANTE = auto()    # constante IDENTIFICADOR = EXPR
+    SEMICOLON = auto()    # ; separador de sentencias
 
     EOF = auto()
 

@@ -195,6 +195,8 @@ TOKEN_UNICARACTER: dict[str, TokenID] = {
     ',': TokenID.COMMA,
     '.': TokenID.DOT,
     '&': TokenID.AMPERSAND,
+    ';': TokenID.SEMICOLON,
+    '!': TokenID.NOT,
 }
 
 TOKEN_BICARACTER: dict[str, TokenID] = {

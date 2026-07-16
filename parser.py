@@ -25,7 +25,7 @@ _SYNC_TOP = {TokenID.FUNCTION, TokenID.IMPORT, TokenID.EOF}
 _SYNC_STMT = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF} | _SYNC_TOP
 _SYNC_BLOCK = {TokenID.DEDENT, TokenID.EOF}
 _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
-              TokenID.COMMA, TokenID.RPAREN, TokenID.COLON}
+              TokenID.COMMA, TokenID.RPAREN, TokenID.COLON, TokenID.SEMICOLON}
 
 
 class Parser:
@@ -113,6 +113,8 @@ class Parser:
         elif t.tipo == TokenID.DEDENT:
             return None
         elif t.tipo == TokenID.EOF:
+            return None
+        elif t.tipo == TokenID.SEMICOLON:
             return None
         else:
             if (t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL)
@@ -255,14 +257,26 @@ class Parser:
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        cuerpo = self._parsear_bloque() or []
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
         cuerpo_sino = None
         if self._mirar().tipo == TokenID.ELSE:
             self._avanzar()
             if self._esperar(TokenID.COLON) is None:
                 self._sincronizar(_SYNC_STMT)
             else:
-                cuerpo_sino = self._parsear_bloque() or []
+                if self._mirar().tipo == TokenID.NEWLINE:
+                    cuerpo_sino = self._parsear_bloque() or []
+                else:
+                    cuerpo_sino = []
+                    stmt = self._parsear_sentencia()
+                    if stmt is not None:
+                        cuerpo_sino.append(stmt)
         return SentenciaSi(
             condicion=condicion,
             cuerpo=cuerpo,
@@ -322,7 +336,13 @@ class Parser:
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        cuerpo = self._parsear_bloque() or []
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
         return SentenciaMientras(
             condicion=condicion,
             cuerpo=cuerpo,
