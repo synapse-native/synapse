@@ -91,7 +91,7 @@ para i = 0; i < 10; i = i + 1:
 
 ## FASE 3: LSP AVANZADO — Semanas 3-4
 
-### 3.1. Completado (`textDocument/completion`)
+### 3.1. Completado (`textDocument/completion`) ✅
 - Completar palabras clave según contexto
 - Completar nombres de funciones y variables definidas
 - Completar nombres de campos de estructuras
