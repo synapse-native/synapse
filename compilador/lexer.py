@@ -31,6 +31,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'canal': TokenID.CANAL,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
+        'para': TokenID.PARA,
     },
     'en': {
         'if': TokenID.IF,
@@ -56,6 +57,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'match': TokenID.MATCH,
         'asm': TokenID.ASM,
         'constant': TokenID.CONSTANTE,
+        'for': TokenID.PARA,
     },
     'fr': {
         'si': TokenID.IF,
@@ -81,6 +83,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'correspondre': TokenID.MATCH,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
+        'pour': TokenID.PARA,
     },
     'pt': {
         'se': TokenID.IF,
@@ -106,6 +109,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'coincidir': TokenID.MATCH,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
+        'fuer': TokenID.PARA,
     },
     'de': {
         'wenn': TokenID.IF,
@@ -156,6 +160,7 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'corrispondere': TokenID.MATCH,
         'asm': TokenID.ASM,
         'costante': TokenID.CONSTANTE,
+        'per': TokenID.PARA,
     },
 }
 

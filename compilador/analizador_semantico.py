@@ -5,7 +5,7 @@ from compilador.ast_nodes import (
     ExprAccesoCampo, AsignacionCampo, StmtConstante,
     SentenciaSi, SentenciaLanzar,
     SentenciaRecuperar, SentenciaRetornar, SentenciaEscuchar,
-    SentenciaMientras, SentenciaRomper, SentenciaSiguiente,
+    SentenciaMientras, SentenciaPara, SentenciaRomper, SentenciaSiguiente,
     SentenciaImportar, AsignacionVariable, DeclaracionVariable, SentenciaExpr, LogLlamada,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor, ArgumentoTransferido,
@@ -240,6 +240,23 @@ class AnalizadorSemantico:
                     tipo1=tipo_cond, tipo2='int', operacion='condicion mientras'
                 )
             self.tabla.entrar_scope()
+            for s in nodo.cuerpo:
+                self._analizar_sentencia(s)
+            self.tabla.salir_scope()
+        elif isinstance(nodo, SentenciaPara):
+            self.tabla.entrar_scope()
+            if nodo.inicializacion:
+                self._analizar_sentencia(nodo.inicializacion)
+            if nodo.condicion:
+                tipo_cond = self._inferir_tipo(nodo.condicion)
+                if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(nodo.linea, nodo.columna),
+                        tipo1=tipo_cond, tipo2='int', operacion='condicion para'
+                    )
+            if nodo.incremento:
+                self._analizar_sentencia(nodo.incremento)
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
             self.tabla.salir_scope()

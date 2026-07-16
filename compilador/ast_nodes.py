@@ -62,6 +62,7 @@ class TokenID(Enum):
     ASM = auto()          # asm("instruccion")
     CONSTANTE = auto()    # constante IDENTIFICADOR = EXPR
     SEMICOLON = auto()    # ; separador de sentencias
+    PARA = auto()         # para (bucle for)
 
     EOF = auto()
 
@@ -141,6 +142,14 @@ class SentenciaEscuchar(Nodo):
 @dataclass
 class SentenciaMientras(Nodo):
     condicion: Optional[Nodo] = None
+    cuerpo: List[Nodo] = field(default_factory=list)
+
+
+@dataclass
+class SentenciaPara(Nodo):
+    inicializacion: Optional[Nodo] = None
+    condicion: Optional[Nodo] = None
+    incremento: Optional[Nodo] = None
     cuerpo: List[Nodo] = field(default_factory=list)
 
 

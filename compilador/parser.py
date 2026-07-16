@@ -5,7 +5,7 @@ from compilador.ast_nodes import (
     DefinicionFuncion, DefinicionEstructura, ExprAccesoCampo, AsignacionCampo,
     StmtConstante,
     SentenciaSi, SentenciaLanzar, SentenciaRetornar,
-    SentenciaEscuchar, SentenciaMientras, SentenciaImportar,
+    SentenciaEscuchar, SentenciaMientras, SentenciaPara, SentenciaImportar,
     AsignacionVariable, DeclaracionVariable, SentenciaRecuperar, LogLlamada, SentenciaExpr,
     SentenciaRomper, SentenciaSiguiente,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
@@ -89,6 +89,8 @@ class Parser:
             return self._parsear_escuchar()
         elif t.tipo == TokenID.WHILE:
             return self._parsear_mientras()
+        elif t.tipo == TokenID.PARA:
+            return self._parsear_para()
         elif t.tipo == TokenID.BREAK:
             return self._parsear_romper()
         elif t.tipo == TokenID.CONTINUE:
@@ -345,6 +347,38 @@ class Parser:
             cuerpo=cuerpo,
             linea=tok_mientras.linea,
             columna=tok_mientras.columna,
+        )
+
+    def _parsear_para(self) -> Optional[SentenciaPara]:
+        tok_para = self._esperar(TokenID.PARA)
+        if tok_para is None:
+            return None
+        inicializacion = self._parsear_asignacion()
+        if self._esperar(TokenID.SEMICOLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        condicion = self._parsear_expresion()
+        if self._esperar(TokenID.SEMICOLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        incremento = self._parsear_asignacion()
+        if self._esperar(TokenID.COLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
+        return SentenciaPara(
+            inicializacion=inicializacion,
+            condicion=condicion,
+            incremento=incremento,
+            cuerpo=cuerpo,
+            linea=tok_para.linea,
+            columna=tok_para.columna,
         )
 
     def _parsear_romper(self) -> Optional[SentenciaRomper]:

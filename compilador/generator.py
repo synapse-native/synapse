@@ -4,7 +4,7 @@ from compilador.ast_nodes import (
     DefinicionFuncion, DefinicionEstructura, ExprAccesoCampo, AsignacionCampo,
     StmtConstante,
     SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
-    SentenciaRetornar, SentenciaEscuchar, SentenciaMientras,
+    SentenciaRetornar, SentenciaEscuchar, SentenciaMientras, SentenciaPara,
     SentenciaRomper, SentenciaSiguiente,
     SentenciaExpr, AsignacionVariable, DeclaracionVariable, LogLlamada,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
@@ -438,6 +438,8 @@ class GeneradorC:
             self._push("continue;")
         elif isinstance(nodo, SentenciaMientras):
             self._visitar_mientras(nodo)
+        elif isinstance(nodo, SentenciaPara):
+            self._visitar_para(nodo)
         elif isinstance(nodo, BloqueInseguro):
             self._push("{ /* unsafe */")
             self.indent += 1
@@ -2531,6 +2533,26 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     def _visitar_mientras(self, nodo: SentenciaMientras):
         cond = self._expr_a_c(nodo.condicion)
         self._push(f"while ({cond}) {{")
+        self.indent += 1
+        self._push_scope()
+        for s in nodo.cuerpo:
+            self._visitar(s)
+        self._pop_scope()
+        self.indent -= 1
+        self._push("}")
+
+    def _visitar_para(self, nodo: SentenciaPara):
+        init_var = nodo.inicializacion.nombre if nodo.inicializacion else ''
+        init_val = self._expr_a_c(nodo.inicializacion.expresion) if nodo.inicializacion else ''
+        init_tipo = self._tipo_de_expr(nodo.inicializacion.expresion) if nodo.inicializacion else 'int'
+        cond = self._expr_a_c(nodo.condicion) if nodo.condicion else '1'
+        inc_val = self._expr_a_c(nodo.incremento.expresion) if nodo.incremento else ''
+        if init_var and init_var not in self._variables:
+            self._variables[init_var] = init_tipo
+            self._push(f"{init_tipo} {init_var} = {init_val};")
+        else:
+            self._push(f"{init_var} = {init_val};")
+        self._push(f"for (; {cond}; {init_var} = {inc_val}) {{")
         self.indent += 1
         self._push_scope()
         for s in nodo.cuerpo:
