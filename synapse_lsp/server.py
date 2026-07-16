@@ -290,20 +290,87 @@ def _construir_hover_funcion(fn) -> Optional[dict]:
     }
 
 
+def _buscar_tipo_variable_en_ast(ast, nombre: str) -> Optional[str]:
+    from compilador.ast_nodes import (
+        Nodo, DeclaracionVariable, AsignacionVariable,
+        LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
+        SentenciaSi, SentenciaMientras, SentenciaPara, BloqueInseguro,
+        DefinicionFuncion, Programa,
+    )
+    def _recorrer_nodos(nodos):
+        for n in nodos:
+            if isinstance(n, DeclaracionVariable) and n.nombre == nombre:
+                return n.tipo
+            if isinstance(n, AsignacionVariable) and n.nombre == nombre:
+                if isinstance(n.expresion, LiteralNumero):
+                    return 'int'
+                if isinstance(n.expresion, LiteralDecimal):
+                    return 'decimal'
+                if isinstance(n.expresion, LiteralCadena):
+                    return 'texto'
+                if isinstance(n.expresion, LiteralBooleano):
+                    return 'booleano'
+                return 'int'
+            hijos = []
+            if hasattr(n, 'cuerpo') and isinstance(n.cuerpo, list):
+                hijos.extend(n.cuerpo)
+            if hasattr(n, 'cuerpo_sino') and isinstance(n.cuerpo_sino, list):
+                hijos.extend(n.cuerpo_sino)
+            if isinstance(n, (SentenciaSi, SentenciaMientras, SentenciaPara, BloqueInseguro)):
+                if hasattr(n, 'condicion') and isinstance(n.condicion, Nodo):
+                    pass
+            if hasattr(n, 'sentencias') and isinstance(n.sentencias, list):
+                hijos.extend(n.sentencias)
+            if hijos:
+                r = _recorrer_nodos(hijos)
+                if r:
+                    return r
+        return None
+
+    if isinstance(ast, Programa):
+        return _recorrer_nodos(ast.sentencias)
+    return _recorrer_nodos([ast])
+
+
+def _obtener_palabra_en_posicion(texto: str, linea: int, columna: int) -> Optional[str]:
+    lineas = texto.split("\n")
+    if linea < 0 or linea >= len(lineas):
+        return None
+    linea_texto = lineas[linea]
+    if columna < 0 or columna >= len(linea_texto):
+        return None
+    inicio = columna
+    while inicio > 0 and (linea_texto[inicio - 1].isalnum() or linea_texto[inicio - 1] == '_'):
+        inicio -= 1
+    fin = columna
+    while fin < len(linea_texto) and (linea_texto[fin].isalnum() or linea_texto[fin] == '_'):
+        fin += 1
+    return linea_texto[inicio:fin]
+
+
+def _construir_hover_variable(nombre: str, tipo: str) -> dict:
+    return {
+        "contents": {
+            "kind": "markdown",
+            "value": f"```synapse\n{nombre}: {tipo}\n```",
+        }
+    }
+
+
 def _manejar_hover(msg: dict) -> Optional[dict]:
-    """Responde a textDocument/hover buscando la función en la posición del cursor."""
+    """Responde a textDocument/hover buscando función o variable en la posición del cursor."""
     params = msg.get("params", {})
     doc = params.get("textDocument", {})
     uri = doc.get("uri", "")
     pos = params.get("position", {})
-    linea = pos.get("line", 0)      # 0-based
-    columna = pos.get("character", 0)  # 0-based
+    linea = pos.get("line", 0)
+    columna = pos.get("character", 0)
 
     doc_info = _obtener_documento(uri)
     if doc_info is None or doc_info["ast"] is None:
         return None
 
-    from ast_nodes import Programa, DefinicionFuncion, LlamadaFuncion
+    from compilador.ast_nodes import Programa, DefinicionFuncion, LlamadaFuncion
 
     ast = doc_info["ast"]
     if not isinstance(ast, Programa):
@@ -312,9 +379,8 @@ def _manejar_hover(msg: dict) -> Optional[dict]:
     texto = doc_info["texto"]
     lineas = texto.split("\n")
 
-    from ast_nodes import DefinicionFuncion as _DF
+    from compilador.ast_nodes import DefinicionFuncion as _DF
 
-    # Buscar la función en cuyo rango de definición cae el cursor
     for s in ast.sentencias:
         if isinstance(s, _DF):
             fn_linea = s.linea - 1
@@ -323,11 +389,17 @@ def _manejar_hover(msg: dict) -> Optional[dict]:
                 if resultado:
                     return resultado
 
-            # Buscar llamadas dentro del cuerpo de la función
             for stmt in s.cuerpo:
                 resultado = _buscar_llamada_en_nodo(stmt, linea, columna, ast)
                 if resultado:
                     return resultado
+
+    palabra = _obtener_palabra_en_posicion(texto, linea, columna)
+    if palabra:
+        from compilador.ast_nodes import DeclaracionVariable, AsignacionVariable, DefinicionFuncion
+        tipo = _buscar_tipo_variable_en_ast(ast, palabra)
+        if tipo:
+            return _construir_hover_variable(palabra, tipo)
 
     return None
 

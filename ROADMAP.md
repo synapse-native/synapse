@@ -96,7 +96,7 @@ para i = 0; i < 10; i = i + 1:
 - Completar nombres de funciones y variables definidas
 - Completar nombres de campos de estructuras
 
-### 3.2. Hover (`textDocument/hover`)
+### 3.2. Hover (`textDocument/hover`) ✅
 - Mostrar tipo de variable al pasar el mouse
 - Mostrar firma de función
 

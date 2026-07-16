@@ -1,5 +1,5 @@
 from synapse_lsp.server import (
-    _manejar_completado, _PALABRAS_CLAVE_LSP,
+    _manejar_completado, _manejar_hover, _PALABRAS_CLAVE_LSP,
 )
 
 
@@ -19,6 +19,33 @@ def test_completado_palabras_clave():
     for kw in ["si", "mientras", "para", "funcion", "estructura"]:
         assert kw in labels, f"Falta palabra clave: {kw}"
     assert len(items) >= 26
+
+
+def test_hover_variable():
+    from synapse_lsp.server import _DOCS, _almacenar_documento, validar_documento
+    from compilador.lexer import Lexer
+    from compilador.parser import Parser
+    from compilador.diagnostics import DiagnosticManager
+
+    codigo = "#lang: es\nfuncion principal() -> nulo:\n    x: entero = 1\n    escribir_linea(x)"
+    fuente_lineas = codigo.split("\n")
+    diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo="file:///test_hover.syn")
+    lexer = Lexer(codigo)
+    tokens = lexer.tokenizar()
+    parser = Parser(tokens, diag)
+    ast = parser.parsear()
+    _almacenar_documento("file:///test_hover.syn", codigo, ast)
+
+    msg = _simular_mensaje("textDocument/hover", {
+        "textDocument": {"uri": "file:///test_hover.syn"},
+        "position": {"line": 2, "character": 4},
+    })
+    resultado = _manejar_hover(msg)
+    assert resultado is not None
+    contents = resultado.get("contents", {})
+    value = contents.get("value", "")
+    assert "x" in value
+    assert "entero" in value
 
 
 def test_completado_con_simbolos():
