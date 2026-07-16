@@ -4,7 +4,7 @@ import json
 import argparse
 from typing import List, Optional, Dict, Tuple, Any
 
-from ast_nodes import (
+from compilador.ast_nodes import (
     TokenID, Token, Nodo, Programa, Parametro,
     DefinicionFuncion, DefinicionEstructura, ExprAccesoCampo, AsignacionCampo,
     SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
@@ -14,9 +14,9 @@ from ast_nodes import (
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
 )
-from lexer import Lexer, DICCIONARIOS, DICCIONARIOS_INVERSO
+from compilador.lexer import Lexer, DICCIONARIOS, DICCIONARIOS_INVERSO
 from exceptions import SynapseError
-from parser import Parser
+from compilador.parser import Parser
 from generator import GeneradorC
 from diagnostics import DiagnosticManager, ErrorCodes
 from analizador_semantico import AnalizadorSemantico

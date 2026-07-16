@@ -3,9 +3,9 @@ from typing import Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from ast_nodes import TokenID, Token, Programa
-from lexer import Lexer
-from parser import Parser
+from compilador.ast_nodes import TokenID, Token, Programa
+from compilador.lexer import Lexer
+from compilador.parser import Parser
 from diagnostics import DiagnosticManager, ErrorCodes
 from exceptions import SynapseError
 
