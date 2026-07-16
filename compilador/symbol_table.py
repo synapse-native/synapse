@@ -18,6 +18,9 @@ class Simbolo:
     scope_level: int = 0
     propiedad: Propiedad = Propiedad.VIVO
     es_constante: bool = False
+    uri: str = ''
+    linea: int = 0
+    columna: int = 0
 
 
 class SymbolTable:
@@ -38,11 +41,19 @@ class SymbolTable:
     def scope_nivel(self) -> int:
         return self._scope_level
 
-    def declarar(self, nombre: str, tipo: str, nodo: Optional[Nodo] = None) -> bool:
+    def declarar(self, nombre: str, tipo: str, nodo: Optional[Nodo] = None, uri: str = '', linea: int = 0, columna: int = 0) -> bool:
         cur = self._scopes[-1]
         if nombre in cur:
             return False
-        cur[nombre] = Simbolo(nombre, tipo, nodo, self._scope_level)
+        cur[nombre] = Simbolo(
+            nombre=nombre,
+            tipo=tipo,
+            nodo=nodo,
+            scope_level=self._scope_level,
+            uri=uri,
+            linea=linea if linea else (nodo.linea if nodo else 0),
+            columna=columna if columna else (nodo.columna if nodo else 0),
+        )
         return True
 
     def buscar(self, nombre: str) -> Optional[Simbolo]:

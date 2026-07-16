@@ -100,7 +100,7 @@ para i = 0; i < 10; i = i + 1:
 - Mostrar tipo de variable al pasar el mouse
 - Mostrar firma de función
 
-### 3.3. Ir a Definición (`textDocument/definition`)
+### 3.3. Ir a Definición (`textDocument/definition`) ✅
 - Saltar a la definición de función/variable/estructura
 
 ---

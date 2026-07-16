@@ -1,5 +1,5 @@
 from synapse_lsp.server import (
-    _manejar_completado, _manejar_hover, _PALABRAS_CLAVE_LSP,
+    _manejar_completado, _manejar_hover, _manejar_definicion, _PALABRAS_CLAVE_LSP,
 )
 
 
@@ -21,8 +21,28 @@ def test_completado_palabras_clave():
     assert len(items) >= 26
 
 
+def test_completado_con_simbolos():
+    from synapse_lsp.server import _DOCS, _almacenar_documento
+    from compilador.ast_nodes import Programa
+
+    prog = Programa()
+    _almacenar_documento("file:///test2.syn", "#lang: es\nfuncion principal() -> nulo:\n    x = 1\n    y = 2", prog)
+
+    msg = _simular_mensaje("textDocument/completion", {
+        "textDocument": {"uri": "file:///test2.syn"},
+        "position": {"line": 2, "character": 4},
+    })
+    resultado = _manejar_completado(msg)
+    assert resultado is not None
+    items = resultado.get("items", [])
+    labels = [i["label"] for i in items]
+    for kw in ["si", "mientras", "para", "funcion"]:
+        assert kw in labels, f"Falta palabra clave: {kw}"
+    assert len(items) >= 26
+
+
 def test_hover_variable():
-    from synapse_lsp.server import _DOCS, _almacenar_documento, validar_documento
+    from synapse_lsp.server import _DOCS, _almacenar_documento
     from compilador.lexer import Lexer
     from compilador.parser import Parser
     from compilador.diagnostics import DiagnosticManager
@@ -48,21 +68,29 @@ def test_hover_variable():
     assert "entero" in value
 
 
-def test_completado_con_simbolos():
+def test_definicion_variable():
     from synapse_lsp.server import _DOCS, _almacenar_documento
-    from compilador.ast_nodes import Programa
+    from compilador.lexer import Lexer
+    from compilador.parser import Parser
+    from compilador.diagnostics import DiagnosticManager
 
-    prog = Programa()
-    _almacenar_documento("file:///test2.syn", "#lang: es\nfuncion principal() -> nulo:\n    x = 1\n    y = 2", prog)
+    codigo = "#lang: es\nfuncion principal() -> nulo:\n    x: entero = 1\n    escribir_linea(x)"
+    fuente_lineas = codigo.split("\n")
+    diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo="file:///test_def.syn")
+    lexer = Lexer(codigo)
+    tokens = lexer.tokenizar()
+    parser = Parser(tokens, diag)
+    ast = parser.parsear()
+    _almacenar_documento("file:///test_def.syn", codigo, ast)
 
-    msg = _simular_mensaje("textDocument/completion", {
-        "textDocument": {"uri": "file:///test2.syn"},
-        "position": {"line": 2, "character": 4},
+    msg = _simular_mensaje("textDocument/definition", {
+        "textDocument": {"uri": "file:///test_def.syn"},
+        "position": {"line": 3, "character": 19},
     })
-    resultado = _manejar_completado(msg)
-    assert resultado is not None
-    items = resultado.get("items", [])
-    labels = [i["label"] for i in items]
-    for kw in ["si", "mientras", "para", "funcion"]:
-        assert kw in labels, f"Falta palabra clave: {kw}"
-    assert len(items) >= 26
+    resultado = _manejar_definicion(msg)
+    assert resultado is not None, "definition returned None"
+    assert "uri" in resultado
+    assert "range" in resultado
+    assert isinstance(resultado["range"]["start"]["line"], int)
+    assert isinstance(resultado["range"]["start"]["character"], int)
+    assert resultado["range"]["end"]["character"] > resultado["range"]["start"]["character"]
