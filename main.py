@@ -17,9 +17,9 @@ from compilador.ast_nodes import (
 from compilador.lexer import Lexer, DICCIONARIOS, DICCIONARIOS_INVERSO
 from exceptions import SynapseError
 from compilador.parser import Parser
-from generator import GeneradorC
-from diagnostics import DiagnosticManager, ErrorCodes
-from analizador_semantico import AnalizadorSemantico
+from compilador.generator import GeneradorC
+from compilador.diagnostics import DiagnosticManager, ErrorCodes
+from compilador.analizador_semantico import AnalizadorSemantico
 import resolvedor_axon
 from resolvedor_axon import DepNoDeclaradaError
 
