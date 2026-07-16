@@ -6,9 +6,9 @@ from compilador.ast_nodes import (
     SentenciaSi, SentenciaLanzar,
     SentenciaRecuperar, SentenciaRetornar, SentenciaEscuchar,
     SentenciaMientras, SentenciaRomper, SentenciaSiguiente,
-    SentenciaImportar, AsignacionVariable, SentenciaExpr, LogLlamada,
+    SentenciaImportar, AsignacionVariable, DeclaracionVariable, SentenciaExpr, LogLlamada,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
-    LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
+    LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor, ArgumentoTransferido,
     Token, TokenID, DeclaracionExterna,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     NodoCoincidir, NodoCaso,
@@ -136,7 +136,6 @@ class AnalizadorSemantico:
 
     def _analizar_sentencia(self, nodo: Nodo):
         if isinstance(nodo, AsignacionVariable):
-            # Check if variable already exists and is constant
             sim_existente = self.tabla.buscar(nodo.nombre)
             if sim_existente and sim_existente.es_constante:
                 self.diag.reportar(
@@ -148,6 +147,27 @@ class AnalizadorSemantico:
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
                 self.tabla.declarar(nodo.nombre, tipo_expr, nodo)
+        elif isinstance(nodo, DeclaracionVariable):
+            sim_existente = self.tabla.buscar(nodo.nombre)
+            if sim_existente and sim_existente.es_constante:
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=nodo.nombre
+                )
+                return
+            tipo_expr = self._inferir_tipo(nodo.expresion)
+            if tipo_expr:
+                norm_decl = _tipo_normalizado(nodo.tipo)
+                norm_expr = _tipo_normalizado(tipo_expr)
+                if norm_decl != norm_expr:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(nodo.linea, nodo.columna),
+                        tipo1=tipo_expr, tipo2=nodo.tipo, operacion='declaracion'
+                    )
+                else:
+                    self.tabla.declarar(nodo.nombre, nodo.tipo, nodo)
         elif isinstance(nodo, StmtConstante):
             tipo_const = self._inferir_tipo(nodo.valor)
             if tipo_const:
@@ -196,7 +216,7 @@ class AnalizadorSemantico:
                             self._asignaciones_campos[var_nombre][nodo.nombre_campo] = campo_val.tipo
         elif isinstance(nodo, SentenciaSi):
             tipo_cond = self._inferir_tipo(nodo.condicion)
-            if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float'):
+            if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                     self._token(nodo.linea, nodo.columna),
@@ -213,7 +233,7 @@ class AnalizadorSemantico:
                 self.tabla.salir_scope()
         elif isinstance(nodo, SentenciaMientras):
             tipo_cond = self._inferir_tipo(nodo.condicion)
-            if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float'):
+            if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                     self._token(nodo.linea, nodo.columna),
@@ -327,6 +347,8 @@ class AnalizadorSemantico:
             return 'decimal'
         elif isinstance(nodo, LiteralCadena):
             return 'texto'
+        elif isinstance(nodo, LiteralBooleano):
+            return 'booleano'
         elif isinstance(nodo, Identificador):
             if nodo.nombre == 'nulo':
                 return 'puntero'
@@ -354,7 +376,6 @@ class AnalizadorSemantico:
                 
                 # Operadores lógicos (&&, ||)
                 if nodo.operador in ('&&', '||'):
-                    # Ambos operandos deben ser tipos que pueden evaluarse como booleanos
                     if norm_izq not in ('int', 'float'):
                         self.diag.reportar(
                             ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -369,7 +390,16 @@ class AnalizadorSemantico:
                             tipo1=tipo_der, tipo2='int/float', operacion=nodo.operador
                         )
                         return None
-                    return 'int'  # Resultado es int (0 o 1)
+                    return 'int'
+                
+                # Validación estricta: booleano no se mezcla con entero/decimal
+                if (tipo_izq == 'booleano' and tipo_der != 'booleano') or (tipo_izq != 'booleano' and tipo_der == 'booleano'):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(nodo.linea, nodo.columna),
+                        tipo1=tipo_izq, tipo2=tipo_der, operacion=nodo.operador
+                    )
+                    return None
                 
                 # Operadores aritméticos y comparación
                 if norm_izq == 'float' and norm_der == 'int':
@@ -394,16 +424,15 @@ class AnalizadorSemantico:
                 return None
         elif isinstance(nodo, OpUnaria):
             tipo_expr = self._inferir_tipo(nodo.expr)
-            if tipo_expr and _tipo_normalizado(tipo_expr) not in ('int', 'float'):
+            if tipo_expr and _tipo_normalizado(tipo_expr) not in ('int', 'float', 'booleano'):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                     self._token(nodo.linea, nodo.columna),
                     tipo1=tipo_expr, tipo2='int', operacion=nodo.operador
                 )
                 return None
-            # Operador NOT (!) siempre retorna int
             if nodo.operador == '!':
-                return 'int'
+                return 'booleano'
             return 'decimal' if (tipo_expr and _tipo_normalizado(tipo_expr) == 'float') else 'int'
         elif isinstance(nodo, LlamadaFuncion):
             return self._inferir_tipo_llamada(nodo)

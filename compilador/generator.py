@@ -6,9 +6,9 @@ from compilador.ast_nodes import (
     SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
     SentenciaRetornar, SentenciaEscuchar, SentenciaMientras,
     SentenciaRomper, SentenciaSiguiente,
-    SentenciaExpr, AsignacionVariable, LogLlamada,
+    SentenciaExpr, AsignacionVariable, DeclaracionVariable, LogLlamada,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
-    LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
+    LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor, ArgumentoTransferido,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia,
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
@@ -449,6 +449,8 @@ class GeneradorC:
             self._push("}")
         elif isinstance(nodo, SentenciaExpr):
             self._push(self._expr_a_c(nodo.expr) + ";")
+        elif isinstance(nodo, DeclaracionVariable):
+            self._visitar_declaracion(nodo)
         elif isinstance(nodo, AsignacionVariable):
             self._visitar_asignacion(nodo)
         elif isinstance(nodo, LogLlamada):
@@ -2354,6 +2356,36 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         self._push(f'pthread_create(&_listener_pth_{idx}, NULL, _listener_fn_{idx}, NULL);')
         self._push(f'pthread_detach(_listener_pth_{idx});')
 
+    def _visitar_declaracion(self, nodo: DeclaracionVariable):
+        tipo = MAPA_TIPOS_C.get(nodo.tipo, nodo.tipo)
+        val = self._expr_a_c(nodo.expresion)
+        desde_llamada = isinstance(nodo.expresion, LlamadaFuncion)
+        if nodo.nombre not in self._variables:
+            self._variables[nodo.nombre] = nodo.tipo
+            self._push(f"{tipo} {nodo.nombre} = {val};")
+            if tipo == 'Tensor':
+                self._tensor_vars.add(nodo.nombre)
+            elif tipo == 'Canal':
+                self._canal_vars.add(nodo.nombre)
+            else:
+                self._register_var(nodo.nombre, nodo.tipo, desde_llamada)
+        else:
+            old_tipo = self._variables.get(nodo.nombre)
+            if old_tipo in self._destructor_map:
+                dtor = self._destructor_map[old_tipo]
+                self._push(f"{dtor}({nodo.nombre});")
+                self._unregister_var(nodo.nombre)
+            if nodo.nombre in self._tensor_vars and tipo == 'Tensor':
+                self._push(f"{self._syn_free(f'{nodo.nombre}.datos')};")
+            self._push(f"{nodo.nombre} = {val};")
+            self._variables[nodo.nombre] = nodo.tipo
+            if tipo == 'Tensor':
+                self._tensor_vars.add(nodo.nombre)
+            elif tipo == 'Canal':
+                self._canal_vars.add(nodo.nombre)
+            else:
+                self._register_var(nodo.nombre, nodo.tipo, desde_llamada)
+
     def _visitar_asignacion(self, nodo: AsignacionVariable):
         tipo = self._tipo_de_expr(nodo.expresion)
         val = self._expr_a_c(nodo.expresion)
@@ -2416,6 +2448,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return 'int'
         if isinstance(nodo, LiteralCadena):
             return 'CadenaSegura'
+        if isinstance(nodo, LiteralBooleano):
+            return 'int'
         if isinstance(nodo, ExprTensor):
             return 'Tensor'
         if isinstance(nodo, Identificador):
@@ -2479,6 +2513,10 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return self._variables.get(nodo.nombre, 'int')
         if isinstance(nodo, AsignacionVariable):
             return self._tipo_de_expr(nodo.expresion)
+        if isinstance(nodo, DeclaracionVariable):
+            return nodo.tipo
+        if isinstance(nodo, LiteralBooleano):
+            return 'booleano'
         return 'int'
 
     def _formato_espec(self, tipo: str) -> str:
@@ -2506,6 +2544,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             return str(nodo.valor)
         if isinstance(nodo, LiteralDecimal):
             return f"{nodo.valor}f"
+        if isinstance(nodo, LiteralBooleano):
+            return '1' if nodo.valor else '0'
         if isinstance(nodo, LiteralCadena):
             val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
             encoded = nodo.valor.encode('utf-8')

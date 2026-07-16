@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import List, Dict, Optional
 
@@ -33,6 +33,10 @@ class SymbolTable:
         if len(self._scopes) > 1:
             self._scopes.pop()
             self._scope_level -= 1
+
+    @property
+    def scope_nivel(self) -> int:
+        return self._scope_level
 
     def declarar(self, nombre: str, tipo: str, nodo: Optional[Nodo] = None) -> bool:
         cur = self._scopes[-1]

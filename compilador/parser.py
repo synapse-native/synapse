@@ -6,10 +6,10 @@ from compilador.ast_nodes import (
     StmtConstante,
     SentenciaSi, SentenciaLanzar, SentenciaRetornar,
     SentenciaEscuchar, SentenciaMientras, SentenciaImportar,
-    AsignacionVariable, SentenciaRecuperar, LogLlamada, SentenciaExpr,
+    AsignacionVariable, DeclaracionVariable, SentenciaRecuperar, LogLlamada, SentenciaExpr,
     SentenciaRomper, SentenciaSiguiente,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
-    LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
+    LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor, ArgumentoTransferido,
     BloqueInseguro, ExprObtenerDireccion, ExprDereferencia, TipoPuntero,
     ImportarC, DeclaracionExterna,
     NodoCaso, NodoCoincidir,
@@ -124,6 +124,14 @@ class Parser:
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ASSIGN):
                 return self._parsear_asignacion()
+            if (t.tipo == TokenID.IDENTIFIER
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.COLON
+                    and self.pos + 2 < len(self.tokens)
+                    and self.tokens[self.pos + 2].tipo == TokenID.IDENTIFIER
+                    and self.pos + 3 < len(self.tokens)
+                    and self.tokens[self.pos + 3].tipo == TokenID.ASSIGN):
+                return self._parsear_declaracion_tipada()
             if (t.tipo == TokenID.IDENTIFIER
                     and self.pos + 3 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.DOT
@@ -489,6 +497,25 @@ class Parser:
             columna=tok_id.columna,
         )
 
+    def _parsear_declaracion_tipada(self) -> DeclaracionVariable:
+        tok_id = self._avanzar()
+        self._esperar(TokenID.COLON)
+        tok_tipo = self._avanzar()
+        self._esperar(TokenID.ASSIGN)
+        if (self._mirar().tipo in (TokenID.IDENTIFIER, TokenID.CANAL)
+                and self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+            expr = self._parsear_recibir_canal()
+        else:
+            expr = self._parsear_expresion()
+        return DeclaracionVariable(
+            nombre=tok_id.valor,
+            tipo=tok_tipo.valor,
+            expresion=expr,
+            linea=tok_id.linea,
+            columna=tok_id.columna,
+        )
+
     def _parsear_expr_o_recuperar(self) -> Nodo:
         expr = self._parsear_expresion()
 
@@ -635,10 +662,10 @@ class Parser:
             return LiteralCadena(valor=t.valor, linea=t.linea, columna=t.columna)
         if t.tipo == TokenID.TRUE:
             self._avanzar()
-            return LiteralNumero(valor=1, linea=t.linea, columna=t.columna)
+            return LiteralBooleano(valor=True, linea=t.linea, columna=t.columna)
         if t.tipo == TokenID.FALSE:
             self._avanzar()
-            return LiteralNumero(valor=0, linea=t.linea, columna=t.columna)
+            return LiteralBooleano(valor=False, linea=t.linea, columna=t.columna)
         if t.tipo == TokenID.ASM:
             self._avanzar()
             self._esperar(TokenID.LPAREN)

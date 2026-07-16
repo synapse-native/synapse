@@ -194,6 +194,11 @@ class LiteralCadena(Nodo):
 
 
 @dataclass
+class LiteralBooleano(Nodo):
+    valor: bool = False
+
+
+@dataclass
 class SentenciaExpr(Nodo):
     expr: Optional[Nodo] = None
 
@@ -201,6 +206,12 @@ class SentenciaExpr(Nodo):
 @dataclass
 class AsignacionVariable(Nodo):
     nombre: str = ''
+    expresion: Optional[Nodo] = None
+
+@dataclass
+class DeclaracionVariable(Nodo):
+    nombre: str = ''
+    tipo: str = ''
     expresion: Optional[Nodo] = None
 
 
