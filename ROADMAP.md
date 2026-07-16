@@ -107,21 +107,21 @@ para i = 0; i < 10; i = i + 1:
 
 ## FASE 4: ECOSISTEMA Y ADOPCIÓN — Semanas 5-6
 
-### 4.1. Extensión VS Code
+### 4.1. Extensión VS Code ✅
 - Syntax highlighting (TextMate grammar)
 - Snippets: `funcion`, `estructura`, `si`, `mientras`, `para`
 
-### 4.2. Galería de Ejemplos
+### 4.2. Galería de Ejemplos ✅
 
 ```
 examples/
-├── 00_hola_mundo/
-├── 01_calculadora/
-├── 02_estructuras/
-├── 03_concurrencia/
-├── 04_ffi/
-├── 05_json/
-└── 06_oraculo/
+├── 00_hola_mundo/ ✅
+├── 01_calculadora/ ✅
+├── 02_estructuras/ ✅
+├── 03_concurrencia/ ❌ pendiente
+├── 04_ffi/ ❌ pendiente
+├── 05_json/ ❌ pendiente
+└── 06_oraculo/ ❌ pendiente
 ```
 
 ### 4.3. Documentación

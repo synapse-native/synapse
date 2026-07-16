@@ -1,0 +1,42 @@
+{
+    "scopeName": "source.synapse",
+    "name": "Synapse",
+    "fileTypes": ["syn"],
+    "patterns": [
+        {
+            "name": "keyword.control.synapse",
+            "match": "\\b(si|sino|funcion|retornar|mientras|para|romper|siguiente|importar|estructura|coincidir|lanzar|recuperar|escuchar|inseguro|externo|constante|requiere|garantiza)\\b"
+        },
+        {
+            "name": "keyword.operator.synapse",
+            "match": "\\b(y|o|no|verdadero|falso|canal|asm)\\b"
+        },
+        {
+            "name": "storage.type.synapse",
+            "match": "\\b(entero|decimal|texto|booleano|nulo|vacio|tensor)\\b"
+        },
+        {
+            "name": "constant.language.synapse",
+            "match": "\\b(verdadero|falso)\\b"
+        },
+        {
+            "name": "comment.line.number-sign.synapse",
+            "match": "#.*$"
+        },
+        {
+            "name": "string.quoted.double.synapse",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.synapse",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        {
+            "name": "constant.numeric.synapse",
+            "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        }
+    ]
+}

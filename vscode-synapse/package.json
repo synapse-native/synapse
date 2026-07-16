@@ -1,0 +1,35 @@
+{
+    "name": "synapse",
+    "displayName": "Synapse Language",
+    "description": "Synapse language support for VS Code",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": "^1.60.0"
+    },
+    "categories": [
+        "Programming Languages",
+        "Snippets"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "synapse",
+                "aliases": ["Synapse", "synapse"],
+                "extensions": [".syn"]
+            }
+        ],
+        "grammars": [
+            {
+                "language": "synapse",
+                "scopeName": "source.synapse",
+                "path": "./syntaxes/synapse.tmLanguage.json"
+            }
+        ],
+        "snippets": [
+            {
+                "language": "synapse",
+                "path": "./snippets/synapse.code-snippets"
+            }
+        ]
+    }
+}

@@ -1,0 +1,31 @@
+{
+    "Funcion": {
+        "prefix": "funcion",
+        "body": [
+            "funcion ${1:nombre}($2) -> ${3:nulo}:",
+            "\t${4:cuerpo}",
+            ""
+        ],
+        "description": "Definicion de funcion"
+    },
+    "Para": {
+        "prefix": "para",
+        "body": [
+            "para ${1:i} = ${2:0}; ${3:i < n}; ${4:i} = ${4:i} + ${5:1}:",
+            "\t${6:cuerpo}",
+            ""
+        ],
+        "description": "Bucle para"
+    },
+    "Si": {
+        "prefix": "si",
+        "body": [
+            "si $1:",
+            "\t$2",
+            "sino:",
+            "\t$3",
+            ""
+        ],
+        "description": "Condicional si"
+    }
+}
