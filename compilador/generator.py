@@ -109,6 +109,46 @@ _FUNCIONES_ESPERAN_TEXTO: set[str] = {
     'escribir', 'escribir_linea', 'abrir', 'concat',
 }
 
+# Funciones nativas de C cuyos parámetros CadenaSegura necesitan .datos
+_C_FUNCTIONS_NEED_DATOS: dict[str, list[str]] = {
+    'strcmp': ['char*', 'char*'],
+    'strncpy': ['char*', 'char*'],
+    'strcpy': ['char*', 'char*'],
+    'strcat': ['char*', 'char*'],
+    'strlen': ['char*'],
+    'strcspn': ['char*', 'char*'],
+    'strchr': ['char*', 'int'],
+    'strstr': ['char*', 'char*'],
+    'strncmp': ['char*', 'char*'],
+    'strncpy': ['char*', 'char*', 'int'],
+    'memcpy': ['void*', 'void*', 'size_t'],
+    'memset': ['void*', 'int', 'size_t'],
+    'memmove': ['void*', 'void*', 'size_t'],
+    'fopen': ['char*', 'char*'],
+    'fclose': ['FILE*'],
+    'fgets': ['char*', 'int', 'FILE*'],
+    'fputs': ['char*', 'FILE*'],
+    'fprintf': ['FILE*', 'char*'],
+    'printf': ['char*'],
+    'sprintf': ['char*', 'char*'],
+    'fread': ['void*', 'size_t', 'size_t', 'FILE*'],
+    'fwrite': ['void*', 'size_t', 'size_t', 'FILE*'],
+    'fseek': ['FILE*', 'long', 'int'],
+    'ftell': ['FILE*'],
+    'rewind': ['FILE*'],
+    'remove': ['char*'],
+    'rename': ['char*', 'char*'],
+    'qsort': ['void*', 'size_t', 'size_t', 'void*'],
+    'bsearch': ['void*', 'void*', 'size_t', 'size_t', 'void*'],
+    'atoi': ['char*'],
+    'atol': ['char*'],
+    'atof': ['char*'],
+    'strtol': ['char*', 'char**', 'int'],
+    'strtod': ['char*', 'char**'],
+    'strtok': ['char*', 'char*'],
+    'perror': ['char*'],
+}
+
 
 def _traducir_tipo_c(tipo_synapse: str) -> str:
     if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
@@ -290,6 +330,16 @@ class GeneradorC:
             if isinstance(s, DefinicionEstructura):
                 self._push(f"struct {s.nombre};")
         if any(isinstance(s, DefinicionEstructura) for s in self.programa.sentencias):
+            self._push("")
+        # Function prototypes (pre-pass)
+        for s in self.programa.sentencias:
+            if isinstance(s, DefinicionFuncion) and s.nombre not in _RUNTIME_BUILTINS:
+                tipo_ret = _traducir_tipo_c(s.tipo_retorno)
+                params = ", ".join(
+                    f"{_traducir_tipo_c(p.tipo)} {p.nombre}" for p in s.parametros
+                ) if s.parametros else "void"
+                self._push(f"{tipo_ret} {s.nombre}({params});")
+        if any(isinstance(s, DefinicionFuncion) and s.nombre not in _RUNTIME_BUILTINS for s in self.programa.sentencias):
             self._push("")
         for s in self.programa.sentencias:
             self._visitar(s)
@@ -2579,6 +2629,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 return f"{nodo.nombre}_nuevo()"
             args_parts = []
             extern_params = self._externas.get(nodo.nombre, [])
+            if not extern_params and nodo.nombre in _C_FUNCTIONS_NEED_DATOS:
+                extern_params = _C_FUNCTIONS_NEED_DATOS[nodo.nombre]
             for i, a in enumerate(nodo.argumentos):
                 if isinstance(a, ArgumentoTransferido):
                     if isinstance(a.expr, Identificador):
@@ -2653,7 +2705,18 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, ExprDereferencia):
             return f"(*{self._expr_a_c(nodo.expr)})"
         if isinstance(nodo, ExprAsm):
-            return nodo.instruccion
+            import re
+            result = nodo.instruccion
+            result = re.sub(r'\bretornar\b', 'return', result)
+            result = re.sub(r'\bverdadero\b', '1', result)
+            result = re.sub(r'\bfalso\b', '0', result)
+            def _asm_strcmp(m):
+                v = m.group(1)
+                if v in self._variables and self._variables[v] == 'CadenaSegura':
+                    return f'strcmp({v}.datos,'
+                return f'strcmp({v},'
+            result = re.sub(r'\bstrcmp\((\w+)\s*,', _asm_strcmp, result)
+            return result
         if isinstance(nodo, ExprCrearCanal):
             cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"
             return f"canal_crear({cap})"
