@@ -1,1 +1,0 @@
-from compilador.generator import *

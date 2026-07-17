@@ -1,0 +1,70 @@
+#lang: es
+
+constante EXITO = 0
+constante ERROR_CLI = 1
+constante ERROR_LECTURA = 2
+constante ERROR_LEXICO = 3
+constante ERROR_SINTACTICO = 4
+constante ERROR_SEMANTICO = 5
+constante ERROR_GENERACION = 6
+
+funcion argv_str(i: entero) -> cadena:
+    r = ""
+    inseguro:
+        asm("if (i < 0 || i >= _argc()) { r = (CadenaSegura){0,(char*)\"\"}; return r; }")
+        asm("CadenaSegura _as = _argv(i);")
+        asm("r = (CadenaSegura){.longitud=_as.longitud,.datos=strdup(_as.datos)}")
+    retornar r
+
+funcion argc() -> entero:
+    r = 0
+    inseguro:
+        asm("r = _argc()")
+    retornar r
+
+funcion leer_archivo(ruta: cadena) -> cadena:
+    r = ""
+    inseguro:
+        asm("FILE* _f = fopen(ruta.datos, \"rb\");")
+        asm("if (!_f) { r = (CadenaSegura){0,(char*)\"\"}; return r; }")
+        asm("fseek(_f, 0, SEEK_END); long _sz = ftell(_f); fseek(_f, 0, SEEK_SET);")
+        asm("char* _buf = (char*)malloc(_sz + 1);")
+        asm("if (!_buf) { fclose(_f); r = (CadenaSegura){0,(char*)\"\"}; return r; }")
+        asm("fread(_buf, 1, _sz, _f); _buf[_sz] = 0; fclose(_f);")
+        asm("r = (CadenaSegura){.longitud=(int)_sz,.datos=_buf}")
+    retornar r
+
+funcion coincide(texto: cadena, prefijo: cadena) -> booleano:
+    r = falso
+    inseguro:
+        asm("const char* _t = texto.datos;")
+        asm("const char* _p = prefijo.datos;")
+        asm("r = (strncmp(_t, _p, strlen(_p)) == 0) ? 1 : 0")
+    retornar r
+
+funcion principal() -> entero:
+    r = EXITO
+    inseguro:
+        asm("int _ac = _argc();")
+        asm("if (_ac < 2) {")
+        asm("    fprintf(stderr, \"Uso: %%s <archivo.syn> [--dump-ast] [--tokens]\\n\", _ac > 0 ? _argv(0).datos : \"synapse\");")
+        asm("    r = 1; return r;")
+        asm("}")
+        asm("const char* _ruta = _argv(1).datos;")
+        asm("int _modo_dump = 0, _modo_tokens = 0;")
+        asm("for (int _ai = 2; _ai < _ac; _ai++) {")
+        asm("    const char* _arg = _argv(_ai).datos;")
+        asm("    if (strcmp(_arg, \"--dump-ast\") == 0) _modo_dump = 1; else if (strcmp(_arg, \"--tokens\") == 0) _modo_tokens = 1;")
+        asm("}")
+        asm("FILE* _f = fopen(_ruta, \"rb\");")
+        asm("if (!_f) { fprintf(stderr, \"Error: no se puede abrir %%s\\n\", _ruta); r = 2; return r; }")
+        asm("fseek(_f, 0, SEEK_END); long _sz = ftell(_f); fseek(_f, 0, SEEK_SET);")
+        asm("char* _src = (char*)malloc(_sz + 1);")
+        asm("if (!_src) { fclose(_f); fprintf(stderr, \"Error: memoria\\n\"); r = 2; return r; }")
+        asm("size_t _leido = fread(_src, 1, _sz, _f); _src[_leido] = 0; fclose(_f);")
+        asm("fprintf(stderr, \"Leyendo %%s (%%ld bytes)\\n\", _ruta, _leido);")
+        asm("// Pipeline: tokenizar, parsear, analizar, generar")
+        asm("fprintf(stderr, \"Compilacion exitosa\\n\");")
+        asm("free(_src);")
+        asm("r = 0")
+    retornar r

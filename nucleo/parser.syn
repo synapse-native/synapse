@@ -1,0 +1,1141 @@
+#lang: es
+
+// ---- Token constants (mirror nucleo/tokens.syn) ----
+constante T_IF = 1
+constante T_ELSE = 2
+constante T_FUNCION = 3
+constante T_RETORNAR = 4
+constante T_LANZAR = 5
+constante T_RECUPERAR = 6
+constante T_ESCUCHAR = 7
+constante T_MIENTRAS = 8
+constante T_IMPORTAR = 9
+constante T_ESTRUCTURA = 10
+constante T_ROMPER = 11
+constante T_SIGUIENTE = 12
+constante T_PUNTO = 13
+constante T_Y = 14
+constante T_O = 15
+constante T_NO = 16
+constante T_VERDADERO = 17
+constante T_FALSO = 18
+constante T_IDENTIFICADOR = 19
+constante T_NUMERO = 20
+constante T_FLOTANTE = 21
+constante T_CADENA = 22
+constante T_MAYOR = 23
+constante T_MENOR = 24
+constante T_IGUAL = 25
+constante T_DISTINTO = 26
+constante T_MENOR_IGUAL = 27
+constante T_MAYOR_IGUAL = 28
+constante T_ASIGNAR = 29
+constante T_MAS = 30
+constante T_MENOS = 31
+constante T_POR = 32
+constante T_DIV = 33
+constante T_MOD = 34
+constante T_FLECHA = 35
+constante T_COINCIDIR = 36
+constante T_FLECHA_DER = 37
+constante T_PAREN_IZQ = 38
+constante T_PAREN_DER = 39
+constante T_DOSPUNTOS = 40
+constante T_COMA = 41
+constante T_NUEVALINEA = 42
+constante T_INDENTAR = 43
+constante T_DESINDENTAR = 44
+constante T_AMPERSAND = 45
+constante T_INSEGURO = 46
+constante T_IMPORTAR_C = 47
+constante T_EXTERNO = 48
+constante T_FLECHA_IZQ = 49
+constante T_REQUIERE = 50
+constante T_GARANTIZA = 51
+constante T_CANAL = 52
+constante T_ASM = 53
+constante T_CONSTANTE = 54
+constante T_PUNTOCOMA = 55
+constante T_PARA = 56
+constante T_FIN = 57
+
+// ---- AST node type constants ----
+constante NODO_PROGRAMA = 1
+constante NODO_FUNCION = 2
+constante NODO_SI = 3
+constante NODO_MIENTRAS = 4
+constante NODO_RETORNAR = 5
+constante NODO_EXPR = 6
+constante NODO_ASIGNACION = 7
+constante NODO_IDENTIFICADOR = 8
+constante NODO_NUMERO = 9
+constante NODO_DECIMAL = 10
+constante NODO_CADENA_LIT = 11
+constante NODO_BINARIA = 12
+constante NODO_UNARIA = 13
+constante NODO_LLAMADA = 14
+constante NODO_PARAMETRO = 15
+constante NODO_ESTRUCTURA = 16
+constante NODO_IMPORTAR = 17
+constante NODO_LANZAR = 18
+constante NODO_ESCUCHAR = 19
+constante NODO_ROMPER = 20
+constante NODO_SIGUIENTE = 21
+constante NODO_BOOLEANO = 22
+constante NODO_CONSTANTE = 23
+constante NODO_INSEGURO = 24
+constante NODO_IMPORTAR_C = 25
+constante NODO_EXTERNO = 26
+constante NODO_RECUPERAR = 27
+constante NODO_TENSOR = 28
+constante NODO_INDICE = 29
+constante NODO_TRANSFERIDO = 30
+constante NODO_ACCESO_CAMPO = 31
+constante NODO_ASIGNACION_CAMPO = 32
+constante NODO_PARRAFO = 33
+constante NODO_DECLARACION = 34
+constante NODO_LOG = 35
+constante NODO_PUNTERO = 36
+constante NODO_DEREF = 37
+constante NODO_COINCIDIR = 38
+constante NODO_CASO = 39
+constante NODO_ASM = 40
+constante NODO_CANAL_CREAR = 41
+constante NODO_ENVIAR_CANAL = 42
+constante NODO_RECIBIR_CANAL = 43
+constante NODO_VACIO = 44
+
+// ---- Struct for parser token (external representation) ----
+estructura TokenExt:
+    tipo: entero
+    linea: entero
+    columna: entero
+    ptr_valor: entero
+    len_valor: entero
+
+// ---- AST node (generic flat struct) ----
+estructura NodoAST:
+    tipo_nodo: entero
+    linea: entero
+    columna: entero
+    valor_int: entero
+    valor_dec: decimal
+    ptr_str: entero
+    len_str: entero
+    hijo_izq: entero
+    hijo_der: entero
+    hermano: entero
+    ptr_extra: entero
+
+// ---- Parser state ----
+estructura ParserEst:
+    tokens: TokenExt
+    total_tokens: entero
+    posicion: entero
+    nodos: NodoAST
+    total_nodos: entero
+    hay_error: booleano
+    error_mensaje: cadena
+    error_linea: entero
+    error_columna: entero
+    es_sin_std: booleano
+
+// ---- Node allocation via asm ----
+funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
+    inseguro:
+        idx = 0
+        asm("idx = est.total_nodos")
+        asm("est.nodos[idx].tipo_nodo = tipo")
+        asm("est.nodos[idx].linea = linea")
+        asm("est.nodos[idx].columna = columna")
+        asm("est.nodos[idx].valor_int = 0")
+        asm("est.nodos[idx].hijo_izq = 0")
+        asm("est.nodos[idx].hijo_der = 0")
+        asm("est.nodos[idx].hermano = 0")
+        asm("est.total_nodos = idx + 1")
+        retornar idx
+
+// ---- Error reporting ----
+funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    est.hay_error = verdadero
+    est.error_mensaje = mensaje
+    est.error_linea = linea
+    est.error_columna = columna
+
+// ---- Token access helpers ----
+funcion token_tipo(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].tipo : 57")
+        retornar r
+
+funcion token_linea(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].linea : 0")
+        retornar r
+
+funcion token_columna(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].columna : 0")
+        retornar r
+
+funcion token_avanzar(est: ParserEst) -> nulo:
+    inseguro:
+        asm("est.posicion = est.posicion + 1")
+
+funcion token_mirar(est: ParserEst) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (est.posicion < est.total_tokens) ? est.tokens[est.posicion].tipo : 57")
+        retornar r
+
+funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
+    t = token_mirar(est)
+    si t == esperado:
+        inseguro:
+            asm("est.posicion = est.posicion + 1")
+        retornar 1
+    est.hay_error = verdadero
+    retornar 0
+
+funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
+    t = token_mirar(est)
+    si t == esperado:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        inseguro:
+            asm("est.posicion = est.posicion + 1")
+        retornar parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+    est.hay_error = verdadero
+    retornar 0
+
+// ---- Expression parsing ----
+funcion parsear_expresion(est: ParserEst) -> entero:
+    retornar parsear_logica(est)
+
+funcion parsear_logica(est: ParserEst) -> entero:
+    izq = parsear_comparacion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_Y:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_comparacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 100")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_O:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_comparacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 101")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_comparacion(est: ParserEst) -> entero:
+    izq = parsear_adicion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_MAYOR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 200")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 201")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 202")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_DISTINTO:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 203")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOR_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 204")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MAYOR_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 205")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_adicion(est: ParserEst) -> entero:
+    izq = parsear_multiplicacion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_MAS:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_multiplicacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 300")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOS:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_multiplicacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 301")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_multiplicacion(est: ParserEst) -> entero:
+    izq = parsear_unario(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_POR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 400")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_DIV:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 401")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MOD:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 402")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_unario(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    si t == T_MENOS:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 500")
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_NO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 501")
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_AMPERSAND:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_PUNTERO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_POR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_DEREF, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    retornar parsear_primario(est)
+
+funcion parsear_primario(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    si t == T_NUMERO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_NUMERO, linea, col)
+        retornar nodo
+    si t == T_FLOTANTE:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_DECIMAL, linea, col)
+        retornar nodo
+    si t == T_CADENA:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_CADENA_LIT, linea, col)
+        retornar nodo
+    si t == T_VERDADERO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 1")
+        retornar nodo
+    si t == T_FALSO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 0")
+        retornar nodo
+    si t == T_IDENTIFICADOR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+        t2 = token_mirar(est)
+        si t2 == T_PAREN_IZQ:
+            inseguro:
+                asm("est.nodos[nodo].tipo_nodo = 14")
+            token_esperar(est, T_PAREN_IZQ)
+            r = 1
+            mientras r == 1:
+                si token_mirar(est) == T_PAREN_DER:
+                    romper
+                arg = parsear_expresion(est)
+                si token_mirar(est) == T_COMA:
+                    token_avanzar(est)
+                    siguiente
+                r = 1
+            token_esperar(est, T_PAREN_DER)
+        si t2 == T_PUNTO:
+            si token_mirar(est) == T_PUNTO:
+                token_avanzar(est)
+                tok_campo = token_mirar(est)
+                linea2 = token_linea(est, est.posicion)
+                col2 = token_columna(est, est.posicion)
+                si tok_campo == T_IDENTIFICADOR:
+                    token_avanzar(est)
+                    nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
+                    inseguro:
+                        asm("est.nodos[nodo2].hijo_izq = nodo")
+                    nodo = nodo2
+        retornar nodo
+    si t == T_PAREN_IZQ:
+        token_avanzar(est)
+        expr = parsear_expresion(est)
+        token_esperar(est, T_PAREN_DER)
+        retornar expr
+    parser_error(est, "Expresion inesperada", token_linea(est, est.posicion), token_columna(est, est.posicion))
+    retornar 0
+
+// ---- Statement parsing ----
+funcion parsear_sentencia(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    si t == T_FUNCION:
+        retornar parsear_funcion(est)
+    si t == T_ESTRUCTURA:
+        retornar parsear_estructura_def(est)
+    si t == T_IF:
+        retornar parsear_si(est)
+    si t == T_MIENTRAS:
+        retornar parsear_mientras(est)
+    si t == T_PARA:
+        retornar parsear_para(est)
+    si t == T_RETORNAR:
+        retornar parsear_retornar(est)
+    si t == T_LANZAR:
+        retornar parsear_lanzar(est)
+    si t == T_ESCUCHAR:
+        retornar parsear_escuchar(est)
+    si t == T_ROMPER:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        retornar parser_nuevo_nodo(est, NODO_ROMPER, linea, col)
+    si t == T_SIGUIENTE:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        retornar parser_nuevo_nodo(est, NODO_SIGUIENTE, linea, col)
+    si t == T_IMPORTAR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_IMPORTAR, linea, col)
+        retornar nodo
+    si t == T_ESTRUCTURA:
+        retornar parsear_estructura_def(est)
+    si t == T_CONSTANTE:
+        retornar parsear_constante(est)
+    si t == T_INSEGURO:
+        retornar parsear_inseguro(est)
+    si t == T_IMPORTAR_C:
+        retornar parsear_importar_c(est)
+    si t == T_EXTERNO:
+        retornar parsear_externo(est)
+    si t == T_COINCIDIR:
+        retornar parsear_coincidir(est)
+    si t == T_INDENTAR:
+        retornar 0
+    si t == T_DESINDENTAR:
+        retornar 0
+    si t == T_NUEVALINEA:
+        retornar 0
+    si t == T_FIN:
+        retornar 0
+    si t == T_IDENTIFICADOR:
+        t2 = token_mirar(est)
+        si t2 == T_ASIGNAR:
+            retornar parsear_asignacion(est)
+        si t2 == T_FLECHA_IZQ:
+            retornar parsear_enviar_canal(est)
+        // detectar declaracion tipada: ident : ident =
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        expr = parsear_expresion(est)
+        t3 = token_mirar(est)
+        si t3 == T_RECUPERAR:
+            token_avanzar(est)
+            token_esperar(est, T_DOSPUNTOS)
+            plan_b = parsear_expresion(est)
+            retornar expr
+        nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    retornar 0
+
+// ---- Function parsing (with requiere/garantiza) ----
+funcion parsear_funcion(est: ParserEst) -> entero:
+    si token_esperar(est, T_FUNCION) == 0:
+        retornar 0
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        parser_error(est, "Se esperaba nombre de funcion", token_linea(est, est.posicion), token_columna(est, est.posicion))
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    // parametros
+    ultimo_param = 0
+    si token_mirar(est) != T_PAREN_DER:
+        r = 1
+        mientras r == 1:
+            linea_p = token_linea(est, est.posicion)
+            col_p = token_columna(est, est.posicion)
+            si token_mirar(est) == T_IDENTIFICADOR:
+                token_avanzar(est)
+                si token_esperar(est, T_DOSPUNTOS) == 0:
+                    retornar 0
+                si token_mirar(est) == T_IDENTIFICADOR:
+                    token_avanzar(est)
+                    nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
+                    si token_mirar(est) == T_COMA:
+                        token_avanzar(est)
+                        siguiente
+                    sino:
+                        r = 0
+                sino:
+                    r = 0
+            sino:
+                r = 0
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
+    // tipo retorno
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    // requiere: / garantiza: blocks
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        si t == T_INDENTAR:
+            token_avanzar(est)
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_REQUIERE:
+                    token_avanzar(est)
+                    si token_esperar(est, T_DOSPUNTOS) == 0:
+                        retornar 0
+                    r2 = 1
+                    mientras r2 == 1:
+                        t = token_mirar(est)
+                        si t == T_NUEVALINEA:
+                            token_avanzar(est)
+                            siguiente
+                        si t == T_INDENTAR:
+                            token_avanzar(est)
+                            mientras r2 == 1:
+                                t = token_mirar(est)
+                                si t == T_NUEVALINEA:
+                                    token_avanzar(est)
+                                    siguiente
+                                si t == T_DESINDENTAR:
+                                    token_avanzar(est)
+                                    r2 = 0
+                                    romper
+                                expr = parsear_expresion(est)
+                                siguiente
+                        sino:
+                            r2 = 0
+                    siguiente
+                si t == T_GARANTIZA:
+                    token_avanzar(est)
+                    si token_esperar(est, T_DOSPUNTOS) == 0:
+                        retornar 0
+                    r2 = 1
+                    mientras r2 == 1:
+                        t = token_mirar(est)
+                        si t == T_NUEVALINEA:
+                            token_avanzar(est)
+                            siguiente
+                        si t == T_INDENTAR:
+                            token_avanzar(est)
+                            mientras r2 == 1:
+                                t = token_mirar(est)
+                                si t == T_NUEVALINEA:
+                                    token_avanzar(est)
+                                    siguiente
+                                si t == T_DESINDENTAR:
+                                    token_avanzar(est)
+                                    r2 = 0
+                                    romper
+                                expr = parsear_expresion(est)
+                                siguiente
+                        sino:
+                            r2 = 0
+                    siguiente
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                r = 0
+        sino:
+            r = 0
+    // cuerpo
+    si token_mirar(est) == T_INDENTAR:
+        token_avanzar(est)
+        mientras r == 1:
+            t = token_mirar(est)
+            si t == T_DESINDENTAR:
+                token_avanzar(est)
+                r = 0
+                romper
+            si t == T_FIN:
+                r = 0
+                romper
+            stmt = parsear_sentencia(est)
+            siguiente
+    retornar nodo_func
+
+// ---- Other statement parsers ----
+funcion parsear_si(est: ParserEst) -> entero:
+    r = 1
+    si token_esperar(est, T_IF) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_SI, linea, col)
+    cond = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = cond")
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                stmt = parsear_sentencia(est)
+                siguiente
+    r = 1
+    si token_mirar(est) == T_ELSE:
+        token_avanzar(est)
+        si token_esperar(est, T_DOSPUNTOS) == 0:
+            retornar 0
+        si token_mirar(est) == T_NUEVALINEA:
+            token_avanzar(est)
+            si token_mirar(est) == T_INDENTAR:
+                token_avanzar(est)
+                mientras r == 1:
+                    t = token_mirar(est)
+                    si t == T_DESINDENTAR:
+                        token_avanzar(est)
+                        r = 0
+                        romper
+                    si t == T_FIN:
+                        r = 0
+                        romper
+                    stmt = parsear_sentencia(est)
+                    siguiente
+    retornar nodo
+
+funcion parsear_mientras(est: ParserEst) -> entero:
+    si token_esperar(est, T_MIENTRAS) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_MIENTRAS, linea, col)
+    cond = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = cond")
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                stmt = parsear_sentencia(est)
+                siguiente
+    retornar nodo
+
+funcion parsear_para(est: ParserEst) -> entero:
+    si token_esperar(est, T_PARA) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_VACIO, linea, col)
+    parsear_asignacion(est)
+    si token_esperar(est, T_PUNTOCOMA) == 0:
+        retornar 0
+    parsear_expresion(est)
+    si token_esperar(est, T_PUNTOCOMA) == 0:
+        retornar 0
+    parsear_asignacion(est)
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                stmt = parsear_sentencia(est)
+                siguiente
+    retornar nodo
+
+funcion parsear_retornar(est: ParserEst) -> entero:
+    si token_esperar(est, T_RETORNAR) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_RETORNAR, linea, col)
+    t = token_mirar(est)
+    si t != T_NUEVALINEA:
+        si t != T_DESINDENTAR:
+            si t != T_FIN:
+                expr = parsear_expresion(est)
+                inseguro:
+                    asm("est.nodos[nodo].hijo_izq = expr")
+    retornar nodo
+
+funcion parsear_lanzar(est: ParserEst) -> entero:
+    si token_esperar(est, T_LANZAR) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_LANZAR, linea, col)
+    expr = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = expr")
+    retornar nodo
+
+funcion parsear_escuchar(est: ParserEst) -> entero:
+    si token_esperar(est, T_ESCUCHAR) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_ESCUCHAR, linea, col)
+    parsear_expresion(est)
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
+    expr = parsear_expresion(est)
+    retornar nodo
+
+funcion parsear_asignacion(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    si token_esperar(est, T_ASIGNAR) == 0:
+        retornar 0
+    nodo = parser_nuevo_nodo(est, NODO_ASIGNACION, linea, col)
+    expr = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_der = expr")
+    retornar nodo
+
+funcion parsear_estructura_def(est: ParserEst) -> entero:
+    si token_esperar(est, T_ESTRUCTURA) == 0:
+        retornar 0
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo = parser_nuevo_nodo(est, NODO_ESTRUCTURA, linea, col)
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                si t == T_IDENTIFICADOR:
+                    token_avanzar(est)
+                    si token_esperar(est, T_DOSPUNTOS) == 0:
+                        retornar 0
+                    si token_mirar(est) == T_IDENTIFICADOR:
+                        token_avanzar(est)
+                siguiente
+            retornar nodo
+    retornar nodo
+
+funcion parsear_constante(est: ParserEst) -> entero:
+    si token_esperar(est, T_CONSTANTE) == 0:
+        retornar 0
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo = parser_nuevo_nodo(est, NODO_CONSTANTE, linea, col)
+    si token_mirar(est) == T_DOSPUNTOS:
+        token_avanzar(est)
+        si token_mirar(est) == T_IDENTIFICADOR:
+            token_avanzar(est)
+    si token_esperar(est, T_ASIGNAR) == 0:
+        retornar 0
+    expr = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = expr")
+    retornar nodo
+
+funcion parsear_inseguro(est: ParserEst) -> entero:
+    si token_esperar(est, T_INSEGURO) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_INSEGURO, linea, col)
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                stmt = parsear_sentencia(est)
+                siguiente
+    retornar nodo
+
+funcion parsear_importar_c(est: ParserEst) -> entero:
+    si token_esperar(est, T_IMPORTAR_C) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_IMPORTAR_C, linea, col)
+    si token_mirar(est) == T_CADENA:
+        token_avanzar(est)
+    retornar nodo
+
+funcion parsear_externo(est: ParserEst) -> entero:
+    si token_esperar(est, T_EXTERNO) == 0:
+        retornar 0
+    si token_esperar(est, T_FUNCION) == 0:
+        retornar 0
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo = parser_nuevo_nodo(est, NODO_EXTERNO, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_PAREN_DER:
+            r = 0
+            romper
+        si t == T_IDENTIFICADOR:
+            token_avanzar(est)
+            si token_esperar(est, T_DOSPUNTOS) == 0:
+                retornar 0
+            si token_mirar(est) == T_IDENTIFICADOR:
+                token_avanzar(est)
+            si token_mirar(est) == T_POR:
+                token_avanzar(est)
+            si token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                siguiente
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    retornar nodo
+
+funcion parsear_coincidir(est: ParserEst) -> entero:
+    si token_esperar(est, T_COINCIDIR) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_COINCIDIR, linea, col)
+    expr = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = expr")
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                si t == T_IDENTIFICADOR:
+                    linea_c = token_linea(est, est.posicion)
+                    col_c = token_columna(est, est.posicion)
+                    token_avanzar(est)
+                    nodo_caso = parser_nuevo_nodo(est, NODO_CASO, linea_c, col_c)
+                    si token_mirar(est) == T_PAREN_IZQ:
+                        token_avanzar(est)
+                        si token_mirar(est) == T_IDENTIFICADOR:
+                            token_avanzar(est)
+                        si token_esperar(est, T_PAREN_DER) == 0:
+                            retornar 0
+                    si token_esperar(est, T_FLECHA_DER) == 0:
+                        retornar 0
+                    r2 = 1
+                    mientras r2 == 1:
+                        t = token_mirar(est)
+                        si t == T_NUEVALINEA:
+                            r2 = 0
+                            romper
+                        si t == T_DESINDENTAR:
+                            r2 = 0
+                            romper
+                        si t == T_FIN:
+                            r2 = 0
+                            romper
+                        stmt = parsear_sentencia(est)
+                        siguiente
+                siguiente
+    retornar nodo
+
+funcion parsear_enviar_canal(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_ENVIAR_CANAL, linea, col)
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    si token_esperar(est, T_FLECHA_IZQ) == 0:
+        retornar 0
+    expr = parsear_expresion(est)
+    retornar nodo
+
+// ---- Main parse function ----
+funcion parsear(tokens: TokenExt, total: entero) -> entero:
+    est = ParserEst()
+    est.tokens = tokens
+    est.total_tokens = total
+    est.posicion = 0
+    est.total_nodos = 0
+    est.hay_error = falso
+    est.error_mensaje = ""
+
+    // Program node
+    prog = parser_nuevo_nodo(est, NODO_PROGRAMA, 0, 0)
+    ultimo_stmt = 0
+
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_FIN:
+            r = 0
+            romper
+        stmt = parsear_sentencia(est)
+        si est.hay_error == verdadero:
+            retornar -1
+        si stmt != 0:
+            si ultimo_stmt == 0:
+                inseguro:
+                    asm("est.nodos[prog].hijo_izq = stmt")
+                ultimo_stmt = stmt
+            sino:
+                inseguro:
+                    asm("est.nodos[ultimo_stmt].hermano = stmt")
+                ultimo_stmt = stmt
+        sino:
+            token_avanzar(est)
+
+    si est.hay_error == verdadero:
+        retornar -1
+
+    retornar prog

@@ -1,0 +1,50 @@
+#lang: es
+
+constante AXON_MODULES = "axon_modules"
+
+estructura DepNoDeclaradaError:
+    mensaje: cadena
+
+funcion buscar_en(dir_base: cadena, ruta_import: cadena) -> cadena:
+    r = ""
+    inseguro:
+        asm("char _buf[1024];")
+        asm("snprintf(_buf, 1024, \"%s/%s/%s/principal.syn\", dir_base.datos, \"axon_modules\", ruta_import.datos);")
+        asm("FILE* _f = fopen(_buf, \"r\");")
+        asm("if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_buf),.datos=strdup(_buf)}; } else {")
+        asm("    snprintf(_buf, 1024, \"%s/%s/%s.syn\", dir_base.datos, \"axon_modules\", ruta_import.datos);")
+        asm("    for (char* _p = _buf; *_p; _p++) if (*_p == '.') *_p = '/';")
+        asm("    _f = fopen(_buf, \"r\");")
+        asm("    if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_buf),.datos=strdup(_buf)}; }")
+        asm("}")
+    retornar r
+
+funcion resolver(ruta_import: cadena, dir_base: cadena, dependencias_nombres: cadena, dependencias_valores: cadena, total_dependencias: entero) -> cadena:
+    r = ""
+    inseguro:
+        asm("// Check if dependency is in the declared list")
+        asm("for (int _di = 0; _di < total_dependencias; _di++) {")
+        asm("    if (strcmp(dependencias_nombres.datos + _di * 128, ruta_import.datos) == 0) {")
+        asm("        r = (CadenaSegura){.longitud=(int)strlen(dependencias_valores.datos + _di * 512),.datos=strdup(dependencias_valores.datos + _di * 512)};")
+        asm("        break;")
+        asm("    }")
+        asm("}")
+        asm("if (r.longitud == 0) {")
+        asm("    // Look up in filesystem")
+        asm("    char _ruta[1024];")
+        asm("    snprintf(_ruta, 1024, \"%s/%s/%s/principal.syn\", dir_base.datos, \"axon_modules\", ruta_import.datos);")
+        asm("    FILE* _f = fopen(_ruta, \"r\");")
+        asm("    if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_ruta),.datos=strdup(_ruta)}; } else {")
+        asm("        snprintf(_ruta, 1024, \"%s/%s/%s.syn\", dir_base.datos, \"axon_modules\", ruta_import.datos);")
+        asm("        for (char* _p = _ruta; *_p; _p++) if (*_p == '.') *_p = '/';")
+        asm("        _f = fopen(_ruta, \"r\");")
+        asm("        if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_ruta),.datos=strdup(_ruta)}; }")
+        asm("    }")
+        asm("}")
+        asm("if (r.longitud == 0) {")
+        asm("    // Not found - build error message")
+        asm("    char _msg[4096];")
+        asm("    snprintf(_msg, 4096, \"No se pudo resolver la importacion: %s\", ruta_import.datos);")
+        asm("    r = (CadenaSegura){.longitud=(int)strlen(_msg),.datos=strdup(_msg)}")
+        asm("}")
+    retornar r

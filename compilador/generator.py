@@ -65,6 +65,7 @@ _BUILTINS: dict[str, str] = {
     'canal_crear': 'CanalConcurrencia*',
     'canal_enviar': 'void',
     'canal_recibir': 'void*',
+    'cerrar_canal': 'void',
     'texto_a_entero': 'int',
     'texto_a_decimal': 'float',
     'decimal_a_texto': 'CadenaSegura',
@@ -78,7 +79,7 @@ _RUNTIME_BUILTINS: frozenset = frozenset({
     'crear_tensor', 'suma_tensor', 'producto_punto', 'relu',
     'reserva', 'libera', 'suma', 'producto',
     'texto_a_entero', 'texto_a_decimal', 'decimal_a_texto',
-    'salir', 'canal_crear', 'canal_enviar', 'canal_recibir',
+    'salir', 'canal_crear', 'canal_enviar', 'canal_recibir', 'cerrar_canal',
 })
 
 
@@ -410,6 +411,7 @@ class GeneradorC:
             self._push("extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
             self._push("extern void* canal_recibir(CanalConcurrencia* canal);")
             self._push("extern void canal_destruir(CanalConcurrencia* canal);")
+            self._push("extern void cerrar_canal(CanalConcurrencia* canal);")
 
     def _visitar(self, nodo: Nodo):
         _ejecutables = (SentenciaSi, SentenciaLanzar, SentenciaRecuperar,
@@ -2327,10 +2329,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         self._contador_listener += 1
         idx = self._contador_listener
 
-        if isinstance(nodo.canal, LiteralCadena):
-            canal_str = nodo.canal.valor
-        else:
-            canal_str = self._expr_a_c(nodo.canal)
+        canal_expr = self._expr_a_c(nodo.canal)
 
         if isinstance(nodo.respuesta, LlamadaFuncion):
             resp_nombre = nodo.respuesta.nombre
@@ -2340,15 +2339,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         func_lines = []
         func_lines.append(f"void* _listener_fn_{idx}(void* arg) {{")
         func_lines.append("    (void)arg;")
-        func_lines.append(f'    FILE* _fp = fopen("{canal_str}", "r");')
-        func_lines.append("    if (_fp) {")
-        func_lines.append("        char _buf[1024];")
-        func_lines.append("        while (fgets(_buf, sizeof(_buf), _fp)) {")
-        func_lines.append('            _buf[strcspn(_buf, "\\n")] = \'\\0\';')
-        func_lines.append(f'            CadenaSegura _resp_data = {{ .longitud = (int)strlen(_buf), .datos = _buf }};')
-        func_lines.append(f"            {resp_nombre}(_resp_data);")
-        func_lines.append("        }")
-        func_lines.append("        fclose(_fp);")
+        func_lines.append(f"    CanalConcurrencia* _canal = {canal_expr};")
+        func_lines.append("    while (1) {")
+        func_lines.append("        void* _paquete = canal_recibir(_canal);")
+        func_lines.append("        if (!_paquete) break;")
+        func_lines.append(f"        {resp_nombre}(_paquete);")
         func_lines.append("    }")
         func_lines.append("    return NULL;")
         func_lines.append("}")
@@ -2658,7 +2653,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
         if isinstance(nodo, ExprDereferencia):
             return f"(*{self._expr_a_c(nodo.expr)})"
         if isinstance(nodo, ExprAsm):
-            return f'__asm__ volatile("{nodo.instruccion}")'
+            return nodo.instruccion
         if isinstance(nodo, ExprCrearCanal):
             cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"
             return f"canal_crear({cap})"
