@@ -156,7 +156,7 @@ estructura GeneradorCEst:
 // --- Global temp buffer for type translation ---
 constante _GEN_TMP_SIZE = 4096
 // --- Type translation (Synapse -> C type string in _gen_tmp_buf) ---
-funcion traducir_tipo_c(tipo_synapse: cadena) -> nulo:
+funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
     inseguro:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
@@ -178,7 +178,7 @@ funcion traducir_tipo_c(tipo_synapse: cadena) -> nulo:
         asm("snprintf(_gen_tmp_buf, 64, \"struct %s\", _t);")
 
 // --- Coercion helper ---
-funcion aplicar_coercion(expr_c: cadena, tipo_origen: cadena, tipo_destino: cadena, linea: entero) -> cadena:
+funcion aplicar_coercion(expr_c: puntero, tipo_origen: puntero, tipo_destino: puntero, linea: entero) -> cadena:
     r = ""
     inseguro:
         asm("const char* _o = (const char*)tipo_origen;")
@@ -189,124 +189,129 @@ funcion aplicar_coercion(expr_c: cadena, tipo_origen: cadena, tipo_destino: cade
         asm("    { snprintf(_gen_tmp_buf, 4096, \"entero_a_texto(%s)\", (const char*)expr_c); return; }")
         asm("if (strcmp(_o, _d)==0) { strcpy(_gen_tmp_buf, (const char*)expr_c); return; }")
         asm("snprintf(_gen_tmp_buf, 4096, \"/* coercion: %s -> %s */\", _o, _d);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
 // --- Primitive boxing helpers ---
-funcion prim_int_to_ptr(valor: cadena) -> cadena:
+funcion prim_int_to_ptr(valor: puntero) -> cadena:
     r = ""
     inseguro:
         asm("snprintf(_gen_tmp_buf, 4096, \"_synapse_box_int(%s)\", (const char*)valor);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
-funcion prim_float_to_ptr(valor: cadena) -> cadena:
+funcion prim_float_to_ptr(valor: puntero) -> cadena:
     r = ""
     inseguro:
         asm("snprintf(_gen_tmp_buf, 4096, \"_synapse_box_float(%s)\", (const char*)valor);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
 // --- Allocator helpers ---
-funcion syn_malloc(est: GeneradorCEst, size_expr: cadena) -> cadena:
+funcion syn_malloc(est: GeneradorCEst, size_expr: puntero) -> cadena:
     r = ""
     inseguro:
-        asm("if (est.es_no_std)")
+        asm("if (est.es_no_std) {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"__syn_asignar(%s)\", (const char*)size_expr);")
-        asm("else")
+        asm("} else {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"malloc(%s)\", (const char*)size_expr);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
-funcion syn_calloc(est: GeneradorCEst, n_expr: cadena, size_expr: cadena) -> cadena:
+funcion syn_calloc(est: GeneradorCEst, n_expr: puntero, size_expr: puntero) -> cadena:
     r = ""
     inseguro:
-        asm("if (est.es_no_std)")
+        asm("if (est.es_no_std) {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"__syn_asignar(%s * %s)\", (const char*)n_expr, (const char*)size_expr);")
-        asm("else")
+        asm("} else {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"calloc(%s, %s)\", (const char*)n_expr, (const char*)size_expr);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
-funcion syn_free(est: GeneradorCEst, ptr_expr: cadena) -> cadena:
+funcion syn_free(est: GeneradorCEst, ptr_expr: puntero) -> cadena:
     r = ""
     inseguro:
-        asm("if (est.es_no_std)")
+        asm("if (est.es_no_std) {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"__syn_liberar(%s)\", (const char*)ptr_expr);")
-        asm("else")
+        asm("} else {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"free(%s)\", (const char*)ptr_expr);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
-funcion syn_pool_alloc(est: GeneradorCEst, size_expr: cadena) -> cadena:
+funcion syn_pool_alloc(est: GeneradorCEst, size_expr: puntero) -> cadena:
     r = ""
     inseguro:
-        asm("if (est.es_no_std)")
+        asm("if (est.es_no_std) {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"__syn_asignar(%s)\", (const char*)size_expr);")
-        asm("else")
+        asm("} else {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"_pool_malloc(%s)\", (const char*)size_expr);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
-funcion syn_pool_free(est: GeneradorCEst, ptr_expr: cadena) -> cadena:
+funcion syn_pool_free(est: GeneradorCEst, ptr_expr: puntero) -> cadena:
     r = ""
     inseguro:
-        asm("if (est.es_no_std)")
+        asm("if (est.es_no_std) {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"__syn_liberar(%s)\", (const char*)ptr_expr);")
-        asm("else")
+        asm("} else {")
         asm("    snprintf(_gen_tmp_buf, 4096, \"pool_free(%s)\", (const char*)ptr_expr);")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
 // --- Variable management ---
-funcion gen_find_var(est: GeneradorCEst, nombre: cadena) -> entero:
+funcion gen_find_var(est: GeneradorCEst, nombre: puntero) -> entero:
     inseguro:
         r = -1
         asm("for (int _vi = 0; _vi < est.var_total; _vi++) {")
-        asm("    if (strcmp((const char*)est.var_nombres + _vi * 64, (const char*)nombre) == 0)")
+        asm("    if (strcmp(est.var_nombres.datos + _vi * 64, (const char*)nombre) == 0)")
         asm("        { r = _vi; break; }")
         asm("}")
         retornar r
 
-funcion gen_add_var(est: GeneradorCEst, nombre: cadena, tipo: cadena) -> nulo:
+funcion gen_add_var(est: GeneradorCEst, nombre: puntero, tipo: puntero) -> nulo:
     inseguro:
-        asm("strcpy((char*)est.var_nombres + est.var_total * 64, (const char*)nombre);")
-        asm("strcpy((char*)est.var_tipos + est.var_total * 64, (const char*)tipo);")
-        asm("est.var_total = est.var_total + 1")
+        asm("strcpy(est.var_nombres.datos + est.var_total * 64, (const char*)nombre);")
+        asm("strcpy(est.var_tipos.datos + est.var_total * 64, (const char*)tipo);")
+        asm("est.var_total = est.var_total + 1;")
 
-funcion gen_set_var_type(est: GeneradorCEst, idx: entero, tipo: cadena) -> nulo:
+funcion gen_set_var_type(est: GeneradorCEst, idx: entero, tipo: puntero) -> nulo:
     inseguro:
         asm("if (idx >= 0 && idx < est.var_total)")
-        asm("    strcpy((char*)est.var_tipos + idx * 64, (const char*)tipo);")
+        asm("    strcpy(est.var_tipos.datos + idx * 64, (const char*)tipo);")
 
 // --- Function return type tracking ---
-funcion gen_agregar_return_type(est: GeneradorCEst, nombre: cadena, tipo: cadena) -> nulo:
+funcion gen_agregar_return_type(est: GeneradorCEst, nombre: puntero, tipo: puntero) -> nulo:
     inseguro:
-        asm("strcpy((char*)est.func_return_types_nombres + est.func_return_types_total * 64, (const char*)nombre);")
-        asm("strcpy((char*)est.func_return_types_tipos + est.func_return_types_total * 64, (const char*)tipo);")
-        asm("est.func_return_types_total = est.func_return_types_total + 1")
+        asm("strcpy(est.func_return_types_nombres.datos + est.func_return_types_total * 64, (const char*)nombre);")
+        asm("strcpy(est.func_return_types_tipos.datos + est.func_return_types_total * 64, (const char*)tipo);")
+        asm("est.func_return_types_total = est.func_return_types_total + 1;")
 
-funcion gen_func_return_type(est: GeneradorCEst, nombre: cadena) -> cadena:
+funcion gen_func_return_type(est: GeneradorCEst, nombre: puntero) -> cadena:
     r = ""
     inseguro:
         asm("for (int _fi = 0; _fi < est.func_return_types_total; _fi++) {")
-        asm("    if (strcmp((const char*)est.func_return_types_nombres + _fi * 64, (const char*)nombre) == 0) {")
-        asm("        strcpy(_gen_tmp_buf, (const char*)est.func_return_types_tipos + _fi * 64);")
+        asm("    if (strcmp(est.func_return_types_nombres.datos + _fi * 64, (const char*)nombre) == 0) {")
+        asm("        strcpy(_gen_tmp_buf, (const char*)est.func_return_types_tipos.datos + _fi * 64);")
         asm("        return;")
         asm("    }")
         asm("}")
         asm("strcpy(_gen_tmp_buf, \"int\");")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
 // --- Struct tracking ---
-funcion gen_agregar_struct_c(est: GeneradorCEst, nombre: cadena) -> nulo:
+funcion gen_agregar_struct_c(est: GeneradorCEst, nombre: puntero) -> nulo:
     inseguro:
-        asm("strcpy((char*)est.struct_nombres_c + est.struct_total_c * 64, (const char*)nombre);")
-        asm("est.struct_total_c = est.struct_total_c + 1")
+        asm("strcpy(est.struct_nombres_c.datos + est.struct_total_c * 64, (const char*)nombre);")
+        asm("est.struct_total_c = est.struct_total_c + 1;")
 
 // --- Code emission helpers ---
-funcion gen_emitir_linea(est: GeneradorCEst, linea: cadena) -> nulo:
+funcion gen_emitir_linea(est: GeneradorCEst, linea: puntero) -> nulo:
     inseguro:
         asm("{")
         asm("    static char _gebuf[1048576];")
@@ -387,9 +392,10 @@ funcion gen_emitir_token_defs(est: GeneradorCEst) -> nulo:
     gen_emitir_nueva_linea(est)
     gen_emitir_linea(est, "#define MAX_TOKS 16384")
     gen_emitir_linea(est, "typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;")
-    gen_emitir_linea(est, "static _P_Token _P_tks[MAX_TOKS];")
-    gen_emitir_linea(est, "static int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;")
-    gen_emitir_linea(est, "static int _P_pila_indent[64], _P_nivel_pila = 0;")
+    gen_emitir_linea(est, "// Global state from estado_global.syn")
+    gen_emitir_linea(est, "_P_Token _P_tks[MAX_TOKS];")
+    gen_emitir_linea(est, "int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;")
+    gen_emitir_linea(est, "int _P_pila_indent[64], _P_nivel_pila = 0;")
     gen_emitir_nueva_linea(est)
 
 // --- Main output accessor ---
@@ -402,7 +408,7 @@ funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
         asm("} else {")
         asm("    strcpy(_gen_tmp_buf, \"\");")
         asm("}")
-        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
     retornar r
 
 // --- Node visiting (main dispatch) ---
@@ -442,9 +448,9 @@ funcion gen_visitar_nodo(est: GeneradorCEst, nodos: entero, total_nodos: entero,
         asm("if (_tipo == 23) { gen_visitar_constante(est, nodos, total_nodos, tokens, total_tokens, idx); return; }")
         asm("if (_tipo == 24) {")
         asm("    gen_emitir_linea(est, \"{ /* unsafe */\");")
-        asm("    est.indent_actual = est.indent_actual + 1")
+        asm("    est.indent_actual = est.indent_actual + 1;")
         asm("    gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _izq);")
-        asm("    est.indent_actual = est.indent_actual - 1")
+        asm("    est.indent_actual = est.indent_actual - 1;")
         asm("    gen_emitir_linea(est, \"}\"); return;")
         asm("}")
         asm("if (_tipo == 34) { gen_visitar_declaracion(est, nodos, total_nodos, tokens, total_tokens, idx); return; }")
@@ -479,8 +485,8 @@ funcion gen_visitar_funcion(est: GeneradorCEst, nodos: entero, total_nodos: ente
         asm("// Check already emitted")
         asm("for (int _fi = 0; _fi < est.funciones_emitidas; _fi++)")
         asm("    if (strcmp((const char*)est.func_emitidas_nombres + _fi * 64, _name) == 0) return;")
-        asm("strcpy((char*)est.func_emitidas_nombres + est.funciones_emitidas * 64, _name);")
-        asm("est.funciones_emitidas = est.funciones_emitidas + 1")
+        asm("strcpy(est.func_emitidas_nombres.datos + est.funciones_emitidas * 64, _name);")
+        asm("est.funciones_emitidas = est.funciones_emitidas + 1;")
         asm("// Skip runtime builtins")
         asm("const char* _skip[] = {\"escribir\",\"escribir_linea\",\"leer_linea\",\"abrir\",\"leer\",\"cerrar\",")
         asm("    \"crear_tensor\",\"suma_tensor\",\"producto_punto\",\"relu\",\"reserva\",\"libera\",")
@@ -521,11 +527,11 @@ funcion gen_visitar_funcion(est: GeneradorCEst, nodos: entero, total_nodos: ente
         asm("char _buf[4096];")
         asm("snprintf(_buf, 4096, \"%s %s(%s) {\", _ret_type, _name, _params_str);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_push_scope(est);")
         asm("gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _body);")
         asm("gen_pop_scope(est);")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
 
@@ -541,14 +547,14 @@ funcion gen_visitar_si(est: GeneradorCEst, nodos: entero, total_nodos: entero, t
         asm("char _buf[4096];")
         asm("snprintf(_buf, 4096, \"if (%s) {\", _cond_str);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _body);")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("if (_sino > 0 && _sino < total_nodos) {")
         asm("    gen_emitir_linea(est, \"} else {\");")
-        asm("    est.indent_actual = est.indent_actual + 1")
+        asm("    est.indent_actual = est.indent_actual + 1;")
         asm("    gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _sino);")
-        asm("    est.indent_actual = est.indent_actual - 1")
+        asm("    est.indent_actual = est.indent_actual - 1;")
         asm("}")
         asm("gen_emitir_linea(est, \"}\");")
 
@@ -563,11 +569,11 @@ funcion gen_visitar_mientras(est: GeneradorCEst, nodos: entero, total_nodos: ent
         asm("char _buf[4096];")
         asm("snprintf(_buf, 4096, \"while (%s) {\", _cond_str);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_push_scope(est);")
         asm("gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _body);")
         asm("gen_pop_scope(est);")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
 
 // --- Visit return ---
@@ -660,7 +666,7 @@ funcion gen_visitar_estructura(est: GeneradorCEst, nodos: entero, total_nodos: e
         asm("char _buf[4096], _buf2[4096];")
         asm("snprintf(_buf, 4096, \"typedef struct %s {\", _name);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("int _fcur = _fields;")
         asm("while (_fcur > 0 && _fcur < total_nodos) {")
         asm("    int* _fp = (int*)nodos + _fcur * 11;")
@@ -673,7 +679,7 @@ funcion gen_visitar_estructura(est: GeneradorCEst, nodos: entero, total_nodos: e
         asm("    }")
         asm("    _fcur = _fp[8];")
         asm("}")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("snprintf(_buf, 4096, \"} %s;\", _name);")
         asm("gen_emitir_linea(est, _buf);")
         asm("snprintf(_buf, 4096, \"static inline struct %s %s_nuevo() { struct %s _r = {0}; return _r; }\", _name, _name, _name);")
@@ -798,10 +804,10 @@ funcion gen_visitar_recuperar(est: GeneradorCEst, nodos: entero, total_nodos: en
         asm("gen_expr_a_c(est, nodos, total_nodos, tokens, total_tokens, _accion, _acc_str, 4096);")
         asm("gen_expr_a_c(est, nodos, total_nodos, tokens, total_tokens, _plan, _plan_str, 4096);")
         asm("gen_emitir_linea(est, \"{\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("snprintf(_buf, 4096, \"if (%s != 0) { %s; }\", _acc_str, _plan_str);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
 
 // --- Visit listen ---
@@ -811,7 +817,7 @@ funcion gen_visitar_escuchar(est: GeneradorCEst, nodos: entero, total_nodos: ent
         asm("int _canal = _np[6];")
         asm("int _respu = _np[7];")
         asm("if (_canal <= 0 || _respu <= 0) return;")
-        asm("est.contador_listener = est.contador_listener + 1")
+        asm("est.contador_listener = est.contador_listener + 1;")
         asm("int _lid = est.contador_listener;")
         asm("char _canal_str[4096], _buf[4096];")
         asm("gen_expr_a_c(est, nodos, total_nodos, tokens, total_tokens, _canal, _canal_str, 4096);")
@@ -830,8 +836,8 @@ funcion gen_visitar_escuchar(est: GeneradorCEst, nodos: entero, total_nodos: ent
         asm("_lpos += snprintf(_listener + _lpos, 4096 - _lpos, \"\\n    }\");")
         asm("_lpos += snprintf(_listener + _lpos, 4096 - _lpos, \"\\n    return NULL;\");")
         asm("_lpos += snprintf(_listener + _lpos, 4096 - _lpos, \"\\n}\");")
-        asm("strcpy((char*)est.listener_funciones + est.listener_total * 4096, _listener);")
-        asm("est.listener_total = est.listener_total + 1")
+        asm("strcpy(est.listener_funciones.datos + est.listener_total * 4096, _listener);")
+        asm("est.listener_total = est.listener_total + 1;")
         asm("snprintf(_buf, 4096, \"pthread_t _listener_pth_%d;\", _lid);")
         asm("gen_emitir_linea(est, _buf);")
         asm("snprintf(_buf, 4096, \"pthread_create(&_listener_pth_%d, NULL, _listener_fn_%d, NULL);\", _lid, _lid);")
@@ -851,10 +857,10 @@ funcion gen_visitar_enviar_canal(est: GeneradorCEst, nodos: entero, total_nodos:
         asm("gen_expr_a_c(est, nodos, total_nodos, tokens, total_tokens, _valor, _val_str, 4096);")
         asm("gen_tipo_de_expr(est, nodos, total_nodos, tokens, total_tokens, _valor);")
         asm("if (strcmp(_gen_tmp_buf, \"int\") == 0) {")
-        asm("    char _boxed[4096]; strcpy(_boxed, prim_int_to_ptr(_val_str));")
+        asm("    char _boxed[4096]; strcpy(_boxed, prim_int_to_ptr(_val_str).datos);")
         asm("    snprintf(_buf, 4096, \"canal_enviar(%s, %s);\", _canal_str, _boxed);")
         asm("} else if (strcmp(_gen_tmp_buf, \"float\") == 0) {")
-        asm("    char _boxed[4096]; strcpy(_boxed, prim_float_to_ptr(_val_str));")
+        asm("    char _boxed[4096]; strcpy(_boxed, prim_float_to_ptr(_val_str).datos);")
         asm("    snprintf(_buf, 4096, \"canal_enviar(%s, %s);\", _canal_str, _boxed);")
         asm("} else {")
         asm("    snprintf(_buf, 4096, \"canal_enviar(%s, (void*)(%s));\", _canal_str, _val_str);")
@@ -900,11 +906,11 @@ funcion gen_visitar_para(est: GeneradorCEst, nodos: entero, total_nodos: entero,
         asm("}")
         asm("snprintf(_buf, 4096, \"for (; %s; %s) {\", _cond_str, _inc_str);")
         asm("gen_emitir_linea(est, _buf);")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_push_scope(est);")
         asm("gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _body);")
         asm("gen_pop_scope(est);")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
 
 // --- Visit match ---
@@ -930,21 +936,21 @@ funcion gen_visitar_coincidir(est: GeneradorCEst, nodos: entero, total_nodos: en
         asm("        else")
         asm("            snprintf(_buf, 4096, \"} else if (%s.tag == TAG_%s) {\", _expr_str, _tag);")
         asm("        gen_emitir_linea(est, _buf);")
-        asm("        est.indent_actual = est.indent_actual + 1")
+        asm("        est.indent_actual = est.indent_actual + 1;")
         asm("        if (_var && _var[0]) {")
         asm("            snprintf(_buf2, 4096, \"int %s = %s.valor;\", _var, _expr_str);")
         asm("            gen_emitir_linea(est, _buf2);")
         asm("        }")
         asm("        gen_visitar_bloque_lista(est, nodos, total_nodos, tokens, total_tokens, _cuerpo);")
-        asm("        est.indent_actual = est.indent_actual - 1")
-        asm("        _caso_idx = _caso_idx + 1")
+        asm("        est.indent_actual = est.indent_actual - 1;")
+        asm("        _caso_idx = _caso_idx + 1;")
         asm("    }")
         asm("    _ccur = _cp[8];")
         asm("}")
         asm("if (_caso_idx > 0) gen_emitir_linea(est, \"}\");")
 
 // --- Expression to C string ---
-funcion gen_expr_a_c(est: GeneradorCEst, nodos: entero, total_nodos: entero, tokens: entero, total_tokens: entero, idx: entero, buf: cadena, bufsz: entero) -> nulo:
+funcion gen_expr_a_c(est: GeneradorCEst, nodos: entero, total_nodos: entero, tokens: entero, total_tokens: entero, idx: entero, buf: puntero, bufsz: entero) -> nulo:
     inseguro:
         asm("if (idx <= 0 || idx >= total_nodos) { snprintf(buf, bufsz, \"0\"); return; }")
         asm("int* _np = (int*)nodos + idx * 11;")
@@ -955,7 +961,7 @@ funcion gen_expr_a_c(est: GeneradorCEst, nodos: entero, total_nodos: entero, tok
         asm("")
         asm("if (_tipo == 9)  { snprintf(buf, bufsz, \"%d\", _vint); return; }")
         asm("if (_tipo == 10) { snprintf(buf, bufsz, \"%ff\", *(float*)&_vint); return; }")
-        asm("if (_tipo == 11) { int _len = _np[5]; snprintf(buf, bufsz, \"(CadenaSegura){.longitud=%d,.datos=\\\"%s\\\"}\", _len, _str); return; }")
+        asm("if (_tipo == 11) { int _len = _np[5]; snprintf(buf, bufsz, \"(CadenaSegura){.longitud=%d,.datos=(char*)%s}\", _len, _str); return; }")
         asm("if (_tipo == 8)  {")
         asm("    if (strcmp(_str, \"nulo\") == 0) { snprintf(buf, bufsz, \"NULL\"); return; }")
         asm("    snprintf(buf, bufsz, \"%s\", _str); return;")
@@ -1085,10 +1091,10 @@ funcion gen_tipo_de_expr(est: GeneradorCEst, nodos: entero, total_nodos: entero,
 funcion gen_emitir_tokenizar_c(est: GeneradorCEst) -> nulo:
     inseguro:
         asm("gen_emitir_linea(est, \"int tokenizar(CadenaSegura fuente) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"int _i = 0, _linea = 1, _columna = 1, _token_count = 0;\");")
         asm("gen_emitir_linea(est, \"while (_i < fuente.longitud) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"char _c = fuente.datos[_i];\");")
         asm("gen_emitir_linea(est, \"if (_c==' '||_c=='\\\\t') { _i++; _columna++; continue; }\");")
         asm("gen_emitir_linea(est, \"if (_c=='\\\\r') { _i++; continue; }\");")
@@ -1098,11 +1104,11 @@ funcion gen_emitir_tokenizar_c(est: GeneradorCEst) -> nulo:
         asm("gen_emitir_linea(est, \"else if(_c>='0'&&_c<='9'){int _st=_i;while(_i<fuente.longitud&&fuente.datos[_i]>='0'&&fuente.datos[_i]<='9')_i++;_columna+=_i-_st;_token_count++;fprintf(stderr,\\\"  TOKEN NUMBER L%d:%d\\\\n\\\",_linea,_columna);}\");")
         asm("gen_emitir_linea(est, \"else if((_c>='a'&&_c<='z')||(_c>='A'&&_c<='Z')||_c=='_'){int _st=_i;while(_i<fuente.longitud&&((fuente.datos[_i]>='a'&&fuente.datos[_i]<='z')||(fuente.datos[_i]>='A'&&fuente.datos[_i]<='Z')||(fuente.datos[_i]>='0'&&fuente.datos[_i]<='9')||fuente.datos[_i]=='_'))_i++;_columna+=_i-_st;_token_count++;fprintf(stderr,\\\"  TOKEN IDENTIFIER L%d:%d\\\\n\\\",_linea,_columna);}\");")
         asm("gen_emitir_linea(est, \"else{_i++;_columna++;_token_count++;fprintf(stderr,\\\"  TOKEN CHAR(%%c)L%d:%d\\\\n\\\",_c,_linea,_columna);}\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_linea(est, \"fprintf(stderr,\\\"Total tokens: %%d\\\\n\\\",_token_count);\");")
         asm("gen_emitir_linea(est, \"return _token_count;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
 
@@ -1111,16 +1117,16 @@ funcion gen_emitir_parsear_c(est: GeneradorCEst) -> nulo:
     gen_emitir_token_defs(est)
     inseguro:
         asm("// Emit P_tokenizar function")
-        asm("gen_emitir_linea(est, \"static void _P_tokenizar(const char* s, int len) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("gen_emitir_linea(est, \"void _P_tokenizar(const char* s, int len) {\");")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"int i=0,li=1,co=1;\");")
         asm("gen_emitir_linea(est, \"while(i<len&&_P_ntks<MAX_TOKS-1){\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"char c=s[i];\");")
         asm("gen_emitir_linea(est, \"if(c==' '||c=='\\\\t'){i++;co++;continue;}\");")
         asm("gen_emitir_linea(est, \"if(c=='\\\\r'){i++;continue;}\");")
         asm("gen_emitir_linea(est, \"if(c=='\\\\n'){\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"_P_tks[_P_ntks].tipo=T_NL;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=0;_P_ntks++;i++;li++;co=1;\");")
         asm("gen_emitir_linea(est, \"while(i<len&&(s[i]==' '||s[i]=='\\\\t')){if(s[i]==' ')co++;else co+=4;i++;}\");")
         asm("gen_emitir_linea(est, \"if(i<len&&s[i]=='\\\\n')continue;\");")
@@ -1128,35 +1134,35 @@ funcion gen_emitir_parsear_c(est: GeneradorCEst) -> nulo:
         asm("gen_emitir_linea(est, \"if(i<len&&s[i]=='/'&&i+1<len&&s[i+1]=='/'){while(i<len&&s[i]!='\\\\n')i++;continue;}\");")
         asm("gen_emitir_linea(est, \"{int _sp=co-1;if(_sp>_P_pila_indent[_P_nivel_pila]){_P_nivel_pila++;_P_pila_indent[_P_nivel_pila]=_sp;_P_tks[_P_ntks].tipo=T_INDENT;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=0;_P_ntks++;}else if(_sp<_P_pila_indent[_P_nivel_pila]){while(_P_nivel_pila>0&&_sp<_P_pila_indent[_P_nivel_pila]){_P_tks[_P_ntks].tipo=T_DEDENT;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=0;_P_ntks++;_P_nivel_pila--;}}}\");")
         asm("gen_emitir_linea(est, \"continue;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("// Single-char tokens and identifiers... ")
         asm("gen_emitir_linea(est, \"if(c=='\\\\\"'||c=='\\\\''){char q=c;int st=i;int scol=co;i++;co++;while(i<len&&s[i]!=q){i++;co++;}if(i>=len)break;i++;co++;int vl=(i-st-2)<255?(i-st-2):255;strncpy(_P_tks[_P_ntks].val,s+st+1,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_STR;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;continue;}\");")
         asm("gen_emitir_linea(est, \"if(c>='0'&&c<='9'){int st=i;int scol=co;while(i<len&&s[i]>='0'&&s[i]<='9')i++;if(i<len&&s[i]=='.'){i++;while(i<len&&s[i]>='0'&&s[i]<='9')i++;}int vl=(i-st)<255?(i-st):255;strncpy(_P_tks[_P_ntks].val,s+st,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_NUM;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;co+=i-st;continue;}\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_linea(est, \"while(_P_nivel_pila>0){_P_tks[_P_ntks].tipo=T_DEDENT;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=0;_P_ntks++;_P_nivel_pila--;}\");")
         asm("gen_emitir_linea(est, \"_P_tks[_P_ntks].tipo=T_EOF;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=0;_P_ntks++;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("")
         asm("gen_emitir_linea(est, \"static void _P_procesar_indentacion_final() {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"while(_P_nivel_pila>0){_P_tks[_P_ntks].tipo=T_DEDENT;_P_tks[_P_ntks].linea=_P_tks[_P_ntks-1].linea;_P_tks[_P_ntks].col=0;_P_ntks++;_P_nivel_pila--;}\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
         asm("")
         asm("// Parser entry point")
         asm("gen_emitir_linea(est, \"struct Programa parsear(CadenaSegura fuente) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"_P_ntks=0;_P_tpos=0;_P_p_err=0;_P_nivel_pila=0;\");")
         asm("gen_emitir_linea(est, \"_P_pila_indent[0]=0;\");")
         asm("gen_emitir_linea(est, \"_P_tokenizar(fuente.datos,fuente.longitud);\");")
         asm("gen_emitir_linea(est, \"_P_procesar_indentacion_final();\");")
         asm("gen_emitir_linea(est, \"struct Programa _prog={0};\");")
         asm("gen_emitir_linea(est, \"return _prog;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
 
@@ -1166,26 +1172,27 @@ funcion gen_emitir_generar_c(est: GeneradorCEst) -> nulo:
     inseguro:
         asm("// Emit _gen helper functions")
         asm("gen_emitir_linea(est, \"// --- AST Walker (auto-generado) ---\");")
-        asm("gen_emitir_linea(est, \"static int _G_indent = 0;\");")
-        asm("gen_emitir_linea(est, \"static FILE* _G_out = NULL;\");")
-        asm("gen_emitir_linea(est, \"static char _G_vn[1024][64];\");")
-        asm("gen_emitir_linea(est, \"static char _G_vt[1024][64];\");")
-        asm("gen_emitir_linea(est, \"static int _G_nv = 0;\");")
-        asm("gen_emitir_linea(est, \"static char _G_ret_type[64];\");")
-        asm("gen_emitir_linea(est, \"static char _G_extern_names[64][64];\");")
-        asm("gen_emitir_linea(est, \"static char _G_extern_params[64][256];\");")
-        asm("gen_emitir_linea(est, \"static int _G_nextern = 0;\");")
-        asm("gen_emitir_linea(est, \"static char _G_snames[64][64];\");")
-        asm("gen_emitir_linea(est, \"static int _G_nsnames = 0;\");")
+        asm("gen_emitir_linea(est, \"// Global state from estado_global.syn\");")
+        asm("gen_emitir_linea(est, \"int _G_indent = 0;\");")
+        asm("gen_emitir_linea(est, \"FILE* _G_out = NULL;\");")
+        asm("gen_emitir_linea(est, \"char _G_vn[1024][64] = {{0}};\");")
+        asm("gen_emitir_linea(est, \"char _G_vt[1024][64] = {{0}};\");")
+        asm("gen_emitir_linea(est, \"int _G_nv = 0;\");")
+        asm("gen_emitir_linea(est, \"char _G_ret_type[64] = {0};\");")
+        asm("gen_emitir_linea(est, \"char _G_extern_names[64][64] = {{0}};\");")
+        asm("gen_emitir_linea(est, \"char _G_extern_params[64][256] = {{0}};\");")
+        asm("gen_emitir_linea(est, \"int _G_nextern = 0;\");")
+        asm("gen_emitir_linea(est, \"char _G_snames[64][64] = {{0}};\");")
+        asm("gen_emitir_linea(est, \"int _G_nsnames = 0;\");")
         asm("gen_emitir_nueva_linea(est);")
-        asm("gen_emitir_linea(est, \"static void _G_reset() { _G_nv = 0; }\");")
-        asm("gen_emitir_linea(est, \"static int _G_find(const char* n) { for(int i=0;i<_G_nv;i++) if(strcmp(_G_vn[i],n)==0) return i; return -1; }\");")
+        asm("gen_emitir_linea(est, \"void _G_reset() { _G_nv = 0; }\");")
+        asm("gen_emitir_linea(est, \"int _G_find(const char* n) { for(int i=0;i<_G_nv;i++) if(strcmp(_G_vn[i],n)==0) return i; return -1; }\");")
         asm("gen_emitir_nueva_linea(est);")
-        asm("gen_emitir_linea(est, \"static void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\\\"    \\\"); fprintf(_G_out,\\\"%s\\\\n\\\",s); }\");")
+        asm("gen_emitir_linea(est, \"void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\\\"    \\\"); fprintf(_G_out,\\\"%s\\\\n\\\",s); }\");")
         asm("gen_emitir_nueva_linea(est);")
         asm("// Main generar function")
         asm("gen_emitir_linea(est, \"int generar(struct Programa programa, CadenaSegura ruta) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"char sal[1024]; int sl=ruta.longitud;\");")
         asm("gen_emitir_linea(est, \"if(sl>4&&ruta.datos[sl-4]=='.'&&(ruta.datos[sl-3]=='s'||ruta.datos[sl-3]=='S')&&(ruta.datos[sl-2]=='y'||ruta.datos[sl-2]=='Y')&&(ruta.datos[sl-1]=='n'||ruta.datos[sl-1]=='N')){memcpy(sal,ruta.datos,sl-4);sal[sl-4]='.';sal[sl-3]='c';sal[sl-2]=0;}else snprintf(sal,sizeof(sal),\\\"%.*s.c\\\",ruta.longitud,ruta.datos);\");")
         asm("gen_emitir_linea(est, \"_G_out=fopen(sal,\\\"w\\\"); if(!_G_out){fprintf(stderr,\\\"Error: no se puede crear %%s\\\\n\\\",sal);return 1;}\");")
@@ -1194,7 +1201,7 @@ funcion gen_emitir_generar_c(est: GeneradorCEst) -> nulo:
         asm("gen_emitir_linea(est, \"fprintf(_G_out,\\\"typedef struct {int longitud;const char* datos;} CadenaSegura;\\\\n\\\");\");")
         asm("gen_emitir_linea(est, \"fclose(_G_out);\");")
         asm("gen_emitir_linea(est, \"return 0;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
 
@@ -1202,13 +1209,31 @@ funcion gen_emitir_generar_c(est: GeneradorCEst) -> nulo:
 funcion gen_emitir_volcar_ast_c(est: GeneradorCEst) -> nulo:
     inseguro:
         asm("gen_emitir_linea(est, \"void volcar_ast(struct Nodo* nodo, int nivel) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"if(!nodo){printf(\\\"(null)\\\\n\\\");return;}\");")
         asm("gen_emitir_linea(est, \"for(int i=0;i<nivel;i++)printf(\\\"  \\\");\");")
         asm("gen_emitir_linea(est, \"printf(\\\"[%%s]\\\\n\\\",nodo->tipo.datos);\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("gen_emitir_nueva_linea(est);")
+
+// --- Scope management (called from generated code) ---
+funcion gen_push_scope(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("est.scope_stack_top = est.scope_stack_top + 1;")
+        asm("est.scope_stack_at = est.scope_stack_at + 1;")
+        asm("est.scope_var_total = 0;")
+
+funcion gen_pop_scope(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("est.scope_stack_top = est.scope_stack_top - 1;")
+        asm("if (est.scope_stack_top < 0) est.scope_stack_top = 0;")
+        asm("est.scope_stack_at = est.scope_stack_top;")
+        asm("est.scope_var_total = 0;")
+
+funcion gen_emit_all_destructors(est: GeneradorCEst, exclude_var: puntero) -> nulo:
+    inseguro:
+        asm("(void)est; (void)exclude_var; // stub")
 
 // --- Main C code generation entry point ---
 funcion generar(est: GeneradorCEst, nodos: entero, total_nodos: entero, tokens: entero, total_tokens: entero) -> entero:
@@ -1288,14 +1313,14 @@ funcion generar(est: GeneradorCEst, nodos: entero, total_nodos: entero, tokens: 
         asm("}")
         asm("// Emit main()")
         asm("gen_emitir_linea(est, \"int main(int argc, char** argv) {\");")
-        asm("est.indent_actual = est.indent_actual + 1")
+        asm("est.indent_actual = est.indent_actual + 1;")
         asm("gen_emitir_linea(est, \"int _g_argc = argc;\");")
         asm("gen_emitir_linea(est, \"char** _g_argv = argv;\");")
         asm("gen_emitir_linea(est, \"pool_init(POOL_BLOQUES, TAMANO_BLOQUE);\");")
         asm("gen_emitir_linea(est, \"principal();\");")
         asm("gen_emitir_linea(est, \"synapse_esperar_hilos();\");")
         asm("gen_emitir_linea(est, \"return 0;\");")
-        asm("est.indent_actual = est.indent_actual - 1")
+        asm("est.indent_actual = est.indent_actual - 1;")
         asm("gen_emitir_linea(est, \"}\");")
         asm("r = 0")
     retornar r

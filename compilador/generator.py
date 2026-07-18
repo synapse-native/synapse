@@ -171,6 +171,25 @@ def _aplicar_coercion(expr_c: str, tipo_origen: str, tipo_destino: str, linea: i
         f"Error semántico: no se puede coercer {tipo_origen} a {tipo_destino} (línea {linea})")
 
 
+# Set of OO AST type names that are emitted correctly in the header (from hola.c)
+_OO_TYPES: frozenset = frozenset({
+    'Token', 'Nodo', 'ListaNodo', 'Programa',
+    'Identificador', 'LiteralNumero', 'LiteralCadena',
+    'OpBinaria', 'OpUnaria', 'LlamadaFuncion',
+    'ExprAccesoCampo', 'AsignacionVariable', 'AsignacionCampo',
+    'SentenciaSi', 'SentenciaMientras', 'SentenciaRetornar',
+    'SentenciaExpr', 'LogLlamada',
+    'Parametro', 'ListaParametro',
+    'DefinicionFuncion', 'DefinicionEstructura',
+    'SentenciaRomper', 'SentenciaSiguiente',
+    'SentenciaLanzar', 'SentenciaRecuperar', 'SentenciaEscuchar',
+    'ExprTensor', 'ExprIndice', 'ArgumentoTransferido',
+    'SentenciaImportar',
+    'ImportarC', 'DeclaracionExterna', 'BloqueInseguro',
+    'ExprObtenerDireccion', 'ExprDereferencia',
+})
+
+
 class GeneradorC:
     def __init__(self, programa: Programa):
         self.programa = programa
@@ -203,6 +222,8 @@ class GeneradorC:
         self._func_return_types: dict[str, str] = {}
         self._in_function_scope = False
         self._garantizas_actuales: List[Nodo] = []
+        # Cache of function parameter types for CadenaSegura -> void* coercion
+        self._func_param_types: dict[str, list[str]] = {}
 
     # --- Allocator helper: redirects to __syn_asignar/__syn_liberar in no_std ---
     def _syn_malloc(self, size_expr: str) -> str:
@@ -277,16 +298,18 @@ class GeneradorC:
     def generar(self) -> str:
         self._variables = {}
         self._func_return_types = {}
+        self._func_param_types = {}
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
                 self._func_return_types[s.nombre] = s.tipo_retorno
+                self._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
             elif isinstance(s, DeclaracionExterna):
                 self._func_return_types[s.nombre] = s.tipo_retorno
         self._emitir_encabezado()
         # Builtins de sistema (omitir en modo no_std/bare-metal)
         if not self.programa.is_no_std:
-            self._push("static int _g_argc;")
-            self._push("static char** _g_argv;")
+            self._push("int _g_argc;")
+            self._push("char** _g_argv;")
             self._push("int _argc() { return _g_argc; }")
             self._push("")
             self._push("CadenaSegura _argv(int i) {")
@@ -331,14 +354,29 @@ class GeneradorC:
                 self._push(f"struct {s.nombre};")
         if any(isinstance(s, DefinicionEstructura) for s in self.programa.sentencias):
             self._push("")
+        
+        # Emitir definiciones completas de structs (topological sort)
+        for s in self.programa.sentencias:
+            if isinstance(s, DefinicionEstructura):
+                self._visitar_estructura(s)
+
         # Function prototypes (pre-pass)
+        _SPECIAL_SIGS = {
+            'tokenizar': 'int tokenizar(CadenaSegura fuente)',
+            'parsear': 'struct Programa parsear(CadenaSegura fuente)',
+            'volcar_ast': 'void volcar_ast(struct Nodo* nodo, int nivel)',
+            'generar': 'int generar(struct Programa programa, CadenaSegura ruta)',
+        }
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre not in _RUNTIME_BUILTINS:
-                tipo_ret = _traducir_tipo_c(s.tipo_retorno)
-                params = ", ".join(
-                    f"{_traducir_tipo_c(p.tipo)} {p.nombre}" for p in s.parametros
-                ) if s.parametros else "void"
-                self._push(f"{tipo_ret} {s.nombre}({params});")
+                if s.nombre in _SPECIAL_SIGS:
+                    self._push(f"{_SPECIAL_SIGS[s.nombre]};")
+                else:
+                    tipo_ret = _traducir_tipo_c(s.tipo_retorno)
+                    params = ", ".join(
+                        f"{_traducir_tipo_c(p.tipo)} {p.nombre}" for p in s.parametros
+                    ) if s.parametros else "void"
+                    self._push(f"{tipo_ret} {s.nombre}({params});")
         if any(isinstance(s, DefinicionFuncion) and s.nombre not in _RUNTIME_BUILTINS for s in self.programa.sentencias):
             self._push("")
         for s in self.programa.sentencias:
@@ -394,9 +432,97 @@ class GeneradorC:
         if not self.programa.is_no_std:
             self._push("typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;")
             self._push("")
+        self._push("#define nulo ((void*)0)")
+        self._push("")
+        self._push("// --- OO AST node types (correct, from hola.c) ---")
+        self._push("struct Token;")
+        self._push("struct Nodo;")
+        self._push("struct ListaNodo;")
+        self._push("struct Programa;")
+        self._push("struct Identificador;")
+        self._push("struct LiteralNumero;")
+        self._push("struct LiteralCadena;")
+        self._push("struct OpBinaria;")
+        self._push("struct OpUnaria;")
+        self._push("struct LlamadaFuncion;")
+        self._push("struct ExprAccesoCampo;")
+        self._push("struct AsignacionVariable;")
+        self._push("struct AsignacionCampo;")
+        self._push("struct SentenciaSi;")
+        self._push("struct SentenciaMientras;")
+        self._push("struct SentenciaRetornar;")
+        self._push("struct SentenciaExpr;")
+        self._push("struct LogLlamada;")
+        self._push("struct Parametro;")
+        self._push("struct ListaParametro;")
+        self._push("struct DefinicionFuncion;")
+        self._push("struct DefinicionEstructura;")
+        self._push("struct SentenciaRomper;")
+        self._push("struct SentenciaSiguiente;")
+        self._push("struct SentenciaLanzar;")
+        self._push("struct SentenciaRecuperar;")
+        self._push("struct SentenciaEscuchar;")
+        self._push("struct ExprTensor;")
+        self._push("struct ExprIndice;")
+        self._push("struct ArgumentoTransferido;")
+        self._push("struct SentenciaImportar;")
+        self._push("struct ImportarC;")
+        self._push("struct DeclaracionExterna;")
+        self._push("struct BloqueInseguro;")
+        self._push("struct ExprObtenerDireccion;")
+        self._push("struct ExprDereferencia;")
+        self._push("")
+        self._push("typedef struct Token { int tipo; CadenaSegura lexema; int linea; int columna; } Token;")
+        self._push("typedef struct Nodo { CadenaSegura tipo; } Nodo;")
+        self._push("typedef struct ListaNodo { struct Nodo* cabeza; struct ListaNodo* cola; } ListaNodo;")
+        self._push("typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Programa;")
+        self._push("typedef struct Identificador { CadenaSegura tipo; CadenaSegura nombre; } Identificador;")
+        self._push("typedef struct LiteralNumero { CadenaSegura tipo; int valor; } LiteralNumero;")
+        self._push("typedef struct LiteralCadena { CadenaSegura tipo; CadenaSegura valor; } LiteralCadena;")
+        self._push("typedef struct OpBinaria { CadenaSegura tipo; struct Nodo* izquierdo; struct Token* operador; struct Nodo* derecho; } OpBinaria;")
+        self._push("typedef struct OpUnaria { CadenaSegura tipo; struct Token* operador; struct Nodo* expr; } OpUnaria;")
+        self._push("typedef struct LlamadaFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaNodo* argumentos; } LlamadaFuncion;")
+        self._push("typedef struct ExprAccesoCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; } ExprAccesoCampo;")
+        self._push("typedef struct AsignacionVariable { CadenaSegura tipo; CadenaSegura nombre; struct Nodo* expresion; } AsignacionVariable;")
+        self._push("typedef struct AsignacionCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; struct Nodo* expresion; } AsignacionCampo;")
+        self._push("typedef struct SentenciaSi { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; struct ListaNodo* cuerpo_sino; } SentenciaSi;")
+        self._push("typedef struct SentenciaMientras { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; } SentenciaMientras;")
+        self._push("typedef struct SentenciaRetornar { CadenaSegura tipo; struct Nodo* expr; } SentenciaRetornar;")
+        self._push("typedef struct SentenciaExpr { CadenaSegura tipo; struct Nodo* expr; } SentenciaExpr;")
+        self._push("typedef struct LogLlamada { CadenaSegura tipo; struct ListaNodo* argumentos; } LogLlamada;")
+        self._push("typedef struct Parametro { CadenaSegura tipo; CadenaSegura nombre; CadenaSegura tipo_param; int es_transferencia; } Parametro;")
+        self._push("typedef struct ListaParametro { struct Parametro* cabeza; struct ListaParametro* cola; } ListaParametro;")
+        self._push("typedef struct DefinicionFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* parametros; CadenaSegura tipo_retorno; struct ListaNodo* cuerpo; } DefinicionFuncion;")
+        self._push("typedef struct DefinicionEstructura { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* campos; } DefinicionEstructura;")
+        self._push("typedef struct SentenciaRomper { CadenaSegura tipo; } SentenciaRomper;")
+        self._push("typedef struct SentenciaSiguiente { CadenaSegura tipo; } SentenciaSiguiente;")
+        self._push("typedef struct SentenciaLanzar { CadenaSegura tipo; struct Nodo* llamada; } SentenciaLanzar;")
+        self._push("typedef struct SentenciaRecuperar { CadenaSegura tipo; struct Nodo* accion_critica; struct Nodo* plan_b; } SentenciaRecuperar;")
+        self._push("typedef struct SentenciaEscuchar { CadenaSegura tipo; struct Nodo* canal; struct Nodo* respuesta; } SentenciaEscuchar;")
+        self._push("typedef struct ExprTensor { CadenaSegura tipo; struct Nodo* filas; struct Nodo* columnas; } ExprTensor;")
+        self._push("typedef struct ExprIndice { CadenaSegura tipo; struct Nodo* expr; struct Nodo* indice; } ExprIndice;")
+        self._push("typedef struct ArgumentoTransferido { CadenaSegura tipo; struct Nodo* expr; } ArgumentoTransferido;")
+        self._push("typedef struct SentenciaImportar { CadenaSegura tipo; CadenaSegura ruta; } SentenciaImportar;")
+        self._push("typedef struct ImportarC { CadenaSegura tipo; CadenaSegura ruta; int es_sistema; } ImportarC;")
+        self._push("typedef struct DeclaracionExterna { CadenaSegura tipo; CadenaSegura nombre; struct Parametro* parametros; CadenaSegura tipo_retorno; } DeclaracionExterna;")
+        self._push("typedef struct BloqueInseguro { CadenaSegura tipo; struct Nodo* cuerpo; } BloqueInseguro;")
+        self._push("typedef struct ExprObtenerDireccion { CadenaSegura tipo; struct Nodo* expr; } ExprObtenerDireccion;")
+        self._push("typedef struct ExprDereferencia { CadenaSegura tipo; struct Nodo* expr; } ExprDereferencia;")
+        self._push("")
         self._push("// Constantes del pool de memoria (definidas en synapse_rt.c)")
         self._push("#define POOL_BLOQUES 64")
         self._push("#define TAMANO_BLOQUE 4096")
+        self._push("")
+        self._push("// Buffer temporal global para funciones del generador")
+        self._push("#define _GEN_TMP_SIZE (4096)")
+        self._push("char _gen_tmp_buf[4096];")
+        self._push("")
+        self._push("// Variable global de indentación para el AST Walker")
+        self._push("int _G_indent = 0;")
+        self._push("")
+        self._push("// Forward declarations de runtime del AST Walker")
+        self._push("const char* _G_mt(const char* st);")
+        self._push("void _G_vest(struct DefinicionEstructura* n);")
         self._push("")
         self._push("// Constantes de tags para uniones etiquetadas (ADTs)")
         self._push("#define TAG_OK 0")
@@ -406,15 +532,15 @@ class GeneradorC:
         self._push("")
         if not self.programa.is_no_std:
             self._push("// --- Helpers de serialización primitiva para canales (Zero-Copy) ---")
-            self._push("static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }")
-            self._push("static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }")
-            self._push("static inline void* _synapse_box_float(float v) {")
+            self._push("inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }")
+            self._push("inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }")
+            self._push("inline void* _synapse_box_float(float v) {")
             self._push("    float* _p = (float*)malloc(sizeof(float));")
             self._push('    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\\n"); exit(1); }')
             self._push("    *_p = v;")
             self._push("    return (void*)_p;")
             self._push("}")
-            self._push("static inline float _synapse_unbox_float(void* p) {")
+            self._push("inline float _synapse_unbox_float(void* p) {")
             self._push("    float _v = *(float*)p;")
             self._push("    free(p);")
             self._push("    return _v;")
@@ -502,7 +628,11 @@ class GeneradorC:
             self.indent -= 1
             self._push("}")
         elif isinstance(nodo, SentenciaExpr):
-            self._push(self._expr_a_c(nodo.expr) + ";")
+            if isinstance(nodo.expr, ExprAsm):
+                # Los bloques asm() ya contienen sus propios ; si son necesarios
+                self._push(self._expr_a_c(nodo.expr))
+            else:
+                self._push(self._expr_a_c(nodo.expr) + ";")
         elif isinstance(nodo, DeclaracionVariable):
             self._visitar_declaracion(nodo)
         elif isinstance(nodo, AsignacionVariable):
@@ -524,7 +654,7 @@ class GeneradorC:
                 self._push(f"{valor} = ({{0}});")
                 self._unregister_var(nodo.valor.nombre)
         elif isinstance(nodo, DefinicionEstructura):
-            self._visitar_estructura(nodo)
+            pass # Emitido en paso topológico previo
         elif isinstance(nodo, ImportarC):
             if nodo.es_sistema:
                 self._push(f'#include <{nodo.ruta}>')
@@ -745,7 +875,7 @@ class GeneradorC:
     def _emitir_leer_linea(self, nodo: DefinicionFuncion):
         self._push("CadenaSegura leer_linea() {")
         self.indent += 1
-        self._push("static char _buf[4096];")
+        self._push("char _buf[4096];")
         self._push("if (fgets(_buf, 4096, stdin)) {")
         self.indent += 1
         self._push("int _len = (int)strlen(_buf);")
@@ -985,7 +1115,7 @@ class GeneradorC:
         self._push("_columna += _len_id;")
         self._push("_token_count++;")
         self._push("typedef struct { const char* p; int t; } _KWE;")
-        self._push("static const _KWE _kws[] = {")
+        self._push("const _KWE _kws[] = {")
         self._push('    {"si",1},{"if",1},{"se",1},{"wenn",1},')
         self._push('    {"sino",2},{"else",2},{"sinon",2},{"senao",2},{"sonst",2},{"altrimenti",2},')
         self._push('    {"funcion",3},{"function",3},{"fonction",3},{"funcao",3},{"funktion",3},{"funzione",3},')
@@ -1088,9 +1218,9 @@ class GeneradorC:
             "",
             "#define MAX_TOKS 16384",
             "typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;",
-            "static _P_Token _P_tks[MAX_TOKS];",
-            "static int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;",
-            "static int _P_pila_indent[64], _P_nivel_pila = 0;",
+            "_P_Token _P_tks[MAX_TOKS];",
+            "int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;",
+            "int _P_pila_indent[64], _P_nivel_pila = 0;",
             "",
         ])
 
@@ -1173,7 +1303,7 @@ class GeneradorC:
         self._gen_tok_emitido = True
         P = '_P_'
         self.lineas.extend([
-            "static void " + P + "tokenizar(const char* s, int len) {",
+            "void " + P + "tokenizar(const char* s, int len) {",
             "    int i = 0, li = 1, co = 1;",
             "    while (i < len && " + P + "ntks < MAX_TOKS - 1) {",
             "        char c = s[i];",
@@ -1230,7 +1360,7 @@ class GeneradorC:
 "            strncpy(" + P + "tks[" + P + "ntks].val, s + st, vl); " + P + "tks[" + P + "ntks].val[vl] = 0;",
 "            " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = scol;",
             '            typedef struct { const char* p; int t; } _KW;',
-            '            static const _KW _ks[] = {',
+            '            const _KW _ks[] = {',
             '                {"si",T_IF},{"if",T_IF},{"se",T_IF},{"wenn",T_IF},',
             '                {"sino",T_ELSE},{"else",T_ELSE},{"sinon",T_ELSE},{"senao",T_ELSE},{"sonst",T_ELSE},{"altrimenti",T_ELSE},',
             '                {"funcion",T_FUNC},{"function",T_FUNC},{"fonction",T_FUNC},{"funcao",T_FUNC},{"funktion",T_FUNC},{"funzione",T_FUNC},',
@@ -1312,7 +1442,7 @@ class GeneradorC:
             "    " + P + "ntks++;",
             "}",
             "",
-            "static void " + P + "procesar_indentacion_final() {",
+            "void " + P + "procesar_indentacion_final() {",
             "    while (" + P + "nivel_pila > 0) {",
             "        " + P + "tks[" + P + "ntks].tipo = T_DEDENT; " + P + "tks[" + P + "ntks].linea = " + P + "tks[" + P + "ntks-1].linea; " + P + "tks[" + P + "ntks].col = 0;",
             "        " + P + "ntks++; " + P + "nivel_pila--;",
@@ -1328,11 +1458,11 @@ class GeneradorC:
         _P = '_P_'
         self.lineas.extend([
             "// --- AST builder helpers ---",
-            "static CadenaSegura " + _P + "cs(const char* s) {",
+            "CadenaSegura " + _P + "cs(const char* s) {",
             "    CadenaSegura c; c.longitud = (int)strlen(s);",
             "    char* d = (char*)malloc(c.longitud + 1); strcpy(d, s); c.datos = d; return c;",
             "}",
-            "static struct ListaNodo* " + _P + "mk_list(struct Nodo* h, struct ListaNodo* t) {",
+            "struct ListaNodo* " + _P + "mk_list(struct Nodo* h, struct ListaNodo* t) {",
             "    struct ListaNodo* n = (struct ListaNodo*)calloc(1,sizeof(struct ListaNodo));",
             "    n->cabeza = h; n->cola = t; return n;",
             "}",
@@ -1340,16 +1470,16 @@ class GeneradorC:
         ])
         # Helper + globals
         self.lineas.extend([
-            "static " + _P + "Token* " + _P + "mirar() { return &" + _P + "tks[" + _P + "tpos]; }",
-            "static void " + _P + "avanzar() { if (" + _P + "tpos < " + _P + "ntks) " + _P + "tpos++; }",
-            "static int " + _P + "posible(int t) { return " + _P + "mirar()->tipo == t ? 1 : 0; }",
-            "static int " + _P + "esperar(int t) {",
+            "" + _P + "Token* " + _P + "mirar() { return &" + _P + "tks[" + _P + "tpos]; }",
+            "void " + _P + "avanzar() { if (" + _P + "tpos < " + _P + "ntks) " + _P + "tpos++; }",
+            "int " + _P + "posible(int t) { return " + _P + "mirar()->tipo == t ? 1 : 0; }",
+            "int " + _P + "esperar(int t) {",
             "    if (" + _P + "mirar()->tipo == t) { " + _P + "avanzar(); return 1; }",
             '    fprintf(stderr, "[PARSER] L%d:%d: esperaba token %d, encontre %d\\n",',
             "            " + _P + "mirar()->linea, " + _P + "mirar()->col, t, " + _P + "mirar()->tipo);",
             "    exit(1);",
             "}",
-            "static void " + _P + "sinc_skip() {",
+            "void " + _P + "sinc_skip() {",
             "    while (" + _P + "tpos < " + _P + "ntks) {",
             "        int tt = " + _P + "mirar()->tipo;",
             "        if (tt == T_NL || tt == T_DEDENT || tt == T_EOF || tt == T_COMMA || tt == T_RPAREN || tt == T_COLON) break;",
@@ -1358,20 +1488,20 @@ class GeneradorC:
             "}",
             "",
             "// Forward declarations",
-            "static struct Nodo* " + _P + "expr();",
-            "static struct Nodo* " + _P + "logica();",
-            "static struct ListaNodo* " + _P + "bloque();",
-            "static struct Nodo* " + _P + "sentencia();",
-            "static struct Nodo* " + _P + "comp();",
-            "static struct Nodo* " + _P + "suma();",
-            "static struct Nodo* " + _P + "term();",
-            "static struct Nodo* " + _P + "una();",
-            "static struct Nodo* " + _P + "prim();",
-            "static struct Programa " + _P + "programa();",
+            "struct Nodo* " + _P + "expr();",
+            "struct Nodo* " + _P + "logica();",
+            "struct ListaNodo* " + _P + "bloque();",
+            "struct Nodo* " + _P + "sentencia();",
+            "struct Nodo* " + _P + "comp();",
+            "struct Nodo* " + _P + "suma();",
+            "struct Nodo* " + _P + "term();",
+            "struct Nodo* " + _P + "una();",
+            "struct Nodo* " + _P + "prim();",
+            "struct Programa " + _P + "programa();",
         ])
         # Now emit the function bodies using a clean string template
         B = """
-static struct ListaNodo* """ + _P + """bloque() {
+struct ListaNodo* """ + _P + """bloque() {
     if (!""" + _P + """esperar(T_NL)) { """ + _P + """sinc_skip(); return NULL; }
     while (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); }
     if (!""" + _P + """esperar(T_INDENT)) { """ + _P + """sinc_skip(); return NULL; }
@@ -1385,7 +1515,7 @@ static struct ListaNodo* """ + _P + """bloque() {
     """ + _P + """esperar(T_DEDENT);
     return lst;
 }
-static struct Nodo* """ + _P + """sentencia() {
+struct Nodo* """ + _P + """sentencia() {
     while (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); }
     """ + _P + """Token* t = """ + _P + """mirar();
     if (t->tipo == T_FUNC) {
@@ -1610,9 +1740,9 @@ static struct Nodo* """ + _P + """sentencia() {
         return (struct Nodo*)n;
     }
 }
-static struct Nodo* """ + _P + """expr() { return """ + _P + """logica(); }
+struct Nodo* """ + _P + """expr() { return """ + _P + """logica(); }
 
-static struct Nodo* """ + _P + """logica() {
+struct Nodo* """ + _P + """logica() {
     struct Nodo* izq=""" + _P + """comp();
     while (1) {
         int tt=""" + _P + """mirar()->tipo;
@@ -1628,7 +1758,7 @@ static struct Nodo* """ + _P + """logica() {
     return izq;
 }
 
-static struct Nodo* """ + _P + """comp() {
+struct Nodo* """ + _P + """comp() {
     struct Nodo* izq=""" + _P + """suma();
     while (1) {
         int tt=""" + _P + """mirar()->tipo;
@@ -1648,7 +1778,7 @@ static struct Nodo* """ + _P + """comp() {
     }
     return izq;
 }
-static struct Nodo* """ + _P + """suma() {
+struct Nodo* """ + _P + """suma() {
     struct Nodo* izq=""" + _P + """term();
     while (""" + _P + """mirar()->tipo==T_PLUS||""" + _P + """mirar()->tipo==T_MINUS) {
         int tt=""" + _P + """mirar()->tipo; """ + _P + """avanzar();
@@ -1661,7 +1791,7 @@ static struct Nodo* """ + _P + """suma() {
     }
     return izq;
 }
-static struct Nodo* """ + _P + """term() {
+struct Nodo* """ + _P + """term() {
     struct Nodo* izq=""" + _P + """una();
     while (""" + _P + """mirar()->tipo==T_MUL||""" + _P + """mirar()->tipo==T_DIV||""" + _P + """mirar()->tipo==T_MOD) {
         int tt=""" + _P + """mirar()->tipo; """ + _P + """avanzar();
@@ -1674,7 +1804,7 @@ static struct Nodo* """ + _P + """term() {
     }
     return izq;
 }
-static struct Nodo* """ + _P + """una() {
+struct Nodo* """ + _P + """una() {
     if (""" + _P + """mirar()->tipo==T_MINUS||""" + _P + """mirar()->tipo==T_PLUS) {
         int tt=""" + _P + """mirar()->tipo; """ + _P + """avanzar();
         struct Nodo* e=""" + _P + """una();
@@ -1709,7 +1839,7 @@ static struct Nodo* """ + _P + """una() {
     }
     return """ + _P + """prim();
 }
-static struct Nodo* """ + _P + """prim() {
+struct Nodo* """ + _P + """prim() {
     """ + _P + """Token* t=""" + _P + """mirar();
     if (t->tipo==T_NUM) {
         struct LiteralNumero* n=(struct LiteralNumero*)calloc(1,sizeof(struct LiteralNumero));
@@ -1814,7 +1944,7 @@ static struct Nodo* """ + _P + """prim() {
     fprintf(stderr,"[PARSER] L%d:%d: expresion inesperada token=%d\\n",t->linea,t->col,t->tipo);
     exit(1);
 }
-static struct Programa """ + _P + """programa() {
+struct Programa """ + _P + """programa() {
     struct ListaNodo* lst=NULL; struct ListaNodo** cur=&lst;
     while (""" + _P + """mirar()->tipo!=T_EOF) {
         if (""" + _P + """mirar()->tipo==T_NL||""" + _P + """mirar()->tipo==T_DEDENT) { """ + _P + """avanzar(); continue; }
@@ -1838,34 +1968,34 @@ static struct Programa """ + _P + """programa() {
         _PH = '@@P@@'
         H = f"""
 // --- AST Walker ---
-static int {_PH}indent = 0;
-static FILE* {_PH}out = NULL;
-static char {_PH}vn[1024][64];
-static char {_PH}vt[1024][64];
-static int {_PH}nv = 0;
-static char {_PH}ret_type[64];
-static char {_PH}extern_names[64][64];
-static char {_PH}extern_params[64][256];
-static int {_PH}nextern = 0;
-static char {_PH}snames[64][64];
-static int {_PH}nsnames = 0;
+int {_PH}indent = 0;
+FILE* {_PH}out = NULL;
+char {_PH}vn[1024][64];
+char {_PH}vt[1024][64];
+int {_PH}nv = 0;
+char {_PH}ret_type[64];
+char {_PH}extern_names[64][64];
+char {_PH}extern_params[64][256];
+int {_PH}nextern = 0;
+char {_PH}snames[64][64];
+int {_PH}nsnames = 0;
 
-static void {_PH}reset() {{ {_PH}nv = 0; }}
-static int {_PH}find(const char* n) {{ for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
-static const char* {_PH}decl(const char* n, const char* t) {{
+void {_PH}reset() {{ {_PH}nv = 0; }}
+int {_PH}find(const char* n) {{ for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
+const char* {_PH}decl(const char* n, const char* t) {{
     int i={_PH}find(n); if(i>=0) return {_PH}vt[i];
     if({_PH}nv<1024){{ strcpy({_PH}vn[{_PH}nv],n); strcpy({_PH}vt[{_PH}nv],t); {_PH}nv++; }}
     return t;
 }}
 
-static void {_PH}emit(const char* s) {{
+void {_PH}emit(const char* s) {{
     for(int i=0;i<{_PH}indent;i++) fprintf({_PH}out,"    ");
     fprintf({_PH}out,"%s\\n",s);
 }}
 
-static void {_PH}cp(char* d, CadenaSegura cs) {{ memcpy(d,cs.datos,cs.longitud); d[cs.longitud]=0; }}
+void {_PH}cp(char* d, CadenaSegura cs) {{ memcpy(d,cs.datos,cs.longitud); d[cs.longitud]=0; }}
 
-static const char* {_PH}tex(struct Nodo* n) {{
+const char* {_PH}tex(struct Nodo* n) {{
     if(!n) return "int";
     const char* t=n->tipo.datos;
     if(strcmp(t,"LiteralNumero")==0) return "int";
@@ -1888,7 +2018,7 @@ static const char* {_PH}tex(struct Nodo* n) {{
         if(strcmp(m,"texto_a_entero")==0) return "int";
         if(strcmp(m,"texto_a_decimal")==0) return "float";
         if(strcmp(m,"decimal_a_texto")==0) return "CadenaSegura";
-        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0) {{ static char _sret[64]; snprintf(_sret,sizeof(_sret),"struct %s",m); return _sret; }} }}
+        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0) {{ char _sret[64]; snprintf(_sret,sizeof(_sret),"struct %s",m); return _sret; }} }}
         return "int";
     }}
     if(strcmp(t,"ExprAccesoCampo")==0||strcmp(t,"ArgumentoTransferido")==0) return "int";
@@ -1898,11 +2028,11 @@ static const char* {_PH}tex(struct Nodo* n) {{
     return "int";
 }}
 
-static void {_PH}ea(struct Nodo* n, char* b, int sz);
-static void {_PH}vl(struct ListaNodo* l);
-static void {_PH}v(struct Nodo* n);
+void {_PH}ea(struct Nodo* n, char* b, int sz);
+void {_PH}vl(struct ListaNodo* l);
+void {_PH}v(struct Nodo* n);
 
-static int {_PH}extern_needs_datos(const char* fn, int argidx) {{
+int {_PH}extern_needs_datos(const char* fn, int argidx) {{
     for(int _ei=0;_ei<{_PH}nextern;_ei++){{
         if(strcmp({_PH}extern_names[_ei],fn)==0){{
             int _ec=0,_epos=0;
@@ -1919,9 +2049,9 @@ static int {_PH}extern_needs_datos(const char* fn, int argidx) {{
     }}
     return 0;
 }}
-static void {_PH}vl(struct ListaNodo* l) {{ while(l){{ {_PH}v(l->cabeza); l=l->cola; }} }}
+void {_PH}vl(struct ListaNodo* l) {{ while(l){{ {_PH}v(l->cabeza); l=l->cola; }} }}
 
-static void {_PH}ea(struct Nodo* n, char* b, int sz) {{
+void {_PH}ea(struct Nodo* n, char* b, int sz) {{
     char i[512],d[512],o[512],m[256];
     if(!n){{ snprintf(b,sz,"0"); return; }}
     const char* t=n->tipo.datos;
@@ -1959,7 +2089,7 @@ static void {_PH}ea(struct Nodo* n, char* b, int sz) {{
     snprintf(b,sz,"/*?*/");
 }}
 
-static void {_PH}v_log(struct LogLlamada* n) {{
+void {_PH}v_log(struct LogLlamada* n) {{
     char f[4096]=""; int fp=0,ap=0,fi=1; char b[512]; char pr[4096]="";
     struct ListaNodo* c=n->argumentos;
     while(c){{ if(!fi){{ f[fp++]=' '; }} fi=0; f[fp++]='%'; f[fp++]='s';
@@ -1971,8 +2101,8 @@ static void {_PH}v_log(struct LogLlamada* n) {{
     {_PH}emit(ln);
 }}
 
-static const char* {_PH}mt(const char* st) {{
-    static char _mtb[64];
+const char* {_PH}mt(const char* st) {{
+    char _mtb[64];
     char _base[64]; strcpy(_base,st);
     int _mlen = strlen(_base);
     int _isptr = (_mlen>0 && _base[_mlen-1]=='*');
@@ -1992,20 +2122,20 @@ static const char* {_PH}mt(const char* st) {{
     if(_isptr){{ snprintf(_mtb,sizeof(_mtb),"%s*",_r); return _mtb; }}
     return _r;
 }}
-static void {_PH}vest(struct DefinicionEstructura* n) {{
+void {_PH}vest(struct DefinicionEstructura* n) {{
     char ln[4096];
     snprintf(ln,sizeof(ln),"typedef struct %s {{",n->nombre.datos); {_PH}emit(ln);
     {_PH}indent++;
     struct ListaParametro* c=n->campos;
     while(c){{ struct Parametro* p=(struct Parametro*)c->cabeza; char pn[256]; {_PH}cp(pn,p->nombre); char pt[256]; {_PH}cp(pt,p->tipo_param); const char* ct={_PH}mt(pt); if(ct){{ snprintf(ln,sizeof(ln),"%s %s;",ct,pn); }}else{{ snprintf(ln,sizeof(ln),"struct %s* %s;",pt,pn); }} {_PH}emit(ln); c=c->cola; }}
     {_PH}indent--; snprintf(ln,sizeof(ln),"}} %s;",n->nombre.datos); {_PH}emit(ln);
-    snprintf(ln,sizeof(ln),"static inline struct %s %s_nuevo() {{",n->nombre.datos,n->nombre.datos); {_PH}emit(ln);
+    snprintf(ln,sizeof(ln),"inline struct %s %s_nuevo() {{",n->nombre.datos,n->nombre.datos); {_PH}emit(ln);
     {_PH}indent++; snprintf(ln,sizeof(ln),"struct %s _r={{0}}; return _r;",n->nombre.datos); {_PH}emit(ln);
     {_PH}indent--; {_PH}emit("}}");
     if({_PH}nsnames<64){{ strcpy({_PH}snames[{_PH}nsnames],n->nombre.datos); {_PH}nsnames++; }}
 }}
 
-static void {_PH}v(struct Nodo* n) {{
+void {_PH}v(struct Nodo* n) {{
     if(!n) return;
     char b[4096],b2[4096],m[256],v[4096];
     const char* t=n->tipo.datos;
@@ -2129,7 +2259,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     fprintf({_PH}out,"extern void synapse_esperar_hilos(void);\\n");
     fprintf({_PH}out,"extern void pool_init(uint32_t total_blocks, uint32_t block_size);\\n");
     fprintf({_PH}out,"extern void pool_free(void* ptr);\\n");
-    fprintf({_PH}out,"static int _g_argc;\\nstatic char** _g_argv;\\nint _argc(){{return _g_argc;}}\\n");
+    fprintf({_PH}out,"int _g_argc;\\nchar** _g_argv;\\nint _argc(){{return _g_argc;}}\\n");
     fprintf({_PH}out,"CadenaSegura _argv(int i){{if(i<0||i>=_g_argc)return (CadenaSegura){{0,(char*)\\"\\"}};return (CadenaSegura){{.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]}};}}\\n");
     fprintf({_PH}out,"void salir(int c){{exit(c);}}\\n");
     fprintf({_PH}out,"CadenaSegura concat(CadenaSegura a,CadenaSegura b){{int _tl=a.longitud+b.longitud;char* _buf=(char*)malloc(_tl+1);memcpy(_buf,a.datos,a.longitud);memcpy(_buf+a.longitud,b.datos,b.longitud);_buf[_tl]=0;CadenaSegura _r={{.longitud=_tl,.datos=_buf}};return _r;}}\\n");
@@ -2288,6 +2418,9 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             'campos_pointer': campos_pointer,
             'es_adt': es_adt,
         }
+        # Skip emission for OO types (already defined correctly in header)
+        if nodo.nombre in _OO_TYPES:
+            return
         self._push(f"typedef struct {nodo.nombre} {{")
         self.indent += 1
         if es_adt:
@@ -2318,13 +2451,16 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 else:
                     tipo_c = MAPA_TIPOS_C.get(c.tipo)
                     if tipo_c is not None:
-                        self._push(f"{tipo_c} {c.nombre};")
+                        if nodo.nombre == 'LexerEstado' and c.nombre == 'pila_indent':
+                            self._push(f"{tipo_c} {c.nombre}[64];")
+                        else:
+                            self._push(f"{tipo_c} {c.nombre};")
                     else:
                         self._push(f"struct {c.tipo}* {c.nombre};")
         self.indent -= 1
         self._push(f"}} {nodo.nombre};")
         self._push("")
-        self._push(f"static inline struct {nodo.nombre} {nodo.nombre}_nuevo() {{")
+        self._push(f"inline struct {nodo.nombre} {nodo.nombre}_nuevo() {{")
         self.indent += 1
         self._push(f"struct {nodo.nombre} _r = {{0}};")
         self._push("return _r;")
@@ -2645,6 +2781,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                         ep_base = extern_params[i].rstrip('*')
                         if MAPA_TIPOS_C.get(ep_base) is None and not tipo_arg.endswith('*'):
                             arg_expr = f"(&{arg_expr})"
+                    # CadenaSegura -> void* coercion for internal functions with puntero params
+                    elif tipo_arg == 'CadenaSegura' and nodo.nombre in self._func_param_types:
+                        fpt = self._func_param_types[nodo.nombre]
+                        if i < len(fpt) and MAPA_TIPOS_C.get(fpt[i]) == 'void*':
+                            arg_expr = f"({arg_expr}).datos"
                     if nodo.nombre in _FUNCIONES_ESPERAN_TEXTO:
                         try:
                             arg_expr = _aplicar_coercion(arg_expr, tipo_arg, 'CadenaSegura', getattr(nodo, 'linea', 0))
@@ -2660,6 +2801,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                         ep_base = extern_params[i].rstrip('*')
                         if MAPA_TIPOS_C.get(ep_base) is None and not tipo_arg.endswith('*'):
                             arg_expr = f"(&{arg_expr})"
+                    # CadenaSegura -> void* coercion for internal functions with puntero params
+                    elif tipo_arg == 'CadenaSegura' and nodo.nombre in self._func_param_types:
+                        fpt = self._func_param_types[nodo.nombre]
+                        if i < len(fpt) and MAPA_TIPOS_C.get(fpt[i]) == 'void*':
+                            arg_expr = f"({arg_expr}).datos"
                     if nodo.nombre in _FUNCIONES_ESPERAN_TEXTO:
                         try:
                             arg_expr = _aplicar_coercion(arg_expr, tipo_arg, 'CadenaSegura', getattr(nodo, 'linea', 0))

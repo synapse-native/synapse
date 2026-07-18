@@ -595,6 +595,9 @@ class AnalizadorSemantico:
             for i, (arg, param) in enumerate(zip(nodo.argumentos, def_func.parametros)):
                 tipo_arg = self._inferir_tipo(arg)
                 if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(param.tipo):
+                    # Permitir texto/cadena -> puntero (void*): string literal se convierte a const char*
+                    if _tipo_normalizado(param.tipo) == 'void*' and 'CadenaSegura' in (_tipo_normalizado(tipo_arg), tipo_arg):
+                        continue
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),

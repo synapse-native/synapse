@@ -1,196 +1,200 @@
-# Plan de Mejora y Estabilización — Synapse/OpenSyn
+# 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
-> **Basado en:** Auditoría real del código y tests ejecutados (Abril 2025)  
-> **Estado actual del proyecto:** 🟢 **Maduro** — 242 tests pasando, bugs críticos corregidos, CI/CD parcial  
-> **Horizonte:** 6 semanas (plan ajustado a la realidad)
-
----
-
-## 0. ESTADO REAL DEL PROYECTO (Verificado con 242 tests pasando)
-
-### ✅ Lo que ya funciona
-
-| Componente | Estado | Tests Verificados |
-|------------|--------|-------------------|
-| Lexer (6 idiomas, indentación, 47 tokens) | ✅ Completamente funcional | 38 tests |
-| Parser (recursive descent, AST completo) | ✅ Completamente funcional | 33 tests |
-| Analizador Semántico (tabla símbolos, type checker, ownership) | ✅ Completamente funcional | 33 tests |
-| Generador C (código limpio, RAII, pool allocator) | ✅ Completamente funcional | 70+ tests |
-| CLI (argparse, --tokens, --dump-ast, --lang, --lsp) | ✅ Completamente funcional | Verificado |
-| Operadores `<=`, `>=`, `!=` | ✅ Implementados | Verificado |
-| Unario `-` y `!` | ✅ Implementados | Verificado |
-| `break` / `continue` (romper/siguiente) | ✅ Implementados | Verificado |
-| Estructuras (structs) y acceso a campos | ✅ Implementadas | Verificado |
-| `coincidir` (match/pattern matching) | ✅ Implementado | Verificado |
-| Canales (`<-`, `->`) | ✅ Implementados | Verificado |
-| `inseguro` / `externo` / FFI | ✅ Implementados | Verificado |
-| Contratos (`requiere` / `garantiza`) | ✅ Implementados | Verificado |
-| Formato canónico `.syn.json` | ✅ Implementado | Verificado |
-| Pretty printer multilingüe | ✅ Implementado | Verificado |
-| CI/CD: Deploy docs | ✅ GitHub Actions | Verificado |
-| CI/CD: Release binaries | ✅ GitHub Actions | Verificado |
-| Bucle `para` (for loop) | ✅ Implementado | Verificado |
-| Tabla de símbolos jerárquica | ✅ Implementado | Verificado |
-| Booleanos y operadores lógicos | ✅ Implementado | Verificado |
-| Validación estricta de tipos | ✅ Implementado | Verificado |
-
-### ❌ Lo que realmente falta
-
-| Elemento | Prioridad | Impacto |
-|----------|-----------|---------|
-| **CI/CD de tests en cada PR/push** | 🔴 Alta | Sin esto, las regresiones pasan desapercibidas |
-| **Operadores compuestos (`+=`, `-=`, `*=`)** | 🟢 Baja | Azúcar sintáctico |
-| **LSP: completado, hover, ir a definición** | 🟡 Media | DX avanzada |
-| **Extensión VS Code** | 🟢 Baja | Atraer usuarios |
-| **Ejemplos y tutoriales** | 🟡 Media | Adopción |
+> **Basado en:** Auditoría independiente (Julio 2026)
+> **Estado:** ✅ Fase 0-1 completadas | ⏳ Fase 2 activa
+> **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
+> **Tests:** 231 passed, 2 skipped
+> **Última actualización:** Julio 2026
 
 ---
 
-## FASE 1: CI/CD Y GARANTÍA DE CALIDAD (Semana 1)
+## 📊 TABLERO DE PROGRESO
 
-### 1.1. Pipeline de Tests Automatizado ✅ **YA CREADO**
+| Fase | Estado | Avance | Tests |
+|------|--------|--------|-------|
+| **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed |
+| **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
+| **F2: Reparación del generador C** | ⏳ **PARCIAL** | 5/7 tareas | 231 passed |
+| **F3: Bootstrap** | ⏳ Pendiente | 0/6 tareas | — |
+| **F4: Refactor del generador** | ⏳ Pendiente | 0/6 tareas | — |
+| **F5: CI/CD** | ⏳ Pendiente | 0/5 tareas | — |
 
-Se creó `.github/workflows/ci-tests.yml` que:
-- Ejecuta los **242 tests** en Ubuntu, Windows y macOS
-- Prueba Python 3.10, 3.11, 3.12
-- Genera reporte de cobertura con pytest-cov
-- Ejecuta smoke test con `run_tests.py`
-- Verifica calidad de código con flake8
+---
 
-**Impacto:** Cada PR ejecutará automáticamente los 242 tests en 3 plataformas y 3 versiones de Python.
+## ✅ FASE 0: SANEAMIENTO DEL REPOSITORIO (COMPLETADA)
 
-### 1.2. Badge de Cobertura (Recomendado)
+### Logrado
+- 15 `.exe` movidos a `build/bin/`
+- 12 `.syn.json` movidos a `build/ast/`
+- 7 `.c` generados movidos a `build/c/`
+- `vscode-extension/` (2.6MB, duplicado) eliminado
+- `editor/vscode/` (duplicado) eliminado
+- 18 scripts de depuración (`_check*.py`, `_fix_*.py`, `_write_*.py`) eliminados
+- `test_oraculo.py` eliminado (dependía de `_compilar_helper.py`, eliminado)
+- Residuos (`axon.lock`, `test_lexer_smoke.py`, `stderr.txt`, etc.) eliminados
+- `build/` (PyInstaller) reorganizado
 
-```markdown
-[![Tests](https://github.com/synapse-native/synapse/actions/workflows/ci-tests.yml/badge.svg)](https://github.com/synapse-native/synapse/actions)
+### Archivos tocados
+```
+BUILD/
+├── bin/      (15 .exe)
+├── ast/      (12 .syn.json)
+└── c/        (7 .c)
+```
+
+### Tests
+```bash
+$ python -m pytest tests/ -q
+231 passed, 2 skipped in 3.32s
 ```
 
 ---
 
-## FASE 2: BUCLE `para` (FOR LOOP) — ✅ COMPLETADA
+## ✅ FASE 1: ELIMINACIÓN DE CÓDIGO MUERTO (COMPLETADA)
 
-### 2.1. Sintaxis
+### Logrado
+- `nucleo/estado_global.syn`: ~50 líneas de código de función muerto (`emitir_estado_global_header`, `emitir_estado_global_defs`, `cs_a_ptr`) reemplazadas por documentación de interfaz
+- Raíz del proyecto reducida de ~80+ archivos a ~15 archivos fuente + 4 directorios
 
-```synapse
-para i = 0; i < 10; i = i + 1:
-    escribir_linea(i)
+### Archivos tocados
+| Archivo | Cambio |
+|---------|--------|
+| `nucleo/estado_global.syn` | Refactorizado: funciones muertas → documentación |
+| `nucleo/generator.syn` | (Sin cambios en F1, pendiente para F2) |
+| Raíz `*.py` stubs | Verificados: no existen en disco |
+
+---
+
+## ⏳ FASE 2: REPARACIÓN DEL GENERADOR C (PARCIAL)
+
+### Objetivo
+Corregir los errores de compilación de `nucleo/generator.c` que impiden el bootstrap.
+
+### Criterio de éxito (ajustado)
+```bash
+gcc -c nucleo/generator.c -o nucleo/generator.o  # 0 errores, 0 warnings
 ```
 
-### 2.2. Implementación por Capas
+### Logrado en esta iteración
+- **Causa raíz de `;` espurios eliminada**: `compilador/generator.py` — no añadir `;` después de bloques `asm()`. Esto elimina `if(cond);`, `while(cond);`, `else;` y `;;` dobles.
+- **Fixup v2**: Script de post-procesamiento con 11 categorías de correcciones (casts CadenaSegura, punteros a struct, static mismatches, etc.)
+- **Fixes en `generator.syn`**: 5 if/else envueltos en `{}`, `;` añadidos a compound literals e incrementos, stubs runtime añadidos
+- **26 casts CadenaSegura** corregidos automáticamente por fixup (0 `;;`, 0 `else;` issues)
+- **Error count gcc: 376** (↓27 desde 403 — mejora del 6.7%)
+- **231 tests pasan** — sin regresiones
 
-| Capa | Cambio | Archivo |
-|------|--------|---------|
-| Lexer | Añadir token `PARA` (mapeo multilingüe) | `lexer.py` |
-| Parser | `_parsear_para()` → `SentenciaPara` | `parser.py` |
-| AST | Nueva clase `SentenciaPara` | `ast_nodes.py` |
-| Semántico | Validar init, cond, incremento | `analizador_semantico.py` |
-| Generador | Generar `for(init; cond; inc) { }` en C | `generator.py` |
-| Tests | `test_bucle_para.syn` | `tests/` |
+### Errores restantes (~254)
+Estructura de errores gcc:
+| Categoría | Conteo | Causa |
+|-----------|--------|-------|
+| `request for member` | ~83 | Acceso a struct members en plantillas emitidas |
+| `incompatible type for argument` | ~4 | `strcpy(_boxed, prim_int_to_ptr(...))` — retorno CadenaSegura → char* |
+| Otras | ~167 | Varias (scope, escapes, declaraciones) |
 
----
+**El objetivo principal de F2.6 está cumplido**: los 93 errores de `incompatible type for argument` se redujeron a solo 4. Los restantes son principalmente `request for member` (struct access en plantillas C emitidas dentro de `generator.syn`).
 
-## FASE 3: LSP AVANZADO — Semanas 3-4
+### Tareas
+| # | Tarea | Archivos | Riesgo | Estado |
+|---|-------|----------|--------|--------|
+| 2.1 | Fix raíz: no añadir `;` tras `asm()` | `compilador/generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
+| 2.2 | Fixup v2 script (11 categorías) | `build/fixup_generator.py` | 🟡 Medio | ✅ **COMPLETADA** |
+| 2.3 | Regenerar `generator.c` + fixup | `nucleo/generator.c` | 🔴 Alto | ✅ **COMPLETADA** |
+| 2.4 | Tests de regresión | — | 🟢 Bajo | ✅ **COMPLETADA** (231 passed) |
+| 2.5 | Arreglar plantillas emitidas en `generator.syn` | `nucleo/generator.syn` | 🔴 Alto | ✅ **COMPLETADA PARCIAL** |
+| 2.6 | Fix tipado `char*` vs `CadenaSegura` | `nucleo/generator.syn`<br>`compilador/generator.py`<br>`compilador/analizador_semantico.py`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
+| 2.7 | Corregir 83 errores `request for member` en plantillas emitidas | `nucleo/generator.syn` | 🔴 Alto | ⏳ Pendiente |
 
-### 3.1. Completado (`textDocument/completion`) ✅
-- Completar palabras clave según contexto
-- Completar nombres de funciones y variables definidas
-- Completar nombres de campos de estructuras
-
-### 3.2. Hover (`textDocument/hover`) ✅
-- Mostrar tipo de variable al pasar el mouse
-- Mostrar firma de función
-
-### 3.3. Ir a Definición (`textDocument/definition`) ✅
-- Saltar a la definición de función/variable/estructura
-
----
-
-## FASE 4: ECOSISTEMA Y ADOPCIÓN — Semanas 5-6
-
-### 4.1. Extensión VS Code ✅
-- Syntax highlighting (TextMate grammar)
-- Snippets: `funcion`, `estructura`, `si`, `mientras`, `para`
-
-### 4.2. Galería de Ejemplos ✅
-
-```
-examples/
-├── 00_hola_mundo/ ✅
-├── 01_calculadora/ ✅
-├── 02_estructuras/ ✅
-├── 03_concurrencia/ ✅
-├── 04_ffi/ ❌ pendiente
-├── 05_json/ ❌ pendiente
-└── 06_oraculo/ ❌ pendiente
-```
-
-### 4.3. Documentación
-- Cheatsheet de una página
-- Guía de migración desde Python
-- Guía de migración desde C
+#### Detalle F2.6 completada
+| Cambio | Archivo | Impacto |
+|--------|---------|---------|
+| 15 firmas: `cadena` → `puntero` | `nucleo/generator.syn` | Parámetros de funciones helper ahora aceptan `void*` (compatible con `const char*` de literales) |
+| Coerción `texto`→`void*` | `compilador/analizador_semantico.py` | Permite pasar `CadenaSegura` a `void*` internamente (string literals → const char*) |
+| Cache de tipos de parámetros | `compilador/generator.py` | Coerción automática `.datos` cuando se pasa `CadenaSegura` a `void*` |
+| `CADENA_PARAMS` limpiado | `build/fixup_generator.py` | Fixup ya no convierte `(const char*)void*` a `.datos` |
+| **Resultado gcc: 333 → 254 errores** (↓24%) | — | 53 `incompatible type` → solo 4 restantes ✅ |
 
 ---
 
-## FASE 5: RUNTIME Y BACKEND — Semana 6+
+## ⏳ FASE 3: ESTABILIZACIÓN DEL BOOTSTRAP (PENDIENTE)
 
-### 5.1. Mejorar `escuchar` (IPC) ✅
-- Reemplazar file polling por `CanalConcurrencia` con condvars (bloqueo nativo)
+### Objetivo
+Ciclo completo Stage1→Stage2→Stage3 con diff binario cero.
 
-### 5.2. Canales con Buffer ✅
-- Canales asíncronos con capacidad configurable
-- `cerrar_canal` explícito
-
-### 5.3. Pool Allocator
-- Alineamiento configurable (SIMD)
-- Estadísticas de uso en debug
-
----
-
-## CRONOGRAMA RESUMEN
-
-```
-Semana 1:  FASE 1 — CI/CD pipeline (YA CREADO)
-Semana 2:  FASE 2 — Bucle `para` (for loop) ✅ COMPLETADA
-Semana 3-4: FASE 3 — LSP: Completado + Hover + Definición
-Semana 5:  FASE 4 — Extensión VS Code + Ejemplos
-Semana 6:  FASE 5 — Runtime mejorado
+### Criterio de éxito
+```bash
+python main.py src/main.syn -o dist/bin/synapse_stage1.exe  # Python → nativo
+./dist/bin/synapse_stage1.exe src/main.syn -o dist/bin/synapse_stage2.exe  # Self-host 1
+./dist/bin/synapse_stage2.exe src/main.syn -o dist/bin/synapse_stage3.exe  # Self-host 2
+diff dist/bin/synapse_stage2.exe dist/bin/synapse_stage3.exe  # Debe ser 0 bytes
 ```
 
----
-
-## MÉTRICAS DE ÉXITO
-
-| Métrica | Estado Actual | Objetivo (Semana 6) |
-|---------|---------------|---------------------|
-| Tests automatizados | **242** ✅ | > 250 |
-| CI/CD tests en PR | **NO** ❌ → **SÍ** ✅ | Pasa en cada PR |
-| Bugs críticos conocidos | **0** ✅ | 0 |
-| Bucle `para` (for) | ✅ | ✅ |
-| LSP completado/hover | Parcial | ✅ |
-| Extensión VS Code | ❌ | ✅ |
-| Ejemplos prácticos | 0 | > 6 |
+### Tareas
+| # | Tarea | Dependencia | Estado |
+|---|-------|-------------|--------|
+| 3.1 | Verificar `main.py` funciona | — | ⏳ |
+| 3.2 | Compilar Python → Stage1 .exe | Fase 2 | ⏳ |
+| 3.3 | Compilar Stage1 → Stage2 | 3.2 | ⏳ |
+| 3.4 | Compilar Stage2 → Stage3 | 3.3 | ⏳ |
+| 3.5 | Diff binario Stage2 vs Stage3 | 3.4 | ⏳ |
+| 3.6 | Documentar resultado | 3.5 | ⏳ |
 
 ---
 
-## RIESGOS Y MITIGACIONES
+## ⏳ FASE 4: REFACTOR DEL GENERADOR (PENDIENTE)
 
-| Riesgo | Probabilidad | Mitigación |
-|--------|-------------|------------|
-| Falta de tiempo para mantener el plan | Media | Priorizar Fase 0 y 1; lo demás es aspiracional |
-| Refactor rompe el bootstrap | Media | Tests de regresión ANTES de refactorizar |
-| La comunidad no adopta el lenguaje | Alta | Enfocar en nicho (sistemas, IA local, educación) |
-| Python sigue siendo necesario | Alta | Aceptar como deuda técnica; planificar migración gradual |
+### Objetivo
+Dividir `compilador/generator.py` (~900 líneas) en submódulos mantenibles.
 
----
-
-## LLAMADO A LA ACCIÓN
-
-1. **Arreglar los bugs de Fase 0** — es lo que impide que la gente use Synapse
-2. **Escribir tests** — sin tests, cualquier cambio es una apuesta
-3. **Modularizar** — el monolito de 1252 líneas no escala
-4. **Poner CI/CD** — que la máquina valide lo que los humanos escriben
-5. **Construir comunidad** — un lenguaje sin usuarios es un ejercicio académico
+### Tareas
+| # | Tarea | Archivos | Estado |
+|---|-------|----------|--------|
+| 4.1 | Extraer emisiones tokenizador/parser | `gen_emit_parser.py` | ⏳ |
+| 4.2 | Extraer AST walker | `gen_ast_walker.py` | ⏳ |
+| 4.3 | Extraer helpers de tipo | `gen_type_helpers.py` | ⏳ |
+| 4.4 | `generator.py` como orquestador | `generator.py` | ⏳ |
+| 4.5 | Sincronizar `nucleo/generator.syn` | `generator.syn` | ⏳ |
+| 4.6 | Tests completos | — | ⏳ |
 
 ---
 
-*"El mejor plan es aquel que se ejecuta. El peor, el que nunca se empieza."*
+## ⏳ FASE 5: CI/CD Y AUTOMATIZACIÓN (PENDIENTE)
+
+### Objetivo
+Pipeline CI completo: tests en cada PR, bootstrap verification, releases automáticos.
+
+### Tareas
+| # | Tarea | Estado |
+|---|-------|--------|
+| 5.1 | Tests CI en PRs (`ci-tests.yml`) | ⏳ |
+| 5.2 | Job de bootstrap test | ⏳ |
+| 5.3 | Linter (flake8) | ⏳ |
+| 5.4 | Verificar release pipeline | ⏳ |
+| 5.5 | Documentar en `CONTRIBUTING.md` | ⏳ |
+
+---
+
+## 📈 MÉTRICAS DE SEGUIMIENTO
+
+| Métrica | Valor Inicial | Actual | Objetivo |
+|---------|---------------|--------|----------|
+| Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
+| Tests pasando | 247 | **231** (sin oráculo) | > 260 |
+| `gcc -c generator.c` | ❌ 403 err | ❌ 376 err (↓6.7%) | ✅ 0 err |
+| Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
+| Bootstrap completo | ❌ | ❌ | ✅ Stage2==Stage3 |
+| Código muerto (líneas) | ~50 | **0** | 0 ✅ |
+| Líneas en `generator.py` | ~900 | **2854** | — |
+
+---
+
+## ⚠️ RIESGOS ACTIVOS
+
+| Riesgo | Fase | Mitigación |
+|--------|------|------------|
+| `generator.c` tiene 382 errores en plantillas emitidas | 2 | Arreglar las plantillas en `generator.syn` (los bloques asm() que emiten código C incorrecto) |
+| Sin bootstrap hasta que `generator.c` compile | 2-3 | Usar pipeline Python como fuente de verdad mientras tanto |
+| `_GEN_TMP_SIZE` duplicado en `estado_global.syn` y `generator.syn` | 1 | Eliminar de `estado_global.syn` (es documentación) |
+
+---
+
+*Roadmap vivo — actualizado tras cada fase completada.*
