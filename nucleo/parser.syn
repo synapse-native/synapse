@@ -561,6 +561,8 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
         retornar parsear_estructura_def(est)
     si t == T_CONSTANTE:
         retornar parsear_constante(est)
+    si t == T_ASM:
+        retornar parsear_asm(est)
     si t == T_INSEGURO:
         retornar parsear_inseguro(est)
     si t == T_IMPORTAR_C:
@@ -954,6 +956,23 @@ funcion parsear_constante(est: ParserEst) -> entero:
     expr = parsear_expresion(est)
     inseguro:
         asm("est.nodos[nodo].hijo_izq = expr")
+    retornar nodo
+
+funcion parsear_asm(est: ParserEst) -> entero:
+    si token_esperar(est, T_ASM) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_ASM, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    si token_mirar(est) == T_CADENA:
+        inseguro:
+            asm("est.nodos[nodo].ptr_str = est.tokens[est.posicion].ptr_valor")
+            asm("est.nodos[nodo].len_str = est.tokens[est.posicion].len_valor")
+        token_avanzar(est)
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
     retornar nodo
 
 funcion parsear_inseguro(est: ParserEst) -> entero:
