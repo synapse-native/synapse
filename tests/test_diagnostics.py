@@ -2,7 +2,7 @@ import os, glob, time
 import pytest
 
 from conftest import DIR_INVALID, compilar_texto
-from diagnostics import ErrorCodes
+from compilador.diagnostics import ErrorCodes
 
 
 # Mapa: nombre del fixture → códigos de error esperados (al menos uno debe aparecer)

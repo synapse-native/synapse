@@ -2,10 +2,10 @@ import os, json, glob
 import pytest
 
 from conftest import DIR_VALID, compilar_texto, ast_a_canonico_test
-from lexer import Lexer
-from parser import Parser
-from diagnostics import DiagnosticManager
-from ast_nodes import (
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.diagnostics import DiagnosticManager
+from compilador.ast_nodes import (
     TokenID, Programa, DefinicionFuncion, DefinicionEstructura,
     SentenciaSi, SentenciaMientras, SentenciaLanzar, SentenciaRetornar,
     AsignacionVariable, OpBinaria, LiteralNumero, Identificador,

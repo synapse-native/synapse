@@ -8,6 +8,8 @@
         "nombre": "obtener_datos",
         "parametros": [],
         "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
         "cuerpo": [
           {
             "_tipo": "AsignacionVariable",
@@ -40,6 +42,7 @@
           }
         ]
       }
-    ]
+    ],
+    "is_no_std": false
   }
 }

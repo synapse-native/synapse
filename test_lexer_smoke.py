@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smoke test for lexer with ADT tokens"""
 
-from lexer import Lexer
+from compilador.lexer import Lexer
 
 # Read the test file
 with open('tests/test_lexer_ADTs.syn', 'r', encoding='utf-8') as f:

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from compilador.ast_nodes import TokenID, Token, Programa
 from compilador.lexer import Lexer
 from compilador.parser import Parser
-from diagnostics import DiagnosticManager, ErrorCodes
+from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from exceptions import SynapseError
 
 # Reuse the canonical encoder from main.py
@@ -44,7 +44,7 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
         return Programa(), diag
     parser = Parser(tokens, diag)
     ast = parser.parsear()
-    from analizador_semantico import AnalizadorSemantico
+    from compilador.analizador_semantico import AnalizadorSemantico
     analizador = AnalizadorSemantico(ast, diag)
     analizador.analizar()
     return ast, diag

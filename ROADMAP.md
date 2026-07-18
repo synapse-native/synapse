@@ -118,7 +118,7 @@ examples/
 ├── 00_hola_mundo/ ✅
 ├── 01_calculadora/ ✅
 ├── 02_estructuras/ ✅
-├── 03_concurrencia/ ❌ pendiente
+├── 03_concurrencia/ ✅
 ├── 04_ffi/ ❌ pendiente
 ├── 05_json/ ❌ pendiente
 └── 06_oraculo/ ❌ pendiente
@@ -133,10 +133,10 @@ examples/
 
 ## FASE 5: RUNTIME Y BACKEND — Semana 6+
 
-### 5.1. Mejorar `escuchar` (IPC)
-- Reemplazar file polling por señales POSIX / eventos Windows
+### 5.1. Mejorar `escuchar` (IPC) ✅
+- Reemplazar file polling por `CanalConcurrencia` con condvars (bloqueo nativo)
 
-### 5.2. Canales con Buffer
+### 5.2. Canales con Buffer ✅
 - Canales asíncronos con capacidad configurable
 - `cerrar_canal` explícito
 

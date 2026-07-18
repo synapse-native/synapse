@@ -5,9 +5,9 @@ sys.path.insert(0, r"D:\proyecto_synapse")
 with open(r"D:\proyecto_synapse\src\analizador_semantico.syn") as f:
     src = f.read()
 
-from lexer import Lexer
-from parser import Parser
-from diagnostics import DiagnosticManager
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.diagnostics import DiagnosticManager
 
 diag = DiagnosticManager(fuente_lineas=src.split('\n'))
 lex = Lexer(src)

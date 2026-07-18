@@ -17,7 +17,7 @@ from compilador.ast_nodes import (
     ExprAsm,
 )
 from compilador.lexer import OPERADORES_BINARIOS
-from diagnostics import DiagnosticManager, ErrorCodes
+from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
 
 _SYNC_TOP = {TokenID.FUNCTION, TokenID.IMPORT, TokenID.EOF}
@@ -130,10 +130,12 @@ class Parser:
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.COLON
                     and self.pos + 2 < len(self.tokens)
-                    and self.tokens[self.pos + 2].tipo == TokenID.IDENTIFIER
-                    and self.pos + 3 < len(self.tokens)
-                    and self.tokens[self.pos + 3].tipo == TokenID.ASSIGN):
-                return self._parsear_declaracion_tipada()
+                    and self.tokens[self.pos + 2].tipo == TokenID.IDENTIFIER):
+                idx = self.pos + 3
+                while idx < len(self.tokens) and self.tokens[idx].tipo == TokenID.STAR:
+                    idx += 1
+                if idx < len(self.tokens) and self.tokens[idx].tipo == TokenID.ASSIGN:
+                    return self._parsear_declaracion_tipada()
             if (t.tipo == TokenID.IDENTIFIER
                     and self.pos + 3 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.DOT
@@ -534,7 +536,7 @@ class Parser:
     def _parsear_declaracion_tipada(self) -> DeclaracionVariable:
         tok_id = self._avanzar()
         self._esperar(TokenID.COLON)
-        tok_tipo = self._avanzar()
+        tipo = self._parsear_tipo_parametro()
         self._esperar(TokenID.ASSIGN)
         if (self._mirar().tipo in (TokenID.IDENTIFIER, TokenID.CANAL)
                 and self.pos + 1 < len(self.tokens)
@@ -544,7 +546,7 @@ class Parser:
             expr = self._parsear_expresion()
         return DeclaracionVariable(
             nombre=tok_id.valor,
-            tipo=tok_tipo.valor,
+            tipo=tipo,
             expresion=expr,
             linea=tok_id.linea,
             columna=tok_id.columna,

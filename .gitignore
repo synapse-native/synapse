@@ -7,10 +7,10 @@
 *.pdb
 *.zip
 
-# Generados por compilador
-src/main.c
-src/main.exe
-src/main.syn.json
+# Generados por compilador (raíz)
+/*.c
+/*.syn
+/*.syn.json
 *.syn.json
 
 # Temp
@@ -19,6 +19,9 @@ _out_*
 salida_*
 *.bak
 *.bak2
+stderr.txt
+stdout.txt
+test_fs_output.txt
 
 # Python cache
 __pycache__/
@@ -47,6 +50,7 @@ opensyn/principal.exe
 
 # Test artifacts
 tests/*.c
+tests/*.exe
 tests/*.syn
 tests/*.gguf
 tests/*.json
@@ -70,3 +74,6 @@ package-lock.json
 # VS Code extension build
 vscode-extension/out/
 *.vsix
+
+# Axon lock
+axon.lock

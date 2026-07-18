@@ -6,7 +6,7 @@ import os, sys, subprocess, tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from ast_nodes import (
+from compilador.ast_nodes import (
     Programa, Parametro,
     DefinicionFuncion, DefinicionEstructura,
     AsignacionVariable, SentenciaExpr, LogLlamada,
@@ -15,7 +15,7 @@ from ast_nodes import (
     ExprCrearCanal, SentenciaEnviarCanal, ExprRecibirCanal,
     DeclaracionExterna,
 )
-from generator import GeneradorC
+from compilador.generator import GeneradorC
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SYNAPSE_RT_C = os.path.join(PROJECT_ROOT, 'synapse_rt.c')

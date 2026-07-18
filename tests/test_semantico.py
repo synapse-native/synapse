@@ -1,9 +1,9 @@
 import pytest
-from lexer import Lexer
-from parser import Parser
-from analizador_semantico import AnalizadorSemantico
-from diagnostics import DiagnosticManager, ErrorCodes
-from ast_nodes import Programa, DefinicionFuncion, DefinicionEstructura
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.analizador_semantico import AnalizadorSemantico
+from compilador.diagnostics import DiagnosticManager, ErrorCodes
+from compilador.ast_nodes import Programa, DefinicionFuncion, DefinicionEstructura
 
 
 class TestAnalizadorSemanticoVariables:

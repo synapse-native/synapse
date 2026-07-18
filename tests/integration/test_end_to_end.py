@@ -2,11 +2,11 @@ import os
 import tempfile
 import subprocess
 import pytest
-from lexer import Lexer
-from parser import Parser
-from analizador_semantico import AnalizadorSemantico
-from generator import GeneradorC
-from diagnostics import DiagnosticManager
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.analizador_semantico import AnalizadorSemantico
+from compilador.generator import GeneradorC
+from compilador.diagnostics import DiagnosticManager
 from exceptions import SynapseError
 
 
@@ -343,11 +343,11 @@ class TestIntegrationCompilacionReal:
         """Test compilación con gcc de código simple"""
         fuente = "#lang: es\nfuncion principal() -> int:\n    retornar 0"
         
-        from lexer import Lexer
-        from parser import Parser
-        from analizador_semantico import AnalizadorSemantico
-        from generator import GeneradorC
-        from diagnostics import DiagnosticManager
+        from compilador.lexer import Lexer
+        from compilador.parser import Parser
+        from compilador.analizador_semantico import AnalizadorSemantico
+        from compilador.generator import GeneradorC
+        from compilador.diagnostics import DiagnosticManager
         
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()

@@ -1,6 +1,6 @@
 import pytest
-from lexer import Lexer, DICCIONARIOS, TOKEN_UNICARACTER, TOKEN_BICARACTER
-from ast_nodes import TokenID, Token
+from compilador.lexer import Lexer, DICCIONARIOS, TOKEN_UNICARACTER, TOKEN_BICARACTER
+from compilador.ast_nodes import TokenID, Token
 from exceptions import SynapseError
 
 

@@ -52,6 +52,7 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'canal_crear': (['int'], 'CanalConcurrencia*'),
     'canal_enviar': (['CanalConcurrencia*', 'void*'], 'nulo'),
     'canal_recibir': (['CanalConcurrencia*'], 'void*'),
+    'cerrar_canal': (['CanalConcurrencia*'], 'nulo'),
 }
 
 
@@ -283,7 +284,11 @@ class AnalizadorSemantico:
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):
             self._inferir_tipo(nodo.canal) if nodo.canal else None
-            self._inferir_tipo(nodo.respuesta) if nodo.respuesta else None
+            if nodo.respuesta and isinstance(nodo.respuesta, LlamadaFuncion):
+                sim = self.tabla.buscar(nodo.respuesta.nombre)
+                if sim and isinstance(sim.nodo, DefinicionFuncion):
+                    pass
+                self._inferir_tipo(nodo.respuesta)
         elif isinstance(nodo, SentenciaRecuperar):
             self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
             self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
@@ -545,9 +550,11 @@ class AnalizadorSemantico:
                 tipo_arg = self._inferir_tipo(arg)
                 if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(esperado):
                     if tipo_arg == 'decimal' and esperado == 'texto':
-                        continue  # coercion implicita float -> texto
+                        continue
                     if tipo_arg == 'int' and esperado == 'texto':
-                        continue  # coercion implicita int -> texto
+                        continue
+                    if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
+                        continue
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),

@@ -150,20 +150,20 @@ def validar_documento(uri: str, codigo_fuente: str) -> list:
     """
     import traceback
     try:
-        from lexer import Lexer
+        from compilador.lexer import Lexer
     except Exception as e:
         sys.stderr.write(f"[LSP] ERROR importing Lexer: {e}\n{traceback.format_exc()}\n")
         sys.stderr.flush()
         return []
     try:
-        from parser import Parser
+        from compilador.parser import Parser
     except Exception as e:
         sys.stderr.write(f"[LSP] ERROR importing Parser: {e}\n")
         sys.stderr.flush()
         return []
-    from diagnostics import DiagnosticManager
+    from compilador.diagnostics import DiagnosticManager
     try:
-        from analizador_semantico import AnalizadorSemantico
+        from compilador.analizador_semantico import AnalizadorSemantico
     except Exception as e:
         sys.stderr.write(f"[LSP] ERROR importing AnalizadorSemantico: {e}\n")
         sys.stderr.flush()
@@ -205,8 +205,8 @@ def validar_documento(uri: str, codigo_fuente: str) -> list:
 
 
 def _agregar_error_syntax(diag, error):
-    from diagnostics import ErrorCodes
-    from ast_nodes import Token, TokenID
+    from compilador.diagnostics import ErrorCodes
+    from compilador.ast_nodes import Token, TokenID
     diag.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, error.linea, error.columna), mensaje=error.mensaje)
 
 
@@ -231,7 +231,7 @@ def _enviar_diagnostics_archivo(uri: str, texto: str) -> None:
 
 def _nodo_a_texto(expr) -> str:
     """Convierte un nodo de expresión a su representación Synapse."""
-    from ast_nodes import (
+    from compilador.ast_nodes import (
         LiteralNumero, LiteralDecimal, LiteralCadena, Identificador,
         OpBinaria, OpUnaria, LlamadaFuncion, ExprAccesoCampo,
     )
@@ -259,7 +259,7 @@ def _nodo_a_texto(expr) -> str:
 
 def _construir_hover_funcion(fn) -> Optional[dict]:
     """Construye contenido hover para una DefinicionFuncion."""
-    from ast_nodes import DefinicionFuncion
+    from compilador.ast_nodes import DefinicionFuncion
     if not isinstance(fn, DefinicionFuncion):
         return None
 
@@ -406,7 +406,7 @@ def _manejar_hover(msg: dict) -> Optional[dict]:
 
 def _buscar_llamada_en_nodo(nodo, linea: int, columna: int, programa) -> Optional[dict]:
     """Busca recursivamente una LlamadaFuncion en la posición dada y resuelve su definición."""
-    from ast_nodes import (
+    from compilador.ast_nodes import (
         DefinicionFuncion, LlamadaFuncion, SentenciaExpr, AsignacionVariable,
         SentenciaSi, SentenciaMientras, SentenciaRetornar,
         OpBinaria, OpUnaria, ExprAccesoCampo,

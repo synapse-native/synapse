@@ -6,7 +6,7 @@ from compilador.ast_nodes import (
     OpBinaria, OpUnaria, LiteralNumero, Identificador,
     SentenciaExpr, LlamadaFuncion,
 )
-from diagnostics import DiagnosticManager
+from compilador.diagnostics import DiagnosticManager
 
 
 def _parsear(fuente: str):

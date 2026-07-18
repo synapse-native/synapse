@@ -70,11 +70,6 @@ struct ExprTensor;
 struct ExprIndice;
 struct ArgumentoTransferido;
 struct SentenciaImportar;
-struct BloqueInseguro;
-struct ExprObtenerDireccion;
-struct ExprDereferencia;
-struct ImportarC;
-struct DeclaracionExterna;
 struct Programa parsear(CadenaSegura fuente);
 void _expr_a_c(struct Nodo nodo, CadenaSegura buf);
 void _visitar_nodo(struct Nodo nodo, Canal out);
@@ -320,45 +315,11 @@ typedef struct SentenciaImportar {
 static inline struct SentenciaImportar SentenciaImportar_nuevo() {
     struct SentenciaImportar _r={0}; return _r;
 }
-typedef struct BloqueInseguro {
-    CadenaSegura tipo;
-    struct ListaNodo* cuerpo;
-} BloqueInseguro;
-static inline struct BloqueInseguro BloqueInseguro_nuevo() {
-    struct BloqueInseguro _r={0}; return _r;
-}
-typedef struct ExprObtenerDireccion {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} ExprObtenerDireccion;
-static inline struct ExprObtenerDireccion ExprObtenerDireccion_nuevo() {
-    struct ExprObtenerDireccion _r={0}; return _r;
-}
-typedef struct ExprDereferencia {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} ExprDereferencia;
-static inline struct ExprDereferencia ExprDereferencia_nuevo() {
-    struct ExprDereferencia _r={0}; return _r;
-}
-typedef struct ImportarC {
-    CadenaSegura tipo;
-    CadenaSegura ruta;
-    int es_sistema;
-} ImportarC;
-static inline struct ImportarC ImportarC_nuevo() {
-    struct ImportarC _r={0}; return _r;
-}
-typedef struct DeclaracionExterna {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* parametros;
-    CadenaSegura tipo_retorno;
-} DeclaracionExterna;
-static inline struct DeclaracionExterna DeclaracionExterna_nuevo() {
-    struct DeclaracionExterna _r={0}; return _r;
-}
 /* importar compiler.ast_nodes */
+struct Programa parsear(CadenaSegura fuente)
+{
+    return (struct Programa){0};
+}
 /* importar compiler.ast_nodes */
 void _expr_a_c(struct Nodo nodo, CadenaSegura buf)
 {
@@ -375,6 +336,10 @@ void _visitar_lista(struct ListaNodo lista, Canal out)
 void _visitar_programa(struct Programa programa, Canal out)
 {
     return;
+}
+int generar(struct Programa programa, CadenaSegura ruta)
+{
+    return (int){0};
 }
 CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse)
 {

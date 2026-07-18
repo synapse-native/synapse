@@ -20,8 +20,7 @@ from compilador.parser import Parser
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from compilador.analizador_semantico import AnalizadorSemantico
-import resolvedor_axon
-from resolvedor_axon import DepNoDeclaradaError
+from compilador.resolvedor_axon import resolver as _resolver_axon, DepNoDeclaradaError
 
 
 
@@ -462,7 +461,7 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
                         return Programa(), diag_local
                     ruta_importada = _resolver_ruta_sysroot(stmt.ruta)
                 else:
-                    ruta_importada = resolvedor_axon.resolver(stmt.ruta, dir_base, dependencias)
+                    ruta_importada = _resolver_axon(stmt.ruta, dir_base, dependencias)
             except DepNoDeclaradaError:
                 diag_local.reportar(
                     ErrorCodes.ERR_DEP_NOT_DECLARED,

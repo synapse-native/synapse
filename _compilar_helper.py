@@ -9,8 +9,8 @@ import sys, json, os, io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from main import compilar_desde_texto
-from generator import GeneradorC
-from diagnostics import DiagnosticManager
+from compilador.generator import GeneradorC
+from compilador.diagnostics import DiagnosticManager
 
 def compilar(ruta_archivo):
     diag = DiagnosticManager(idioma='es', ruta_archivo=ruta_archivo)
