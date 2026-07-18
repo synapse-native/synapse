@@ -14,7 +14,7 @@
 |------|--------|--------|-------|
 | **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed |
 | **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
-| **F2: Reparación del generador C** | ⏳ **PARCIAL** | 5/7 tareas | 231 passed |
+| **F2: Reparación del generador C** | ⏳ **PARCIAL** | 6/8 tareas | 231 passed |
 | **F3: Bootstrap** | ⏳ Pendiente | 0/6 tareas | — |
 | **F4: Refactor del generador** | ⏳ Pendiente | 0/6 tareas | — |
 | **F5: CI/CD** | ⏳ Pendiente | 0/5 tareas | — |
@@ -102,7 +102,8 @@ Estructura de errores gcc:
 | 2.4 | Tests de regresión | — | 🟢 Bajo | ✅ **COMPLETADA** (231 passed) |
 | 2.5 | Arreglar plantillas emitidas en `generator.syn` | `nucleo/generator.syn` | 🔴 Alto | ✅ **COMPLETADA PARCIAL** |
 | 2.6 | Fix tipado `char*` vs `CadenaSegura` | `nucleo/generator.syn`<br>`compilador/generator.py`<br>`compilador/analizador_semantico.py`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.7 | Corregir 83 errores `request for member` en plantillas emitidas | `nucleo/generator.syn` | 🔴 Alto | ⏳ Pendiente |
+| 2.7 | Corregir _P_Token scope + .datos en struct members | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
+| 2.8 | Corregir 51 errores restantes (dangling else, escapes, undeclared) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ⏳ Pendiente |
 
 #### Detalle F2.6 completada
 | Cambio | Archivo | Impacto |
@@ -179,7 +180,7 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 |---------|---------------|--------|----------|
 | Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
 | Tests pasando | 247 | **231** (sin oráculo) | > 260 |
-| `gcc -c generator.c` | ❌ 403 err | ❌ 376 err (↓6.7%) | ✅ 0 err |
+| `gcc -c generator.c` | ❌ 403 err | ❌ **51 err (↓87%)** | ✅ 0 err |
 | Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
 | Bootstrap completo | ❌ | ❌ | ✅ Stage2==Stage3 |
 | Código muerto (líneas) | ~50 | **0** | 0 ✅ |
@@ -191,8 +192,8 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 | Riesgo | Fase | Mitigación |
 |--------|------|------------|
-| `generator.c` tiene 382 errores en plantillas emitidas | 2 | Arreglar las plantillas en `generator.syn` (los bloques asm() que emiten código C incorrecto) |
-| Sin bootstrap hasta que `generator.c` compile | 2-3 | Usar pipeline Python como fuente de verdad mientras tanto |
+| `generator.c` tiene 51 errores restantes (dangling else, escapes, undeclared) | 2.8 | Fase 2.8 dedicada: 3 fixup rules nuevas + fixes en generator.syn |
+| Sin bootstrap hasta que `generator.c` compile con 0 errores | 2-3 | Usar pipeline Python como fuente de verdad mientras tanto |
 | `_GEN_TMP_SIZE` duplicado en `estado_global.syn` y `generator.syn` | 1 | Eliminar de `estado_global.syn` (es documentación) |
 
 ---
