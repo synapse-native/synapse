@@ -109,15 +109,20 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
         ctx.push_scope()
         if "(" in patron and ")" in patron:
             var_name = patron.split("(")[1].rstrip(")")
-            # Look up field type from the specific ADT being matched
+            # Look up field type + actual union field name from ADT struct
             bound_type = 'int'  # fallback
-            adt_name = tipo_expr.replace("struct ", "") if tipo_expr.startswith("struct ") else ""
+            campo_dato = 'valor'  # default fallback field name
+            adt_name = tipo_syn.replace("struct ", "") if tipo_syn.startswith("struct ") else ""
             if adt_name in ctx._estructuras:
                 for cname, ctype in ctx._estructuras[adt_name].get('campos', []):
-                    if cname == var_name:
-                        bound_type = ctx.traducir_tipo_c(ctype)
-                        break
-            ctx.write_line(f"{bound_type} {var_name} = {var_temp}.dato.{var_name};")
+                    if cname != 'tag':
+                        if campo_dato == 'valor':
+                            campo_dato = cname  # first non-tag field as default
+                        if cname == var_name:
+                            campo_dato = cname
+                            bound_type = ctx.traducir_tipo_c(ctype)
+                            break
+            ctx.write_line(f"{bound_type} {var_name} = {var_temp}.dato.{campo_dato};")
         if hasattr(caso, 'cuerpo') and caso.cuerpo:
             for s in caso.cuerpo:
                 _visitar_stmt(ctx, s)

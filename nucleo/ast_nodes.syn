@@ -1,265 +1,188 @@
 #lang: es
+// ast_nodes.syn — Tipos compuestos del AST en Synapse puro
+// Cada estructura define un nodo del arbol. Los campos que apuntan
+// a otras estructuras del AST se convierten automaticamente en
+// punteros en C para evitar recursion infinita en el tipo.
 
 estructura Token:
     tipo: entero
+    lexema: texto
     linea: entero
     columna: entero
-    valor: cadena
 
 estructura Nodo:
-    linea: entero
-    columna: entero
+    tipo: texto
+
+estructura ListaNodo:
+    cabeza: Nodo
+    cola: ListaNodo
 
 estructura Programa:
-    linea: entero
-    columna: entero
-    sentencias: Nodo
-    es_sin_std: booleano
+    tipo: texto
+    sentencias: ListaNodo
 
-estructura Parametro:
-    nombre: cadena
-    tipo: cadena
-    es_transferencia: booleano
+estructura Identificador:
+    tipo: texto
+    nombre: texto
 
-estructura DefinicionFuncion:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    parametros: Parametro
-    tipo_retorno: cadena
-    contratos_req: Nodo
-    contratos_gar: Nodo
-    cuerpo: Nodo
+estructura LiteralNumero:
+    tipo: texto
+    valor: entero
 
-estructura SentenciaSi:
-    linea: entero
-    columna: entero
-    condicion: Nodo
-    cuerpo: Nodo
-    cuerpo_sino: Nodo
-
-estructura SentenciaLanzar:
-    linea: entero
-    columna: entero
-    llamada: Nodo
-
-estructura SentenciaRecuperar:
-    linea: entero
-    columna: entero
-    accion_critica: Nodo
-    plan_b: Nodo
-
-estructura SentenciaRetornar:
-    linea: entero
-    columna: entero
-    expr: Nodo
-    es_transferencia: booleano
-
-estructura SentenciaEscuchar:
-    linea: entero
-    columna: entero
-    expr_canal: Nodo
-    respuesta: Nodo
-
-estructura SentenciaMientras:
-    linea: entero
-    columna: entero
-    condicion: Nodo
-    cuerpo: Nodo
-
-estructura SentenciaPara:
-    linea: entero
-    columna: entero
-    inicializacion: Nodo
-    condicion: Nodo
-    incremento: Nodo
-    cuerpo: Nodo
-
-estructura SentenciaRomper:
-    linea: entero
-    columna: entero
-
-estructura SentenciaSiguiente:
-    linea: entero
-    columna: entero
+estructura LiteralCadena:
+    tipo: texto
+    valor: texto
 
 estructura OpBinaria:
-    linea: entero
-    columna: entero
+    tipo: texto
     izquierdo: Nodo
-    operador: cadena
+    operador: Token
     derecho: Nodo
 
 estructura OpUnaria:
-    linea: entero
-    columna: entero
-    operador: cadena
+    tipo: texto
+    operador: Token
     expr: Nodo
 
 estructura LlamadaFuncion:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    argumentos: Nodo
+    tipo: texto
+    nombre: texto
+    argumentos: ListaNodo
 
-estructura Identificador:
-    linea: entero
-    columna: entero
-    nombre: cadena
-
-estructura LiteralNumero:
-    linea: entero
-    columna: entero
-    valor: entero
-
-estructura LiteralDecimal:
-    linea: entero
-    columna: entero
-    valor: decimal
-
-estructura LiteralCadena:
-    linea: entero
-    columna: entero
-    valor: cadena
-
-estructura LiteralBooleano:
-    linea: entero
-    columna: entero
-    valor: booleano
-
-estructura SentenciaExpr:
-    linea: entero
-    columna: entero
-    expr: Nodo
+estructura ExprAccesoCampo:
+    tipo: texto
+    objeto: Nodo
+    nombre_campo: texto
 
 estructura AsignacionVariable:
-    linea: entero
-    columna: entero
-    nombre: cadena
+    tipo: texto
+    nombre: texto
     expresion: Nodo
 
-estructura DeclaracionVariable:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    tipo: cadena
+estructura AsignacionCampo:
+    tipo: texto
+    objeto: Nodo
+    nombre_campo: texto
     expresion: Nodo
+
+estructura SentenciaSi:
+    tipo: texto
+    condicion: Nodo
+    cuerpo: ListaNodo
+    cuerpo_sino: ListaNodo
+
+estructura SentenciaMientras:
+    tipo: texto
+    condicion: Nodo
+    cuerpo: ListaNodo
+
+estructura SentenciaRetornar:
+    tipo: texto
+    expr: Nodo
+
+estructura SentenciaExpr:
+    tipo: texto
+    expr: Nodo
 
 estructura LogLlamada:
-    linea: entero
-    columna: entero
-    argumentos: Nodo
+    tipo: texto
+    argumentos: ListaNodo
 
-estructura SentenciaImportar:
-    linea: entero
-    columna: entero
-    ruta: cadena
+estructura Parametro:
+    tipo: texto
+    nombre: texto
+    tipo_param: texto
+    es_transferencia: booleano
 
-estructura BloqueInseguro:
-    linea: entero
-    columna: entero
-    cuerpo: Nodo
+estructura ListaParametro:
+    cabeza: Parametro
+    cola: ListaParametro
 
-estructura ExprObtenerDireccion:
-    linea: entero
-    columna: entero
-    expr: Nodo
+estructura DefinicionFuncion:
+    tipo: texto
+    nombre: texto
+    parametros: ListaParametro
+    tipo_retorno: texto
+    requiere: ListaNodo
+    garantiza: ListaNodo
+    cuerpo: ListaNodo
 
-estructura ExprDereferencia:
-    linea: entero
-    columna: entero
-    expr: Nodo
+estructura DefinicionEstructura:
+    tipo: texto
+    nombre: texto
+    campos: ListaParametro
 
-estructura TipoPuntero:
-    tipo_base: cadena
+estructura SentenciaRomper:
+    tipo: texto
 
-estructura ImportarC:
-    linea: entero
-    columna: entero
-    ruta: cadena
-    es_sistema: booleano
+estructura SentenciaSiguiente:
+    tipo: texto
 
-estructura DeclaracionExterna:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    parametros: Parametro
-    tipo_retorno: cadena
+estructura SentenciaLanzar:
+    tipo: texto
+    llamada: Nodo
+
+estructura SentenciaRecuperar:
+    tipo: texto
+    accion_critica: Nodo
+    plan_b: Nodo
+
+estructura SentenciaEscuchar:
+    tipo: texto
+    canal: Nodo
+    respuesta: Nodo
 
 estructura ExprTensor:
-    linea: entero
-    columna: entero
+    tipo: texto
     filas: Nodo
     columnas: Nodo
 
 estructura ExprIndice:
-    linea: entero
-    columna: entero
+    tipo: texto
     expr: Nodo
     indice: Nodo
 
 estructura ArgumentoTransferido:
-    linea: entero
-    columna: entero
+    tipo: texto
     expr: Nodo
 
-estructura DefinicionEstructura:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    campos: Parametro
+estructura SentenciaImportar:
+    tipo: texto
+    ruta: texto
 
-estructura ExprAccesoCampo:
-    linea: entero
-    columna: entero
-    objeto: Nodo
-    nombre_campo: cadena
+estructura BloqueInseguro:
+    tipo: texto
+    cuerpo: ListaNodo
 
-estructura AsignacionCampo:
-    linea: entero
-    columna: entero
-    objeto: Nodo
-    nombre_campo: cadena
-    expresion: Nodo
+estructura ExprObtenerDireccion:
+    tipo: texto
+    expr: Nodo
 
-estructura StmtConstante:
-    linea: entero
-    columna: entero
-    nombre: cadena
-    tipo: cadena
-    valor: Nodo
+estructura ExprDereferencia:
+    tipo: texto
+    expr: Nodo
 
-estructura NodoCaso:
-    linea: entero
-    columna: entero
-    patron: cadena
-    cuerpo: Nodo
-    tipo_extraido: cadena
+estructura ImportarC:
+    tipo: texto
+    ruta: texto
+    es_sistema: booleano
 
-estructura NodoCoincidir:
-    linea: entero
-    columna: entero
-    expresion: Nodo
-    casos: NodoCaso
-
-estructura ExprAsm:
-    linea: entero
-    columna: entero
-    instruccion: cadena
+estructura DeclaracionExterna:
+    tipo: texto
+    nombre: texto
+    parametros: ListaParametro
+    tipo_retorno: texto
 
 estructura ExprCrearCanal:
-    linea: entero
-    columna: entero
-    tipo_contenido: cadena
+    tipo: texto
+    tipo_contenido: texto
     capacidad: Nodo
 
 estructura SentenciaEnviarCanal:
-    linea: entero
-    columna: entero
-    expr_canal: Nodo
+    tipo: texto
+    canal: Nodo
     valor: Nodo
 
 estructura ExprRecibirCanal:
-    linea: entero
-    columna: entero
-    expr_canal: Nodo
+    tipo: texto
+    canal: Nodo

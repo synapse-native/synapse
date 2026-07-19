@@ -40,20 +40,20 @@ class GeneratorContext:
 
         # Builtin function signature maps
         self._BUILTINS: Dict[str, str] = {
-            'reserva': 'Tensor', 'libera': 'void',
-            'crear_tensor': 'Tensor', 'suma_tensor': 'Tensor',
-            'producto_punto': 'Tensor', 'abrir': 'Canal',
-            'leer': 'CadenaSegura', 'escribir': 'void',
-            'escribir_linea': 'void', 'leer_linea': 'CadenaSegura',
-            'cerrar': 'void', 'suma': 'Tensor', 'producto': 'Tensor',
-            'relu': 'Tensor', 'tokenizar': 'int',
+            'reserva': 'tensor', 'libera': 'void',
+            'crear_tensor': 'tensor', 'suma_tensor': 'tensor',
+            'producto_punto': 'tensor', 'abrir': 'Canal',
+            'leer': 'texto', 'escribir': 'void',
+            'escribir_linea': 'void', 'leer_linea': 'texto',
+            'cerrar': 'void', 'suma': 'tensor', 'producto': 'tensor',
+            'relu': 'tensor', 'tokenizar': 'int',
             'parsear': 'struct Programa', 'generar': 'int',
-            'concat': 'CadenaSegura', '_argc': 'int',
-            '_argv': 'CadenaSegura', 'salir': 'void',
+            'concat': 'texto', '_argc': 'int',
+            '_argv': 'texto', 'salir': 'void',
             'canal_crear': 'CanalConcurrencia*', 'canal_enviar': 'void',
-            'canal_recibir': 'void*', 'cerrar_canal': 'void',
+            'canal_recibir': 'puntero', 'cerrar_canal': 'void',
             'texto_a_entero': 'int', 'texto_a_decimal': 'float',
-            'decimal_a_texto': 'CadenaSegura', 'entero_a_texto': 'CadenaSegura',
+            'decimal_a_texto': 'texto', 'entero_a_texto': 'texto',
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
@@ -140,6 +140,7 @@ class GeneratorContext:
         self._func_param_types: Dict[str, List[str]] = {}
         self._in_function_scope = False
         self._garantizas_actuales: List[Nodo] = []
+        self._current_func_return_type: str = 'int'
 
         # Emit flags
         self._gen_tok_emitido = False
@@ -156,9 +157,15 @@ class GeneratorContext:
             '_P_pila_indent': ('int', 64),
         }
 
+
+
         # Destructor map for RAII types
+        # NOTE: Use Synapse type names (texto not CadenaSegura) for consistency
+        # with tipo_de_expr and _variables which store Synapse types.
         self._destructor_map: Dict[str, str] = {
             'CadenaSegura': '_syn_texto_liberar',
+            'texto': '_syn_texto_liberar',
+            'cadena': '_syn_texto_liberar',
             'NodoJson': '_json_nodo_liberar',
             'struct NodoJson': '_json_nodo_liberar',
             'NodoToml': '_toml_nodo_liberar',

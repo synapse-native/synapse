@@ -16,12 +16,7 @@ from compilador.ast_nodes import (
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
     expr_a_c, tipo_de_expr, formato_espec,
-    emitir_tokenizar, emitir_reserva, emitir_libera,
-    emitir_abrir, emitir_leer,
-    emitir_escribir, emitir_escribir_linea, emitir_leer_linea,
-    emitir_cerrar, emitir_suma, emitir_producto, emitir_relu,
-    emitir_crear_tensor, emitir_suma_tensor, emitir_producto_punto,
-    emitir_token_defs,
+    emitir_tokenizar, emitir_token_defs,
 )
 from .emit_selfhost import (
     emitir_parsear, emitir_volcar_ast, emitir_generar,
@@ -29,25 +24,14 @@ from .emit_selfhost import (
 
 
 # Mapa de builtins a sus emisores
+# Auto-hospedaje: tokenizar, parsear, generar, volcar_ast.
+# I/O y tensor functions están en synapse_rt.o y se linkean.
+# (No incluirlas aquí causa multiple-definition linker errors)
 _BUILTIN_EMITTER_MAP = {
     'tokenizar': emitir_tokenizar,
     'parsear': emitir_parsear,
     'generar': emitir_generar,
     'volcar_ast': emitir_volcar_ast,
-    'reserva': emitir_reserva,
-    'libera': emitir_libera,
-    'abrir': emitir_abrir,
-    'leer': emitir_leer,
-    'escribir': emitir_escribir,
-    'escribir_linea': emitir_escribir_linea,
-    'leer_linea': emitir_leer_linea,
-    'cerrar': emitir_cerrar,
-    'suma': emitir_suma,
-    'producto': emitir_producto,
-    'relu': emitir_relu,
-    'crear_tensor': emitir_crear_tensor,
-    'suma_tensor': emitir_suma_tensor,
-    'producto_punto': emitir_producto_punto,
 }
 
 
@@ -292,6 +276,7 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     for p in nodo.parametros:
         ctx._variables[p.nombre] = p.tipo
 
+    ctx._current_func_return_type = nodo.tipo_retorno
     tipo = ctx.traducir_tipo_c(nodo.tipo_retorno)
     params = ", ".join(
         f"{ctx.traducir_tipo_c(p.tipo)} {p.nombre}"
@@ -382,14 +367,17 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
 # ================================================================
 
 def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
-    """Genera código C para return, con variable temporal + destructores."""
+    """Genera código C para return, con variable temporal + destructores.
+    Usa el tipo de retorno declarado de la función actual (_current_func_return_type)
+    en vez del tipo inferido de la expresión (más robusto para self-hosting).
+    """
     excl = ''
     if nodo.expr and isinstance(nodo.expr, Identificador):
         excl = nodo.expr.nombre
         ctx._tensor_vars_transferidas.add(excl)
     
     if nodo.expr:
-        ret_tipo_syn = tipo_de_expr(ctx, nodo.expr)  # Synapse type
+        ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
         temp = f"_ret_{nodo.linea or 0}"

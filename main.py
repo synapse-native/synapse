@@ -582,9 +582,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         if ast.is_no_std:
             no_std_flags = "-ffreestanding -fno-builtin"
             # Bare-metal: no runtime object, no pthreads, no networking
-            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp {no_std_flags} "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
+            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp {no_std_flags} -I. "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
         else:
-            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
+            gcc_cmd = f'gcc -O2 -fno-ident -Wl,--no-insert-timestamp -I. "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] GCC: {gcc_cmd}")
         rc = os.system(gcc_cmd)
         if rc != 0:

@@ -6534,16 +6534,16 @@
             "tipo": "entero"
           },
           {
+            "nombre": "lexema",
+            "tipo": "texto"
+          },
+          {
             "nombre": "linea",
             "tipo": "entero"
           },
           {
             "nombre": "columna",
             "tipo": "entero"
-          },
-          {
-            "nombre": "valor",
-            "tipo": "cadena"
           }
         ]
       },
@@ -6552,12 +6552,22 @@
         "nombre": "Nodo",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ListaNodo",
+        "campos": [
+          {
+            "nombre": "cabeza",
+            "tipo": "Nodo"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "cola",
+            "tipo": "ListaNodo"
           }
         ]
       },
@@ -6566,75 +6576,169 @@
         "nombre": "Programa",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "sentencias",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "es_sin_std",
-            "tipo": "booleano"
+            "tipo": "ListaNodo"
           }
         ]
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "Parametro",
+        "nombre": "Identificador",
         "campos": [
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
           {
             "nombre": "tipo",
-            "tipo": "cadena"
+            "tipo": "texto"
           },
           {
-            "nombre": "es_transferencia",
-            "tipo": "booleano"
+            "nombre": "nombre",
+            "tipo": "texto"
           }
         ]
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "DefinicionFuncion",
+        "nombre": "LiteralNumero",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
+            "nombre": "valor",
             "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "LiteralCadena",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "OpBinaria",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "izquierdo",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "operador",
+            "tipo": "Token"
+          },
+          {
+            "nombre": "derecho",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "OpUnaria",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "operador",
+            "tipo": "Token"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "LlamadaFuncion",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "nombre",
-            "tipo": "cadena"
+            "tipo": "texto"
           },
           {
-            "nombre": "parametros",
-            "tipo": "Parametro"
+            "nombre": "argumentos",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprAccesoCampo",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "tipo_retorno",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "contratos_req",
+            "nombre": "objeto",
             "tipo": "Nodo"
           },
           {
-            "nombre": "contratos_gar",
+            "nombre": "nombre_campo",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "AsignacionVariable",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expresion",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "AsignacionCampo",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "objeto",
             "tipo": "Nodo"
           },
           {
-            "nombre": "cuerpo",
+            "nombre": "nombre_campo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expresion",
             "tipo": "Nodo"
           }
         ]
@@ -6644,12 +6748,8 @@
         "nombre": "SentenciaSi",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "condicion",
@@ -6657,11 +6757,179 @@
           },
           {
             "nombre": "cuerpo",
-            "tipo": "Nodo"
+            "tipo": "ListaNodo"
           },
           {
             "nombre": "cuerpo_sino",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaMientras",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "condicion",
             "tipo": "Nodo"
+          },
+          {
+            "nombre": "cuerpo",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaRetornar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaExpr",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "LogLlamada",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "argumentos",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Parametro",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "tipo_param",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "es_transferencia",
+            "tipo": "booleano"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ListaParametro",
+        "campos": [
+          {
+            "nombre": "cabeza",
+            "tipo": "Parametro"
+          },
+          {
+            "nombre": "cola",
+            "tipo": "ListaParametro"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DefinicionFuncion",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "parametros",
+            "tipo": "ListaParametro"
+          },
+          {
+            "nombre": "tipo_retorno",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "requiere",
+            "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "garantiza",
+            "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "cuerpo",
+            "tipo": "ListaNodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DefinicionEstructura",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "campos",
+            "tipo": "ListaParametro"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaRomper",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "SentenciaSiguiente",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
           }
         ]
       },
@@ -6670,12 +6938,8 @@
         "nombre": "SentenciaLanzar",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "llamada",
@@ -6688,12 +6952,8 @@
         "nombre": "SentenciaRecuperar",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "accion_critica",
@@ -6707,40 +6967,14 @@
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaRetornar",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "es_transferencia",
-            "tipo": "booleano"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
         "nombre": "SentenciaEscuchar",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr_canal",
+            "nombre": "canal",
             "tipo": "Nodo"
           },
           {
@@ -6751,469 +6985,11 @@
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaMientras",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "condicion",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "cuerpo",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaPara",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "inicializacion",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "condicion",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "incremento",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "cuerpo",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaRomper",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaSiguiente",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "OpBinaria",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "izquierdo",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "operador",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "derecho",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "OpUnaria",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "operador",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "expr",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LlamadaFuncion",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "argumentos",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "Identificador",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LiteralNumero",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "valor",
-            "tipo": "entero"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LiteralDecimal",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "valor",
-            "tipo": "decimal"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LiteralCadena",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "valor",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LiteralBooleano",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "valor",
-            "tipo": "booleano"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaExpr",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "AsignacionVariable",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "expresion",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "DeclaracionVariable",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "tipo",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "expresion",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "LogLlamada",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "argumentos",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "SentenciaImportar",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "ruta",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "BloqueInseguro",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "cuerpo",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "ExprObtenerDireccion",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "ExprDereferencia",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "TipoPuntero",
-        "campos": [
-          {
-            "nombre": "tipo_base",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "ImportarC",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "ruta",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "es_sistema",
-            "tipo": "booleano"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "DeclaracionExterna",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "parametros",
-            "tipo": "Parametro"
-          },
-          {
-            "nombre": "tipo_retorno",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
         "nombre": "ExprTensor",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "filas",
@@ -7230,12 +7006,8 @@
         "nombre": "ExprIndice",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "expr",
@@ -7252,12 +7024,8 @@
         "nombre": "ArgumentoTransferido",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "expr",
@@ -7267,163 +7035,97 @@
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "DefinicionEstructura",
+        "nombre": "SentenciaImportar",
         "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "campos",
-            "tipo": "Parametro"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "ExprAccesoCampo",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "objeto",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "nombre_campo",
-            "tipo": "cadena"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "AsignacionCampo",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "objeto",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "nombre_campo",
-            "tipo": "cadena"
-          },
-          {
-            "nombre": "expresion",
-            "tipo": "Nodo"
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionEstructura",
-        "nombre": "StmtConstante",
-        "campos": [
-          {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "nombre",
-            "tipo": "cadena"
-          },
           {
             "nombre": "tipo",
-            "tipo": "cadena"
+            "tipo": "texto"
           },
           {
-            "nombre": "valor",
-            "tipo": "Nodo"
+            "nombre": "ruta",
+            "tipo": "texto"
           }
         ]
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "NodoCaso",
+        "nombre": "BloqueInseguro",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "patron",
-            "tipo": "cadena"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "cuerpo",
-            "tipo": "Nodo"
-          },
-          {
-            "nombre": "tipo_extraido",
-            "tipo": "cadena"
+            "tipo": "ListaNodo"
           }
         ]
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "NodoCoincidir",
+        "nombre": "ExprObtenerDireccion",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expresion",
+            "nombre": "expr",
             "tipo": "Nodo"
-          },
-          {
-            "nombre": "casos",
-            "tipo": "NodoCaso"
           }
         ]
       },
       {
         "_tipo": "DefinicionEstructura",
-        "nombre": "ExprAsm",
+        "nombre": "ExprDereferencia",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "expr",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ImportarC",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "instruccion",
-            "tipo": "cadena"
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "es_sistema",
+            "tipo": "booleano"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "DeclaracionExterna",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "parametros",
+            "tipo": "ListaParametro"
+          },
+          {
+            "nombre": "tipo_retorno",
+            "tipo": "texto"
           }
         ]
       },
@@ -7432,16 +7134,12 @@
         "nombre": "ExprCrearCanal",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "columna",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
             "nombre": "tipo_contenido",
-            "tipo": "cadena"
+            "tipo": "texto"
           },
           {
             "nombre": "capacidad",
@@ -7454,15 +7152,11 @@
         "nombre": "SentenciaEnviarCanal",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr_canal",
+            "nombre": "canal",
             "tipo": "Nodo"
           },
           {
@@ -7476,15 +7170,11 @@
         "nombre": "ExprRecibirCanal",
         "campos": [
           {
-            "nombre": "linea",
-            "tipo": "entero"
+            "nombre": "tipo",
+            "tipo": "texto"
           },
           {
-            "nombre": "columna",
-            "tipo": "entero"
-          },
-          {
-            "nombre": "expr_canal",
+            "nombre": "canal",
             "tipo": "Nodo"
           }
         ]

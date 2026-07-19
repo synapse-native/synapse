@@ -805,18 +805,33 @@ class Parser:
             if self._mirar().tipo == TokenID.NEWLINE:
                 self._avanzar()
                 continue
-            tok_campo = self._esperar(TokenID.IDENTIFIER)
-            if tok_campo is None:
+            # Accept any token as field name (keywords included)
+            tok_campo = self._mirar()
+            if tok_campo.tipo in (TokenID.DEDENT, TokenID.EOF, TokenID.COLON):
+                break
+            self._avanzar()
+            # Keyword tokens have empty 'valor' in the lexer - use tipo.name as fallback
+            campo_nombre = tok_campo.valor
+            if not campo_nombre and tok_campo.tipo is not None:
+                campo_nombre = tok_campo.tipo.name.lower()
+            if not campo_nombre:
                 self._sincronizar(_SYNC_BLOCK)
                 break
             if self._esperar(TokenID.COLON) is None:
                 self._sincronizar(_SYNC_BLOCK)
                 break
-            tok_tipo = self._esperar(TokenID.IDENTIFIER)
-            if tok_tipo is None:
+            # Accept any token as field type (keywords included)
+            tok_tipo = self._mirar()
+            if tok_tipo.tipo in (TokenID.DEDENT, TokenID.EOF, TokenID.NEWLINE):
                 self._sincronizar(_SYNC_BLOCK)
                 break
-            campos.append(Parametro(nombre=tok_campo.valor, tipo=tok_tipo.valor))
+            self._avanzar()
+            tipo_valor = tok_tipo.valor
+            if not tipo_valor and tok_tipo.tipo is not None:
+                tipo_valor = tok_tipo.tipo.name.lower()
+            if not tipo_valor:
+                tipo_valor = 'int'
+            campos.append(Parametro(nombre=campo_nombre, tipo=tipo_valor))
             if self._mirar().tipo == TokenID.NEWLINE:
                 self._avanzar()
         if self._mirar().tipo != TokenID.EOF:
@@ -1031,4 +1046,4 @@ class Parser:
         elif self._mirar().tipo == TokenID.STAR:
             self._avanzar()
             tipo += '*'
-        return tipo
+        return tipo

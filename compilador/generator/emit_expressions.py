@@ -33,7 +33,7 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, LiteralDecimal):
         return 'float'
     if isinstance(nodo, LiteralCadena):
-        return 'CadenaSegura'
+        return 'texto'  # Synapse type name (consistent with traducir_tipo_c)
     if isinstance(nodo, LiteralBooleano):
         return 'int'
 
@@ -153,8 +153,13 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return "1" if nodo.valor else "0"
 
     if isinstance(nodo, LiteralCadena):
-        # Escapar la cadena y crear CadenaSegura literal
-        val = nodo.valor.replace('\\', '\\\\').replace('"', '\\"')
+        # Escapar la cadena para C: \n, \r, \t, \\, \"
+        val = nodo.valor
+        val = val.replace('\\', '\\\\')  # backslash first!
+        val = val.replace('\"', '\\"')
+        val = val.replace('\n', '\\n')
+        val = val.replace('\r', '\\r')
+        val = val.replace('\t', '\\t')
         return (
             f"(CadenaSegura){{ .longitud = (int)strlen(\"{val}\"),"
             f" .datos = \"{val}\" }}"
@@ -169,13 +174,36 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, OpBinaria):
         izq = expr_a_c(ctx, nodo.izquierdo)
         der = expr_a_c(ctx, nodo.derecho)
+        op = getattr(nodo, 'operador', '+')
+        izq_tipo_raw = tipo_de_expr(ctx, nodo.izquierdo)
+        der_tipo_raw = tipo_de_expr(ctx, nodo.derecho)
+        _es_str = lambda t: t in ('CadenaSegura', 'texto', 'cadena')
+        izq_es_str = _es_str(izq_tipo_raw)
+        der_es_str = _es_str(der_tipo_raw)
+        # String concatenation: use concat() instead of +
+        if op == '+':
+            if izq_es_str or der_es_str:
+                def _to_str2(e, t):
+                    if _es_str(t): return e
+                    if t in ('int', 'entero'): return f"entero_a_texto({e})"
+                    if t in ('float', 'decimal', 'real'): return f"decimal_a_texto({e})"
+                    return e
+                a_s = _to_str2(izq, izq_tipo_raw)
+                b_s = _to_str2(der, der_tipo_raw)
+                return f"concat({a_s}, {b_s})"
+        # String comparison: use str_eq() instead of ==/!=
+        if op in ('==', '!='):
+            if izq_es_str or der_es_str:
+                if op == '==':
+                    return f"(str_eq({izq}, {der}) == 1)"
+                else:
+                    return f"(str_eq({izq}, {der}) == 0)"
         op_map = {
             '+': '+', '-': '-', '*': '*', '/': '/', '%': '%',
             'y': '&&', 'o': '||',
             '==': '==', '!=': '!=', '<': '<', '>': '>',
             '<=': '<=', '>=': '>=',
         }
-        op = getattr(nodo, 'operador', '+')
         c_op = op_map.get(op, op)
         return f"({izq} {c_op} {der})"
 
@@ -194,6 +222,13 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
         args_str = ", ".join(args)
+
+        # Struct constructor: use C compound literal instead of function call
+        if nombre in ctx._estructuras:
+            if not args:
+                return f"({ctx.traducir_tipo_c(nombre)}){{0}}"
+            else:
+                return f"({ctx.traducir_tipo_c(nombre)}){{{args_str}}}"
 
         # Coercion for functions expecting CadenaSegura
         if nombre in ctx._FUNCIONES_ESPERAN_TEXTO:
@@ -264,20 +299,12 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
 def visitar_log(ctx: GeneratorContext, nodo: LogLlamada):
     """Genera código C para log()."""
-    partes = []
-    for a in nodo.argumentos:
-        tipo_a = tipo_de_expr(ctx, a)
-        if tipo_a == 'CadenaSegura':
-            partes.append(f"{expr_a_c(ctx, a)}.datos")
-        elif tipo_a == 'float':
-            partes.append(expr_a_c(ctx, a))
-        else:
-            partes.append(expr_a_c(ctx, a))
+    _es_str = lambda t: t in ('CadenaSegura', 'texto', 'cadena')
     fmt_parts = []
     arg_parts = []
     for a in nodo.argumentos:
         tipo_a = tipo_de_expr(ctx, a)
-        if tipo_a == 'CadenaSegura':
+        if _es_str(tipo_a):
             fmt_parts.append("%s")
             arg_parts.append(f"{expr_a_c(ctx, a)}.datos")
         elif tipo_a == 'float':
@@ -341,23 +368,36 @@ def emitir_abrir(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx.inc_indent()
     ctx.write_line("Canal _c = {0};")
     ctx.write_line("_c.es_virtual = 0;")
+    EMBEDDED_LIB_MAP = {
+        'ast_nodes': 'LIB_AST',
+        'lexer': 'LIB_LEXER',
+        'parser': 'LIB_PARSER',
+        'generator': 'LIB_GENERATOR',
+        'io': 'LIB_IO',
+        'mem': 'LIB_MEM',
+        'math': 'LIB_MATH',
+        'fs': 'LIB_FS',
+        'sys': 'LIB_SYS',
+    }
     for lib in ['ast_nodes', 'lexer', 'parser', 'generator']:
+        const_name = EMBEDDED_LIB_MAP.get(lib, f'LIB_{lib.upper()}')
         ctx.write_line(
             f'if (strcmp(ruta.datos, "librerias/compiler/{lib}.syn") == 0) {{'
         )
         ctx.inc_indent()
-        ctx.write_line(f'_c.es_virtual = 1; _c.virtual_data = LIB_{lib.upper()};')
-        ctx.write_line(f'_c.virtual_len = (int)strlen(LIB_{lib.upper()});')
+        ctx.write_line(f'_c.es_virtual = 1; _c.virtual_data = {const_name};')
+        ctx.write_line(f'_c.virtual_len = (int)strlen({const_name});')
         ctx.write_line("_c.es_valido = 1; return _c;")
         ctx.dec_indent()
         ctx.write_line("}")
     for lib in ['io', 'mem', 'math', 'fs', 'sys']:
+        const_name = EMBEDDED_LIB_MAP.get(lib, f'LIB_{lib.upper()}')
         ctx.write_line(
             f'if (strcmp(ruta.datos, "librerias/std/{lib}.syn") == 0) {{'
         )
         ctx.inc_indent()
-        ctx.write_line(f'_c.es_virtual = 1; _c.virtual_data = LIB_{lib.upper()};')
-        ctx.write_line(f'_c.virtual_len = (int)strlen(LIB_{lib.upper()});')
+        ctx.write_line(f'_c.es_virtual = 1; _c.virtual_data = {const_name};')
+        ctx.write_line(f'_c.virtual_len = (int)strlen({const_name});')
         ctx.write_line("_c.es_valido = 1; return _c;")
         ctx.dec_indent()
         ctx.write_line("}")

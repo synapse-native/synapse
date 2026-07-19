@@ -206,6 +206,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define TAMANO_BLOQUE 4096")
     ctx.write_line("")
     ctx.write_line("#define _GEN_TMP_SIZE (4096)")
+    ctx.write_line("#include \"librerias/embedded_libs.h\"")
+    ctx.write_line("")
     ctx.write_line("char _gen_tmp_buf[4096];")
     ctx.write_line("")
     ctx.write_line("extern int _G_indent;")
@@ -475,7 +477,11 @@ class GeneradorC:
             ctx.write_line("_g_argv = argv;")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             if principal:
-                ctx.write_line(f"return {principal}();")
+                ret_tipo = ctx._func_return_types.get(principal, 'int')
+                if ret_tipo in ('nulo', 'void'):
+                    ctx.write_line(f"{principal}();")
+                else:
+                    ctx.write_line(f"return {principal}();")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("return 0;")
             ctx.dec_indent()
