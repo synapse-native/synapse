@@ -24700,7 +24700,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "if (_eq) { retornar i; }"
+                      "instruccion": "if (_eq) { return i; }"
                     }
                   },
                   {
@@ -25297,210 +25297,210 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"reserva\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"reserva\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"libera\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"libera\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"crear_tensor\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"crear_tensor\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"suma_tensor\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"suma_tensor\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"producto_punto\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"producto_punto\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"abrir\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"abrir\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"leer\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"leer\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"escribir\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"escribir\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"escribir_linea\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"leer_linea\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"leer_linea\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"cerrar\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"suma\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"suma\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"producto\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"producto\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"relu\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"relu\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"tokenizar\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"tokenizar\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"parsear\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"parsear\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"generar\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"generar\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"_argc\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"_argc\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"_argv\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"_argv\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"salir\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"salir\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"concat\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"concat\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"texto_a_entero\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"texto_a_entero\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"texto_a_decimal\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"texto_a_decimal\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"entero_a_texto\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"entero_a_texto\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"decimal_a_texto\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"decimal_a_texto\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"volcar_ast\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"volcar_ast\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_crear\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_crear\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_enviar\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_recibir\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return verdadero; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"cerrar_canal\") == 0) { retornar verdadero }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return verdadero; }"
                 }
               }
             ]
@@ -25535,210 +25535,210 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"reserva\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"reserva\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"libera\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"libera\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"crear_tensor\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"crear_tensor\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"suma_tensor\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"suma_tensor\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"producto_punto\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"producto_punto\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"abrir\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"abrir\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"leer\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"leer\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"escribir\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"escribir\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"escribir_linea\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"leer_linea\") == 0) { retornar 0 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"leer_linea\") == 0) { return 0; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"cerrar\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"suma\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"suma\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"producto\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"producto\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"relu\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"relu\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"tokenizar\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"tokenizar\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"parsear\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"parsear\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"generar\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"generar\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"_argc\") == 0) { retornar 0 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"_argc\") == 0) { return 0; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"_argv\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"_argv\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"salir\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"salir\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"concat\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"concat\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"texto_a_entero\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"texto_a_entero\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"texto_a_decimal\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"texto_a_decimal\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"entero_a_texto\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"entero_a_texto\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"decimal_a_texto\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"decimal_a_texto\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"volcar_ast\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"volcar_ast\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_crear\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_crear\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_enviar\") == 0) { retornar 2 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return 2; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"canal_recibir\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre, \"cerrar_canal\") == 0) { retornar 1 }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return 1; }"
                 }
               }
             ]
@@ -27895,7 +27895,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    retornar;"
+                      "instruccion": "    return;"
                     }
                   },
                   {
@@ -27972,7 +27972,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (patron.datos[0] == '_' && patron.datos[1] == 0) { retornar 0; }"
+                  "instruccion": "if (patron.datos[0] == '_' && patron.datos[1] == 0) { return 0; }"
                 }
               },
               {
@@ -28014,7 +28014,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (patron.datos[_i] != '(') { retornar -1; }"
+                  "instruccion": "if (patron.datos[_i] != '(') { return -1; }"
                 }
               },
               {
@@ -28049,7 +28049,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (patron.datos[_i] != ')') { retornar -1; }"
+                  "instruccion": "if (patron.datos[_i] != ')') { return -1; }"
                 }
               },
               {
@@ -33688,35 +33688,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "const char* _skip[] = {\"escribir\",\"escribir_linea\",\"leer_linea\",\"abrir\",\"leer\",\"cerrar\","
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    \"crear_tensor\",\"suma_tensor\",\"producto_punto\",\"relu\",\"reserva\",\"libera\","
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    \"suma\",\"producto\",\"math_crear_tensor\",\"math_suma_tensor\",\"math_producto_punto\","
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    \"math_relu\",\"mem_reserva\",\"mem_libera\",\"math_suma\",\"math_producto\","
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    \"texto_a_entero\",\"texto_a_decimal\",\"decimal_a_texto\",\"entero_a_texto\",NULL};"
+                  "instruccion": "const char* _skip[] = {\"escribir\",\"escribir_linea\",\"leer_linea\",\"abrir\",\"leer\",\"cerrar\",\"crear_tensor\",\"suma_tensor\",\"producto_punto\",\"relu\",\"reserva\",\"libera\",\"suma\",\"producto\",\"math_crear_tensor\",\"math_suma_tensor\",\"math_producto_punto\",\"math_relu\",\"mem_reserva\",\"mem_libera\",\"math_suma\",\"math_producto\",\"texto_a_entero\",\"texto_a_decimal\",\"decimal_a_texto\",\"entero_a_texto\",NULL};"
                 }
               },
               {
@@ -40174,16 +40146,16 @@
             }
           },
           {
-            "_tipo": "AsignacionCampo",
-            "objeto": {
-              "_tipo": "Identificador",
-              "nombre": "r"
-            },
-            "nombre_campo": "valor",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "r.dato.valor = 0"
+                }
+              }
+            ]
           },
           {
             "_tipo": "SentenciaRetornar",

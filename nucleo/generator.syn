@@ -326,6 +326,7 @@ funcion gen_emitir_linea(est: GeneradorCEst, linea: puntero) -> nulo:
         asm("    _gebuf[_gepos] = 0;")
         asm("}")
 
+
 funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
     inseguro:
         asm("{")
@@ -490,11 +491,7 @@ funcion gen_visitar_funcion(est: GeneradorCEst, nodos: entero, total_nodos: ente
         asm("strcpy(est.func_emitidas_nombres.datos + est.funciones_emitidas * 64, _name);")
         asm("est.funciones_emitidas = est.funciones_emitidas + 1;")
         asm("// Skip runtime builtins")
-        asm("const char* _skip[] = {\"escribir\",\"escribir_linea\",\"leer_linea\",\"abrir\",\"leer\",\"cerrar\",")
-        asm("    \"crear_tensor\",\"suma_tensor\",\"producto_punto\",\"relu\",\"reserva\",\"libera\",")
-        asm("    \"suma\",\"producto\",\"math_crear_tensor\",\"math_suma_tensor\",\"math_producto_punto\",")
-        asm("    \"math_relu\",\"mem_reserva\",\"mem_libera\",\"math_suma\",\"math_producto\",")
-        asm("    \"texto_a_entero\",\"texto_a_decimal\",\"decimal_a_texto\",\"entero_a_texto\",NULL};")
+        asm("const char* _skip[] = {\"escribir\",\"escribir_linea\",\"leer_linea\",\"abrir\",\"leer\",\"cerrar\",\"crear_tensor\",\"suma_tensor\",\"producto_punto\",\"relu\",\"reserva\",\"libera\",\"suma\",\"producto\",\"math_crear_tensor\",\"math_suma_tensor\",\"math_producto_punto\",\"math_relu\",\"mem_reserva\",\"mem_libera\",\"math_suma\",\"math_producto\",\"texto_a_entero\",\"texto_a_decimal\",\"decimal_a_texto\",\"entero_a_texto\",NULL};")
         asm("for (int _si = 0; _skip[_si]; _si++) {")
         asm("    if (strcmp(_name, _skip[_si]) == 0) return;")
         asm("}")

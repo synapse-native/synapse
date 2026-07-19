@@ -489,25 +489,9 @@ class GeneradorC:
 
         result = ctx.generar()
 
-        # Post-processing: fix known asm() block issues from committed .syn files
-        # (TEMP: Eliminar cuando los .syn se actualicen con C correcto en bloques asm())
-        # Archivos .syn que necesitan corrección directa:
-        # - nucleo/analizador_semantico.syn: 'retornar'→'return' en asm(), strcmp(.datos)
-        # - nucleo/generator.syn: strcmp(.datos), 'linea: puntero'→'linea: texto'
-        # - nucleo/diagnostics.syn: 'r = _buf'→'r = (CadenaSegura){strdup(_buf)}'
-        # 1. Synapse keyword 'retornar' → C keyword 'return' in emitted asm() blocks
-        result = re.sub(r'\bretornar\b', 'return', result)
-        # 2. Fix strcmp(nombre, ...) for CadenaSegura parameters (missing .datos)
-        result = result.replace('strcmp(nombre, "', 'strcmp(nombre.datos, "')
-        # 3. Add missing ; before } in asm() blocks: { return X } → { return X; }
-        result = re.sub(
-            r'\{(\s*)(return|break|continue)(\s+\w+)?\s*\};',
-            r'{\1\2\3; };',
-            result
-        )
-        # 4. Fix gen_emitir_linea(est, (CadenaSegura){...}) → .datos
-        #    The function expects const char* but self-hosting code passes CadenaSegura.
-        #    Manual scan with brace-depth counting (handles nested {} inside strings).
+        # Post-processing: fix generated code patterns (not .syn issues)
+        # gen_emitir_linea accepts void* via Synapse 'puntero' type
+        # Self-hosting emitters generate (CadenaSegura){...} which needs .datos
         def _fix_gen_cadena_calls(text):
             target = 'gen_emitir_linea(est, (CadenaSegura){'
             replacement = 'gen_emitir_linea(est, ((CadenaSegura){'
@@ -555,15 +539,7 @@ class GeneradorC:
                     pos = idx + len(target)
             return ''.join(out)
         result = _fix_gen_cadena_calls(result)
-        # 5. Fix ResultadoEtapa union access: r.valor → r.dato.valor
-        #    Struct has { tag; union { int valor; } dato; } but asm() uses r.valor
-        result = re.sub(
-            r'\br\.valor\s*=\s*0;',
-            r'r.dato.valor = 0;',
-            result
-        )
-        # 6. Fix ,; inside array initializers (asm() blocks with ; append)
-        #    Pattern like `"abrir","leer",;` → `"abrir","leer",`
+        # Fix ,; inside array initializers (asm() blocks split across lines)
         result = result.replace(',;', ',')
 
         return result
