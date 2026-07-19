@@ -232,7 +232,7 @@ funcion obtener_linea_contexto(lineas: cadena, linea_num: entero) -> cadena:
 funcion formatear_entrada_error(ruta: cadena, linea: entero, columna: entero, mensaje: cadena) -> cadena:
     r = ""
     inseguro:
-        asm("{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta, linea, columna, mensaje); r = _buf; }")
+        asm("{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta.datos, linea, columna, mensaje.datos); r = (CadenaSegura){ .longitud = (int)strlen(_buf), .datos = strdup(_buf) }; }")
     retornar r
 
 // --- Build location prefix ---
@@ -240,6 +240,6 @@ funcion formatear_ubicacion(ruta: cadena, linea: entero, columna: entero) -> cad
     si linea > 0:
         r = ""
         inseguro:
-            asm("{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta, linea, columna); r = _buf; }")
+            asm("{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta.datos, linea, columna); r = (CadenaSegura){ .longitud = (int)strlen(_buf), .datos = strdup(_buf) }; }")
         retornar r
     retornar ruta

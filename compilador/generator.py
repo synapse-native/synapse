@@ -756,6 +756,31 @@ class GeneradorC:
         # Guardar los contratos garantiza para usar en retornos
         self._garantizas_actuales = nodo.garantiza
         
+        # Pre-pass: collect AsignacionVariable names to hoist declarations to function scope
+        _explicit_vars: set[str] = set()
+        _auto_vars: list[tuple[str, str]] = []
+        def _collect_vars(stmts):
+            for s in stmts:
+                if isinstance(s, DeclaracionVariable):
+                    _explicit_vars.add(s.nombre)
+                elif isinstance(s, AsignacionVariable) and s.nombre not in self._variables and s.nombre not in _explicit_vars:
+                    tipo = self._tipo_de_expr(s.expresion)
+                    # Skip pre-declaration for RAII types to prevent calling destructors
+                    # on uninitialized memory. For these types, _visitar_asignacion
+                    # handles declaration+initialization+RAII registration together.
+                    if tipo not in self._destructor_map:
+                        _auto_vars.append((s.nombre, tipo))
+                        self._variables[s.nombre] = tipo
+                if isinstance(s, BloqueInseguro):
+                    _collect_vars(s.cuerpo)
+                elif hasattr(s, 'cuerpo') and isinstance(getattr(s, 'cuerpo'), list):
+                    _collect_vars(s.cuerpo)
+                if hasattr(s, 'cuerpo_sino') and s.cuerpo_sino:
+                    _collect_vars(s.cuerpo_sino)
+        _collect_vars(nodo.cuerpo)
+        for vn, vt in _auto_vars:
+            self._push(f"{vt} {vn};")
+        
         for s in nodo.cuerpo:
             self._visitar(s)
         for var in self._tensor_vars:
@@ -2880,8 +2905,11 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
             # Add ; inside { return X } blocks (missing ; before closing })
             result = re.sub(r'\{\s*(return\s+\S+)\s*\}', r'{ \1; }', result)
             result = result.rstrip()
-            if result and not result.endswith(';') and not result.endswith('{') and not result.endswith('}') and not result.startswith('#'):
-                result += ';'
+            if result and not result.endswith(';') and not result.endswith('{') and not result.endswith(',') and not result.startswith('#'):
+                if re.search(r'=\s*\([A-Za-z_]\w*\)\{', result) or re.search(r'return\s+\([A-Za-z_]\w*\)\{', result):
+                    result += ';'
+                elif not result.endswith('}'):
+                    result += ';'
             return result
         if isinstance(nodo, ExprCrearCanal):
             cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"

@@ -9928,7 +9928,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta, linea, columna, mensaje); r = _buf; }"
+                  "instruccion": "{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta.datos, linea, columna, mensaje.datos); r = (CadenaSegura){ .longitud = (int)strlen(_buf), .datos = strdup(_buf) }; }"
                 }
               }
             ]
@@ -9994,7 +9994,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta, linea, columna); r = _buf; }"
+                      "instruccion": "{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta.datos, linea, columna); r = (CadenaSegura){ .longitud = (int)strlen(_buf), .datos = strdup(_buf) }; }"
                     }
                   }
                 ]
@@ -24755,7 +24755,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.tabla->entradas[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }"
+                      "instruccion": "    for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.tabla->entradas[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }"
                     }
                   },
                   {
@@ -24975,14 +24975,14 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    char _a = ((const char*)nombre)[_si];"
+                      "instruccion": "    char _a = nombre.datos[_si];"
                     }
                   },
                   {
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    char _b = ((const char*)est.tabla->entradas[i].nombre)[_si];"
+                      "instruccion": "    char _b = est.tabla->entradas[i].nombre.datos[_si];"
                     }
                   },
                   {
@@ -28184,7 +28184,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.info_estructuras[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }"
+                      "instruccion": "for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.info_estructuras[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }"
                     }
                   },
                   {
@@ -28282,7 +28282,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (((const char*)patron)[0] == '_' && ((const char*)patron)[1] == 0) { retornar 0; }"
+                  "instruccion": "if (patron.datos[0] == '_' && patron.datos[1] == 0) { retornar 0; }"
                 }
               },
               {
@@ -28310,7 +28310,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != '(') { _tag[_tp++] = ((const char*)patron)[_i]; _i++; }"
+                  "instruccion": "while (patron.datos[_i] != 0 && patron.datos[_i] != '(') { _tag[_tp++] = patron.datos[_i]; _i++; }"
                 }
               },
               {
@@ -28324,7 +28324,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (((const char*)patron)[_i] != '(') { retornar -1; }"
+                  "instruccion": "if (patron.datos[_i] != '(') { retornar -1; }"
                 }
               },
               {
@@ -28345,7 +28345,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != ')') { _var[_vp++] = ((const char*)patron)[_i]; _i++; }"
+                  "instruccion": "while (patron.datos[_i] != 0 && patron.datos[_i] != ')') { _var[_vp++] = patron.datos[_i]; _i++; }"
                 }
               },
               {
@@ -28359,28 +28359,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (((const char*)patron)[_i] != ')') { retornar -1; }"
+                  "instruccion": "if (patron.datos[_i] != ')') { retornar -1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Copy results"
+                  "instruccion": "// Copy results using strdup to own memory"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "int _tk = 0; while (_tag[_tk]) { ((char*)tag_nombre)[_tk] = _tag[_tk]; _tk++; } ((char*)tag_nombre)[_tk] = 0;"
+                  "instruccion": "tag_nombre = (CadenaSegura){ .longitud = _tp, .datos = strdup(_tag) };"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "int _vk = 0; while (_var[_vk]) { ((char*)var_nombre)[_vk] = _var[_vk]; _vk++; } ((char*)var_nombre)[_vk] = 0;"
+                  "instruccion": "var_nombre = (CadenaSegura){ .longitud = _vp, .datos = strdup(_var) };"
                 }
               }
             ]
@@ -31869,7 +31869,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if (strcmp(est.var_nombres.datos + _vi * 64, (const char*)nombre) == 0)"
+                  "instruccion": "    if (strcmp(est.var_nombres.datos + _vi * 64, nombre.datos) == 0)"
                 }
               },
               {
@@ -31926,14 +31926,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcpy(est.var_nombres.datos + est.var_total * 64, (const char*)nombre);"
+                  "instruccion": "strcpy(est.var_nombres.datos + est.var_total * 64, nombre.datos);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcpy(est.var_tipos.datos + est.var_total * 64, (const char*)tipo);"
+                  "instruccion": "strcpy(est.var_tipos.datos + est.var_total * 64, tipo.datos);"
                 }
               },
               {
@@ -31982,7 +31982,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    strcpy(est.var_tipos.datos + idx * 64, (const char*)tipo);"
+                  "instruccion": "    strcpy(est.var_tipos.datos + idx * 64, tipo.datos);"
                 }
               }
             ]
@@ -32077,7 +32077,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if (strcmp(est.func_return_types_nombres.datos + _fi * 64, (const char*)nombre) == 0) {"
+                  "instruccion": "    if (strcmp(est.func_return_types_nombres.datos + _fi * 64, nombre.datos) == 0) {"
                 }
               },
               {
@@ -33988,7 +33988,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if (strcmp((const char*)est.func_emitidas_nombres + _fi * 64, _name) == 0) return;"
+                  "instruccion": "    if (strcmp(est.func_emitidas_nombres.datos + _fi * 64, _name) == 0) return;"
                 }
               },
               {
@@ -34268,7 +34268,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcpy((char*)est.func_retorno_actual, _ret_type);"
+                  "instruccion": "strcpy(est.func_retorno_actual.datos, _ret_type);"
                 }
               },
               {
@@ -38312,7 +38312,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if (_vi >= 0) { strcpy(_gen_tmp_buf, (const char*)est.var_tipos + _vi * 64); return; }"
+                  "instruccion": "    if (_vi >= 0) { strcpy(_gen_tmp_buf, est.var_tipos.datos + _vi * 64); return; }"
                 }
               },
               {
@@ -38417,7 +38417,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    strcpy(_gen_tmp_buf, gen_func_return_type(est, _str));"
+                  "instruccion": "    { CadenaSegura _grt = gen_func_return_type(est, _str); strcpy(_gen_tmp_buf, _grt.datos); }"
                 }
               },
               {
@@ -38563,7 +38563,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"if (_c=='\\\\\"'||_c=='\\\\'') { char _q=_c; int _st=_i; _i++; _columna++; while(_i<fuente.longitud&&fuente.datos[_i]!=_q){_i++;_columna++;} if(_i>=fuente.longitud){fprintf(stderr,\\\"  TOKEN STRING_UNCLOSED L%d:%d\\\\n\\\",_linea,_columna);break;} _i++;_columna++;_token_count++;fprintf(stderr,\\\"  TOKEN STRING L%d:%d\\\\n\\\",_linea,_columna); }\");"
+                  "instruccion": "gen_emitir_linea(est, \"if (_c=='\\\\\\\"'||_c=='\\\\'') { char _q=_c; int _st=_i; _i++; _columna++; while(_i<fuente.longitud&&fuente.datos[_i]!=_q){_i++;_columna++;} if(_i>=fuente.longitud){fprintf(stderr,\\\"  TOKEN STRING_UNCLOSED L%d:%d\\\\n\\\",_linea,_columna);break;} _i++;_columna++;_token_count++;fprintf(stderr,\\\"  TOKEN STRING L%d:%d\\\\n\\\",_linea,_columna); }\");"
                 }
               },
               {
@@ -38820,7 +38820,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"if(c=='\\\\\"'||c=='\\\\''){char q=c;int st=i;int scol=co;i++;co++;while(i<len&&s[i]!=q){i++;co++;}if(i>=len)break;i++;co++;int vl=(i-st-2)<255?(i-st-2):255;strncpy(_P_tks[_P_ntks].val,s+st+1,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_STR;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;continue;}\");"
+                  "instruccion": "gen_emitir_linea(est, \"if(c=='\\\\\\\"'||c=='\\\\''){char q=c;int st=i;int scol=co;i++;co++;while(i<len&&s[i]!=q){i++;co++;}if(i>=len)break;i++;co++;int vl=(i-st-2)<255?(i-st-2):255;strncpy(_P_tks[_P_ntks].val,s+st+1,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_STR;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;continue;}\");"
                 }
               },
               {
@@ -39064,13 +39064,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_emitir_linea(est, \"// Global state from estado_global.syn\");"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"int _G_indent = 0;\");"
                 }
               },
               {

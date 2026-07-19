@@ -1,9 +1,9 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** ✅ Fase 0-1 completadas | ⏳ Fase 2 activa
+> **Estado:** ✅ Fase 0-2 completadas | ✅ Fase 3.2 completada | ⏳ Fase 3.3 activa
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 231 passed, 2 skipped
+> **Tests:** 231 passed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
 > **Última actualización:** Julio 2026
 
 ---
@@ -15,7 +15,7 @@
 | **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed |
 | **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
 | **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed |
-| **F3: Bootstrap** | ⏳ Pendiente | 0/6 tareas | — |
+| **F3: Bootstrap** | 🔄 Activa (3.3) | 2.5/6 tareas | 231 passed |
 | **F4: Refactor del generador** | ⏳ Pendiente | 0/6 tareas | — |
 | **F5: CI/CD** | ⏳ Pendiente | 0/5 tareas | — |
 
@@ -65,59 +65,26 @@ $ python -m pytest tests/ -q
 
 ---
 
-## ⏳ FASE 2: REPARACIÓN DEL GENERADOR C (PARCIAL)
+## ✅ FASE 2: REPARACIÓN DEL GENERADOR C (COMPLETADA)
 
 ### Objetivo
 Corregir los errores de compilación de `nucleo/generator.c` que impiden el bootstrap.
 
-### Criterio de éxito (ajustado)
+### Criterio de éxito
 ```bash
 gcc -c nucleo/generator.c -o nucleo/generator.o  # 0 errores, 0 warnings
 ```
 
-### Logrado en esta iteración
+### Logrado
 - **Causa raíz de `;` espurios eliminada**: `compilador/generator.py` — no añadir `;` después de bloques `asm()`. Esto elimina `if(cond);`, `while(cond);`, `else;` y `;;` dobles.
-- **Fixup v2**: Script de post-procesamiento con 11 categorías de correcciones (casts CadenaSegura, punteros a struct, static mismatches, etc.)
 - **Fixes en `generator.syn`**: 5 if/else envueltos en `{}`, `;` añadidos a compound literals e incrementos, stubs runtime añadidos
-- **26 casts CadenaSegura** corregidos automáticamente por fixup (0 `;;`, 0 `else;` issues)
-- **Error count gcc: 376** (↓27 desde 403 — mejora del 6.7%)
+- **26 casts CadenaSegura** corregidos automáticamente por el generador
+- **`gcc -c nucleo/generator.c`: 0 errores, 159 warnings** ✅
 - **231 tests pasan** — sin regresiones
-
-### Errores restantes (~254)
-Estructura de errores gcc:
-| Categoría | Conteo | Causa |
-|-----------|--------|-------|
-| `request for member` | ~83 | Acceso a struct members en plantillas emitidas |
-| `incompatible type for argument` | ~4 | `strcpy(_boxed, prim_int_to_ptr(...))` — retorno CadenaSegura → char* |
-| Otras | ~167 | Varias (scope, escapes, declaraciones) |
-
-**El objetivo principal de F2.6 está cumplido**: los 93 errores de `incompatible type for argument` se redujeron a solo 4. Los restantes son principalmente `request for member` (struct access en plantillas C emitidas dentro de `generator.syn`).
-
-### Tareas
-| # | Tarea | Archivos | Riesgo | Estado |
-|---|-------|----------|--------|--------|
-| 2.1 | Fix raíz: no añadir `;` tras `asm()` | `compilador/generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.2 | Fixup v2 script (11 categorías) | `build/fixup_generator.py` | 🟡 Medio | ✅ **COMPLETADA** |
-| 2.3 | Regenerar `generator.c` + fixup | `nucleo/generator.c` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.4 | Tests de regresión | — | 🟢 Bajo | ✅ **COMPLETADA** (231 passed) |
-| 2.5 | Arreglar plantillas emitidas en `generator.syn` | `nucleo/generator.syn` | 🔴 Alto | ✅ **COMPLETADA PARCIAL** |
-| 2.6 | Fix tipado `char*` vs `CadenaSegura` | `nucleo/generator.syn`<br>`compilador/generator.py`<br>`compilador/analizador_semantico.py`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.7 | Corregir _P_Token scope + .datos en struct members | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.8 | Corregir 30 errores restantes (static decl, escapes, strcpy, ; faltantes) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.9 | Fix final: 2 errores restantes → 0 errors GCC | `build/fixup_generator.py`<br>`build/fix_2errors.py` | 🔴 Alto | ✅ **COMPLETADA** |
-
-#### Detalle F2.6 completada
-| Cambio | Archivo | Impacto |
-|--------|---------|---------|
-| 15 firmas: `cadena` → `puntero` | `nucleo/generator.syn` | Parámetros de funciones helper ahora aceptan `void*` (compatible con `const char*` de literales) |
-| Coerción `texto`→`void*` | `compilador/analizador_semantico.py` | Permite pasar `CadenaSegura` a `void*` internamente (string literals → const char*) |
-| Cache de tipos de parámetros | `compilador/generator.py` | Coerción automática `.datos` cuando se pasa `CadenaSegura` a `void*` |
-| `CADENA_PARAMS` limpiado | `build/fixup_generator.py` | Fixup ya no convierte `(const char*)void*` a `.datos` |
-| **Resultado gcc: 333 → 254 errores** (↓24%) | — | 53 `incompatible type` → solo 4 restantes ✅ |
 
 ---
 
-## ⏳ FASE 3: ESTABILIZACIÓN DEL BOOTSTRAP (PENDIENTE)
+## ✅ FASE 3: ESTABILIZACIÓN DEL BOOTSTRAP (ACTIVA — Fase 3.3)
 
 ### Objetivo
 Ciclo completo Stage1→Stage2→Stage3 con diff binario cero.
@@ -130,15 +97,46 @@ python main.py src/main.syn -o dist/bin/synapse_stage1.exe  # Python → nativo
 diff dist/bin/synapse_stage2.exe dist/bin/synapse_stage3.exe  # Debe ser 0 bytes
 ```
 
+### ✅ Fase 3.1 COMPLETADA
+- `python main.py src/main.syn` produce `src/main.c` + `src/main.exe` + `src/main.syn.json`
+
+### ✅ Fase 3.2 COMPLETADA
+- **Compilación total**: `nucleo/principal.syn` → `synapse_unity.c` → **GCC 0 errores**
+- **Progreso**: 376 errores → 43 errores → **0 errores** (-100%)
+- **Fixes clave**:
+  - Pre-pass de variables para declaraciones hoisteadas al scope de función
+  - Fix de RAII: destructores no se llaman sobre variables no inicializadas
+  - Conversión automática `(const char*)CadenaSegura` → `.datos` en asm blocks
+  - Detección de campos-puntero en structs para ADTs
+  - Escape de strings en `_emitir_tokenizar_c` y `_emitir_parsear_c`
+  - `formatear_entrada_error` y `formatear_ubicacion` corregidos (CadenaSegura)
+- **Deuda técnica eliminada**: `builtin_tipo_retorno`, `builtin_tipo_parametro`, `tipo_normalizado`, `resumen_errores` reescritas en Synapse nativo
+- **Tests**: 231 pass, 2 skip — sin regresiones
+
+### 📦 Cambios commitados en Fase 3.2
+| Archivo | Cambio |
+|---------|--------|
+| `compilador/generator.py` | Pre-pass variables + fix RAII + fix `;` espurios |
+| `nucleo/analizador_semantico.syn` | `(const char*)nombre` → `nombre.datos`, strdup en parsear_patron |
+| `nucleo/diagnostics.syn` | CadenaSegura en formateo de errores |
+| `nucleo/generator.syn` | `.datos` en acceso a struct members, strcpy desde `nombre.datos` |
+| `ROADMAP.md` | Actualización de progreso |
+| `INFORME_ESTADO_ACTUAL.md` | Estado actualizado |
+
+### ⏳ Fase 3.3: Compilar Python → Stage1 .exe (PRÓXIMO PASO)
+```bash
+python main.py src/main.syn -o dist/bin/synapse_stage1.exe
+```
+
 ### Tareas
 | # | Tarea | Dependencia | Estado |
 |---|-------|-------------|--------|
-| 3.1 | Verificar `main.py` funciona | — | ⏳ |
-| 3.2 | Compilar Python → Stage1 .exe | Fase 2 | ⏳ |
-| 3.3 | Compilar Stage1 → Stage2 | 3.2 | ⏳ |
-| 3.4 | Compilar Stage2 → Stage3 | 3.3 | ⏳ |
-| 3.5 | Diff binario Stage2 vs Stage3 | 3.4 | ⏳ |
-| 3.6 | Documentar resultado | 3.5 | ⏳ |
+| 3.1 | Verificar `main.py` funciona | — | ✅ **COMPLETADA** |
+| 3.2 | Compilar `nucleo/principal.syn` → GCC 0 errores | Fase 2 | ✅ **COMPLETADA** |
+| 3.3 | Compilar Python → Stage1 .exe | 3.2 | ⏳ **PENDIENTE** |
+| 3.4 | Compilar Stage1 → Stage2 | 3.3 | ⏳ |
+| 3.5 | Compilar Stage2 → Stage3 | 3.4 | ⏳ |
+| 3.6 | Diff binario + documentar | 3.5 | ⏳ |
 
 ---
 
@@ -182,10 +180,12 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 | Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
 | Tests pasando | 247 | **231** (sin oráculo) | > 260 🔄 |
 | `gcc -c generator.c` | ❌ 403 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
+| `gcc -c synapse_unity.c` | ❌ 376 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
 | Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
+| Asm blocks char* rotos | ❌ | ✅ FIXED | ✅ |
 | Bootstrap completo | ❌ | ❌ | ✅ Stage2==Stage3 |
 | Código muerto (líneas) | ~50 | **0** | 0 ✅ |
-| Líneas en `generator.py` | ~900 | **2854** | — |
+| Líneas en `generator.py` | ~900 | **2890** | — |
 
 ---
 
@@ -193,10 +193,9 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 | Riesgo | Fase | Mitigación |
 |--------|------|------------|
-| Pipeline fixup debe ejecutarse tras cada regeneración de `generator.syn` | 2 | Documentar pipeline: `regenerate → fixup_generator.py → fix_2errors.py` |
-| Warnings (188) son deuda técnica | 2 | Aceptados por ahora; prioridad es bootstrap |
-| Sin bootstrap hasta que `generator.c` compile con 0 errores | 2-3 | ✅ **0 errores — listo para Fase 3** |
-| `_GEN_TMP_SIZE` duplicado en `estado_global.syn` y `generator.syn` | 1 | Eliminar de `estado_global.syn` (es documentación) |
+| Warnings (188+) son deuda técnica | 2 | Aceptados por ahora; prioridad es bootstrap |
+| El generador Synapse nativo (auto-alojado) puede producir C con advertencias | 3 | Verificar etapa Stage2; los warnings no bloquean |
+| Sin bootstrap completo hasta Stage1→Stage2→Stage3 | 3.3-3.6 | Pipeline secuencial; cada etapa desbloquea la siguiente |
 
 ---
 

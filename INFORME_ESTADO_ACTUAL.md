@@ -127,8 +127,26 @@
 | `Synapse-v1.3.0-Windows.zip` / `synapse-v1.4.0-windows-x64.zip` | Zips de release antiguos |
 | `COMENTARIOS.md` (si existe) | Residuos de sesiones anteriores |
 
-## 4. RESUMEN
+## 4. ESTADO DEL BOOTSTRAP (Fase 3)
 
-- **Tests activos:** 247 pasando, 2 skipping
+### ✅ Fase 3.1 COMPLETADA
+- `python main.py src/main.syn` produce `src/main.c` + `src/main.exe` (stage 1 bootstrap)
+
+### ✅ Fase 3.2 COMPLETADA
+- Compilación de `nucleo/principal.syn` → `synapse_unity.c` → **GCC 0 errores**
+- Progreso: 376 → ~43 → **0 errores** (-100%)
+- Fixes: pre-pass de variables, RAII protegido, `.datos` en asm, escapes de strings
+- **Tests:** 231 passed, 2 skipped (sin regresiones)
+
+### ⏳ Fase 3.3 PENDIENTE
+- `python main.py src/main.syn -o dist/bin/synapse_stage1.exe`
+
+- **Binarios funcionales:** `build/bin/synapse.exe` (nativo), `src/main.exe` (bootstrap parcial)
+- **Deuda técnica:** `builtin_tipo_retorno`, `builtin_tipo_parametro`, `tipo_normalizado`, `resumen_errores` reescritas en Synapse nativo
+
+## 5. RESUMEN
+
+- **Tests activos:** 231 pasando, 2 skipping
 - **Cobertura funcional:** Léxico, sintáctico, semántico, generación C, LSP (completion, hover, definition), CLI
-- **Puntos de atención principal:** Limpieza de ~50+ archivos obsoletos en raíz y tests/ que suman decenas de MB (principalmente binarios .exe y node_modules)
+- **Estado bootstrap:** Fase 3.2 COMPLETADA ✅ — GCC 0 errores en synapse_unity.c
+- **Próximo paso:** Fase 3.3 — Compilar Python → Stage1 .exe

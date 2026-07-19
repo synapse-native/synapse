@@ -143,7 +143,7 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
                 romper
             asm("if (est.tabla->entradas[i].nivel_ambito == est.tabla->nivel_actual) {")
             asm("    int _eq = 1;")
-            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.tabla->entradas[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }")
+            asm("    for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.tabla->entradas[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }")
             asm("    if (_eq) { encontrado = verdadero; }")
             asm("}")
             asm("i = i + 1")
@@ -171,8 +171,8 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
                 romper
             asm("int _eq = 1;")
             asm("for (int _si = 0; _si < 256; _si++) {")
-            asm("    char _a = ((const char*)nombre)[_si];")
-            asm("    char _b = ((const char*)est.tabla->entradas[i].nombre)[_si];")
+            asm("    char _a = nombre.datos[_si];")
+            asm("    char _b = est.tabla->entradas[i].nombre.datos[_si];")
             asm("    if (_a != _b) { _eq = 0; break; }")
             asm("    if (_a == 0) break;")
             asm("}")
@@ -406,7 +406,7 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
             si r == 0:
                 romper
             asm("int _eq = 1;")
-            asm("for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.info_estructuras[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }")
+            asm("for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.info_estructuras[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }")
             asm("if (_eq) {")
             asm("    sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, nombre);")
             asm("    retornar;")
@@ -424,21 +424,21 @@ funcion parsear_patron_coincidir(patron: cadena, tag_nombre: cadena, var_nombre:
     // Returns 0 = wildcard, 1 = tag(var), -1 = error
     // First check if wildcard "_"
     inseguro:
-        asm("if (((const char*)patron)[0] == '_' && ((const char*)patron)[1] == 0) { retornar 0; }")
+        asm("if (patron.datos[0] == '_' && patron.datos[1] == 0) { retornar 0; }")
         asm("// Extract tag name before '('")
         asm("int _i = 0;")
         asm("char _tag[64]; int _tp = 0;")
-        asm("while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != '(') { _tag[_tp++] = ((const char*)patron)[_i]; _i++; }")
+        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != '(') { _tag[_tp++] = patron.datos[_i]; _i++; }")
         asm("_tag[_tp] = 0;")
-        asm("if (((const char*)patron)[_i] != '(') { retornar -1; }")
+        asm("if (patron.datos[_i] != '(') { retornar -1; }")
         asm("_i++; // skip '('")
         asm("char _var[64]; int _vp = 0;")
-        asm("while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != ')') { _var[_vp++] = ((const char*)patron)[_i]; _i++; }")
+        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != ')') { _var[_vp++] = patron.datos[_i]; _i++; }")
         asm("_var[_vp] = 0;")
-        asm("if (((const char*)patron)[_i] != ')') { retornar -1; }")
-        asm("// Copy results")
-        asm("int _tk = 0; while (_tag[_tk]) { ((char*)tag_nombre)[_tk] = _tag[_tk]; _tk++; } ((char*)tag_nombre)[_tk] = 0;")
-        asm("int _vk = 0; while (_var[_vk]) { ((char*)var_nombre)[_vk] = _var[_vk]; _vk++; } ((char*)var_nombre)[_vk] = 0;")
+        asm("if (patron.datos[_i] != ')') { retornar -1; }")
+        asm("// Copy results using strdup to own memory")
+        asm("tag_nombre = (CadenaSegura){ .longitud = _tp, .datos = strdup(_tag) };")
+        asm("var_nombre = (CadenaSegura){ .longitud = _vp, .datos = strdup(_var) };")
     retornar 1
 
 // --- Main analysis functions ---
