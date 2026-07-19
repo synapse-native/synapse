@@ -40634,7 +40634,8 @@
             ]
           },
           {
-            "_tipo": "NodoCoincidir",
+            "_tipo": "AsignacionVariable",
+            "nombre": "_resultado",
             "expresion": {
               "_tipo": "LlamadaFuncion",
               "nombre": "generar_etapa",
@@ -40648,43 +40649,54 @@
                   "nombre": "salida_ruta"
                 }
               ]
-            },
-            "casos": [
-              {
-                "_tipo": "NodoCaso",
-                "patron": "OK(v)",
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  }
-                ],
-                "tipo_extraido": "int"
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "_resultado"
+                },
+                "nombre_campo": "tag"
               },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
               {
-                "_tipo": "NodoCaso",
-                "patron": "ERR(cod)",
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "fallo_etapa",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "cod"
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ],
-                "tipo_extraido": "int"
+                "_tipo": "AsignacionVariable",
+                "nombre": "r",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "r",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "fallo_etapa",
+                  "argumentos": [
+                    {
+                      "_tipo": "ExprAccesoCampo",
+                      "objeto": {
+                        "_tipo": "Identificador",
+                        "nombre": "_resultado"
+                      },
+                      "nombre_campo": "valor"
+                    }
+                  ]
+                }
               }
             ]
           },

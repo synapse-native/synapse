@@ -254,8 +254,11 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         es_puntero = obj_tipo.endswith('*')
         sep = '->' if es_puntero else '.'
         nombre_struct = ''
-        if not es_puntero and obj_tipo.startswith('struct '):
-            nombre_struct = obj_tipo[7:]
+        base_tipo = obj_tipo.rstrip('*')
+        if not es_puntero and base_tipo.startswith('struct '):
+            nombre_struct = base_tipo[7:]
+        elif not es_puntero and base_tipo in ctx._estructuras:
+            nombre_struct = base_tipo
         es_adt = bool(ctx._estructuras.get(nombre_struct, {}).get('es_adt'))
         if es_adt and nodo.nombre_campo != 'tag':
             return f"{obj}{sep}dato.{nodo.nombre_campo}"
