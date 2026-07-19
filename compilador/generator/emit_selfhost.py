@@ -109,7 +109,7 @@ def gen_tok_c(ctx: GeneratorContext):
             "        }",
 "        if (c == '\"' || c == '\\'') {",
 "            char q = c; int st = i; int scol = co; i++; co++;",
-"            while (i < len && s[i] != q) { i++; co++; }",
+"            while (i < len && s[i] != q) { if (s[i] == '\\\\' && i+1 < len) { i++; co++; } i++; co++; }",
 "            if (i >= len) break;",
 "            i++; co++;",
 "            int vl = (i - st - 2) < 255 ? (i - st - 2) : 255;",

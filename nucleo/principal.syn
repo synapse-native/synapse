@@ -40,7 +40,7 @@ funcion argv_str(i: entero) -> cadena:
     retornar r
 
 // --- Stage 4 (unico): Generate C code and compile into next-stage binary ---
-// NATIVE pipeline: tokenizar → parsear → generar → GCC
+// NATIVE pipeline: tokenizar -> parsear -> (F8) analizar -> generar -> GCC
 funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
     inseguro:
         asm("fprintf(stderr, \"[Synapse] Pipeline nativa: leyendo fuente...\\n\");")
@@ -61,6 +61,9 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("extern struct Programa parsear(CadenaSegura);")
         asm("struct Programa _ast = parsear(_fuente);")
         asm("")
+        asm("// 3b. Analisis semantico (Fase 8 - stub)")
+        asm("fprintf(stderr, \"[Synapse] Analisis semantico: saltado (TODO F8)\\n\");")
+        asm("")
         asm("// 4. Generar codigo C desde AST")
         asm("extern int generar(struct Programa, CadenaSegura);")
         asm("CadenaSegura _salida_c = { .longitud = salida.longitud, .datos = salida.datos };")
@@ -70,11 +73,11 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("// 5. Compilar con GCC")
         asm("char _cmd[4096];")
         asm("snprintf(_cmd, 4096, \"gcc -O2 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm\", salida.datos);")
-        asm("fprintf(stderr, \"[Synapse] GCC: %%s\\n\", _cmd);")
+        asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
         asm("int _gcc_rc = system(_cmd);")
         asm("free(_buf);")
         asm("if (_gcc_rc != 0) {")
-        asm("    fprintf(stderr, \"[Synapse] ERROR: GCC fallo con codigo %%d\\n\", _gcc_rc);")
+        asm("    fprintf(stderr, \"[Synapse] ERROR: GCC fallo con codigo %d\\n\", _gcc_rc);")
         asm("    struct ResultadoEtapa _e = {1, 5}; return _e;")
         asm("}")
         asm("fprintf(stderr, \"[Synapse] Compilacion nativa exitosa\\n\");")
@@ -83,7 +86,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
 funcion principal() -> entero:
     r = 0
     inseguro:
-        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %%s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
     ruta = argv_str(1)
     salida_ruta = argv_str(2)
     inseguro:

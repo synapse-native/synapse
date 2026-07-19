@@ -221,6 +221,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 args.append(expr_a_c(ctx, a))
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
+
         args_str = ", ".join(args)
 
         # Struct constructor: use C compound literal instead of function call

@@ -22,6 +22,8 @@
 | **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed |
 | **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed |
 | **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed |
+| **F8: Análisis semántico nativo** | ⏳ **PLANIFICADA** | 0/4 tareas | 231 passed |
+| **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 1/4 tareas | 231 passed |
 
 ---
 
@@ -185,6 +187,44 @@ compilador/generator/
 
 ---
 
+## ⏳ FASE 8: ANÁLISIS SEMÁNTICO NATIVO (PLANIFICADA)
+
+### Objetivo
+Integrar `nucleo/analizador_semantico.syn` en la pipeline nativa (`generar_etapa`), añadiendo verificación de tipos, ownership y contratos en el binario auto-hospedado.
+
+### Tareas
+| # | Tarea | Riesgo | Estado |
+|---|-------|--------|--------|
+| 8.1 | Agregar stub de `analizar_etapa` en `principal.syn` (establecer pipeline) | 🟢 Bajo | ⏳ |
+| 8.2 | Implementar data bridge: `Programa` (tree AST) → `SemNodo[]` (flat array) | 🔴 Alto | ⏳ |
+| 8.3 | Agregar extern `analizador_nuevo`/`analizar` a `_SPECIAL_SIGS` | 🟢 Bajo | ⏳ |
+| 8.4 | Verificar 0 GCC errors + tests + bootstrap | 🟡 Medio | ⏳ |
+
+### Dependencias
+- Self-hosting parser (`gen_parse()`) necesita soporte para `coincidir` (ver Fase 9)
+- Data bridge requiere conversión de árbol AST a arreglo plano
+
+---
+
+## ⏳ FASE 9: ELIMINAR POST-PROCESSING + FIX EMISORES (EN PROGRESO)
+
+### Objetivo
+Eliminar el post-processing paso 4 en `generator/__init__.py` corrigiendo la raíz en los emisores auto-hospedaje, y habilitar bootstrap Stage2 completo.
+
+### Tareas
+| # | Tarea | Archivos | Riesgo | Estado |
+|---|-------|----------|--------|--------|
+| 9.1 | Fix `gen_tok_c()`: agregar escape `\"` en strings | `emit_selfhost.py` | 🔴 Alto | ✅ |
+| 9.2 | Fix `gen_parse()`: agregar soporte `coincidir`/match | `emit_selfhost.py` | 🔴 Alto | ⏳ |
+| 9.3 | Arreglar emisiones `(CadenaSegura){...}` en fuente | `emit_selfhost.py` + `generator.syn` | 🔴 Alto | ⏳ |
+| 9.4 | Eliminar post-processing paso 4 de `__init__.py` | `__init__.py` | 🟡 Medio | ⏳ |
+| 9.5 | Verificar bootstrap Stage1→Stage2→Stage3 + `cmp` | — | 🟡 Medio | ⏳ |
+
+### Limitación conocida
+El parser self-hosting (`gen_parse()`) no implementa `coincidir`, bloqueando Stage2 con `principal.syn` actual.
+
+---
+
 ## ✅ FASE 5: CI/CD Y AUTOMATIZACIÓN (COMPLETADA)
 
 ### Objetivo
@@ -249,13 +289,14 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 | Stubs en raíz (`old_generator.py`) | Julio 2026 | Eliminado (63B, residuo del monolito original) |
 | `INFORME_ESTADO_ACTUAL.md` desactualizado | Julio 2026 | Reescrito: refleja Fase 7 completada |
 
-### ⚠️ DEUDA TÉCNICA REMANENTE
+### ⏳ DEUDA TÉCNICA REMANENTE
 
 | Ítem | Impacto | Prioridad |
 |------|---------|-----------|
 | Pasos 4 y 6 post-processing en `generator/__init__.py` | Issues del generador Python, no de .syn | 🟢 Baja |
 | `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
 | Ruta `synapse_rt.o` hardcodeada (CWD-relative) | Falla si binario se ejecuta desde otro directorio | 🟢 Baja |
+| Parser self-hosting sin `coincidir` | Stage1→Stage2 bloqueado | 🟡 Media |
 
 ---
 

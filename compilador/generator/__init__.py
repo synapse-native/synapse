@@ -49,7 +49,7 @@ from .emit_declarations import (
 )
 from .emit_expressions import (
     expr_a_c, tipo_de_expr, visitar_log,
-    emitir_tokenizar, emitir_token_defs,
+    emitir_tokenizar,
 )
 from .emit_contracts import emit_contract_header
 
@@ -489,9 +489,11 @@ class GeneradorC:
 
         result = ctx.generar()
 
-        # Post-processing: fix generated code patterns (not .syn issues)
-        # gen_emitir_linea accepts void* via Synapse 'puntero' type
-        # Self-hosting emitters generate (CadenaSegura){...} which needs .datos
+        # Post-processing step 4: fix (CadenaSegura){...} passed to gen_emitir_linea
+        # Root cause: Self-hosting code generator emits (CadenaSegura) compound
+        # literals that don't match void* parameters. Proper fix requires
+        # reworking gen_emitir_linea signature or asm() block generation.
+        # (Fase 9 sub-task: pending emit_selfhost.py refactor)
         def _fix_gen_cadena_calls(text):
             target = 'gen_emitir_linea(est, (CadenaSegura){'
             replacement = 'gen_emitir_linea(est, ((CadenaSegura){'
@@ -539,8 +541,6 @@ class GeneradorC:
                     pos = idx + len(target)
             return ''.join(out)
         result = _fix_gen_cadena_calls(result)
-        # Fix ,; inside array initializers (asm() blocks split across lines)
-        result = result.replace(',;', ',')
 
         return result
 

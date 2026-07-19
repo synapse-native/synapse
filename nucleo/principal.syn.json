@@ -40409,6 +40409,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "// 3b. Analisis semantico (Fase 8 - stub)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "fprintf(stderr, \"[Synapse] Analisis semantico: saltado (TODO F8)\\n\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "// 4. Generar codigo C desde AST"
                 }
               },
@@ -40472,7 +40493,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fprintf(stderr, \"[Synapse] GCC: %%s\\n\", _cmd);"
+                  "instruccion": "fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);"
                 }
               },
               {
@@ -40500,7 +40521,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    fprintf(stderr, \"[Synapse] ERROR: GCC fallo con codigo %%d\\n\", _gcc_rc);"
+                  "instruccion": "    fprintf(stderr, \"[Synapse] ERROR: GCC fallo con codigo %d\\n\", _gcc_rc);"
                 }
               },
               {
@@ -40560,7 +40581,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_argc() < 2) { fprintf(stderr, \"Uso: %%s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }"
+                  "instruccion": "if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }"
                 }
               }
             ]
