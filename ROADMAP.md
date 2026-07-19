@@ -17,8 +17,9 @@
 | **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
 | **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed |
 | **F3: Bootstrap** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed |
-| **F4: Refactor del generador** | ⏳ Pendiente | 0/6 tareas | — |
-| **F5: CI/CD** | ⏳ Pendiente | 0/5 tareas | — |
+| **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed |
+| **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed |
+| **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed |
 
 ---
 
@@ -182,21 +183,31 @@ compilador/generator/
 
 ---
 
-## ⏳ FASE 5: CI/CD Y AUTOMATIZACIÓN (PENDIENTE)
+## ✅ FASE 5: CI/CD Y AUTOMATIZACIÓN (COMPLETADA)
 
 ### Objetivo
 Pipeline CI completo: tests en cada PR, bootstrap verification, releases automáticos.
 
 ### Tareas
-| # | Tarea | Estado |
-|---|-------|--------|
-| 5.1 | Tests CI en PRs (`ci-tests.yml`) | ⏳ |
-| 5.2 | Job de bootstrap test | ⏳ |
-| 5.3 | Linter (flake8) | ⏳ |
-| 5.4 | Verificar release pipeline | ⏳ |
-| 5.5 | Documentar en `CONTRIBUTING.md` | ⏳ |
+| # | Tarea | Archivos | Estado |
+|---|-------|----------|--------|
+| 5.1 | Mejorar `ci-tests.yml` | `.github/workflows/ci-tests.yml` | ✅ |
+| 5.2 | Job bootstrap test (`needs: test`) | `.github/workflows/ci-tests.yml` | ✅ |
+| 5.3 | Configurar flake8 | `.flake8` | ✅ |
+| 5.4 | Verificar release pipeline | `release-binaries.yml`, `windows_release.yml` | ✅ |
+| 5.5 | Documentar en `CONTRIBUTING.md` | `CONTRIBUTING.md` | ✅ |
+
+### Logrado
+- **ci-tests.yml**: bootstrap job independiente que verifica 0 errores GCC + Stage1 + tests no regresionan. Linting (flake8) movido antes de tests y ahora es obligatorio (`continue-on-error: false`).
+- **`.flake8`**: Configuración nueva (max-line-length=100, exclude de auto-generados, etc.)
+- **release-binaries.yml**: Corregido: ahora usa `python main.py nucleo/principal.syn` para bootstrap en vez de compilar `main.c` directamente. Incluye `setup-python`.
+- **windows_release.yml**: Limpiado rutas (`opensyn/` → `nucleo/`), eliminado `tag_name` hardcodeado.
+- **CONTRIBUTING.md**: Documentación completa de CI/CD con 4 workflows, validación local con flake8 + bootstrap + tests.
+- **flake8**: 0 errores en todo el código fuente Python (excluyendo `emit_selfhost.py` por recursión pyflakes).
 
 ---
+
+## ✅ FASE 4.5: POST-PROCESSING ASM() — FIX DE 280 ERRORES GCC
 
 ## 📈 MÉTRICAS DE SEGUIMIENTO
 

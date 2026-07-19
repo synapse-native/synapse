@@ -16,7 +16,7 @@ jobs:
     - name: Configurar Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.x'
+        python-version: '3.11'
 
     - name: Configurar Entorno C (MinGW)
       uses: egor-tensin/setup-mingw@v2
@@ -24,16 +24,18 @@ jobs:
         platform: x64
         static: 0
 
-    - name: Bootstrap — Generar código C nativo
-      run: python main.py opensyn/principal.syn
+    - name: Bootstrap — Generar código C desde Synapse
+      run: python main.py nucleo/principal.syn
 
-    - name: Compilar OpenSyn (Windows Binario Estático)
-      run: gcc -O3 -static -o opensyn.exe opensyn/principal.c synapse_rt.c -I. -lws2_32
+    - name: Compilar binario estático
+      run: |
+        gcc -O2 -static -o synapse-windows-amd64.exe ^
+          synapse_unity.c synapse_rt.c ^
+          -I. -lws2_32
 
     - name: Adjuntar ejecutable al Release
       uses: softprops/action-gh-release@v1
       with:
-        files: opensyn.exe
-        tag_name: v1.1.0-Sovereignty-Update
+        files: synapse-windows-amd64.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

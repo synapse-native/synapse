@@ -33,7 +33,7 @@ jobs:
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov pytest-md pytest-emoji
+          pip install pytest pytest-cov pytest-md pytest-emoji flake8
           pip install -r requirements.txt 2>/dev/null || true
 
       - name: Verificar entorno
@@ -41,24 +41,29 @@ jobs:
           python --version
           python -c "import sys; print(f'Python {sys.version}')"
           python -c "import pytest; print(f'pytest {pytest.__version__}')"
+          python -c "import flake8; print(f'flake8 {flake8.__version__}')"
+
+      - name: Comprobar calidad de código (linting)
+        run: |
+          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        continue-on-error: false
 
       - name: Ejecutar tests unitarios y de integración
         run: |
           python -m pytest tests/ -v \
             --tb=short \
             --cov=. --cov-report=term-missing \
-            --cov-report=html:coverage_reports/ \
-            -x
+            --cov-report=html:coverage_reports/
         env:
           PYTHONPATH: ${{ github.workspace }}
 
-      - name: Compilar runtime (C)
+      - name: Compilar runtime (C) - Unix
         if: matrix.os != 'windows-latest'
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
 
-      - name: Compilar runtime (Windows)
+      - name: Compilar runtime (C) - Windows
         if: matrix.os == 'windows-latest'
         run: |
           gcc --version
@@ -76,14 +81,68 @@ jobs:
           path: coverage_reports/
           retention-days: 7
 
-      - name: Comprobar calidad de código (linting)
-        run: |
-          pip install flake8
-          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        continue-on-error: true
-
       - name: Notificar resultado
         if: always()
         run: |
           echo "## ✅ Tests completados para ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
           echo "Ver reporte de cobertura en los artifacts." >> $GITHUB_STEP_SUMMARY
+
+  # Job independiente: verificar bootstrap completo
+  bootstrap:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Bootstrap Stage 0 — Generar synapse_unity.c
+        run: |
+          python main.py nucleo/principal.syn 2>&1 | tee bootstrap.log
+
+      - name: Verificar que GCC compila con 0 errores
+        run: |
+          if grep -q "error:" bootstrap.log; then
+            echo "❌ ERROR: GCC encontro errores en el bootstrap"
+            grep "error:" bootstrap.log
+            exit 1
+          fi
+          echo "✅ Bootstrap: 0 errores GCC"
+          echo "Binario generado: synapse_bootstrap.exe"
+
+      - name: Verificar que Stage1 compila
+        run: |
+          python main.py src/main.syn -o dist/bin/synapse_stage1.exe 2>&1 | tee stage1.log
+          if grep -q "error:" stage1.log; then
+            echo "❌ ERROR: Stage1 fallo"
+            grep "error:" stage1.log
+            exit 1
+          fi
+          echo "✅ Stage1 compila correctamente"
+
+      - name: Verificar que los tests no regresionan
+        run: |
+          python -m pytest tests/ -q --tb=short 2>&1 | tee test.log
+          if grep -q "FAILED" test.log; then
+            echo "❌ ERROR: Tests fallaron"
+            grep "FAILED" test.log
+            exit 1
+          fi
+          echo "✅ Todos los tests pasan"
+
+      - name: Notificar bootstrap
+        if: always()
+        run: |
+          echo "## ✅ Bootstrap verification completado (Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,28 @@
+[flake8]
+max-line-length = 100
+extend-ignore = E203, E266, E501, W503
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    build,
+    dist,
+    docs,
+    node_modules,
+    .github,
+    *.syn,
+    *.c,
+    *.h,
+    *.md,
+    *.json,
+    *.toml,
+    *.yml,
+    *.yaml,
+    *.ps1,
+    *.bat,
+    *.sh,
+    *.exe,
+    *.o,
+    compilador/generator/emit_selfhost.py,
+    compilador/generator_old.py,
+    old_generator.py,

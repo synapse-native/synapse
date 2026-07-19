@@ -17,16 +17,19 @@ jobs:
             cc: gcc
             artifact_name: synapse-linux-amd64
             ext: ""
+            ldflags: "-lpthread -lm"
 
           - os: macos-latest
             cc: clang
             artifact_name: synapse-darwin-arm64
             ext: ""
+            ldflags: "-lpthread"
 
           - os: windows-latest
             cc: gcc
             artifact_name: synapse-windows-amd64
             ext: .exe
+            ldflags: "-lws2_32"
 
     runs-on: ${{ matrix.os }}
 
@@ -34,15 +37,24 @@ jobs:
       - name: Clonar Repositorio
         uses: actions/checkout@v4
 
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Instalar dependencias (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y gcc libpthread-stubs0-dev
 
-      - name: Compilar runtime
-        run: ${{ matrix.cc }} -c synapse_rt.c -o synapse_rt.o -lpthread
+      - name: Generar código C desde Synapse (bootstrap)
+        run: python main.py nucleo/principal.syn
 
-      - name: Compilar binario principal
-        run: ${{ matrix.cc }} -o ${{ matrix.artifact_name }}${{ matrix.ext }} main.c synapse_rt.o -lpthread
+      - name: Compilar runtime y binario
+        run: |
+          ${{ matrix.cc }} -c synapse_rt.c -o synapse_rt.o ${{ matrix.ldflags }}
+          ${{ matrix.cc }} -o ${{ matrix.artifact_name }}${{ matrix.ext }} \
+            synapse_unity.c synapse_rt.o \
+            -I. ${{ matrix.ldflags }} -O2
 
       - name: Subir artefacto al Release
         uses: softprops/action-gh-release@v1
