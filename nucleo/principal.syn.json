@@ -40498,14 +40498,175 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fprintf(stderr, \"[Synapse] Generando codigo C...\\n\");"
+                  "instruccion": "fprintf(stderr, \"[Synapse] Pipeline nativa: leyendo fuente...\\n\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Build command: python main.py <ruta>"
+                  "instruccion": "// 1. Read source file"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "FILE* _f = fopen(ruta.datos, \"rb\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (!_f) { struct ResultadoEtapa _e = {1, 2}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "fseek(_f, 0, SEEK_END); long _fsz = ftell(_f); fseek(_f, 0, SEEK_SET);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "char* _buf = (char*)malloc((size_t)_fsz + 1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "fread(_buf, 1, (size_t)_fsz, _f); fclose(_f); _buf[_fsz] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "CadenaSegura _fuente = { .longitud = (int)_fsz, .datos = _buf };"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// 2. Tokenizar"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern int tokenizar(CadenaSegura);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _ntok = tokenizar(_fuente);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_ntok < 0) { free(_buf); struct ResultadoEtapa _e = {1, 3}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// 3. Parsear (obtener AST)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern struct Programa parsear(CadenaSegura);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct Programa _ast = parsear(_fuente);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// 4. Generar codigo C desde AST"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern int generar(struct Programa, CadenaSegura);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "CadenaSegura _salida_c = { .longitud = salida.longitud, .datos = salida.datos };"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _gen_rc = generar(_ast, _salida_c);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_gen_rc != 0) { free(_buf); struct ResultadoEtapa _e = {1, 4}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// 5. Compilar con GCC"
                 }
               },
               {
@@ -40519,35 +40680,42 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "snprintf(_cmd, 4096, \"python main.py \\\"%s\\\" -o \\\"%s\\\" 2>&1\", ruta.datos, salida.datos);"
+                  "instruccion": "snprintf(_cmd, 4096, \"gcc -O2 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm\", salida.datos);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fprintf(stderr, \"[Synapse] Ejecutando: %%s\\n\", _cmd);"
+                  "instruccion": "fprintf(stderr, \"[Synapse] GCC: %%s\\n\", _cmd);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "int _rc = system(_cmd);"
+                  "instruccion": "int _gcc_rc = system(_cmd);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_rc != 0) {"
+                  "instruccion": "free(_buf);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    fprintf(stderr, \"[Synapse] ERROR: Compilacion fallo con codigo %%d\\n\", _rc);"
+                  "instruccion": "if (_gcc_rc != 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fprintf(stderr, \"[Synapse] ERROR: GCC fallo con codigo %%d\\n\", _gcc_rc);"
                 }
               },
               {
@@ -40656,159 +40824,6 @@
                   "_tipo": "ExprAsm",
                   "instruccion": "if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }"
                 }
-              }
-            ]
-          },
-          {
-            "_tipo": "NodoCoincidir",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "tokenizar_etapa",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "ruta"
-                }
-              ]
-            },
-            "casos": [
-              {
-                "_tipo": "NodoCaso",
-                "patron": "OK(v)",
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  }
-                ],
-                "tipo_extraido": "int"
-              },
-              {
-                "_tipo": "NodoCaso",
-                "patron": "ERR(cod)",
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "fallo_etapa",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "cod"
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ],
-                "tipo_extraido": "int"
-              }
-            ]
-          },
-          {
-            "_tipo": "NodoCoincidir",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parsear_etapa",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "ruta"
-                }
-              ]
-            },
-            "casos": [
-              {
-                "_tipo": "NodoCaso",
-                "patron": "OK(v)",
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  }
-                ],
-                "tipo_extraido": "int"
-              },
-              {
-                "_tipo": "NodoCaso",
-                "patron": "ERR(cod)",
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "fallo_etapa",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "cod"
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ],
-                "tipo_extraido": "int"
-              }
-            ]
-          },
-          {
-            "_tipo": "NodoCoincidir",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "analizar_etapa",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "ruta"
-                }
-              ]
-            },
-            "casos": [
-              {
-                "_tipo": "NodoCaso",
-                "patron": "OK(v)",
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  }
-                ],
-                "tipo_extraido": "int"
-              },
-              {
-                "_tipo": "NodoCaso",
-                "patron": "ERR(cod)",
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "fallo_etapa",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "cod"
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ],
-                "tipo_extraido": "int"
               }
             ]
           },

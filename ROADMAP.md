@@ -21,6 +21,7 @@
 | **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed |
 | **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed |
 | **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed |
+| **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed |
 
 ---
 
