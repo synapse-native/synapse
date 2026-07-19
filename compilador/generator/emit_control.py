@@ -87,11 +87,12 @@ def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
 def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
     """Genera código C para match/coincidir (switch sobre ADT tag)."""
     expr = expr_a_c(ctx, nodo.expresion)
-    tipo_expr = tipo_de_expr(ctx, nodo.expresion)
+    tipo_syn = tipo_de_expr(ctx, nodo.expresion)  # Synapse type
+    tipo_c = ctx.traducir_tipo_c(tipo_syn)  # C type for declaration
     ctx.write_line("{")
     ctx.inc_indent()
     var_temp = f"_match_{abs(hash(str(id(nodo))))}"
-    ctx.write_line(f"{tipo_expr} {var_temp} = {expr};")
+    ctx.write_line(f"{tipo_c} {var_temp} = {expr};")
     ctx.write_line(f"switch ({var_temp}.tag) {{")
     ctx.inc_indent()
     for caso in nodo.casos:

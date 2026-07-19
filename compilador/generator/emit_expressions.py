@@ -45,9 +45,9 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return ctx._const_types[nombre]
         # Builtin lookup
         if nombre in ctx._BUILTINS:
-            return ctx.traducir_tipo_c(ctx._BUILTINS[nombre])
+            return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
-            return ctx.traducir_tipo_c(ctx._func_return_types[nombre])
+            return ctx._func_return_types[nombre]
         return 'int'
 
     if isinstance(nodo, ExprTensor):
@@ -56,6 +56,16 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return 'CanalConcurrencia*'
     if isinstance(nodo, ExprRecibirCanal):
         return 'void*'
+
+    if isinstance(nodo, ExprObtenerDireccion):
+        base_tipo = tipo_de_expr(ctx, nodo.expr)
+        return f"{base_tipo}*"
+
+    if isinstance(nodo, ExprDereferencia):
+        base_tipo = tipo_de_expr(ctx, nodo.expr)
+        if base_tipo.endswith('*'):
+            return base_tipo[:-1]
+        return base_tipo
 
     if isinstance(nodo, ExprAccesoCampo):
         obj_tipo = tipo_de_expr(ctx, nodo.objeto).rstrip('*')
@@ -91,12 +101,12 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, LlamadaFuncion):
         nombre = nodo.nombre
         if nombre in ctx._BUILTINS:
-            return ctx.traducir_tipo_c(ctx._BUILTINS[nombre])
+            return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
-            return ctx.traducir_tipo_c(ctx._func_return_types[nombre])
-        # Struct constructor call: ResultadoEtapa() -> struct ResultadoEtapa
+            return ctx._func_return_types[nombre]
+        # Struct constructor call
         if nombre in ctx._estructuras:
-            return f"struct {nombre}"
+            return nombre
         return 'int'
 
     if isinstance(nodo, ExprIndice):

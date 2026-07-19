@@ -69,32 +69,33 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {val};")
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
-    ctx._variables[nodo.nombre] = tipo_c
+    ctx._variables[nodo.nombre] = nodo.tipo  # Store Synapse type (consistent)
 
 
 def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
     """Genera código C para asignación (con/sin declaración implícita)."""
-    tipo = tipo_de_expr(ctx, nodo.expresion)
+    tipo_syn = tipo_de_expr(ctx, nodo.expresion)  # Synapse type
+    tipo_c = ctx.traducir_tipo_c(tipo_syn)  # C type for output
     val = expr_a_c(ctx, nodo.expresion)
     desde_llamada = isinstance(nodo.expresion, type(None)) is False and hasattr(
         nodo.expresion, 'nombre'
     )
     if nodo.nombre not in ctx._variables:
-        ctx._variables[nodo.nombre] = tipo
-        ctx.write_line(f"{tipo} {nodo.nombre} = {val};")
-        if tipo == 'Tensor':
+        ctx._variables[nodo.nombre] = tipo_syn  # Store Synapse type
+        ctx.write_line(f"{tipo_c} {nodo.nombre} = {val};")
+        if tipo_syn == 'Tensor':
             ctx._tensor_vars.add(nodo.nombre)
-        elif tipo == 'Canal':
+        elif tipo_syn == 'Canal':
             ctx._canal_vars.add(nodo.nombre)
         else:
-            ctx.register_var(nodo.nombre, tipo, desde_llamada)
+            ctx.register_var(nodo.nombre, tipo_syn, desde_llamada)
     else:
         old_tipo = ctx._variables.get(nodo.nombre)
         if old_tipo in ctx._destructor_map:
             dtor = ctx._destructor_map[old_tipo]
             ctx.write_line(f"{dtor}({nodo.nombre});")
             ctx.unregister_var(nodo.nombre)
-        if nodo.nombre in ctx._tensor_vars and tipo == 'Tensor':
+        if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
         ctx.write_line(f"{nodo.nombre} = {val};")
 
@@ -205,8 +206,8 @@ def visitar_constante(ctx: GeneratorContext, nodo: StmtConstante):
         ctx.write_line(f"#define {nodo.nombre} ({valor_c})")
     else:
         ctx.write_line(f"const {tipo_c} {nodo.nombre} = {valor_c};")
-    # Store C type for consistency (tipo_de_expr returns C types)
-    ctx._const_types[nodo.nombre] = tipo_c
+    # Store Synapse type for consistency with tipo_de_expr
+    ctx._const_types[nodo.nombre] = tipo_inferido or 'int'
 
 
 # ================================================================
@@ -287,10 +288,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx._canal_vars_cerradas = set()
     ctx._strings_heap = set()
 
-    # Register parameters
+    # Register parameters (store Synapse type for consistency with tipo_de_expr)
     for p in nodo.parametros:
-        tipo_c = ctx.traducir_tipo_c(p.tipo)
-        ctx._variables[p.nombre] = tipo_c
+        ctx._variables[p.nombre] = p.tipo
 
     tipo = ctx.traducir_tipo_c(nodo.tipo_retorno)
     params = ", ".join(
@@ -304,9 +304,8 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     # Register transfer parameters
     for p in nodo.parametros:
         if p.es_transferencia:
-            tipo_c = ctx.traducir_tipo_c(p.tipo)
-            if tipo_c in ctx._destructor_map:
-                ctx._scope_stack[-1][p.nombre] = tipo_c
+            if p.tipo in ctx._destructor_map:
+                ctx._scope_stack[-1][p.nombre] = p.tipo
 
     # Contract requires → asserts
     for expr in nodo.requiere:
@@ -330,10 +329,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 and s.nombre not in ctx._variables
                 and s.nombre not in _explicit_vars
             ):
-                t = tipo_de_expr(ctx, s.expresion)
-                if t not in ctx._destructor_map:
-                    _auto_vars.append((s.nombre, t))
-                    ctx._variables[s.nombre] = t
+                t_syn = tipo_de_expr(ctx, s.expresion)  # Synapse type
+                if t_syn not in ctx._destructor_map:
+                    _auto_vars.append((s.nombre, t_syn))
+                    ctx._variables[s.nombre] = t_syn
             if isinstance(s, BloqueInseguro):
                 _collect_vars(s.cuerpo)
             elif hasattr(s, 'cuerpo') and isinstance(
@@ -344,8 +343,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 _collect_vars(s.cuerpo_sino)
 
     _collect_vars(nodo.cuerpo)
-    for vn, vt in _auto_vars:
-        ctx.write_line(f"{vt} {vn};")
+    for vn, vt_syn in _auto_vars:
+        vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
+        ctx.write_line(f"{vt_c} {vn};")
 
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
@@ -389,12 +389,11 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ctx._tensor_vars_transferidas.add(excl)
     
     if nodo.expr:
-        ret_tipo = tipo_de_expr(ctx, nodo.expr)
-        # NOTA: tipo_de_expr ya retorna tipos C (e.g. 'struct GestorDiagnostico').
-        # NO llamar traducir_tipo_c otra vez, causaria 'struct struct GestorDiagnostico'.
+        ret_tipo_syn = tipo_de_expr(ctx, nodo.expr)  # Synapse type
+        ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
         temp = f"_ret_{nodo.linea or 0}"
-        ctx.write_line(f"{ret_tipo} {temp} = {ret_expr};")
+        ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
         ctx.emit_all_destructors(exclude_var=excl)
         if nodo.es_transferencia:
             ctx.write_line(f"return ->{temp};")
