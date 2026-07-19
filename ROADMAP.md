@@ -23,7 +23,7 @@
 | **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed |
 | **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed |
 | **F8: Análisis semántico nativo** | ⏳ **PLANIFICADA** | 0/4 tareas | 231 passed |
-| **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 1/4 tareas | 231 passed |
+| **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 2/6 tareas | 231 passed |
 | **F10: Concurrencia (canales tipados)** | ⏳ **PLANIFICADA** | 0/5 tareas | 231 passed |
 
 ---
@@ -216,10 +216,12 @@ Eliminar el post-processing paso 4 en `generator/__init__.py` corrigiendo la ra�
 | # | Tarea | Archivos | Riesgo | Estado |
 |---|-------|----------|--------|--------|
 | 9.1 | Fix `gen_tok_c()`: agregar escape `\"` en strings | `emit_selfhost.py` | 🔴 Alto | ✅ |
-| 9.2 | Fix `gen_parse()`: agregar soporte `coincidir`/match | `emit_selfhost.py` | 🔴 Alto | ⏳ |
-| 9.3 | Arreglar emisiones `(CadenaSegura){...}` en fuente | `emit_selfhost.py` + `generator.syn` | 🔴 Alto | ⏳ |
-| 9.4 | Eliminar post-processing paso 4 de `__init__.py` | `__init__.py` | 🟡 Medio | ⏳ |
-| 9.5 | Verificar bootstrap Stage1→Stage2→Stage3 + `cmp` | — | 🟡 Medio | ⏳ |
+| 9.2 | Refactor `principal.syn`: `coincidir` → `si`/`sino` | `principal.syn` | 🟡 Medio | ✅ |
+| 9.3 | Eliminar debug `fprintf` de `emitir_tokenizar()` (5 prints) | `emit_expressions.py` | 🟡 Medio | ✅ |
+| 9.4 | Arreglar segfault en parser self-hosting (`gen_parse()`) | `emit_selfhost.py` | 🔴 Alto | 🔴 **BLOQUEANTE** |
+| 9.5 | Arreglar emisiones `(CadenaSegura){...}` en fuente | `emit_selfhost.py` + `generator.syn` | 🔴 Alto | ⏳ |
+| 9.6 | Eliminar post-processing paso 4 de `__init__.py` | `__init__.py` | 🟡 Medio | ⏳ |
+| 9.7 | Verificar bootstrap Stage1→Stage2→Stage3 + `cmp` | — | 🟡 Medio | ⏳ |
 
 ### Limitación conocida
 El parser self-hosting (`gen_parse()`) no implementa `coincidir`, bloqueando Stage2 con `principal.syn` actual.

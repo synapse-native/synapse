@@ -617,17 +617,14 @@ def emitir_tokenizar(ctx: GeneratorContext, nodo: DefinicionFuncion):
         "if(_c=='\\\"'||_c=='\\''){char _q=_c;int _st=_i;_i++;_columna++;"
         "while(_i<fuente.longitud&&fuente.datos[_i]!=_q)"
         "{_i++;_columna++;}"
-        "if(_i>=fuente.longitud){fprintf(stderr,\"  TOKEN STRING_UNCLOSED"
-        " L%d:%d\\n\",_linea,_columna);break;}"
-        "_i++;_columna++;_token_count++;"
-        "fprintf(stderr,\"  TOKEN STRING L%d:%d\\n\",_linea,_columna);}"
+        "if(_i>=fuente.longitud){break;}"
+        "_i++;_columna++;_token_count++;}"
     )
     ctx.write_line(
         "else if(_c>='0'&&_c<='9'){int _st=_i;"
         "while(_i<fuente.longitud&&fuente.datos[_i]>='0'&&"
         "fuente.datos[_i]<='9')_i++;"
-        "_columna+=_i-_st;_token_count++;"
-        "fprintf(stderr,\"  TOKEN NUMBER L%d:%d\\n\",_linea,_columna);}"
+        "_columna+=_i-_st;_token_count++;}"
     )
     ctx.write_line(
         "else if((_c>='a'&&_c<='z')||(_c>='A'&&_c<='Z')||_c=='_'){"
@@ -636,16 +633,13 @@ def emitir_tokenizar(ctx: GeneratorContext, nodo: DefinicionFuncion):
         "fuente.datos[_i]<='z')||(fuente.datos[_i]>='A'&&"
         "fuente.datos[_i]<='Z')||(fuente.datos[_i]>='0'&&"
         "fuente.datos[_i]<='9')||fuente.datos[_i]=='_'))_i++;"
-        "_columna+=_i-_st;_token_count++;"
-        "fprintf(stderr,\"  TOKEN IDENTIFIER L%d:%d\\n\",_linea,_columna);}"
+        "_columna+=_i-_st;_token_count++;}"
     )
     ctx.write_line(
-        "else{_i++;_columna++;_token_count++;"
-        "fprintf(stderr,\"  TOKEN CHAR(%c)L%d:%d\\n\",_c,_linea,_columna);}"
+        "else{_i++;_columna++;_token_count++;}"
     )
     ctx.dec_indent()
     ctx.write_line("}")
-    ctx.write_line("fprintf(stderr,\"  TOKENS: %d\\n\",_token_count);")
     ctx.write_line("return _token_count;")
     ctx.dec_indent()
     ctx.write_line("}")
