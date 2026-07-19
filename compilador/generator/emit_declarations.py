@@ -151,6 +151,9 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
         for c in nodo.campos:
             if c.nombre in campos_pointer:
                 ctx.write_line(f"struct {c.tipo}* {c.nombre};")
+            elif c.nombre in ctx._ARRAY_OVERRIDE_FIELDS:
+                arr_base, arr_size = ctx._ARRAY_OVERRIDE_FIELDS[c.nombre]
+                ctx.write_line(f"{arr_base} {c.nombre}[{arr_size}];")
             else:
                 tipo_c = ctx.traducir_tipo_c(c.tipo)
                 ctx.write_line(f"{tipo_c} {c.nombre};")

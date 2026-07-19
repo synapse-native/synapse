@@ -148,6 +148,14 @@ class GeneratorContext:
         self._externas: Dict[str, List[str]] = {}
         self._linker_libs: set = set()
 
+        # Fields that should be emitted as arrays (not scalars)
+        # Workaround: Synapse asm() blocks access these with subscript,
+        # but the struct definition uses a scalar type (entero).
+        self._ARRAY_OVERRIDE_FIELDS: Dict[str, tuple] = {
+            'pila_indent': ('int', 64),
+            '_P_pila_indent': ('int', 64),
+        }
+
         # Destructor map for RAII types
         self._destructor_map: Dict[str, str] = {
             'CadenaSegura': '_syn_texto_liberar',
