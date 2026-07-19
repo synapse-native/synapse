@@ -1,0 +1,20 @@
+#lang: es
+
+constante PROPIEDAD_VIVO = 1
+constante PROPIEDAD_MOVIDO = 2
+
+estructura Simbolo:
+    nombre: cadena
+    tipo: cadena
+    nodo: Nodo
+    nivel_ambito: entero
+    propiedad: entero
+    es_constante: booleano
+    uri: cadena
+    linea: entero
+    columna: entero
+
+estructura TablaSimbolos:
+    entradas: Simbolo
+    total_entradas: entero
+    nivel_actual: entero

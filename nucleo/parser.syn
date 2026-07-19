@@ -216,6 +216,10 @@ funcion parsear_expresion(est: ParserEst) -> entero:
     retornar parsear_logica(est)
 
 funcion parsear_logica(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
     izq = parsear_comparacion(est)
     r = 1
     mientras r == 1:
@@ -248,6 +252,10 @@ funcion parsear_logica(est: ParserEst) -> entero:
     retornar izq
 
 funcion parsear_comparacion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
     izq = parsear_adicion(est)
     r = 1
     mientras r == 1:
@@ -328,6 +336,10 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
     retornar izq
 
 funcion parsear_adicion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
     izq = parsear_multiplicacion(est)
     r = 1
     mientras r == 1:
@@ -360,6 +372,10 @@ funcion parsear_adicion(est: ParserEst) -> entero:
     retornar izq
 
 funcion parsear_multiplicacion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
     izq = parsear_unario(est)
     r = 1
     mientras r == 1:
@@ -404,6 +420,10 @@ funcion parsear_multiplicacion(est: ParserEst) -> entero:
     retornar izq
 
 funcion parsear_unario(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    expr = 0
+    nodo = 0
     t = token_mirar(est)
     si t == T_MENOS:
         linea = token_linea(est, est.posicion)
@@ -446,6 +466,9 @@ funcion parsear_unario(est: ParserEst) -> entero:
     retornar parsear_primario(est)
 
 funcion parsear_primario(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    nodo = 0
     t = token_mirar(est)
     si t == T_NUMERO:
         linea = token_linea(est, est.posicion)
@@ -524,6 +547,9 @@ funcion parsear_primario(est: ParserEst) -> entero:
 
 // ---- Statement parsing ----
 funcion parsear_sentencia(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    nodo = 0
     t = token_mirar(est)
     si t == T_FUNCION:
         retornar parsear_funcion(est)
@@ -603,6 +629,9 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
 
 // ---- Function parsing (with requiere/garantiza) ----
 funcion parsear_funcion(est: ParserEst) -> entero:
+    r2 = 0
+    expr = 0
+    r = 0
     si token_esperar(est, T_FUNCION) == 0:
         retornar 0
     t = token_mirar(est)
@@ -735,6 +764,8 @@ funcion parsear_funcion(est: ParserEst) -> entero:
 
 // ---- Other statement parsers ----
 funcion parsear_si(est: ParserEst) -> entero:
+    t = 0
+    stmt = 0
     r = 1
     si token_esperar(est, T_IF) == 0:
         retornar 0

@@ -1,0 +1,514 @@
+#lang: es
+
+// --- Token ID constants ---
+constante T_IF = 1
+constante T_ELSE = 2
+constante T_FUNCION = 3
+constante T_RETORNAR = 4
+constante T_LANZAR = 5
+constante T_RECUPERAR = 6
+constante T_ESCUCHAR = 7
+constante T_MIENTRAS = 8
+constante T_IMPORTAR = 9
+constante T_ESTRUCTURA = 10
+constante T_ROMPER = 11
+constante T_SIGUIENTE = 12
+constante T_PUNTO = 13
+constante T_Y = 14
+constante T_O = 15
+constante T_NO = 16
+constante T_VERDADERO = 17
+constante T_FALSO = 18
+constante T_IDENTIFICADOR = 19
+constante T_NUMERO = 20
+constante T_FLOTANTE = 21
+constante T_CADENA = 22
+constante T_MAYOR = 23
+constante T_MENOR = 24
+constante T_IGUAL = 25
+constante T_DISTINTO = 26
+constante T_MENOR_IGUAL = 27
+constante T_MAYOR_IGUAL = 28
+constante T_ASIGNAR = 29
+constante T_MAS = 30
+constante T_MENOS = 31
+constante T_POR = 32
+constante T_DIV = 33
+constante T_MOD = 34
+constante T_FLECHA = 35
+constante T_COINCIDIR = 36
+constante T_FLECHA_DER = 37
+constante T_PAREN_IZQ = 38
+constante T_PAREN_DER = 39
+constante T_DOSPUNTOS = 40
+constante T_COMA = 41
+constante T_NUEVALINEA = 42
+constante T_INDENTAR = 43
+constante T_DESINDENTAR = 44
+constante T_AMPERSAND = 45
+constante T_INSEGURO = 46
+constante T_IMPORTAR_C = 47
+constante T_EXTERNO = 48
+constante T_FLECHA_IZQ = 49
+constante T_REQUIERE = 50
+constante T_GARANTIZA = 51
+constante T_CANAL = 52
+constante T_ASM = 53
+constante T_CONSTANTE = 54
+constante T_PUNTOCOMA = 55
+constante T_PARA = 56
+constante T_FIN = 57
+constante T_ERROR = 58
+
+// --- Token struct ---
+estructura TokenLex:
+    tipo: entero
+    linea: entero
+    columna: entero
+    valor: cadena
+
+// --- String helpers (via asm to avoid semantic analyzer field access on cadena) ---
+funcion str_len(s: cadena) -> entero:
+    inseguro:
+        r = 0
+        asm("r = s.longitud")
+        retornar r
+
+funcion str_char(s: cadena, i: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (i >= 0 && i < s.longitud) ? (unsigned char)s.datos[i] : 0")
+        retornar r
+
+funcion str_char_at(ptr: entero, i: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (unsigned char)((const char*)ptr)[i]")
+        retornar r
+
+funcion str_eq(a: cadena, b: cadena) -> entero:
+    inseguro:
+        r = 0
+        asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
+        retornar r
+
+funcion str_len_ptr(ptr: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (int)strlen((const char*)ptr)")
+        retornar r
+
+// --- Keyword dictionary lookup (Spanish) ---
+funcion keyword_token(palabra: cadena) -> entero:
+    si str_eq(palabra, "si") == 1:
+        retornar T_IF
+    si str_eq(palabra, "sino") == 1:
+        retornar T_ELSE
+    si str_eq(palabra, "funcion") == 1:
+        retornar T_FUNCION
+    si str_eq(palabra, "retornar") == 1:
+        retornar T_RETORNAR
+    si str_eq(palabra, "lanzar") == 1:
+        retornar T_LANZAR
+    si str_eq(palabra, "recuperar") == 1:
+        retornar T_RECUPERAR
+    si str_eq(palabra, "escuchar") == 1:
+        retornar T_ESCUCHAR
+    si str_eq(palabra, "mientras") == 1:
+        retornar T_MIENTRAS
+    si str_eq(palabra, "importar") == 1:
+        retornar T_IMPORTAR
+    si str_eq(palabra, "romper") == 1:
+        retornar T_ROMPER
+    si str_eq(palabra, "siguiente") == 1:
+        retornar T_SIGUIENTE
+    si str_eq(palabra, "estructura") == 1:
+        retornar T_ESTRUCTURA
+    si str_eq(palabra, "y") == 1:
+        retornar T_Y
+    si str_eq(palabra, "o") == 1:
+        retornar T_O
+    si str_eq(palabra, "no") == 1:
+        retornar T_NO
+    si str_eq(palabra, "verdadero") == 1:
+        retornar T_VERDADERO
+    si str_eq(palabra, "falso") == 1:
+        retornar T_FALSO
+    si str_eq(palabra, "inseguro") == 1:
+        retornar T_INSEGURO
+    si str_eq(palabra, "importar_c") == 1:
+        retornar T_IMPORTAR_C
+    si str_eq(palabra, "externo") == 1:
+        retornar T_EXTERNO
+    si str_eq(palabra, "coincidir") == 1:
+        retornar T_COINCIDIR
+    si str_eq(palabra, "requiere") == 1:
+        retornar T_REQUIERE
+    si str_eq(palabra, "garantiza") == 1:
+        retornar T_GARANTIZA
+    si str_eq(palabra, "canal") == 1:
+        retornar T_CANAL
+    si str_eq(palabra, "asm") == 1:
+        retornar T_ASM
+    si str_eq(palabra, "constante") == 1:
+        retornar T_CONSTANTE
+    si str_eq(palabra, "para") == 1:
+        retornar T_PARA
+    retornar 0
+
+// --- Character predicates ---
+funcion es_digito(c: entero) -> entero:
+    si c >= 48:
+        si c <= 57:
+            retornar 1
+    retornar 0
+
+funcion es_letra(c: entero) -> entero:
+    si c >= 65:
+        si c <= 90:
+            retornar 1
+    si c >= 97:
+        si c <= 122:
+            retornar 1
+    si c == 95:
+        retornar 1
+    retornar 0
+
+funcion es_alnum(c: entero) -> entero:
+    si es_digito(c) == 1:
+        retornar 1
+    si es_letra(c) == 1:
+        retornar 1
+    retornar 0
+
+// --- Lexer state struct ---
+constante MAX_TOKENS = 16384
+constante MAX_INDENT = 64
+
+estructura LexerEstado:
+    ptr_fuente: entero
+    len_fuente: entero
+    posicion: entero
+    linea_actual: entero
+    columna_actual: entero
+    tokens: TokenLex
+    total_tokens: entero
+    pila_indent: entero
+    nivel_pila: entero
+    hay_error: booleano
+    error_mensaje: cadena
+    error_linea: entero
+    error_columna: entero
+
+// --- Add token to list ---
+funcion lexer_push_token(lex: LexerEstado, tipo: entero, linea: entero, columna: entero) -> nulo:
+    inseguro:
+        asm("if (lex.total_tokens >= 16384) return")
+        asm("lex.tokens[lex.total_tokens].tipo = tipo")
+        asm("lex.tokens[lex.total_tokens].linea = linea")
+        asm("lex.tokens[lex.total_tokens].columna = columna")
+        asm("lex.total_tokens = lex.total_tokens + 1")
+
+// --- Report lexer error ---
+funcion lexer_error(lex: LexerEstado, mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    lex.hay_error = verdadero
+    lex.error_mensaje = mensaje
+    lex.error_linea = linea
+    lex.error_columna = columna
+
+// --- Detect language from first line ---
+funcion lexer_detectar_idioma(lex: LexerEstado) -> nulo:
+    // Read first line characters to detect #lang: prefix
+    inseguro:
+        r = 0
+        asm("r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0")
+        si r == 0:
+            lexer_error(lex, "Falta declaracion de idioma #lang: en la linea 1", 1, 0)
+
+// --- Process indentation for a line ---
+funcion lexer_procesar_indentacion(lex: LexerEstado, ptr_linea: entero, len_linea: entero) -> nulo:
+    inseguro:
+        espacios = 0
+        asm("while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; }")
+        si espacios < len_linea:
+            r = 0
+            asm("r = (((const char*)ptr_linea)[espacios] == '\t') ? 1 : 0")
+            si r == 1:
+                lexer_error(lex, "Tabulador prohibido E-101", lex.linea_actual, espacios + 1)
+                retornar
+        si espacios % 4 != 0:
+            lexer_error(lex, "Indentacion debe ser multiplo de 4 espacios", lex.linea_actual, 0)
+            retornar
+        nivel = espacios / 4
+        tope = 0
+        asm("tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0")
+        si nivel > tope:
+            asm("lex.pila_indent[lex.nivel_pila] = nivel")
+            asm("lex.nivel_pila = lex.nivel_pila + 1")
+            lexer_push_token(lex, T_INDENTAR, lex.linea_actual, 0)
+        si nivel < tope:
+            mientras nivel < tope:
+                asm("lex.nivel_pila = lex.nivel_pila - 1")
+                asm("tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0")
+                lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0)
+
+// --- Tokenize a single line of text ---
+funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: entero) -> nulo:
+    i = 0
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("r = (i < len_texto) ? 1 : 0")
+            si r == 0:
+                romper
+            c = 0
+            asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+            si c == 32:
+                asm("i = i + 1")
+                siguiente
+            si c == 47:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 47:
+                        retornar
+            si c == 34:
+                asm("i = i + 1")
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si c == 92:
+                        asm("i = i + 1")
+                    sino:
+                        si c == 34:
+                            romper
+                    asm("i = i + 1")
+                asm("i = i + 1")
+                siguiente
+            si c == 39:
+                asm("i = i + 1")
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si c == 92:
+                        asm("i = i + 1")
+                    sino:
+                        si c == 39:
+                            romper
+                    asm("i = i + 1")
+                asm("i = i + 1")
+                siguiente
+            si c >= 48:
+                si c <= 57:
+                    mientras i < len_texto:
+                        asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                        si c < 48:
+                            romper
+                        si c > 57:
+                            romper
+                        asm("i = i + 1")
+                    siguiente
+            si es_letra(c) == 1:
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si es_alnum(c) == 0:
+                        si c != 95:
+                            romper
+                    asm("i = i + 1")
+                siguiente
+            si c == 43:
+                lexer_push_token(lex, T_MAS, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 45:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 62:
+                        lexer_push_token(lex, T_FLECHA, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                    si c == 60:
+                        lexer_push_token(lex, T_FLECHA_IZQ, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                lexer_push_token(lex, T_MENOS, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 61:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 62:
+                        lexer_push_token(lex, T_FLECHA_DER, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                    si c == 61:
+                        lexer_push_token(lex, T_IGUAL, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                lexer_push_token(lex, T_ASIGNAR, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 33:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        lexer_push_token(lex, T_DISTINTO, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                asm("i = i + 1")
+                siguiente
+            si c == 60:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        lexer_push_token(lex, T_MENOR_IGUAL, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                lexer_push_token(lex, T_MENOR, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 62:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        lexer_push_token(lex, T_MAYOR_IGUAL, lex.linea_actual, i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                lexer_push_token(lex, T_MAYOR, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 42:
+                lexer_push_token(lex, T_POR, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 47:
+                lexer_push_token(lex, T_DIV, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 37:
+                lexer_push_token(lex, T_MOD, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 40:
+                lexer_push_token(lex, T_PAREN_IZQ, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 41:
+                lexer_push_token(lex, T_PAREN_DER, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 58:
+                lexer_push_token(lex, T_DOSPUNTOS, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 44:
+                lexer_push_token(lex, T_COMA, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 46:
+                lexer_push_token(lex, T_PUNTO, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 38:
+                lexer_push_token(lex, T_AMPERSAND, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 59:
+                lexer_push_token(lex, T_PUNTOCOMA, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            lexer_error(lex, "Caracter inesperado", lex.linea_actual, i + 1)
+            asm("i = i + 1")
+        siguiente
+
+// --- Main tokenizer function ---
+funcion tokenizar(fuente: cadena) -> entero:
+    lex = LexerEstado()
+    inseguro:
+        asm("lex.ptr_fuente = (intptr_t)fuente.datos;")
+        asm("lex.len_fuente = fuente.longitud;")
+    lex.posicion = 0
+    lex.linea_actual = 1
+    lex.columna_actual = 1
+    lex.total_tokens = 0
+    lex.nivel_pila = 0
+    lex.hay_error = falso
+    lex.error_mensaje = ""
+
+    lexer_detectar_idioma(lex)
+    si lex.hay_error == verdadero:
+        retornar -1
+
+    i = 0
+    linea_num = 1
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("r = (i < len_fuente) ? 1 : 0")
+            si r == 0:
+                romper
+        inicio_linea = i
+        mientras r == 1:
+            inseguro:
+                asm("r = (i < len_fuente) ? 1 : 0")
+                si r == 0:
+                    romper
+                c = 0
+                asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                si c == 10:
+                    romper
+                si c == 13:
+                    romper
+                asm("i = i + 1")
+        len_linea = i - inicio_linea
+        ptr_linea = 0
+        inseguro:
+            asm("ptr_linea = (int)((const char*)ptr_fuente + inicio_linea)")
+        si len_linea > 0:
+            inseguro:
+                c = 0
+                asm("c = (unsigned char)((const char*)ptr_linea)[0]")
+                si c == 35:
+                    nada = 1
+                sino:
+                    si len_linea >= 2:
+                        asm("c = (unsigned char)((const char*)ptr_linea)[0]")
+                        si c == 47:
+                            asm("c = (unsigned char)((const char*)ptr_linea)[1]")
+                            si c == 47:
+                                nada = 1
+                            sino:
+                                lex.linea_actual = linea_num
+                                lexer_procesar_indentacion(lex, ptr_linea, len_linea)
+                                lexer_tokenizar_linea(lex, ptr_linea, len_linea)
+                                lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
+                        sino:
+                            lex.linea_actual = linea_num
+                            lexer_procesar_indentacion(lex, ptr_linea, len_linea)
+                            lexer_tokenizar_linea(lex, ptr_linea, len_linea)
+                            lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
+                    sino:
+                        lex.linea_actual = linea_num
+                        lexer_procesar_indentacion(lex, ptr_linea, len_linea)
+                        lexer_tokenizar_linea(lex, ptr_linea, len_linea)
+                        lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
+        si i < len_fuente:
+            inseguro:
+                c = 0
+                asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                si c == 13:
+                    asm("i = i + 1")
+                si i < len_fuente:
+                    asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                    si c == 10:
+                        asm("i = i + 1")
+        linea_num = linea_num + 1
+        r = 1
+
+    mientras lex.nivel_pila > 0:
+        lex.nivel_pila = lex.nivel_pila - 1
+        lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0)
+
+    lexer_push_token(lex, T_FIN, lex.linea_actual, 0)
+
+    si lex.hay_error == verdadero:
+        retornar -1
+
+    retornar lex.total_tokens

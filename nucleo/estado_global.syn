@@ -1,0 +1,51 @@
+#lang: es
+
+// ============================================================
+// estado_global.syn  —  Configuración de Estado Global
+// ============================================================
+// Propósito: Documentar las variables globales compartidas
+//            entre módulos del compilador (_G_* del AST Walker,
+//            _P_* del parser embebido). Todas las variables
+//            se emiten SIN `static` desde generator.syn para
+//            evitar colisiones de enlazado (linker collisions).
+//
+//            NOTA: Este archivo es DOCUMENTACIÓN de la interfaz
+//            de estado global. Las funciones emisoras viven en
+//            generator.syn (gen_emitir_generar_c y
+//            gen_emitir_token_defs).
+// ============================================================
+
+// Variables globales del AST Walker (emitidas por gen_emitir_generar_c):
+//   int _G_indent
+//   FILE* _G_out
+//   char _G_vn[1024][64]
+//   char _G_vt[1024][64]
+//   int _G_nv
+//   char _G_ret_type[64]
+//   char _G_extern_names[64][64]
+//   char _G_extern_params[64][256]
+//   int _G_nextern
+//   char _G_snames[64][64]
+//   int _G_nsnames
+//
+// Variables globales del parser embebido (emitidas por gen_emitir_token_defs):
+//   _P_Token _P_tks[MAX_TOKS]
+//   int _P_ntks
+//   int _P_tpos
+//   int _P_p_err
+//   int _P_pila_indent[64]
+//   int _P_nivel_pila
+//
+// Funciones globales (emitidas SIN static):
+//   void _G_reset()
+//   int _G_find(const char* n)
+//   void _G_emit(const char* s)
+//   void _G_ea(struct Nodo* n, char* b, int sz)
+//   void _G_vl(struct ListaNodo* l)
+//   void _G_v(struct Nodo* n)
+//   void _P_tokenizar(const char* s, int len)
+//
+// Getter CadenaSegura -> char* (conversión explícita):
+//   cs_a_ptr(cs) -> extrae .datos manteniendo ownership en Synapse
+
+constante _GEN_TMP_SIZE = 4096

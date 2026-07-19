@@ -170,19 +170,165 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
+struct ResultadoEtapa;
 
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
+struct ResultadoEtapa etapa_ok(void);
+int fallo_etapa(int cod);
+CadenaSegura argv_str(int i);
+struct ResultadoEtapa tokenizar_etapa(CadenaSegura ruta);
+struct ResultadoEtapa parsear_etapa(CadenaSegura ruta);
+struct ResultadoEtapa analizar_etapa(CadenaSegura ruta);
+struct ResultadoEtapa generar_etapa(CadenaSegura ruta);
+int principal(void);
+
+typedef struct ResultadoEtapa {
+    int tag;
+    union {
+        int valor;
+    } dato;
+} ResultadoEtapa;
+
+static inline struct ResultadoEtapa ResultadoEtapa_nuevo() {
+    struct ResultadoEtapa _r = {0};
+    return _r;
+}
+
+struct ResultadoEtapa etapa_ok(void) {
+    struct ResultadoEtapa r = ResultadoEtapa_nuevo();
+    r.tag = 0;
+    r.dato.valor = 0;
+    struct ResultadoEtapa _ret_13 = r;
+    return _ret_13;
+}
+
+int fallo_etapa(int cod) {
+    { /* unsafe */
+        fprintf(stderr, "Error de compilacion\n");;
+    }
+    int _ret_18 = cod;
+    return _ret_18;
+}
+
+CadenaSegura argv_str(int i) {
+    CadenaSegura r = (CadenaSegura){ .longitud = 0, .datos = "" };
+    { /* unsafe */
+        if (i < 0 || i >= _argc()) { r = (CadenaSegura){0,(char*)""}; return r; };
+        CadenaSegura _as = _argv(i);;
+        r = (CadenaSegura){.longitud=_as.longitud,.datos=strdup(_as.datos)};
+    }
+    CadenaSegura _ret_26 = r;
+    return _ret_26;
+}
+
+struct ResultadoEtapa tokenizar_etapa(CadenaSegura ruta) {
+    { /* unsafe */
+        FILE* _f = fopen(ruta.datos, "rb");;
+        if (!_f) { struct ResultadoEtapa _e = {1, 2}; return _e; };
+        fseek(_f, 0, SEEK_END); long _fsz = ftell(_f); fseek(_f, 0, SEEK_SET);;
+        char* _buf = (char*)malloc((size_t)_fsz + 1);;
+        if (!_buf) { fclose(_f); struct ResultadoEtapa _e = {1, 2}; return _e; };
+        fread(_buf, 1, (size_t)_fsz, _f); fclose(_f); _buf[_fsz] = 0;;
+        extern int tokenizar(int,int);;
+        int _ntok = tokenizar((int)_buf, (int)_fsz);;
+        free(_buf);;
+        if (_ntok < 0) { struct ResultadoEtapa _e = {1, 3}; return _e; };
+    }
+    struct ResultadoEtapa _ret_41 = etapa_ok();
+    return _ret_41;
+}
+
+struct ResultadoEtapa parsear_etapa(CadenaSegura ruta) {
+    { /* unsafe */
+        FILE* _f = fopen(ruta.datos, "rb");;
+        if (!_f) { struct ResultadoEtapa _e = {1, 2}; return _e; };
+        fseek(_f, 0, SEEK_END); long _fsz = ftell(_f); fseek(_f, 0, SEEK_SET);;
+        char* _buf = (char*)malloc((size_t)_fsz + 1);;
+        fread(_buf, 1, (size_t)_fsz, _f); fclose(_f); _buf[_fsz] = 0;;
+        extern int tokenizar(int,int);;
+        int _ntok = tokenizar((int)_buf, (int)_fsz);;
+        free(_buf);;
+        if (_ntok < 0) { struct ResultadoEtapa _e = {1, 3}; return _e; };
+    }
+    struct ResultadoEtapa _ret_55 = etapa_ok();
+    return _ret_55;
+}
+
+struct ResultadoEtapa analizar_etapa(CadenaSegura ruta) {
+    struct ResultadoEtapa _ret_59 = etapa_ok();
+    return _ret_59;
+}
+
+struct ResultadoEtapa generar_etapa(CadenaSegura ruta) {
+    { /* unsafe */
+        fprintf(stderr, "Compilacion nativa exitosa\n");;
+    }
+    struct ResultadoEtapa _ret_65 = etapa_ok();
+    return _ret_65;
+}
+
+int principal(void) {
+    int r = 0;
+    { /* unsafe */
+        if (_argc() < 2) { fprintf(stderr, "Uso: %%s <archivo.syn>\n", _argc() > 0 ? _argv(0).datos : "synapse"); r = 1; return r; };
+    }
+    CadenaSegura ruta = argv_str(1);
+    { /* unsafe */
+        if (ruta.longitud == 0) { r = 1; return r; };
+    }
+    /* coincidir: evaluando expresión */
+    struct ResultadoEtapa _match_tmp_74 = tokenizar_etapa(ruta);
+    if (_match_tmp_74.tag == TAG_OK) {
+        int v = _match_tmp_74.dato.valor;
+        r = 0;
+    }
+    else if (_match_tmp_74.tag == TAG_ERR) {
+        int cod = _match_tmp_74.dato.valor;
+        int _ret_76 = fallo_etapa(cod);
+        _syn_texto_liberar(ruta);
+        return _ret_76;
+    }
+    /* coincidir: evaluando expresión */
+    struct ResultadoEtapa _match_tmp_77 = parsear_etapa(ruta);
+    if (_match_tmp_77.tag == TAG_OK) {
+        int v = _match_tmp_77.dato.valor;
+        r = 0;
+    }
+    else if (_match_tmp_77.tag == TAG_ERR) {
+        int cod = _match_tmp_77.dato.valor;
+        int _ret_79 = fallo_etapa(cod);
+        return _ret_79;
+    }
+    /* coincidir: evaluando expresión */
+    struct ResultadoEtapa _match_tmp_80 = analizar_etapa(ruta);
+    if (_match_tmp_80.tag == TAG_OK) {
+        int v = _match_tmp_80.dato.valor;
+        r = 0;
+    }
+    else if (_match_tmp_80.tag == TAG_ERR) {
+        int cod = _match_tmp_80.dato.valor;
+        int _ret_82 = fallo_etapa(cod);
+        return _ret_82;
+    }
+    /* coincidir: evaluando expresión */
+    struct ResultadoEtapa _match_tmp_83 = generar_etapa(ruta);
+    if (_match_tmp_83.tag == TAG_OK) {
+        int v = _match_tmp_83.dato.valor;
+        r = 0;
+    }
+    else if (_match_tmp_83.tag == TAG_ERR) {
+        int cod = _match_tmp_83.dato.valor;
+        int _ret_85 = fallo_etapa(cod);
+        return _ret_85;
+    }
+    int _ret_86 = r;
+    return _ret_86;
 }
 
 int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
+    principal();
     synapse_esperar_hilos();
     return 0;
 }

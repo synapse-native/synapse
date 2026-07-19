@@ -1,0 +1,250 @@
+#lang: es
+
+// --- Error code constants (mirror nucleo/errores.syn) ---
+constante ERR_SYNTAX_EXPECTED_TOKEN = 1
+constante ERR_SYNTAX_UNEXPECTED_TOKEN = 2
+constante ERR_SYNTAX_UNEXPECTED_EXPR = 3
+constante ERR_SYNTAX_EXPECTED_NEWLINE = 4
+constante ERR_LANG_MISSING = 5
+constante ERR_LANG_UNSUPPORTED = 6
+constante ERR_INDENT_INVALID = 7
+constante ERR_INDENT_INCONSISTENT = 8
+constante ERR_STRING_UNCLOSED = 9
+constante ERR_LEX_CHAR_UNEXPECTED = 10
+constante ERR_LEX = 11
+constante ERR_FILE_NOT_FOUND = 12
+constante ERR_CANONICAL_FORMAT = 13
+constante ERR_SEM_VAR_NO_DECLARADA = 14
+constante ERR_SEM_TIPO_INCOMPATIBLE = 15
+constante ERR_SEM_TIPO_RETORNO = 16
+constante ERR_SEM_FUNC_NO_DEFINIDA = 17
+constante ERR_SEM_REDEFINICION = 18
+constante ERR_SEM_ARGUMENTOS_INVALIDOS = 19
+constante ERR_SEM_ESTRUCTURA_NO_DEFINIDA = 20
+constante ERR_SEM_CAMPO_NO_EXISTE = 21
+constante ERR_SEM_VAR_MOVIDA = 22
+constante ERR_SEM_ACCESO_MEMORIA_MOVIDA = 23
+constante ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = 24
+constante ERR_MANIFEST_NOT_FOUND = 25
+constante ERR_MODULE_STD_NOT_FOUND = 26
+constante ERR_MODULE_AXON_NOT_FOUND = 27
+constante ERR_DEP_NOT_DECLARED = 28
+constante ERR_LOCK_HASH_MISMATCH = 29
+constante ERR_GIT_FAILURE = 30
+constante ERR_SEM_ASM_FUERA_INSEGURO = 31
+constante ERR_SEM_CONSTANTE_INMUTABLE = 32
+
+// --- Structs ---
+estructura ReporteError:
+    codigo: entero
+    linea: entero
+    columna: entero
+    mensaje: cadena
+
+estructura GestorDiagnostico:
+    reportes: ReporteError
+    total_reportes: entero
+    capacidad: entero
+    idioma: cadena
+    ruta_archivo: cadena
+
+// --- Constructor ---
+funcion gestor_nuevo(idioma: cadena, ruta: cadena, capacidad: entero) -> GestorDiagnostico:
+    g = GestorDiagnostico()
+    g.idioma = idioma
+    g.ruta_archivo = ruta
+    g.total_reportes = 0
+    g.capacidad = capacidad
+    retornar g
+
+// --- Error reporting (output via future std.io escribir_linea) ---
+funcion reportar_error(diag: GestorDiagnostico, codigo: entero, linea: entero, columna: entero, mensaje: cadena) -> nulo:
+    inseguro:
+        asm("if (diag.total_reportes >= diag.capacidad) return")
+        asm("diag.reportes[diag.total_reportes].codigo = codigo")
+        asm("diag.reportes[diag.total_reportes].linea = linea")
+        asm("diag.reportes[diag.total_reportes].columna = columna")
+        asm("diag.total_reportes = diag.total_reportes + 1")
+    // Future: escribir_linea(mensaje) via std.io
+
+// --- Query functions ---
+funcion hay_errores(diag: GestorDiagnostico) -> booleano:
+    si diag.total_reportes > 0:
+        retornar verdadero
+    retornar falso
+
+funcion contar_errores(diag: GestorDiagnostico) -> entero:
+    retornar diag.total_reportes
+
+funcion codigo_salida(diag: GestorDiagnostico) -> entero:
+    si hay_errores(diag) == verdadero:
+        retornar 1
+    retornar 0
+
+funcion resumen_errores(diag: GestorDiagnostico) -> cadena:
+    si hay_errores(diag) == falso:
+        retornar "0 errores"
+    r = ""
+    inseguro:
+        asm("// resumen: N error(es) encontrado(s)")
+        asm("r = (diag.total_reportes == 1) ? \"1 error encontrado\" : \"2 errores encontrados\"")
+        asm("{ char _buf[64]; snprintf(_buf, 64, \"%d errores encontrados\", diag.total_reportes); r = _buf; }")
+    retornar r
+
+// --- I18n message template lookup (Spanish primary, English fallback) ---
+funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
+    si idioma == "es":
+        si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
+            retornar "Se esperaba {esperado}, se encontro '{encontrado}'"
+        si codigo == ERR_SYNTAX_UNEXPECTED_TOKEN:
+            retornar "Token inesperado '{tok_name}' tras expresion"
+        si codigo == ERR_SYNTAX_UNEXPECTED_EXPR:
+            retornar "Expresion inesperada: '{tipo}'"
+        si codigo == ERR_SYNTAX_EXPECTED_NEWLINE:
+            retornar "Se esperaba nueva linea despues de '{construccion}'"
+        si codigo == ERR_LANG_MISSING:
+            retornar "Falta declaracion de idioma '#lang: <codigo>' en la linea 1"
+        si codigo == ERR_LANG_UNSUPPORTED:
+            retornar "Idioma '{idioma}' no soportado"
+        si codigo == ERR_INDENT_INVALID:
+            retornar "La indentacion debe ser multiplo de 4 espacios"
+        si codigo == ERR_INDENT_INCONSISTENT:
+            retornar "Nivel de indentacion inconsistente"
+        si codigo == ERR_STRING_UNCLOSED:
+            retornar "Cadena sin cerrar"
+        si codigo == ERR_LEX:
+            retornar "{mensaje}"
+        si codigo == ERR_LEX_CHAR_UNEXPECTED:
+            retornar "Caracter inesperado '{char}'"
+        si codigo == ERR_FILE_NOT_FOUND:
+            retornar "Archivo no encontrado: {archivo}"
+        si codigo == ERR_CANONICAL_FORMAT:
+            retornar "Formato canonico no reconocido o corrupto"
+        si codigo == ERR_SEM_VAR_NO_DECLARADA:
+            retornar "Variable '{nombre}' no declarada en este ambito"
+        si codigo == ERR_SEM_TIPO_INCOMPATIBLE:
+            retornar "Tipos incompatibles: no se puede usar '{tipo1}' con '{tipo2}' en '{operacion}'"
+        si codigo == ERR_SEM_TIPO_RETORNO:
+            retornar "Tipo de retorno incorrecto: se esperaba '{esperado}', se obtuvo '{obtenido}'"
+        si codigo == ERR_SEM_FUNC_NO_DEFINIDA:
+            retornar "Funcion '{nombre}' no definida"
+        si codigo == ERR_SEM_REDEFINICION:
+            retornar "Redefinicion de '{nombre}' en el mismo ambito"
+        si codigo == ERR_SEM_ARGUMENTOS_INVALIDOS:
+            retornar "Cantidad de argumentos invalida para '{nombre}': se esperaban {esperados}"
+        si codigo == ERR_SEM_ESTRUCTURA_NO_DEFINIDA:
+            retornar "Estructura '{nombre}' no definida"
+        si codigo == ERR_SEM_CAMPO_NO_EXISTE:
+            retornar "La estructura '{struct}' no tiene un campo '{campo}'"
+        si codigo == ERR_SEM_VAR_MOVIDA:
+            retornar "Uso ilegal de variable ya movida '{nombre}'"
+        si codigo == ERR_SEM_ACCESO_MEMORIA_MOVIDA:
+            retornar "Acceso prohibido a memoria movida '{nombre}'"
+        si codigo == ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR:
+            retornar "Resultado de canal sin desempaquetar"
+        si codigo == ERR_MANIFEST_NOT_FOUND:
+            retornar "Manifiesto axon.toml no encontrado en el directorio actual"
+        si codigo == ERR_MODULE_STD_NOT_FOUND:
+            retornar "Modulo estandar '{modulo}' no encontrado. Sysroot corrupto"
+        si codigo == ERR_MODULE_AXON_NOT_FOUND:
+            retornar "Dependencia '{modulo}' no encontrada en axon_modules"
+        si codigo == ERR_DEP_NOT_DECLARED:
+            retornar "Dependencia '{modulo}' importada en el codigo pero no declarada en axon.toml"
+        si codigo == ERR_LOCK_HASH_MISMATCH:
+            retornar "El hash de la dependencia '{modulo}' no coincide con axon.lock"
+        si codigo == ERR_GIT_FAILURE:
+            retornar "Error de red o revision Git invalida para la dependencia '{modulo}'"
+        si codigo == ERR_SEM_ASM_FUERA_INSEGURO:
+            retornar "asm() solo puede usarse dentro de un bloque 'inseguro:'"
+        si codigo == ERR_SEM_CONSTANTE_INMUTABLE:
+            retornar "No se puede reasignar la constante '{nombre}'"
+        retornar "Error desconocido"
+    // English fallback
+    si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
+        retornar "Expected {esperado}, found '{encontrado}'"
+    si codigo == ERR_SYNTAX_UNEXPECTED_TOKEN:
+        retornar "Unexpected token '{tok_name}' after expression"
+    si codigo == ERR_SYNTAX_UNEXPECTED_EXPR:
+        retornar "Unexpected expression: '{tipo}'"
+    si codigo == ERR_SYNTAX_EXPECTED_NEWLINE:
+        retornar "Expected newline after '{construccion}'"
+    si codigo == ERR_LANG_MISSING:
+        retornar "Missing language declaration '#lang: <code>' at line 1"
+    si codigo == ERR_LANG_UNSUPPORTED:
+        retornar "Language '{idioma}' not supported"
+    si codigo == ERR_INDENT_INVALID:
+        retornar "Indentation must be a multiple of 4 spaces"
+    si codigo == ERR_INDENT_INCONSISTENT:
+        retornar "Inconsistent indentation level"
+    si codigo == ERR_STRING_UNCLOSED:
+        retornar "Unclosed string literal"
+    si codigo == ERR_LEX:
+        retornar "{mensaje}"
+    si codigo == ERR_LEX_CHAR_UNEXPECTED:
+        retornar "Unexpected character '{char}'"
+    si codigo == ERR_FILE_NOT_FOUND:
+        retornar "File not found: {archivo}"
+    si codigo == ERR_CANONICAL_FORMAT:
+        retornar "Unrecognized or corrupted canonical format"
+    si codigo == ERR_SEM_VAR_NO_DECLARADA:
+        retornar "Variable '{nombre}' not declared in this scope"
+    si codigo == ERR_SEM_TIPO_INCOMPATIBLE:
+        retornar "Incompatible types: cannot use '{tipo1}' with '{tipo2}' in '{operacion}'"
+    si codigo == ERR_SEM_TIPO_RETORNO:
+        retornar "Incorrect return type: expected '{esperado}', got '{obtenido}'"
+    si codigo == ERR_SEM_FUNC_NO_DEFINIDA:
+        retornar "Function '{nombre}' not defined"
+    si codigo == ERR_SEM_REDEFINICION:
+        retornar "Redefinition of '{nombre}' in the same scope"
+    si codigo == ERR_SEM_ARGUMENTOS_INVALIDOS:
+        retornar "Invalid argument count for '{nombre}': expected {esperados}"
+    si codigo == ERR_SEM_ESTRUCTURA_NO_DEFINIDA:
+        retornar "Struct '{nombre}' not defined"
+    si codigo == ERR_SEM_CAMPO_NO_EXISTE:
+        retornar "Struct '{struct}' has no field '{campo}'"
+    si codigo == ERR_SEM_VAR_MOVIDA:
+        retornar "Illegal use of already moved variable '{nombre}'"
+    si codigo == ERR_SEM_ACCESO_MEMORIA_MOVIDA:
+        retornar "Forbidden access to moved memory '{nombre}'"
+    si codigo == ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR:
+        retornar "Unpacked channel result"
+    si codigo == ERR_MANIFEST_NOT_FOUND:
+        retornar "axon.toml manifest not found in current directory"
+    si codigo == ERR_MODULE_STD_NOT_FOUND:
+        retornar "Standard module '{modulo}' not found. Corrupt Sysroot"
+    si codigo == ERR_MODULE_AXON_NOT_FOUND:
+        retornar "Dependency '{modulo}' not found in axon_modules"
+    si codigo == ERR_DEP_NOT_DECLARED:
+        retornar "Dependency '{modulo}' imported in code but not declared in axon.toml"
+    si codigo == ERR_LOCK_HASH_MISMATCH:
+        retornar "Hash of dependency '{modulo}' does not match axon.lock"
+    si codigo == ERR_GIT_FAILURE:
+        retornar "Network error or invalid Git revision for dependency '{modulo}'"
+    si codigo == ERR_SEM_ASM_FUERA_INSEGURO:
+        retornar "asm() can only be used inside an 'unsafe:' block"
+    si codigo == ERR_SEM_CONSTANTE_INMUTABLE:
+        retornar "Cannot reassign constant '{nombre}'"
+    retornar "Unknown error"
+
+// --- Source line context helper ---
+funcion obtener_linea_contexto(lineas: cadena, linea_num: entero) -> cadena:
+    r = ""
+    inseguro:
+        asm("// buscar linea_num en buffer de lineas (pendiente)")
+    retornar r
+
+// --- Build formatted error entry string ---
+funcion formatear_entrada_error(ruta: cadena, linea: entero, columna: entero, mensaje: cadena) -> cadena:
+    r = ""
+    inseguro:
+        asm("{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta, linea, columna, mensaje); r = _buf; }")
+    retornar r
+
+// --- Build location prefix ---
+funcion formatear_ubicacion(ruta: cadena, linea: entero, columna: entero) -> cadena:
+    si linea > 0:
+        r = ""
+        inseguro:
+            asm("{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta, linea, columna); r = _buf; }")
+        retornar r
+    retornar ruta

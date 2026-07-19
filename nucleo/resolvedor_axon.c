@@ -170,13 +170,69 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
+struct DepNoDeclaradaError;
 
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
+CadenaSegura buscar_en(CadenaSegura dir_base, CadenaSegura ruta_import);
+CadenaSegura resolver(CadenaSegura ruta_import, CadenaSegura dir_base, CadenaSegura dependencias_nombres, CadenaSegura dependencias_valores, int total_dependencias);
+
+#define AXON_MODULES ((CadenaSegura){ .longitud = 12, .datos = "axon_modules" })
+typedef struct DepNoDeclaradaError {
+    CadenaSegura mensaje;
+} DepNoDeclaradaError;
+
+static inline struct DepNoDeclaradaError DepNoDeclaradaError_nuevo() {
+    struct DepNoDeclaradaError _r = {0};
+    return _r;
+}
+
+CadenaSegura buscar_en(CadenaSegura dir_base, CadenaSegura ruta_import) {
+    CadenaSegura r = (CadenaSegura){ .longitud = 0, .datos = "" };
+    { /* unsafe */
+        char _buf[1024];;
+        snprintf(_buf, 1024, "%s/%s/%s/principal.syn", dir_base.datos, "axon_modules", ruta_import.datos);;
+        FILE* _f = fopen(_buf, "r");;
+        if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_buf),.datos=strdup(_buf)}; } else {;
+            snprintf(_buf, 1024, "%s/%s/%s.syn", dir_base.datos, "axon_modules", ruta_import.datos);;
+            for (char* _p = _buf; *_p; _p++) if (*_p == '.') *_p = '/';;
+            _f = fopen(_buf, "r");;
+            if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_buf),.datos=strdup(_buf)}; };
+        };
+    }
+    CadenaSegura _ret_20 = r;
+    return _ret_20;
+}
+
+CadenaSegura resolver(CadenaSegura ruta_import, CadenaSegura dir_base, CadenaSegura dependencias_nombres, CadenaSegura dependencias_valores, int total_dependencias) {
+    CadenaSegura r = (CadenaSegura){ .longitud = 0, .datos = "" };
+    { /* unsafe */
+        // Check if dependency is in the declared list;
+        for (int _di = 0; _di < total_dependencias; _di++) {;
+            if (strcmp(dependencias_nombres.datos + _di * 128, ruta_import.datos) == 0) {;
+                r = (CadenaSegura){.longitud=(int)strlen(dependencias_valores.datos + _di * 512),.datos=strdup(dependencias_valores.datos + _di * 512)};;
+                break;;
+            };
+        };
+        if (r.longitud == 0) {;
+            // Look up in filesystem;
+            char _ruta[1024];;
+            snprintf(_ruta, 1024, "%s/%s/%s/principal.syn", dir_base.datos, "axon_modules", ruta_import.datos);;
+            FILE* _f = fopen(_ruta, "r");;
+            if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_ruta),.datos=strdup(_ruta)}; } else {;
+                snprintf(_ruta, 1024, "%s/%s/%s.syn", dir_base.datos, "axon_modules", ruta_import.datos);;
+                for (char* _p = _ruta; *_p; _p++) if (*_p == '.') *_p = '/';;
+                _f = fopen(_ruta, "r");;
+                if (_f) { fclose(_f); r = (CadenaSegura){.longitud=(int)strlen(_ruta),.datos=strdup(_ruta)}; };
+            };
+        };
+        if (r.longitud == 0) {;
+            // Not found - build error message;
+            char _msg[4096];;
+            snprintf(_msg, 4096, "No se pudo resolver la importacion: %s", ruta_import.datos);;
+            r = (CadenaSegura){.longitud=(int)strlen(_msg),.datos=strdup(_msg)};
+        };
+    }
+    CadenaSegura _ret_50 = r;
+    return _ret_50;
 }
 
 int main(int argc, char** argv) {

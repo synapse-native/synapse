@@ -13,6 +13,7 @@ from compilador.ast_nodes import (
     SentenciaExpr, AsignacionVariable, LogLlamada, SentenciaImportar,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
+    DeclaracionExterna, StmtConstante,
 )
 from compilador.lexer import Lexer, DICCIONARIOS, DICCIONARIOS_INVERSO
 from exceptions import SynapseError
@@ -488,7 +489,19 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
         else:
             nuevas_sentencias.append(stmt)
 
-    ast.sentencias = nuevas_sentencias
+    # Unity Build Deduplication: Eliminar redefiniciones globales
+    vistos = set()
+    sentencias_dedup = []
+    for s in nuevas_sentencias:
+        if isinstance(s, (DefinicionEstructura, DefinicionFuncion, DeclaracionExterna, StmtConstante)):
+            nombre = getattr(s, 'nombre', None)
+            if nombre:
+                if nombre in vistos:
+                    continue
+                vistos.add(nombre)
+        sentencias_dedup.append(s)
+
+    ast.sentencias = sentencias_dedup
     return ast, diag_local
 
 
@@ -548,9 +561,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         codigo_c = generador.generar()
 
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
-        ruta_c = ruta_base + ".c"
+        ruta_c = "synapse_unity.c" if ruta_base.endswith("principal") else ruta_base + ".c"
         ruta_json = ruta_base + ".syn.json"
-        ruta_exe = ruta_base + ".exe"
+        ruta_exe = "synapse_bootstrap.exe" if ruta_base.endswith("principal") else ruta_base + ".exe"
 
         with open(ruta_c, 'w', encoding='utf-8') as f:
             f.write(codigo_c)
@@ -559,7 +572,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         linker_extra = generador.linker_flags
         synapse_rt = os.path.join(SYNAPSE_BIN, "synapse_rt.o")
         if not os.path.exists(synapse_rt):
-            synapse_rt = os.path.join(SYNAPSE_ROOT, "dist", "lib", "synapse_rt.o")
+            synapse_rt = os.path.join(SYNAPSE_BIN, "..", "dist", "lib", "synapse_rt.o")
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
         # Add no_std flags if compiling in bare-metal mode
         if ast.is_no_std:

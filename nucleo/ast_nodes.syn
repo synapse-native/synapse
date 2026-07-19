@@ -1,0 +1,265 @@
+#lang: es
+
+estructura Token:
+    tipo: entero
+    linea: entero
+    columna: entero
+    valor: cadena
+
+estructura Nodo:
+    linea: entero
+    columna: entero
+
+estructura Programa:
+    linea: entero
+    columna: entero
+    sentencias: Nodo
+    es_sin_std: booleano
+
+estructura Parametro:
+    nombre: cadena
+    tipo: cadena
+    es_transferencia: booleano
+
+estructura DefinicionFuncion:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    parametros: Parametro
+    tipo_retorno: cadena
+    contratos_req: Nodo
+    contratos_gar: Nodo
+    cuerpo: Nodo
+
+estructura SentenciaSi:
+    linea: entero
+    columna: entero
+    condicion: Nodo
+    cuerpo: Nodo
+    cuerpo_sino: Nodo
+
+estructura SentenciaLanzar:
+    linea: entero
+    columna: entero
+    llamada: Nodo
+
+estructura SentenciaRecuperar:
+    linea: entero
+    columna: entero
+    accion_critica: Nodo
+    plan_b: Nodo
+
+estructura SentenciaRetornar:
+    linea: entero
+    columna: entero
+    expr: Nodo
+    es_transferencia: booleano
+
+estructura SentenciaEscuchar:
+    linea: entero
+    columna: entero
+    expr_canal: Nodo
+    respuesta: Nodo
+
+estructura SentenciaMientras:
+    linea: entero
+    columna: entero
+    condicion: Nodo
+    cuerpo: Nodo
+
+estructura SentenciaPara:
+    linea: entero
+    columna: entero
+    inicializacion: Nodo
+    condicion: Nodo
+    incremento: Nodo
+    cuerpo: Nodo
+
+estructura SentenciaRomper:
+    linea: entero
+    columna: entero
+
+estructura SentenciaSiguiente:
+    linea: entero
+    columna: entero
+
+estructura OpBinaria:
+    linea: entero
+    columna: entero
+    izquierdo: Nodo
+    operador: cadena
+    derecho: Nodo
+
+estructura OpUnaria:
+    linea: entero
+    columna: entero
+    operador: cadena
+    expr: Nodo
+
+estructura LlamadaFuncion:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    argumentos: Nodo
+
+estructura Identificador:
+    linea: entero
+    columna: entero
+    nombre: cadena
+
+estructura LiteralNumero:
+    linea: entero
+    columna: entero
+    valor: entero
+
+estructura LiteralDecimal:
+    linea: entero
+    columna: entero
+    valor: decimal
+
+estructura LiteralCadena:
+    linea: entero
+    columna: entero
+    valor: cadena
+
+estructura LiteralBooleano:
+    linea: entero
+    columna: entero
+    valor: booleano
+
+estructura SentenciaExpr:
+    linea: entero
+    columna: entero
+    expr: Nodo
+
+estructura AsignacionVariable:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    expresion: Nodo
+
+estructura DeclaracionVariable:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    tipo: cadena
+    expresion: Nodo
+
+estructura LogLlamada:
+    linea: entero
+    columna: entero
+    argumentos: Nodo
+
+estructura SentenciaImportar:
+    linea: entero
+    columna: entero
+    ruta: cadena
+
+estructura BloqueInseguro:
+    linea: entero
+    columna: entero
+    cuerpo: Nodo
+
+estructura ExprObtenerDireccion:
+    linea: entero
+    columna: entero
+    expr: Nodo
+
+estructura ExprDereferencia:
+    linea: entero
+    columna: entero
+    expr: Nodo
+
+estructura TipoPuntero:
+    tipo_base: cadena
+
+estructura ImportarC:
+    linea: entero
+    columna: entero
+    ruta: cadena
+    es_sistema: booleano
+
+estructura DeclaracionExterna:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    parametros: Parametro
+    tipo_retorno: cadena
+
+estructura ExprTensor:
+    linea: entero
+    columna: entero
+    filas: Nodo
+    columnas: Nodo
+
+estructura ExprIndice:
+    linea: entero
+    columna: entero
+    expr: Nodo
+    indice: Nodo
+
+estructura ArgumentoTransferido:
+    linea: entero
+    columna: entero
+    expr: Nodo
+
+estructura DefinicionEstructura:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    campos: Parametro
+
+estructura ExprAccesoCampo:
+    linea: entero
+    columna: entero
+    objeto: Nodo
+    nombre_campo: cadena
+
+estructura AsignacionCampo:
+    linea: entero
+    columna: entero
+    objeto: Nodo
+    nombre_campo: cadena
+    expresion: Nodo
+
+estructura StmtConstante:
+    linea: entero
+    columna: entero
+    nombre: cadena
+    tipo: cadena
+    valor: Nodo
+
+estructura NodoCaso:
+    linea: entero
+    columna: entero
+    patron: cadena
+    cuerpo: Nodo
+    tipo_extraido: cadena
+
+estructura NodoCoincidir:
+    linea: entero
+    columna: entero
+    expresion: Nodo
+    casos: NodoCaso
+
+estructura ExprAsm:
+    linea: entero
+    columna: entero
+    instruccion: cadena
+
+estructura ExprCrearCanal:
+    linea: entero
+    columna: entero
+    tipo_contenido: cadena
+    capacidad: Nodo
+
+estructura SentenciaEnviarCanal:
+    linea: entero
+    columna: entero
+    expr_canal: Nodo
+    valor: Nodo
+
+estructura ExprRecibirCanal:
+    linea: entero
+    columna: entero
+    expr_canal: Nodo

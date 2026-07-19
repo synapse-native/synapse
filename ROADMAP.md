@@ -14,7 +14,7 @@
 |------|--------|--------|-------|
 | **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed |
 | **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
-| **F2: Reparación del generador C** | ⏳ **PARCIAL** | 6/8 tareas | 231 passed |
+| **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed |
 | **F3: Bootstrap** | ⏳ Pendiente | 0/6 tareas | — |
 | **F4: Refactor del generador** | ⏳ Pendiente | 0/6 tareas | — |
 | **F5: CI/CD** | ⏳ Pendiente | 0/5 tareas | — |
@@ -103,7 +103,8 @@ Estructura de errores gcc:
 | 2.5 | Arreglar plantillas emitidas en `generator.syn` | `nucleo/generator.syn` | 🔴 Alto | ✅ **COMPLETADA PARCIAL** |
 | 2.6 | Fix tipado `char*` vs `CadenaSegura` | `nucleo/generator.syn`<br>`compilador/generator.py`<br>`compilador/analizador_semantico.py`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
 | 2.7 | Corregir _P_Token scope + .datos en struct members | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.8 | Corregir 30 errores restantes (static decl, escapes, strcpy, ; faltantes) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ⏳ **30/207 err (↓85%)** |
+| 2.8 | Corregir 30 errores restantes (static decl, escapes, strcpy, ; faltantes) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
+| 2.9 | Fix final: 2 errores restantes → 0 errors GCC | `build/fixup_generator.py`<br>`build/fix_2errors.py` | 🔴 Alto | ✅ **COMPLETADA** |
 
 #### Detalle F2.6 completada
 | Cambio | Archivo | Impacto |
@@ -179,8 +180,8 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 | Métrica | Valor Inicial | Actual | Objetivo |
 |---------|---------------|--------|----------|
 | Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
-| Tests pasando | 247 | **231** (sin oráculo) | > 260 |
-| `gcc -c generator.c` | ❌ 403 err | ❌ **30 err (↓92%)** | ✅ 0 err |
+| Tests pasando | 247 | **231** (sin oráculo) | > 260 🔄 |
+| `gcc -c generator.c` | ❌ 403 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
 | Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
 | Bootstrap completo | ❌ | ❌ | ✅ Stage2==Stage3 |
 | Código muerto (líneas) | ~50 | **0** | 0 ✅ |
@@ -192,8 +193,9 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 | Riesgo | Fase | Mitigación |
 |--------|------|------------|
-| `generator.c` tiene 30 errores restantes (static decl, escapes, strcpy) | 2.8 | Fase 2.8: fixup + fixes generator.syn (for loops en braces) → ↓85% |
-| Sin bootstrap hasta que `generator.c` compile con 0 errores | 2-3 | Usar pipeline Python como fuente de verdad mientras tanto |
+| Pipeline fixup debe ejecutarse tras cada regeneración de `generator.syn` | 2 | Documentar pipeline: `regenerate → fixup_generator.py → fix_2errors.py` |
+| Warnings (188) son deuda técnica | 2 | Aceptados por ahora; prioridad es bootstrap |
+| Sin bootstrap hasta que `generator.c` compile con 0 errores | 2-3 | ✅ **0 errores — listo para Fase 3** |
 | `_GEN_TMP_SIZE` duplicado en `estado_global.syn` y `generator.syn` | 1 | Eliminar de `estado_global.syn` (es documentación) |
 
 ---

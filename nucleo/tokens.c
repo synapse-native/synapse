@@ -170,15 +170,63 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
-
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
-}
-
+#define IF (1)
+#define ELSE (2)
+#define FUNCTION (3)
+#define RETURN (4)
+#define SPAWN (5)
+#define RECOVER (6)
+#define LISTEN (7)
+#define WHILE (8)
+#define IMPORT (9)
+#define STRUCT (10)
+#define BREAK (11)
+#define CONTINUE (12)
+#define DOT (13)
+#define AND (14)
+#define OR (15)
+#define NOT (16)
+#define TRUE (17)
+#define FALSE (18)
+#define IDENTIFIER (19)
+#define NUMBER (20)
+#define FLOAT (21)
+#define STRING (22)
+#define GREATER (23)
+#define LESS (24)
+#define EQUALS (25)
+#define NOT_EQUALS (26)
+#define LESS_EQUALS (27)
+#define GREATER_EQUALS (28)
+#define ASSIGN (29)
+#define PLUS (30)
+#define MINUS (31)
+#define STAR (32)
+#define SLASH (33)
+#define MODULO (34)
+#define ARROW (35)
+#define MATCH (36)
+#define ARROW_RIGHT (37)
+#define LPAREN (38)
+#define RPAREN (39)
+#define COLON (40)
+#define COMMA (41)
+#define NEWLINE (42)
+#define INDENT (43)
+#define DEDENT (44)
+#define AMPERSAND (45)
+#define INSEGURO (46)
+#define IMPORTAR_C (47)
+#define EXTERNO (48)
+#define ARROW_LEFT (49)
+#define REQUIERE (50)
+#define GARANTIZA (51)
+#define CANAL (52)
+#define ASM (53)
+#define CONSTANTE (54)
+#define SEMICOLON (55)
+#define PARA (56)
+#define EOF (57)
 int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;

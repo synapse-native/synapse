@@ -170,15 +170,38 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
-
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
-}
-
+#define ERR_SYNTAX_EXPECTED_TOKEN (1)
+#define ERR_SYNTAX_UNEXPECTED_TOKEN (2)
+#define ERR_SYNTAX_UNEXPECTED_EXPR (3)
+#define ERR_SYNTAX_EXPECTED_NEWLINE (4)
+#define ERR_LANG_MISSING (5)
+#define ERR_LANG_UNSUPPORTED (6)
+#define ERR_INDENT_INVALID (7)
+#define ERR_INDENT_INCONSISTENT (8)
+#define ERR_STRING_UNCLOSED (9)
+#define ERR_LEX_CHAR_UNEXPECTED (10)
+#define ERR_LEX (11)
+#define ERR_FILE_NOT_FOUND (12)
+#define ERR_CANONICAL_FORMAT (13)
+#define ERR_SEM_VAR_NO_DECLARADA (14)
+#define ERR_SEM_TIPO_INCOMPATIBLE (15)
+#define ERR_SEM_TIPO_RETORNO (16)
+#define ERR_SEM_FUNC_NO_DEFINIDA (17)
+#define ERR_SEM_REDEFINICION (18)
+#define ERR_SEM_ARGUMENTOS_INVALIDOS (19)
+#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20)
+#define ERR_SEM_CAMPO_NO_EXISTE (21)
+#define ERR_SEM_VAR_MOVIDA (22)
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23)
+#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24)
+#define ERR_MANIFEST_NOT_FOUND (25)
+#define ERR_MODULE_STD_NOT_FOUND (26)
+#define ERR_MODULE_AXON_NOT_FOUND (27)
+#define ERR_DEP_NOT_DECLARED (28)
+#define ERR_LOCK_HASH_MISMATCH (29)
+#define ERR_GIT_FAILURE (30)
+#define ERR_SEM_ASM_FUERA_INSEGURO (31)
+#define ERR_SEM_CONSTANTE_INMUTABLE (32)
 int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;

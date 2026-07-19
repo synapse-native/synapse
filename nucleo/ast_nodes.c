@@ -170,13 +170,193 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
+struct Token;
+struct Nodo;
+struct Programa;
+struct Parametro;
+struct DefinicionFuncion;
+struct SentenciaSi;
+struct SentenciaLanzar;
+struct SentenciaRecuperar;
+struct SentenciaRetornar;
+struct SentenciaEscuchar;
+struct SentenciaMientras;
+struct SentenciaPara;
+struct SentenciaRomper;
+struct SentenciaSiguiente;
+struct OpBinaria;
+struct OpUnaria;
+struct LlamadaFuncion;
+struct Identificador;
+struct LiteralNumero;
+struct LiteralDecimal;
+struct LiteralCadena;
+struct LiteralBooleano;
+struct SentenciaExpr;
+struct AsignacionVariable;
+struct DeclaracionVariable;
+struct LogLlamada;
+struct SentenciaImportar;
+struct BloqueInseguro;
+struct ExprObtenerDireccion;
+struct ExprDereferencia;
+struct TipoPuntero;
+struct ImportarC;
+struct DeclaracionExterna;
+struct ExprTensor;
+struct ExprIndice;
+struct ArgumentoTransferido;
+struct DefinicionEstructura;
+struct ExprAccesoCampo;
+struct AsignacionCampo;
+struct StmtConstante;
+struct NodoCaso;
+struct NodoCoincidir;
+struct ExprAsm;
+struct ExprCrearCanal;
+struct SentenciaEnviarCanal;
+struct ExprRecibirCanal;
 
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
+typedef struct SentenciaPara {
+    int linea;
+    int columna;
+    struct Nodo* inicializacion;
+    struct Nodo* condicion;
+    struct Nodo* incremento;
+    struct Nodo* cuerpo;
+} SentenciaPara;
+
+static inline struct SentenciaPara SentenciaPara_nuevo() {
+    struct SentenciaPara _r = {0};
+    return _r;
+}
+
+typedef struct LiteralDecimal {
+    int linea;
+    int columna;
+    float valor;
+} LiteralDecimal;
+
+static inline struct LiteralDecimal LiteralDecimal_nuevo() {
+    struct LiteralDecimal _r = {0};
+    return _r;
+}
+
+typedef struct LiteralBooleano {
+    int linea;
+    int columna;
+    int valor;
+} LiteralBooleano;
+
+static inline struct LiteralBooleano LiteralBooleano_nuevo() {
+    struct LiteralBooleano _r = {0};
+    return _r;
+}
+
+typedef struct DeclaracionVariable {
+    int linea;
+    int columna;
+    CadenaSegura nombre;
+    CadenaSegura tipo;
+    struct Nodo* expresion;
+} DeclaracionVariable;
+
+static inline struct DeclaracionVariable DeclaracionVariable_nuevo() {
+    struct DeclaracionVariable _r = {0};
+    return _r;
+}
+
+typedef struct TipoPuntero {
+    CadenaSegura tipo_base;
+} TipoPuntero;
+
+static inline struct TipoPuntero TipoPuntero_nuevo() {
+    struct TipoPuntero _r = {0};
+    return _r;
+}
+
+typedef struct StmtConstante {
+    int linea;
+    int columna;
+    CadenaSegura nombre;
+    CadenaSegura tipo;
+    struct Nodo* valor;
+} StmtConstante;
+
+static inline struct StmtConstante StmtConstante_nuevo() {
+    struct StmtConstante _r = {0};
+    return _r;
+}
+
+typedef struct NodoCaso {
+    int linea;
+    int columna;
+    CadenaSegura patron;
+    struct Nodo* cuerpo;
+    CadenaSegura tipo_extraido;
+} NodoCaso;
+
+static inline struct NodoCaso NodoCaso_nuevo() {
+    struct NodoCaso _r = {0};
+    return _r;
+}
+
+typedef struct NodoCoincidir {
+    int linea;
+    int columna;
+    struct Nodo* expresion;
+    struct NodoCaso* casos;
+} NodoCoincidir;
+
+static inline struct NodoCoincidir NodoCoincidir_nuevo() {
+    struct NodoCoincidir _r = {0};
+    return _r;
+}
+
+typedef struct ExprAsm {
+    int linea;
+    int columna;
+    CadenaSegura instruccion;
+} ExprAsm;
+
+static inline struct ExprAsm ExprAsm_nuevo() {
+    struct ExprAsm _r = {0};
+    return _r;
+}
+
+typedef struct ExprCrearCanal {
+    int linea;
+    int columna;
+    CadenaSegura tipo_contenido;
+    struct Nodo* capacidad;
+} ExprCrearCanal;
+
+static inline struct ExprCrearCanal ExprCrearCanal_nuevo() {
+    struct ExprCrearCanal _r = {0};
+    return _r;
+}
+
+typedef struct SentenciaEnviarCanal {
+    int linea;
+    int columna;
+    struct Nodo* expr_canal;
+    struct Nodo* valor;
+} SentenciaEnviarCanal;
+
+static inline struct SentenciaEnviarCanal SentenciaEnviarCanal_nuevo() {
+    struct SentenciaEnviarCanal _r = {0};
+    return _r;
+}
+
+typedef struct ExprRecibirCanal {
+    int linea;
+    int columna;
+    struct Nodo* expr_canal;
+} ExprRecibirCanal;
+
+static inline struct ExprRecibirCanal ExprRecibirCanal_nuevo() {
+    struct ExprRecibirCanal _r = {0};
+    return _r;
 }
 
 int main(int argc, char** argv) {

@@ -170,13 +170,37 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return _r;
 }
 
-int obtener_datos(void);
+struct Simbolo;
+struct TablaSimbolos;
 
-int obtener_datos(void) {
-    int dato = 42;
-    printf("[nucleo.memoria] Dato interno obtenido:  %d\n", dato);
-    int _ret_7 = dato;
-    return _ret_7;
+#define PROPIEDAD_VIVO (1)
+#define PROPIEDAD_MOVIDO (2)
+typedef struct Simbolo {
+    CadenaSegura nombre;
+    CadenaSegura tipo;
+    struct Nodo* nodo;
+    int nivel_ambito;
+    int propiedad;
+    int es_constante;
+    CadenaSegura uri;
+    int linea;
+    int columna;
+} Simbolo;
+
+static inline struct Simbolo Simbolo_nuevo() {
+    struct Simbolo _r = {0};
+    return _r;
+}
+
+typedef struct TablaSimbolos {
+    struct Simbolo* entradas;
+    int total_entradas;
+    int nivel_actual;
+} TablaSimbolos;
+
+static inline struct TablaSimbolos TablaSimbolos_nuevo() {
+    struct TablaSimbolos _r = {0};
+    return _r;
 }
 
 int main(int argc, char** argv) {
