@@ -289,7 +289,7 @@ struct ListaNodo* """ + _P + """bloque() {
 }
 struct Nodo* """ + _P + """sentencia() {
 #ifdef SYN_DEBUG_PARSE
-    fprintf(stderr, "PARSE S tok=%d pos=%d/%d\n", """ + _P + """mirar()->tipo, """ + _P + """tpos, """ + _P + """ntks);
+    fprintf(stderr, "PARSE S tok=%d pos=%d/%d\\n", """ + _P + """mirar()->tipo, """ + _P + """tpos, """ + _P + """ntks);
     fflush(stderr);
 #endif
     while (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); }
