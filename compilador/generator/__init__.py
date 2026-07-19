@@ -506,12 +506,55 @@ class GeneradorC:
             result
         )
         # 4. Fix gen_emitir_linea(est, (CadenaSegura){...}) → .datos
-        #    The function expects const char* but self-hosting code passes CadenaSegura
-        result = re.sub(
-            r'gen_emitir_linea\(est,\s*\(CadenaSegura\)\{([^}]+)\}\)',
-            r'gen_emitir_linea(est, ((CadenaSegura){\1}).datos)',
-            result
-        )
+        #    The function expects const char* but self-hosting code passes CadenaSegura.
+        #    Manual scan with brace-depth counting (handles nested {} inside strings).
+        def _fix_gen_cadena_calls(text):
+            target = 'gen_emitir_linea(est, (CadenaSegura){'
+            replacement = 'gen_emitir_linea(est, ((CadenaSegura){'
+            out = []
+            pos = 0
+            while True:
+                idx = text.find(target, pos)
+                if idx == -1:
+                    out.append(text[pos:])
+                    break
+                out.append(text[pos:idx])
+                out.append(replacement)
+                start = idx + len(target)
+                depth = 1
+                i = start
+                in_str = False
+                str_char = None
+                while i < len(text) and depth > 0:
+                    c = text[i]
+                    if in_str:
+                        if c == '\\' and i + 1 < len(text):
+                            i += 2
+                            continue
+                        if c == str_char:
+                            in_str = False
+                    else:
+                        if c in ('"', "'"):
+                            in_str = True
+                            str_char = c
+                        elif c == '{':
+                            depth += 1
+                        elif c == '}':
+                            depth -= 1
+                            if depth == 0:
+                                rest = text[i+1:].lstrip()
+                                if rest.startswith(')'):
+                                    body = text[start:i]
+                                    out.append(body)
+                                    skip = len(text[i:]) - len(rest)
+                                    out.append('}).datos)')
+                                    pos = i + skip + 1
+                                    break
+                    i += 1
+                else:
+                    pos = idx + len(target)
+            return ''.join(out)
+        result = _fix_gen_cadena_calls(result)
         # 5. Fix ResultadoEtapa union access: r.valor → r.dato.valor
         #    Struct has { tag; union { int valor; } dato; } but asm() uses r.valor
         result = re.sub(
@@ -519,6 +562,9 @@ class GeneradorC:
             r'r.dato.valor = 0;',
             result
         )
+        # 6. Fix ,; inside array initializers (asm() blocks with ; append)
+        #    Pattern like `"abrir","leer",;` → `"abrir","leer",`
+        result = result.replace(',;', ',')
 
         return result
 
