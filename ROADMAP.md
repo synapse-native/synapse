@@ -1,30 +1,33 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** ✅ Fase 0-2 completadas | ✅ **Fase 3 COMPLETADA** (3.1→3.6)
+> **Estado:** ✅ Fase 0-6 completadas | ✅ F7 completa | ⏳ F9 activa (bloqueada por segfault)
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 231 passed, 0 failed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
-> **Bootstrap:** ✅ Stage2 == Stage3 (diff binario = 0 bytes)
+> **Tests:** 231 passed, 0 failed, 2 skipped | GCC: **0 errores** ✅
+> **Bootstrap Stage2:** ❌ **Segfault en parser self-hosting (F9.4 blocker)**
+> **Binarios:** `synapse_stage2.exe` VIEJO (Jul 10) ✅ funcional | `synapse_bootstrap.exe` NUEVO ❌ segfault
 > **Última actualización:** Julio 2026
 
 ---
 
 ## 📊 TABLERO DE PROGRESO
 
-| Fase | Estado | Avance | Tests |
-|------|--------|--------|-------|
-| **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed |
-| **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed |
-| **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed |
-| **F3: Bootstrap** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed |
-| **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed |
-| **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed |
-| **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed |
-| **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed |
-| **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed |
-| **F8: Análisis semántico nativo** | ⏳ **PLANIFICADA** | 0/4 tareas | 231 passed |
-| **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 2/6 tareas | 231 passed |
-| **F10: Concurrencia (canales tipados)** | ⏳ **PLANIFICADA** | 0/5 tareas | 231 passed |
+| Fase | Estado | Avance | Tests | Dependencia |
+|------|--------|--------|-------|-------------|
+| **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed | — |
+| **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed | — |
+| **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
+| **F3: Bootstrap** | ✅ **COMPLETADA** (parcial) | 6/6 tareas | 231 passed | — |
+| **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed | — |
+| **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed | — |
+| **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed | — |
+| **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed | — |
+| **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed | — |
+| **F8: Análisis semántico nativo** | ⏳ **BLOQUEADA** | 0/4 tareas | 231 passed | ⬅️ Requiere F9 estable |
+| **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 3/7 tareas | 231 passed | ⬅️ Requiere fix segfault |
+| **F10: Concurrencia (canales tipados)** | ⏳ **PLANIFICADA** | 0/5 tareas | 231 passed | ⬅️ Requiere F8 estable |
+| **F11: Fuzzing destructivo (Parte VII DM)** | ⏳ **PLANIFICADA** | 0/2 tareas | 231 passed | ⬅️ Requiere F9 estable |
+| **F12: LSP nativo (Parte VI DM)** | ⏳ **PLANIFICADA** | 0/3 tareas | 231 passed | ⬅️ Requiere F9 estable |
 
 ---
 
@@ -91,12 +94,16 @@ gcc -c nucleo/generator.c -o nucleo/generator.o  # 0 errores, 0 warnings
 
 ---
 
-## ✅ FASE 3: BOOTSTRAP (COMPLETADA)
+## ✅ FASE 3: BOOTSTRAP (COMPLETADA — PARCIAL)
 
 ### Objetivo
 Ciclo completo Stage1→Stage2→Stage3 con diff binario cero.
 
-### Criterio de éxito — ✅ CUMPLIDO
+### NOTA IMPORTANTE
+El bootstrap **se verificó** con binarios generados el **Jul 10** (synapse_stage2.exe, synapse_stage3.exe).  
+El binario NUEVO (`synapse_bootstrap.exe`) generado con el generador actual produce **segfault** en el parser self-hosting (ver F9.4).
+
+### Criterio de éxito — ✅ CUMPLIDO (Jul 10)
 ```bash
 # Fase 3.1-3.3: Python → Stage1
 python main.py nucleo/principal.syn  # → synapse_bootstrap.exe (Stage1)
@@ -111,7 +118,7 @@ python main.py nucleo/principal.syn  # → synapse_bootstrap.exe (Stage1)
 cmp synapse_stage2.exe synapse_stage3.exe  # ✅ 0 bytes de diferencia
 ```
 
-### 📊 Resultados del Bootstrap
+### 📊 Resultados del Bootstrap (Jul 10)
 | Paso | Comando | Resultado |
 |------|---------|-----------|
 | **3.1** | `python main.py src/main.syn` | ✅ `src/main.c` + `src/main.exe` |
@@ -120,6 +127,21 @@ cmp synapse_stage2.exe synapse_stage3.exe  # ✅ 0 bytes de diferencia
 | **3.4** | `synapse_bootstrap.exe nucleo/principal.syn` → Stage2 | ✅ `synapse_stage2.exe` |
 | **3.5** | `synapse_stage2.exe nucleo/principal.syn` → Stage3 | ✅ `synapse_stage3.exe` |
 | **3.6** | `cmp stage2 stage3` | ✅ **Diff = 0 bytes** (idénticos) |
+
+### 📦 Binarios generados (Jul 10 — funcionales)
+```
+dist/bin/
+├── synapse_stage1.exe  (729,613 bytes)  — Python → C (referencia)
+├── synapse_stage2.exe  (729,613 bytes)  — Stage1 → Stage2
+└── synapse_stage3.exe  (729,613 bytes)  — Stage2 → Stage3
+                                  ^^^^^^
+                           ✅ Diff = 0 bytes!
+```
+
+### Binario actual (Jul 19 — con segfault)
+```
+synapse_bootstrap.exe  (727,978 bytes)  — ❌ Segfault al parsear principal.syn
+```
 
 ### 🔧 Cambios realizados en Fase 3
 | Archivo | Cambio |
@@ -130,22 +152,6 @@ cmp synapse_stage2.exe synapse_stage3.exe  # ✅ 0 bytes de diferencia
 | `nucleo/analizador_semantico.syn` | Fixes asm blocks: `nombre.datos`, strdup, `->` → `.` |
 | `nucleo/diagnostics.syn` | CadenaSegura en formateo de errores |
 | `nucleo/generator.syn` | Fixes `.datos` en struct members, strcpy |
-
-### 📦 Binarios generados
-```
-dist/bin/
-├── synapse_stage1.exe  (729,613 bytes)  — Python → C (referencia)
-├── synapse_stage2.exe  (729,613 bytes)  — Stage1 → Stage2
-└── synapse_stage3.exe  (729,613 bytes)  — Stage2 → Stage3
-                                  ^^^^^^
-                           ✅ Diff = 0 bytes!
-```
-
-### Notas sobre el bootstrap
-- Stage1 delega al compilador Python (`python main.py`) para generar Stage2 — enfoque estándar de bootstrap
-- Stage2 produce Stage3 sin depender de Python (usa el mismo mecanismo: invoca `python main.py`)
-- La verificación `Stage2 == Stage3` prueba que el pipeline de compilación es determinista
-- **Próximo paso:** Eliminar dependencia de Python del pipeline Stage2→Stage3 implementando el generador nativo
 
 ---
 
@@ -188,22 +194,84 @@ compilador/generator/
 
 ---
 
-## ⏳ FASE 8: ANÁLISIS SEMÁNTICO NATIVO (PLANIFICADA)
+## ✅ FASE 5: CI/CD Y AUTOMATIZACIÓN (COMPLETADA)
+
+### Objetivo
+Pipeline CI completo: tests en cada PR, bootstrap verification, releases automáticos.
+
+### Tareas
+| # | Tarea | Archivos | Estado |
+|---|-------|----------|--------|
+| 5.1 | Mejorar `ci-tests.yml` | `.github/workflows/ci-tests.yml` | ✅ |
+| 5.2 | Job bootstrap test (`needs: test`) | `.github/workflows/ci-tests.yml` | ✅ |
+| 5.3 | Configurar flake8 | `.flake8` | ✅ |
+| 5.4 | Verificar release pipeline | `release-binaries.yml`, `windows_release.yml` | ✅ |
+| 5.5 | Documentar en `CONTRIBUTING.md` | `CONTRIBUTING.md` | ✅ |
+
+### Logrado
+- **ci-tests.yml**: bootstrap job independiente que verifica 0 errores GCC + Stage1 + tests no regresionan. Linting (flake8) movido antes de tests y ahora es obligatorio (`continue-on-error: false`).
+- **`.flake8`**: Configuración nueva (max-line-length=100, exclude de auto-generados, etc.)
+- **release-binaries.yml**: Corregido: ahora usa `python main.py nucleo/principal.syn` para bootstrap en vez de compilar `main.c` directamente. Incluye `setup-python`.
+- **windows_release.yml**: Limpiado rutas (`opensyn/` → `nucleo/`), eliminado `tag_name` hardcodeado.
+- **CONTRIBUTING.md**: Documentación completa de CI/CD con 4 workflows, validación local con flake8 + bootstrap + tests.
+- **flake8**: 0 errores en todo el código fuente Python (excluyendo `emit_selfhost.py` por recursión pyflakes).
+
+---
+
+## ✅ FASE 6: REFACTOR .syn + ELIMINAR TEMP (COMPLETADA)
+
+### Objetivo
+Eliminar el post-processing TEMP corrigiendo los archivos .syn directamente.
+
+### Tareas
+| # | Paso | Archivos | Estado |
+|---|------|----------|--------|
+| 6.1 | Corregir `analizador_semantico.syn`: casts `(const char*)` → `.datos` | `nucleo/analizador_semantico.syn` | ✅ |
+| 6.2 | Corregir `diagnostics.syn`: CadenaSegura en formateo | `nucleo/diagnostics.syn` | ✅ |
+| 6.3 | Corregir `generator.syn`: `strcmp(nombre, ...)` → `strcmp(nombre.datos, ...)` | `nucleo/generator.syn` | ✅ |
+| 6.4 | Corregir `generator.syn`: `const char*` → `nombre.datos` | `nucleo/generator.syn` | ✅ |
+| 6.5 | Corregir `principal.syn`: `retorno` → `retornar` + `printf` → `fprintf` | `nucleo/principal.syn` | ✅ |
+| 6.6 | Pipeline verification: 0 GCC errors + 231 tests | — | ✅ |
+
+---
+
+## ✅ FASE 7: GENERADOR NATIVO (SIN PYTHON) (COMPLETADA)
+
+### Objetivo
+Eliminar dependencia de Python del pipeline bootstrap implementando el generador nativo.
+
+### Logrado
+- `nucleo/principal.syn`: `generar_etapa()` ahora usa pipeline **100% nativa**:
+  `tokenizar()` → `parsear()` → `generar()` → `system("gcc ...")`
+- **Python dependency eliminated**: `synapse_bootstrap.exe` no necesita Python
+- `principal()` simplificado: solo llama a `generar_etapa`
+- Pipeline: 0 GCC errors, 231 tests
+
+---
+
+## ⏳ FASE 8: ANÁLISIS SEMÁNTICO NATIVO (BLOQUEADA)
 
 ### Objetivo
 Integrar `nucleo/analizador_semantico.syn` en la pipeline nativa (`generar_etapa`), añadiendo verificación de tipos, ownership y contratos en el binario auto-hospedado.
 
-### Tareas
-| # | Tarea | Riesgo | Estado |
-|---|-------|--------|--------|
-| 8.1 | Agregar stub de `analizar_etapa` en `principal.syn` (establecer pipeline) | 🟢 Bajo | ⏳ |
-| 8.2 | Implementar data bridge: `Programa` (tree AST) → `SemNodo[]` (flat array) | 🔴 Alto | ⏳ |
-| 8.3 | Agregar extern `analizador_nuevo`/`analizar` a `_SPECIAL_SIGS` | 🟢 Bajo | ⏳ |
-| 8.4 | Verificar 0 GCC errors + tests + bootstrap | 🟡 Medio | ⏳ |
+### ⛔ Estado: BLOQUEADA por F9
+Fase 8 depende de que el **parser self-hosting** (F9.4) funcione correctamente. Sin parser funcional:
+- No se puede probar el data bridge entre AST árbol → arreglo plano
+- No se puede verificar que `analizar()` recibe el AST correcto
+- Cualquier implementación sería sobre terreno inestable
 
 ### Dependencias
-- Self-hosting parser (`gen_parse()`) necesita soporte para `coincidir` (ver Fase 9)
-- Data bridge requiere conversión de árbol AST a arreglo plano
+```
+F9.4 (fix segfault parser) → F9.7 (bootstrap estable) → F8
+```
+
+### Tareas
+| # | Tarea | Riesgo | Estado | Nota |
+|---|-------|--------|--------|------|
+| 8.1 | Agregar stub de `analizar_etapa` en `principal.syn` (establecer pipeline) | 🟢 Bajo | ✅ **STUB INSERTADO** | `fprintf("saltado (TODO F8)")` |
+| 8.2 | Implementar data bridge: `Programa` (tree AST) → `SemNodo[]` (flat array) | 🔴 Alto | ⏳ | Bloqueado por F9 |
+| 8.3 | Agregar extern `analizador_nuevo`/`analizar` a `_SPECIAL_SIGS` | 🟢 Bajo | ⏳ | Bloqueado por F9 |
+| 8.4 | Verificar 0 GCC errors + tests + bootstrap | 🟡 Medio | ⏳ | Bloqueado por F9 |
 
 ---
 
@@ -212,19 +280,29 @@ Integrar `nucleo/analizador_semantico.syn` en la pipeline nativa (`generar_etapa
 ### Objetivo
 Eliminar el post-processing paso 4 en `generator/__init__.py` corrigiendo la raíz en los emisores auto-hospedaje, y habilitar bootstrap Stage2 completo.
 
+### 🚨 Bloqueador activo
+**F9.4**: Segfault en el parser self-hosting (`gen_parse()` en `emit_selfhost.py`) al compilar `principal.syn`.  
+Causa raíz: El generador `gen_parse()` emite código C que crashea al procesar el AST del compilador Synapse.  
+El segfault estaba oculto por los debug `fprintf` del tokenizador (~500 líneas de stderr por ejecución) que fueron eliminados en F9.3.
+
 ### Tareas
 | # | Tarea | Archivos | Riesgo | Estado |
 |---|-------|----------|--------|--------|
 | 9.1 | Fix `gen_tok_c()`: agregar escape `\"` en strings | `emit_selfhost.py` | 🔴 Alto | ✅ |
 | 9.2 | Refactor `principal.syn`: `coincidir` → `si`/`sino` | `principal.syn` | 🟡 Medio | ✅ |
 | 9.3 | Eliminar debug `fprintf` de `emitir_tokenizar()` (5 prints) | `emit_expressions.py` | 🟡 Medio | ✅ |
-| 9.4 | Arreglar segfault en parser self-hosting (`gen_parse()`) | `emit_selfhost.py` | 🔴 Alto | 🔴 **BLOQUEANTE** |
-| 9.5 | Arreglar emisiones `(CadenaSegura){...}` en fuente | `emit_selfhost.py` + `generator.syn` | 🔴 Alto | ⏳ |
-| 9.6 | Eliminar post-processing paso 4 de `__init__.py` | `__init__.py` | 🟡 Medio | ⏳ |
-| 9.7 | Verificar bootstrap Stage1→Stage2→Stage3 + `cmp` | — | 🟡 Medio | ⏳ |
+| 9.4 | Arreglar segfault en parser self-hosting (`gen_parse()`) | `emit_selfhost.py` | 🔴 Alto | 🔴 **ACTIVO** |
+| 9.5 | Agregar guardas `#ifdef SYN_DEBUG` en tokenizer/parser | `emit_selfhost.py`, `emit_expressions.py` | 🟢 Bajo | ⏳ |
+| 9.6 | Arreglar emisiones `(CadenaSegura){...}` para eliminar post-proc paso 4 | `emit_selfhost.py` + `generator.syn` | 🔴 Alto | ⏳ |
+| 9.7 | Eliminar post-processing paso 4 de `__init__.py` | `__init__.py` | 🟡 Medio | ⏳ |
+| 9.8 | Verificar bootstrap Stage1→Stage2→Stage3 + `cmp` | — | 🟡 Medio | ⏳ |
 
-### Limitación conocida
-El parser self-hosting (`gen_parse()`) no implementa `coincidir`, bloqueando Stage2 con `principal.syn` actual.
+### Diagnóstico del segfault
+- **Tokenizador**: ✅ Funciona (silencioso, rápido)
+- **Parser**: ❌ Segfault en `_P_sentencia()` o `_P_prim()`
+- **Generador**: No se alcanza (crash antes)
+- **GCC**: No se alcanza (crash antes)
+- **Posible causa**: Buffer overflow en `strcpy`, `calloc` fallido, o recursión infinita
 
 ---
 
@@ -232,6 +310,9 @@ El parser self-hosting (`gen_parse()`) no implementa `coincidir`, bloqueando Sta
 
 ### Objetivo
 Implementar concurrencia bajo el principio de **Cero Estado Compartido** según Documento Maestro Parte III: canales tipados (`Canal<T>`), transferencia de ownership, y contratos lógicos (`requiere`/`garantiza`) en tiempo de ejecución.
+
+### ⛔ Estado: BLOQUEADA por F8
+Requiere análisis semántico funcional (F8) para validar ownership transfer.
 
 ### Arquitectura
 ```c
@@ -269,79 +350,78 @@ synapse stress_test.syn
 
 ---
 
-## ✅ FASE 5: CI/CD Y AUTOMATIZACIÓN (COMPLETADA)
+## ⏳ FASE 11: FUZZING DESTRUCTIVO (PLANIFICADA)
 
 ### Objetivo
-Pipeline CI completo: tests en cada PR, bootstrap verification, releases automáticos.
+Someter el compilador y runtime a pruebas destructivas según Documento Maestro Parte VII.
 
 ### Tareas
-| # | Tarea | Archivos | Estado |
-|---|-------|----------|--------|
-| 5.1 | Mejorar `ci-tests.yml` | `.github/workflows/ci-tests.yml` | ✅ |
-| 5.2 | Job bootstrap test (`needs: test`) | `.github/workflows/ci-tests.yml` | ✅ |
-| 5.3 | Configurar flake8 | `.flake8` | ✅ |
-| 5.4 | Verificar release pipeline | `release-binaries.yml`, `windows_release.yml` | ✅ |
-| 5.5 | Documentar en `CONTRIBUTING.md` | `CONTRIBUTING.md` | ✅ |
+| # | Tarea | Archivos | Riesgo | Estado |
+|---|-------|----------|--------|--------|
+| 11.1 | Fuzzing del frontend (compilador): AFL++/libFuzzer contra `synapse2.exe` | `tests/fuzz/` | 🔴 Alto | ⏳ |
+| 11.2 | Fuzzing del backend (concurrencia): 10,000 hilos + MemoryWatchdog | `tests/stress/` | 🔴 Alto | ⏳ |
 
-### Logrado
-- **ci-tests.yml**: bootstrap job independiente que verifica 0 errores GCC + Stage1 + tests no regresionan. Linting (flake8) movido antes de tests y ahora es obligatorio (`continue-on-error: false`).
-- **`.flake8`**: Configuración nueva (max-line-length=100, exclude de auto-generados, etc.)
-- **release-binaries.yml**: Corregido: ahora usa `python main.py nucleo/principal.syn` para bootstrap en vez de compilar `main.c` directamente. Incluye `setup-python`.
-- **windows_release.yml**: Limpiado rutas (`opensyn/` → `nucleo/`), eliminado `tag_name` hardcodeado.
-- **CONTRIBUTING.md**: Documentación completa de CI/CD con 4 workflows, validación local con flake8 + bootstrap + tests.
-- **flake8**: 0 errores en todo el código fuente Python (excluyendo `emit_selfhost.py` por recursión pyflakes).
+### Criterio de éxito (Parte VII DM)
+- **Frontend**: Cero segfaults con archivos .syn aleatorios (exit code 1 siempre). 
+- **Backend**: 24h de ejecución: 0 deadlocks, 0 data races, 0 bytes perdidos.
+
+---
+
+## ⏳ FASE 12: LSP NATIVO (PLANIFICADA)
+
+### Objetivo
+Implementar servidor LSP (Language Server Protocol) nativo según Documento Maestro Parte VI, con diagnósticos en tiempo real y puente de IA local.
+
+### Tareas
+| # | Tarea | Archivos | Riesgo | Estado |
+|---|-------|----------|--------|--------|
+| 12.1 | Servidor JSON-RPC sobre stdin/stdout | `synapse_lsp/server.py` | 🟡 Medio | ✅ Existente (Python) |
+| 12.2 | Migrar LSP a binario nativo (sin Python) | `nucleo/lsp.syn` | 🔴 Alto | ⏳ |
+| 12.3 | Puente de IA local (Ollama, Phi-3) | `synapse_lsp/` | 🟡 Medio | ⏳ |
+
+### Requisitos (Parte VI DM)
+- Diagnósticos en tiempo real: errors → línea/columna exacta
+- Trazabilidad de ownership: `ERR_LIFETIME` con línea exacta de invalidación
+- Zero telemetría externa: todo procesamiento en localhost
 
 ---
 
 ## 📈 MÉTRICAS DE SEGUIMIENTO
 
-| Métrica | Valor Inicial | Actual | Objetivo |
-|---------|---------------|--------|----------|
-| Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
+| Métrica | Inicio | Actual | Objetivo |
+|---------|--------|--------|----------|
 | Tests pasando | 247 | **231** (sin oráculo) | > 260 🔄 |
-| `gcc -c generator.c` | ❌ 403 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
-| `gcc -c synapse_unity.c` | ❌ 376 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
-| `gcc synapse_unity.c + synapse_rt.o` | ❌ 815 err | ✅ **0 err (↓100%)** | ✅ **0 err** |
-| Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
-| Asm blocks char* rotos | ❌ | ✅ FIXED | ✅ |
-| Bootstrap completo | ❌ | ✅ **Stage2==Stage3** | ✅ Stage2==Stage3 |
-| Código muerto (líneas) | ~50 | **0** | 0 ✅ |
-| Líneas en `generator.py` (original) | ~900 | **2920** | — |
-| Módulos en `compilador/generator/` | 0 | **7** | ✅ Modular |
-| Errores GCC bootstrap (nucleo/principal.syn) | ❌ 815 | **0** | ✅ **0 err** |
-| Tests pasando post-F4 | 231 | **230/233** | — |
+| GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
+| GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
+| GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
+| Bootstrap Stage2==Stage3 (Jul 10) | ❌ | **✅ 0 bytes diff** | ✅ |
+| Bootstrap Stage2 (Jul 19, nuevo) | ❌ | **❌ Segfault** | ✅ 0 errors |
+| Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
+| Módulos generator/ | 0 | **7** | ✅ Modular |
+| Dependencia Python en bootstrap | Sí | **No** (F7) | No ✅ |
+| Binario bootstrap (nuevo) | — | **727,978 bytes** | — |
 
 ---
 
-## ✅ RIESGOS RESUELTOS
+## ✅ RIESGOS RESUELTOS Y PENDIENTES
 
-| Riesgo | Resuelto en | Solución |
-|--------|-------------|----------|
-| Warnings (188+) son deuda técnica | Fase 2 | Aceptados; no bloquean |
-| El generador Synapse nativo produce C con advertencias | Fase 3 | Stage2==Stage3 verificado |
-| Sin bootstrap completo | Fase 3 | Pipeline secuencial completo |
-| `compilador/generator.py` monolítico (2920 líneas) | Fase 4 | Dividido en 7 módulos |
-| Emisores auto-hospedaje truncados (57% perdido) | Fase 4 | Restaurados a 70KB completos |
-| `tipo_de_expr` inconsistente (mezcla Synapse/C) | Fase 4 | Normalizado a Synapse types |
-| 815 errores GCC en bootstrap post-refactor | Fase 4 | 10 bugs corregidos → 0 errores |
+### Resueltos
+| Riesgo | Fase | Solución |
+|--------|------|----------|
+| Warnings (188+) | F2 | Aceptados; no bloquean |
+| generator.py monolítico (2920 líneas) | F4 | Dividido en 7 módulos |
+| Emisores auto-hospedaje truncados | F4 | Restaurados a 70KB |
+| 815 errores GCC post-refactor | F4 | → 0 errores |
+| Dependencia Python en bootstrap | F7 | Pipeline nativa completa |
 
-### ✅ DEUDA TÉCNICA RESUELTA
-
-| Ítem | Resuelto en | Detalle |
-|------|-------------|--------|
-| Código muerto en `principal.syn` | Julio 2026 | `tokenizar_etapa`, `parsear_etapa`, `analizar_etapa` eliminadas (no llamadas desde `principal()`) |
-| Stubs en raíz (`old_generator.py`) | Julio 2026 | Eliminado (63B, residuo del monolito original) |
-| `INFORME_ESTADO_ACTUAL.md` desactualizado | Julio 2026 | Reescrito: refleja Fase 7 completada |
-
-### ⏳ DEUDA TÉCNICA REMANENTE
-
-| Ítem | Impacto | Prioridad |
-|------|---------|-----------|
-| Pasos 4 y 6 post-processing en `generator/__init__.py` | Issues del generador Python, no de .syn | 🟢 Baja |
-| `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
-| Ruta `synapse_rt.o` hardcodeada (CWD-relative) | Falla si binario se ejecuta desde otro directorio | 🟢 Baja |
-| Parser self-hosting sin `coincidir` | Stage1→Stage2 bloqueado | 🟡 Media |
+### Pendientes
+| Riesgo | Impacto | Prioridad |
+|--------|---------|-----------|
+| Segfault en parser self-hosting | 🔴 Bloquea Stage2 completo | 🔴 **P1** |
+| Post-processing paso 4 activo | 🟢 No bloquea, pero es deuda | 🟢 Baja |
+| `emitir_token_defs` duplicado | 🟢 Código muerto potencial | 🟢 Baja |
+| Ruta `synapse_rt.o` hardcodeada | 🟡 Falla si CWD es otro dir | 🟢 Baja |
 
 ---
 
-*Roadmap vivo — actualizado tras cada fase completada.*
+*Roadmap vivo — actualizado Jul 2026. Próximo paso: F9.4 (fix segfault parser).*
