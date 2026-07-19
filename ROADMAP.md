@@ -209,8 +209,6 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 ---
 
-## ✅ FASE 4.5: POST-PROCESSING ASM() — FIX DE 280 ERRORES GCC
-
 ## 📈 MÉTRICAS DE SEGUIMIENTO
 
 | Métrica | Valor Inicial | Actual | Objetivo |
@@ -243,37 +241,21 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 | `tipo_de_expr` inconsistente (mezcla Synapse/C) | Fase 4 | Normalizado a Synapse types |
 | 815 errores GCC en bootstrap post-refactor | Fase 4 | 10 bugs corregidos → 0 errores |
 
+### ✅ DEUDA TÉCNICA RESUELTA
+
+| Ítem | Resuelto en | Detalle |
+|------|-------------|--------|
+| Código muerto en `principal.syn` | Julio 2026 | `tokenizar_etapa`, `parsear_etapa`, `analizar_etapa` eliminadas (no llamadas desde `principal()`) |
+| Stubs en raíz (`old_generator.py`) | Julio 2026 | Eliminado (63B, residuo del monolito original) |
+| `INFORME_ESTADO_ACTUAL.md` desactualizado | Julio 2026 | Reescrito: refleja Fase 7 completada |
+
 ### ⚠️ DEUDA TÉCNICA REMANENTE
 
 | Ítem | Impacto | Prioridad |
 |------|---------|-----------|
 | Pasos 4 y 6 post-processing en `generator/__init__.py` | Issues del generador Python, no de .syn | 🟢 Baja |
 | `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
-
----
-
-## ✅ FASE 4.5: POST-PROCESSING ASM() — FIX DE 280 ERRORES GCC
-
-### Objetivo
-Corregir incompatibilidades entre los archivos `.syn` commiteados (que usan `retornar`/`strcmp` sin `.datos`) y el generador C refactorizado de Fase 4.
-
-### Logrado
-- **280 → 0 errores GCC** en `nucleo/principal.syn` (↓100%)
-- **5 pasos de post-procesamiento** en `generator/__init__.py::generar()`:
-  1. `retornar` → `return` (keyword Synapse → C en bloques asm())
-  2. `strcmp(nombre, ` → `strcmp(nombre.datos, ` (CadenaSegura .datos)
-  3. `{ return X };` → `{ return X; };` (; faltante antes de })
-  4. `gen_emitir_linea(CadenaSegura{...})` → `.datos` (struct→pointer)
-  5. `r.valor = 0;` → `r.dato.valor = 0;` (unión ResultadoEtapa)
-- **Archivos .syn tocados**: `nucleo/principal.es.syn` (structs sincronizados con versión autoritativa)
-- **Tests**: 231 passed, 2 skipped ✅
-- **Stage1**: Compila ✅
-
-### Pendiente (Fase 5)
-Eliminar el bloque TEMP de post-procesamiento y corregir directamente:
-- `nucleo/analizador_semantico.syn`: `retornar`→`return` en asm(), `strcmp(.datos)`
-- `nucleo/generator.syn`: `strcmp(.datos)`, `linea: puntero`→`linea: texto`
-- `nucleo/diagnostics.syn`: Asignación correcta de CadenaSegura
+| Ruta `synapse_rt.o` hardcodeada (CWD-relative) | Falla si binario se ejecuta desde otro directorio | 🟢 Baja |
 
 ---
 

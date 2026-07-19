@@ -1,152 +1,116 @@
 # INFORME DE ESTADO ACTUAL — Synapse/OpenSyn
 
-## 1. VERSIONES DETECTADAS
+## 1. INFORMACIÓN GENERAL
 
-| Componente | Versión | Fuente |
-|------------|---------|--------|
-| Synapse (OpenSyn) | v1.1.0 | README.md |
-| Synapse (Axon TOML) | v2.1.0 | axon.toml |
-| Python | 3.12.10 | .venv |
-| pytest | 9.1.1 | .venv |
-| VS Code Extension (nueva) | v0.1.0 | vscode-synapse/package.json |
-| VS Code Extension (antigua) | v1.0.0 | vscode-extension/package.json |
-| Dist Synapse ZIP | v1.5.0 | dist/synapse-v1.5.0-windows-x64.zip |
+| Componente | Valor |
+|------------|-------|
+| Proyecto | Synapse/OpenSyn v2.0 |
+| Última actualización | Julio 2026 |
+| Estado bootstrap | ✅ **COMPLETADO** (Fase 3.1→3.6 verificada) |
+| Fase actual | ✅ **Fase 7 COMPLETADA** — Generador nativo sin Python |
+| Tests | **231 passed, 0 failed, 2 skipped** |
+| GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 
-## 2. ÁRBOL DE DIRECTORIOS (RESUMEN)
+## 2. ARQUITECTURA MODULAR
 
 ```
 /
-├── compilador/           # Núcleo modular (lexer, parser, ast_nodes, analizador_semantico, generator, symbol_table, diagnostics)
-├── synapse_lsp/          # Servidor LSP (server.py, test_lsp.py, test_lsp2.py, _check_analizador.py)
+├── compilador/
+│   ├── ast_nodes.py            # Definiciones de nodos del AST
+│   ├── lexer.py                # Analizador léxico
+│   ├── parser.py               # Analizador sintáctico
+│   ├── analizador_semantico.py # Análisis semántico
+│   ├── generator/              # Generador de código C (7 submódulos)
+│   │   ├── __init__.py         # Orquestador (GeneradorC, visitar)
+│   │   ├── context.py          # GeneratorContext (estado centralizado)
+│   │   ├── emit_control.py     # if, while, for, match
+│   │   ├── emit_expressions.py # expr_a_c, tipo_de_expr, builtins
+│   │   ├── emit_declarations.py# funciones, structs, variables
+│   │   ├── emit_contracts.py   # requiere/garantiza → asserts
+│   │   └── emit_selfhost.py    # EMISORES AUTO-HOSPEDAJE
+│   ├── symbol_table.py         # Tabla de símbolos
+│   ├── diagnostics.py          # Sistema de errores/diagnósticos
+│   └── resolvedor_axon.py      # Resolución de módulos Axon
+├── nucleo/
+│   ├── principal.syn           # Punto de entrada nativo (pipeline sin Python)
+│   ├── generator.syn           # Generador C auto-hospedado
+│   ├── analizador_semantico.syn# Analizador semántico nativo
+│   ├── diagnostics.syn         # Diagnostics nativos
+│   ├── %s.syn                  # Otros módulos del núcleo nativo
+├── synapse_lsp/                # Servidor LSP
+│   ├── server.py               # LSP server (JSON-RPC)
+│   ├── test_lsp.py             # Tests del LSP
 ├── tests/
-│   ├── unit/             # Tests unitarios (test_lexer, test_parser, test_lsp)
-│   ├── integration/      # Tests de integración (test_end_to_end, test_examples)
-│   ├── fixtures/         # Fixtures de prueba (valid/, invalid/)
-│   ├── auditoria/        # Test de auditoría en Synapse nativo
-│   ├── axon_modules/     # Tests de módulos Axon
-│   └── e2e/              # Tests end-to-end
-├── vscode-synapse/       # Extensión VS Code (nueva, scaffolding)
-├── vscode-extension/     # Extensión VS Code (antigua, completa con node_modules)
-├── examples/             # Ejemplos (00_hola_mundo, 01_calculadora, 02_estructuras)
-├── librerias/            # Librerías estándar (compiler/, std/)
-├── dist/                 # Distribución empaquetada
-├── docs/                 # Documentación mdBook
-├── build/                # Build de PyInstaller (axon)
-├── axon_src/             # Fuente del build Axon
-├── axon_modules/         # Módulos Axon
-├── opensyn/              # Orquestador OpenSyn (principal.syn + binario)
-├── nucleo/               # Núcleo Synapse nativo
-├── src/                  # Código fuente Synapse nativo (bootstrap)
-├── paquetes_oficiales/   # Paquetes oficiales (std.*)
-├── editor/               # Editor (vscode/)
-├── .github/workflows/    # CI/CD (ci-tests.yml, deploy-docs.yml, release-binaries.yml)
-├── main.py               # Punto de entrada CLI
-├── ROADMAP.md            # Plan de mejora unificado (fuente de verdad)
-├── *.py, *.md, *.syn     # Archivos en raíz (algunos stubs, algunos obsoletos)
+│   ├── unit/                   # Tests unitarios
+│   ├── integration/            # Tests de integración
+│   ├── fixtures/               # Fixtures de prueba
+│   └── e2e/                    # Tests end-to-end
+├── dist/
+│   └── bin/
+│       ├── synapse_stage1.exe  # Stage1 (Python → C)
+│       ├── synapse_stage2.exe  # Stage2 (Stage1 → Stage2)
+│       └── synapse_stage3.exe  # Stage3 (Stage2 → Stage3, idéntico)
+├── main.py                     # Punto de entrada CLI (Python)
+├── ROADMAP.md                  # Plan de estabilización (fuente de verdad)
+├── docs/                       # Documentación mdBook
+├── .github/workflows/          # CI/CD (ci-tests, release, deploy-docs)
+└── vscode-synapse/             # Extensión VS Code
 ```
 
-## 3. ARCHIVOS SOSPECHOSOS / CANDIDATOS A ELIMINACIÓN
+## 3. ESTADO DEL PIPELINE
 
-### 3.1. Stubs del monolito original (reemplazados por compilador/ modular)
+### Pipeline Python (referencia)
+```bash
+python main.py nucleo/principal.syn  # → synapse_bootstrap.exe (0 GCC errors ✅)
+python main.py src/main.syn -o dist/bin/synapse_stage1.exe  # → Stage1 ✅
+```
 
-| Archivo | Tamaño | Motivo |
-|---------|--------|--------|
-| `analizador_semantico.py` | 46 B | Sombra del módulo real en compilador/ |
-| `ast_nodes.py` | 35 B | Sombra del módulo real en compilador/ |
-| `diagnostics.py` | 37 B | Sombra del módulo real en compilador/ |
-| `generator.py` | 35 B | Sombra del módulo real en compilador/ |
-| `lexer.py` | 31 B | Sombra del módulo real en compilador/ |
-| `parser.py` | 32 B | Sombra del módulo real en compilador/ |
-| `symbol_table.py` | 38 B | Sombra del módulo real en compilador/ |
-| `resolvedor_axon.py` | 1.3 KB | Dependencia del monolito original |
+### Pipeline nativa (sin Python)
+```bash
+./synapse_bootstrap.exe nucleo/principal.syn synapse_stage2.exe  # → Stage2 ✅
+./synapse_stage2.exe nucleo/principal.syn synapse_stage3.exe     # → Stage3 ✅
+cmp synapse_stage2.exe synapse_stage3.exe  # → Diff = 0 bytes ✅
+```
 
-### 3.2. Archivos de documentación obsoletos o duplicados
+## 4. FASES COMPLETADAS
 
-| Archivo | Motivo |
-|---------|--------|
-| `EVALUACION_Y_PLAN.md` | Contenido anterior a la modularización; ROADMAP.md es la fuente de verdad |
-| `PLAN_RELEASE_VERSIONADO.md` | Plan de versionado obsoleto |
-| `ROADMAP_MADUREZ.md` | Roadmap anterior, reemplazado por ROADMAP.md |
-| `--help.c` | Generado accidentalmente por CLI |
-| `ast_nativo.txt` / `ast_python.txt` / `ast_python_tree.txt` | Volcados de AST de depuración |
-| `ast_tree_diff.py` | Script de depuración de AST |
+| Fase | Nombre | Estado |
+|------|--------|--------|
+| F0 | Saneamiento del repositorio | ✅ COMPLETADA |
+| F1 | Eliminación de código muerto | ✅ COMPLETADA |
+| F2 | Reparación del generador C | ✅ COMPLETADA |
+| F3 | Bootstrap | ✅ COMPLETADA (Stage2==Stage3) |
+| F4 | Refactor del generador (7 submódulos) | ✅ COMPLETADA |
+| F4.5 | Post-processing asm() (280 errores GCC) | ✅ COMPLETADA |
+| F5 | CI/CD y automatización | ✅ COMPLETADA |
+| F6 | Eliminar TEMP + corregir .syn directamente | ✅ COMPLETADA |
+| F7 | Generador nativo (sin Python) | ✅ COMPLETADA |
 
-### 3.3. Artefactos de compilación (generados por el compilador)
+## 5. MÉTRICAS DE SEGUIMIENTO
 
-| Categoría | Ejemplos |
-|-----------|----------|
-| `*.exe` en raíz | axon_build.exe, bootstrap_test.exe, generado.exe, hola.exe, programa.exe, salida_metal.exe, synapse.exe, synapse-windows-amd64.exe, synopsis_test.exe, test_*.exe |
-| `*.c` en raíz | --help.c, axon_build.c, bootstrap_test.c, hola.c, main.c, main2.c, programa.c, test_*.c |
-| `*.syn.json` en raíz | main.syn.json, generado.syn.json, test_*.syn.json |
-| `.o` en raíz | synapse_rt.o |
-| Tests/*.exe y *.c | Múltiples binarios y código C generado en tests/ |
-| Tests/*.syn.json | Múltiples JSON de AST canónico |
+| Métrica | Inicio | Actual | Objetivo |
+|---------|--------|--------|----------|
+| Tests pasando | 247 | **231** (sin oráculo) | > 260 🔄 |
+| GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
+| GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
+| GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
+| Bootstrap Stage2==Stage3 | ❌ | **✅ 0 bytes diff** | ✅ |
+| Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
+| Módulos generator/ | 0 | **7** | ✅ Modular |
+| Dependencia Python en bootstrap | Sí | **No** (F7) | No ✅ |
 
-### 3.4. Archivos de tests obsoletos o huérfanos
+## 6. DEUDA TÉCNICA REMANENTE
 
-| Archivo | Motivo |
-|---------|--------|
-| `tests/fail_use_after_move.*` | Pruebas del sistema de ownership anterior |
-| `tests/pass_safe_transfer.*` | Pruebas del sistema de ownership anterior |
-| `tests/e2e_errores.*` | Test E2E sin suite automatizada |
-| `tests/smoke_*.c/.exe/.syn.json` | Smokes generados individuales |
-| `tests/demo_inferencia.*` | Demo de inferencia (no es test) |
-| `tests/auditoria/` | Test de auditoría aislado |
-| `tests/test_runner.py` | Runner antiguo, reemplazado por pytest |
-| `tests/bootstraps_test.syn` | Test de bootstrap huérfano |
-| `tests/stress_pool.syn` | Test de stress huérfano |
+| Ítem | Impacto | Prioridad |
+|------|---------|-----------|
+| Post-processing pasos 4 y 6 en `generator/__init__.py` | Issues del generador Python, no de .syn | 🟢 Baja |
+| `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
+| Ruta `synapse_rt.o` hardcodeada (CWD-relative) | Falla si binario se ejecuta desde otro directorio | 🟢 Baja |
 
-### 3.5. Directorios duplicados
+## 7. SUGERENCIA: PRÓXIMA FASE
 
-| Directorio | Motivo |
-|------------|--------|
-| `vscode-extension/` (2.6 MB con node_modules) | Versión anterior; reemplazado por `vscode-synapse/` |
-| `editor/vscode/` | Otra versión de extensión VS Code (TypeScript) |
-| `librerias/` vs `dist/lib/librerias/` | Contenido similar, posible duplicación |
-
-### 3.6. Otros residuos
-
-| Archivo | Motivo |
-|---------|--------|
-| `axon.lock` | Archivo de lock de Axon (0 B) |
-| `stderr.txt` / `stdout.txt` | Capturas de salida de depuración |
-| `test_fs_output.txt` | Salida de test de filesystem |
-| `patch.py` | Script de parcheo temporal |
-| `fix_main_proper.py` | Script de corrección única |
-| `_compilar_helper.py` | Helper de compilación |
-| `_test_combinado_temp.exe` | Binario temporal |
-| `verificar_ast.py` | Script de verificación |
-| `qa_inquisidor.py` | Herramienta de QA |
-| `generate_embedded_libs.py` | Script de generación |
-| `build_dist.py` | Script de build |
-| `dump_ast_manual.py` | Script de depuración |
-| `test_lexer_smoke.py` | Smoke test manual |
-| `smoke_test_coincidir.py` | Smoke test manual |
-| `build/` (7.5 MB) | Artefactos de PyInstaller (axon) |
-| `dist/synapse2.exe` | Binario duplicado en dist/ |
-| `Synapse-v1.3.0-Windows.zip` / `synapse-v1.4.0-windows-x64.zip` | Zips de release antiguos |
-| `COMENTARIOS.md` (si existe) | Residuos de sesiones anteriores |
-
-## 4. ESTADO DEL BOOTSTRAP (Fase 3)
-
-### ✅ Fase 3.1 COMPLETADA
-- `python main.py src/main.syn` produce `src/main.c` + `src/main.exe` (stage 1 bootstrap)
-
-### ✅ Fase 3.2 COMPLETADA
-- Compilación de `nucleo/principal.syn` → `synapse_unity.c` → **GCC 0 errores**
-- Progreso: 376 → ~43 → **0 errores** (-100%)
-- Fixes: pre-pass de variables, RAII protegido, `.datos` en asm, escapes de strings
-- **Tests:** 231 passed, 2 skipped (sin regresiones)
-
-### ⏳ Fase 3.3 PENDIENTE
-- `python main.py src/main.syn -o dist/bin/synapse_stage1.exe`
-
-- **Binarios funcionales:** `build/bin/synapse.exe` (nativo), `src/main.exe` (bootstrap parcial)
-- **Deuda técnica:** `builtin_tipo_retorno`, `builtin_tipo_parametro`, `tipo_normalizado`, `resumen_errores` reescritas en Synapse nativo
-
-## 5. RESUMEN
-
-- **Tests activos:** 231 pasando, 2 skipping
-- **Cobertura funcional:** Léxico, sintáctico, semántico, generación C, LSP (completion, hover, definition), CLI
-- **Estado bootstrap:** Fase 3.2 COMPLETADA ✅ — GCC 0 errores en synapse_unity.c
-- **Próximo paso:** Fase 3.3 — Compilar Python → Stage1 .exe
+| Prioridad | Fase | Descripción |
+|-----------|------|-------------|
+| 🥇 | F8 | **Tests + Auditoría**: Recuperar oráculo, subir cobertura a >260 tests |
+| 🥈 | F9 | **Compilador al 100%**: Reimplementar análisis semántico completo en nativo |
+| 🥉 | F10 | **Concurrencia**: Canales tipados, ownership transfer, contratos lógicos |

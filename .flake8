@@ -25,4 +25,3 @@ exclude =
     *.o,
     compilador/generator/emit_selfhost.py,
     compilador/generator_old.py,
-    old_generator.py,
