@@ -84,12 +84,7 @@ funcion codigo_salida(diag: GestorDiagnostico) -> entero:
 funcion resumen_errores(diag: GestorDiagnostico) -> cadena:
     si hay_errores(diag) == falso:
         retornar "0 errores"
-    r = ""
-    inseguro:
-        asm("// resumen: N error(es) encontrado(s)")
-        asm("r = (diag.total_reportes == 1) ? \"1 error encontrado\" : \"2 errores encontrados\"")
-        asm("{ char _buf[64]; snprintf(_buf, 64, \"%d errores encontrados\", diag.total_reportes); r = _buf; }")
-    retornar r
+    retornar entero_a_texto(diag.total_reportes) + " error(es) encontrado(s)"
 
 // --- I18n message template lookup (Spanish primary, English fallback) ---
 funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:

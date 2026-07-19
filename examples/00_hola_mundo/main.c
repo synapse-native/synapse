@@ -77,8 +77,6 @@ void _visitar_lista(struct ListaNodo lista, Canal out);
 void _visitar_programa(struct Programa programa, Canal out);
 int generar(struct Programa programa, CadenaSegura ruta);
 CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse);
-CadenaSegura _leer_archivo(CadenaSegura ruta);
-CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave);
 void principal();
 typedef struct Token {
     int tipo;
@@ -347,37 +345,9 @@ CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse)
 {
     return tipo_synapse;
 }
-/* importar std.toml */
-/* importar std.io */
-/* importar std.err */
-CadenaSegura _leer_archivo(CadenaSegura ruta)
-{
-    Canal f = abrir(ruta, (CadenaSegura){.longitud=1,.datos="r"});
-    CadenaSegura resultado = leer(f);
-    cerrar(f);
-    return resultado;
-}
-CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave)
-{
-    int campo = obtener_campo(nodo, clave);
-    if ((campo.tipo == 2)) {
-        return campo.valor_str;
-    }
-    return (CadenaSegura){.longitud=0,.datos=""};
-}
 void principal()
 {
-    escribir_linea((CadenaSegura){.longitud=31,.datos="Synapse v2.0 — Auto-hospedado"});
-    escribir_linea((CadenaSegura){.longitud=32,.datos="Cargando manifiesto axon.toml..."});
-    int toml_str = _leer_archivo((CadenaSegura){.longitud=9,.datos="axon.toml"});
-    int doc = desde_texto(toml_str);
-    int proy = obtener_campo(doc, (CadenaSegura){.longitud=8,.datos="proyecto"});
-    int nombre = _campo_str(proy, (CadenaSegura){.longitud=6,.datos="nombre"});
-    int version = _campo_str(proy, (CadenaSegura){.longitud=7,.datos="version"});
-    int entrada = _campo_str(proy, (CadenaSegura){.longitud=13,.datos="punto_entrada"});
-    escribir_linea(entero_a_texto(((((CadenaSegura){.longitud=10,.datos="Proyecto: "} + nombre) + (CadenaSegura){.longitud=2,.datos=" v"}) + version)));
-    escribir_linea(entero_a_texto(((CadenaSegura){.longitud=9,.datos="Entrada: "} + entrada)));
-    escribir_linea((CadenaSegura){.longitud=37,.datos="[OK] Manifiesto cargado correctamente"});
+    escribir_linea((CadenaSegura){.longitud=19,.datos="Hola desde Synapse!"});
 }
 int main(int argc, char** argv) {
     int _g_argc=argc;

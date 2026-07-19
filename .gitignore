@@ -11,9 +11,8 @@
 /*.c
 /*.syn
 /*.syn.json
-*.syn.json
 
-# Temp
+# Temp / Debug
 _temp_*
 _out_*
 salida_*
@@ -48,13 +47,14 @@ dist/
 opensyn/principal.c
 opensyn/principal.exe
 
-# Test artifacts
+# Test artifacts (direct children only)
 tests/*.c
 tests/*.exe
 tests/*.syn
 tests/*.gguf
 tests/*.json
 tests/*_lib.py
+tests/*.o
 
 # Misc generated
 *.syn.c
@@ -63,9 +63,6 @@ _compilar_output.json
 _*.json
 opensyn_stdout.txt
 opensyn_stderr.txt
-
-# Editor
-.editorconfig
 
 # Node
 node_modules/

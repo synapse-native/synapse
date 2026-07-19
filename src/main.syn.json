@@ -1,0 +1,679 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Resultado",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Opcion",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ParToml",
+        "campos": [
+          {
+            "nombre": "clave",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "NodoToml"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "NodoToml",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "pares",
+            "tipo": "ParToml"
+          },
+          {
+            "nombre": "longitud",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_toml_parse",
+        "parametros": [
+          {
+            "nombre": "entrada",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "NodoToml"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_toml_nodo_new",
+        "parametros": [],
+        "tipo_retorno": "NodoToml"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_toml_nodo_liberar",
+        "parametros": [
+          {
+            "nombre": "n",
+            "tipo": "NodoToml"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_toml_object_get",
+        "parametros": [
+          {
+            "nombre": "nodo",
+            "tipo": "NodoToml"
+          },
+          {
+            "nombre": "clave",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "NodoToml"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "desde_texto",
+        "parametros": [
+          {
+            "nombre": "entrada",
+            "tipo": "cadena"
+          }
+        ],
+        "tipo_retorno": "NodoToml",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_toml_parse",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "entrada"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_campo",
+        "parametros": [
+          {
+            "nombre": "nodo",
+            "tipo": "NodoToml"
+          },
+          {
+            "nombre": "clave",
+            "tipo": "cadena"
+          }
+        ],
+        "tipo_retorno": "NodoToml",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_toml_object_get",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nodo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "clave"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "_leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "f",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "abrir",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "r"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "leer",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "f"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cerrar",
+              "argumentos": [
+                {
+                  "_tipo": "ArgumentoTransferido",
+                  "expr": {
+                    "_tipo": "Identificador",
+                    "nombre": "f"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "resultado"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "_campo_str",
+        "parametros": [
+          {
+            "nombre": "nodo",
+            "tipo": "NodoToml"
+          },
+          {
+            "nombre": "clave",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "campo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "obtener_campo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nodo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "clave"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "campo"
+                },
+                "nombre_campo": "tipo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "campo"
+                  },
+                  "nombre_campo": "valor_str"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Synapse v2.0 — Auto-hospedado"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Cargando manifiesto axon.toml..."
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "toml_str",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_leer_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "axon.toml"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "doc",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "desde_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "toml_str"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "proy",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "obtener_campo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "doc"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "proyecto"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nombre",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_campo_str",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "proy"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "nombre"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "version",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_campo_str",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "proy"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "version"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "entrada",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_campo_str",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "proy"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "punto_entrada"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "Proyecto: "
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "nombre"
+                      }
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralCadena",
+                      "valor": " v"
+                    }
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "version"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Entrada: "
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "entrada"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "[OK] Manifiesto cargado correctamente"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

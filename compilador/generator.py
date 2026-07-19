@@ -346,7 +346,7 @@ class GeneradorC:
         # Second pass: compute campos_pointer with full _estructuras available
         for nombre, info in self._estructuras.items():
             for c_nombre, c_tipo in info['campos']:
-                if c_tipo in self._estructuras or c_tipo == nombre:
+                if c_tipo in self._estructuras or c_tipo.rstrip('*') in self._estructuras or c_tipo == nombre:
                     info['campos_pointer'].add(c_nombre)
         # Forward declarations for structs
         for s in self.programa.sentencias:
@@ -2653,9 +2653,17 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 if info:
                     for c_nombre, c_tipo in info.get('campos', []):
                         if c_nombre == nodo.nombre_campo:
-                            if c_tipo in self._estructuras:
+                            base_tipo = c_tipo.rstrip('*')
+                            es_ptr = c_tipo.endswith('*')
+                            es_pointer_field = c_nombre in info.get('campos_pointer', set())
+                            if base_tipo in self._estructuras:
+                                return f'struct {c_tipo}{"*" if es_pointer_field else ""}'
+                            if es_ptr:
                                 return f'struct {c_tipo}'
-                            return MAPA_TIPOS_C.get(c_tipo, 'int')
+                            if es_pointer_field:
+                                return f'struct {c_tipo}*'
+                            tipo_c = MAPA_TIPOS_C.get(c_tipo, 'int')
+                            return tipo_c
             return 'int'
         if isinstance(nodo, OpBinaria):
             tipo_izq = self._tipo_de_expr(nodo.izquierdo)
@@ -2862,6 +2870,18 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                     return f'strcmp({v}.datos,'
                 return f'strcmp({v},'
             result = re.sub(r'\bstrcmp\((\w+)\s*,', _asm_strcmp, result)
+            def _asm_c_cast(m):
+                v = m.group(1)
+                if v in self._variables and self._variables[v] == 'CadenaSegura':
+                    return f'{v}.datos'
+                return m.group(0)
+            result = re.sub(r'\(\(const\s+char\s*\*\)(\w+)\)', _asm_c_cast, result)
+            result = re.sub(r'\(\(char\s*\*\)(\w+)\)', _asm_c_cast, result)
+            # Add ; inside { return X } blocks (missing ; before closing })
+            result = re.sub(r'\{\s*(return\s+\S+)\s*\}', r'{ \1; }', result)
+            result = result.rstrip()
+            if result and not result.endswith(';') and not result.endswith('{') and not result.endswith('}') and not result.startswith('#'):
+                result += ';'
             return result
         if isinstance(nodo, ExprCrearCanal):
             cap = self._expr_a_c(nodo.capacidad) if nodo.capacidad else "10"

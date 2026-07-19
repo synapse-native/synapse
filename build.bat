@@ -1,69 +1,65 @@
 @echo off
-:: build.bat — OpenSyn Build Script (Windows)
-:: Usage: build.bat [clean]
-
+:: build.bat — Synapse Build & Bootstrap Pipeline (Windows)
+:: Usage: build.bat [clean|test|bootstrap|full]
+::
+:: Pipeline: regenerate -> fixup_generator.py -> fix_2errors.py -> gcc
+::
 setlocal enabledelayedexpansion
 set ROOT_DIR=%~dp0
-set OPENEXE=%ROOT_DIR%opensyn\principal.exe
+set NUCLEO=%ROOT_DIR%nucleo
+set BUILD=%ROOT_DIR%build
 
-echo === OpenSyn Build v1.0.0 ===
+if /I "%1"=="clean" goto :clean
+if /I "%1"=="test" goto :test
+if /I "%1"=="bootstrap" goto :bootstrap
+if /I "%1"=="full" goto :full
+if /I "%1"=="fixup" goto :fixup
+
+echo === Synapse Build v2.1.0 ===
+echo Usage: build.bat [clean^|test^|bootstrap^|fixup^|full]
 echo.
+echo   clean     Remove build artifacts (exe, o, c, json)
+echo   fixup     Run post-processing fixup scripts on generator.c
+echo   test      Run full pytest suite
+echo   bootstrap Bootstrap pipeline: python main.py src/main.syn
+echo   full      Clean + fixup + test + bootstrap
+exit /b 0
 
-:: Clean
-if /I "%1"=="clean" (
-    echo [*] Cleaning artifacts...
-    del /Q "%ROOT_DIR%opensyn\principal.c" 2>nul
-    del /Q "%ROOT_DIR%opensyn\principal.exe" 2>nul
-    del /Q "%ROOT_DIR%opensyn\principal.syn.json" 2>nul
-    del /Q "%ROOT_DIR%synapse_rt.o" 2>nul
-    echo [OK] Clean
-    exit /b 0
-)
+:clean
+echo [*] Cleaning build artifacts...
+if exist "%ROOT_DIR%synapse_rt.o" del "%ROOT_DIR%synapse_rt.o"
+if exist "%NUCLEO%\generator.o" del "%NUCLEO%\generator.o"
+echo [OK] Clean
+exit /b 0
 
-:: Step 1: Build runtime object
-echo [1/4] Compilando runtime (synapse_rt.c)...
-gcc -c "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o" ^
-    -std=c99 -Wall -Wextra ^
-    -Wno-unused-parameter -Wno-unused-function ^
-    -lpthread -lm -lws2_32
-if %ERRORLEVEL% neq 0 (
-    echo [FAIL] synapse_rt.c compilation failed
+:fixup
+echo [FIXUP] Running post-processing on generator.c...
+python "%BUILD%\fixup_generator.py"
+python "%BUILD%\fix_2errors.py"
+echo [OK] Fixup complete
+exit /b 0
+
+:test
+echo [TEST] Running pytest...
+python -m pytest tests/ -v
+exit /b %ERRORLEVEL%
+
+:bootstrap
+echo [BOOTSTRAP] Stage 1: Python -> Native
+python "%ROOT_DIR%main.py" "%ROOT_DIR%src\main.syn"
+if errorlevel 1 (
+    echo [FAIL] Bootstrap Stage 1 failed
     exit /b 1
 )
-echo [OK] synapse_rt.o
+echo [OK] Stage 1 complete (src/main.c + src/main.exe + src/main.syn.json)
+exit /b 0
 
-:: Step 2: Compile the orchestrator from Synapse source (via Python compiler)
-echo [2/4] Compilando opensyn/principal.syn...
-python "%ROOT_DIR%main.py" "%ROOT_DIR%opensyn\principal.syn"
-if %ERRORLEVEL% neq 0 (
-    echo [WARN] Python compilation had issues (may use fallback)
-)
-echo [OK] principal.c
-
-:: Step 3: Verify executable exists
-echo [3/4] Verificando binario...
-if exist "%OPENEXE%" (
-    echo [OK] %OPENEXE%
-) else (
-    echo [*] Fallback: enlazando con GCC directamente...
-    gcc -o "%OPENEXE%" "%ROOT_DIR%opensyn\principal.c" ^
-        "%ROOT_DIR%synapse_rt.c" ^
-        -std=c99 -Wall -Wextra ^
-        -Wno-unused-parameter -Wno-unused-function ^
-        -I"%ROOT_DIR%" -lws2_32
-    if !ERRORLEVEL! neq 0 (
-        echo [FAIL] Link step failed
-        exit /b 1
-    )
-    echo [OK] %OPENEXE% (fallback)
-)
-
-:: Step 4: Regenerate embedded libraries header
-echo [4/4] Regenerando librerias/embedded_libs.h...
-python "%ROOT_DIR%tests\_gen_embedded.py"
-echo [OK] embedded_libs.h
-
-echo.
-echo === Build complete ===
-echo Ejecuta: opensin\principal.exe
+:full
+call :clean
+call :fixup
+call :test
+if errorlevel 1 exit /b 1
+call :bootstrap
+if errorlevel 1 exit /b 1
+echo === Full pipeline complete ===
 exit /b 0

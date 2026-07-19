@@ -653,7 +653,6 @@ void gen_emitir_token_defs(struct GeneradorCEst est) {
     gen_emitir_linea(est, ((CadenaSegura){ .longitud = 20, .datos = "#define T_EXTERNO 46" }).datos);
     gen_emitir_nueva_linea(est);
     gen_emitir_linea(est, ((CadenaSegura){ .longitud = 22, .datos = "#define MAX_TOKS 16384" }).datos);
-    gen_emitir_linea(est, ((CadenaSegura){ .longitud = 73, .datos = "typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;" }).datos);
     gen_emitir_linea(est, ((CadenaSegura){ .longitud = 38, .datos = "// Global state from estado_global.syn" }).datos);
     gen_emitir_linea(est, ((CadenaSegura){ .longitud = 26, .datos = "_P_Token _P_tks[MAX_TOKS];" }).datos);
     gen_emitir_linea(est, ((CadenaSegura){ .longitud = 43, .datos = "int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;" }).datos);
@@ -1483,7 +1482,7 @@ void gen_emitir_generar_c(struct GeneradorCEst est) {
         gen_emitir_linea(est, "void _G_reset() { _G_nv = 0; }");
         gen_emitir_linea(est, "int _G_find(const char* n) { for(int i=0;i<_G_nv;i++) if(strcmp(_G_vn[i],n)==0) return i; return -1; }");
         gen_emitir_nueva_linea(est);
-        gen_emitir_linea(est, "void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\"    \") fprintf(_G_out,\"%s\\n\",s); }");
+        gen_emitir_linea(est, "void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\"    \") fprintf(_G_out,\"%s\\n\",s) }");
         gen_emitir_nueva_linea(est);
         // Main generar function
         gen_emitir_linea(est, "int generar(struct Programa programa, CadenaSegura ruta) {");

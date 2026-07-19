@@ -1,0 +1,1782 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_cargar",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "puntero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_cerrar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_evaluar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "tensor"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_generar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "temperatura",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "top_k",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "top_p",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_n_past",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_reiniciar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cargar_modelo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "puntero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_cargar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar_modelo",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_cerrar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "evaluar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_evaluar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "token_id"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "generar_token",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "temperatura",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "top_k",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "top_p",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_generar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "token_id"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "temperatura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "top_k"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "top_p"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "n_past",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_n_past",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "reiniciar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_reiniciar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_decodificar_token",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_vocab_tamano",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_codificar_contar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_codificar_obtener",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "decodificar_token",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "token_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_decodificar_token",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "token_id"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "vocab_tamano",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_vocab_tamano",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "codificar_contar",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_codificar_contar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "codificar_obtener",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_codificar_obtener",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "indice"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "MAX_TOKENS_GENERAR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 256
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "SYSTEM_PROMPT",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralCadena",
+          "valor": "Eres un asistente que escribe codigo en Synapse.#10El lenguaje Synapse usa las siguientes reglas:#10- Indentacion: multiplos de 4 espacios (no tabs)#10- No uses llaves {} para bloques de control#10- Usa #lang: es al inicio del codigo#10- Los bloques se definen por indentacion#10- Usa 'funcion nombre(param: tipo) -> tipo:' para definir funciones#10- Usa 'si condicion:' para condicionales#10- Usa 'mientras condicion:' para bucles#10- Usa 'retornar expr' para valores de retorno#10- Variables: 'nombre = expr'#10- Tipos: entero, decimal, texto, booleano, puntero, tensor, nulo#10- Los strings se escriben entre comillas dobles#10- No uses punto y coma al final de lineas#10- 'verdadero' y 'falso' para booleanos#10- 'nulo' para puntero nulo"
+        }
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_compilar_codigo",
+        "parametros": [
+          {
+            "nombre": "fuente",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_codigo_generado",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_error_compilacion",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_linea_error",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_extraer_bloque_codigo",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_modelo_generar_texto",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "prompt",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "max_tokens",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "temperatura",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "top_k",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "top_p",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "compilar_codigo",
+        "parametros": [
+          {
+            "nombre": "fuente",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_compilar_codigo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "fuente"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_codigo_generado",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_codigo_generado",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_error_compilacion",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_error_compilacion",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_linea_error",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_linea_error",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "extraer_bloque_codigo",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_extraer_bloque_codigo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "generar_texto",
+        "parametros": [
+          {
+            "nombre": "ctx",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "prompt",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "max_tokens",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "temperatura",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "top_k",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "top_p",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_generar_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "prompt"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "max_tokens"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "temperatura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "top_k"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "top_p"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "generar_codigo",
+        "parametros": [
+          {
+            "nombre": "modelo",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "instruccion",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "max_intentos",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prompt_completo",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "SYSTEM_PROMPT"
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prompt_completo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "concat",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "prompt_completo"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#10#10Instruccion del usuario: "
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prompt_completo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "concat",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "prompt_completo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "instruccion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prompt_completo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "concat",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "prompt_completo"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#10#10Genera SOLO el codigo Synapse (sin explicaciones):"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "intento",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ultimo_error",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "intento"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "max_intentos"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "[Oraculo] Generando codigo... (Intento "
+                        },
+                        {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "entero_a_texto",
+                          "argumentos": [
+                            {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "intento"
+                              },
+                              "operador": "+",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "concat",
+                          "argumentos": [
+                            {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "concat",
+                              "argumentos": [
+                                {
+                                  "_tipo": "LiteralCadena",
+                                  "valor": "/"
+                                },
+                                {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "entero_a_texto",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "max_intentos"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "_tipo": "LiteralCadena",
+                              "valor": ")"
+                            }
+                          ]
+                        },
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": ""
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "intento"
+                  },
+                  "operador": ">",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "prompt_completo",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "prompt_completo"
+                        },
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "#10#10El compilador rechazo el codigo con el siguiente error: "
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "prompt_completo",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "prompt_completo"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "ultimo_error"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "prompt_completo",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "prompt_completo"
+                        },
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "#10#10Reescribe la funcion corrigiendo la infraccion. Genera SOLO el codigo corregido:"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "respuesta",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "generar_texto",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "modelo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "prompt_completo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "MAX_TOKENS_GENERAR"
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 0.7
+                    },
+                    {
+                      "_tipo": "LiteralNumero",
+                      "valor": 40
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 0.9
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "codigo_generado",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "extraer_bloque_codigo",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "respuesta"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo_generado"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralCadena",
+                    "valor": ""
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "codigo_generado",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "respuesta"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "res",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "compilar_codigo",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "codigo_generado"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "res"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "escribir_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "[Compilador] Exito. Binario generado."
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "Identificador",
+                      "nombre": "codigo_generado"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "error_msg",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "obtener_error_compilacion",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "linea_err",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "obtener_linea_error",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[Compilador] Error detectado: Re-inyectando contexto..."
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "ultimo_error",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Linea "
+                    },
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "entero_a_texto",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "linea_err"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "ultimo_error",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "ultimo_error"
+                    },
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": ": "
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "ultimo_error",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "ultimo_error"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "error_msg"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "intento",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "intento"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "[Oraculo] Limite de intentos alcanzado."
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ejecutar_comando",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "cmd"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "contenido"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== OpenSyn: Orquestador Autonomo ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ctx",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_cargar",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "modelo_synapse.gguf"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ctx"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "nulo"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[Error] No se pudo cargar el modelo 'modelo_synapse.gguf'"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "[OK] Modelo cargado exitosamente."
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prompt",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "Escribe un programa en Synapse que abra un archivo llamado 'reporte.txt', escriba la frase 'Soberania Digital' dentro de el, y lo cierre. Usa la libreria std.fs y std.io."
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "[Oraculo] Iniciando generacion de codigo..."
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "Prompt: "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "prompt"
+                        }
+                      ]
+                    },
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "codigo_generado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "generar_codigo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "prompt"
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 3
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_modelo_cerrar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ctx"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo_generado"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] Codigo generado y compilado exitosamente."
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "res",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "_syn_escribir_archivo",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "generado.syn"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "codigo_generado"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "res"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "escribir_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "[OK] Codigo fuente guardado en 'generado.syn'"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[Error] No se pudo generar codigo valido tras 3 intentos."
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

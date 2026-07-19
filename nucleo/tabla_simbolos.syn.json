@@ -1,0 +1,87 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "PROPIEDAD_VIVO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 1
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "PROPIEDAD_MOVIDO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 2
+        }
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Simbolo",
+        "campos": [
+          {
+            "nombre": "nombre",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "tipo",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "nodo",
+            "tipo": "Nodo"
+          },
+          {
+            "nombre": "nivel_ambito",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "propiedad",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "es_constante",
+            "tipo": "booleano"
+          },
+          {
+            "nombre": "uri",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "TablaSimbolos",
+        "campos": [
+          {
+            "nombre": "entradas",
+            "tipo": "Simbolo"
+          },
+          {
+            "nombre": "total_entradas",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "nivel_actual",
+            "tipo": "entero"
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

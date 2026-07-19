@@ -1,0 +1,2555 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SYNTAX_EXPECTED_TOKEN",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 1
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SYNTAX_UNEXPECTED_TOKEN",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 2
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SYNTAX_UNEXPECTED_EXPR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 3
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SYNTAX_EXPECTED_NEWLINE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 4
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_LANG_MISSING",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 5
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_LANG_UNSUPPORTED",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 6
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_INDENT_INVALID",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 7
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_INDENT_INCONSISTENT",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 8
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_STRING_UNCLOSED",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 9
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_LEX_CHAR_UNEXPECTED",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 10
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_LEX",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 11
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_FILE_NOT_FOUND",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 12
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_CANONICAL_FORMAT",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 13
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_VAR_NO_DECLARADA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 14
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_TIPO_INCOMPATIBLE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 15
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_TIPO_RETORNO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 16
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_FUNC_NO_DEFINIDA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 17
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_REDEFINICION",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 18
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_ARGUMENTOS_INVALIDOS",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 19
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_ESTRUCTURA_NO_DEFINIDA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 20
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_CAMPO_NO_EXISTE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 21
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_VAR_MOVIDA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 22
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_ACCESO_MEMORIA_MOVIDA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 23
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 24
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_MANIFEST_NOT_FOUND",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 25
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_MODULE_STD_NOT_FOUND",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 26
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_MODULE_AXON_NOT_FOUND",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 27
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_DEP_NOT_DECLARED",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 28
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_LOCK_HASH_MISMATCH",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 29
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_GIT_FAILURE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 30
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_ASM_FUERA_INSEGURO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 31
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ERR_SEM_CONSTANTE_INMUTABLE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 32
+        }
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ReporteError",
+        "campos": [
+          {
+            "nombre": "codigo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "mensaje",
+            "tipo": "cadena"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "GestorDiagnostico",
+        "campos": [
+          {
+            "nombre": "reportes",
+            "tipo": "ReporteError"
+          },
+          {
+            "nombre": "total_reportes",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "capacidad",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "idioma",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "ruta_archivo",
+            "tipo": "cadena"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "gestor_nuevo",
+        "parametros": [
+          {
+            "nombre": "idioma",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "ruta",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "capacidad",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "GestorDiagnostico",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "g",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "GestorDiagnostico",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "idioma",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "idioma"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "ruta_archivo",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "ruta"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "total_reportes",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "capacidad",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "capacidad"
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "reportar_error",
+        "parametros": [
+          {
+            "nombre": "diag",
+            "tipo": "GestorDiagnostico"
+          },
+          {
+            "nombre": "codigo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "mensaje",
+            "tipo": "cadena"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (diag.total_reportes >= diag.capacidad) return"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "diag.reportes[diag.total_reportes].codigo = codigo"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "diag.reportes[diag.total_reportes].linea = linea"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "diag.reportes[diag.total_reportes].columna = columna"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "diag.total_reportes = diag.total_reportes + 1"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "hay_errores",
+        "parametros": [
+          {
+            "nombre": "diag",
+            "tipo": "GestorDiagnostico"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "diag"
+                },
+                "nombre_campo": "total_reportes"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralBooleano",
+                  "valor": true
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralBooleano",
+              "valor": false
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "contar_errores",
+        "parametros": [
+          {
+            "nombre": "diag",
+            "tipo": "GestorDiagnostico"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "diag"
+              },
+              "nombre_campo": "total_reportes"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "codigo_salida",
+        "parametros": [
+          {
+            "nombre": "diag",
+            "tipo": "GestorDiagnostico"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "hay_errores",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "diag"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralBooleano",
+                "valor": true
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "resumen_errores",
+        "parametros": [
+          {
+            "nombre": "diag",
+            "tipo": "GestorDiagnostico"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "hay_errores",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "diag"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralBooleano",
+                "valor": false
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "0 errores"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// resumen: N error(es) encontrado(s)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "r = (diag.total_reportes == 1) ? \"1 error encontrado\" : \"2 errores encontrados\""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "{ char _buf[64]; snprintf(_buf, 64, \"%d errores encontrados\", diag.total_reportes); r = _buf; }"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "r"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_plantilla_error",
+        "parametros": [
+          {
+            "nombre": "codigo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "idioma",
+            "tipo": "cadena"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "idioma"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": "es"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SYNTAX_EXPECTED_TOKEN"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Se esperaba {esperado}, se encontro '{encontrado}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SYNTAX_UNEXPECTED_TOKEN"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Token inesperado '{tok_name}' tras expresion"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SYNTAX_UNEXPECTED_EXPR"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Expresion inesperada: '{tipo}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SYNTAX_EXPECTED_NEWLINE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Se esperaba nueva linea despues de '{construccion}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_LANG_MISSING"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Falta declaracion de idioma '#lang: <codigo>' en la linea 1"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_LANG_UNSUPPORTED"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Idioma '{idioma}' no soportado"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_INDENT_INVALID"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "La indentacion debe ser multiplo de 4 espacios"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_INDENT_INCONSISTENT"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Nivel de indentacion inconsistente"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_STRING_UNCLOSED"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Cadena sin cerrar"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_LEX"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "{mensaje}"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_LEX_CHAR_UNEXPECTED"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Caracter inesperado '{char}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_FILE_NOT_FOUND"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Archivo no encontrado: {archivo}"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_CANONICAL_FORMAT"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Formato canonico no reconocido o corrupto"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_VAR_NO_DECLARADA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Variable '{nombre}' no declarada en este ambito"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_TIPO_INCOMPATIBLE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Tipos incompatibles: no se puede usar '{tipo1}' con '{tipo2}' en '{operacion}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_TIPO_RETORNO"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Tipo de retorno incorrecto: se esperaba '{esperado}', se obtuvo '{obtenido}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_FUNC_NO_DEFINIDA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Funcion '{nombre}' no definida"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_REDEFINICION"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Redefinicion de '{nombre}' en el mismo ambito"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_ARGUMENTOS_INVALIDOS"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Cantidad de argumentos invalida para '{nombre}': se esperaban {esperados}"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_ESTRUCTURA_NO_DEFINIDA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Estructura '{nombre}' no definida"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_CAMPO_NO_EXISTE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "La estructura '{struct}' no tiene un campo '{campo}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_VAR_MOVIDA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Uso ilegal de variable ya movida '{nombre}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_ACCESO_MEMORIA_MOVIDA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Acceso prohibido a memoria movida '{nombre}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Resultado de canal sin desempaquetar"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_MANIFEST_NOT_FOUND"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Manifiesto axon.toml no encontrado en el directorio actual"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_MODULE_STD_NOT_FOUND"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Modulo estandar '{modulo}' no encontrado. Sysroot corrupto"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_MODULE_AXON_NOT_FOUND"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Dependencia '{modulo}' no encontrada en axon_modules"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_DEP_NOT_DECLARED"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Dependencia '{modulo}' importada en el codigo pero no declarada en axon.toml"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_LOCK_HASH_MISMATCH"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "El hash de la dependencia '{modulo}' no coincide con axon.lock"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_GIT_FAILURE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Error de red o revision Git invalida para la dependencia '{modulo}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_ASM_FUERA_INSEGURO"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "asm() solo puede usarse dentro de un bloque 'inseguro:'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_CONSTANTE_INMUTABLE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "LiteralCadena",
+                      "valor": "No se puede reasignar la constante '{nombre}'"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Error desconocido"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SYNTAX_EXPECTED_TOKEN"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Expected {esperado}, found '{encontrado}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SYNTAX_UNEXPECTED_TOKEN"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unexpected token '{tok_name}' after expression"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SYNTAX_UNEXPECTED_EXPR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unexpected expression: '{tipo}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SYNTAX_EXPECTED_NEWLINE"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Expected newline after '{construccion}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_LANG_MISSING"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Missing language declaration '#lang: <code>' at line 1"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_LANG_UNSUPPORTED"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Language '{idioma}' not supported"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_INDENT_INVALID"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Indentation must be a multiple of 4 spaces"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_INDENT_INCONSISTENT"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Inconsistent indentation level"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_STRING_UNCLOSED"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unclosed string literal"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_LEX"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "{mensaje}"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_LEX_CHAR_UNEXPECTED"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unexpected character '{char}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_FILE_NOT_FOUND"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "File not found: {archivo}"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_CANONICAL_FORMAT"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unrecognized or corrupted canonical format"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_VAR_NO_DECLARADA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Variable '{nombre}' not declared in this scope"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_TIPO_INCOMPATIBLE"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Incompatible types: cannot use '{tipo1}' with '{tipo2}' in '{operacion}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_TIPO_RETORNO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Incorrect return type: expected '{esperado}', got '{obtenido}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_FUNC_NO_DEFINIDA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Function '{nombre}' not defined"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_REDEFINICION"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Redefinition of '{nombre}' in the same scope"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_ARGUMENTOS_INVALIDOS"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Invalid argument count for '{nombre}': expected {esperados}"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_ESTRUCTURA_NO_DEFINIDA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Struct '{nombre}' not defined"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_CAMPO_NO_EXISTE"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Struct '{struct}' has no field '{campo}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_VAR_MOVIDA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Illegal use of already moved variable '{nombre}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_ACCESO_MEMORIA_MOVIDA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Forbidden access to moved memory '{nombre}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Unpacked channel result"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_MANIFEST_NOT_FOUND"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "axon.toml manifest not found in current directory"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_MODULE_STD_NOT_FOUND"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Standard module '{modulo}' not found. Corrupt Sysroot"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_MODULE_AXON_NOT_FOUND"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Dependency '{modulo}' not found in axon_modules"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_DEP_NOT_DECLARED"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Dependency '{modulo}' imported in code but not declared in axon.toml"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_LOCK_HASH_MISMATCH"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Hash of dependency '{modulo}' does not match axon.lock"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_GIT_FAILURE"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Network error or invalid Git revision for dependency '{modulo}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_ASM_FUERA_INSEGURO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "asm() can only be used inside an 'unsafe:' block"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_CONSTANTE_INMUTABLE"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Cannot reassign constant '{nombre}'"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": "Unknown error"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_linea_contexto",
+        "parametros": [
+          {
+            "nombre": "lineas",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "linea_num",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// buscar linea_num en buffer de lineas (pendiente)"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "r"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "formatear_entrada_error",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "mensaje",
+            "tipo": "cadena"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "{ char _buf[1024]; snprintf(_buf, 1024, \"[Synapse] %s:%d:%d - %s\", ruta, linea, columna, mensaje); r = _buf; }"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "r"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "formatear_ubicacion",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "linea"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "r",
+                "expresion": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              },
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ char _buf[256]; snprintf(_buf, 256, \"%s:%d:%d\", ruta, linea, columna); r = _buf; }"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "r"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "ruta"
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

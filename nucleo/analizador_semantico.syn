@@ -138,12 +138,12 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     r = 1
     mientras r == 1:
         inseguro:
-            asm("r = (i < est.tabla.total_entradas) ? 1 : 0")
+            asm("r = (i < est.tabla->total_entradas) ? 1 : 0")
             si r == 0:
                 romper
-            asm("if (est.tabla.entradas[i].nivel_ambito == est.tabla.nivel_actual) {")
+            asm("if (est.tabla->entradas[i].nivel_ambito == est.tabla->nivel_actual) {")
             asm("    int _eq = 1;")
-            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.tabla.entradas[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }")
+            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre)[_si] != ((const char*)est.tabla->entradas[i].nombre)[_si]) { _eq = 0; break; } if (((const char*)nombre)[_si] == 0) break; }")
             asm("    if (_eq) { encontrado = verdadero; }")
             asm("}")
             asm("i = i + 1")
@@ -151,14 +151,14 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
         retornar falso
     // Add new symbol
     inseguro:
-        asm("est.tabla.entradas[est.tabla.total_entradas].nombre = nombre")
-        asm("est.tabla.entradas[est.tabla.total_entradas].tipo = tipo")
-        asm("est.tabla.entradas[est.tabla.total_entradas].nivel_ambito = est.tabla.nivel_actual")
-        asm("est.tabla.entradas[est.tabla.total_entradas].propiedad = 1")
-        asm("est.tabla.entradas[est.tabla.total_entradas].es_constante = es_constante")
-        asm("est.tabla.entradas[est.tabla.total_entradas].linea = linea")
-        asm("est.tabla.entradas[est.tabla.total_entradas].columna = columna")
-        asm("est.tabla.total_entradas = est.tabla.total_entradas + 1")
+        asm("est.tabla->entradas[est.tabla->total_entradas].nombre = nombre")
+        asm("est.tabla->entradas[est.tabla->total_entradas].tipo = tipo")
+        asm("est.tabla->entradas[est.tabla->total_entradas].nivel_ambito = est.tabla->nivel_actual")
+        asm("est.tabla->entradas[est.tabla->total_entradas].propiedad = 1")
+        asm("est.tabla->entradas[est.tabla->total_entradas].es_constante = es_constante")
+        asm("est.tabla->entradas[est.tabla->total_entradas].linea = linea")
+        asm("est.tabla->entradas[est.tabla->total_entradas].columna = columna")
+        asm("est.tabla->total_entradas = est.tabla->total_entradas + 1")
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
@@ -166,64 +166,64 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
     r = 1
     mientras r == 1:
         inseguro:
-            asm("r = (i < est.tabla.total_entradas) ? 1 : 0")
+            asm("r = (i < est.tabla->total_entradas) ? 1 : 0")
             si r == 0:
                 romper
             asm("int _eq = 1;")
             asm("for (int _si = 0; _si < 256; _si++) {")
             asm("    char _a = ((const char*)nombre)[_si];")
-            asm("    char _b = ((const char*)est.tabla.entradas[i].nombre)[_si];")
+            asm("    char _b = ((const char*)est.tabla->entradas[i].nombre)[_si];")
             asm("    if (_a != _b) { _eq = 0; break; }")
             asm("    if (_a == 0) break;")
             asm("}")
-            asm("if (_eq) { retornar i }")
+            asm("if (_eq) { retornar i; }")
             asm("i = i + 1")
     retornar -1
 
 funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
     inseguro:
-        asm("est.tabla.nivel_actual = est.tabla.nivel_actual + 1")
+        asm("est.tabla->nivel_actual = est.tabla->nivel_actual + 1")
 
 funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
     inseguro:
-        asm("while (est.tabla.total_entradas > 0) {")
-        asm("    if (est.tabla.entradas[est.tabla.total_entradas - 1].nivel_ambito < est.tabla.nivel_actual) break;")
-        asm("    est.tabla.total_entradas = est.tabla.total_entradas - 1;")
+        asm("while (est.tabla->total_entradas > 0) {")
+        asm("    if (est.tabla->entradas[est.tabla->total_entradas - 1].nivel_ambito < est.tabla->nivel_actual) break;")
+        asm("    est.tabla->total_entradas = est.tabla->total_entradas - 1;")
         asm("}")
-        asm("est.tabla.nivel_actual = est.tabla.nivel_actual - 1")
+        asm("est.tabla->nivel_actual = est.tabla->nivel_actual - 1")
 
 funcion tabla_marcar_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> nulo:
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         inseguro:
-            asm("est.tabla.entradas[idx].propiedad = 2")
+            asm("est.tabla->entradas[idx].propiedad = 2")
 
 funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> booleano:
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         r = 0
         inseguro:
-            asm("r = (est.tabla.entradas[idx].propiedad == 2) ? 1 : 0")
+            asm("r = (est.tabla->entradas[idx].propiedad == 2) ? 1 : 0")
         si r == 1:
             retornar verdadero
     retornar falso
 
 // --- Type normalization ---
 funcion tipo_normalizado(tipo: cadena) -> cadena:
-    inseguro:
-        asm("if (strcmp(tipo, \"entero\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(tipo, \"int\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(tipo, \"decimal\") == 0) { retornar \"decimal\" }")
-        asm("if (strcmp(tipo, \"real\") == 0) { retornar \"decimal\" }")
-        asm("if (strcmp(tipo, \"flotante\") == 0) { retornar \"decimal\" }")
-        asm("if (strcmp(tipo, \"booleano\") == 0) { retornar \"booleano\" }")
-        asm("if (strcmp(tipo, \"logico\") == 0) { retornar \"booleano\" }")
-        asm("if (strcmp(tipo, \"texto\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(tipo, \"cadena\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(tipo, \"nulo\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(tipo, \"vacio\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(tipo, \"tensor\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(tipo, \"CanalConcurrencia*\") == 0) { retornar \"CanalConcurrencia*\" }")
+    si tipo == "entero" o tipo == "int":
+        retornar "int"
+    si tipo == "decimal" o tipo == "real" o tipo == "flotante":
+        retornar "decimal"
+    si tipo == "booleano" o tipo == "logico":
+        retornar "booleano"
+    si tipo == "texto" o tipo == "cadena":
+        retornar "texto"
+    si tipo == "nulo" o tipo == "vacio":
+        retornar "nulo"
+    si tipo == "tensor":
+        retornar "tensor"
+    si tipo == "CanalConcurrencia*":
+        retornar "CanalConcurrencia*"
     retornar tipo
 
 // --- Builtin function types ---
@@ -296,69 +296,72 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
     retornar 0
 
 funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
-    inseguro:
-        asm("if (strcmp(nombre, \"reserva\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"libera\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"crear_tensor\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"suma_tensor\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"producto_punto\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"abrir\") == 0) { retornar \"Canal\" }")
-        asm("if (strcmp(nombre, \"leer\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"escribir\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"escribir_linea\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"leer_linea\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"cerrar\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"suma\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"producto\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"relu\") == 0) { retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"tokenizar\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(nombre, \"parsear\") == 0) { retornar \"Programa\" }")
-        asm("if (strcmp(nombre, \"generar\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(nombre, \"_argc\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(nombre, \"_argv\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"salir\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"concat\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"texto_a_entero\") == 0) { retornar \"int\" }")
-        asm("if (strcmp(nombre, \"texto_a_decimal\") == 0) { retornar \"decimal\" }")
-        asm("if (strcmp(nombre, \"entero_a_texto\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"decimal_a_texto\") == 0) { retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"volcar_ast\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"canal_crear\") == 0) { retornar \"CanalConcurrencia*\" }")
-        asm("if (strcmp(nombre, \"canal_enviar\") == 0) { retornar \"nulo\" }")
-        asm("if (strcmp(nombre, \"canal_recibir\") == 0) { retornar \"void*\" }")
-        asm("if (strcmp(nombre, \"cerrar_canal\") == 0) { retornar \"nulo\" }")
+    si nombre == "reserva": retornar "tensor"
+    si nombre == "libera": retornar "nulo"
+    si nombre == "crear_tensor": retornar "tensor"
+    si nombre == "suma_tensor": retornar "tensor"
+    si nombre == "producto_punto": retornar "tensor"
+    si nombre == "abrir": retornar "Canal"
+    si nombre == "leer": retornar "texto"
+    si nombre == "escribir": retornar "nulo"
+    si nombre == "escribir_linea": retornar "nulo"
+    si nombre == "leer_linea": retornar "texto"
+    si nombre == "cerrar": retornar "nulo"
+    si nombre == "suma": retornar "tensor"
+    si nombre == "producto": retornar "tensor"
+    si nombre == "relu": retornar "tensor"
+    si nombre == "tokenizar": retornar "int"
+    si nombre == "parsear": retornar "Programa"
+    si nombre == "generar": retornar "int"
+    si nombre == "_argc": retornar "int"
+    si nombre == "_argv": retornar "texto"
+    si nombre == "salir": retornar "nulo"
+    si nombre == "concat": retornar "texto"
+    si nombre == "texto_a_entero": retornar "int"
+    si nombre == "texto_a_decimal": retornar "decimal"
+    si nombre == "entero_a_texto": retornar "texto"
+    si nombre == "decimal_a_texto": retornar "texto"
+    si nombre == "volcar_ast": retornar "nulo"
+    si nombre == "canal_crear": retornar "CanalConcurrencia*"
+    si nombre == "canal_enviar": retornar "nulo"
+    si nombre == "canal_recibir": retornar "void*"
+    si nombre == "cerrar_canal": retornar "nulo"
     retornar ""
 
 funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
-    inseguro:
-        asm("if (strcmp(nombre, \"reserva\") == 0) { if (idx == 0) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"libera\") == 0) { if (idx == 0) retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"crear_tensor\") == 0) { if (idx == 0) retornar \"int\"; if (idx == 1) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"suma_tensor\") == 0) { if (idx == 0) retornar \"tensor\"; if (idx == 1) retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"abrir\") == 0) { if (idx == 0) retornar \"texto\"; if (idx == 1) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"leer\") == 0) { if (idx == 0) retornar \"Canal\" }")
-        asm("if (strcmp(nombre, \"escribir\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"escribir_linea\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"leer_linea\") == 0) { }")
-        asm("if (strcmp(nombre, \"cerrar\") == 0) { if (idx == 0) retornar \"Canal\" }")
-        asm("if (strcmp(nombre, \"suma\") == 0) { if (idx == 0) retornar \"tensor\"; if (idx == 1) retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"producto\") == 0) { if (idx == 0) retornar \"tensor\"; if (idx == 1) retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"relu\") == 0) { if (idx == 0) retornar \"tensor\" }")
-        asm("if (strcmp(nombre, \"tokenizar\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"parsear\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"generar\") == 0) { if (idx == 0) retornar \"Programa\"; if (idx == 1) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"_argv\") == 0) { if (idx == 0) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"salir\") == 0) { if (idx == 0) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"concat\") == 0) { if (idx == 0) retornar \"texto\"; if (idx == 1) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"texto_a_entero\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"texto_a_decimal\") == 0) { if (idx == 0) retornar \"texto\" }")
-        asm("if (strcmp(nombre, \"entero_a_texto\") == 0) { if (idx == 0) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"decimal_a_texto\") == 0) { if (idx == 0) retornar \"decimal\" }")
-        asm("if (strcmp(nombre, \"volcar_ast\") == 0) { if (idx == 0) retornar \"Programa\"; if (idx == 1) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"canal_crear\") == 0) { if (idx == 0) retornar \"int\" }")
-        asm("if (strcmp(nombre, \"canal_enviar\") == 0) { if (idx == 0) retornar \"CanalConcurrencia*\"; if (idx == 1) retornar \"void*\" }")
-        asm("if (strcmp(nombre, \"canal_recibir\") == 0) { if (idx == 0) retornar \"CanalConcurrencia*\" }")
-        asm("if (strcmp(nombre, \"cerrar_canal\") == 0) { if (idx == 0) retornar \"CanalConcurrencia*\" }")
+    si nombre == "reserva" o nombre == "libera" o nombre == "crear_tensor" o nombre == "suma_tensor" o nombre == "producto_punto":
+        si idx == 0: retornar "tensor"
+        si idx == 1 o nombre == "reserva" o nombre == "libera": retornar "int"
+    si nombre == "abrir":
+        si idx == 0 o idx == 1: retornar "texto"
+    si nombre == "leer" o nombre == "cerrar":
+        si idx == 0: retornar "Canal"
+    si nombre == "escribir" o nombre == "escribir_linea":
+        si idx == 0: retornar "texto"
+    si nombre == "suma" o nombre == "producto":
+        si idx == 0 o idx == 1: retornar "tensor"
+    si nombre == "relu" o nombre == "tokenizar" o nombre == "parsear":
+        si idx == 0: retornar "texto"
+    si nombre == "generar":
+        si idx == 0: retornar "Programa"
+        si idx == 1: retornar "texto"
+    si nombre == "_argv" o nombre == "salir" o nombre == "texto_a_entero":
+        si idx == 0: retornar "int"
+    si nombre == "concat":
+        si idx == 0 o idx == 1: retornar "texto"
+    si nombre == "texto_a_decimal" o nombre == "decimal_a_texto":
+        si idx == 0: retornar "texto"
+    si nombre == "entero_a_texto":
+        si idx == 0: retornar "int"
+    si nombre == "volcar_ast":
+        si idx == 0: retornar "Programa"
+    si nombre == "canal_crear":
+        si idx == 0: retornar "int"
+    si nombre == "canal_enviar":
+        si idx == 0: retornar "CanalConcurrencia*"
+        si idx == 1: retornar "void*"
+    si nombre == "canal_recibir" o nombre == "cerrar_canal":
+        si idx == 0: retornar "CanalConcurrencia*"
     retornar ""
 
 // --- Node information helpers ---
@@ -421,18 +424,18 @@ funcion parsear_patron_coincidir(patron: cadena, tag_nombre: cadena, var_nombre:
     // Returns 0 = wildcard, 1 = tag(var), -1 = error
     // First check if wildcard "_"
     inseguro:
-        asm("if (((const char*)patron)[0] == '_' && ((const char*)patron)[1] == 0) { retornar 0 }")
+        asm("if (((const char*)patron)[0] == '_' && ((const char*)patron)[1] == 0) { retornar 0; }")
         asm("// Extract tag name before '('")
         asm("int _i = 0;")
         asm("char _tag[64]; int _tp = 0;")
         asm("while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != '(') { _tag[_tp++] = ((const char*)patron)[_i]; _i++; }")
         asm("_tag[_tp] = 0;")
-        asm("if (((const char*)patron)[_i] != '(') { retornar -1 }")
+        asm("if (((const char*)patron)[_i] != '(') { retornar -1; }")
         asm("_i++; // skip '('")
         asm("char _var[64]; int _vp = 0;")
         asm("while (((const char*)patron)[_i] != 0 && ((const char*)patron)[_i] != ')') { _var[_vp++] = ((const char*)patron)[_i]; _i++; }")
         asm("_var[_vp] = 0;")
-        asm("if (((const char*)patron)[_i] != ')') { retornar -1 }")
+        asm("if (((const char*)patron)[_i] != ')') { retornar -1; }")
         asm("// Copy results")
         asm("int _tk = 0; while (_tag[_tk]) { ((char*)tag_nombre)[_tk] = _tag[_tk]; _tk++; } ((char*)tag_nombre)[_tk] = 0;")
         asm("int _vk = 0; while (_var[_vk]) { ((char*)var_nombre)[_vk] = _var[_vk]; _vk++; } ((char*)var_nombre)[_vk] = 0;")
