@@ -24,6 +24,7 @@
 | **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed |
 | **F8: Análisis semántico nativo** | ⏳ **PLANIFICADA** | 0/4 tareas | 231 passed |
 | **F9: Eliminar post-processing + fix emisores** | ⏳ **EN PROGRESO** | 1/4 tareas | 231 passed |
+| **F10: Concurrencia (canales tipados)** | ⏳ **PLANIFICADA** | 0/5 tareas | 231 passed |
 
 ---
 
@@ -222,6 +223,47 @@ Eliminar el post-processing paso 4 en `generator/__init__.py` corrigiendo la ra�
 
 ### Limitación conocida
 El parser self-hosting (`gen_parse()`) no implementa `coincidir`, bloqueando Stage2 con `principal.syn` actual.
+
+---
+
+## ⏳ FASE 10: CONCURRENCIA — CANALES TIPADOS (PLANIFICADA)
+
+### Objetivo
+Implementar concurrencia bajo el principio de **Cero Estado Compartido** según Documento Maestro Parte III: canales tipados (`Canal<T>`), transferencia de ownership, y contratos lógicos (`requiere`/`garantiza`) en tiempo de ejecución.
+
+### Arquitectura
+```c
+// Canal como Ring Buffer protegido por Mutex + Condition Variables
+typedef struct {
+    void** buffer;
+    size_t capacidad, head, tail, count;
+    pthread_mutex_t mutex;
+    pthread_cond_t no_vacio, no_lleno;
+} SynapseCanal;
+```
+
+### Tareas
+| # | Tarea | Archivos | Riesgo | Estado |
+|---|-------|----------|--------|--------|
+| 10.1 | Estructura `SynapseCanal` en `synapse_rt.c` con ring buffer + mutex | `synapse_rt.h`, `synapse_rt.c` | 🔴 Alto | ⏳ |
+| 10.2 | Primitivas: `canal_crear()`, `canal_enviar()`, `canal_recibir()`, `canal_destruir()` | `synapse_rt.c` | 🔴 Alto | ⏳ |
+| 10.3 | Ownership transfer: invalidar variable origen post-envío en analizador semántico | `compilador/analizador_semantico.py` | 🔴 Alto | ⏳ |
+| 10.4 | Sintaxis Synapse: `lanzar`, `recuperar`, `escuchar` + canales | `parser.syn`, `lexer.syn` | 🟡 Medio | ⏳ |
+| 10.5 | Prueba de estrés: 10,000 hilos, 0 deadlocks, 0 data races, 0 bytes perdidos | `tests/` | 🟡 Medio | ⏳ |
+
+### Contratos Lógicos (requiere/garantiza)
+| Componente | Descripción | Estado |
+|------------|-------------|--------|
+| `emit_contracts.py` | Inyección de `assert()` en código C generado | ✅ Existente |
+| Sintaxis `requiere`/`garantiza` | Parser debe identificar bloques de contrato en funciones | ⏳ Pendiente |
+| Compilación `--release` | Omitir asserts en modo producción | ⏳ Pendiente |
+
+### Criterio de éxito
+```bash
+synapse stress_test.syn
+./stress_test  # 10,000 hilos simultáneos
+# Output: 0 Deadlocks | 0 Data Races | 0 Bytes perdidos
+```
 
 ---
 
