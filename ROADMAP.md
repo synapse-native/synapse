@@ -103,7 +103,7 @@ Estructura de errores gcc:
 | 2.5 | Arreglar plantillas emitidas en `generator.syn` | `nucleo/generator.syn` | 🔴 Alto | ✅ **COMPLETADA PARCIAL** |
 | 2.6 | Fix tipado `char*` vs `CadenaSegura` | `nucleo/generator.syn`<br>`compilador/generator.py`<br>`compilador/analizador_semantico.py`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
 | 2.7 | Corregir _P_Token scope + .datos en struct members | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ✅ **COMPLETADA** |
-| 2.8 | Corregir 51 errores restantes (dangling else, escapes, undeclared) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ⏳ Pendiente |
+| 2.8 | Corregir 30 errores restantes (static decl, escapes, strcpy, ; faltantes) | `nucleo/generator.syn`<br>`build/fixup_generator.py` | 🔴 Alto | ⏳ **30/207 err (↓85%)** |
 
 #### Detalle F2.6 completada
 | Cambio | Archivo | Impacto |
@@ -180,7 +180,7 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 |---------|---------------|--------|----------|
 | Archivos en raíz | ~80+ | **~15** | < 20 ✅ |
 | Tests pasando | 247 | **231** (sin oráculo) | > 260 |
-| `gcc -c generator.c` | ❌ 403 err | ❌ **51 err (↓87%)** | ✅ 0 err |
+| `gcc -c generator.c` | ❌ 403 err | ❌ **30 err (↓92%)** | ✅ 0 err |
 | Causa raíz `;` espurios | ❌ | ✅ FIXED | ✅ |
 | Bootstrap completo | ❌ | ❌ | ✅ Stage2==Stage3 |
 | Código muerto (líneas) | ~50 | **0** | 0 ✅ |
@@ -192,7 +192,7 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 | Riesgo | Fase | Mitigación |
 |--------|------|------------|
-| `generator.c` tiene 51 errores restantes (dangling else, escapes, undeclared) | 2.8 | Fase 2.8 dedicada: 3 fixup rules nuevas + fixes en generator.syn |
+| `generator.c` tiene 30 errores restantes (static decl, escapes, strcpy) | 2.8 | Fase 2.8: fixup + fixes generator.syn (for loops en braces) → ↓85% |
 | Sin bootstrap hasta que `generator.c` compile con 0 errores | 2-3 | Usar pipeline Python como fuente de verdad mientras tanto |
 | `_GEN_TMP_SIZE` duplicado en `estado_global.syn` y `generator.syn` | 1 | Eliminar de `estado_global.syn` (es documentación) |
 
