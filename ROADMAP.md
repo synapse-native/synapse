@@ -3,7 +3,7 @@
 > **Basado en:** Auditoría independiente (Julio 2026)
 > **Estado:** ✅ Fase 0-2 completadas | ✅ **Fase 3 COMPLETADA** (3.1→3.6)
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 231 passed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
+> **Tests:** 230 passed, 1 failed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
 > **Bootstrap:** ✅ Stage2 == Stage3 (diff binario = 0 bytes)
 > **Última actualización:** Julio 2026
 
@@ -229,6 +229,13 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 | Emisores auto-hospedaje truncados (57% perdido) | Fase 4 | Restaurados a 70KB completos |
 | `tipo_de_expr` inconsistente (mezcla Synapse/C) | Fase 4 | Normalizado a Synapse types |
 | 815 errores GCC en bootstrap post-refactor | Fase 4 | 10 bugs corregidos → 0 errores |
+
+### ⚠️ DEUDA TÉCNICA REMANENTE
+
+| Ítem | Impacto | Prioridad |
+|------|---------|-----------|
+| `test_toml_compile_and_run` (1 fallo) | Compilación de TOML falla | 🟡 Media |
+| `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
 
 ---
 
