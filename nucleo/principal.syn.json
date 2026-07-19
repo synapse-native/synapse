@@ -40992,7 +40992,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=strdup(\"synapse_stage2.exe\")}; }"
+                  "instruccion": "if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }"
                 }
               }
             ]
