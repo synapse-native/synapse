@@ -487,7 +487,40 @@ class GeneradorC:
             ctx.dec_indent()
             ctx.write_line("}")
 
-        return ctx.generar()
+        result = ctx.generar()
+
+        # Post-processing: fix known asm() block issues from committed .syn files
+        # (TEMP: Eliminar cuando los .syn se actualicen con C correcto en bloques asm())
+        # Archivos .syn que necesitan corrección directa:
+        # - nucleo/analizador_semantico.syn: 'retornar'→'return' en asm(), strcmp(.datos)
+        # - nucleo/generator.syn: strcmp(.datos), 'linea: puntero'→'linea: texto'
+        # - nucleo/diagnostics.syn: 'r = _buf'→'r = (CadenaSegura){strdup(_buf)}'
+        # 1. Synapse keyword 'retornar' → C keyword 'return' in emitted asm() blocks
+        result = re.sub(r'\bretornar\b', 'return', result)
+        # 2. Fix strcmp(nombre, ...) for CadenaSegura parameters (missing .datos)
+        result = result.replace('strcmp(nombre, "', 'strcmp(nombre.datos, "')
+        # 3. Add missing ; before } in asm() blocks: { return X } → { return X; }
+        result = re.sub(
+            r'\{(\s*)(return|break|continue)(\s+\w+)?\s*\};',
+            r'{\1\2\3; };',
+            result
+        )
+        # 4. Fix gen_emitir_linea(est, (CadenaSegura){...}) → .datos
+        #    The function expects const char* but self-hosting code passes CadenaSegura
+        result = re.sub(
+            r'gen_emitir_linea\(est,\s*\(CadenaSegura\)\{([^}]+)\}\)',
+            r'gen_emitir_linea(est, ((CadenaSegura){\1}).datos)',
+            result
+        )
+        # 5. Fix ResultadoEtapa union access: r.valor → r.dato.valor
+        #    Struct has { tag; union { int valor; } dato; } but asm() uses r.valor
+        result = re.sub(
+            r'\br\.valor\s*=\s*0;',
+            r'r.dato.valor = 0;',
+            result
+        )
+
+        return result
 
     @property
     def linker_flags(self) -> str:

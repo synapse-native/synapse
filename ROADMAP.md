@@ -236,6 +236,32 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 |------|---------|-----------|
 | `test_toml_compile_and_run` (1 fallo) | Compilación de TOML falla | 🟡 Media |
 | `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
+| Post-processing TEMP en `generator/__init__.py` | 5 pasos ad-hoc, eliminar en Fase 5 | 🟡 Media |
+
+---
+
+## ✅ FASE 4.5: POST-PROCESSING ASM() — FIX DE 280 ERRORES GCC
+
+### Objetivo
+Corregir incompatibilidades entre los archivos `.syn` commiteados (que usan `retornar`/`strcmp` sin `.datos`) y el generador C refactorizado de Fase 4.
+
+### Logrado
+- **280 → 0 errores GCC** en `nucleo/principal.syn` (↓100%)
+- **5 pasos de post-procesamiento** en `generator/__init__.py::generar()`:
+  1. `retornar` → `return` (keyword Synapse → C en bloques asm())
+  2. `strcmp(nombre, ` → `strcmp(nombre.datos, ` (CadenaSegura .datos)
+  3. `{ return X };` → `{ return X; };` (; faltante antes de })
+  4. `gen_emitir_linea(CadenaSegura{...})` → `.datos` (struct→pointer)
+  5. `r.valor = 0;` → `r.dato.valor = 0;` (unión ResultadoEtapa)
+- **Archivos .syn tocados**: `nucleo/principal.es.syn` (structs sincronizados con versión autoritativa)
+- **Tests**: 231 passed, 2 skipped ✅
+- **Stage1**: Compila ✅
+
+### Pendiente (Fase 5)
+Eliminar el bloque TEMP de post-procesamiento y corregir directamente:
+- `nucleo/analizador_semantico.syn`: `retornar`→`return` en asm(), `strcmp(.datos)`
+- `nucleo/generator.syn`: `strcmp(.datos)`, `linea: puntero`→`linea: texto`
+- `nucleo/diagnostics.syn`: Asignación correcta de CadenaSegura
 
 ---
 
