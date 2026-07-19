@@ -3,7 +3,7 @@
 > **Basado en:** Auditoría independiente (Julio 2026)
 > **Estado:** ✅ Fase 0-2 completadas | ✅ **Fase 3 COMPLETADA** (3.1→3.6)
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 230 passed, 1 failed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
+> **Tests:** 231 passed, 0 failed, 2 skipped | `synapse_unity.c` GCC: **0 errores** ✅
 > **Bootstrap:** ✅ Stage2 == Stage3 (diff binario = 0 bytes)
 > **Última actualización:** Julio 2026
 
@@ -20,6 +20,7 @@
 | **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed |
 | **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed |
 | **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed |
+| **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed |
 
 ---
 
@@ -245,9 +246,8 @@ Pipeline CI completo: tests en cada PR, bootstrap verification, releases automá
 
 | Ítem | Impacto | Prioridad |
 |------|---------|-----------|
-| `test_toml_compile_and_run` (1 fallo) | Compilación de TOML falla | 🟡 Media |
+| Pasos 4 y 6 post-processing en `generator/__init__.py` | Issues del generador Python, no de .syn | 🟢 Baja |
 | `emitir_token_defs` duplicado (2 archivos) | Código muerto potencial | 🟢 Baja |
-| Post-processing TEMP en `generator/__init__.py` | 5 pasos ad-hoc, eliminar en Fase 5 | 🟡 Media |
 
 ---
 
