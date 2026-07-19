@@ -143,7 +143,7 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
                 romper
             asm("if (est.tabla->entradas[i].nivel_ambito == est.tabla->nivel_actual) {")
             asm("    int _eq = 1;")
-            asm("    for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.tabla->entradas[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }")
+            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre.datos)[_si] != ((const char*)est.tabla->entradas[i].nombre.datos)[_si]) { _eq = 0; break; } if (((const char*)nombre.datos)[_si] == 0) break; }")
             asm("    if (_eq) { encontrado = verdadero; }")
             asm("}")
             asm("i = i + 1")
@@ -525,9 +525,8 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             var_nombre = ""
             res = 0
             inseguro:
-                asm("// parsear patron del caso via parsear_patron_coincidir")
-                asm("res = parsear_patron_coincidir(")
-                asm("    est.nodos[idx_caso].ptr_str, tag_nombre, var_nombre)")
+                asm("CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)est.nodos[idx_caso].ptr_str };")
+                asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
             si res == 0:
                 // wildcard _
                 tabla_entrar_scope(est)
@@ -593,6 +592,7 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
 
 // --- Second pass: register functions and extern declarations ---
 funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
+    nombre = ""
     stmt = nodo_hijo_izq(est, idx_programa)
     r = 1
     mientras r == 1:
@@ -601,7 +601,6 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
             romper
         tipo = nodo_tipo(est, stmt)
         si tipo == NODO_FUNCION:
-            nombre = ""
             inseguro:
                 asm("// Obtener nombre de funcion del nodo")
             si es_builtin(nombre) == falso:
@@ -609,7 +608,6 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 si ok == falso:
                     sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
         si tipo == NODO_EXTERNO:
-            nombre = ""
             inseguro:
                 asm("// Obtener nombre externo del nodo")
             ok = tabla_declarar(est, nombre, "int", stmt, falso)
@@ -668,9 +666,9 @@ funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
 // --- Constructor ---
 funcion analizador_nuevo(nodos: SemNodo, total: entero) -> AnalizadorSemanticoEst:
     est = AnalizadorSemanticoEst()
-    est.nodos = nodos
-    est.total_nodos = total
     inseguro:
+        asm("est.nodos = (struct SemNodo*)&nodos")
+        asm("est.total_nodos = total")
         asm("est.tabla->nivel_actual = 0")
         asm("est.tabla->total_entradas = 0")
     est.func_retorno = ""

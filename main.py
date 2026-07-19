@@ -516,7 +516,8 @@ def compilar_desde_canonico(ruta_json: str) -> Programa:
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         output_lang: Optional[str] = None,
                         dump_ast: bool = False,
-                        dependencias: Optional[Dict[str, str]] = None) -> int:
+                        dependencias: Optional[Dict[str, str]] = None,
+                        output_path: Optional[str] = None) -> int:
     diag = DiagnosticManager()
 
     try:
@@ -563,7 +564,10 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
         ruta_c = "synapse_unity.c" if ruta_base.endswith("principal") else ruta_base + ".c"
         ruta_json = ruta_base + ".syn.json"
-        ruta_exe = "synapse_bootstrap.exe" if ruta_base.endswith("principal") else ruta_base + ".exe"
+        if output_path:
+            ruta_exe = output_path
+        else:
+            ruta_exe = "synapse_bootstrap.exe" if ruta_base.endswith("principal") else ruta_base + ".exe"
 
         with open(ruta_c, 'w', encoding='utf-8') as f:
             f.write(codigo_c)
@@ -696,6 +700,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota")
     parser.add_argument("archivo", nargs="?", default="programa.syn",
                         help="Archivo fuente .syn (o .syn.json para canonico)")
+    parser.add_argument("-o", "--output", type=str, default=None,
+                        help="Ruta del ejecutable de salida")
     parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
     parser.add_argument("--lang", type=str, default=None,
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
@@ -708,5 +714,6 @@ if __name__ == "__main__":
         iniciar()
     else:
         codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens,
-                                     output_lang=args.lang, dump_ast=args.dump_ast)
+                                     output_lang=args.lang, dump_ast=args.dump_ast,
+                                     output_path=args.output)
         sys.exit(codigo)

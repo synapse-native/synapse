@@ -268,21 +268,21 @@ funcion gen_find_var(est: GeneradorCEst, nombre: puntero) -> entero:
     inseguro:
         r = -1
         asm("for (int _vi = 0; _vi < est.var_total; _vi++) {")
-        asm("    if (strcmp(est.var_nombres.datos + _vi * 64, nombre.datos) == 0)")
+        asm("    if (strcmp(est.var_nombres.datos + _vi * 64, (const char*)nombre) == 0)")
         asm("        { r = _vi; break; }")
         asm("}")
         retornar r
 
 funcion gen_add_var(est: GeneradorCEst, nombre: puntero, tipo: puntero) -> nulo:
     inseguro:
-        asm("strcpy(est.var_nombres.datos + est.var_total * 64, nombre.datos);")
-        asm("strcpy(est.var_tipos.datos + est.var_total * 64, tipo.datos);")
+        asm("strcpy(est.var_nombres.datos + est.var_total * 64, (const char*)nombre);")
+        asm("strcpy(est.var_tipos.datos + est.var_total * 64, (const char*)tipo);")
         asm("est.var_total = est.var_total + 1;")
 
 funcion gen_set_var_type(est: GeneradorCEst, idx: entero, tipo: puntero) -> nulo:
     inseguro:
         asm("if (idx >= 0 && idx < est.var_total)")
-        asm("    strcpy(est.var_tipos.datos + idx * 64, tipo.datos);")
+        asm("    strcpy(est.var_tipos.datos + idx * 64, (const char*)tipo);")
 
 // --- Function return type tracking ---
 funcion gen_agregar_return_type(est: GeneradorCEst, nombre: puntero, tipo: puntero) -> nulo:
@@ -295,7 +295,7 @@ funcion gen_func_return_type(est: GeneradorCEst, nombre: puntero) -> cadena:
     r = ""
     inseguro:
         asm("for (int _fi = 0; _fi < est.func_return_types_total; _fi++) {")
-        asm("    if (strcmp(est.func_return_types_nombres.datos + _fi * 64, nombre.datos) == 0) {")
+        asm("    if (strcmp(est.func_return_types_nombres.datos + _fi * 64, (const char*)nombre) == 0) {")
         asm("        strcpy(_gen_tmp_buf, (const char*)est.func_return_types_tipos.datos + _fi * 64);")
         asm("        return;")
         asm("    }")

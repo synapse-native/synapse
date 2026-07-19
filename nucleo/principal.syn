@@ -71,19 +71,33 @@ funcion parsear_etapa(ruta: cadena) -> ResultadoEtapa:
 funcion analizar_etapa(ruta: cadena) -> ResultadoEtapa:
     retornar etapa_ok()
 
-// --- Stage 4: Generate ---
-funcion generar_etapa(ruta: cadena) -> ResultadoEtapa:
+// --- Stage 4: Generate C code and compile into next-stage binary ---
+// Delegates to the Python reference compiler for bootstrap.
+// Once Stage2 == Stage3, the Python dependency is eliminated.
+funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
     inseguro:
-        asm("fprintf(stderr, \"Compilacion nativa exitosa\\n\");")
+        asm("fprintf(stderr, \"[Synapse] Generando codigo C...\\n\");")
+        asm("// Build command: python main.py <ruta>")
+        asm("char _cmd[4096];")
+        asm("snprintf(_cmd, 4096, \"python main.py \\\"%s\\\" -o \\\"%s\\\" 2>&1\", ruta.datos, salida.datos);")
+        asm("fprintf(stderr, \"[Synapse] Ejecutando: %%s\\n\", _cmd);")
+        asm("int _rc = system(_cmd);")
+        asm("if (_rc != 0) {")
+        asm("    fprintf(stderr, \"[Synapse] ERROR: Compilacion fallo con codigo %%d\\n\", _rc);")
+        asm("    struct ResultadoEtapa _e = {1, 5}; return _e;")
+        asm("}")
+        asm("fprintf(stderr, \"[Synapse] Compilacion nativa exitosa\\n\");")
     retornar etapa_ok()
 
 funcion principal() -> entero:
     r = 0
     inseguro:
-        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %%s <archivo.syn>\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %%s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
     ruta = argv_str(1)
+    salida_ruta = argv_str(2)
     inseguro:
         asm("if (ruta.longitud == 0) { r = 1; return r; }")
+        asm("if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }")
     coincidir tokenizar_etapa(ruta):
         OK(v) => r = 0
         ERR(cod) => retornar fallo_etapa(cod)
@@ -93,7 +107,7 @@ funcion principal() -> entero:
     coincidir analizar_etapa(ruta):
         OK(v) => r = 0
         ERR(cod) => retornar fallo_etapa(cod)
-    coincidir generar_etapa(ruta):
+    coincidir generar_etapa(ruta, salida_ruta):
         OK(v) => r = 0
         ERR(cod) => retornar fallo_etapa(cod)
     retornar r

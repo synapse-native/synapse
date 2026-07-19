@@ -518,7 +518,7 @@ class GeneradorC:
         self._push("char _gen_tmp_buf[4096];")
         self._push("")
         self._push("// Variable global de indentación para el AST Walker")
-        self._push("int _G_indent = 0;")
+        self._push("extern int _G_indent;")
         self._push("")
         self._push("// Forward declarations de runtime del AST Walker")
         self._push("const char* _G_mt(const char* st);")
@@ -700,7 +700,7 @@ class GeneradorC:
                 nombre_struct = obj_tipo[7:]
                 info = self._estructuras.get(nombre_struct)
                 if info and nodo.nombre_campo in info.get('campos_pointer', set()):
-                    es_puntero = True
+                    pass  # Keep nombre_struct for ADT detection, but don't change es_puntero
             sep = '->' if es_puntero else '.'
             # ADT: encerrar campo de datos dentro de .dato.
             es_adt = bool(self._estructuras.get(nombre_struct, {}).get('es_adt'))
@@ -2859,7 +2859,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
                 nombre_struct = obj_tipo[7:]
                 info = self._estructuras.get(nombre_struct)
                 if info and nodo.nombre_campo in info.get('campos_pointer', set()):
-                    es_puntero = True
+                    pass  # Keep nombre_struct for ADT detection, but don't change es_puntero
             sep = '->' if es_puntero else '.'
             es_adt = bool(self._estructuras.get(nombre_struct, {}).get('es_adt'))
             campo_es_tag = (nodo.nombre_campo == 'tag' and es_adt)

@@ -1,44 +1,21 @@
-// Generado por Synapse (auto-hospedado)
+// salida_metal.c - Generado por Synapse Compilador
+// Lenguaje: Synapse v1.0 (#lang: es)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <pthread.h>
-typedef struct {int longitud;const char* datos;} CadenaSegura;
-typedef struct {uint32_t filas;uint32_t columnas;float* datos;} Tensor;
-typedef struct {FILE* stream;int es_valido;int es_virtual;const char* virtual_data;int virtual_len;} Canal;
-#define POOL_BLOQUES 64
-#define TAMANO_BLOQUE 4096
+#include <string.h>
+#include <assert.h>
+
+typedef struct { int longitud; const char* datos; } CadenaSegura;
+
+typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
+
+typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
+
 #define nulo ((void*)0)
-// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
-extern void escribir(CadenaSegura contenido);
-extern void escribir_linea(CadenaSegura contenido);
-extern CadenaSegura leer_linea(void);
-extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
-extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
-extern Tensor crear_tensor(int filas, int columnas);
-extern Tensor suma_tensor(Tensor a, Tensor b);
-extern Tensor producto_punto(Tensor a, Tensor b);
-extern Tensor relu(Tensor a);
-extern Tensor reserva(int tamano);
-extern void libera(Tensor bloque);
-extern Tensor suma(Tensor a, Tensor b);
-extern Tensor producto(Tensor a, Tensor b);
-extern int texto_a_entero(CadenaSegura str);
-extern float texto_a_decimal(CadenaSegura str);
-extern CadenaSegura decimal_a_texto(float n);
-extern CadenaSegura entero_a_texto(int n);
-extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
-extern void synapse_esperar_hilos(void);
-extern void pool_init(uint32_t total_blocks, uint32_t block_size);
-extern void pool_free(void* ptr);
-static int _g_argc;
-static char** _g_argv;
-int _argc(){return _g_argc;}
-CadenaSegura _argv(int i){if(i<0||i>=_g_argc)return (CadenaSegura){0,(char*)""};return (CadenaSegura){.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]};}
-void salir(int c){exit(c);}
-CadenaSegura concat(CadenaSegura a,CadenaSegura b){int _tl=a.longitud+b.longitud;char* _buf=(char*)malloc(_tl+1);memcpy(_buf,a.datos,a.longitud);memcpy(_buf+a.longitud,b.datos,b.longitud);_buf[_tl]=0;CadenaSegura _r={.longitud=_tl,.datos=_buf};return _r;}
+
+// --- OO AST node types (correct, from hola.c) ---
 struct Token;
 struct Nodo;
 struct ListaNodo;
@@ -70,318 +47,258 @@ struct ExprTensor;
 struct ExprIndice;
 struct ArgumentoTransferido;
 struct SentenciaImportar;
-struct Programa parsear(CadenaSegura fuente);
-void _expr_a_c(struct Nodo nodo, CadenaSegura buf);
-void _visitar_nodo(struct Nodo nodo, Canal out);
-void _visitar_lista(struct ListaNodo lista, Canal out);
-void _visitar_programa(struct Programa programa, Canal out);
-int generar(struct Programa programa, CadenaSegura ruta);
-CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse);
+struct ImportarC;
+struct DeclaracionExterna;
+struct BloqueInseguro;
+struct ExprObtenerDireccion;
+struct ExprDereferencia;
+
+typedef struct Token { int tipo; CadenaSegura lexema; int linea; int columna; } Token;
+typedef struct Nodo { CadenaSegura tipo; } Nodo;
+typedef struct ListaNodo { struct Nodo* cabeza; struct ListaNodo* cola; } ListaNodo;
+typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Programa;
+typedef struct Identificador { CadenaSegura tipo; CadenaSegura nombre; } Identificador;
+typedef struct LiteralNumero { CadenaSegura tipo; int valor; } LiteralNumero;
+typedef struct LiteralCadena { CadenaSegura tipo; CadenaSegura valor; } LiteralCadena;
+typedef struct OpBinaria { CadenaSegura tipo; struct Nodo* izquierdo; struct Token* operador; struct Nodo* derecho; } OpBinaria;
+typedef struct OpUnaria { CadenaSegura tipo; struct Token* operador; struct Nodo* expr; } OpUnaria;
+typedef struct LlamadaFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaNodo* argumentos; } LlamadaFuncion;
+typedef struct ExprAccesoCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; } ExprAccesoCampo;
+typedef struct AsignacionVariable { CadenaSegura tipo; CadenaSegura nombre; struct Nodo* expresion; } AsignacionVariable;
+typedef struct AsignacionCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; struct Nodo* expresion; } AsignacionCampo;
+typedef struct SentenciaSi { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; struct ListaNodo* cuerpo_sino; } SentenciaSi;
+typedef struct SentenciaMientras { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; } SentenciaMientras;
+typedef struct SentenciaRetornar { CadenaSegura tipo; struct Nodo* expr; } SentenciaRetornar;
+typedef struct SentenciaExpr { CadenaSegura tipo; struct Nodo* expr; } SentenciaExpr;
+typedef struct LogLlamada { CadenaSegura tipo; struct ListaNodo* argumentos; } LogLlamada;
+typedef struct Parametro { CadenaSegura tipo; CadenaSegura nombre; CadenaSegura tipo_param; int es_transferencia; } Parametro;
+typedef struct ListaParametro { struct Parametro* cabeza; struct ListaParametro* cola; } ListaParametro;
+typedef struct DefinicionFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* parametros; CadenaSegura tipo_retorno; struct ListaNodo* cuerpo; } DefinicionFuncion;
+typedef struct DefinicionEstructura { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* campos; } DefinicionEstructura;
+typedef struct SentenciaRomper { CadenaSegura tipo; } SentenciaRomper;
+typedef struct SentenciaSiguiente { CadenaSegura tipo; } SentenciaSiguiente;
+typedef struct SentenciaLanzar { CadenaSegura tipo; struct Nodo* llamada; } SentenciaLanzar;
+typedef struct SentenciaRecuperar { CadenaSegura tipo; struct Nodo* accion_critica; struct Nodo* plan_b; } SentenciaRecuperar;
+typedef struct SentenciaEscuchar { CadenaSegura tipo; struct Nodo* canal; struct Nodo* respuesta; } SentenciaEscuchar;
+typedef struct ExprTensor { CadenaSegura tipo; struct Nodo* filas; struct Nodo* columnas; } ExprTensor;
+typedef struct ExprIndice { CadenaSegura tipo; struct Nodo* expr; struct Nodo* indice; } ExprIndice;
+typedef struct ArgumentoTransferido { CadenaSegura tipo; struct Nodo* expr; } ArgumentoTransferido;
+typedef struct SentenciaImportar { CadenaSegura tipo; CadenaSegura ruta; } SentenciaImportar;
+typedef struct ImportarC { CadenaSegura tipo; CadenaSegura ruta; int es_sistema; } ImportarC;
+typedef struct DeclaracionExterna { CadenaSegura tipo; CadenaSegura nombre; struct Parametro* parametros; CadenaSegura tipo_retorno; } DeclaracionExterna;
+typedef struct BloqueInseguro { CadenaSegura tipo; struct Nodo* cuerpo; } BloqueInseguro;
+typedef struct ExprObtenerDireccion { CadenaSegura tipo; struct Nodo* expr; } ExprObtenerDireccion;
+typedef struct ExprDereferencia { CadenaSegura tipo; struct Nodo* expr; } ExprDereferencia;
+
+// Constantes del pool de memoria (definidas en synapse_rt.c)
+#define POOL_BLOQUES 64
+#define TAMANO_BLOQUE 4096
+
+// Buffer temporal global para funciones del generador
+#define _GEN_TMP_SIZE (4096)
+char _gen_tmp_buf[4096];
+
+// Variable global de indentación para el AST Walker
+int _G_indent = 0;
+
+// Forward declarations de runtime del AST Walker
+const char* _G_mt(const char* st);
+void _G_vest(struct DefinicionEstructura* n);
+
+// Constantes de tags para uniones etiquetadas (ADTs)
+#define TAG_OK 0
+#define TAG_ERR 1
+#define TAG_ALGUNO 0
+#define TAG_NINGUNO 1
+
+// --- Helpers de serialización primitiva para canales (Zero-Copy) ---
+inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
+inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
+inline void* _synapse_box_float(float v) {
+    float* _p = (float*)malloc(sizeof(float));
+    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\n"); exit(1); }
+    *_p = v;
+    return (void*)_p;
+}
+inline float _synapse_unbox_float(void* p) {
+    float _v = *(float*)p;
+    free(p);
+    return _v;
+}
+
+// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
+extern void pool_init(uint32_t total_blocks, uint32_t block_size);
+extern void pool_free(void* ptr);
+extern void escribir(CadenaSegura contenido);
+extern void escribir_linea(CadenaSegura contenido);
+extern CadenaSegura leer_linea(void);
+extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
+extern CadenaSegura leer(Canal canal);
+extern void cerrar(Canal canal);
+extern Tensor crear_tensor(int filas, int columnas);
+extern Tensor suma_tensor(Tensor a, Tensor b);
+extern Tensor producto_punto(Tensor a, Tensor b);
+extern Tensor relu(Tensor a);
+extern Tensor reserva(int tamano);
+extern void libera(Tensor bloque);
+extern Tensor suma(Tensor a, Tensor b);
+extern Tensor producto(Tensor a, Tensor b);
+extern int texto_a_entero(CadenaSegura str);
+extern float texto_a_decimal(CadenaSegura str);
+extern CadenaSegura decimal_a_texto(float n);
+extern CadenaSegura entero_a_texto(int n);
+extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
+extern void synapse_esperar_hilos(void);
+extern void _syn_texto_liberar(CadenaSegura s);
+
+// --- Declaraciones extern de canales (CanalConcurrencia) ---
+typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;
+typedef struct CanalConcurrencia CanalConcurrencia;
+extern CanalConcurrencia* canal_crear(uint32_t capacidad);
+extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
+extern void* canal_recibir(CanalConcurrencia* canal);
+extern void canal_destruir(CanalConcurrencia* canal);
+extern void cerrar_canal(CanalConcurrencia* canal);
+int _g_argc;
+char** _g_argv;
+int _argc() { return _g_argc; }
+
+CadenaSegura _argv(int i) {
+    if (i < 0 || i >= _g_argc) return (CadenaSegura){0, ""};
+    return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]), .datos = _g_argv[i] };
+}
+
+void salir(int codigo) { exit(codigo); }
+
+CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
+    int _tl = a.longitud + b.longitud;
+    char* _buf = (char*)malloc(_tl + 1);
+    if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\n"); exit(1); }
+    memcpy(_buf, a.datos, a.longitud);
+    memcpy(_buf + a.longitud, b.datos, b.longitud);
+    _buf[_tl] = 0;
+    CadenaSegura _r = { .longitud = _tl, .datos = _buf };
+    return _r;
+}
+
+struct Resultado;
+struct Opcion;
+struct ParToml;
+struct NodoToml;
+
+typedef struct Resultado {
+    int tag;
+    union {
+        int valor;
+        CadenaSegura valor_str;
+        float valor_float;
+    } dato;
+} Resultado;
+
+inline struct Resultado Resultado_nuevo() {
+    struct Resultado _r = {0};
+    return _r;
+}
+
+typedef struct Opcion {
+    int tag;
+    union {
+        int valor;
+        CadenaSegura valor_str;
+        float valor_float;
+    } dato;
+} Opcion;
+
+inline struct Opcion Opcion_nuevo() {
+    struct Opcion _r = {0};
+    return _r;
+}
+
+typedef struct ParToml {
+    CadenaSegura clave;
+    struct NodoToml* valor;
+} ParToml;
+
+inline struct ParToml ParToml_nuevo() {
+    struct ParToml _r = {0};
+    return _r;
+}
+
+typedef struct NodoToml {
+    int tipo;
+    CadenaSegura valor_str;
+    struct ParToml* pares;
+    int longitud;
+} NodoToml;
+
+inline struct NodoToml NodoToml_nuevo() {
+    struct NodoToml _r = {0};
+    return _r;
+}
+
+struct NodoToml desde_texto(CadenaSegura entrada);
+struct NodoToml obtener_campo(struct NodoToml nodo, CadenaSegura clave);
 CadenaSegura _leer_archivo(CadenaSegura ruta);
 CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave);
-void principal();
-typedef struct Token {
-    int tipo;
-    CadenaSegura lexema;
-    int linea;
-    int columna;
-} Token;
-static inline struct Token Token_nuevo() {
-    struct Token _r={0}; return _r;
+void principal(void);
+
+extern struct NodoToml _toml_parse(CadenaSegura entrada);
+extern struct NodoToml _toml_nodo_new(void);
+extern void _toml_nodo_liberar(struct NodoToml n);
+extern struct NodoToml _toml_object_get(struct NodoToml nodo, CadenaSegura clave);
+struct NodoToml desde_texto(CadenaSegura entrada) {
+    struct NodoToml _ret_29 = _toml_parse(entrada);
+    return _ret_29;
 }
-typedef struct Nodo {
-    CadenaSegura tipo;
-} Nodo;
-static inline struct Nodo Nodo_nuevo() {
-    struct Nodo _r={0}; return _r;
+
+struct NodoToml obtener_campo(struct NodoToml nodo, CadenaSegura clave) {
+    struct NodoToml _ret_32 = _toml_object_get(nodo, clave);
+    return _ret_32;
 }
-typedef struct ListaNodo {
-    struct Nodo* cabeza;
-    struct ListaNodo* cola;
-} ListaNodo;
-static inline struct ListaNodo ListaNodo_nuevo() {
-    struct ListaNodo _r={0}; return _r;
-}
-typedef struct Programa {
-    CadenaSegura tipo;
-    struct ListaNodo* sentencias;
-} Programa;
-static inline struct Programa Programa_nuevo() {
-    struct Programa _r={0}; return _r;
-}
-typedef struct Identificador {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-} Identificador;
-static inline struct Identificador Identificador_nuevo() {
-    struct Identificador _r={0}; return _r;
-}
-typedef struct LiteralNumero {
-    CadenaSegura tipo;
-    int valor;
-} LiteralNumero;
-static inline struct LiteralNumero LiteralNumero_nuevo() {
-    struct LiteralNumero _r={0}; return _r;
-}
-typedef struct LiteralCadena {
-    CadenaSegura tipo;
-    CadenaSegura valor;
-} LiteralCadena;
-static inline struct LiteralCadena LiteralCadena_nuevo() {
-    struct LiteralCadena _r={0}; return _r;
-}
-typedef struct OpBinaria {
-    CadenaSegura tipo;
-    struct Nodo* izquierdo;
-    struct Token* operador;
-    struct Nodo* derecho;
-} OpBinaria;
-static inline struct OpBinaria OpBinaria_nuevo() {
-    struct OpBinaria _r={0}; return _r;
-}
-typedef struct OpUnaria {
-    CadenaSegura tipo;
-    struct Token* operador;
-    struct Nodo* expr;
-} OpUnaria;
-static inline struct OpUnaria OpUnaria_nuevo() {
-    struct OpUnaria _r={0}; return _r;
-}
-typedef struct LlamadaFuncion {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaNodo* argumentos;
-} LlamadaFuncion;
-static inline struct LlamadaFuncion LlamadaFuncion_nuevo() {
-    struct LlamadaFuncion _r={0}; return _r;
-}
-typedef struct ExprAccesoCampo {
-    CadenaSegura tipo;
-    struct Nodo* objeto;
-    CadenaSegura nombre_campo;
-} ExprAccesoCampo;
-static inline struct ExprAccesoCampo ExprAccesoCampo_nuevo() {
-    struct ExprAccesoCampo _r={0}; return _r;
-}
-typedef struct AsignacionVariable {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct Nodo* expresion;
-} AsignacionVariable;
-static inline struct AsignacionVariable AsignacionVariable_nuevo() {
-    struct AsignacionVariable _r={0}; return _r;
-}
-typedef struct AsignacionCampo {
-    CadenaSegura tipo;
-    struct Nodo* objeto;
-    CadenaSegura nombre_campo;
-    struct Nodo* expresion;
-} AsignacionCampo;
-static inline struct AsignacionCampo AsignacionCampo_nuevo() {
-    struct AsignacionCampo _r={0}; return _r;
-}
-typedef struct SentenciaSi {
-    CadenaSegura tipo;
-    struct Nodo* condicion;
-    struct ListaNodo* cuerpo;
-    struct ListaNodo* cuerpo_sino;
-} SentenciaSi;
-static inline struct SentenciaSi SentenciaSi_nuevo() {
-    struct SentenciaSi _r={0}; return _r;
-}
-typedef struct SentenciaMientras {
-    CadenaSegura tipo;
-    struct Nodo* condicion;
-    struct ListaNodo* cuerpo;
-} SentenciaMientras;
-static inline struct SentenciaMientras SentenciaMientras_nuevo() {
-    struct SentenciaMientras _r={0}; return _r;
-}
-typedef struct SentenciaRetornar {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} SentenciaRetornar;
-static inline struct SentenciaRetornar SentenciaRetornar_nuevo() {
-    struct SentenciaRetornar _r={0}; return _r;
-}
-typedef struct SentenciaExpr {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} SentenciaExpr;
-static inline struct SentenciaExpr SentenciaExpr_nuevo() {
-    struct SentenciaExpr _r={0}; return _r;
-}
-typedef struct LogLlamada {
-    CadenaSegura tipo;
-    struct ListaNodo* argumentos;
-} LogLlamada;
-static inline struct LogLlamada LogLlamada_nuevo() {
-    struct LogLlamada _r={0}; return _r;
-}
-typedef struct Parametro {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    CadenaSegura tipo_param;
-    int es_transferencia;
-} Parametro;
-static inline struct Parametro Parametro_nuevo() {
-    struct Parametro _r={0}; return _r;
-}
-typedef struct ListaParametro {
-    struct Parametro* cabeza;
-    struct ListaParametro* cola;
-} ListaParametro;
-static inline struct ListaParametro ListaParametro_nuevo() {
-    struct ListaParametro _r={0}; return _r;
-}
-typedef struct DefinicionFuncion {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* parametros;
-    CadenaSegura tipo_retorno;
-    struct ListaNodo* cuerpo;
-} DefinicionFuncion;
-static inline struct DefinicionFuncion DefinicionFuncion_nuevo() {
-    struct DefinicionFuncion _r={0}; return _r;
-}
-typedef struct DefinicionEstructura {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* campos;
-} DefinicionEstructura;
-static inline struct DefinicionEstructura DefinicionEstructura_nuevo() {
-    struct DefinicionEstructura _r={0}; return _r;
-}
-typedef struct SentenciaRomper {
-    CadenaSegura tipo;
-} SentenciaRomper;
-static inline struct SentenciaRomper SentenciaRomper_nuevo() {
-    struct SentenciaRomper _r={0}; return _r;
-}
-typedef struct SentenciaSiguiente {
-    CadenaSegura tipo;
-} SentenciaSiguiente;
-static inline struct SentenciaSiguiente SentenciaSiguiente_nuevo() {
-    struct SentenciaSiguiente _r={0}; return _r;
-}
-typedef struct SentenciaLanzar {
-    CadenaSegura tipo;
-    struct Nodo* llamada;
-} SentenciaLanzar;
-static inline struct SentenciaLanzar SentenciaLanzar_nuevo() {
-    struct SentenciaLanzar _r={0}; return _r;
-}
-typedef struct SentenciaRecuperar {
-    CadenaSegura tipo;
-    struct Nodo* accion_critica;
-    struct Nodo* plan_b;
-} SentenciaRecuperar;
-static inline struct SentenciaRecuperar SentenciaRecuperar_nuevo() {
-    struct SentenciaRecuperar _r={0}; return _r;
-}
-typedef struct SentenciaEscuchar {
-    CadenaSegura tipo;
-    struct Nodo* canal;
-    struct Nodo* respuesta;
-} SentenciaEscuchar;
-static inline struct SentenciaEscuchar SentenciaEscuchar_nuevo() {
-    struct SentenciaEscuchar _r={0}; return _r;
-}
-typedef struct ExprTensor {
-    CadenaSegura tipo;
-    struct Nodo* filas;
-    struct Nodo* columnas;
-} ExprTensor;
-static inline struct ExprTensor ExprTensor_nuevo() {
-    struct ExprTensor _r={0}; return _r;
-}
-typedef struct ExprIndice {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-    struct Nodo* indice;
-} ExprIndice;
-static inline struct ExprIndice ExprIndice_nuevo() {
-    struct ExprIndice _r={0}; return _r;
-}
-typedef struct ArgumentoTransferido {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} ArgumentoTransferido;
-static inline struct ArgumentoTransferido ArgumentoTransferido_nuevo() {
-    struct ArgumentoTransferido _r={0}; return _r;
-}
-typedef struct SentenciaImportar {
-    CadenaSegura tipo;
-    CadenaSegura ruta;
-} SentenciaImportar;
-static inline struct SentenciaImportar SentenciaImportar_nuevo() {
-    struct SentenciaImportar _r={0}; return _r;
-}
-/* importar compiler.ast_nodes */
-struct Programa parsear(CadenaSegura fuente)
-{
-    return (struct Programa){0};
-}
-/* importar compiler.ast_nodes */
-void _expr_a_c(struct Nodo nodo, CadenaSegura buf)
-{
-    return;
-}
-void _visitar_nodo(struct Nodo nodo, Canal out)
-{
-    return;
-}
-void _visitar_lista(struct ListaNodo lista, Canal out)
-{
-    return;
-}
-void _visitar_programa(struct Programa programa, Canal out)
-{
-    return;
-}
-int generar(struct Programa programa, CadenaSegura ruta)
-{
-    return (int){0};
-}
-CadenaSegura _traducir_tipo_c(CadenaSegura tipo_synapse)
-{
-    return tipo_synapse;
-}
-/* importar std.toml */
-/* importar std.io */
-/* importar std.err */
-CadenaSegura _leer_archivo(CadenaSegura ruta)
-{
-    Canal f = abrir(ruta, (CadenaSegura){.longitud=1,.datos="r"});
+
+CadenaSegura _leer_archivo(CadenaSegura ruta) {
+    Canal f;
+    f = abrir(ruta, (CadenaSegura){ .longitud = 1, .datos = "r" });
     CadenaSegura resultado = leer(f);
     cerrar(f);
-    return resultado;
+    CadenaSegura _ret_13 = resultado;
+    return _ret_13;
 }
-CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave)
-{
-    int campo = obtener_campo(nodo, clave);
+
+CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave) {
+    struct NodoToml campo = obtener_campo(nodo, clave);
     if ((campo.tipo == 2)) {
-        return campo.valor_str;
+        CadenaSegura _ret_18 = campo.valor_str;
+        _toml_nodo_liberar(campo);
+        return _ret_18;
     }
-    return (CadenaSegura){.longitud=0,.datos=""};
+    CadenaSegura _ret_19 = (CadenaSegura){ .longitud = 0, .datos = "" };
+    return _ret_19;
 }
-void principal()
-{
-    escribir_linea((CadenaSegura){.longitud=31,.datos="Synapse v2.0 — Auto-hospedado"});
-    escribir_linea((CadenaSegura){.longitud=32,.datos="Cargando manifiesto axon.toml..."});
-    int toml_str = _leer_archivo((CadenaSegura){.longitud=9,.datos="axon.toml"});
-    int doc = desde_texto(toml_str);
-    int proy = obtener_campo(doc, (CadenaSegura){.longitud=8,.datos="proyecto"});
-    int nombre = _campo_str(proy, (CadenaSegura){.longitud=6,.datos="nombre"});
-    int version = _campo_str(proy, (CadenaSegura){.longitud=7,.datos="version"});
-    int entrada = _campo_str(proy, (CadenaSegura){.longitud=13,.datos="punto_entrada"});
-    escribir_linea(entero_a_texto(((((CadenaSegura){.longitud=10,.datos="Proyecto: "} + nombre) + (CadenaSegura){.longitud=2,.datos=" v"}) + version)));
-    escribir_linea(entero_a_texto(((CadenaSegura){.longitud=9,.datos="Entrada: "} + entrada)));
-    escribir_linea((CadenaSegura){.longitud=37,.datos="[OK] Manifiesto cargado correctamente"});
+
+void principal(void) {
+    escribir_linea((CadenaSegura){ .longitud = 31, .datos = "Synapse v2.0 — Auto-hospedado" });
+    escribir_linea((CadenaSegura){ .longitud = 32, .datos = "Cargando manifiesto axon.toml..." });
+    CadenaSegura toml_str = _leer_archivo((CadenaSegura){ .longitud = 9, .datos = "axon.toml" });
+    struct NodoToml doc = desde_texto(toml_str);
+    struct NodoToml proy = obtener_campo(doc, (CadenaSegura){ .longitud = 8, .datos = "proyecto" });
+    CadenaSegura nombre = _campo_str(proy, (CadenaSegura){ .longitud = 6, .datos = "nombre" });
+    CadenaSegura version = _campo_str(proy, (CadenaSegura){ .longitud = 7, .datos = "version" });
+    CadenaSegura entrada = _campo_str(proy, (CadenaSegura){ .longitud = 13, .datos = "punto_entrada" });
+    escribir_linea(concat(concat(concat((CadenaSegura){ .longitud = 10, .datos = "Proyecto: " }, nombre), (CadenaSegura){ .longitud = 2, .datos = " v" }), version));
+    escribir_linea(concat((CadenaSegura){ .longitud = 9, .datos = "Entrada: " }, entrada));
+    escribir_linea((CadenaSegura){ .longitud = 37, .datos = "[OK] Manifiesto cargado correctamente" });
+    _syn_texto_liberar(entrada);
+    _syn_texto_liberar(version);
+    _syn_texto_liberar(nombre);
+    _toml_nodo_liberar(proy);
+    _toml_nodo_liberar(doc);
+    _syn_texto_liberar(toml_str);
 }
+
 int main(int argc, char** argv) {
-    int _g_argc=argc;
-    char** _g_argv=argv;
+    _g_argc = argc;
+    _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     principal();
     synapse_esperar_hilos();
