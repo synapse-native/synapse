@@ -27,7 +27,7 @@
 | **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
 | **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** (5/5) | 5/5 tareas | 240 passed | ✅ Preparado |
 | **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
-| **F12: LSP nativo (Parte VI DM)** | ⏳ **EN EJECUCIÓN** | 3/3 tareas | 240 passed | ⬅️ Fase actual |
+| **F12: LSP nativo (Parte VI DM)** | ⏳ **EN EJECUCIÓN** (2/3) | 3/3 tareas | 259 passed | ⬅️ Fase actual |
 
 ---
 
@@ -456,22 +456,43 @@ Total: 300 | exit=0: 42 | exit=1: 258 | crash: 0 | timeout: 0 | error: 0
 
 ---
 
-## ⏳ FASE 12: LSP NATIVO (PLANIFICADA)
+## ⏳ FASE 12: LSP NATIVO (EN EJECUCIÓN — 40%)
 
 ### Objetivo
 Implementar servidor LSP (Language Server Protocol) nativo según Documento Maestro Parte VI, con diagnósticos en tiempo real y puente de IA local.
 
+### F12.1 COMPLETADA — LSP Python fortalecido (Jul 2026)
+
+Nuevos proveedores implementados en `synapse_lsp/server.py`:
+
+| Proveedor | Método LSP | Descripción |
+|-----------|-----------|-------------|
+| **SignatureHelp** | `textDocument/signatureHelp` | Muestra firma de función al escribir `(` con parámetro activo |
+| **DocumentSymbol** | `textDocument/documentSymbol` | Árbol de símbolos (funciones, structs, constantes, campos) |
+| **CodeAction** | `textDocument/codeAction` | Quick fixes para errores comunes (variable no declarada, función no definida, etc.) |
+| **Formatting** | `textDocument/formatting` | Formateador básico: indentación 4 espacios, normalización |
+| **ERR_LIFETIME** | `publishDiagnostics` | Trazabilidad de ownership: prefijo `[ERR_LIFETIME]` en errores de variable movida |
+
+Capacidades declaradas en `initialize`:
+- `signatureHelpProvider` con triggerCharacters `["(", ","]`
+- `documentSymbolProvider: true`
+- `codeActionProvider: true`
+- `documentFormattingProvider: true`
+
+Tests: 19 nuevos tests en `tests/unit/test_lsp_f12.py` — todos pasando.
+
 ### Tareas
 | # | Tarea | Archivos | Riesgo | Estado |
 |---|-------|----------|--------|--------|
-| 12.1 | Servidor JSON-RPC sobre stdin/stdout | `synapse_lsp/server.py` | 🟡 Medio | ✅ Existente (Python) |
+| **12.1** | Servidor JSON-RPC fortalecido (Python) | `synapse_lsp/server.py` | 🟡 Medio | ✅ **COMPLETADA** |
 | 12.2 | Migrar LSP a binario nativo (sin Python) | `nucleo/lsp.syn` | 🔴 Alto | ⏳ |
 | 12.3 | Puente de IA local (Ollama, Phi-3) | `synapse_lsp/` | 🟡 Medio | ⏳ |
 
 ### Requisitos (Parte VI DM)
-- Diagnósticos en tiempo real: errors → línea/columna exacta
-- Trazabilidad de ownership: `ERR_LIFETIME` con línea exacta de invalidación
-- Zero telemetría externa: todo procesamiento en localhost
+- Diagnósticos en tiempo real: errors → línea/columna exacta ✅
+- Trazabilidad de ownership: `ERR_LIFETIME` con línea exacta de invalidación ✅ (parcial)
+- Zero telemetría externa: todo procesamiento en localhost ✅
+- SignatureHelp sobre funciones con contratos requiere/garantiza ✅
 
 ---
 
@@ -479,7 +500,7 @@ Implementar servidor LSP (Language Server Protocol) nativo según Documento Maes
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **240** (sin oráculo, +9 F11) | > 260 🔄 |
+| Tests pasando | 247 | **259** (sin oráculo, +9 F11, +19 F12.1) | > 260 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
