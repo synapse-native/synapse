@@ -521,12 +521,7 @@ class AnalizadorSemantico:
             return 'CanalConcurrencia*'
         elif isinstance(nodo, ExprRecibirCanal):
             self._inferir_tipo(nodo.canal)
-            if not self._en_coincidir:
-                self.diag.reportar(
-                    ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR,
-                    self._token(nodo.linea, nodo.columna)
-                )
-            return 'Resultado'
+            return 'void*'
         return None
 
     def _inferir_tipo_llamada(self, nodo: LlamadaFuncion) -> Optional[str]:

@@ -128,6 +128,7 @@ class GeneratorContext:
         self._tensor_vars_transferidas: set = set()
         self._canal_vars: set = set()
         self._canal_vars_cerradas: set = set()
+        self._canal_vars_concurrencia: set = set()
         self._listener_funciones: List[str] = []
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()

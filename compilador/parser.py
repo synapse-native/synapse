@@ -715,6 +715,8 @@ class Parser:
             if self._mirar().tipo == TokenID.LPAREN:
                 if nombre == 'tensor':
                     return self._parsear_tensor(t)
+                if nombre == 'canal':
+                    return self._parsear_crear_canal(t)
                 return self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
             expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
             while self._mirar().tipo == TokenID.DOT:
@@ -990,6 +992,24 @@ class Parser:
             valor=valor,
             linea=tok_canal.linea,
             columna=tok_canal.columna,
+        )
+
+    def _parsear_crear_canal(self, tok_id: Token) -> ExprCrearCanal:
+        self._esperar(TokenID.LPAREN)
+        tipo_contenido = ''
+        capacidad = None
+        if self._mirar().tipo == TokenID.IDENTIFIER:
+            tok_tipo = self._avanzar()
+            tipo_contenido = tok_tipo.valor or ''
+        if self._mirar().tipo == TokenID.COMMA:
+            self._avanzar()
+            capacidad = self._parsear_expresion()
+        self._esperar(TokenID.RPAREN)
+        return ExprCrearCanal(
+            tipo_contenido=tipo_contenido,
+            capacidad=capacidad,
+            linea=tok_id.linea,
+            columna=tok_id.columna,
         )
 
     def _parsear_recibir_canal(self) -> Optional[ExprRecibirCanal]:

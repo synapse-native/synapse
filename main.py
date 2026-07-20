@@ -422,8 +422,28 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: set[str],
         return Programa(), diag or DiagnosticManager()
     archivos_procesados.add(ruta_abs)
 
-    with open(ruta_archivo, 'r', encoding='utf-8') as f:
-        fuente = f.read()
+    try:
+        with open(ruta_archivo, 'rb') as f:
+            raw = f.read()
+    except OSError as e:
+        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,
+                           Token(TokenID.EOF, 0, 0), archivo=str(e))
+        return Programa(), diag_local
+
+    # Intentar decodificar UTF-8; si falla, es un archivo binario -> error
+    try:
+        fuente = raw.decode('utf-8')
+    except UnicodeDecodeError:
+        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0),
+                           mensaje="El archivo no es texto UTF-8 valido (posible binario)")
+        return Programa(), diag_local
+    except LookupError:
+        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0),
+                           mensaje="Codificacion no soportada")
+        return Programa(), diag_local
 
     lineas = fuente.split('\n')
     diag_local = diag or DiagnosticManager(fuente_lineas=lineas, ruta_archivo=ruta_archivo)

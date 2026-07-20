@@ -54,6 +54,10 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
     ctx._variables[nodo.nombre] = nodo.tipo  # Store Synapse type (consistent)
+    if nodo.tipo == 'CanalConcurrencia*':
+        ctx._canal_vars_concurrencia.add(nodo.nombre)
+    elif nodo.tipo == 'Canal':
+        ctx._canal_vars.add(nodo.nombre)
 
 
 def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
@@ -71,6 +75,8 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx._tensor_vars.add(nodo.nombre)
         elif tipo_syn == 'Canal':
             ctx._canal_vars.add(nodo.nombre)
+        elif tipo_syn == 'CanalConcurrencia*':
+            ctx._canal_vars_concurrencia.add(nodo.nombre)
         else:
             ctx.register_var(nodo.nombre, tipo_syn, desde_llamada)
     else:
@@ -81,6 +87,8 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx.unregister_var(nodo.nombre)
         if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
+        if tipo_syn == 'CanalConcurrencia*':
+            ctx._canal_vars_concurrencia.add(nodo.nombre)
         ctx.write_line(f"{nodo.nombre} = {val};")
 
 
@@ -270,6 +278,7 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx._tensor_vars_transferidas = set()
     ctx._canal_vars = set()
     ctx._canal_vars_cerradas = set()
+    ctx._canal_vars_concurrencia = set()
     ctx._strings_heap = set()
 
     # Register parameters (store Synapse type for consistency with tipo_de_expr)
@@ -342,19 +351,23 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 f"if (!{var}.es_mapeado) "
                 f"{{ {ctx.syn_pool_free(f'{var}.datos')}; }}"
             )
-    # Canal cleanup
+    # Canal cleanup (IO struct)
     for var in ctx._canal_vars:
         if var not in ctx._canal_vars_cerradas:
             ctx.write_line(
                 f"if ({var}.stream) {{ fclose({var}.stream); "
                 f"{var}.es_valido = 0; }}"
             )
+    # CanalConcurrencia cleanup (concurrency channels)
+    for var in ctx._canal_vars_concurrencia:
+        ctx.write_line(f"canal_destruir({var});")
 
     ctx.pop_scope()
     ctx._tensor_vars.clear()
     ctx._tensor_vars_transferidas.clear()
     ctx._canal_vars.clear()
     ctx._canal_vars_cerradas.clear()
+    ctx._canal_vars_concurrencia.clear()
     ctx._garantizas_actuales = []
     ctx._in_function_scope = False
     ctx.dec_indent()

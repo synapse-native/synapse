@@ -537,6 +537,24 @@ funcion parsear_primario(est: ParserEst) -> entero:
                         asm("est.nodos[nodo2].hijo_izq = nodo")
                     nodo = nodo2
         retornar nodo
+    si t == T_CANAL:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        si token_mirar(est) == T_PAREN_IZQ:
+            nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
+            token_esperar(est, T_PAREN_IZQ)
+            si token_mirar(est) == T_IDENTIFICADOR:
+                token_avanzar(est)
+            si token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                expr = parsear_expresion(est)
+                inseguro:
+                    asm("est.nodos[nodo].hijo_izq = expr")
+            token_esperar(est, T_PAREN_DER)
+            retornar nodo
+        parser_error(est, "Se esperaba ( despues de canal", linea, col)
+        retornar 0
     si t == T_PAREN_IZQ:
         token_avanzar(est)
         expr = parsear_expresion(est)
@@ -605,12 +623,22 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
         retornar 0
     si t == T_FIN:
         retornar 0
+    si t == T_CANAL:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        expr = parsear_expresion(est)
+        nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
     si t == T_IDENTIFICADOR:
-        t2 = token_mirar(est)
+        t2 = token_tipo(est, est.posicion + 1)
         si t2 == T_ASIGNAR:
             retornar parsear_asignacion(est)
         si t2 == T_FLECHA_IZQ:
             retornar parsear_enviar_canal(est)
+        si t2 == T_FLECHA:
+            retornar parsear_recibir_canal(est)
         // detectar declaracion tipada: ident : ident =
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
@@ -924,7 +952,10 @@ funcion parsear_asignacion(est: ParserEst) -> entero:
     si token_esperar(est, T_ASIGNAR) == 0:
         retornar 0
     nodo = parser_nuevo_nodo(est, NODO_ASIGNACION, linea, col)
-    expr = parsear_expresion(est)
+    si token_mirar(est) == T_IDENTIFICADOR y token_tipo(est, est.posicion + 1) == T_FLECHA:
+        expr = parsear_recibir_canal(est)
+    sino:
+        expr = parsear_expresion(est)
     inseguro:
         asm("est.nodos[nodo].hijo_der = expr")
     retornar nodo
@@ -1148,6 +1179,35 @@ funcion parsear_enviar_canal(est: ParserEst) -> entero:
     si token_esperar(est, T_FLECHA_IZQ) == 0:
         retornar 0
     expr = parsear_expresion(est)
+    retornar nodo
+
+funcion parsear_crear_canal(est: ParserEst) -> entero:
+    si token_esperar(est, T_CANAL) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    si token_mirar(est) == T_COMA:
+        token_avanzar(est)
+        expr = parsear_expresion(est)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    retornar nodo
+
+funcion parsear_recibir_canal(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
     retornar nodo
 
 // ---- Main parse function ----
