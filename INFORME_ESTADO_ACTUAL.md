@@ -213,9 +213,15 @@ El pipeline nativo en `nucleo/principal.syn` tiene **2 bugs preexistentes** que 
 
 | Prioridad | Fase | Descripción | Impacto |
 |-----------|------|-------------|---------|
-| 🔴 P1 | **F15** | Renombrar `EOF` en `tokens.syn` (→ `T_FIN`) para eliminar colisión sistémica con `<stdio.h>` | Colisión en LSP, bootstrap, y cualquier binario que use `fgetc()` en `asm()` |
 | 🟡 P2 | **F15b** | Hacer reentrante la pipeline nativa (tokenizar/parsear) | Desbloquea 2 xfails LSP y permite diagnosticar código real |
 | 🔴 P1 | **F3 bis (cont.)** | Depurar `generar()` crash + restaurar F8 | Bootstrap completo auto-hospedado |
+
+### F15 completada
+- `nucleo/tokens.syn`: Eliminado `constante EOF = 57` — resuelve colisión sistémica con `<stdio.h>`
+- `nucleo/lsp.syn`: Comentarios actualizados para reflejar el fix sistémico
+- Todos los `.syn` files ya usaban `T_FIN` en lugar de `EOF`
+- Python `TokenID.EOF` es enum Python — no afectado
+- **91 tests pasan, 0 regresiones**
 
 ---
 

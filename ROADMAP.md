@@ -33,7 +33,7 @@
 | **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
 | **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** (4/4) | F14.4: EOF macro collision, codigo nativo estable | **270(+2xfail)** passed | ⬅️ **COMPLETADA** |
 | **F3 bis: Bootstrap segfault diagnóstico** | 🔴 **EN DIAGNÓSTICO** | 2 bugs preexistentes: F8 Pass 2 segfault + generar() crash | — | Depende de F15 |
-| **F15: Renombrar EOF→T_FIN** | ⏳ **PENDIENTE** | tokens.syn colisión sistémica | — | Bloqueante para F3 bis |
+| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **91+2xfail** passed | ⬅️ **COMPLETADA** |
 | **F15b: Pipeline nativa reentrante** | ⏳ **PENDIENTE** | Desbloquea 2 xfails LSP | — | Depende de F15 |
 
 ---

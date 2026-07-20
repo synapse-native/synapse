@@ -56,4 +56,5 @@ constante ASM = 53
 constante CONSTANTE = 54
 constante SEMICOLON = 55
 constante PARA = 56
-constante EOF = 57
+// EOF removido (F15): colisiona con #define EOF (-1) de <stdio.h>
+// Usar T_FIN (57) definido en lexer.syn/parser.syn

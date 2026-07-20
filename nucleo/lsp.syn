@@ -2,24 +2,16 @@
 
 // nucleo/lsp.syn — Servidor LSP Nativo (JSON-RPC 2.0 sobre stdin/stdout)
 //
-// Segun Documento Maestro Parte VI: binario secundario que se comunica
-// mediante JSON-RPC sobre stdin/stdout. Diagnostica codigo Synapse en
-// tiempo real usando el pipeline nativo (tokenizar + parsear + F8 semantico).
+// v0.2.5 — F14.4: `constante EOF = 57` en tokens.syn colisionaba con
+//   `#define EOF (-1)` de <stdio.h>. Cualquier byte 57 (ASCII '9')
+//   activaba el chequeo `if (_c == EOF)`. SOLUCION: usar (-1).
+//   F15: EOF removido de tokens.syn — usar T_FIN para end-of-file.
 //
-// v0.2.1 — F12.2b hotfix: _setmode(_O_BINARY) para pipes en Windows
-//           textDocument string length corregida (11→12)
-//           setbuf(stderr, NULL) para unbuffer stderr
-//           LF-only header terminator (\n\n) como fallback
-//
-// NOTA TECNICA: Cada bloque asm() debe contener una SENTENCIA COMPLETA de C.
-// El generador anade ; tras cada asm(), lo que rompe cadenas if/else if/else.
-// Por eso cada metodo LSP se despacha con un if() independiente (no else if).
-//
-// Compilacion:
-//   python main.py nucleo/lsp.syn            # -> synapse_lsp.exe (Python bootstrap)
-//   ./synapse_bootstrap.exe nucleo/lsp.syn    # -> synapse_lsp.exe (self-hosted)
+// v0.2.4 — F14.3 FIX: _setmode directo (sin #ifdef).
+//   RAZON: asm() anade ; tras cada linea, convirtiendo
+//   #ifdef _WIN32 en #ifdef _WIN32; — macro indefinida, bloque saltado.
+//   SOLUCION: _setmode directo (LSP solo compila en Windows/MinGW).
 
-// --- Imports for Unity Build ---
 importar tokens
 importar lexer
 importar ast_nodes
@@ -31,37 +23,33 @@ importar analizador_semantico
 importar memoria
 importar generator
 importar resolvedor_axon
-importar std.json  // Provee NodoJson, _json_parse, _json_object_get, etc.
+importar std.json
 
-// --- Constants ---
 constante _LSP_BUF_SIZE = 262144
 constante _LSP_MAX_URI = 1024
 constante _LSP_MAX_TEXT = 131072
 
-// --- LSP Server Entry Point ---
 funcion principal() -> entero:
     r = 0
     inseguro:
-        // Orden CRITICO: setbuf() ANTES del primer fprintf() en stderr.
-        // En C estandar, setbuf() debe llamarse antes de cualquier I/O en el stream.
-        // Windows: _setmode(_O_BINARY) evita que el runtime traduzca \\r\\n -> \\n en pipes
-        // _O_BINARY = 0x8000; fileno(stdin)=0, fileno(stdout)=1
         asm("setbuf(stderr, NULL);")
-        asm("extern int _setmode(int,int); _setmode(0,0x8000); _setmode(1,0x8000);")
-        asm("fprintf(stderr, \"[Synapse-LSP] v0.2.1 (F12.2b hotfix) iniciando...\\n\");")
+        // stdout en modo binario. SIN #ifdef _WIN32 — ver nota arriba.
+        asm("extern int _setmode(int,int); _setmode(1,0x8000);")
+        asm("fprintf(stderr, \"[Synapse-LSP] v0.2.5 (F14.4) iniciando...\\n\");")
 
         asm("char _lsp_uri[_LSP_MAX_URI] = {0};")
         asm("int _lsp_run = 1;")
         asm("char _lsp_buf[_LSP_BUF_SIZE];")
 
         asm("while (_lsp_run) {")
-        asm("    // ---- Transport: leer Content-Length ----")
         asm("    int _cl = 0; int _hp = 0; int _hd = 0; int _el = 0; int _ec = 0;")
         asm("    while (!_hd) {")
         asm("        int _c = fgetc(stdin);")
-        asm("        if (_c == EOF) { _lsp_run = 0; break; }")
+        // Usar (-1) en vez de EOF porque tokens.syn redefine EOF como 57
+        asm("        if (_c == (-1)) { _lsp_run = 0; break; }")
         asm("        if (_hp < _LSP_BUF_SIZE - 1) { _lsp_buf[_hp++] = (char)_c; }")
         asm("        _lsp_buf[_hp] = 0;")
+        asm("        // Detectar CRLF CRLF (modo binario) y LF-only (modo texto)")
         asm("        if (_hp >= 4) {")
         asm("            char* _x = _lsp_buf + _hp - 4;")
         asm("            if (_x[0]==13 && _x[1]==10 && _x[2]==13 && _x[3]==10) { _hd = 1; }")
@@ -84,7 +72,8 @@ funcion principal() -> entero:
         asm("    int _br = 0;")
         asm("    while (_br < _cl) {")
         asm("        int _c = fgetc(stdin);")
-        asm("        if (_c == EOF) { _lsp_run = 0; break; }")
+        // Usar (-1) en vez de EOF — mismo motivo
+        asm("        if (_c == (-1)) { _lsp_run = 0; break; }")
         asm("        _lsp_buf[_br++] = (char)_c;")
         asm("    }")
         asm("    if (!_lsp_run) break;")
@@ -102,20 +91,17 @@ funcion principal() -> entero:
         asm("    int _is_notif = (_id.tipo < 0);")
         asm("    int _method_known = 0;")
 
-        // ---- initialize ----
         asm("    if (strcmp(_ms, \"initialize\") == 0) {")
         asm("        _method_known = 1;")
-        asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":1,\\\"result\\\":{\\\"capabilities\\\":{\\\"textDocumentSync\\\":{\\\"openClose\\\":true,\\\"change\\\":1,\\\"save\\\":{\\\"includeText\\\":true}}},\\\"serverInfo\\\":{\\\"name\\\":\\\"synapse-lsp-native\\\",\\\"version\\\":\\\"0.2.1\\\"}}}\";")
+        asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":1,\\\"result\\\":{\\\"capabilities\\\":{\\\"textDocumentSync\\\":{\\\"openClose\\\":true,\\\"change\\\":1,\\\"save\\\":{\\\"includeText\\\":true}}},\\\"serverInfo\\\":{\\\"name\\\":\\\"synapse-lsp-native\\\",\\\"version\\\":\\\"0.2.5\\\"}}}\";")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", (int)strlen(_R), _R);")
         asm("        fflush(stdout);")
         asm("    }")
 
-        // ---- initialized (notification, no response) ----
         asm("    if (strcmp(_ms, \"initialized\") == 0) {")
         asm("        _method_known = 1;")
         asm("    }")
 
-        // ---- shutdown ----
         asm("    if (strcmp(_ms, \"shutdown\") == 0) {")
         asm("        _method_known = 1;")
         asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":null,\\\"result\\\":null}\";")
@@ -124,13 +110,11 @@ funcion principal() -> entero:
         asm("        _lsp_run = 0;")
         asm("    }")
 
-        // ---- exit ----
         asm("    if (strcmp(_ms, \"exit\") == 0) {")
         asm("        _method_known = 1;")
         asm("        _lsp_run = 0;")
         asm("    }")
 
-        // ---- textDocument/didOpen / didChange / didSave ----
         asm("    if (strcmp(_ms, \"textDocument/didOpen\") == 0 || strcmp(_ms, \"textDocument/didChange\") == 0 || strcmp(_ms, \"textDocument/didSave\") == 0) {")
         asm("        _method_known = 1;")
         asm("        NodoJson _td = _json_object_get(_params, (CadenaSegura){12,\"textDocument\"});")
@@ -160,50 +144,38 @@ funcion principal() -> entero:
         asm("        }")
         asm("        strncpy(_lsp_uri, _uri, _LSP_MAX_URI-1);")
 
-        // ===== PIPELINE NATIVA: tokenizar -> parsear -> F8 semantico =====
+        // Pipeline nativa
         asm("        CadenaSegura _fs = { .longitud = (int)strlen(_text), .datos = _text };")
         asm("        int _diag_count = 0;")
         asm("        char _diag_json[_LSP_BUF_SIZE/2]; _diag_json[0] = 0;")
-
-        // Tokenizar
         asm("        extern int tokenizar(CadenaSegura);")
         asm("        extern _P_Token _P_tks[];")
         asm("        extern int _P_ntks, _P_tpos, _P_p_err;")
         asm("        int _nt = tokenizar(_fs);")
-
         asm("        if (_nt < 0) {")
         asm("            if (_P_ntks > 0) { _el = _P_tks[_P_ntks-1].linea - 1; _ec = _P_tks[_P_ntks-1].col; }")
-        asm("            if (_el < 0) _el = 0; if (_ec < 0) _ec = 0;")
         asm("            _diag_count = 1;")
-        asm("            snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_LEX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error lexico\\\"}]\", _el, _ec, _el, _ec+1);")
+        asm("            snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_LEX\\\",\\\"source\\\":\\\"synapse\\\"}]\", _el, _ec, _el, _ec+1);")
         asm("        }")
-
         asm("        if (_nt >= 0) {")
         asm("            extern struct Programa parsear(CadenaSegura);")
-        asm("            extern int _P_ntks, _P_tpos, _P_p_err;")
         asm("            _P_p_err = 0;")
         asm("            struct Programa _ast = parsear(_fs);")
-
         asm("            if (_P_p_err != 0) {")
         asm("                if (_P_tpos > 0 && _P_tpos <= _P_ntks) { _el = _P_tks[_P_tpos-1].linea - 1; _ec = _P_tks[_P_tpos-1].col; }")
-        asm("                if (_el < 0) _el = 0; if (_ec < 0) _ec = 0;")
         asm("                _diag_count = 1;")
-        asm("                snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SYNTAX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error sintactico\\\"}]\", _el, _ec, _el, _ec+1);")
+        asm("                snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SYNTAX\\\",\\\"source\\\":\\\"synapse\\\"}]\", _el, _ec, _el, _ec+1);")
         asm("            }")
-
         asm("            if (_P_p_err == 0) {")
         asm("                int _s_cnt=0,_s_lvl=0,_s_err=0;")
         asm("                char _sn[4096][64],_st[4096][64]; int _sl[4096],_sc[4096];")
         asm("                #define _SEM_SD(n,t,c) do{ int _i; for(_i=0;_i<_s_cnt;_i++) if(strcmp(_sn[_i],n)==0&&_sl[_i]==_s_lvl){ _s_err=1; _i=-2; break; } if(_i>=0||_s_cnt==0){ if(_i<0||_i>=_s_cnt)_i=_s_cnt; strcpy(_sn[_i],n); strcpy(_st[_i],t); _sl[_i]=_s_lvl; _sc[_i]=c; _s_cnt++; } }while(0)")
         asm("                #define _SEM_SI() _s_lvl++")
         asm("                #define _SEM_SO() do{ while(_s_cnt>0&&_sl[_s_cnt-1]==_s_lvl) _s_cnt--; _s_lvl--; }while(0)")
-
         asm("                { struct ListaNodo* _lp=_ast.sentencias; while(_lp){ void* _n=_lp->cabeza; if(_n){")
         asm("                    const char* _tp=((struct Nodo*)_n)->tipo.datos;")
         asm("                    if(strcmp(_tp,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f=(struct DefinicionFuncion*)_n; _SEM_SD(_f->nombre.datos,\"int\",0); }")
-        asm("                    if(strcmp(_tp,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x=(struct DeclaracionExterna*)_n; _SEM_SD(_x->nombre.datos,\"int\",0); }")
         asm("                } _lp=_lp->cola; }}")
-
         asm("                { struct ListaNodo* _lp=_ast.sentencias; while(_lp){ void* _n=_lp->cabeza; if(_n){")
         asm("                    const char* _tp=((struct Nodo*)_n)->tipo.datos;")
         asm("                    if(strcmp(_tp,\"DefinicionFuncion\")==0){")
@@ -223,17 +195,14 @@ funcion principal() -> entero:
         asm("                        _SEM_SO();")
         asm("                    }")
         asm("                } _lp=_lp->cola; }}")
-
-        asm("                if (_s_err) { _diag_count = 1; snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":0,\\\"character\\\":0},\\\"end\\\":{\\\"line\\\":0,\\\"character\\\":1}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SEM\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error semantico (redefinicion o const reassign)\\\"}]\", _el, _ec, _el, _ec+1); } else { strcpy(_diag_json, \"[]\"); }")
+        asm("                if (_s_err) { _diag_count = 1; snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":0,\\\"character\\\":0},\\\"end\\\":{\\\"line\\\":0,\\\"character\\\":1}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SEM\\\",\\\"source\\\":\\\"synapse\\\"}]\", _el, _ec, _el, _ec+1); } else { strcpy(_diag_json, \"[]\"); }")
         asm("            }")
         asm("        }")
-
         asm("        int _nn = snprintf(_lsp_buf, _LSP_BUF_SIZE, \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":%s}}\", _uri, _diag_json);")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", _nn, _lsp_buf);")
         asm("        fflush(stdout);")
         asm("    }")
 
-        // ---- textDocument/didClose ----
         asm("    if (strcmp(_ms, \"textDocument/didClose\") == 0) {")
         asm("        _method_known = 1;")
         asm("        int _n = snprintf(_lsp_buf, _LSP_BUF_SIZE, \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":[]}}\", _lsp_uri);")
@@ -242,7 +211,6 @@ funcion principal() -> entero:
         asm("        _lsp_uri[0] = 0;")
         asm("    }")
 
-        // ---- Method not found ----
         asm("    if (!_method_known) {")
         asm("        if (!_is_notif) {")
         asm("            const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":null,\\\"error\\\":{\\\"code\\\":-32601,\\\"message\\\":\\\"Method not found\\\"}}\";")
@@ -251,7 +219,6 @@ funcion principal() -> entero:
         asm("        }")
         asm("    }")
 
-        // Cleanup
         asm("    _json_nodo_liberar(_method);")
         asm("    _json_nodo_liberar(_id);")
         asm("    _json_nodo_liberar(_params);")
