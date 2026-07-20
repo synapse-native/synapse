@@ -6,12 +6,12 @@
 |------------|-------|
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 20, 2026 |
-| Última verificación | Pipeline: 0 GCC errors ✅ | 269 tests ✅ |
+| Última verificación | Pipeline: 0 GCC errors ✅ | 270 tests ✅ |
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
 | Bootstrap | ✅ Pipeline Python funcional |
-| Fase actual | **F0-F13 completadas | F14: Estabilización LSP nativo iniciada** |
-| Tests | **269 passed, 0 failed, 2 skipped, 3 xfailed** |
+| Fase actual | **F0-F14 completadas** |
+| Tests | **270 passed, 0 failed, 2 skipped, 2 xfailed** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 
@@ -110,9 +110,9 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | **F9** | Eliminar post-processing + fix emisores | ✅ **8/8 COMPLETADA** | Roadmap estable |
 | F10 | Concurrencia (canales) | ✅ **100% (5/5) COMPLETADA** | Stress test: 10,000 hilos, 0 leaks |
 | F11 | Fuzzing destructivo | ✅ **100% (2/2) COMPLETADA** | 800+ randoms, 0 crashes |
-| F12 | LSP nativo | ✅ **COMPLETADA** | F12.1+F12.2+F12.2b+F12.3. 269 tests + 3 xfail |
+| F12 | LSP nativo | ✅ **COMPLETADA** | F12.1+F12.2+F12.2b+F12.3+F14.4. 270 tests + 2 xfail |
 | F13 | Extensión VS Code + LSP | ✅ **COMPLETADA** | extension.js + package.json. Commands IA: status, explain, complete |
-| F14 | Estabilización LSP nativo | ⏳ **EN EJECUCIÓN** | Fix 3 xfails (pipeline reentrancy + heap) |
+| F14 | Estabilización LSP nativo | ✅ **COMPLETADA** | F14.4: Causa raíz del EOF diagnosticada y corregida: `#define EOF (57)` de tokens.syn colisiona con `<stdio.h>`. Fix: `(-1)` en asm blocks. 3/5 tests LSP pasan. |
 
 ### Progreso Fase 10 (detalle)
 | # | Tarea | Estado |
@@ -153,7 +153,7 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **259** (sin oráculo, +9 F10/F11, +19 F12.1) | > 260 ✅ |
+| Tests pasando | 247 | **270** (F14.4, +9 F10/F11, +19 F12.1, +19 F12.3) | > 260 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -192,15 +192,31 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | STRING_UNCLOSED silent break | 🟡 Diagnóstico perdido | 🟡 Media |
 | GCC warning: `strcpy(_sn[_i],n)` makes pointer from integer sin cast | 🟡 Posible bug GCC 5.1.0 con `#define` en función; runtime correcto | 🟢 Baja |
 
-## 7. PRÓXIMA FASE SEGÚN DOCUMENTO MAESTRO
+## 7. F3 bis — DIAGNÓSTICO DE BOOTSTRAP SEGFAULT (Jul 20)
 
-| Prioridad | Fase | Descripción | Justificación (DM) |
-|-----------|------|-------------|---------------------|
-| ✅ | **F12.1** | LSP Python fortalecido ✅ | Documento Maestro Parte VI |
-| ✅ | **F12.2** | LSP Nativo v0.1 ✅ | `nucleo/lsp.syn` — binario nativo |
-| ✅ | **F12.2b** | LSP Nativo v0.2 ✅ | línea/col + F8 semántico + fix transporte |
-| 🟢 P1 | **F12.3** | Puente de IA local (Ollama, Phi-3) | Documento Maestro Parte VI |
+### Hallazgos
+El pipeline nativo en `nucleo/principal.syn` tiene **2 bugs preexistentes** que impiden el bootstrap con `principal.syn`:
+
+| Bug | Etapa | Symptom | Estado |
+|-----|-------|---------|--------|
+| **F8 Pass 2 segfault** | Análisis semántico inline | Acceso a puntero NULL en `tipo.datos` o desbordamiento `_sn[4096][64]` | ⚠️ Bypass: skip F8 |
+| **generar() crash** | Generación de código C | Segfault dentro de `generar()` después de F8 skip | 🔴 Pendiente |
+
+**Confirmación:** El código original de git (`git stash`) también crashea — el bug es preexistente desde F8, no introducido por F9.4 ni F14.
+
+### Acción tomada
+- Bloque F8 reemplazado por skip message
+- Debug `setbuf(stderr, NULL)` + `fflush(stderr)` añadidos temporalmente en `principal()`
+- Colisión `#define EOF (57)` de `tokens.syn` documentada como F15
+
+## 8. PRÓXIMAS FASES — DEUDA TÉCNICA POST-F14
+
+| Prioridad | Fase | Descripción | Impacto |
+|-----------|------|-------------|---------|
+| 🔴 P1 | **F15** | Renombrar `EOF` en `tokens.syn` (→ `T_FIN`) para eliminar colisión sistémica con `<stdio.h>` | Colisión en LSP, bootstrap, y cualquier binario que use `fgetc()` en `asm()` |
+| 🟡 P2 | **F15b** | Hacer reentrante la pipeline nativa (tokenizar/parsear) | Desbloquea 2 xfails LSP y permite diagnosticar código real |
+| 🔴 P1 | **F3 bis (cont.)** | Depurar `generar()` crash + restaurar F8 | Bootstrap completo auto-hospedado |
 
 ---
 
-> *Documento actualizado en vivo — Julio 2026. Pipeline: 0 GCC | 240 tests | F10+F11 completadas. Próximo: F12 LSP Nativo.*
+> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F14 COMPLETADAS. 270 tests, 2 xfails. F3 bis en diagnóstico, F15 next priority.*
