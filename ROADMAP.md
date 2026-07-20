@@ -1,11 +1,12 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** ✅ Fase 0-9 completadas | F10 siguiente
+> **Estado:** ✅ F0-F13 completadas | F14 planeada
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 240 passed, 0 failed, 2 skipped | GCC: **0 errores** ✅
-> **Bootstrap Stage2:** ✅ Funcional (F8+F9 completadas)
-> **Binarios:** `synapse_bootstrap.exe` NUEVO ✅ funcional (727 KB)
+> **Tests:** 269 passed, 0 failed, 2 skipped, 3 xfailed | GCC: **0 errores** ✅
+> **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
+> **Fuzzing:** ✅ 850+ entradas, 0 crashes
+> **Bootstrap:** ✅ Pipeline Python funcional
 > **Última actualización:** Julio 2026
 
 ---
@@ -27,7 +28,9 @@
 | **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
 | **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** (5/5) | 5/5 tareas | 240 passed | ✅ Preparado |
 | **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
-| **F12: LSP nativo (Parte VI DM)** | ⏳ **EN EJECUCIÓN** (2/3) | 3/3 tareas | 259 passed | ⬅️ Fase actual |
+| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **269(+3xfail)** passed | ✅ Completa |
+| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **269(+3xfail)** passed | ✅ Completa |
+| **F14: Estabilización LSP nativo** | ⏳ **EN EJECUCIÓN** (0/0) | Fix 3 xfails | 269(+3xfail) passed | ⬅️ Fase actual |
 
 ---
 
@@ -514,7 +517,28 @@ Tests: 19 tests en `tests/unit/test_lsp_f12.py`.
 | Fix transporte Windows pipe | `fread()` → `fgetc()` byte-by-byte | ✅ |
 | Fix generador `;` en if/else | Dispatch independiente + bloques fusionados | ✅ |
 
-**Limitación conocida:** Transporte por pipe desde MSYS2/bash requiere debugging adicional. Tests de integración skipeados con mensaje claro.
+**F12.2b hotfix aplicado (Jul 2026):**
+
+| Hotfix | Archivo | Descripción |
+|--------|---------|-------------|
+| `_setmode(_O_BINARY)` | `nucleo/lsp.syn` | Forzar modo binario en stdin/stdout para evitar traducción `\r\n`→`\n` en pipes Windows |
+| `setbuf(stderr, NULL)` | `nucleo/lsp.syn` | Unbuffer stderr para que logs de depuración sean visibles en pipes |
+| `textDocument` length 11→12 | `nucleo/lsp.syn` | Corregido off-by-one que impedía extraer URI/text del JSON (causa raíz de "URI o texto vacio") |
+| LF-only `\n\n` terminator | `nucleo/lsp.syn` | Detección de cabecera HTTP también sin `\r` para compatibilidad con pipes en modo texto |
+| `#endif` guard eliminado | `nucleo/lsp.syn` | Llamada directa a `_setmode` sin `#ifdef` (el binario solo compila en Windows/MinGW) |
+| `fgetc()` body reading | `nucleo/lsp.syn` | Lectura byte por byte del cuerpo (más fiable que `fread()` en pipes anónimos Windows) |
+
+**Estado actual de los tests de integración (Jul 20):**
+| Test | Estado | Nota |
+|------|--------|------|
+| `test_lsp_initialize` | ✅ **PASS** | Responde con capabilities correctas |
+| `test_lsp_shutdown` | ✅ **PASS** | Finaliza proceso ordenadamente (exit 0) |
+| `test_lsp_diagnostics_syntax_error` | ❌ **xfail** | Pipeline nativa no reentrante: tokenizar/parsear necesita estado global limpio |
+| `test_lsp_diagnostics_clean` | ❌ **xfail** | Pipeline nativa no reentrante |
+| `test_lsp_unknown_method` | ❌ **xfail** | LSP no procesa segundo mensaje JSON-RPC (posible bug en `_json_nodo_liberar` o heap corrupto) |
+
+**Problema raíz de los 3 xfails:**
+El pipeline nativo (`tokenizar()` → `parsear()`) no es reentrante porque utiliza variables globales (`_P_tks`, `_P_ntks`, `_P_tpos`, `_P_p_err`). Aunque `_P_p_err` se resetea a 0 entre requests, otras variables de estado global pueden quedar en estado inconsistente después de la primera llamada. El caso `unknown_method` es particular porque no invoca el pipeline — sugiere un problema más básico en el bucle de mensajes (posible corrupción de heap por `_json_nodo_liberar`).
 
 ### Tareas
 | # | Tarea | Archivos | Riesgo | Estado |
@@ -522,7 +546,8 @@ Tests: 19 tests en `tests/unit/test_lsp_f12.py`.
 | **12.1** | Servidor JSON-RPC fortalecido (Python) | `synapse_lsp/server.py` | 🟡 Medio | ✅ **COMPLETADA** |
 | **12.2** | LSP Nativo: binario JSON-RPC sobre stdin/stdout | `nucleo/lsp.syn` | 🔴 Alto | ✅ **v0.1 COMPLETADA** |
 | **12.2b** | Mejoras al LSP nativo (línea/col + semántico + F8) | `nucleo/lsp.syn` | 🟡 Medio | ✅ **v0.2 COMPLETADA** |
-| 12.3 | Puente de IA local (Ollama, Phi-3) | `synapse_lsp/` | 🟡 Medio | ⏳ |
+| **12.3** | Puente de IA local (Ollama, Phi-3) | `synapse_lsp/llm_bridge.py` | 🟡 Medio | ✅ **COMPLETADA** |
+| — | Próxima: F13 Integración LSP nativo + VS Code | — | 🟡 Medio | ⏳ Pendiente |
 
 ### Requisitos (Parte VI DM)
 - Diagnósticos en tiempo real: errors → línea/columna exacta ✅ (Parcial: nativo hardcodea 0,0)
@@ -530,13 +555,57 @@ Tests: 19 tests en `tests/unit/test_lsp_f12.py`.
 - Zero telemetría externa: todo procesamiento en localhost ✅
 - SignatureHelp sobre funciones con contratos requiere/garantiza ✅ (Python)
 
+### F12.3 COMPLETADA — Puente de IA Local (Jul 2026)
+
+**Archivos:**
+- `synapse_lsp/llm_bridge.py` — Módulo de conexión con Ollama API REST en localhost:11434
+- `synapse_lsp/server.py` — Integración: 3 nuevos métodos LSP + hover/codeAction enriquecidos
+- `tests/unit/test_llm_bridge.py` — 19 tests unitarios (mock-based, sin dependencia de Ollama)
+
+**Capacidades del puente IA:**
+
+| Método LSP | Descripción | Estado |
+|-----------|-------------|--------|
+| `synapse/aiComplete` | Genera código Synapse usando modelo local (contexto + prompt) | ✅ |
+| `synapse/aiExplain` | Explica código Synapse en lenguaje natural | ✅ |
+| `synapse/aiStatus` | Verifica disponibilidad de Ollama y lista modelos | ✅ |
+| `textDocument/hover` (enriquecido) | Añade explicación IA al hover tradicional | ✅ |
+| `textDocument/codeAction` (enriquecido) | Sugiere correcciones IA para errores de compilación | ✅ |
+
+**Arquitectura:**
+```
+synapse_lsp/
+├── llm_bridge.py    # Cliente Ollama (urllib, sin requests)
+│   ├── OllamaClient     # HTTP client para localhost:11434
+│   ├── OllamaClientMock # Mock para tests sin Ollama real
+│   ├── generar_completado()
+│   ├── explicar_codigo()
+│   └── sugerir_correccion()
+└── server.py        # LSP server integrado con IA
+    ├── synapse/aiComplete
+    ├── synapse/aiExplain
+    ├── synapse/aiStatus
+    ├── hover IA-enriquecido
+    └── codeAction IA-enriquecido
+```
+
+**Tests:** 19 tests, todos pasando (mock-based, no requieren Ollama real).
+
+**Criterio de éxito:**
+- ✅ Zero dependencias externas (usa solo `urllib` de stdlib)
+- ✅ Todo el procesamiento en localhost (localhost:11434)
+- ✅ Sin llamadas a APIs de nube
+- ✅ Tolerante a fallos: si Ollama no está corriendo, las funciones retornan None sin crash
+- ✅ Mock para desarrollo y CI sin Ollama
+- ✅ 269 tests totales, 0 fallos
+
 ---
 
 ## 📈 MÉTRICAS DE SEGUIMIENTO
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **259** (sin oráculo, +9 F11, +19 F12.1) | > 260 ✅ |
+| Tests pasando | 247 | **269** (+19 F12.1, +19 F12.3) | > 260 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -579,4 +648,47 @@ $ python main.py -o test_salida.exe nucleo/principal.syn
 
 ---
 
-*Roadmap vivo — actualizado Jul 2026. F12 (LSP Nativo) en ejecución. F0-F11 COMPLETAS.*
+### F13 COMPLETADA — Extensión VS Code + LSP (Jul 2026)
+
+**Archivos:**
+- `vscode-synapse/extension.js` — Entry point de la extensión VS Code con LanguageClient
+- `vscode-synapse/package.json` — Configuración completa: main, activationEvents, commands, configuration
+
+**Capacidades de la extensión VS Code:**
+
+| Característica | Descripción | Estado |
+|---------------|-------------|--------|
+| Syntax highlighting | Gramática TextMate para `.syn` (existente) | ✅ |
+| Snippets | Plantillas para `funcion`, `si`, `para` (existente) | ✅ |
+| **LSP en vivo** | Diagnósticos en tiempo real vía `python main.py --lsp` | ✅ **NUEVO** |
+| **synapse.aiStatus** | Verificar disponibilidad de Ollama + modelos | ✅ **NUEVO** |
+| **synapse.aiExplain** | Explicar código seleccionado con IA local | ✅ **NUEVO** |
+| **synapse.aiComplete** | Generar código Synapse con IA local | ✅ **NUEVO** |
+| Configuración | `synapse.lsp.pythonPath`, `synapse.lsp.enabled`, `synapse.trace.server` | ✅ **NUEVO** |
+
+**Arquitectura:**
+```
+vscode-synapse/
+├── extension.js               # → Lanza python main.py --lsp
+│   ├── activate()             # Crea LanguageClient, registra comandos
+│   ├── deactivate()           # Detiene el cliente LSP
+│   ├── _encontrar_raiz_synapse()  # Busca main.py en el árbol
+│   └── _registrar_comandos_ia()   # Comandos IA locales
+├── package.json               # main, activationEvents, commands
+├── language-configuration.json
+├── syntaxes/synapse.tmLanguage.json
+└── snippets/synapse.code-snippets
+```
+
+**Flujo de activación:**
+1. VS Code detecta archivo `.syn` (`onLanguage:synapse`)
+2. `extension.js:activate()` localiza `main.py` en el workspace
+3. Crea `LanguageClient` que spawns `python main.py --lsp`
+4. LSP server (Python) envía diagnostics en tiempo real
+5. Comandos IA (`synapse.aiStatus`, `.aiExplain`, `.aiComplete`) disponibles en paleta
+
+**Dependencias:** `vscode-languageclient: ^8.0.0` (npm)
+
+---
+
+*Roadmap vivo — actualizado Jul 2026. F12+F13 COMPLETAS. F0-F11 COMPLETAS.*

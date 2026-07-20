@@ -3,6 +3,11 @@ import json
 import textwrap
 from typing import Optional, Any, List, Dict
 from exceptions import SynapseError
+from synapse_lsp.llm_bridge import (
+    generar_completado,
+    explicar_codigo,
+    sugerir_correccion,
+)
 
 # ----------------------------------------------------------------------
 # Synapse LSP Server — JSON-RPC 2.0 daemon over stdin/stdout
@@ -938,6 +943,9 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
                         "save": {"includeText": True},
                     },
                     "hoverProvider": True,
+                    "synapseAICompletionProvider": {
+                        "triggerCharacters": ["//", "/**"],
+                    },
                     "completionProvider": {
                         "triggerCharacters": [".", ":"],
                     },
@@ -951,7 +959,11 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
                 },
                 "serverInfo": {
                     "name": "synapse-lsp",
-                    "version": "0.3.0",
+                    "version": "0.4.0",
+                    "ai": {
+                        "provider": "ollama",
+                        "local_only": True,
+                    },
                 },
             },
         }
@@ -994,6 +1006,13 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
 
     if metodo == "textDocument/hover":
         resultado = _manejar_hover(msg)
+        # Enriquecer con IA local si esta disponible
+        ia_resultado = _manejar_hover_ia(msg)
+        if ia_resultado and resultado is not None:
+            if isinstance(resultado.get("contents"), dict):
+                ia_markdown = ia_resultado.get("contents", {}).get("value", "")
+                existing = resultado.get("contents", {}).get("value", "")
+                resultado["contents"]["value"] = existing + "\n\n---\n\n" + ia_markdown
         return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
     if metodo == "textDocument/completion":
@@ -1014,16 +1033,204 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
 
     if metodo == "textDocument/codeAction":
         resultado = _manejar_code_action(msg)
+        # Enriquecer con IA local
+        ia_actions = _manejar_code_action_ia(msg)
+        if ia_actions:
+            if resultado is None:
+                resultado = ia_actions
+            else:
+                resultado.extend(ia_actions)
         return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
     if metodo == "textDocument/formatting":
         resultado = _manejar_formatting(msg)
         return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
+    # ======================================================================
+    # F12.3: LLM Local - Metodos personalizados de IA
+    # ======================================================================
+    if metodo == "synapse/aiComplete":
+        resultado = _manejar_ai_complete(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "synapse/aiExplain":
+        resultado = _manejar_ai_explain(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "synapse/aiStatus":
+        resultado = _manejar_ai_status(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
     if msg_id is not None:
         return {"jsonrpc": "2.0", "id": msg_id, "result": None}
 
     return None
+
+
+# ======================================================================
+# F12.3: Manejadores de IA Local
+# ======================================================================
+
+def _manejar_ai_complete(msg: dict) -> Optional[dict]:
+    """synapse/aiComplete: Genera codigo Synapse con IA local."""
+    params = msg.get("params", {})
+    uri = params.get("textDocument", {}).get("uri", "")
+    contexto = params.get("context", "")
+    prompt = params.get("prompt", "")
+
+    doc_info = _obtener_documento(uri)
+    buffer_actual = doc_info["texto"] if doc_info else ""
+
+    codigo_generado = generar_completado(buffer_actual or contexto, prompt)
+
+    if codigo_generado is None:
+        return {
+            "ai_available": False,
+            "message": "IA local no disponible. Instala Ollama y un modelo (ej. phi3:mini).",
+            "code": None,
+        }
+
+    return {
+        "ai_available": True,
+        "provider": "ollama",
+        "code": codigo_generado,
+    }
+
+
+def _manejar_ai_explain(msg: dict) -> Optional[dict]:
+    """synapse/aiExplain: Explica codigo Synapse con IA local."""
+    params = msg.get("params", {})
+    uri = params.get("textDocument", {}).get("uri", "")
+    codigo = params.get("code", "")
+
+    if not codigo:
+        doc_info = _obtener_documento(uri)
+        if doc_info:
+            # Extraer la linea o bloque alrededor del cursor
+            pos = params.get("position", {})
+            linea = pos.get("line", 0)
+            lineas = doc_info["texto"].split("\n")
+            if 0 <= linea < len(lineas):
+                codigo = lineas[linea]
+
+    if not codigo:
+        return {"ai_available": False, "message": "No hay codigo para explicar.", "explanation": None}
+
+    explicacion = explicar_codigo(codigo)
+
+    if explicacion is None:
+        return {"ai_available": False, "message": "IA local no disponible.", "explanation": None}
+
+    return {
+        "ai_available": True,
+        "provider": "ollama",
+        "explanation": explicacion,
+        "code": codigo,
+    }
+
+
+def _manejar_ai_status(msg: dict) -> dict:
+    """synapse/aiStatus: Verifica disponibilidad de IA local."""
+    from synapse_lsp.llm_bridge import _obtener_cliente
+    cliente = _obtener_cliente()
+    disponible = cliente.verificar_disponible()
+    modelos = cliente.listar_modelos() if disponible else []
+
+    return {
+        "ai_available": disponible,
+        "provider": "ollama" if disponible else None,
+        "host": "localhost:11434",
+        "modelos": modelos,
+        "local_only": True,
+        "message": "IA local lista" if disponible else "Ollama no detectado. Instalalo en https://ollama.ai",
+    }
+
+
+def _manejar_hover_ia(msg: dict) -> Optional[dict]:
+    """Enriquece el hover con explicacion de IA si esta disponible."""
+    params = msg.get("params", {})
+    uri = params.get("textDocument", {}).get("uri", "")
+    pos = params.get("position", {})
+    linea = pos.get("line", 0)
+    columna = pos.get("character", 0)
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None:
+        return None
+
+    texto = doc_info["texto"]
+    palabra = _obtener_palabra_en_posicion(texto, linea, columna)
+    if not palabra:
+        return None
+
+    # Obtener la linea actual para contexto
+    lineas = texto.split("\n")
+    if 0 <= linea < len(lineas):
+        codigo_linea = lineas[linea].strip()
+        if codigo_linea:
+            explicacion = explicar_codigo(codigo_linea)
+            if explicacion:
+                return {
+                    "contents": {
+                        "kind": "markdown",
+                        "value": f"_✨ Explicacion IA:_\n\n{explicacion}",
+                    }
+                }
+
+    return None
+
+
+def _manejar_code_action_ia(msg: dict) -> Optional[list]:
+    """Anade code actions potenciados por IA local."""
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+    context = params.get("context", {})
+    diagnostics = context.get("diagnostics", [])
+
+    if not diagnostics:
+        return None
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None:
+        return None
+
+    texto = doc_info["texto"]
+    actions = []
+
+    for diag in diagnostics:
+        code = diag.get("code", "")
+        message = diag.get("message", "")
+        codigo_error = str(code)
+
+        # Solo para errores de compilacion conocidos
+        if not codigo_error.startswith("ERR_"):
+            continue
+
+        correccion = sugerir_correccion(codigo_error, message, texto)
+        if correccion:
+            actions.append({
+                "title": f"🤖 IA: Sugerir correccion para {codigo_error}",
+                "kind": "quickfix",
+                "diagnostics": [diag],
+                "edit": {
+                    "changes": {
+                        uri: [
+                            {
+                                "range": diag.get("range", {
+                                    "start": {"line": 0, "character": 0},
+                                    "end": {"line": 0, "character": 0},
+                                }),
+                                "newText": f"\n// IA sugiere:\n// {correccion}\n",
+                            }
+                        ]
+                    }
+                },
+                "isPreferred": False,
+            })
+            break  # Solo una sugerencia por request para evitar spam
+
+    return actions if actions else None
 
 
 # ======================================================================

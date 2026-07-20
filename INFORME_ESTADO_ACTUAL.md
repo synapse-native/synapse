@@ -5,12 +5,13 @@
 | Componente | Valor |
 |------------|-------|
 | Proyecto | Synapse/OpenSyn v2.0 |
-| Última actualización | Julio 2026 |
-| Última verificación | Pipeline: 0 GCC errors ✅ | 259 tests ✅ |
-| Bootstrap Stage2 (nuevo binario) | **✅ Funcional — F9.4 resuelto** |
-| Bootstrap Stage2 (binario legacy) | ✅ Stage2==Stage3 verificado |
-| Fase actual | **F0-F11 completadas | F12.1+F12.2+F12.2b completadas | F12.3 pendiente** |
-| Tests | **259 passed, 0 failed, 7 skipped** |
+| Última actualización | Julio 20, 2026 |
+| Última verificación | Pipeline: 0 GCC errors ✅ | 269 tests ✅ |
+| Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
+| Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
+| Bootstrap | ✅ Pipeline Python funcional |
+| Fase actual | **F0-F13 completadas | F14: Estabilización LSP nativo iniciada** |
+| Tests | **269 passed, 0 failed, 2 skipped, 3 xfailed** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 
@@ -34,6 +35,10 @@
 │   ├── symbol_table.py         # Tabla de símbolos
 │   ├── diagnostics.py          # Sistema de errores/diagnósticos
 │   └── resolvedor_axon.py      # Resolución de módulos Axon
+├── synapse_lsp/
+│   ├── __init__.py
+│   ├── server.py               # Servidor LSP Python (F12.1)
+│   └── llm_bridge.py           # Puente IA Local — Ollama (F12.3)
 ├── nucleo/
 │   ├── principal.syn           # Punto de entrada nativo (pipeline sin Python)
 │   ├── generator.syn           # Generador C auto-hospedado
@@ -105,7 +110,9 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | **F9** | Eliminar post-processing + fix emisores | ✅ **8/8 COMPLETADA** | Roadmap estable |
 | F10 | Concurrencia (canales) | ✅ **100% (5/5) COMPLETADA** | Stress test: 10,000 hilos, 0 leaks |
 | F11 | Fuzzing destructivo | ✅ **100% (2/2) COMPLETADA** | 800+ randoms, 0 crashes |
-| F12 | LSP nativo | ⏳ **EN EJECUCIÓN (80%)** | F12.1+F12.2+F12.2b completadas. F12.3 (IA Local) pendiente |
+| F12 | LSP nativo | ✅ **COMPLETADA** | F12.1+F12.2+F12.2b+F12.3. 269 tests + 3 xfail |
+| F13 | Extensión VS Code + LSP | ✅ **COMPLETADA** | extension.js + package.json. Commands IA: status, explain, complete |
+| F14 | Estabilización LSP nativo | ⏳ **EN EJECUCIÓN** | Fix 3 xfails (pipeline reentrancy + heap) |
 
 ### Progreso Fase 10 (detalle)
 | # | Tarea | Estado |

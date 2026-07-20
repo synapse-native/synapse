@@ -1,21 +1,36 @@
 {
     "name": "synapse",
     "displayName": "Synapse Language",
-    "description": "Synapse language support for VS Code",
-    "version": "0.1.0",
+    "description": "Synapse language support for VS Code — LSP server + AI local (Ollama)",
+    "version": "0.2.0",
+    "publisher": "synapse-lang",
+    "license": "MIT",
     "engines": {
         "vscode": "^1.60.0"
     },
     "categories": [
         "Programming Languages",
-        "Snippets"
+        "Snippets",
+        "Linters",
+        "Formatters"
     ],
+    "activationEvents": [
+        "onLanguage:synapse",
+        "onCommand:synapse.aiStatus",
+        "onCommand:synapse.aiExplain",
+        "onCommand:synapse.aiComplete"
+    ],
+    "main": "./extension.js",
+    "dependencies": {
+        "vscode-languageclient": "^8.0.0"
+    },
     "contributes": {
         "languages": [
             {
                 "id": "synapse",
                 "aliases": ["Synapse", "synapse"],
-                "extensions": [".syn"]
+                "extensions": [".syn"],
+                "configuration": "./language-configuration.json"
             }
         ],
         "grammars": [
@@ -30,6 +45,41 @@
                 "language": "synapse",
                 "path": "./snippets/synapse.code-snippets"
             }
-        ]
+        ],
+        "commands": [
+            {
+                "command": "synapse.aiStatus",
+                "title": "Synapse: Verificar estado de IA local"
+            },
+            {
+                "command": "synapse.aiExplain",
+                "title": "Synapse: Explicar código con IA local"
+            },
+            {
+                "command": "synapse.aiComplete",
+                "title": "Synapse: Generar código con IA local"
+            }
+        ],
+        "configuration": {
+            "title": "Synapse",
+            "properties": {
+                "synapse.lsp.pythonPath": {
+                    "type": "string",
+                    "default": "python",
+                    "description": "Ruta al ejecutable de Python (ej: python3, /usr/bin/python3)"
+                },
+                "synapse.lsp.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Habilitar/deshabilitar el servidor LSP de Synapse"
+                },
+                "synapse.trace.server": {
+                    "type": "string",
+                    "enum": ["off", "messages", "verbose"],
+                    "default": "off",
+                    "description": "Traza la comunicación entre VS Code y el servidor LSP de Synapse"
+                }
+            }
+        }
     }
 }
