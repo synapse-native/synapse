@@ -456,7 +456,7 @@ Total: 300 | exit=0: 42 | exit=1: 258 | crash: 0 | timeout: 0 | error: 0
 
 ---
 
-## ⏳ FASE 12: LSP NATIVO (EN EJECUCIÓN — 40%)
+## ⏳ FASE 12: LSP NATIVO (EN EJECUCIÓN — 75%)
 
 ### Objetivo
 Implementar servidor LSP (Language Server Protocol) nativo según Documento Maestro Parte VI, con diagnósticos en tiempo real y puente de IA local.
@@ -473,26 +473,53 @@ Nuevos proveedores implementados en `synapse_lsp/server.py`:
 | **Formatting** | `textDocument/formatting` | Formateador básico: indentación 4 espacios, normalización |
 | **ERR_LIFETIME** | `publishDiagnostics` | Trazabilidad de ownership: prefijo `[ERR_LIFETIME]` en errores de variable movida |
 
-Capacidades declaradas en `initialize`:
-- `signatureHelpProvider` con triggerCharacters `["(", ","]`
-- `documentSymbolProvider: true`
-- `codeActionProvider: true`
-- `documentFormattingProvider: true`
+Tests: 19 tests en `tests/unit/test_lsp_f12.py`.
 
-Tests: 19 nuevos tests en `tests/unit/test_lsp_f12.py` — todos pasando.
+### F12.2 COMPLETADA — LSP Nativo v0.1 (Jul 2026)
+
+**Archivos:**
+- `nucleo/lsp.syn` — Servidor LSP nativo (Synapse → C)
+- `tests/integration/test_lsp_native.py` — 5 tests de integración
+- `nucleo/synapse_lsp_test.exe` — Binario compilado (727 KB)
+
+**Capacidades del binario nativo:**
+
+| Método LSP | Estado |
+|-----------|--------|
+| `initialize` | ✅ Capacidades declaradas (textDocumentSync, serverInfo) |
+| `initialized` | ✅ Sin respuesta (notificación) |
+| `textDocument/didOpen` | ✅ Tokeniza + parsea → publishDiagnostics |
+| `textDocument/didChange` | ✅ Tokeniza + parsea → publishDiagnostics |
+| `textDocument/didSave` | ✅ Tokeniza + parsea → publishDiagnostics |
+| `textDocument/didClose` | ✅ Limpia diagnostics del URI |
+| `shutdown` | ✅ Finaliza proceso ordenadamente |
+| `exit` | ✅ Finaliza inmediatamente |
+| Método desconocido | ✅ Error -32601 (si tiene id) / silencio (notificación) |
+
+**Infraestructura nativa utilizada:**
+- `std.json` -> `NodoJson`, `_json_parse` para parsear mensajes JSON-RPC
+- `tokenizar()` + `parsear()` + `_P_p_err` del pipeline nativo
+- `snprintf` + `fprintf` para serialización de respuestas
+- Transporte byte-by-byte con detección `\r\n\r\n` + Content-Length
+
+**Deuda técnica (F12.2b):**
+- Diagnósticos sin línea/columna exacta (hardcodean 0,0)
+- Sin análisis semántico nativo (F8 no invocado) → no detecta ERR_LIFETIME
+- Pipeline reporta errores GCC que no existen al compilar manualmente
 
 ### Tareas
 | # | Tarea | Archivos | Riesgo | Estado |
 |---|-------|----------|--------|--------|
 | **12.1** | Servidor JSON-RPC fortalecido (Python) | `synapse_lsp/server.py` | 🟡 Medio | ✅ **COMPLETADA** |
-| 12.2 | Migrar LSP a binario nativo (sin Python) | `nucleo/lsp.syn` | 🔴 Alto | ⏳ |
+| **12.2** | LSP Nativo: binario JSON-RPC sobre stdin/stdout | `nucleo/lsp.syn` | 🔴 Alto | ✅ **v0.1 COMPLETADA** |
+| 12.2b | Mejoras al LSP nativo (línea/col + semántico) | `nucleo/lsp.syn` | 🟡 Medio | ⏳ **POSTERIOR** |
 | 12.3 | Puente de IA local (Ollama, Phi-3) | `synapse_lsp/` | 🟡 Medio | ⏳ |
 
 ### Requisitos (Parte VI DM)
-- Diagnósticos en tiempo real: errors → línea/columna exacta ✅
-- Trazabilidad de ownership: `ERR_LIFETIME` con línea exacta de invalidación ✅ (parcial)
+- Diagnósticos en tiempo real: errors → línea/columna exacta ✅ (Parcial: nativo hardcodea 0,0)
+- Trazabilidad de ownership: `ERR_LIFETIME` ✅ (Python) / ❌ (Nativo: no invoca F8)
 - Zero telemetría externa: todo procesamiento en localhost ✅
-- SignatureHelp sobre funciones con contratos requiere/garantiza ✅
+- SignatureHelp sobre funciones con contratos requiere/garantiza ✅ (Python)
 
 ---
 
