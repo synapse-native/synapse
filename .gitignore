@@ -1,76 +1,9 @@
-﻿# Binarios
 *.exe
 *.o
-*.obj
-*.lib
-*.dll
-*.pdb
-*.zip
-
-# Generados por compilador (raíz)
-/*.c
-/*.syn
-/*.syn.json
-
-# Temp / Debug
-_temp_*
-_out_*
-salida_*
-*.bak
-*.bak2
-stderr.txt
-stdout.txt
-test_fs_output.txt
-
-# Python cache
-__pycache__/
 *.pyc
-*.pyo
-*.egg-info/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Axon dependencies
-axon_modules/
-axon_src/
-paquetes_oficiales/
-
-# Build output
+synapse_unity.c
 build/
-dist/
-
-# Orquestador generated files
-opensyn/principal.c
-opensyn/principal.exe
-
-# Test artifacts (direct children only)
-tests/*.c
-tests/*.exe
-tests/*.syn
-tests/*.gguf
-tests/*.json
-tests/*_lib.py
-tests/*.o
-
-# Misc generated
-*.syn.c
-modo_oraculo=*
-_compilar_output.json
-_*.json
-opensyn_stdout.txt
-opensyn_stderr.txt
-
-# Node
-node_modules/
-package-lock.json
-
-# VS Code extension build
-vscode-extension/out/
-*.vsix
-
-# Axon lock
-axon.lock
+test_salida.exe
+test_output/
+nul
+tests/fuzz/_test_*.syn

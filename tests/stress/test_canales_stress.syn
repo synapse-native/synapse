@@ -1,0 +1,29 @@
+#lang: es
+// test_canales_stress.syn — Prueba de canales Synapse (F10.5)
+// Compilar: python main.py -o tests/stress/test_canales_stress.exe tests/stress/test_canales_stress.syn
+// Ejecutar: tests/stress/test_canales_stress.exe
+
+funcion worker(ch: CanalConcurrencia*, id: entero, n: entero) -> nulo:
+    log("Worker inicio", id)
+    x = 0
+    mientras x < n:
+        ch <- (id * 10000 + x)
+        x = x + 1
+    log("Worker fin", id)
+
+funcion receptor(ch: CanalConcurrencia*, total: entero) -> nulo:
+    recibidos = 0
+    mientras recibidos < total:
+        valor = ch ->
+        recibidos = recibidos + 1
+    log("Receptor: recibidos", recibidos)
+
+funcion principal() -> entero:
+    log("Inicio prueba de canales Synapse")
+    ch = canal(entero, 100)
+    log("Canal creado")
+    lanzar worker(ch, 1, 5)
+    lanzar worker(ch, 2, 5)
+    lanzar receptor(ch, 10)
+    log("Hilos lanzados")
+    retornar 0
