@@ -1,52 +1,43 @@
 import sys
 import json
-from typing import Optional, Any
+import textwrap
+from typing import Optional, Any, List, Dict
 from exceptions import SynapseError
 
-# ──────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------
 # Synapse LSP Server — JSON-RPC 2.0 daemon over stdin/stdout
 #
-# Regla de Oro: NUNCA llamar a sys.exit(). NUNCA dejar que una excepción
+# Regla de Oro: NUNCA llamar a sys.exit(). NUNCA dejar que una excepcion
 # del compilador suba al hilo principal. Capturar todo, formatear como
 # publishDiagnostics, y seguir escuchando.
-# ──────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------
 
 _SERVER_RUNNING = True
 
-# ──────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------
 # Document Store — mantiene el AST en memoria para hover, completions, etc.
-# Restricción arquitectónica: máximo 100 documentos abiertos para evitar
-# degradación de RAM.
-# ──────────────────────────────────────────────────────────────────────
+# Restriccion arquitectonica: maximo 100 documentos abiertos para evitar
+# degradacion de RAM.
+# ----------------------------------------------------------------------
 
 _MAX_DOCS = 100
-_DOCS: dict[str, dict] = {}  # uri -> {texto, ast, version}
+_DOCS: dict[str, dict] = {}  # uri -> {texto, ast, version, analizador}
 
-
-def _almacenar_documento(uri: str, texto: str, ast=None, version: int = 1) -> None:
+def _almacenar_documento(uri: str, texto: str, ast=None, version: int = 1, analizador=None) -> None:
     if len(_DOCS) >= _MAX_DOCS:
         _DOCS.pop(next(iter(_DOCS)))
-    _DOCS[uri] = {"texto": texto, "ast": ast, "version": version}
-
+    _DOCS[uri] = {"texto": texto, "ast": ast, "version": version, "analizador": analizador}
 
 def _eliminar_documento(uri: str) -> None:
     _DOCS.pop(uri, None)
-
 
 def _obtener_documento(uri: str) -> Optional[dict]:
     return _DOCS.get(uri)
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Transport Layer — raw stdin reader for Content-Length framing
-#
-# Punto histórico de falla del 90% de los servidores LSP artesanales.
-# Debe ser robusto contra:
-#   - Líneas extra entre cabeceras
-#   - Whitespace alrededor del número
-#   - Content-Length malformado
-#   - EOF prematuro sin mensaje
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 
 def _leer_mensaje() -> Optional[dict]:
     content_length: Optional[int] = None
@@ -85,9 +76,9 @@ def _leer_mensaje() -> Optional[dict]:
             return None
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Salida — respuesta JSON-RPC por stdout
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 
 def _enviar_respuesta(respuesta: dict) -> None:
     cuerpo = json.dumps(respuesta, ensure_ascii=False)
@@ -96,25 +87,19 @@ def _enviar_respuesta(respuesta: dict) -> None:
     sys.stdout.buffer.write(raw)
     sys.stdout.buffer.flush()
 
-
 def _enviar_notificacion(metodo: str, params: Any) -> None:
     _enviar_respuesta({"jsonrpc": "2.0", "method": metodo, "params": params})
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Conversión de errores internos → Diagnostics LSP
-#
-# Los errores de ownership (E-501, E-502, E-503) se convierten con
-# severidad 1 (Error) para que aparezcan como líneas rojas onduladas
-# en el editor en el momento exacto de la infracción.
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
+# Conversion de errores internos a Diagnostics LSP
+# ======================================================================
 
 _CODIGOS_OWNERSHIP = frozenset({
     "ERR_SEM_VAR_MOVIDA",
     "ERR_SEM_ACCESO_MEMORIA_MOVIDA",
     "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR",
 })
-
 
 def _errores_a_diagnostics(errores: list) -> list:
     lsp_diags = []
@@ -126,6 +111,12 @@ def _errores_a_diagnostics(errores: list) -> list:
             codigo = codigo.name
         codigo_str = str(codigo)
 
+        mensaje = err.get("mensaje", "Error desconocido")
+
+        # ERR_LIFETIME: anadir trazabilidad de ownership al mensaje
+        if codigo_str in _CODIGOS_OWNERSHIP:
+            mensaje = "[ERR_LIFETIME] " + mensaje
+
         lsp_diags.append({
             "range": {
                 "start": {"line": max(0, syn_linea - 1), "character": syn_columna},
@@ -134,38 +125,29 @@ def _errores_a_diagnostics(errores: list) -> list:
             "severity": 1,
             "code": codigo_str,
             "source": "synapse",
-            "message": err.get("mensaje", "Error desconocido"),
+            "message": mensaje,
         })
     return lsp_diags
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Compilación exprés (solo para diagnostics — no genera .c ni .exe)
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
+# Compilacion express (solo para diagnostics — no genera .c ni .exe)
+# ======================================================================
 
 def validar_documento(uri: str, codigo_fuente: str) -> list:
-    """Ejecuta la cadena de validación completa del compilador.
-    Retorna la lista de errores internos (cada uno con 'codigo', 'linea', 'columna', 'mensaje').
-    Nunca lanza excepción.
+    """Ejecuta la cadena de validacion completa del compilador.
+    Retorna la lista de errores internos.
+    Almacena el AST y el analizador semantico en el document store.
+    Nunca lanza excepcion.
     """
     import traceback
     try:
         from compilador.lexer import Lexer
-    except Exception as e:
-        sys.stderr.write(f"[LSP] ERROR importing Lexer: {e}\n{traceback.format_exc()}\n")
-        sys.stderr.flush()
-        return []
-    try:
         from compilador.parser import Parser
-    except Exception as e:
-        sys.stderr.write(f"[LSP] ERROR importing Parser: {e}\n")
-        sys.stderr.flush()
-        return []
-    from compilador.diagnostics import DiagnosticManager
-    try:
+        from compilador.diagnostics import DiagnosticManager
         from compilador.analizador_semantico import AnalizadorSemantico
     except Exception as e:
-        sys.stderr.write(f"[LSP] ERROR importing AnalizadorSemantico: {e}\n")
+        sys.stderr.write(f"[LSP] ERROR importing modules: {e}\n{traceback.format_exc()}\n")
         sys.stderr.flush()
         return []
 
@@ -191,6 +173,7 @@ def validar_documento(uri: str, codigo_fuente: str) -> list:
         sys.stderr.flush()
         return diag.errores
 
+    analizador = None
     try:
         analizador = AnalizadorSemantico(ast, diag)
         analizador.analizar()
@@ -198,17 +181,15 @@ def validar_documento(uri: str, codigo_fuente: str) -> list:
         sys.stderr.write(f"[LSP] Semantic exception: {exc}\n{traceback.format_exc()}\n")
         sys.stderr.flush()
 
-    # Almacenar el AST en el document store para hover/completions
-    _almacenar_documento(uri, codigo_fuente, ast)
+    # Almacenar el AST y analizador en el document store
+    _almacenar_documento(uri, codigo_fuente, ast, analizador=analizador)
 
     return diag.errores
-
 
 def _agregar_error_syntax(diag, error):
     from compilador.diagnostics import ErrorCodes
     from compilador.ast_nodes import Token, TokenID
     diag.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, error.linea, error.columna), mensaje=error.mensaje)
-
 
 def _enviar_diagnostics_archivo(uri: str, texto: str) -> None:
     try:
@@ -222,15 +203,12 @@ def _enviar_diagnostics_archivo(uri: str, texto: str) -> None:
         pass
 
 
-# ═══════════════════════════════════════════════════════════════════════
-# Manejador de Hover — expone contratos (requiere/garantiza)
-#
-# Cuando el usuario pasa el cursor sobre una función, el LSP responde
-# con su firma completa y los bloques de requiere/garantiza.
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
+# Hover — textDocument/hover
+# ======================================================================
 
 def _nodo_a_texto(expr) -> str:
-    """Convierte un nodo de expresión a su representación Synapse."""
+    """Convierte un nodo de expresion a su representacion Synapse."""
     from compilador.ast_nodes import (
         LiteralNumero, LiteralDecimal, LiteralCadena, Identificador,
         OpBinaria, OpUnaria, LlamadaFuncion, ExprAccesoCampo,
@@ -255,7 +233,6 @@ def _nodo_a_texto(expr) -> str:
     if isinstance(expr, ExprAccesoCampo):
         return f"{_nodo_a_texto(expr.objeto)}.{expr.nombre_campo}"
     return "?"
-
 
 def _construir_hover_funcion(fn) -> Optional[dict]:
     """Construye contenido hover para una DefinicionFuncion."""
@@ -289,7 +266,6 @@ def _construir_hover_funcion(fn) -> Optional[dict]:
         }
     }
 
-
 def _buscar_tipo_variable_en_ast(ast, nombre: str) -> Optional[str]:
     from compilador.ast_nodes import (
         Nodo, DeclaracionVariable, AsignacionVariable,
@@ -303,14 +279,14 @@ def _buscar_tipo_variable_en_ast(ast, nombre: str) -> Optional[str]:
                 return n.tipo
             if isinstance(n, AsignacionVariable) and n.nombre == nombre:
                 if isinstance(n.expresion, LiteralNumero):
-                    return 'int'
+                    return 'entero'
                 if isinstance(n.expresion, LiteralDecimal):
                     return 'decimal'
                 if isinstance(n.expresion, LiteralCadena):
                     return 'texto'
                 if isinstance(n.expresion, LiteralBooleano):
                     return 'booleano'
-                return 'int'
+                return 'entero'
             hijos = []
             if hasattr(n, 'cuerpo') and isinstance(n.cuerpo, list):
                 hijos.extend(n.cuerpo)
@@ -331,7 +307,6 @@ def _buscar_tipo_variable_en_ast(ast, nombre: str) -> Optional[str]:
         return _recorrer_nodos(ast.sentencias)
     return _recorrer_nodos([ast])
 
-
 def _obtener_palabra_en_posicion(texto: str, linea: int, columna: int) -> Optional[str]:
     lineas = texto.split("\n")
     if linea < 0 or linea >= len(lineas):
@@ -347,7 +322,6 @@ def _obtener_palabra_en_posicion(texto: str, linea: int, columna: int) -> Option
         fin += 1
     return linea_texto[inicio:fin]
 
-
 def _construir_hover_variable(nombre: str, tipo: str) -> dict:
     return {
         "contents": {
@@ -356,9 +330,7 @@ def _construir_hover_variable(nombre: str, tipo: str) -> dict:
         }
     }
 
-
 def _manejar_hover(msg: dict) -> Optional[dict]:
-    """Responde a textDocument/hover buscando función o variable en la posición del cursor."""
     params = msg.get("params", {})
     doc = params.get("textDocument", {})
     uri = doc.get("uri", "")
@@ -370,16 +342,13 @@ def _manejar_hover(msg: dict) -> Optional[dict]:
     if doc_info is None or doc_info["ast"] is None:
         return None
 
-    from compilador.ast_nodes import Programa, DefinicionFuncion, LlamadaFuncion
+    from compilador.ast_nodes import Programa, DefinicionFuncion as _DF
 
     ast = doc_info["ast"]
     if not isinstance(ast, Programa):
         return None
 
     texto = doc_info["texto"]
-    lineas = texto.split("\n")
-
-    from compilador.ast_nodes import DefinicionFuncion as _DF
 
     for s in ast.sentencias:
         if isinstance(s, _DF):
@@ -396,57 +365,42 @@ def _manejar_hover(msg: dict) -> Optional[dict]:
 
     palabra = _obtener_palabra_en_posicion(texto, linea, columna)
     if palabra:
-        from compilador.ast_nodes import DeclaracionVariable, AsignacionVariable, DefinicionFuncion
         tipo = _buscar_tipo_variable_en_ast(ast, palabra)
         if tipo:
             return _construir_hover_variable(palabra, tipo)
 
     return None
 
-
 def _buscar_llamada_en_nodo(nodo, linea: int, columna: int, programa) -> Optional[dict]:
-    """Busca recursivamente una LlamadaFuncion en la posición dada y resuelve su definición."""
     from compilador.ast_nodes import (
         DefinicionFuncion, LlamadaFuncion, SentenciaExpr, AsignacionVariable,
         SentenciaSi, SentenciaMientras, SentenciaRetornar,
         OpBinaria, OpUnaria, ExprAccesoCampo,
     )
 
-    if hasattr(nodo, 'linea') and hasattr(nodo, 'columna'):
-        if nodo.linea - 1 == linea:
-            pass  # podría estar en la línea correcta
-
     if isinstance(nodo, LlamadaFuncion):
         if nodo.linea - 1 == linea:
-            # Resolver la definición de la función llamada
             for s in programa.sentencias:
                 if isinstance(s, DefinicionFuncion) and s.nombre == nodo.nombre:
                     return _construir_hover_funcion(s)
         return None
 
-    # Recorrer hijos según el tipo de nodo
     if isinstance(nodo, SentenciaExpr):
         return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
-
     if isinstance(nodo, AsignacionVariable):
         return _buscar_llamada_en_nodo(nodo.expresion, linea, columna, programa)
-
     if type(nodo).__name__ == 'SentenciaRetornar':
         if nodo.expr:
             return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
-
     if isinstance(nodo, OpBinaria):
         r = _buscar_llamada_en_nodo(nodo.izquierdo, linea, columna, programa)
         if r:
             return r
         return _buscar_llamada_en_nodo(nodo.derecho, linea, columna, programa)
-
     if isinstance(nodo, OpUnaria):
         return _buscar_llamada_en_nodo(nodo.expr, linea, columna, programa)
-
     if isinstance(nodo, ExprAccesoCampo):
         return _buscar_llamada_en_nodo(nodo.objeto, linea, columna, programa)
-
     if isinstance(nodo, SentenciaSi):
         r = _buscar_llamada_en_nodo(nodo.condicion, linea, columna, programa)
         if r:
@@ -460,7 +414,6 @@ def _buscar_llamada_en_nodo(nodo, linea: int, columna: int, programa) -> Optiona
             if r:
                 return r
         return None
-
     if isinstance(nodo, SentenciaMientras):
         r = _buscar_llamada_en_nodo(nodo.condicion, linea, columna, programa)
         if r:
@@ -470,16 +423,12 @@ def _buscar_llamada_en_nodo(nodo, linea: int, columna: int, programa) -> Optiona
             if r:
                 return r
         return None
-
     return None
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Completado — textDocument/completion
-#
-# Sugerencias estáticas: palabras clave del lenguaje.
-# Sugerencias dinámicas: variables y funciones del scope actual.
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 
 _PALABRAS_CLAVE = [
     "si", "sino", "funcion", "retornar", "mientras", "para",
@@ -488,39 +437,6 @@ _PALABRAS_CLAVE = [
     "constante", "verdadero", "falso", "y", "o", "no",
     "requiere", "garantiza", "canal", "asm",
 ]
-
-
-def _obtener_simbolos_desde_tabla(uri: str) -> list:
-    doc_info = _obtener_documento(uri)
-    if doc_info is None or doc_info["ast"] is None:
-        return []
-    from compilador.ast_nodes import Programa, DefinicionFuncion, DefinicionEstructura
-    from compilador.diagnostics import DiagnosticManager
-    from compilador.analizador_semantico import AnalizadorSemantico
-    from compilador.symbol_table import Simbolo
-
-    ast = doc_info["ast"]
-    if not isinstance(ast, Programa):
-        return []
-
-    texto = doc_info["texto"]
-    fuente_lineas = texto.split("\n")
-    diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo=uri)
-    analizador = AnalizadorSemantico(ast, diag)
-    try:
-        analizador.analizar()
-    except Exception:
-        pass
-
-    simbolos = []
-    for nombre, sim in analizador.tabla._scopes[-1].items():
-        simbolos.append({
-            "label": nombre,
-            "kind": 6 if sim.es_constante else 6,
-            "detail": sim.tipo,
-        })
-    return simbolos
-
 
 _PALABRAS_CLAVE_LSP = [
     {"label": "si", "kind": 14, "detail": "keyword"},
@@ -551,6 +467,41 @@ _PALABRAS_CLAVE_LSP = [
     {"label": "asm", "kind": 14, "detail": "keyword"},
 ]
 
+def _obtener_simbolos_desde_tabla(uri: str) -> list:
+    doc_info = _obtener_documento(uri)
+    if doc_info is None or doc_info["ast"] is None:
+        return []
+    from compilador.ast_nodes import Programa
+    from compilador.diagnostics import DiagnosticManager
+    from compilador.analizador_semantico import AnalizadorSemantico
+
+    ast = doc_info["ast"]
+    if not isinstance(ast, Programa):
+        return []
+
+    # Reutilizar analizador almacenado si existe
+    analizador = doc_info.get("analizador")
+    if analizador is None:
+        texto = doc_info["texto"]
+        fuente_lineas = texto.split("\n")
+        diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo=uri)
+        analizador = AnalizadorSemantico(ast, diag)
+        try:
+            analizador.analizar()
+        except Exception:
+            pass
+
+    simbolos = []
+    try:
+        for nombre, sim in analizador.tabla._scopes[-1].items():
+            simbolos.append({
+                "label": nombre,
+                "kind": 6,
+                "detail": sim.tipo,
+            })
+    except (IndexError, AttributeError):
+        pass
+    return simbolos
 
 def _manejar_completado(msg: dict) -> Optional[dict]:
     params = msg.get("params", {})
@@ -558,12 +509,15 @@ def _manejar_completado(msg: dict) -> Optional[dict]:
     uri = doc.get("uri", "")
 
     items = list(_PALABRAS_CLAVE_LSP)
-
     simbolos = _obtener_simbolos_desde_tabla(uri)
     items.extend(simbolos)
 
     return {"isIncomplete": False, "items": items}
 
+
+# ======================================================================
+# Definicion — textDocument/definition
+# ======================================================================
 
 def _manejar_definicion(msg: dict) -> Optional[dict]:
     params = msg.get("params", {})
@@ -624,6 +578,348 @@ def _manejar_definicion(msg: dict) -> Optional[dict]:
         },
     }
 
+
+# ======================================================================
+# F12.1: SignatureHelp — textDocument/signatureHelp
+# Muestra la firma de la funcion cuando el usuario escribe '('
+# ======================================================================
+
+def _manejar_signature_help(msg: dict) -> Optional[dict]:
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+    pos = params.get("position", {})
+    linea = pos.get("line", 0)
+    columna = pos.get("character", 0)
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None or doc_info["ast"] is None:
+        return None
+
+    texto = doc_info["texto"]
+    # Obtener el nombre de la funcion antes del cursor
+    lineas = texto.split("\n")
+    if linea < 0 or linea >= len(lineas):
+        return None
+    linea_texto = lineas[linea][:columna]
+    # Buscar el ultimo '(' y el identificador antes
+    paren_idx = linea_texto.rfind("(")
+    if paren_idx < 0:
+        return None
+    antes_paren = linea_texto[:paren_idx].rstrip()
+    palabras = antes_paren.split()
+    if not palabras:
+        return None
+    nombre_funcion = palabras[-1].strip()
+
+    from compilador.ast_nodes import Programa, DefinicionFuncion
+    ast = doc_info["ast"]
+    if not isinstance(ast, Programa):
+        return None
+
+    # Buscar la funcion en el AST
+    for s in ast.sentencias:
+        if isinstance(s, DefinicionFuncion) and s.nombre == nombre_funcion:
+            params_str = ", ".join(
+                f"{p.nombre}: {p.tipo}" for p in s.parametros
+            )
+            ret = s.tipo_retorno if s.tipo_retorno else "nulo"
+            label = f"funcion {s.nombre}({params_str}) -> {ret}"
+            signature = {
+                "label": label,
+                "parameters": [
+                    {"label": f"{p.nombre}: {p.tipo}"}
+                    for p in s.parametros
+                ],
+            }
+            # Calcular activeParameter basado en cuantos argumentos ya hay escritos
+            after_paren = lineas[linea][columna:] if columna < len(lineas[linea]) else ""
+            # Contar comas en el texto desde el paren hasta el cursor
+            # (para editores que pasan el cursor DENTRO de los parens)
+            texto_argumentos = lineas[linea][paren_idx+1:columna]
+            # Contar comas no anidadas para determinar el parametro activo
+            nivel = 0
+            comas = 0
+            for c in texto_argumentos:
+                if c == '(':
+                    nivel += 1
+                elif c == ')':
+                    nivel -= 1
+                elif c == ',' and nivel == 0:
+                    comas += 1
+            active_param = min(comas, len(s.parametros) - 1) if s.parametros else 0
+
+            return {
+                "signatures": [signature],
+                "activeSignature": 0,
+                "activeParameter": max(0, active_param),
+            }
+
+    return None
+
+
+# ======================================================================
+# F12.1: DocumentSymbol — textDocument/documentSymbol
+# Arbol de simbolos para outline/navegacion
+# ======================================================================
+
+def _manejar_document_symbol(msg: dict) -> Optional[list]:
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None or doc_info["ast"] is None:
+        return None
+
+    from compilador.ast_nodes import (
+        Programa, DefinicionFuncion, DefinicionEstructura,
+        DeclaracionExterna, StmtConstante, DeclaracionVariable,
+    )
+
+    ast = doc_info["ast"]
+    if not isinstance(ast, Programa):
+        return None
+
+    symbols = []
+
+    # Tipos de simbolos LSP:
+    # 1=File, 2=Module, 3=Namespace, 4=Package, 5=Class, 6=Method,
+    # 7=Property, 8=Field, 9=Constructor, 10=Enum, 11=Interface,
+    # 12=Function, 13=Variable, 14=Constant, 15=String, 16=Number,
+    # 17=Boolean, 18=Array, 19=Object, 20=Key, 21=Null, 22=EnumMember,
+    # 23=Struct, 24=Event, 25=Operator, 26=TypeParameter
+
+    for s in ast.sentencias:
+        if isinstance(s, DefinicionFuncion):
+            nombre = s.nombre
+            params_str = ", ".join(f"{p.nombre}: {p.tipo}" for p in s.parametros)
+            ret = s.tipo_retorno if s.tipo_retorno else "nulo"
+            symbols.append({
+                "name": nombre,
+                "kind": 12,  # Function
+                "detail": f"({params_str}) -> {ret}",
+                "range": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, (s.linea or 0) + 0), "character": s.columna + len(nombre)},
+                },
+                "selectionRange": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(nombre)},
+                },
+                "children": [],
+            })
+            # Anadir parametros como hijos
+            for p in s.parametros:
+                symbols[-1]["children"].append({
+                    "name": p.nombre,
+                    "kind": 13,  # Variable
+                    "detail": p.tipo,
+                    "range": {
+                        "start": {"line": max(0, s.linea - 1), "character": 0},
+                        "end": {"line": max(0, s.linea - 1), "character": 0},
+                    },
+                    "selectionRange": {
+                        "start": {"line": max(0, s.linea - 1), "character": 0},
+                        "end": {"line": max(0, s.linea - 1), "character": 0},
+                    },
+                })
+
+        elif isinstance(s, DefinicionEstructura):
+            symbols.append({
+                "name": s.nombre,
+                "kind": 23,  # Struct
+                "range": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+                "selectionRange": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+                "children": [
+                    {
+                        "name": c.nombre,
+                        "kind": 8,  # Field
+                        "detail": c.tipo,
+                        "range": {
+                            "start": {"line": max(0, getattr(c, 'linea', 1) - 1), "character": getattr(c, 'columna', 0)},
+                            "end": {"line": max(0, getattr(c, 'linea', 1) - 1), "character": getattr(c, 'columna', 0) + len(c.nombre)},
+                        },
+                        "selectionRange": {
+                            "start": {"line": max(0, getattr(c, 'linea', 1) - 1), "character": getattr(c, 'columna', 0)},
+                            "end": {"line": max(0, getattr(c, 'linea', 1) - 1), "character": getattr(c, 'columna', 0) + len(c.nombre)},
+                        },
+                    }
+                    for c in (s.campos if hasattr(s, 'campos') else [])
+                ],
+            })
+
+        elif isinstance(s, DeclaracionExterna):
+            symbols.append({
+                "name": s.nombre,
+                "kind": 12,  # Function
+                "detail": "externo",
+                "range": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+                "selectionRange": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+            })
+
+        elif isinstance(s, StmtConstante):
+            symbols.append({
+                "name": s.nombre,
+                "kind": 14,  # Constant
+                "detail": "constante",
+                "range": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+                "selectionRange": {
+                    "start": {"line": max(0, s.linea - 1), "character": s.columna},
+                    "end": {"line": max(0, s.linea - 1), "character": s.columna + len(s.nombre)},
+                },
+            })
+
+    return symbols
+
+
+# ======================================================================
+# F12.1: CodeAction — textDocument/codeAction
+# Quick fixes para errores comunes del compilador
+# ======================================================================
+
+# Mapa de codigos de error a acciones de quick fix
+_CODE_ACTIONS = {
+    "ERR_SEM_VAR_NO_DECLARADA": {
+        "title": "Declarar variable con tipo 'entero'",
+        "kind": "quickfix",
+    },
+    "ERR_SEM_FUNC_NO_DEFINIDA": {
+        "title": "Crear funcion faltante",
+        "kind": "quickfix",
+    },
+    "ERR_FILE_NOT_FOUND": {
+        "title": "Verificar ruta del archivo",
+        "kind": "quickfix",
+    },
+    "ERR_LANG_NOT_SUPPORTED": {
+        "title": "Usar '#lang: es' para espanol",
+        "kind": "quickfix",
+    },
+}
+
+def _manejar_code_action(msg: dict) -> Optional[list]:
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+    context = params.get("context", {})
+    diagnostics = context.get("diagnostics", [])
+
+    actions = []
+    for diag in diagnostics:
+        code = diag.get("code", "")
+        if code in _CODE_ACTIONS:
+            action_info = _CODE_ACTIONS[code]
+            actions.append({
+                "title": action_info["title"],
+                "kind": action_info["kind"],
+                "diagnostics": [diag],
+                "edit": {
+                    "changes": {
+                        uri: [
+                            {
+                                "range": diag["range"],
+                                "newText": "",  # Placeholder
+                            }
+                        ]
+                    }
+                },
+                "isPreferred": False,
+            })
+
+    return actions if actions else None
+
+
+# ======================================================================
+# F12.1: Formateo — textDocument/formatting
+# Formateador basico: indentacion consistente, espacios, saltos de linea
+# ======================================================================
+
+def _formatear_codigo(texto: str, tab_size: int = 4) -> str:
+    """Formateador basico para codigo Synapse.
+    - Normaliza indentacion a 4 espacios
+    - Elimina espacios al final de lineas
+    - Normaliza saltos de linea
+    """
+    lineas = texto.split("\n")
+    resultado = []
+    indent_level = 0
+
+    for linea in lineas:
+        stripped = linea.strip()
+
+        # Lineas vacias: preservar sin modificar indentacion
+        if not stripped:
+            resultado.append("")
+            continue
+
+        # Disminuir indentacion si la linea comienza con cierre de bloque
+        if stripped in ("}", "])", ")", ":") or stripped.startswith("sino") or stripped.startswith("fin"):
+            indent_level = max(0, indent_level - 1)
+
+        resultado.append(" " * (indent_level * tab_size) + stripped)
+
+        # Aumentar indentacion si la linea termina con ':'
+        if stripped.endswith(":") and not stripped.startswith("#"):
+            indent_level += 1
+        # Aumentar para estructuras de control
+        if stripped in ("requiere:", "garantiza:"):
+            indent_level += 1
+
+    return "\n".join(resultado)
+
+def _manejar_formatting(msg: dict) -> Optional[list]:
+    params = msg.get("params", {})
+    doc = params.get("textDocument", {})
+    uri = doc.get("uri", "")
+    options = params.get("options", {})
+    tab_size = options.get("tabSize", 4)
+
+    doc_info = _obtener_documento(uri)
+    if doc_info is None:
+        return None
+
+    texto_original = doc_info["texto"]
+    texto_formateado = _formatear_codigo(texto_original, tab_size)
+
+    lineas_original = texto_original.split("\n")
+    lineas_formateadas = texto_formateado.split("\n")
+
+    # Si no hay cambios, retornar array vacio
+    if texto_original == texto_formateado:
+        return []
+
+    # Aplicar cambio full-documento
+    return [
+        {
+            "range": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": len(lineas_original), "character": 0},
+            },
+            "newText": texto_formateado,
+        }
+    ]
+
+
+# ======================================================================
+# Enrutador principal de mensajes
+# ======================================================================
+
 def _procesar_mensaje(msg: dict) -> Optional[dict]:
     global _SERVER_RUNNING
     metodo = msg.get("method", "")
@@ -645,11 +941,17 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
                     "completionProvider": {
                         "triggerCharacters": [".", ":"],
                     },
+                    "signatureHelpProvider": {
+                        "triggerCharacters": ["(", ","],
+                    },
                     "definitionProvider": True,
+                    "documentSymbolProvider": True,
+                    "codeActionProvider": True,
+                    "documentFormattingProvider": True,
                 },
                 "serverInfo": {
                     "name": "synapse-lsp",
-                    "version": "0.2.0",
+                    "version": "0.3.0",
                 },
             },
         }
@@ -667,7 +969,7 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
         return None
 
     if metodo in ("textDocument/didOpen", "textDocument/didChange",
-                  "textDocument/didSave"):
+                   "textDocument/didSave"):
         params = msg.get("params", {})
         doc = params.get("textDocument", {})
         uri = doc.get("uri", "")
@@ -692,27 +994,31 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
 
     if metodo == "textDocument/hover":
         resultado = _manejar_hover(msg)
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": resultado,
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
     if metodo == "textDocument/completion":
         resultado = _manejar_completado(msg)
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": resultado,
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
     if metodo == "textDocument/definition":
         resultado = _manejar_definicion(msg)
-        return {
-            "jsonrpc": "2.0",
-            "id": msg_id,
-            "result": resultado,
-        }
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "textDocument/signatureHelp":
+        resultado = _manejar_signature_help(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "textDocument/documentSymbol":
+        resultado = _manejar_document_symbol(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "textDocument/codeAction":
+        resultado = _manejar_code_action(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
+
+    if metodo == "textDocument/formatting":
+        resultado = _manejar_formatting(msg)
+        return {"jsonrpc": "2.0", "id": msg_id, "result": resultado}
 
     if msg_id is not None:
         return {"jsonrpc": "2.0", "id": msg_id, "result": None}
@@ -720,9 +1026,9 @@ def _procesar_mensaje(msg: dict) -> Optional[dict]:
     return None
 
 
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 # Bucle daemon principal
-# ═══════════════════════════════════════════════════════════════════════
+# ======================================================================
 
 def iniciar() -> None:
     global _SERVER_RUNNING
