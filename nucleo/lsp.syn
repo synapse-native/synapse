@@ -4,10 +4,16 @@
 //
 // Segun Documento Maestro Parte VI: binario secundario que se comunica
 // mediante JSON-RPC sobre stdin/stdout. Diagnostica codigo Synapse en
-// tiempo real usando el pipeline nativo (tokenizar + parsear + _P_p_err).
+// tiempo real usando el pipeline nativo (tokenizar + parsear + F8 semantico).
+//
+// F12.2b: line/col exacta desde _P_tks + analisis semantico nativo (F8)
+//
+// NOTA TECNICA: Cada bloque asm() debe contener una SENTENCIA COMPLETA de C.
+// El generador anade ; tras cada asm(), lo que rompe cadenas if/else if/else.
+// Por eso cada metodo LSP se despacha con un if() independiente (no else if).
 //
 // Compilacion:
-//   python main.py nucleo/lsp.syn            # -> synapse_lsp.exe
+//   python main.py nucleo/lsp.syn            # -> synapse_lsp.exe (Python bootstrap)
 //   ./synapse_bootstrap.exe nucleo/lsp.syn    # -> synapse_lsp.exe (self-hosted)
 
 // --- Imports for Unity Build ---
@@ -22,7 +28,7 @@ importar analizador_semantico
 importar memoria
 importar generator
 importar resolvedor_axon
-importar std.json  // Provee NodoJson, ParJson, _json_parse, _json_object_get, etc.
+importar std.json  // Provee NodoJson, _json_parse, _json_object_get, etc.
 
 // --- Constants ---
 constante _LSP_BUF_SIZE = 262144
@@ -33,17 +39,14 @@ constante _LSP_MAX_TEXT = 131072
 funcion principal() -> entero:
     r = 0
     inseguro:
-        asm("fprintf(stderr, \"[Synapse-LSP] v0.1.0 iniciando...\\n\");")
-        asm("")
+        asm("fprintf(stderr, \"[Synapse-LSP] v0.2.0 (F12.2b) iniciando...\\n\");")
         asm("char _lsp_uri[_LSP_MAX_URI] = {0};")
         asm("int _lsp_run = 1;")
         asm("char _lsp_buf[_LSP_BUF_SIZE];")
-        asm("")
+
         asm("while (_lsp_run) {")
         asm("    // ---- Transport: leer Content-Length ----")
-        asm("    int _cl = 0;")
-        asm("    int _hp = 0;")
-        asm("    int _hd = 0;")
+        asm("    int _cl = 0; int _hp = 0; int _hd = 0;")
         asm("    while (!_hd) {")
         asm("        int _c = fgetc(stdin);")
         asm("        if (_c == EOF) { _lsp_run = 0; break; }")
@@ -56,7 +59,7 @@ funcion principal() -> entero:
         asm("        if (_hp > 4096) { _hd = 1; break; }")
         asm("    }")
         asm("    if (!_lsp_run) break;")
-        asm("")
+
         asm("    char* _cm = strstr(_lsp_buf, \"Content-Length:\");")
         asm("    if (!_cm) { _cm = strstr(_lsp_buf, \"content-length:\"); }")
         asm("    if (_cm) { _cm += 15; while (*_cm==' '||*_cm==9) { _cm++; } _cl = atoi(_cm); }")
@@ -64,86 +67,77 @@ funcion principal() -> entero:
         asm("        fprintf(stderr, \"[LSP] CL invalido: %d\\n\", _cl);")
         asm("        continue;")
         asm("    }")
-        asm("")
+
+        asm("    // Leer body byte por byte (fgetc ya consume el buffer de stdio en Windows)")
         asm("    int _br = 0;")
         asm("    while (_br < _cl) {")
-        asm("        int _n = (int)fread(_lsp_buf + _br, 1, _cl - _br, stdin);")
-        asm("        if (_n <= 0) { _lsp_run = 0; break; }")
-        asm("        _br += _n;")
+        asm("        int _c = fgetc(stdin);")
+        asm("        if (_c == EOF) { _lsp_run = 0; break; }")
+        asm("        _lsp_buf[_br++] = (char)_c;")
         asm("    }")
         asm("    if (!_lsp_run) break;")
         asm("    _lsp_buf[_cl] = 0;")
-        asm("")
-        asm("    // Parsear JSON via std.json nativo")
+
         asm("    CadenaSegura _ji = { .longitud = _cl, .datos = _lsp_buf };")
         asm("    NodoJson _msg = _json_parse(_ji);")
-        asm("    if (_msg.tipo < 0) {")
-        asm("        fprintf(stderr, \"[LSP] JSON error\\n\");")
-        asm("        _json_nodo_liberar(_msg);")
-        asm("        continue;")
-        asm("    }")
-        asm("")
+        asm("    if (_msg.tipo < 0) { fprintf(stderr, \"[LSP] JSON error\\n\"); _json_nodo_liberar(_msg); continue; }")
+
         asm("    NodoJson _method = _json_object_get(_msg, (CadenaSegura){6,\"method\"});")
         asm("    NodoJson _id = _json_object_get(_msg, (CadenaSegura){2,\"id\"});")
         asm("    NodoJson _params = _json_object_get(_msg, (CadenaSegura){6,\"params\"});")
-        asm("")
+
         asm("    const char* _ms = (_method.tipo == 3) ? _method.valor_str.datos : \"\";")
         asm("    int _is_notif = (_id.tipo < 0);")
-        asm("")
-        asm("    // ---- initialize ----")
+        asm("    int _method_known = 0;")
+
+        // ---- initialize ----
         asm("    if (strcmp(_ms, \"initialize\") == 0) {")
-        asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":1,\\\"result\\\":{\\\"capabilities\\\":{\\\"textDocumentSync\\\":{\\\"openClose\\\":true,\\\"change\\\":1,\\\"save\\\":{\\\"includeText\\\":true}}},\\\"serverInfo\\\":{\\\"name\\\":\\\"synapse-lsp-native\\\",\\\"version\\\":\\\"0.1.0\\\"}}}\";")
+        asm("        _method_known = 1;")
+        asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":1,\\\"result\\\":{\\\"capabilities\\\":{\\\"textDocumentSync\\\":{\\\"openClose\\\":true,\\\"change\\\":1,\\\"save\\\":{\\\"includeText\\\":true}}},\\\"serverInfo\\\":{\\\"name\\\":\\\"synapse-lsp-native\\\",\\\"version\\\":\\\"0.2.0\\\"}}}\";")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", (int)strlen(_R), _R);")
         asm("        fflush(stdout);")
         asm("        fprintf(stderr, \"[LSP] initialize -> OK\\n\");")
         asm("    }")
-        asm("")
-        asm("    // ---- initialized ----")
-        asm("    else if (strcmp(_ms, \"initialized\") == 0) {")
+
+        // ---- initialized (notification, no response) ----
+        asm("    if (strcmp(_ms, \"initialized\") == 0) {")
+        asm("        _method_known = 1;")
         asm("        fprintf(stderr, \"[LSP] initialized\\n\");")
         asm("    }")
-        asm("")
-        asm("    // ---- shutdown ----")
-        asm("    else if (strcmp(_ms, \"shutdown\") == 0) {")
+
+        // ---- shutdown ----
+        asm("    if (strcmp(_ms, \"shutdown\") == 0) {")
+        asm("        _method_known = 1;")
         asm("        const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":null,\\\"result\\\":null}\";")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", (int)strlen(_R), _R);")
         asm("        fflush(stdout);")
         asm("        _lsp_run = 0;")
         asm("        fprintf(stderr, \"[LSP] shutdown -> OK\\n\");")
         asm("    }")
-        asm("")
-        asm("    // ---- exit ----")
-        asm("    else if (strcmp(_ms, \"exit\") == 0) {")
+
+        // ---- exit ----
+        asm("    if (strcmp(_ms, \"exit\") == 0) {")
+        asm("        _method_known = 1;")
         asm("        _lsp_run = 0;")
         asm("    }")
-        asm("")
-        asm("    // ---- didOpen / didChange / didSave ----")
-        asm("    else if (strcmp(_ms, \"textDocument/didOpen\") == 0 ||")
-        asm("             strcmp(_ms, \"textDocument/didChange\") == 0 ||")
-        asm("             strcmp(_ms, \"textDocument/didSave\") == 0) {")
-        asm("")
+
+        // ---- textDocument/didOpen / didChange / didSave ----
+        asm("    if (strcmp(_ms, \"textDocument/didOpen\") == 0 || strcmp(_ms, \"textDocument/didChange\") == 0 || strcmp(_ms, \"textDocument/didSave\") == 0) {")
+        asm("        _method_known = 1;")
         asm("        NodoJson _td = _json_object_get(_params, (CadenaSegura){11,\"textDocument\"});")
-        asm("        char _uri[_LSP_MAX_URI] = {0};")
-        asm("        char _text[_LSP_MAX_TEXT] = {0};")
-        asm("")
+        asm("        char _uri[_LSP_MAX_URI] = {0}; char _text[_LSP_MAX_TEXT] = {0};")
         asm("        if (_td.tipo == 5) {")
         asm("            NodoJson _un = _json_object_get(_td, (CadenaSegura){3,\"uri\"});")
-        asm("            if (_un.tipo == 3 && _un.valor_str.datos)")
-        asm("                strncpy(_uri, _un.valor_str.datos, _LSP_MAX_URI-1);")
+        asm("            if (_un.tipo == 3 && _un.valor_str.datos) strncpy(_uri, _un.valor_str.datos, _LSP_MAX_URI-1);")
         asm("            _json_nodo_liberar(_un);")
-        asm("")
         asm("            NodoJson _tn = _json_object_get(_td, (CadenaSegura){4,\"text\"});")
-        asm("            if (_tn.tipo == 3 && _tn.valor_str.datos)")
-        asm("                strncpy(_text, _tn.valor_str.datos, _LSP_MAX_TEXT-1);")
+        asm("            if (_tn.tipo == 3 && _tn.valor_str.datos) strncpy(_text, _tn.valor_str.datos, _LSP_MAX_TEXT-1);")
         asm("            _json_nodo_liberar(_tn);")
-        asm("")
         asm("            NodoJson _cc = _json_object_get(_params, (CadenaSegura){14,\"contentChanges\"});")
         asm("            if (_cc.tipo == 4 && _cc.longitud > 0) {")
         asm("                NodoJson _lc = _json_array_get(_cc, _cc.longitud-1);")
-        asm("                if (_lc.tipo == 5) {")
-        asm("                    NodoJson _ct = _json_object_get(_lc, (CadenaSegura){4,\"text\"});")
-        asm("                    if (_ct.tipo == 3 && _ct.valor_str.datos)")
-        asm("                        strncpy(_text, _ct.valor_str.datos, _LSP_MAX_TEXT-1);")
+        asm("                if (_lc.tipo == 5) { NodoJson _ct = _json_object_get(_lc, (CadenaSegura){4,\"text\"});")
+        asm("                    if (_ct.tipo == 3 && _ct.valor_str.datos) strncpy(_text, _ct.valor_str.datos, _LSP_MAX_TEXT-1);")
         asm("                    _json_nodo_liberar(_ct);")
         asm("                }")
         asm("                _json_nodo_liberar(_lc);")
@@ -151,60 +145,108 @@ funcion principal() -> entero:
         asm("            _json_nodo_liberar(_cc);")
         asm("        }")
         asm("        _json_nodo_liberar(_td);")
-        asm("")
         asm("        if (_uri[0] == 0 || _text[0] == 0) {")
         asm("            fprintf(stderr, \"[LSP] URI o texto vacio\\n\");")
-        asm("            _json_nodo_liberar(_method); _json_nodo_liberar(_id);")
-        asm("            _json_nodo_liberar(_params); _json_nodo_liberar(_msg);")
+        asm("            _json_nodo_liberar(_method); _json_nodo_liberar(_id); _json_nodo_liberar(_params); _json_nodo_liberar(_msg);")
         asm("            continue;")
         asm("        }")
-        asm("")
         asm("        strncpy(_lsp_uri, _uri, _LSP_MAX_URI-1);")
         asm("        fprintf(stderr, \"[LSP] Validando: %s (%d bytes)\\n\", _uri, (int)strlen(_text));")
-        asm("")
-        asm("        // ---- Pipeline nativa: tokenizar + parsear ----")
+
+        // ===== PIPELINE NATIVA: tokenizar -> parsear -> F8 semantico =====
         asm("        CadenaSegura _fs = { .longitud = (int)strlen(_text), .datos = _text };")
         asm("        int _diag_count = 0;")
         asm("        char _diag_json[_LSP_BUF_SIZE/2]; _diag_json[0] = 0;")
-        asm("")
+
+        // Tokenizar
         asm("        extern int tokenizar(CadenaSegura);")
+        asm("        extern _P_Token _P_tks[];")
+        asm("        extern int _P_ntks, _P_tpos, _P_p_err;")
         asm("        int _nt = tokenizar(_fs);")
+
+        // Error lexico con line/col exacta
         asm("        if (_nt < 0) {")
+        asm("            int _el = 0, _ec = 0;")
+        asm("            if (_P_ntks > 0) { _el = _P_tks[_P_ntks-1].linea - 1; _ec = _P_tks[_P_ntks-1].col; }")
+        asm("            if (_el < 0) _el = 0; if (_ec < 0) _ec = 0;")
         asm("            _diag_count = 1;")
-        asm("            snprintf(_diag_json, sizeof(_diag_json),")
-        asm("                \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":0,\\\"character\\\":0},\\\"end\\\":{\\\"line\\\":0,\\\"character\\\":1}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_LEX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error lexico\\\"}]\");")
-        asm("        } else {")
+        asm("            snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_LEX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error lexico\\\"}]\", _el, _ec, _el, _ec+1);")
+        asm("        }")
+
+        // Parsear + F8 semantico
+        asm("        if (_nt >= 0) {")
         asm("            extern struct Programa parsear(CadenaSegura);")
+        asm("            extern int _P_ntks, _P_tpos, _P_p_err;")
+        asm("            _P_p_err = 0;")
         asm("            struct Programa _ast = parsear(_fs);")
-        asm("            extern int _P_p_err;")
+
+        // Error sintactico con line/col exacta
         asm("            if (_P_p_err != 0) {")
+        asm("                int _el = 0, _ec = 0;")
+        asm("                if (_P_tpos > 0 && _P_tpos <= _P_ntks) { _el = _P_tks[_P_tpos-1].linea - 1; _ec = _P_tks[_P_tpos-1].col; }")
+        asm("                if (_el < 0) _el = 0; if (_ec < 0) _ec = 0;")
         asm("                _diag_count = 1;")
-        asm("                snprintf(_diag_json, sizeof(_diag_json),")
-        asm("                    \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":0,\\\"character\\\":0},\\\"end\\\":{\\\"line\\\":0,\\\"character\\\":1}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SYNTAX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error sintactico\\\"}]\");")
-        asm("            } else {")
-        asm("                strcpy(_diag_json, \"[]\");")
+        asm("                snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":%d,\\\"character\\\":%d},\\\"end\\\":{\\\"line\\\":%d,\\\"character\\\":%d}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SYNTAX\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error sintactico\\\"}]\", _el, _ec, _el, _ec+1);")
+        asm("            }")
+
+        // Analisis semantico nativo (F8)
+        asm("            if (_P_p_err == 0) {")
+        asm("                int _s_cnt=0,_s_lvl=0,_s_err=0;")
+        asm("                char _sn[4096][64],_st[4096][64]; int _sl[4096],_sc[4096];")
+        asm("                #define _SEM_SD(n,t,c) do{ int _i; for(_i=0;_i<_s_cnt;_i++) if(strcmp(_sn[_i],n)==0&&_sl[_i]==_s_lvl){ _s_err=1; _i=-2; break; } if(_i>=0||_s_cnt==0){ if(_i<0||_i>=_s_cnt)_i=_s_cnt; strcpy(_sn[_i],n); strcpy(_st[_i],t); _sl[_i]=_s_lvl; _sc[_i]=c; _s_cnt++; } }while(0)")
+        asm("                #define _SEM_SI() _s_lvl++")
+        asm("                #define _SEM_SO() do{ while(_s_cnt>0&&_sl[_s_cnt-1]==_s_lvl) _s_cnt--; _s_lvl--; }while(0)")
+
+        // Pass 1: top-level symbols
+        asm("                { struct ListaNodo* _lp=_ast.sentencias; while(_lp){ void* _n=_lp->cabeza; if(_n){")
+        asm("                    const char* _tp=((struct Nodo*)_n)->tipo.datos;")
+        asm("                    if(strcmp(_tp,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f=(struct DefinicionFuncion*)_n; _SEM_SD(_f->nombre.datos,\"int\",0); }")
+        asm("                    if(strcmp(_tp,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x=(struct DeclaracionExterna*)_n; _SEM_SD(_x->nombre.datos,\"int\",0); }")
+        asm("                } _lp=_lp->cola; }}")
+
+        // Pass 2: function body
+        asm("                { struct ListaNodo* _lp=_ast.sentencias; while(_lp){ void* _n=_lp->cabeza; if(_n){")
+        asm("                    const char* _tp=((struct Nodo*)_n)->tipo.datos;")
+        asm("                    if(strcmp(_tp,\"DefinicionFuncion\")==0){")
+        asm("                        struct DefinicionFuncion* _f=(struct DefinicionFuncion*)_n;")
+        asm("                        _SEM_SI();")
+        asm("                        struct ListaParametro* _pl=(struct ListaParametro*)_f->parametros;")
+        asm("                        while(_pl){ struct Parametro* _p=(struct Parametro*)_pl->cabeza; if(_p) _SEM_SD(_p->nombre.datos,_p->tipo.datos,0); _pl=_pl->cola; }")
+        asm("                        struct ListaNodo* _bl=(struct ListaNodo*)_f->cuerpo;")
+        asm("                        while(_bl){ void* _stmt=_bl->cabeza; if(_stmt){")
+        asm("                            const char* _st=((struct Nodo*)_stmt)->tipo.datos;")
+        asm("                            if(strcmp(_st,\"AsignacionVariable\")==0){")
+        asm("                                struct AsignacionVariable* _a=(struct AsignacionVariable*)_stmt;")
+        asm("                                int _si=-1; for(int _i=0;_i<_s_cnt;_i++) if(strcmp(_sn[_i],_a->nombre.datos)==0){ _si=_i;break; }")
+        asm("                                if(_si<0){ _SEM_SD(_a->nombre.datos,\"int\",0); } else if(_sc[_si]){ _s_err=1; }")
+        asm("                            }")
+        asm("                        } _bl=_bl->cola; }")
+        asm("                        _SEM_SO();")
+        asm("                    }")
+        asm("                } _lp=_lp->cola; }}")
+
+        asm("                if (_s_err) { _diag_count = 1; snprintf(_diag_json, sizeof(_diag_json), \"[{\\\"range\\\":{\\\"start\\\":{\\\"line\\\":0,\\\"character\\\":0},\\\"end\\\":{\\\"line\\\":0,\\\"character\\\":1}},\\\"severity\\\":1,\\\"code\\\":\\\"ERR_SEM\\\",\\\"source\\\":\\\"synapse\\\",\\\"message\\\":\\\"Error semantico (redefinicion o const reassign)\\\"}]\"); } else { strcpy(_diag_json, \"[]\"); }")
         asm("            }")
         asm("        }")
-        asm("")
-        asm("        int _nn = snprintf(_lsp_buf, _LSP_BUF_SIZE,")
-        asm("            \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":%s}}\",")
-        asm("            _uri, _diag_json);")
+
+        // Publicar diagnostics
+        asm("        int _nn = snprintf(_lsp_buf, _LSP_BUF_SIZE, \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":%s}}\", _uri, _diag_json);")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", _nn, _lsp_buf);")
         asm("        fflush(stdout);")
         asm("        fprintf(stderr, \"[LSP] publishDiagnostics: %d errores\\n\", _diag_count);")
         asm("    }")
-        asm("")
-        asm("    // ---- didClose ----")
-        asm("    else if (strcmp(_ms, \"textDocument/didClose\") == 0) {")
-        asm("        int _n = snprintf(_lsp_buf, _LSP_BUF_SIZE,")
-        asm("            \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":[]}}\", _lsp_uri);")
+
+        // ---- textDocument/didClose ----
+        asm("    if (strcmp(_ms, \"textDocument/didClose\") == 0) {")
+        asm("        _method_known = 1;")
+        asm("        int _n = snprintf(_lsp_buf, _LSP_BUF_SIZE, \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"method\\\":\\\"textDocument/publishDiagnostics\\\",\\\"params\\\":{\\\"uri\\\":\\\"%s\\\",\\\"diagnostics\\\":[]}}\", _lsp_uri);")
         asm("        fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", _n, _lsp_buf);")
         asm("        fflush(stdout);")
         asm("        _lsp_uri[0] = 0;")
         asm("    }")
-        asm("")
-        asm("    // ---- metodo desconocido ----")
-        asm("    else {")
+
+        // ---- Method not found ----
+        asm("    if (!_method_known) {")
         asm("        if (!_is_notif) {")
         asm("            const char* _R = \"{\\\"jsonrpc\\\":\\\"2.0\\\",\\\"id\\\":null,\\\"error\\\":{\\\"code\\\":-32601,\\\"message\\\":\\\"Method not found\\\"}}\";")
         asm("            fprintf(stdout, \"Content-Length: %d\\r\\n\\r\\n%s\", (int)strlen(_R), _R);")
@@ -212,13 +254,13 @@ funcion principal() -> entero:
         asm("        }")
         asm("        fprintf(stderr, \"[LSP] Metodo no soportado: %s\\n\", _ms);")
         asm("    }")
-        asm("")
-        asm("    // ---- cleanup ----")
+
+        // Cleanup
         asm("    _json_nodo_liberar(_method);")
         asm("    _json_nodo_liberar(_id);")
         asm("    _json_nodo_liberar(_params);")
         asm("    _json_nodo_liberar(_msg);")
         asm("}")
-        asm("")
+
         asm("fprintf(stderr, \"[Synapse-LSP] Servidor finalizado\\n\");")
     retornar r

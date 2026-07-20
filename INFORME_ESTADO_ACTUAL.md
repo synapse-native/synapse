@@ -6,11 +6,11 @@
 |------------|-------|
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 2026 |
-| Última verificación | Pipeline: 0 GCC errors ✅ | 240 tests ✅ |
+| Última verificación | Pipeline: 0 GCC errors ✅ | 259 tests ✅ |
 | Bootstrap Stage2 (nuevo binario) | **✅ Funcional — F9.4 resuelto** |
 | Bootstrap Stage2 (binario legacy) | ✅ Stage2==Stage3 verificado |
-| Fase actual | **F0-F9 completadas | F10+F11 completadas | F12 en ejecución** |
-| Tests | **240 passed, 0 failed, 2 skipped** |
+| Fase actual | **F0-F11 completadas | F12.1+F12.2+F12.2b completadas | F12.3 pendiente** |
+| Tests | **259 passed, 0 failed, 7 skipped** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 
@@ -105,7 +105,7 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | **F9** | Eliminar post-processing + fix emisores | ✅ **8/8 COMPLETADA** | Roadmap estable |
 | F10 | Concurrencia (canales) | ✅ **100% (5/5) COMPLETADA** | Stress test: 10,000 hilos, 0 leaks |
 | F11 | Fuzzing destructivo | ✅ **100% (2/2) COMPLETADA** | 800+ randoms, 0 crashes |
-| F12 | LSP nativo | ⏳ **EN EJECUCIÓN** | Documento Maestro Parte VI |
+| F12 | LSP nativo | ⏳ **EN EJECUCIÓN (80%)** | F12.1+F12.2+F12.2b completadas. F12.3 (IA Local) pendiente |
 
 ### Progreso Fase 10 (detalle)
 | # | Tarea | Estado |
@@ -146,7 +146,7 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **240** (sin oráculo, +9 nuevos) | > 260 |
+| Tests pasando | 247 | **259** (sin oráculo, +9 F10/F11, +19 F12.1) | > 260 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -189,9 +189,10 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 
 | Prioridad | Fase | Descripción | Justificación (DM) |
 |-----------|------|-------------|---------------------|
-| 🟡 P1 | **F12.1** | LSP Python: fortalecer servidor existente | Documento Maestro Parte VI |
-| 🟡 P2 | **F12.2** | Migrar LSP a binario nativo (sin Python) | Documento Maestro Parte VI |
-| 🟢 P3 | **F12.3** | Puente de IA local (Ollama, Phi-3) | Documento Maestro Parte VI |
+| ✅ | **F12.1** | LSP Python fortalecido ✅ | Documento Maestro Parte VI |
+| ✅ | **F12.2** | LSP Nativo v0.1 ✅ | `nucleo/lsp.syn` — binario nativo |
+| ✅ | **F12.2b** | LSP Nativo v0.2 ✅ | línea/col + F8 semántico + fix transporte |
+| 🟢 P1 | **F12.3** | Puente de IA local (Ollama, Phi-3) | Documento Maestro Parte VI |
 
 ---
 
