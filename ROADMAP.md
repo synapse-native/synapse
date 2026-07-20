@@ -1,7 +1,7 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** 🚀 **F0-F14 COMPLETADAS** — Estabilización completa del núcleo
+> **Estado:** 🚀 **F0-F15 COMPLETADAS** — Estabilización completa del núcleo
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
 > **Tests:** 270 passed, 0 failed, 2 skipped, 2 xfailed | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
