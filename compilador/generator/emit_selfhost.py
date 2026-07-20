@@ -1142,7 +1142,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     }} else {{
         snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
     }}
-    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \\"%s\\" \\"C:\\\\Synapse\\\\lib\\\\synapse_rt.o\\" -o \\"%s\\" -lpthread -lm", sal, out_exe);
+    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \\"%s\\" synapse_rt.o -o \\"%s\\" -lpthread -lm -lws2_32", sal, out_exe);
     int rc = system(cmd);
     if (rc != 0) {{
         fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\\n", rc);

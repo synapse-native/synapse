@@ -72,7 +72,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("")
         asm("// 5. Compilar con GCC")
         asm("char _cmd[4096];")
-        asm("snprintf(_cmd, 4096, \"gcc -O2 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm\", salida.datos);")
+        asm("snprintf(_cmd, 4096, \"gcc -O2 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);")
         asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
         asm("int _gcc_rc = system(_cmd);")
         asm("free(_buf);")

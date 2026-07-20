@@ -1482,8 +1482,8 @@ void gen_emitir_generar_c(struct GeneradorCEst est) {
         gen_emitir_linea(est, "void _G_reset() { _G_nv = 0; }");
         gen_emitir_linea(est, "int _G_find(const char* n) { for(int i=0;i<_G_nv;i++) if(strcmp(_G_vn[i],n)==0) return i; return -1; }");
         gen_emitir_nueva_linea(est);
-        gen_emitir_linea(est, "void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\"    \") fprintf(_G_out,\"%s\\n\",s) }");
-        gen_emitir_nueva_linea(est);
+        gen_emitir_linea(est, "void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\"    \") fprintf(_G_out,\"%s\\n\",s) }")
+        gen_emitir_nueva_linea(est)
         // Main generar function
         gen_emitir_linea(est, "int generar(struct Programa programa, CadenaSegura ruta) {");
         est.indent_actual = est.indent_actual + 1;
@@ -2550,7 +2550,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     } else {
         snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
     }
-    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \"%s\" \"C:\\Synapse\\lib\\synapse_rt.o\" -o \"%s\" -lpthread -lm", sal, out_exe);
+    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \"%s\" synapse_rt.o -o \"%s\" -lpthread -lm -lws2_32", sal, out_exe);
     int rc = system(cmd);
     if (rc != 0) {
         fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\n", rc);
