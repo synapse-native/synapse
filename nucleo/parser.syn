@@ -104,7 +104,8 @@ constante NODO_CANAL_CREAR = 41
 constante NODO_ENVIAR_CANAL = 42
 constante NODO_RECIBIR_CANAL = 43
 constante NODO_VACIO = 44
-constante NODO_CONTRATO = 45
+constante NODO_PARA = 45
+constante NODO_CONTRATO = 46
 
 // ---- Struct for parser token (external representation) ----
 estructura TokenExt:

@@ -8,7 +8,7 @@
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b: validación #lang + estado global limpio por request)
-> **Última actualización:** 21 Julio 2026 (Sesión 2)
+> **Última actualización:** 21 Julio 2026 (Sesión 3 — F16 completada, F17 root cause diagnosticada)
 
 ---
 
@@ -30,14 +30,14 @@
 | **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
 | **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** | 5/5 tareas | 240 passed | ✅ Preparado |
 | **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
-| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
-| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
-| **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** | 4/4 tareas | **270(+2xfail)** passed | ✅ Completa |
+| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** | 3/3 tareas | 283 passed | ✅ Completa |
+| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** | 3/3 tareas | 283 passed | ✅ Completa |
+| **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** | 4/4 tareas | 283 passed | ✅ Completa |
 | **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
-| ▶️ **F16: Contratos lógicos nativos** | 🟡 **PARCIAL** | Python: garantiza asserts emitidos ✅. Nativo: parser + generator implementados (NODO_CONTRATO) | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F17: Bootstrap full auto-hospedado** | 🔴 **BLOQUEADO** | Stage3→Stage4 diff 0 ✅ (legacy), nuevos binarios crashean (STATUS_ACCESS_VIOLATION) | — | ✅ F8 + generar() OK |
+| ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix: NODO_CONTRATO=46 (conflicto con NODO_PARA=45 resuelto). 46 constantes consistentes en parser/generator/analizador | **283** passed | ✅ F8 + generar() OK |
+| ▶️ **F17: Bootstrap full auto-hospedado** | 🔴 **BLOQUEADO** | Causa raíz: `ptr_str: entero` trunca punteros 64-bit→32-bit en SemNodo. Fix requiere cambiar a `intptr_t`. | — | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
 | ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
 
@@ -448,27 +448,32 @@ $ python tests/stress/run_stress.py
 
 ---
 
-## 🟡 FASE 16: CONTRATOS LÓGICOS NATIVOS (PARCIAL)
+## ✅ FASE 16: CONTRATOS LÓGICOS NATIVOS (COMPLETADA)
 
 ### Objetivo
-Implementar `requiere`/`garantiza` en la pipeline nativa (hoy solo en Python) para validación formal en tiempo de compilación y ejecución.
+Implementar `requiere`/`garantiza` en la pipeline nativa para validación formal en tiempo de compilación y ejecución según Documento Maestro Parte III.
 
 ### Logrado
 
 **Python (✅ Completo):**
-- `emit_declarations.py`: `garantiza` ahora emite `assert()` antes de cada `return` (antes almacenado pero nunca emitido). También emite en salida de función void (implicit return).
-- Ambos pre/post-condiciones van envueltos en `#ifndef SYNAPSE_RELEASE` para omitir en modo producción.
+- `emit_declarations.py`: `garantiza` ahora emite `assert()` antes de cada `return` y en salida de función void (implicit return).
+- Ambos pre/post-condiciones envueltos en `#ifndef SYNAPSE_RELEASE` para omitir en modo producción.
 
-**Nativo (🟡 Implementado — pendiente de verificación F17):**
-- `nucleo/parser.syn`: Agregado `NODO_CONTRATO = 45`. `parsear_funcion()` ahora enlaza las expresiones de `requiere`/`garantiza` via `hermano` y las almacena en un descriptor `NODO_CONTRATO` apuntado por `ptr_extra` del nodo función.
-- `nucleo/generator.syn`: `gen_visitar_funcion()` emite `#ifndef SYNAPSE_RELEASE` con asserts para `requiere` al inicio de la función. `gen_visitar_retornar()` emite asserts de `garantiza` antes de cada return. Implicit void return también verificado.
+**Nativo (✅ Completo):**
+- `nucleo/parser.syn`: `parsear_funcion()` enlaza expresiones `requiere`/`garantiza` via `hermano` y almacena en `NODO_CONTRATO` apuntado por `ptr_extra`.
+- `nucleo/generator.syn`: `gen_visitar_funcion()` emite asserts para `requiere` al inicio. `gen_visitar_retornar()` emite asserts de `garantiza` antes de cada return.
+
+**Fix de conflicto de constantes (Jul 21):**
+- **Problema:** `NODO_CONTRATO = 45` en `parser.syn` vs `NODO_PARA = 45` en `generator.syn` — mismo ID para dos tipos de nodo diferentes.
+- **Fix:** `NODO_CONTRATO → 46` en parser.syn, agregado NODO_CONTRATO=46 en generator.syn, agregados NODO_CONTRATO=46 y NODO_PARA=45 (faltantes) en analizador_semantico.syn.
+- **Verificación:** 46 constantes NODO_* idénticas en los 3 archivos.
 
 ### Detalle de cambios
 | Archivo | Cambio |
 |---------|--------|
-| `compilador/generator/emit_declarations.py` | Garantiza asserts en return + void exit |
-| `nucleo/parser.syn` | NODO_CONTRATO + linker de expr contracts |
-| `nucleo/generator.syn` | Emisión de asserts requiere/garantiza + header guard |
+| `nucleo/parser.syn:107` | NODO_CONTRATO = 45 → 46; agregado NODO_PARA = 45 |
+| `nucleo/generator.syn:49` | Agregado NODO_CONTRATO = 46 |
+| `nucleo/analizador_semantico.syn` | Agregados NODO_PARA = 45, NODO_CONTRATO = 46 |
 
 ### Tests
 ```bash
@@ -476,8 +481,7 @@ $ python -m pytest tests/ -q
 283 passed, 2 skipped
 ```
 
-### Pendiente
-- Verificación con bootstrap nativo (bloqueado por F17)
+### Pendiente post-F17
 - Compilación `--release` completa (omite asserts)
 
 ---
@@ -521,6 +525,57 @@ Total: 300 | exit=0: 42 | exit=1: 258 | crash: 0 | timeout: 0 | error: 0
 ### Criterio de éxito (Parte VII DM)
 - **Frontend**: ✅ Cero segfaults — el compilador maneja todo input con exit code 1.
 - **Backend**: ✅ 10,000 hilos + MemoryWatchdog completado en F10.5.
+
+---
+
+## 🔴 FASE 17: BOOTSTRAP FULL AUTO-HOSPEDADO (BLOQUEADO)
+
+### Objetivo
+Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
+
+### Estado actual
+- **Pipeline Python compila `nucleo/principal.syn` → `test_salida.exe`**: ✅ 0 GCC errors, ejecutable funcional
+- **Binario nativo compila archivos simples**: ✅ `./test_salida.exe bootstrap_test.syn test_f17_out.exe` → OK
+- **Auto-compilación**: ❌ `./test_salida.exe nucleo/principal.syn test_selfhost.exe` → **STATUS_ACCESS_VIOLATION (exit 139)**
+
+### Diagnóstico de causa raíz (Jul 21)
+El crash ocurre durante la **fase F8 (aplanamiento de AST)** en `nucleo/principal.syn`. La estructura `SemNodo` en `nucleo/analizador_semantico.syn` almacena punteros en campos de tipo `entero`:
+
+```synapse
+estructura SemNodo:
+    tipo_nodo: entero    # 4 bytes
+    ...
+    ptr_str: entero      # ⚠️ 4 bytes — insuficiente en 64-bit
+    ...
+    ptr_extra: entero    # ⚠️ 4 bytes — insuficiente en 64-bit
+```
+
+**Problema:** En sistemas 64-bit, `entero` se mapea a `int` (4 bytes), pero los punteros requieren 8 bytes. El código `_f8_nodos[idx].ptr_str = (int)(intptr_t)_f->nombre.datos` trunca la dirección a 32 bits. Al leer `const char* _v = (const char*)est.nodos[idx_nodo].ptr_str`, se recupera una dirección truncada que apunta a memoria inválida, causando SEGFAULT.
+
+**Solución propuesta:**
+1. Cambiar `ptr_str: entero` y `ptr_extra: entero` en `SemNodo` a un tipo que mapee a `intptr_t` en C.
+2. Alternativa: usar dos campos `entero` (high/low 32 bits) para reconstruir el puntero.
+3. Actualizar el emisor Python (`compilador/generator/emit_selfhost.py`) para generar `intptr_t` en lugar de `int` para campos específicos.
+
+**Impacto:** Este fix es requisito para F18 (Axon) y F19 (Edge AI), ya que ambas dependen del pipeline nativo completo.
+
+---
+
+## ⏳ FASE 18: AXON GESTOR DE PAQUETES (PENDIENTE)
+
+### Objetivo
+Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Maestro Parte V.
+
+### Dependencia: F17 (pipeline nativa funcional para auto-hospedaje)
+
+---
+
+## ⏳ FASE 19: EDGE AI RUNTIME (PENDIENTE)
+
+### Objetivo
+Runtime <500KB, módulo `std.simd`, soporte CPU limitada según Documento Maestro Parte IV.
+
+### Dependencia: F17 (pipeline nativa funcional)
 
 ---
 

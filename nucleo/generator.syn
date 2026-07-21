@@ -46,6 +46,7 @@ constante NODO_ENVIAR_CANAL = 42
 constante NODO_RECIBIR_CANAL = 43
 constante NODO_VACIO = 44
 constante NODO_PARA = 45
+constante NODO_CONTRATO = 46
 
 // --- Token type constants (mirror parser.syn) ---
 constante T_IDENTIFICADOR = 19
