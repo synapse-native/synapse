@@ -1026,7 +1026,7 @@ void {_PH}v(struct Nodo* n) {{
     }}
     if(strcmp(t,"AsignacionVariable")==0){{
         struct AsignacionVariable* a=(struct AsignacionVariable*)n; {_PH}cp(m,a->nombre); {_PH}ea(a->expresion,v,4096);
-        const char* vt={_PH}tex(a->expresion);
+        const char* vt={_PH}tex(a->expresion); if(!vt) vt="int";
         if({_PH}find(m)<0){{ {_PH}decl(m,vt); snprintf(b,sizeof(b),"%s %s = %s;",vt,m,v); }}
         else snprintf(b,sizeof(b),"%s = %s;",m,v);
         {_PH}emit(b); return;
