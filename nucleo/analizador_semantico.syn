@@ -454,13 +454,13 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
         inseguro:
-            asm("{ const char* _v=(const char*)est.nodos[idx_nodo].ptr_str; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
+            asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
         retornar
 
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
         inseguro:
-            asm("{ const char* _v=(const char*)est.nodos[idx_nodo].ptr_str; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0); } } }")
+            asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0); } } }")
         retornar
 
     // SentenciaSi
@@ -529,7 +529,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             var_nombre = ""
             res = 0
             inseguro:
-                asm("CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)est.nodos[idx_caso].ptr_str };")
+                asm("int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
                 asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
             si res == 0:
                 // wildcard _

@@ -538,26 +538,26 @@ Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
 - **Binario nativo compila archivos simples**: ✅ `./test_salida.exe bootstrap_test.syn test_f17_out.exe` → OK
 - **Auto-compilación**: ❌ `./test_salida.exe nucleo/principal.syn test_selfhost.exe` → **STATUS_ACCESS_VIOLATION (exit 139)**
 
-### Diagnóstico de causa raíz (Jul 21)
-El crash ocurre durante la **fase F8 (aplanamiento de AST)** en `nucleo/principal.syn`. La estructura `SemNodo` en `nucleo/analizador_semantico.syn` almacena punteros en campos de tipo `entero`:
+### Diagnóstico de causa raíz — AVANCE (Jul 21)
 
-```synapse
-estructura SemNodo:
-    tipo_nodo: entero    # 4 bytes
-    ...
-    ptr_str: entero      # ⚠️ 4 bytes — insuficiente en 64-bit
-    ...
-    ptr_extra: entero    # ⚠️ 4 bytes — insuficiente en 64-bit
-```
+**Hallazgo crítico: El crash de auto-compilación es PREEXISTENTE.** El binario legacy `synapse_bootstrap.exe` (anterior a cualquier cambio reciente) también crashea con segfault al compilar `nucleo/principal.syn`. El crash ocurre **antes de cualquier output** (antes del primer `fprintf(stderr, ...)` en `generar_etapa()`), lo que sugiere que el problema está MUY temprano en el pipeline, probablemente en la inicialización del tokenizador/parser con archivos grandes.
 
-**Problema:** En sistemas 64-bit, `entero` se mapea a `int` (4 bytes), pero los punteros requieren 8 bytes. El código `_f8_nodos[idx].ptr_str = (int)(intptr_t)_f->nombre.datos` trunca la dirección a 32 bits. Al leer `const char* _v = (const char*)est.nodos[idx_nodo].ptr_str`, se recupera una dirección truncada que apunta a memoria inválida, causando SEGFAULT.
+**Problemas identificados:**
 
-**Solución propuesta:**
-1. Cambiar `ptr_str: entero` y `ptr_extra: entero` en `SemNodo` a un tipo que mapee a `intptr_t` en C.
-2. Alternativa: usar dos campos `entero` (high/low 32 bits) para reconstruir el puntero.
-3. Actualizar el emisor Python (`compilador/generator/emit_selfhost.py`) para generar `intptr_t` en lugar de `int` para campos específicos.
+1. **🔴 Crash temprano (pre-existente):** El crash sin output al compilar `principal.syn` (~1284 líneas) vs archivos pequeños que funcionan perfectamente. Posibles causas:
+   - Stack overflow por uso excesivo de recursión en parser o lexer
+   - Buffer overflow en el tokenizador con archivos grandes
+   - Desbordamiento de arrays estáticos de tamaño fijo (ej. `MAX_TOKS = 16384` en el generador C)
+   
+2. **🟡 Truncamiento de punteros en F8 flatten (FIX APLICADO):** `ptr_str: entero` almacena punteros como `int` (4 bytes), truncando direcciones 64-bit. **Fix aplicado en esta sesión:** Array paralelo `_f8_ptr_hi[]` para los bits altos, paseado a través de `asignaciones_campos_campo` del estado del analizador. Este fix es correcto pero no resuelve el crash temprano (F17 requiere ambos fixes).
 
-**Impacto:** Este fix es requisito para F18 (Axon) y F19 (Edge AI), ya que ambas dependen del pipeline nativo completo.
+**Archivos modificados en el fix:**
+| Archivo | Cambio |
+|---------|--------|
+| `nucleo/principal.syn` | Agregado `_f8_ptr_hi[]`, split de punteros low/high, pasaje por `asignaciones_campos_campo` |
+| `nucleo/analizador_semantico.syn` | 3 asm blocks actualizados para reconstruir punteros 64-bit desde lo+hi |
+
+**Impacto:** 283 tests pasan (0 regresiones). Binario compila archivos pequeños. El fix de ptr_str es necesario pero no suficiente para F17.
 
 ---
 
