@@ -7,6 +7,7 @@
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 21, 2026 |
 | Última verificación | Pipeline: 0 GCC errors ✅ | 283 tests passed, 2 skipped ✅ |
+| Último commit | F17: tokenizer unescape + ptr_str 64-bit split + principal.syn cleanup |
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
 | Bootstrap | ✅ Pipeline nativa funcional (F8 + generar() reparados) |
@@ -15,7 +16,7 @@
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 | **F16: Contratos lógicos** | ✅ **COMPLETADA** — conflicto NODO_CONTRATO/PARA resuelto |
-| **F17: Bootstrap auto-hospedado** | 🔴 **BLOQUEADO** — causa raíz diagnosticada: truncamiento de punteros 64→32 bits en `ptr_str: entero` |
+| **F17: Bootstrap auto-hospedado** | 🔴 **BLOQUEADO** — 3 fixes aplicados: tokenizer unescape + ptr_str 64-bit split + principal.syn cleanup. Auto-compilación sigue crash preexistente. |
 
 ## 2. ARQUITECTURA MODULAR
 

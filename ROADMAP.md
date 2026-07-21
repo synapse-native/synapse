@@ -3,12 +3,12 @@
 > **Basado en:** Auditoría independiente (Julio 2026)
 > **Estado:** 🚀 **F0-F15b + F3 bis COMPLETADAS** — Núcleo auto-hospedado funcional
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 285 collected (285 passed, 2 skipped) | GCC: **0 errores** ✅
+> **Tests:** 285 collected (283 passed, 2 skipped) | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
-> **LSP Nativo:** ✅ **5/5 tests pasan** (F15b: validación #lang + estado global limpio por request)
-> **Última actualización:** 21 Julio 2026 (Sesión 3 — F16 completada, F17 root cause diagnosticada)
+> **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
+> **Última actualización:** 21 Julio 2026 (Sesión 4 — F16+F17: ptr_str fix + tokenizer unescape + principal.syn cleanup)
 
 ---
 
@@ -37,7 +37,7 @@
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix: NODO_CONTRATO=46 (conflicto con NODO_PARA=45 resuelto). 46 constantes consistentes en parser/generator/analizador | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F17: Bootstrap full auto-hospedado** | 🔴 **BLOQUEADO** | Causa raíz: `ptr_str: entero` trunca punteros 64-bit→32-bit en SemNodo. Fix requiere cambiar a `intptr_t`. | — | ✅ F8 + generar() OK |
+| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | 3 fixes: ptr_str 64-bit split + tokenizer unescape + principal.syn cleanup. Auto-compilación sigue crash preexistente. Próximo: diagnosticar crash temprano (potencial stack overflow). | **283** passed | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
 | ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
 
@@ -542,6 +542,17 @@ Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
 
 **Hallazgo crítico: El crash de auto-compilación es PREEXISTENTE.** El binario legacy `synapse_bootstrap.exe` (anterior a cualquier cambio reciente) también crashea con segfault al compilar `nucleo/principal.syn`. El crash ocurre **antes de cualquier output** (antes del primer `fprintf(stderr, ...)` en `generar_etapa()`), lo que sugiere que el problema está MUY temprano en el pipeline, probablemente en la inicialización del tokenizador/parser con archivos grandes.
 
+### Fixes aplicados en esta sesión (Jul 21)
+
+| Fix | Archivo | Descripción |
+|-----|---------|-------------|
+| **Tokenizer unescaping** | `compilador/generator/emit_selfhost.py` | El tokenizador embebido ahora desescapa secuencias Synapse (`\"`, `\'`, `\\`, `\n`, `\t`, `\r`, `\0`) en lugar de preservarlas AS-IS. Usa comparaciones ASCII enteras (92, 34, etc.) para evitar issues de escaping en C generado. Previene errores GCC "stray backslash" con strings con escapes. |
+| **principal.syn cleanup** | `nucleo/principal.syn` | Eliminado `asm("r.dato.valor = 0")` redundante en `etapa_ok()`. El constructor de struct ya zero-inicializa, y el generador auto-compilado produce structs planos (sin ADT `dato` union). |
+| **ptr_str 64-bit split** | `nucleo/principal.syn` | Array paralelo `_f8_ptr_hi[]` para bits altos de punteros 64-bit, evitando truncamiento `ptr_str: entero` (32 bits). Fix necesario pero no suficiente para F17. |
+| **asm blocks consolidados** | `nucleo/analizador_semantico.syn` | Bloques asm inline condensados a una línea cada uno (mismo comportamiento, menos ruido). |
+
+**Pipeline verificada:** 283 tests pasan, binario compila archivos pequeños correctamente.
+
 **Problemas identificados:**
 
 1. **🔴 Crash temprano (pre-existente):** El crash sin output al compilar `principal.syn` (~1284 líneas) vs archivos pequeños que funcionan perfectamente. Posibles causas:
@@ -725,7 +736,7 @@ synapse_lsp/
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **270** (+2 F14.4, +19 F12.1, +19 F12.3) | > 260 ✅ |
+| Tests pasando | 247 | **283** (sesión 4: tokenizer fix + ptr_str split) | > 260 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -811,4 +822,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 20 Jul 2026. 🚀 F0-F15b + F3 bis COMPLETAS. Ver tabla de progreso para fases pendientes (▶️).*
+*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F16 COMPLETADAS, F17 en progreso (3 fixes aplicados). Ver tabla de progreso.*

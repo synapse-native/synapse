@@ -1,9 +1,45 @@
+# Ejecutables generados
 *.exe
 *.o
-*.pyc
+*.obj
+
+# Archivos generados por el pipeline
 synapse_unity.c
+nucleo/lsp.c
+nucleo/lsp.syn.json
+nucleo/principal.syn.json
+nucleo/*.syn.json
+*.exe.c
+resultado_test.exe.c
+salida_test.exe.c
+
+# Backups y temporales
+*.bak
+*.bak2
+*.commit.sh
+.gitignore.swp
+
+# Directorios de build
 build/
-test_salida.exe
+dist/
 test_output/
 nul
+
+# Python
+*.pyc
+__pycache__/
+
+# Fuzz temporales
 tests/fuzz/_test_*.syn
+tests/fuzz/tmp*
+
+# Binarios bootstrap legacy
+synapse_stage2.exe*
+synapse_stage3.exe*
+synapse_bootstrap.exe*
+test_salida.exe
+
+# Directorios externos no fuente
+Native/
+axon_modules/
+paquetes_oficiales/

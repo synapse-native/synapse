@@ -141,6 +141,9 @@ estructura ParserEst:
     error_linea: entero
     error_columna: entero
     es_sin_std: booleano
+    // Parallel array for high 32 bits of string pointers (64-bit safety)
+    ptr_hi: entero
+    max_nodos: entero
 
 // ---- Node allocation via asm ----
 funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:

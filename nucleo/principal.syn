@@ -22,8 +22,6 @@ estructura ResultadoEtapa:
 funcion etapa_ok() -> ResultadoEtapa:
     r = ResultadoEtapa()
     r.tag = 0
-    inseguro:
-        asm("r.dato.valor = 0")
     retornar r
 
 funcion fallo_etapa(cod: entero) -> entero:

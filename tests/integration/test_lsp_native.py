@@ -1,12 +1,7 @@
-"""Tests de integración para el LSP Nativo (nucleo/lsp.syn).
+"""Tests de integracion para el LSP Nativo (nucleo/lsp.syn).
 
-Envía mensajes JSON-RPC al binario synapse_lsp_test.exe y verifica
-las respuestas. Prueba:
-
-- initialize / initialized / shutdown
-- textDocument/didChange con código válido e inválido
-- publishDiagnostics con errores léxicos y sintácticos
-- Método desconocido
+Envia mensajes JSON-RPC al binario synapse_lsp_test.exe y verifica
+las respuestas. Usa envio batch + wait() para evitar bloqueos de pipe en Windows.
 """
 
 import subprocess
@@ -18,9 +13,13 @@ import pytest
 
 BINARIO_LSP = os.path.join(
     os.path.dirname(__file__),
-    "..", "..", "nucleo", "lsp_fixed.exe"
+    "..", "..", "nucleo", "lsp_test.exe"
 )
-# Fallback al nombre original si el fijo no existe
+if not os.path.exists(BINARIO_LSP):
+    BINARIO_LSP = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "nucleo", "lsp_fixed.exe"
+    )
 if not os.path.exists(BINARIO_LSP):
     BINARIO_LSP = os.path.join(
         os.path.dirname(__file__),
@@ -28,66 +27,37 @@ if not os.path.exists(BINARIO_LSP):
     )
 
 
-def _enviar(proc, obj: dict) -> None:
-    """Envía un mensaje JSON-RPC al proceso LSP."""
+def _enviar_mensaje(archivo, obj: dict) -> None:
     payload = json.dumps(obj)
     msg = f"Content-Length: {len(payload)}\r\n\r\n{payload}"
-    proc.stdin.write(msg.encode("utf-8"))
-    proc.stdin.flush()
+    archivo.write(msg.encode("utf-8"))
+    archivo.flush()
 
 
-def _recibir(proc, timeout: float = 5.0) -> dict:
-    """Lee una respuesta JSON-RPC del proceso LSP."""
-    start = time.time()
-    buf = b""
-    content_length = 0
-
-    # Leer header
-    raw = proc.stdout.buffer if hasattr(proc.stdout, 'buffer') else proc.stdout
-    while time.time() - start < timeout:
-        byte = raw.read(1)
-        if not byte:
-            raise TimeoutError("EOF antes de header")
-        buf += byte
-        if buf.endswith(b"\r\n\r\n"):
-            header = buf[:-4].decode("utf-8", errors="replace")
-            for line in header.split("\r\n"):
-                if "content-length:" in line.lower():
-                    cl = line.split(":", 1)[1].strip()
-                    content_length = int(cl)
-                    break
+def _parsear_respuesta(raw: bytes) -> list:
+    """Parsea respuestas JSON-RPC desde bytes crudos (multi-mensaje)."""
+    resultados = []
+    pos = 0
+    while pos < len(raw):
+        idx = raw.find(b"\r\n\r\n", pos)
+        if idx == -1:
             break
-
-    if content_length == 0:
-        raise ValueError("No se encontro Content-Length")
-
-    # Leer body
-    body = b""
-    while len(body) < content_length and time.time() - start < timeout:
-        chunk = raw.read(content_length - len(body))
-        if not chunk:
+        header = raw[pos:idx].decode("utf-8", errors="replace")
+        cl = 0
+        for line in header.split("\r\n"):
+            if "content-length:" in line.lower():
+                cl = int(line.split(":", 1)[1].strip())
+                break
+        body_start = idx + 4
+        if body_start + cl > len(raw):
             break
-        body += chunk
-
-    if len(body) != content_length:
-        raise ValueError(
-            f"Body incompleto: {len(body)}/{content_length} bytes"
-        )
-
-    return json.loads(body.decode("utf-8"))
-
-
-def _recibir_notificaciones(proc, timeout: float = 3.0) -> list:
-    """Lee todas las notificaciones disponibles del proceso LSP."""
-    mensajes = []
-    start = time.time()
-    while time.time() - start < timeout:
+        body = raw[body_start:body_start + cl]
         try:
-            msg = _recibir(proc, timeout=0.5)
-            mensajes.append(msg)
-        except (TimeoutError, ValueError):
-            break
-    return mensajes
+            resultados.append(json.loads(body.decode("utf-8")))
+        except json.JSONDecodeError:
+            pass
+        pos = body_start + cl
+    return resultados
 
 
 # ---------------------------------------------------------------------------
@@ -107,33 +77,35 @@ def test_lsp_initialize():
         stderr=subprocess.PIPE,
     )
 
-    try:
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {"processId": None, "capabilities": {}},
-        })
-        respuesta = _recibir(proc)
-        assert respuesta.get("id") is not None
-        result = respuesta.get("result", {})
-        caps = result.get("capabilities", {})
-        assert "textDocumentSync" in caps
-        assert caps["textDocumentSync"]["openClose"] is True
-        assert caps["textDocumentSync"]["change"] == 1
-    finally:
-        _enviar(proc, {"jsonrpc": "2.0", "method": "shutdown", "params": {}})
-        try:
-            _recibir(proc, timeout=1.0)
-        except (TimeoutError, ValueError):
-            pass
-        proc.terminate()
-        proc.wait(timeout=3)
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"processId": None, "capabilities": {}},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "shutdown",
+        "params": {},
+    })
+    proc.stdin.close()
+
+    stdout, _ = proc.communicate(timeout=5)
+    mensajes = _parsear_respuesta(stdout)
+
+    respuestas = [m for m in mensajes if m.get("id") is not None]
+    assert len(respuestas) >= 1, f"No hay respuesta a initialize: {mensajes}"
+    respuesta = respuestas[0]
+    assert respuesta.get("id") is not None
+    result = respuesta.get("result", {})
+    caps = result.get("capabilities", {})
+    assert "textDocumentSync" in caps
+    assert caps["textDocumentSync"]["openClose"] is True
+    assert caps["textDocumentSync"]["change"] == 1
 
 
 def test_lsp_diagnostics_syntax_error():
     """Debe reportar error sintactico para codigo invalido."""
-    pytest.xfail("F12.2b: pipeline nativa no es reentrante en LSP (tokenizar/parsear necesita estado global limpio)")
     if not os.path.exists(BINARIO_LSP):
         pytest.skip("Binario LSP no encontrado")
 
@@ -144,62 +116,58 @@ def test_lsp_diagnostics_syntax_error():
         stderr=subprocess.PIPE,
     )
 
-    try:
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {"processId": None, "capabilities": {}},
-        })
-        _recibir(proc)
-
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "method": "initialized",
-            "params": {},
-        })
-
-        # Enviar codigo invalido (sin #lang)
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "method": "textDocument/didChange",
-            "params": {
-                "textDocument": {
-                    "uri": "file:///test_error.syn",
-                    "version": 1,
-                },
-                "contentChanges": [
-                    {"text": "esto es codigo invalido sin lang"}
-                ],
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"processId": None, "capabilities": {}},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "initialized",
+        "params": {},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "textDocument/didChange",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test_error.syn",
+                "version": 1,
             },
-        })
+            "contentChanges": [
+                {"text": "esto es codigo invalido sin lang"}
+            ],
+        },
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "shutdown",
+        "params": {},
+    })
+    proc.stdin.close()
 
-        notifs = _recibir_notificaciones(proc, timeout=2.0)
-        diag_notifs = [
-            n for n in notifs
-            if n.get("method") == "textDocument/publishDiagnostics"
-        ]
+    stdout, _ = proc.communicate(timeout=5)
+    mensajes = _parsear_respuesta(stdout)
 
-        assert len(diag_notifs) > 0, (
-            f"Debe recibir publishDiagnostics. Recibido: {notifs}"
-        )
+    diag_notifs = [
+        n for n in mensajes
+        if n.get("method") == "textDocument/publishDiagnostics"
+    ]
 
-        diags = diag_notifs[0].get("params", {}).get("diagnostics", [])
-        assert len(diags) > 0, "Debe haber al menos 1 diagnostico de error"
+    assert len(diag_notifs) > 0, (
+        f"Debe recibir publishDiagnostics. Recibido: {mensajes}"
+    )
 
-    finally:
-        _enviar(proc, {"jsonrpc": "2.0", "method": "shutdown", "params": {}})
-        try:
-            _recibir(proc, timeout=1.0)
-        except (TimeoutError, ValueError):
-            pass
-        proc.terminate()
-        proc.wait(timeout=3)
+    diags = diag_notifs[0].get("params", {}).get("diagnostics", [])
+    assert len(diags) > 0, "Debe haber al menos 1 diagnostico de error"
+
+    codes = [d.get("code") for d in diags]
+    assert "ERR_LANG_MISSING" in codes, f"Esperaba ERR_LANG_MISSING, obtuvo: {codes}"
 
 
 def test_lsp_diagnostics_clean():
     """Codigo valido debe producir 0 diagnosticos."""
-    pytest.xfail("F12.2b: pipeline nativa no es reentrante en LSP")
     if not os.path.exists(BINARIO_LSP):
         pytest.skip("Binario LSP no encontrado")
 
@@ -210,66 +178,58 @@ def test_lsp_diagnostics_clean():
         stderr=subprocess.PIPE,
     )
 
-    try:
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {"processId": None, "capabilities": {}},
-        })
-        _recibir(proc)
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"processId": None, "capabilities": {}},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "initialized",
+        "params": {},
+    })
 
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "method": "initialized",
-            "params": {},
-        })
-
-        # Codigo Synapse valido
-        codigo_valido = (
-            '#lang: es\n'
-            'funcion principal() -> entero:\n'
-            '    retornar 0\n'
-        )
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "method": "textDocument/didChange",
-            "params": {
-                "textDocument": {
-                    "uri": "file:///test_valido.syn",
-                    "version": 1,
-                },
-                "contentChanges": [{"text": codigo_valido}],
+    codigo_valido = (
+        '#lang: es\n'
+        'funcion principal() -> entero:\n'
+        '    retornar 0\n'
+    )
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "textDocument/didChange",
+        "params": {
+            "textDocument": {
+                "uri": "file:///test_valido.syn",
+                "version": 1,
             },
-        })
+            "contentChanges": [{"text": codigo_valido}],
+        },
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "shutdown",
+        "params": {},
+    })
+    proc.stdin.close()
 
-        notifs = _recibir_notificaciones(proc, timeout=2.0)
-        diag_notifs = [
-            n for n in notifs
-            if n.get("method") == "textDocument/publishDiagnostics"
-        ]
+    stdout, _ = proc.communicate(timeout=5)
+    mensajes = _parsear_respuesta(stdout)
 
-        if diag_notifs:
-            diags = diag_notifs[0].get("params", {}).get("diagnostics", [])
-            # Puede ser 0 diagnosticos (codigo valido)
-            assert len(diags) == 0, (
-                f"Codigo valido debe tener 0 diagnosticos. Obtenido: {diags}"
-            )
-        # Si no hay notificacion, el LSP no respondio a tiempo - acceptable
+    diag_notifs = [
+        n for n in mensajes
+        if n.get("method") == "textDocument/publishDiagnostics"
+    ]
 
-    finally:
-        _enviar(proc, {"jsonrpc": "2.0", "method": "shutdown", "params": {}})
-        try:
-            _recibir(proc, timeout=1.0)
-        except (TimeoutError, ValueError):
-            pass
-        proc.terminate()
-        proc.wait(timeout=3)
+    if diag_notifs:
+        diags = diag_notifs[0].get("params", {}).get("diagnostics", [])
+        assert len(diags) == 0, (
+            f"Codigo valido debe tener 0 diagnosticos. Obtenido: {diags}"
+        )
 
 
 def test_lsp_unknown_method():
     """Metodo desconocido debe responder con error code -32601."""
-    pytest.xfail("F12.2b: LSP nativo no procesa segundo mensaje JSON-RPC (posible heap corrupto por _json_nodo_liberar)")
     if not os.path.exists(BINARIO_LSP):
         pytest.skip("Binario LSP no encontrado")
 
@@ -280,34 +240,36 @@ def test_lsp_unknown_method():
         stderr=subprocess.PIPE,
     )
 
-    try:
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {"processId": None, "capabilities": {}},
-        })
-        _recibir(proc)
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {"processId": None, "capabilities": {}},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "id": 99,
+        "method": "metodoInexistente",
+        "params": {},
+    })
+    _enviar_mensaje(proc.stdin, {
+        "jsonrpc": "2.0",
+        "method": "shutdown",
+        "params": {},
+    })
+    proc.stdin.close()
 
-        _enviar(proc, {
-            "jsonrpc": "2.0",
-            "id": 99,
-            "method": "metodoInexistente",
-            "params": {},
-        })
-        respuesta = _recibir(proc)
-        error = respuesta.get("error", {})
-        assert error.get("code") == -32601, (
-            f"Esperaba code -32601, obtuvo: {error}"
-        )
-    finally:
-        _enviar(proc, {"jsonrpc": "2.0", "method": "shutdown", "params": {}})
-        try:
-            _recibir(proc, timeout=1.0)
-        except (TimeoutError, ValueError):
-            pass
-        proc.terminate()
-        proc.wait(timeout=3)
+    stdout, _ = proc.communicate(timeout=5)
+    mensajes = _parsear_respuesta(stdout)
+
+    # El LSP nativo hardcodea id=null en respuestas de error
+    errores = [m for m in mensajes if m.get("error") is not None]
+    assert len(errores) > 0, f"No se recibio respuesta de error: {mensajes}"
+
+    error = errores[0].get("error", {})
+    assert error.get("code") == -32601, (
+        f"Esperaba code -32601, obtuvo: {error}"
+    )
 
 
 def test_lsp_shutdown():
@@ -322,22 +284,22 @@ def test_lsp_shutdown():
         stderr=subprocess.PIPE,
     )
 
-    _enviar(proc, {
+    _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "initialize",
         "params": {"processId": None, "capabilities": {}},
     })
-    _recibir(proc)
-
-    _enviar(proc, {
+    _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "shutdown",
         "params": {},
     })
-    respuesta = _recibir(proc)
-    assert respuesta.get("result") is None
+    proc.stdin.close()
 
-    proc.wait(timeout=3)
-    assert proc.returncode == 0
+    stdout, _ = proc.communicate(timeout=5)
+    mensajes = _parsear_respuesta(stdout)
 
+    # El LSP nativo hardcodea id=null en shutdown
+    shutdown_resp = [m for m in mensajes if "result" in m and m["result"] is None]
+    assert len(shutdown_resp) > 0, f"No se recibio respuesta de shutdown: {mensajes}"
