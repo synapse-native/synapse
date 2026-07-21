@@ -34193,7 +34193,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define MAX_TOKS 16384"
+                  "valor": "#define MAX_TOKS 65536"
                 }
               ]
             }
@@ -41989,7 +41989,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "char* _buf = (char*)malloc((size_t)_fsz + 1);"
+                  "instruccion": "if (_fsz > 1048576) { fprintf(stderr, \"FATAL: fuente > 1MB (%ld bytes). Compilar manual.\\n\", _fsz); fclose(_f); struct ResultadoEtapa _e = {1, 6}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "char* _buf = (char*)malloc((size_t)(_fsz < 1048576 ? 1048576 : _fsz) + 1);"
                 }
               },
               {
@@ -42094,7 +42101,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "enum { F8_MAX_NODOS = 65536, F8_MAX_SYMS = 4096 }"
+                  "instruccion": "enum { F8_MAX_NODOS = 65536, F8_MAX_SYMS = 16384 }"
                 }
               },
               {
@@ -42311,7 +42318,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if(!n||_f8_total>=F8_MAX_NODOS) return 0;"
+                  "instruccion": "    if(!n) return 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if(_f8_total>=F8_MAX_NODOS){ fprintf(stderr,\"FATAL: F8_MAX_NODOS (%d) superado.\\n\",F8_MAX_NODOS); exit(1); }"
                 }
               },
               {
@@ -42787,7 +42801,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "snprintf(_cmd, 4096, \"gcc -O2 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);"
+                  "instruccion": "snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);"
                 }
               },
               {

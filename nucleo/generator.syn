@@ -392,7 +392,7 @@ funcion gen_emitir_token_defs(est: GeneradorCEst) -> nulo:
     gen_emitir_linea(est, "#define T_AMPERSAND 45")
     gen_emitir_linea(est, "#define T_EXTERNO 46")
     gen_emitir_nueva_linea(est)
-    gen_emitir_linea(est, "#define MAX_TOKS 16384")
+    gen_emitir_linea(est, "#define MAX_TOKS 65536")
     gen_emitir_linea(est, "typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;")
     gen_emitir_linea(est, "// Global state from estado_global.syn")
     gen_emitir_linea(est, "_P_Token _P_tks[MAX_TOKS];")

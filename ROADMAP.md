@@ -542,16 +542,30 @@ Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
 
 **Hallazgo crítico: El crash de auto-compilación es PREEXISTENTE.** El binario legacy `synapse_bootstrap.exe` (anterior a cualquier cambio reciente) también crashea con segfault al compilar `nucleo/principal.syn`. El crash ocurre **antes de cualquier output** (antes del primer `fprintf(stderr, ...)` en `generar_etapa()`), lo que sugiere que el problema está MUY temprano en el pipeline, probablemente en la inicialización del tokenizador/parser con archivos grandes.
 
-### Fixes aplicados en esta sesión (Jul 21)
+### Micro-entregable 17.1 — 3 contramedidas aplicadas (Jul 21)
 
-| Fix | Archivo | Descripción |
-|-----|---------|-------------|
-| **Tokenizer unescaping** | `compilador/generator/emit_selfhost.py` | El tokenizador embebido ahora desescapa secuencias Synapse (`\"`, `\'`, `\\`, `\n`, `\t`, `\r`, `\0`) en lugar de preservarlas AS-IS. Usa comparaciones ASCII enteras (92, 34, etc.) para evitar issues de escaping en C generado. Previene errores GCC "stray backslash" con strings con escapes. |
-| **principal.syn cleanup** | `nucleo/principal.syn` | Eliminado `asm("r.dato.valor = 0")` redundante en `etapa_ok()`. El constructor de struct ya zero-inicializa, y el generador auto-compilado produce structs planos (sin ADT `dato` union). |
-| **ptr_str 64-bit split** | `nucleo/principal.syn` | Array paralelo `_f8_ptr_hi[]` para bits altos de punteros 64-bit, evitando truncamiento `ptr_str: entero` (32 bits). Fix necesario pero no suficiente para F17. |
-| **asm blocks consolidados** | `nucleo/analizador_semantico.syn` | Bloques asm inline condensados a una línea cada uno (mismo comportamiento, menos ruido). |
+**Resultado: CRASH TEMPRANO RESUELTO ✅** El binario nativo ahora SUPERA la etapa de parseo (175 nodos aplanados). El crash `exit 139` (segfault) previo ya no ocurre. El fallo actual es un error de compilación C en el código generado (no un crash).
 
-**Pipeline verificada:** 283 tests pasan, binario compila archivos pequeños correctamente.
+| Contramedida | Archivo | Detalle |
+|-------------|---------|---------|
+| **Stack expansion a 8MB** | `main.py:605,607` + `nucleo/principal.syn:163` | `-Wl,--stack,8388608` inyectado en ambos pipelines (Python + nativo). Previene stack overflow por recursión profunda del parser. |
+| **MAX_TOKS 16384→65536** | `emit_selfhost.py:64`, `emit_expressions.py:685`, `generator.syn:395` | Búfer de tokens 4x más grande para archivos grandes. |
+| **F8_MAX_SYMS 4096→16384** | `nucleo/principal.syn:64` | Tabla de símbolos 4x más grande para análisis semántico. |
+| **Buffer mínimo 1MB** | `nucleo/principal.syn:47-49` | Verificación de fuente >1MB + asignación mínima 1MB. |
+| **Bounds checking FATAL** | `emit_selfhost.py:80` + `principal.syn:95` | `if (_P_ntks >= MAX_TOKS-1) { fprintf(stderr,"FATAL..."); exit(1); }` + `if(_f8_total>=F8_MAX_NODOS){ fprintf(stderr,"FATAL..."); exit(1); }` |
+
+**Pipeline verificada:**
+```bash
+$ ./test_f17_m17.exe nucleo/principal.syn out_selfhost_m17.exe
+[Synapse] Pipeline nativa: leyendo fuente...
+[Synapse] F8: Analisis semantico
+[Synapse] F8: 175 nodos aplanados
+[Synapse] F8: Analisis completado
+[Synapse] GCC: ...
+# GCC compilation errors (not crashes) — pre-existing issue with asm() handler
+```
+
+**Próximo paso:** Diagnosticar errores de compilación C en el código generado (stray backslash, tipos incompatibles). Estos son bugs del generador, no del runtime.
 
 **Problemas identificados:**
 
@@ -822,4 +836,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F16 COMPLETADAS, F17 en progreso (3 fixes aplicados). Ver tabla de progreso.*
+*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F16 COMPLETADAS, F17 Micro-entregable 17.1 COMPLETADO (crash temprano resuelto).*

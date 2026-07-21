@@ -682,7 +682,7 @@ def emitir_token_defs(ctx: GeneratorContext):
     for name, val in tokens:
         ctx.write_line(f"#define {name} {val}")
     ctx.write_line("")
-    ctx.write_line("#define MAX_TOKS 16384")
+    ctx.write_line("#define MAX_TOKS 65536")
     ctx.write_line(
         "typedef struct { int tipo; int linea; int col; "
         "char val[256]; } _P_Token;"
