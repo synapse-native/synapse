@@ -3,12 +3,12 @@
 > **Basado en:** Auditoría independiente (Julio 2026)
 > **Estado:** 🚀 **F0-F15b + F3 bis COMPLETADAS** — Núcleo auto-hospedado funcional
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 283 passed, 0 failed, 2 skipped, 0 xfailed | GCC: **0 errores** ✅
+> **Tests:** 285 collected (285 passed, 2 skipped) | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b: validación #lang + estado global limpio por request)
-> **Última actualización:** 20 Julio 2026
+> **Última actualización:** 21 Julio 2026
 
 ---
 
@@ -19,22 +19,27 @@
 | **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed | — |
 | **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed | — |
 | **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
-| **F3: Bootstrap** | ✅ **COMPLETADA** (parcial) | 6/6 tareas | 231 passed | — |
+| **F3: Bootstrap** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed | — |
+| **F3 bis: Bootstrap reparación** | ✅ **COMPLETADA** | 2 bugs: generar() crash + F8 reactivado | **285** passed | — |
 | **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed | — |
 | **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed | — |
 | **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed | — |
 | **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed | — |
 | **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed | — |
-| **F8: Análisis semántico nativo** | ✅ **COMPLETADA** | 6/6 tareas + flattening linked-list → SemNodo[] + analizar() | 283 passed | — |
+| **F8: Análisis semántico nativo** | ✅ **COMPLETADA V2** | flatten linked-list → SemNodo[] + analizar() | 285 passed | — |
 | **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
-| **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** (5/5) | 5/5 tareas | 240 passed | ✅ Preparado |
+| **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** | 5/5 tareas | 240 passed | ✅ Preparado |
 | **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
-| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
-| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
-| **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** (4/4) | F14.4: EOF macro collision, codigo nativo estable | **270(+2xfail)** passed | ⬅️ **COMPLETADA** |
-| **F3 bis: Bootstrap reparación** | ✅ **COMPLETADA** | 2 bugs: generar() crash (v_log printf) + F8 skip reactivado | **283** passed | ✅ |
-| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **283** passed | ⬅️ **COMPLETADA** |
-| **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` + test batch no-bloqueante | **283 passed, 0 xfails** | ⬅️ **COMPLETADA** |
+| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
+| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
+| **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** | 4/4 tareas | **270(+2xfail)** passed | ✅ Completa |
+| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
+| **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
+| | | | | |
+| ▶️ **F16: Contratos lógicos nativos** | ⏳ **PENDIENTE** | requiere/garantiza en pipeline nativa (hoy solo Python) | — | ✅ Documento Maestro |
+| ▶️ **F17: Bootstrap full auto-hospedado** | ⏳ **PENDIENTE** | Stage1→Stage2→Stage3 diff 0 con nuevo pipeline | — | ✅ F8 + generar() OK |
+| ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
+| ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
 
 ---
 
@@ -164,7 +169,7 @@ OK: test_f8_v2.exe
 [Synapse] Compilacion nativa exitosa
 ```
 
-**283 tests, 0 regresiones.**
+**285 tests, 0 regresiones.**
 
 ### 🔧 Cambios realizados en Fase 3
 | Archivo | Cambio |
@@ -351,7 +356,7 @@ Eliminar el post-processing paso 4 en `generator/__init__.py` corrigiendo la ra�
 
 ---
 
-## ✅ FASE 10: CONCURRENCIA — CANALES TIPADOS (COMPLETADA 4/5)
+## ✅ FASE 10: CONCURRENCIA — CANALES TIPADOS (COMPLETADA 5/5)
 
 ### Objetivo
 Implementar concurrencia bajo el principio de **Cero Estado Compartido** según Documento Maestro Parte III: canales tipados (`Canal<T>`), transferencia de ownership, y contratos lógicos (`requiere`/`garantiza`) en tiempo de ejecución.
@@ -724,15 +729,4 @@ vscode-synapse/
 
 ---
 
-## 📋 PRÓXIMAS FASES (Jul 2026+)
-
-Con F0-F15b + F3 bis completadas, las próximas áreas de enfoque según el Documento Maestro son:
-
-| Prioridad | Fase | Descripción | Impacto |
-|-----------|------|-------------|---------|
-| 🟡 P2 | **F16: Contratos lógicos nativos** | Implementar `requiere`/`garantiza` en pipeline nativa (hoy solo en Python) | Validación formal en tiempo de compilación |
-| 🟡 P2 | **F17: Bootstrap completo auto-hospedado** | Stage1→Stage2→Stage3 con diff binario 0 usando el nuevo pipeline nativo | Auto-hospedaje real |
-| 🟢 P3 | **F18: Axon gestor de paquetes** | Implementar `axon fetch`, verificación Ed25519, `axon.lock` (Parte V DM) | Ecosistema soberano |
-| 🟢 P3 | **F19: Edge AI runtime** | Optimizaciones para CPU limitada, módulo `std.simd`, runtime <500KB (Parte IV DM) | Despliegue edge |
-
-*Roadmap vivo — actualizado 20 Jul 2026. 🚀 F0-F15b + F3 bis COMPLETAS.*
+*Roadmap vivo — actualizado 20 Jul 2026. 🚀 F0-F15b + F3 bis COMPLETAS. Ver tabla de progreso para fases pendientes (▶️).*

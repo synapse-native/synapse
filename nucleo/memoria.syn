@@ -1,7 +1,0 @@
-#lang: es
-// Módulo: nucleo.memoria
-
-funcion obtener_datos() -> entero:
-    dato = 42
-    log("[nucleo.memoria] Dato interno obtenido: ", dato)
-    retornar dato

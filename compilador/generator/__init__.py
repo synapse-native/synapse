@@ -489,59 +489,6 @@ class GeneradorC:
 
         result = ctx.generar()
 
-        # Post-processing step 4: fix (CadenaSegura){...} passed to gen_emitir_linea
-        # Root cause: Self-hosting code generator emits (CadenaSegura) compound
-        # literals that don't match void* parameters. Proper fix requires
-        # reworking gen_emitir_linea signature or asm() block generation.
-        # (Fase 9 sub-task: pending emit_selfhost.py refactor)
-        def _fix_gen_cadena_calls(text):
-            target = 'gen_emitir_linea(est, (CadenaSegura){'
-            replacement = 'gen_emitir_linea(est, ((CadenaSegura){'
-            out = []
-            pos = 0
-            while True:
-                idx = text.find(target, pos)
-                if idx == -1:
-                    out.append(text[pos:])
-                    break
-                out.append(text[pos:idx])
-                out.append(replacement)
-                start = idx + len(target)
-                depth = 1
-                i = start
-                in_str = False
-                str_char = None
-                while i < len(text) and depth > 0:
-                    c = text[i]
-                    if in_str:
-                        if c == '\\' and i + 1 < len(text):
-                            i += 2
-                            continue
-                        if c == str_char:
-                            in_str = False
-                    else:
-                        if c in ('"', "'"):
-                            in_str = True
-                            str_char = c
-                        elif c == '{':
-                            depth += 1
-                        elif c == '}':
-                            depth -= 1
-                            if depth == 0:
-                                rest = text[i+1:].lstrip()
-                                if rest.startswith(')'):
-                                    body = text[start:i]
-                                    out.append(body)
-                                    skip = len(text[i:]) - len(rest)
-                                    out.append('}).datos)')
-                                    pos = i + skip + 1
-                                    break
-                    i += 1
-                else:
-                    pos = idx + len(target)
-            return ''.join(out)
-        result = _fix_gen_cadena_calls(result)
-
         return result
 
     @property

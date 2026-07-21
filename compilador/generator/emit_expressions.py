@@ -246,6 +246,20 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     adjusted.append(a)
             return f"{nombre}({', '.join(adjusted)})"
 
+        # Add .datos for string args passed to puntero (void*) params
+        if nombre in ctx._func_param_types:
+            param_types = ctx._func_param_types[nombre]
+            adjusted = []
+            for i, a in enumerate(args):
+                if i < len(param_types) and param_types[i] == 'puntero':
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                        if arg_tipo in ('texto', 'cadena', 'CadenaSegura'):
+                            adjusted.append(f"{a}.datos")
+                            continue
+                adjusted.append(a)
+            return f"{nombre}({', '.join(adjusted)})"
+
         return f"{nombre}({args_str})"
 
     if isinstance(nodo, ExprAccesoCampo):

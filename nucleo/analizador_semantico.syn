@@ -452,11 +452,31 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
         inseguro:
-            asm("// Asignacion: buscar variable, inferir tipo, declarar si no existe")
+            asm("{")
+            asm("    const char* _v = (const char*)est.nodos[idx_nodo].ptr_str;")
+            asm("    if (_v) {")
+            asm("        CadenaSegura _cs = { .longitud = (int)strlen(_v), .datos = _v };")
+            asm("        if (tabla_buscar(est, _cs) < 0)")
+            asm("            sem_error(est, ERR_SEM_VAR_NO_DECLARADA, idx_nodo, _cs);")
+            asm("    }")
+            asm("}")
         retornar
 
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
+        inseguro:
+            asm("{")
+            asm("    const char* _v = (const char*)est.nodos[idx_nodo].ptr_str;")
+            asm("    if (_v) {")
+            asm("        CadenaSegura _cs = { .longitud = (int)strlen(_v), .datos = _v };")
+            asm("        if (tabla_buscar(est, _cs) >= 0)")
+            asm("            sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, _cs);")
+            asm("        else {")
+            asm("            CadenaSegura _t = { .longitud = 5, .datos = \"entero\" };")
+            asm("            tabla_declarar(est, _cs, _t, idx_nodo, 0);")
+            asm("        }")
+            asm("    }")
+            asm("}")
         retornar
 
     // SentenciaSi

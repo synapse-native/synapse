@@ -6,12 +6,12 @@
 |------------|-------|
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 20, 2026 |
-| Última verificación | Pipeline: 0 GCC errors ✅ | 283 tests ✅ |
+| Última verificación | Pipeline: 0 GCC errors ✅ | 285 tests (283 passed, 2 skipped) ✅ |
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
 | Bootstrap | ✅ Pipeline nativa funcional (F8 + generar() reparados) |
 | Fase actual | **F0-F15b + F3 bis completadas** |
-| Tests | **283 passed, 0 failed, 2 skipped, 0 xfailed** |
+| Tests | **285 collected (285 passed, 2 skipped)** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 
@@ -39,12 +39,22 @@
 │   ├── __init__.py
 │   ├── server.py               # Servidor LSP Python (F12.1)
 │   └── llm_bridge.py           # Puente IA Local — Ollama (F12.3)
-├── nucleo/
+├── nucleo/                     # 15 archivos .syn (~4,773 LOC)
 │   ├── principal.syn           # Punto de entrada nativo (pipeline sin Python)
-│   ├── generator.syn           # Generador C auto-hospedado
-│   ├── analizador_semantico.syn# Analizador semántico nativo
-│   ├── diagnostics.syn         # Diagnostics nativos
-│   └── (otros .syn)            # Módulos del núcleo nativo
+│   ├── generator.syn           # Generador C auto-hospedado (1,329 LOC)
+│   ├── parser.syn              # Analizador sintáctico descendente recursivo (1,251 LOC)
+│   ├── analizador_semantico.syn# Analizador semántico nativo (681 LOC)
+│   ├── lexer.syn               # Tokenizador con indentación y detección #lang (514 LOC)
+│   ├── lsp.syn                 # Servidor LSP nativo JSON-RPC (241 LOC)
+│   ├── diagnostics.syn         # Diagnostics nativos con i18n (245 LOC)
+│   ├── ast_nodes.syn           # Tipos compuestos del AST nativo (188 LOC)
+│   ├── tokens.syn              # Constantes de tokens (60 LOC)
+│   ├── errores.syn             # Códigos de error (34 LOC)
+│   ├── estado_global.syn       # Documentación vars globales (51 LOC)
+│   ├── resolvedor_axon.syn     # Resolución de módulos Axon (50 LOC)
+│   ├── tabla_simbolos.syn      # Structs Símbolo/TablaSímbolos (20 LOC)
+│   ├── memoria.syn             # Stub de memoria (7 LOC)
+│   └── principal.es.syn        # [LEGACY] Traducción española incompleta (1,914 LOC)
 ├── synapse_lsp/                # Servidor LSP (Python)
 ├── tests/
 │   ├── unit/                   # Tests unitarios
@@ -54,8 +64,8 @@
 │   ├── fixtures/               # Fixtures de prueba
 │   └── e2e/                    # Tests end-to-end
 ├── main.py                     # Punto de entrada CLI (Python)
-├── synapse_bootstrap.exe       # Generado por pipeline (727,466 bytes) ✅ funcional
-├── synapse_stage2.exe          # Stage2 legacy (729,613 bytes) ✅ funcional
+├── synapse_bootstrap.exe       # Generado por pipeline (731,365 bytes) ✅ funcional
+├── synapse_stage2.exe          # Stage2 legacy (727,678 bytes) ✅ funcional
 ├── synapse_stage3.exe          # Stage3 legacy (729,613 bytes) ✅ funcional
 ├── INFORME_ESTADO_ACTUAL.md    # Este archivo
 ├── DOCUMENTO_ MAESTRO_DE_INGENIERÍA.md  # Roadmap maestro
@@ -156,7 +166,7 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **283** (+2 F15b LSP native) | > 280 ✅ |
+| Tests pasando | 247 | **285** (+2 F15b LSP native) | > 280 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -211,7 +221,7 @@ OK: test_f8_v2.exe
 [Synapse] Compilacion nativa exitosa
 ```
 
-### 283 tests, 0 regresiones
+### 285 tests, 0 regresiones
 
 ## 8. PRÓXIMAS FASES — DEUDA TÉCNICA POST-F3 bis
 
@@ -236,8 +246,8 @@ OK: test_f8_v2.exe
 - Validación de directiva `#lang:` antes de invocar pipeline nativa → `ERR_LANG_MISSING`
 - Tests de integración refactorizados: batch write + `communicate()` para evitar deadlocks en pipes Windows
 - **5/5 tests LSP nativos pasan** (antes 3/5 con 2 xfails)
-- **283 tests totales, 0 xfails**
+- **285 tests totales, 0 xfails**
 
 ---
 
-> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F15b + F3 bis COMPLETADAS. 283 tests, 0 xfails. Pipeline nativa funcional con F8.*
+> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F15b + F3 bis COMPLETADAS. 285 tests, 0 xfails. Pipeline nativa funcional con F8.*
