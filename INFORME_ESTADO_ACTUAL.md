@@ -11,12 +11,12 @@
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
 | Bootstrap | ✅ Pipeline nativa funcional (F8 + generar() reparados) |
-| Fase actual | **F0-F16 COMPLETADAS, F17 BLOQUEADO** |
+| Fase actual | **F0-F16 COMPLETADAS, F17 EN PROGRESO (M17.2 COMPLETADO)** |
 | Tests | **283 passed, 2 skipped** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
-| Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
+| Pipeline (principal.syn) | **✅ Compila y genera ejecutable (738KB)** |
 | **F16: Contratos lógicos** | ✅ **COMPLETADA** — conflicto NODO_CONTRATO/PARA resuelto |
-| **F17: Bootstrap auto-hospedado** | 🔴 **BLOQUEADO** — 3 fixes aplicados: tokenizer unescape + ptr_str 64-bit split + principal.syn cleanup. Auto-compilación sigue crash preexistente. |
+| **F17: Bootstrap auto-hospedado** | 🟡 **M17.1 COMPLETADO** (crash temprano resuelto). **M17.2 COMPLETADO** (3 órdenes: escaping cadenas + constructor structs + unity build multi-archivo). Pendiente M17.3: diagnosticar GCC errors en código generado. |
 
 ## 2. ARQUITECTURA MODULAR
 

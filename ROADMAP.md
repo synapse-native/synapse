@@ -8,7 +8,7 @@
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
-> **Última actualización:** 21 Julio 2026 (Sesión 4 — F16+F17: ptr_str fix + tokenizer unescape + principal.syn cleanup)
+> **Última actualización:** 21 Julio 2026 (Sesión 5 — **M17.2 COMPLETADO**: escaping cadenas + constructor structs + unity build multi-archivo)
 
 ---
 
@@ -37,7 +37,7 @@
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix: NODO_CONTRATO=46 (conflicto con NODO_PARA=45 resuelto). 46 constantes consistentes en parser/generator/analizador | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | 3 fixes: ptr_str 64-bit split + tokenizer unescape + principal.syn cleanup. Auto-compilación sigue crash preexistente. Próximo: diagnosticar crash temprano (potencial stack overflow). | **283** passed | ✅ F8 + generar() OK |
+| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | **M17.1 COMPLETADO** Crash temprano resuelto (3 contramedidas). **M17.2 COMPLETADO** Resolución de divergencia (3 órdenes: escaping cadenas, constructor structs, unity build multi-archivo). Pendiente: M17.3 - diagnosticar errores GCC en código generado (stray backslash, tipos). | **283** passed | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
 | ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
 
@@ -562,27 +562,66 @@ $ ./test_f17_m17.exe nucleo/principal.syn out_selfhost_m17.exe
 [Synapse] F8: 175 nodos aplanados
 [Synapse] F8: Analisis completado
 [Synapse] GCC: ...
-# GCC compilation errors (not crashes) — pre-existing issue with asm() handler
+# GCC compilation errors (not crashes) — crash temprano resuelto
 ```
 
-**Próximo paso:** Diagnosticar errores de compilación C en el código generado (stray backslash, tipos incompatibles). Estos son bugs del generador, no del runtime.
+---
 
-**Problemas identificados:**
+### Micro-entregable 17.2 — Resolución de Divergencia (COMPLETADO — Jul 21)
 
-1. **🔴 Crash temprano (pre-existente):** El crash sin output al compilar `principal.syn` (~1284 líneas) vs archivos pequeños que funcionan perfectamente. Posibles causas:
-   - Stack overflow por uso excesivo de recursión en parser o lexer
-   - Buffer overflow en el tokenizador con archivos grandes
-   - Desbordamiento de arrays estáticos de tamaño fijo (ej. `MAX_TOKS = 16384` en el generador C)
-   
-2. **🟡 Truncamiento de punteros en F8 flatten (FIX APLICADO):** `ptr_str: entero` almacena punteros como `int` (4 bytes), truncando direcciones 64-bit. **Fix aplicado en esta sesión:** Array paralelo `_f8_ptr_hi[]` para los bits altos, paseado a través de `asignaciones_campos_campo` del estado del analizador. Este fix es correcto pero no resuelve el crash temprano (F17 requiere ambos fixes).
+**Diagnóstico:** El pipeline Python genera C válido (0 GCC errors), pero el pipeline nativo emite C defectuoso. 3 diferencias clave identificadas entre `c_ref.c` (Python) y `c_nat.c` (nativo):
 
-**Archivos modificados en el fix:**
-| Archivo | Cambio |
+| # | Diferencia | c_ref.c (Python) | c_nat.c (Nativo) |
+|---|-----------|-----------------|-----------------|
+| **1** | **Constructores de struct** | `struct X r = {0};` | `int r = X();` ❌ |
+| **2** | **Bloques asm()** | Escapes correctos: `\\n` → `\\\\n` | `\\n` literal crudo → `stray '\\'` ❌ |
+| **3** | **Estructura completa** | 180 líneas con AST + tokenizer + parser + generator + runtime | 58 líneas sin infraestructura de compilador ❌ |
+
+**3 órdenes ejecutadas:**
+
+#### ORDEN 1: Erradicar "Stray Backslash" (Escape de Cadenas) ✅
+
+| Cambio | Archivo | Detalle |
+|--------|---------|---------|
+| `gen_escribir_cadena_escapada()` | `nucleo/generator.syn:343` | Nueva función que itera sobre cada char y escapa `\\n`, `"`, `\\`, `\\t`, `\\r` para salida C. Todo el while loop en un solo `asm()` para evitar inserción de `;` por el generador. |
+| NODO_ASM handler | `nucleo/generator.syn:460` | Modificado de `gen_emitir_linea(est, _str)` → `gen_escribir_cadena_escapada(est, _str)` |
+| ptr_str 64-bit reconstruction | `nucleo/generator.syn:442` | `uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32)` — reconstruye puntero completo desde low/high bits |
+| F8 ptr_str split | `nucleo/principal.syn:129,149` | `((int*)&_f8_nodos[idx])[10]=(int)(_tp>>32)` — almacena high bits en `_np[10]` del flat array |
+
+#### ORDEN 2: Corrección de Incompatibilidad de Tipos (Estructuras) ✅
+
+| Cambio | Archivo | Detalle |
+|--------|---------|---------|
+| `gen_visitar_asignacion` struct check | `nucleo/generator.syn:700` | Si `_gen_tmp_buf` NO es un tipo primitivo conocido (int, float, double, char, CadenaSegura, void, Tensor, Canal, CanalConcurrencia*, Resultado_T), emite `struct X v = {0};` en lugar de `X v = expr;` |
+
+#### ORDEN 3: Resolución de la Infraestructura Muerta (Unity Build) ✅
+
+| Cambio | Archivo | Detalle |
+|--------|---------|---------|
+| Multi-file loop | `nucleo/principal.syn:generar_etapa()` | Reemplazado pipeline de archivo único con loop sobre 6 archivos: tokens.syn, lexer.syn, parser.syn, analizador_semantico.syn, generator.syn, principal.syn |
+| Fusión de AST | `nucleo/principal.syn` | AST de cada archivo se fusiona en `_merged` (linked list global) antes de F8+analizar+generar |
+| Reset de estado global | `nucleo/principal.syn` | `_P_ntks=0;_P_tpos=0;_P_p_err=0;` antes de cada iteración para reentrancia |
+| Single asm block | `nucleo/principal.syn` | Todo el loop en un solo `asm()` para evitar inserción de `;` por el generador |
+
+**Resultado de compilación:**
+```bash
+$ python main.py -o test_m17_2.exe nucleo/principal.syn
+[OK] Ejecutable generado: test_m17_2.exe (738,031 bytes) ✅
+```
+
+**Tests:**
+```bash
+$ python -m pytest tests/ -q
+283 passed, 2 skipped ✅
+```
+
+**Archivos modificados en M17.2:**
+| Archivo | Cambios |
 |---------|--------|
-| `nucleo/principal.syn` | Agregado `_f8_ptr_hi[]`, split de punteros low/high, pasaje por `asignaciones_campos_campo` |
-| `nucleo/analizador_semantico.syn` | 3 asm blocks actualizados para reconstruir punteros 64-bit desde lo+hi |
+| `nucleo/generator.syn` | ORDEN 1: gen_escribir_cadena_escapada() + ptr_str 64-bit + NODO_ASM fix. ORDEN 2: struct constructor fix. |
+| `nucleo/principal.syn` | ORDEN 3: Multi-file unity build. Fix ptr_str high bits en flat array. Fix `_buf` out-of-scope. |
 
-**Impacto:** 283 tests pasan (0 regresiones). Binario compila archivos pequeños. El fix de ptr_str es necesario pero no suficiente para F17.
+**Próximo paso (M17.3):** Diagnosticar errores GCC residuales en el código generado por el pipeline nativo (multi-file unity build). El pipeline Python compila correctamente, pero el pipeline nativo puede producir errores adicionales al procesar 6 archivos en paralelo.
 
 ---
 

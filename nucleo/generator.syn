@@ -339,6 +339,11 @@ funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
         asm("    _genbuf[_genpos] = 0;")
         asm("}")
 
+// --- String escaping for C output (ORDEN 1 M17.2) ---
+funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
+    inseguro:
+        asm("const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;gen_emitir_linea(est,_esc);")
+
 // --- Emit token definitions for embedded parser ---
 funcion gen_emitir_token_defs(est: GeneradorCEst) -> nulo:
     si est.gen_defs_emitido == verdadero:
@@ -419,7 +424,7 @@ funcion gen_visitar_nodo(est: GeneradorCEst, nodos: entero, total_nodos: entero,
         asm("if (idx < 0 || idx >= total_nodos) return;")
         asm("int* _np = (int*)nodos + idx * 11;")
         asm("int _tipo = _np[0];")
-        asm("const char* _str = _np[4] ? (const char*)_np[4] : \"\";")
+        asm("uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";")
         asm("int _izq = _np[6];")
         asm("int _der = _np[7];")
         asm("int _her = _np[8];")
@@ -438,7 +443,7 @@ funcion gen_visitar_nodo(est: GeneradorCEst, nodos: entero, total_nodos: entero,
         asm("if (_tipo == 19) { gen_visitar_escuchar(est, nodos, total_nodos, tokens, total_tokens, idx); return; }")
         asm("if (_tipo == 20) { gen_emitir_linea(est, \"break;\"); return; }")
         asm("if (_tipo == 21) { gen_emitir_linea(est, \"continue;\"); return; }")
-        asm("if (_tipo == 40) { gen_emitir_linea(est, _str); return; }")
+        asm("if (_tipo == 40) { gen_escribir_cadena_escapada(est, _str); return; }")
         asm("if (_tipo == 25) {")
         asm("    if (_der) {")
         asm("        snprintf(_buf, 4096, \"#include <%s>\", _str);")
@@ -678,7 +683,8 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, nodos: entero, total_nodos: e
         asm("int _vi = gen_find_var(est, _name);")
         asm("if (_vi < 0) {")
         asm("    gen_tipo_de_expr(est, nodos, total_nodos, tokens, total_tokens, _expr);")
-        asm("    snprintf(_buf, 4096, \"%s %s = %s;\", _gen_tmp_buf, _name, _val);")
+        asm("    if (strcmp(_gen_tmp_buf,\"int\")!=0&&strcmp(_gen_tmp_buf,\"float\")!=0&&strcmp(_gen_tmp_buf,\"double\")!=0&&strcmp(_gen_tmp_buf,\"char\")!=0&&strcmp(_gen_tmp_buf,\"CadenaSegura\")!=0&&strcmp(_gen_tmp_buf,\"void\")!=0&&strcmp(_gen_tmp_buf,\"Tensor\")!=0&&strcmp(_gen_tmp_buf,\"Canal\")!=0&&strcmp(_gen_tmp_buf,\"CanalConcurrencia*\")!=0&&strcmp(_gen_tmp_buf,\"Resultado_T\")!=0) snprintf(_buf, 4096, \"struct %s %s = {0};\", _gen_tmp_buf, _name);")
+        asm("    else snprintf(_buf, 4096, \"%s %s = %s;\", _gen_tmp_buf, _name, _val);")
         asm("    gen_emitir_linea(est, _buf);")
         asm("    gen_add_var(est, _name, _gen_tmp_buf);")
         asm("} else {")
@@ -1014,7 +1020,7 @@ funcion gen_expr_a_c(est: GeneradorCEst, nodos: entero, total_nodos: entero, tok
         asm("if (idx <= 0 || idx >= total_nodos) { snprintf(buf, bufsz, \"0\"); return; }")
         asm("int* _np = (int*)nodos + idx * 11;")
         asm("int _tipo = _np[0];")
-        asm("const char* _str = _np[4] ? (const char*)_np[4] : \"\";")
+        asm("uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";")
         asm("int _vint = _np[3];")
         asm("char _l[4096], _r[4096];")
         asm("")
@@ -1098,7 +1104,7 @@ funcion gen_tipo_de_expr(est: GeneradorCEst, nodos: entero, total_nodos: entero,
         asm("if (idx <= 0 || idx >= total_nodos) { strcpy(_gen_tmp_buf, \"int\"); return; }")
         asm("int* _np = (int*)nodos + idx * 11;")
         asm("int _tipo = _np[0];")
-        asm("const char* _str = _np[4] ? (const char*)_np[4] : \"\";")
+        asm("uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";")
         asm("")
         asm("if (_tipo == 9) { strcpy(_gen_tmp_buf, \"int\"); return; }")
         asm("if (_tipo == 10) { strcpy(_gen_tmp_buf, \"float\"); return; }")
