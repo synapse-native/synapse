@@ -344,6 +344,14 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
 
+    # Garantiza assertions at function exit (implicit return in void)
+    if nodo.tipo_retorno == "nada" or nodo.tipo_retorno == "":
+        for expr in ctx._garantizas_actuales:
+            expr_c = expr_a_c(ctx, expr)
+            ctx.write_line("#ifndef SYNAPSE_RELEASE")
+            ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza (final)");')
+            ctx.write_line("#endif")
+
     # Tensor cleanup
     for var in ctx._tensor_vars:
         if var not in ctx._tensor_vars_transferidas:
@@ -388,6 +396,13 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
     if nodo.expr and isinstance(nodo.expr, Identificador):
         excl = nodo.expr.nombre
         ctx._tensor_vars_transferidas.add(excl)
+
+    # Garantiza assertions before every return
+    for expr in ctx._garantizas_actuales:
+        expr_c = expr_a_c(ctx, expr)
+        ctx.write_line("#ifndef SYNAPSE_RELEASE")
+        ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
+        ctx.write_line("#endif")
     
     if nodo.expr:
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type

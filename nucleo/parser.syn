@@ -104,6 +104,7 @@ constante NODO_CANAL_CREAR = 41
 constante NODO_ENVIAR_CANAL = 42
 constante NODO_RECIBIR_CANAL = 43
 constante NODO_VACIO = 44
+constante NODO_CONTRATO = 45
 
 // ---- Struct for parser token (external representation) ----
 estructura TokenExt:
@@ -704,7 +705,13 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
-    // requiere: / garantiza: blocks
+    // requiere: / garantiza: blocks — link expressions via hermano
+    primera_requiere = 0
+    ultima_requiere = 0
+    cuenta_requiere = 0
+    primera_garantiza = 0
+    ultima_garantiza = 0
+    cuenta_garantiza = 0
     r = 1
     mientras r == 1:
         t = token_mirar(est)
@@ -737,6 +744,15 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                                     r2 = 0
                                     romper
                                 expr = parsear_expresion(est)
+                                si expr != 0:
+                                    si primera_requiere == 0:
+                                        primera_requiere = expr
+                                        ultima_requiere = expr
+                                    sino:
+                                        inseguro:
+                                            asm("est.nodos[ultima_requiere].hermano = expr")
+                                        ultima_requiere = expr
+                                    cuenta_requiere = cuenta_requiere + 1
                                 siguiente
                         sino:
                             r2 = 0
@@ -763,6 +779,15 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                                     r2 = 0
                                     romper
                                 expr = parsear_expresion(est)
+                                si expr != 0:
+                                    si primera_garantiza == 0:
+                                        primera_garantiza = expr
+                                        ultima_garantiza = expr
+                                    sino:
+                                        inseguro:
+                                            asm("est.nodos[ultima_garantiza].hermano = expr")
+                                        ultima_garantiza = expr
+                                    cuenta_garantiza = cuenta_garantiza + 1
                                 siguiente
                         sino:
                             r2 = 0
@@ -774,6 +799,14 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                 r = 0
         sino:
             r = 0
+    // Store contract descriptor node if any contracts
+    si primera_requiere != 0 o primera_garantiza != 0:
+        contrato = parser_nuevo_nodo(est, NODO_CONTRATO, linea, col)
+        inseguro:
+            asm("est.nodos[contrato].hijo_izq = primera_requiere")
+            asm("est.nodos[contrato].hijo_der = primera_garantiza")
+            asm("est.nodos[contrato].valor_int = cuenta_requiere")
+            asm("est.nodos[nodo_func].ptr_extra = contrato")
     // cuerpo
     si token_mirar(est) == T_INDENTAR:
         token_avanzar(est)

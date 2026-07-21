@@ -227,7 +227,7 @@ OK: test_f8_v2.exe
 
 | Prioridad | Fase | Descripción | Impacto |
 |-----------|------|-------------|---------|
-| 🟡 P2 | **F16: Contratos lógicos nativos** | Implementar `requiere`/`garantiza` en pipeline nativa (hoy solo en Python) | Validación formal |
+| 🟡 P2 | **F16: Contratos lógicos nativos** | Python: garantiza asserts emitidos ✅. Nativo: parser + generator con NODO_CONTRATO (45) implementados en nucleo/parser.syn + generator.syn | Validación formal |
 | 🟡 P2 | **F17: Bootstrap full auto-hospedado** | Stage1→Stage2→Stage3 diff 0 con nuevo pipeline nativo | Auto-hospedaje real |
 | 🟢 P3 | **F18: Axon gestor de paquetes** | Implementar `axon fetch`, verificación Ed25519 (Parte V DM) | Ecosistema soberano |
 | 🟢 P3 | **F19: Edge AI runtime** | Runtime <500KB, módulo `std.simd`, CPU limitada (Parte IV DM) | Despliegue edge |

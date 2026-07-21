@@ -8,7 +8,7 @@
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b: validación #lang + estado global limpio por request)
-> **Última actualización:** 21 Julio 2026
+> **Última actualización:** 21 Julio 2026 (Sesión 2)
 
 ---
 
@@ -36,8 +36,8 @@
 | **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
-| ▶️ **F16: Contratos lógicos nativos** | ⏳ **PENDIENTE** | requiere/garantiza en pipeline nativa (hoy solo Python) | — | ✅ Documento Maestro |
-| ▶️ **F17: Bootstrap full auto-hospedado** | ⏳ **PENDIENTE** | Stage1→Stage2→Stage3 diff 0 con nuevo pipeline | — | ✅ F8 + generar() OK |
+| ▶️ **F16: Contratos lógicos nativos** | 🟡 **PARCIAL** | Python: garantiza asserts emitidos ✅. Nativo: parser + generator implementados (NODO_CONTRATO) | **283** passed | ✅ F8 + generar() OK |
+| ▶️ **F17: Bootstrap full auto-hospedado** | 🔴 **BLOQUEADO** | Stage3→Stage4 diff 0 ✅ (legacy), nuevos binarios crashean (STATUS_ACCESS_VIOLATION) | — | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
 | ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
 
@@ -446,12 +446,39 @@ $ python tests/stress/run_stress.py
 | `tests/stress/run_stress.py` | Ejecutor Python (CLI + pytest) |
 | `tests/stress/test_canales_stress.syn` | Prueba de canales en Synapse puro |
 
-### Contratos Lógicos (requiere/garantiza)
-| Componente | Descripción | Estado |
-|------------|-------------|--------|
-| `emit_contracts.py` | Inyección de `assert()` en código C generado | ✅ Existente |
-| Sintaxis `requiere`/`garantiza` | Parser reconoce bloques de contrato en funciones | ✅ Implementado en parser.syn |
-| Compilación `--release` | Omitir asserts en modo producción | ⏳ Pendiente |
+---
+
+## 🟡 FASE 16: CONTRATOS LÓGICOS NATIVOS (PARCIAL)
+
+### Objetivo
+Implementar `requiere`/`garantiza` en la pipeline nativa (hoy solo en Python) para validación formal en tiempo de compilación y ejecución.
+
+### Logrado
+
+**Python (✅ Completo):**
+- `emit_declarations.py`: `garantiza` ahora emite `assert()` antes de cada `return` (antes almacenado pero nunca emitido). También emite en salida de función void (implicit return).
+- Ambos pre/post-condiciones van envueltos en `#ifndef SYNAPSE_RELEASE` para omitir en modo producción.
+
+**Nativo (🟡 Implementado — pendiente de verificación F17):**
+- `nucleo/parser.syn`: Agregado `NODO_CONTRATO = 45`. `parsear_funcion()` ahora enlaza las expresiones de `requiere`/`garantiza` via `hermano` y las almacena en un descriptor `NODO_CONTRATO` apuntado por `ptr_extra` del nodo función.
+- `nucleo/generator.syn`: `gen_visitar_funcion()` emite `#ifndef SYNAPSE_RELEASE` con asserts para `requiere` al inicio de la función. `gen_visitar_retornar()` emite asserts de `garantiza` antes de cada return. Implicit void return también verificado.
+
+### Detalle de cambios
+| Archivo | Cambio |
+|---------|--------|
+| `compilador/generator/emit_declarations.py` | Garantiza asserts en return + void exit |
+| `nucleo/parser.syn` | NODO_CONTRATO + linker de expr contracts |
+| `nucleo/generator.syn` | Emisión de asserts requiere/garantiza + header guard |
+
+### Tests
+```bash
+$ python -m pytest tests/ -q
+283 passed, 2 skipped
+```
+
+### Pendiente
+- Verificación con bootstrap nativo (bloqueado por F17)
+- Compilación `--release` completa (omite asserts)
 
 ---
 
