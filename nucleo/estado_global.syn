@@ -1,10 +1,10 @@
 #lang: es
 
 // ============================================================
-// estado_global.syn  —  Configuración de Estado Global
+// estado_global.syn  --  Configuracion de Estado Global
 // ============================================================
-// Propósito: Documentar las variables globales compartidas
-//            entre módulos del compilador (_G_* del AST Walker,
+// Proposito: Documentar las variables globales compartidas
+//            entre modulos del compilador (_G_* del AST Walker,
 //            _P_* del parser embebido). Todas las variables
 //            se emiten SIN `static` desde generator.syn para
 //            evitar colisiones de enlazado (linker collisions).
@@ -45,7 +45,7 @@
 //   void _G_v(struct Nodo* n)
 //   void _P_tokenizar(const char* s, int len)
 //
-// Getter CadenaSegura -> char* (conversión explícita):
+// Getter CadenaSegura -> char* (conversion explicita):
 //   cs_a_ptr(cs) -> extrae .datos manteniendo ownership en Synapse
 
 constante _GEN_TMP_SIZE = 4096

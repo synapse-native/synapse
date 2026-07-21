@@ -1,5 +1,5 @@
 #lang: es
-// ast_nodes.syn — Tipos compuestos del AST en Synapse puro
+// ast_nodes.syn -- Tipos compuestos del AST en Synapse puro
 // Cada estructura define un nodo del arbol. Los campos que apuntan
 // a otras estructuras del AST se convierten automaticamente en
 // punteros en C para evitar recursion infinita en el tipo.

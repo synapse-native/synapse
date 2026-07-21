@@ -621,7 +621,24 @@ $ python -m pytest tests/ -q
 | `nucleo/generator.syn` | ORDEN 1: gen_escribir_cadena_escapada() + ptr_str 64-bit + NODO_ASM fix. ORDEN 2: struct constructor fix. |
 | `nucleo/principal.syn` | ORDEN 3: Multi-file unity build. Fix ptr_str high bits en flat array. Fix `_buf` out-of-scope. |
 
-**Próximo paso (M17.3):** Diagnosticar errores GCC residuales en el código generado por el pipeline nativo (multi-file unity build). El pipeline Python compila correctamente, pero el pipeline nativo puede producir errores adicionales al procesar 6 archivos en paralelo.
+### Micro-entregable 17.3 — Resolución de Divergencia Residual (EN PROGRESO — Jul 21)
+
+**Diagnóstico:** El pipeline Python sigue compilando con 0 GCC errors, pero el binario nativo falla con `[PARSER] L1261:0: expresion inesperada token=34` (MODULO fantasma) al parsear `nucleo/parser.syn`. Este error ocurre SIEMPRE, sin importar el archivo de entrada (el binario ignora argv y ejecuta el unity build).
+
+**Hallazgos de la sesión:**
+|| Orden | Archivo | Cambio | Resultado |
+||---|--------|---------|----------|
+|| 1 | `nucleo/generator.syn` | Reemplazar `\\"` (3 bytes: 0x5C 0x5C 0x22) → `\\x22` (5 bytes: 0x5C 0x5C 0x78 0x32 0x32) en `gen_emitir_generar_c()` — 16 ocurrencias. También `%%` → `%` (1 ocurrencia) | ✅ Aplicado |
+|| 2 | `nucleo/principal.syn` | `%%s` → `%s` en multi-file loop (2 ocurrencias) | ✅ Aplicado |
+|| 3 | `nucleo/parser.syn` | Em dash Unicode (—, 0xE2 0x80 0x94) → `--` en comentario L712 | ✅ Aplicado (no solucionó el error) |
+|| 4 | `nucleo/*.syn` | Limpieza de TODOS los bytes no-ASCII (>127) en 4 archivos (ast_nodes, estado_global, lsp, memoria) | ✅ Aplicado (no solucionó el error) |
+
+**Descubrimientos clave:**
+1. **`tokenizar()` real usa código C EMBEBIDO** generado por `gen_emitir_tokenizar_c()` en `nucleo/generator.syn`, NO el código de `nucleo/lexer.syn`. El `LexerEstado` con struct + puntero `tokens*` existe en el C generado pero NUNCA se usa — el tokenizer real usa variables locales (`_i`, `_linea`, `_token_count`).
+2. **Bug de `/` en lexer.syn**: En `lexer_tokenizar_linea()`, la lectura anticipada del segundo carácter para detectar `//` SOBREESCRIBE la variable `c` con el valor del siguiente carácter. Después del bloque `si c == 47:`, `c` tiene el valor INCORRECTO. Fix intentado pero revertido por romper la sintaxis Synapse.
+3. **El error L1261 persiste** después de TODOS los cambios. La causa raíz está en el tokenizador embebido, no en los archivos fuente.
+
+**Próximo paso (M17.3 cont.):** Diagnosticar `gen_emitir_tokenizar_c()` en `nucleo/generator.syn` para encontrar la causa del MODULO fantasma. El tokenizador embebido en synapse_unity.c (línea ~1394) produce `T_MOD` (=34) sin que exista `%` en el archivo fuente.
 
 ---
 

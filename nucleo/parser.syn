@@ -709,7 +709,7 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
-    // requiere: / garantiza: blocks — link expressions via hermano
+    // requiere: / garantiza: blocks -- link expressions via hermano
     primera_requiere = 0
     ultima_requiere = 0
     cuenta_requiere = 0

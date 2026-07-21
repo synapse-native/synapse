@@ -1,15 +1,15 @@
 #lang: es
 
-// nucleo/lsp.syn — Servidor LSP Nativo (JSON-RPC 2.0 sobre stdin/stdout)
+// nucleo/lsp.syn -- Servidor LSP Nativo (JSON-RPC 2.0 sobre stdin/stdout)
 //
-// v0.2.5 — F14.4: `constante EOF = 57` en tokens.syn colisionaba con
+// v0.2.5 -- F14.4: `constante EOF = 57` en tokens.syn colisionaba con
 //   `#define EOF (-1)` de <stdio.h>. Cualquier byte 57 (ASCII '9')
 //   activaba el chequeo `if (_c == EOF)`. SOLUCION: usar (-1).
-//   F15: EOF removido de tokens.syn — usar T_FIN para end-of-file.
+//   F15: EOF removido de tokens.syn -- usar T_FIN para end-of-file.
 //
-// v0.2.4 — F14.3 FIX: _setmode directo (sin #ifdef).
+// v0.2.4 -- F14.3 FIX: _setmode directo (sin #ifdef).
 //   RAZON: asm() anade ; tras cada linea, convirtiendo
-//   #ifdef _WIN32 en #ifdef _WIN32; — macro indefinida, bloque saltado.
+//   #ifdef _WIN32 en #ifdef _WIN32; -- macro indefinida, bloque saltado.
 //   SOLUCION: _setmode directo (LSP solo compila en Windows/MinGW).
 
 importar tokens
@@ -33,7 +33,7 @@ funcion principal() -> entero:
     r = 0
     inseguro:
         asm("setbuf(stderr, NULL);")
-        // stdout en modo binario. SIN #ifdef _WIN32 — ver nota arriba.
+        // stdout en modo binario. SIN #ifdef _WIN32 -- ver nota arriba.
         asm("extern int _setmode(int,int); _setmode(1,0x8000);")
         asm("fprintf(stderr, \"[Synapse-LSP] v0.2.5 (F14.4) iniciando...\\n\");")
 
@@ -72,7 +72,7 @@ funcion principal() -> entero:
         asm("    int _br = 0;")
         asm("    while (_br < _cl) {")
         asm("        int _c = fgetc(stdin);")
-        // Usar (-1) en vez de EOF — mismo motivo
+        // Usar (-1) en vez de EOF -- mismo motivo
         asm("        if (_c == (-1)) { _lsp_run = 0; break; }")
         asm("        _lsp_buf[_br++] = (char)_c;")
         asm("    }")
