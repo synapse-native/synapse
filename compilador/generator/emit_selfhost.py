@@ -830,10 +830,11 @@ char {_PH}snames[64][64];
 int {_PH}nsnames = 0;
 
 void {_PH}reset() {{ {_PH}nv = 0; }}
-int {_PH}find(const char* n) {{ for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
+int {_PH}find(const char* n) {{ if(!n) return -1; for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
 const char* {_PH}decl(const char* n, const char* t) {{
+    if(!n||!t) return t?t:"int";
     int i={_PH}find(n); if(i>=0) return {_PH}vt[i];
-    if({_PH}nv<1024){{ strcpy({_PH}vn[{_PH}nv],n); strcpy({_PH}vt[{_PH}nv],t); {_PH}nv++; }}
+    if({_PH}nv<1024){{ strncpy({_PH}vn[{_PH}nv],n,63); {_PH}vn[{_PH}nv][63]=0; strncpy({_PH}vt[{_PH}nv],t,63); {_PH}vt[{_PH}nv][63]=0; {_PH}nv++; }}
     return t;
 }}
 
@@ -842,7 +843,7 @@ void {_PH}emit(const char* s) {{
     fprintf({_PH}out,"%s\\n",s);
 }}
 
-void {_PH}cp(char* d, CadenaSegura cs) {{ memcpy(d,cs.datos,cs.longitud); d[cs.longitud]=0; }}
+void {_PH}cp(char* d, CadenaSegura cs) {{ if(!cs.datos||cs.longitud<=0){{ d[0]=0; return; }} int _len=cs.longitud<4095?cs.longitud:4095; memcpy(d,cs.datos,_len); d[_len]=0; }}
 
 const char* {_PH}tex(struct Nodo* n) {{
     if(!n) return "int";
