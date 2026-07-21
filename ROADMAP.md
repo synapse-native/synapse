@@ -1,13 +1,13 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** 🚀 **F0-F15 COMPLETADAS** — Estabilización completa del núcleo
+> **Estado:** 🚀 **F0-F15b + F3 bis COMPLETADAS** — Núcleo auto-hospedado funcional
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 270 passed, 0 failed, 2 skipped, 2 xfailed | GCC: **0 errores** ✅
+> **Tests:** 283 passed, 0 failed, 2 skipped, 0 xfailed | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
-> **Bootstrap:** ✅ Pipeline Python funcional
-> **LSP Nativo:** ✅ 3/5 tests pasan (initialize, unknown_method, shutdown), 2 xfails documentados
+> **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
+> **LSP Nativo:** ✅ **5/5 tests pasan** (F15b: validación #lang + estado global limpio por request)
 > **Última actualización:** 20 Julio 2026
 
 ---
@@ -25,16 +25,16 @@
 | **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed | — |
 | **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed | — |
 | **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed | — |
-| **F8: Análisis semántico nativo** | ⚠️ **COMPLETADA (Stub)** | 6/6 tareas | 231 passed | — |
+| **F8: Análisis semántico nativo** | ✅ **COMPLETADA** | 6/6 tareas + flattening linked-list → SemNodo[] + analizar() | 283 passed | — |
 | **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
 | **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** (5/5) | 5/5 tareas | 240 passed | ✅ Preparado |
 | **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
 | **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
 | **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** (3/3) | 3/3 tareas | **270(+2xfail)** passed | ✅ Completa |
 | **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** (4/4) | F14.4: EOF macro collision, codigo nativo estable | **270(+2xfail)** passed | ⬅️ **COMPLETADA** |
-| **F3 bis: Bootstrap segfault diagnóstico** | 🔴 **EN DIAGNÓSTICO** | 2 bugs preexistentes: F8 Pass 2 segfault + generar() crash | — | Depende de F15 |
-| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **91+2xfail** passed | ⬅️ **COMPLETADA** |
-| **F15b: Pipeline nativa reentrante** | ⏳ **PENDIENTE** | Desbloquea 2 xfails LSP | — | Depende de F15 |
+| **F3 bis: Bootstrap reparación** | ✅ **COMPLETADA** | 2 bugs: generar() crash (v_log printf) + F8 skip reactivado | **283** passed | ✅ |
+| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **283** passed | ⬅️ **COMPLETADA** |
+| **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` + test batch no-bloqueante | **283 passed, 0 xfails** | ⬅️ **COMPLETADA** |
 
 ---
 
@@ -145,16 +145,26 @@ dist/bin/
                            ✅ Diff = 0 bytes!
 ```
 
-### Hallazgo F3 bis (Jul 20)
+### 🛠️ F3 bis — Bugs de bootstrap resueltos (Jul 20)
 
-**Diagnóstico completado:** El pipeline nativo tiene **2 bugs preexistentes** que impiden el bootstrap:
+**Pipeline nativa funcional.** 2 bugs preexistentes fueron diagnosticados y reparados:
 
-| Bug | Etapa | Causa probable | Estado |
-|-----|-------|----------------|--------|
-| **F8 Pass 2 segfault** | Análisis semántico | Acceso a puntero NULL en AST (tipo.datos, nombre.datos) o desbordamiento de `_sn[4096][64]` | ⚠️ **Bypass aplicado** (F8 skip) |
-| **generar() crash** | Generación de código | Segfault después de F8 skip, dentro de `generar()` | 🔴 **Sin diagnosticar** |
+| Bug | Etapa | Causa raíz | Fix |
+|-----|-------|------------|-----|
+| **generar() crash** | Generación código C | `v_log()` en `emit_selfhost.py` emitía `printf("%s\n", (CadenaSegura){...})` pasando struct a variadic `%s` | `emit_selfhost.py:941-951`: extraer `.datos` en LiteralCadena → `printf("%s\n", cs.datos)` |
+| **F8 skip (segfault preexistente)** | Análisis semántico | F8 inline con `#define` macros causaba segfault en análisis de cuerpos de función. Reemplazado por flattening linked-list → flat `SemNodo[]` + llamada a `analizar()` del analizador semántico existente | `nucleo/principal.syn:65-154`: flatten recursivo + setup `AnalizadorSemanticoEst` + `analizar()` |
 
-**Acción tomada:** El bloque F8 inline fue reemplazado por un skip message para aislar los bugs. El F8 stub solo funcionaba con archivos pequeños (bootstrap_test.syn, hola.syn). El código original de git también crashea — confirmado como bug preexistente, no introducido por F9.4.
+**Pipeline verificada:**
+```bash
+$ ./synapse_bootstrap.exe bootstrap_test.syn test_f8.exe
+[Synapse] F8: Analisis semantico
+[Synapse] F8: 3 nodos aplanados
+[Synapse] F8: Analisis completado
+OK: test_f8_v2.exe
+[Synapse] Compilacion nativa exitosa
+```
+
+**283 tests, 0 regresiones.**
 
 ### 🔧 Cambios realizados en Fase 3
 | Archivo | Cambio |
@@ -165,6 +175,8 @@ dist/bin/
 | `nucleo/analizador_semantico.syn` | Fixes asm blocks: `nombre.datos`, strdup, `->` → `.` |
 | `nucleo/diagnostics.syn` | CadenaSegura en formateo de errores |
 | `nucleo/generator.syn` | Fixes `.datos` en struct members, strcpy |
+| `compilador/generator/emit_selfhost.py` | F3 bis: `v_log()` extrae `.datos` para printf con LiteralCadena |
+| `nucleo/principal.syn` | F3 bis: F8 skip → flatten linked-list + `analizar()` |
 
 ---
 
@@ -262,33 +274,44 @@ Eliminar dependencia de Python del pipeline bootstrap implementando el generador
 
 ---
 
-## ✅ FASE 8: ANÁLISIS SEMÁNTICO NATIVO (COMPLETADA)
+## ✅ FASE 8: ANÁLISIS SEMÁNTICO NATIVO (COMPLETADA — V2)
 
 ### Objetivo
-Implementar análisis semántico nativo en la pipeline (`generar_etapa`) que verifique declaraciones de variables, funciones y parámetros con manejo de alcance.
+Implementar análisis semántico nativo en la pipeline (`generar_etapa`) usando el analizador semántico de `nucleo/analizador_semantico.syn`.
+
+### Arquitectura V2 (Jul 20)
+En lugar del F8 inline con `#define` macros (V1, skip por segfault), la V2 convierte el AST linked-list del parser Python-emitido a `SemNodo[]` flat array y llama `analizar()` directamente:
+
+```
+linked-list AST (struct Nodo*, ListaNodo*)
+  → _f8_flatten() recursivo → flat SemNodo[F8_MAX_NODOS]
+  → setup AnalizadorSemanticoEst (nodos, tabla, structs)
+  → analizar(est) → 3 pasos: estructuras → funciones → cuerpos
+  → generar() sobre linked-list original
+```
 
 ### Logrado
-- Analizador semántico inline en `nucleo/principal.syn` usando `#define` macros (`_SEM_SD`, `_SEM_SI`, `_SEM_SO`)
-- **Pass 1**: Registra símbolos de nivel superior (funciones, declaraciones externas)
-- **Pass 2**: Por cada función: push scope, registra parámetros, procesa cuerpo (detecta variables, const reassign)
-- **Scope management**: `_SEM_SI()` incrementa nivel, `_SEM_SO()` desapila símbolos del nivel actual
-- Sin nested functions (incompatible GCC 5.1.0) — todo flat inline
+- **`_f8_flatten()`**: Recorre linked-list recursivamente, aplanando `DefinicionFuncion`, `SentenciaSi`, `SentenciaMientras`, `BloqueInseguro`, `DeclaracionVariable`, `AsignacionVariable`
+- **`_f8_tipo()`**: Mapa de string tags → constantes `SemNodo.tipo_nodo`
+- **Analizador semántico externo**: Llama `analizar()` del módulo `nucleo/analizador_semantico.syn` (compilado a C)
+- **Pipeline completa**: Tokenizar → Parsear → **F8 flatten + analizar** → Generar C → GCC
 
-### Problemas resueltos
-- Struct field corrections: `OpBinaria.izquierdo` (no `izquierda`), `OpUnaria.expr` (no `operando`), `AsignacionVariable.nombre` es `CadenaSegura`
-- Brace imbalance: compound statements sin cerrar causaban `expected declaration or statement at end of input`
-- `#define` dentro de función: GCC 5.1.0 no accede bien a locales desde nested functions
+### Fixes aplicados
+- `#define` con `;` en `asm()` → reemplazado por `enum { ... }` (el emisor añade `;` propio)
+- `F8_MAX_NODOS`/`F8_MAX_SYMS` como `enum` para evitar macro semicolon collision
 
 ### Tareas
 | # | Tarea | Estado |
 |---|-------|--------|
-| 8.1 | Implementar registro de símbolos (funciones, vars, params) | ✅ |
-| 8.2 | Scope management (_SEM_SI / _SEM_SO) | ✅ |
+| 8.1 | Implementar registro de símbolos (funciones, vars, params) | ✅ (V1) |
+| 8.2 | Scope management (_SEM_SI / _SEM_SO) | ✅ (V1) |
 | 8.3 | Corrección de struct fields y nombres | ✅ |
 | 8.4 | Eliminar nested functions → flat `#define` inline | ✅ |
 | 8.5 | Fix brace imbalance (compound stmt sin cerrar) | ✅ |
 | 8.6 | Verificar `hola.syn` → `[Synapse] Analisis semantico: OK` | ✅ |
 | 8.7 | Pipeline completo (`build.bat full`) → Stage 1 complete | ✅ |
+| **8.8** | **F8 V2**: flatten linked-list + `analizar()` en pipeline nativa | ✅ **NUEVO** |
+| **8.9** | **Verificar** sin segfault en `bootstrap_test.syn` (3 nodos) | ✅ |
 
 ---
 
@@ -701,4 +724,15 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 20 Jul 2026. 🚀 F0-F14 COMPLETAS. Sin fases pendientes en el roadmap actual.*
+## 📋 PRÓXIMAS FASES (Jul 2026+)
+
+Con F0-F15b + F3 bis completadas, las próximas áreas de enfoque según el Documento Maestro son:
+
+| Prioridad | Fase | Descripción | Impacto |
+|-----------|------|-------------|---------|
+| 🟡 P2 | **F16: Contratos lógicos nativos** | Implementar `requiere`/`garantiza` en pipeline nativa (hoy solo en Python) | Validación formal en tiempo de compilación |
+| 🟡 P2 | **F17: Bootstrap completo auto-hospedado** | Stage1→Stage2→Stage3 con diff binario 0 usando el nuevo pipeline nativo | Auto-hospedaje real |
+| 🟢 P3 | **F18: Axon gestor de paquetes** | Implementar `axon fetch`, verificación Ed25519, `axon.lock` (Parte V DM) | Ecosistema soberano |
+| 🟢 P3 | **F19: Edge AI runtime** | Optimizaciones para CPU limitada, módulo `std.simd`, runtime <500KB (Parte IV DM) | Despliegue edge |
+
+*Roadmap vivo — actualizado 20 Jul 2026. 🚀 F0-F15b + F3 bis COMPLETAS.*

@@ -6,12 +6,12 @@
 |------------|-------|
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 20, 2026 |
-| Última verificación | Pipeline: 0 GCC errors ✅ | 270 tests ✅ |
+| Última verificación | Pipeline: 0 GCC errors ✅ | 283 tests ✅ |
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
-| Bootstrap | ✅ Pipeline Python funcional |
-| Fase actual | **F0-F14 completadas** |
-| Tests | **270 passed, 0 failed, 2 skipped, 2 xfailed** |
+| Bootstrap | ✅ Pipeline nativa funcional (F8 + generar() reparados) |
+| Fase actual | **F0-F15b + F3 bis completadas** |
+| Tests | **283 passed, 0 failed, 2 skipped, 0 xfailed** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable** |
 
@@ -75,13 +75,15 @@ $ python main.py -o test_salida.exe nucleo/principal.syn
 [OK] AST canonico guardado: nucleo/principal.syn.json
 ```
 
-### Pipeline Nativa (sin Python) — ✅ Funcional
+### Pipeline Nativa (sin Python) — ✅ Funcional con F8
 ```bash
-$ ./synapse_bootstrap.exe bootstrap_test.syn salida_test.exe
+$ ./synapse_bootstrap.exe bootstrap_test.syn test_f8.exe
 [Synapse] Pipeline nativa: leyendo fuente...
-[Synapse] Analisis semantico: OK
-OK: salida_test.exe
-[Synapse] GCC: gcc ... -o "salida_test.exe"
+[Synapse] F8: Analisis semantico
+[Synapse] F8: 3 nodos aplanados
+[Synapse] F8: Analisis completado
+OK: test_f8.exe
+[Synapse] GCC: gcc ... -o "test_f8.exe"
 [Synapse] Compilacion nativa exitosa
 EXIT CODE: 0
 ```
@@ -106,13 +108,14 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | F5 | CI/CD | ✅ | 4 workflows GitHub Actions |
 | F6 | Eliminar TEMP + .syn fixes | ✅ | 6/6 pasos completados |
 | F7 | Generador nativo (sin Python) | ✅ | Pipeline nativa creada |
-| F8 | Análisis semántico nativo | ✅ **COMPLETADA** | Registra símbolos (funciones, vars, params) + alcance |
+| F8 | Análisis semántico nativo | ✅ **COMPLETADA V2** | Flatten linked-list → SemNodo[] + analizar() en pipeline nativa |
 | **F9** | Eliminar post-processing + fix emisores | ✅ **8/8 COMPLETADA** | Roadmap estable |
 | F10 | Concurrencia (canales) | ✅ **100% (5/5) COMPLETADA** | Stress test: 10,000 hilos, 0 leaks |
 | F11 | Fuzzing destructivo | ✅ **100% (2/2) COMPLETADA** | 800+ randoms, 0 crashes |
 | F12 | LSP nativo | ✅ **COMPLETADA** | F12.1+F12.2+F12.2b+F12.3+F14.4. 270 tests + 2 xfail |
 | F13 | Extensión VS Code + LSP | ✅ **COMPLETADA** | extension.js + package.json. Commands IA: status, explain, complete |
-| F14 | Estabilización LSP nativo | ✅ **COMPLETADA** | F14.4: Causa raíz del EOF diagnosticada y corregida: `#define EOF (57)` de tokens.syn colisiona con `<stdio.h>`. Fix: `(-1)` en asm blocks. 3/5 tests LSP pasan. |
+| F14 | Estabilización LSP nativo | ✅ **COMPLETADA** | F14.4: Causa raíz del EOF diagnosticada y corregida: `#define EOF (57)` de tokens.syn colisiona con `<stdio.h>`. Fix: `(-1)` en asm blocks. |
+| **F15b** | Pipeline nativa reentrante | ✅ **COMPLETADA** | Reset estado global por request + validacion `#lang` en lsp.syn. **5/5 tests LSP pasan** |
 
 ### Progreso Fase 10 (detalle)
 | # | Tarea | Estado |
@@ -153,7 +156,7 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 
 | Métrica | Inicio | Actual | Objetivo |
 |---------|--------|--------|----------|
-| Tests pasando | 247 | **270** (F14.4, +9 F10/F11, +19 F12.1, +19 F12.3) | > 260 ✅ |
+| Tests pasando | 247 | **283** (+2 F15b LSP native) | > 280 ✅ |
 | GCC errors (generator.c) | 403 | **0** ✅ | 0 ✅ |
 | GCC errors (synapse_unity.c) | 376 | **0** ✅ | 0 ✅ |
 | GCC errors (principal.syn completo) | 815 | **0** ✅ | 0 ✅ |
@@ -183,6 +186,41 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | UnicodeDecodeError en main.py para binarios | Capturado → error controlado con exit code 1 |
 | F10.5 Stress test creado | tests/stress/: test_stress_concurrencia.c + run_stress.py |
 | F11 Fuzzing engine creado | tests/fuzz/: fuzz_engine.py (7 estrategias) + test_fuzz.py (9 tests) |
+| F3 bis: generar() crash | `emit_selfhost.py:941-951`: `v_log()` extrae `.datos` para printf con LiteralCadena |
+| F3 bis: F8 skip → activo | `nucleo/principal.syn:65-154`: flatten linked-list + `analizar()` reemplaza skip |
+| `#define` semicolon collision en asm() | `#define F8_MAX_NODOS 65536;` → `enum { F8_MAX_NODOS = 65536 }` (el emisor añade `;`) |
+
+## 7. F3 bis — BUGS DE BOOTSTRAP RESUELTOS (Jul 20)
+
+### Bugs reparados
+El pipeline nativo en `nucleo/principal.syn` tenía **2 bugs preexistentes** que fueron diagnosticados y reparados:
+
+| Bug | Etapa | Causa raíz | Fix | Estado |
+|-----|-------|------------|-----|--------|
+| **generar() crash** | Generación código C | `v_log()` en `emit_selfhost.py` emitía `printf("%s\n", (CadenaSegura){...})` pasando struct a variadic `%s` | `emit_selfhost.py:941-951`: extraer `.datos` | ✅ **REPARADO** |
+| **F8 skip (segfault)** | Análisis semántico | F8 inline con `#define` macros causaba segfault. Reemplazado por flattening linked-list → `SemNodo[]` + `analizar()` | `nucleo/principal.syn:65-154`: flatten recursivo + llamada analizar() | ✅ **REPARADO** |
+
+### Pipeline verificada
+```bash
+$ ./synapse_bootstrap.exe bootstrap_test.syn test_f8.exe
+[Synapse] Pipeline nativa: leyendo fuente...
+[Synapse] F8: Analisis semantico
+[Synapse] F8: 3 nodos aplanados
+[Synapse] F8: Analisis completado
+OK: test_f8_v2.exe
+[Synapse] Compilacion nativa exitosa
+```
+
+### 283 tests, 0 regresiones
+
+## 8. PRÓXIMAS FASES — DEUDA TÉCNICA POST-F3 bis
+
+| Prioridad | Fase | Descripción | Impacto |
+|-----------|------|-------------|---------|
+| 🟡 P2 | **F16: Contratos lógicos nativos** | Implementar `requiere`/`garantiza` en pipeline nativa (hoy solo en Python) | Validación formal |
+| 🟡 P2 | **F17: Bootstrap full auto-hospedado** | Stage1→Stage2→Stage3 diff 0 con nuevo pipeline nativo | Auto-hospedaje real |
+| 🟢 P3 | **F18: Axon gestor de paquetes** | Implementar `axon fetch`, verificación Ed25519 (Parte V DM) | Ecosistema soberano |
+| 🟢 P3 | **F19: Edge AI runtime** | Runtime <500KB, módulo `std.simd`, CPU limitada (Parte IV DM) | Despliegue edge |
 
 ### Deuda técnica remanente
 | Ítem | Impacto | Prioridad |
@@ -191,38 +229,15 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | Ruta `synapse_rt.o` hardcodeada (CWD-relative) | 🟡 Falla si CWD es otro directorio | 🟢 Baja |
 | STRING_UNCLOSED silent break | 🟡 Diagnóstico perdido | 🟡 Media |
 | GCC warning: `strcpy(_sn[_i],n)` makes pointer from integer sin cast | 🟡 Posible bug GCC 5.1.0 con `#define` en función; runtime correcto | 🟢 Baja |
+| LSP nativo hardcodea `id: null` en respuestas shutdown/error | 🟡 No preserva request ID original | 🟢 Baja |
 
-## 7. F3 bis — DIAGNÓSTICO DE BOOTSTRAP SEGFAULT (Jul 20)
-
-### Hallazgos
-El pipeline nativo en `nucleo/principal.syn` tiene **2 bugs preexistentes** que impiden el bootstrap con `principal.syn`:
-
-| Bug | Etapa | Symptom | Estado |
-|-----|-------|---------|--------|
-| **F8 Pass 2 segfault** | Análisis semántico inline | Acceso a puntero NULL en `tipo.datos` o desbordamiento `_sn[4096][64]` | ⚠️ Bypass: skip F8 |
-| **generar() crash** | Generación de código C | Segfault dentro de `generar()` después de F8 skip | 🔴 Pendiente |
-
-**Confirmación:** El código original de git (`git stash`) también crashea — el bug es preexistente desde F8, no introducido por F9.4 ni F14.
-
-### Acción tomada
-- Bloque F8 reemplazado por skip message
-- Debug `setbuf(stderr, NULL)` + `fflush(stderr)` añadidos temporalmente en `principal()`
-- Colisión `#define EOF (57)` de `tokens.syn` documentada como F15
-
-## 8. PRÓXIMAS FASES — DEUDA TÉCNICA POST-F14
-
-| Prioridad | Fase | Descripción | Impacto |
-|-----------|------|-------------|---------|
-| 🟡 P2 | **F15b** | Hacer reentrante la pipeline nativa (tokenizar/parsear) | Desbloquea 2 xfails LSP y permite diagnosticar código real |
-| 🔴 P1 | **F3 bis (cont.)** | Depurar `generar()` crash + restaurar F8 | Bootstrap completo auto-hospedado |
-
-### F15 completada
-- `nucleo/tokens.syn`: Eliminado `constante EOF = 57` — resuelve colisión sistémica con `<stdio.h>`
-- `nucleo/lsp.syn`: Comentarios actualizados para reflejar el fix sistémico
-- Todos los `.syn` files ya usaban `T_FIN` en lugar de `EOF`
-- Python `TokenID.EOF` es enum Python — no afectado
-- **91 tests pasan, 0 regresiones**
+### F15b completada
+- `nucleo/lsp.syn`: Reset de estado global (`_P_ntks`, `_P_tpos`, `_P_p_err`, `_P_nivel_pila`) antes de cada request
+- Validación de directiva `#lang:` antes de invocar pipeline nativa → `ERR_LANG_MISSING`
+- Tests de integración refactorizados: batch write + `communicate()` para evitar deadlocks en pipes Windows
+- **5/5 tests LSP nativos pasan** (antes 3/5 con 2 xfails)
+- **283 tests totales, 0 xfails**
 
 ---
 
-> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F14 COMPLETADAS. 270 tests, 2 xfails. F3 bis en diagnóstico, F15 next priority.*
+> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F15b + F3 bis COMPLETADAS. 283 tests, 0 xfails. Pipeline nativa funcional con F8.*

@@ -939,10 +939,14 @@ void {_PH}ea(struct Nodo* n, char* b, int sz) {{
 }}
 
 void {_PH}v_log(struct LogLlamada* n) {{
-    char f[4096]=""; int fp=0,ap=0,fi=1; char b[512]; char pr[4096]="";
+    char f[4096]=""; int fp=0,ap=0,fi=1; char b[512]; char pr[4096]=""; char tn[64]; char tmp[512];
     struct ListaNodo* c=n->argumentos;
     while(c){{ if(!fi){{ f[fp++]=' '; }} fi=0; f[fp++]='%'; f[fp++]='s';
-        {_PH}ea(c->cabeza,b,512); if(ap>0){{ pr[ap++]=','; pr[ap++]=' '; }} int k=0; while(b[k]) pr[ap++]=b[k++]; c=c->cola;
+        {_PH}cp(tn,c->cabeza->tipo);
+        {_PH}ea(c->cabeza,tmp,512);
+        if(strcmp(tn,"LiteralCadena")==0){{ snprintf(b,sizeof(b),"%s.datos",tmp); }}
+        else{{ strcpy(b,tmp); }}
+        if(ap>0){{ pr[ap++]=','; pr[ap++]=' '; }} int k=0; while(b[k]) pr[ap++]=b[k++]; c=c->cola;
     }}
     f[fp]=0; pr[ap]=0; char ln[4096];
     if(ap>0) snprintf(ln,sizeof(ln),"printf(\\"%s\\\\n\\",%s);",f,pr);
