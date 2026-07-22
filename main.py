@@ -597,6 +597,12 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         synapse_rt = os.path.join(SYNAPSE_BIN, "synapse_rt.o")
         if not os.path.exists(synapse_rt):
             synapse_rt = os.path.join(SYNAPSE_BIN, "..", "dist", "lib", "synapse_rt.o")
+        # TweetNaCl object (Ed25519)
+        tweetnacl_obj = os.path.join(SYNAPSE_BIN, "tweetnacl.o")
+        if not os.path.exists(tweetnacl_obj):
+            tweetnacl_obj = os.path.join(SYNAPSE_BIN, "..", "dist", "lib", "tweetnacl.o")
+            if not os.path.exists(tweetnacl_obj):
+                tweetnacl_obj = ""
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
         # Add no_std flags if compiling in bare-metal mode
         if ast.is_no_std:
@@ -604,7 +610,10 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             # Bare-metal: no runtime object, no pthreads, no networking
             gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp {no_std_flags} -I. "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
         else:
-            gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp -I. "{ruta_c}" "{synapse_rt}" -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
+            rt_objs = f'"{synapse_rt}"'
+            if tweetnacl_obj:
+                rt_objs += f' "{tweetnacl_obj}"'
+            gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp -Wl,--gc-sections -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] GCC: {gcc_cmd}")
         rc = os.system(gcc_cmd)
         if rc != 0:

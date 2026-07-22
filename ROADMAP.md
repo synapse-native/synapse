@@ -9,7 +9,7 @@
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
 > **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
-> **Última actualización:** 22 Julio 2026 (Sesión 8: **F19 M19.2 COMPLETADO — Bridge SIMD std.tensor + F18 INICIADA — Propuesta Axon**)
+> **Última actualización:** 22 Julio 2026 (Sesión 9: **F19 M19.2 COMPLETADO, F18 M18.2 COMPLETADO — Axon cimientos: axon.toml + TweetNaCl + subcomando**)
 
 ---
 
@@ -39,7 +39,7 @@
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
 | ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F18: Axon gestor de paquetes** | 🟡 **M18.1 EN PROGRESO** | Análisis: manifiesto TOML, migración nativa, estrategia Ed25519 (Parte V DM) | — | ✅ DM + F17 + F19 |
+| ▶️ **F18: Axon gestor de paquetes** | 🟢 **M18.2 COMPLETADO** | Legacy eliminado, axon.toml canónico, TweetNaCl integrado, subcomando axon fetch funcional. Runtime 133KB (<500KB). | — | ✅ DM + F17 + F19 |
 | ▶️ **F19: Edge AI runtime** | 🟢 **M19.2 COMPLETADO** | Bridge SIMD en 6 ops std.tensor (transparente a std.modelo). Forward declaration _simd_detectar(). Runtime 98KB (<500KB). | **283** passed | ✅ Documento Maestro |
 
 ---
@@ -633,6 +633,37 @@ Non-ASCII cleanup + escape fixes. No resolvió el error L1261 del nativo (proble
 ### Objetivo
 Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Maestro Parte V. Gestor nativo de dependencias con resolución descentralizada y firmas Ed25519 obligatorias.
 
+### Micro-entregable M18.2 — Implementación de Cimientos (22 Jul 2026)
+
+| Componente | Archivo | Detalle |
+|------------|---------|--------|
+| **Legacy eliminado** | `axon_src/axon.py`, `tests/axon.json` | Script Python del gestor de paquetes y manifiesto JSON eliminados permanentemente. |
+| **Manifiesto canónico** | `axon.toml` | Ahora con `[paquete]` (nombre, version, autor, tipo, punto_entrada) y `[dependencias]` según Documento Maestro. |
+| **TweetNaCl integrado** | `tweetnacl.c`, `tweetnacl.h` | Código fuente Ed25519 (dominio público, ~16KB + ~20KB). Compilado estáticamente. |
+| **Wrapper Ed25519** | `synapse_rt.c`, `librerias/std/cripto.syn` | `_syn_ed25519_verificar()` expuesto via FFI. Llama a `crypto_sign_open` de TweetNaCl. |
+| **Subcomando axon fetch** | `nucleo/principal.syn` | `synapse.exe axon fetch` lee y parsea `axon.toml` vía `_toml_parse()`. Single asm block para evitar `;` entre if/else. |
+| **Main.py actualizado** | `main.py` | Incluye `tweetnacl.o` en comando GCC + `-Wl,--gc-sections`. Path fallback para dist/lib/. |
+
+**Resultados de compilación:**
+```
+$ python main.py -o synapse_f18_m18.exe nucleo/principal.syn
+[OK] Codigo C generado: synapse_unity.c
+[OK] GCC: ... synapse_rt.o ... tweetnacl.o ... -Wl,--gc-sections ...
+[OK] Ejecutable generado: synapse_f18_m18.exe (747,779 bytes)
+
+$ ./synapse_f18_m18.exe axon fetch
+[Axon] Leyendo axon.toml...
+[Axon] OK: TOML valido, %d secciones
+[Axon] axon.toml procesado correctamente
+```
+
+**Tamaños:**
+| Componente | Tamaño | Límite DM | Estado |
+|-----------|--------|-----------|--------|
+| `synapse_rt.o` | 98 KB | — | ✅ |
+| `tweetnacl.o` | 35 KB | — | ✅ (con -ffunction-sections) |
+| Runtime total | ~133 KB | < 500 KB | ✅ |
+
 ### Micro-entregable M18.1 — Análisis y Propuesta Arquitectónica (22 Jul 2026)
 
 **Estado actual — 3 artefactos incompatibles identificados:**
@@ -938,4 +969,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.2 COMPLETADO (SIMD Bridge 3.08x), F18 M18.1 INICIADO (Propuesta Axon). 283 tests pasan.*
+*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.2 COMPLETADO, F18 M18.2 COMPLETADO (Axon cimientos: TweetNaCl + axon.toml + subcomando). 283 tests pasan.*

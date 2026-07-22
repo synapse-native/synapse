@@ -207,7 +207,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("")
         asm("// 5. Compilar con GCC")
         asm("char _cmd[4096];")
-        asm("snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -I. synapse_unity.c synapse_rt.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);")
+        asm("snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -Wl,--gc-sections -I. synapse_unity.c synapse_rt.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);")
         asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
         asm("int _gcc_rc = system(_cmd);")
         asm("if (_gcc_rc != 0) {")
@@ -220,7 +220,13 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
 funcion principal() -> entero:
     r = 0
     inseguro:
-        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [salida.exe]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+    cmd = argv_str(1)
+    // --- Subcomando: axon (single asm block to avoid ; between if/else) ---
+    inseguro:
+        asm("typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; int longitud; CadenaSegura valor_str; _AxnPar* pares; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura);")
+        asm("if(strcmp(cmd.datos,\"axon\")==0){ if(_argc()<3){fprintf(stderr,\"Uso: %%s axon fetch\\n\",_argv(0).datos);r=1;return r;} CadenaSegura _sub=_argv(2); if(strcmp(_sub.datos,\"fetch\")==0){ fprintf(stderr,\"[Axon] Leyendo axon.toml...\\n\"); FILE*_f=fopen(\"axon.toml\",\"rb\"); if(!_f){fprintf(stderr,\"[Axon] ERROR: axon.toml no encontrado\\n\");r=1;return r;} fseek(_f,0,SEEK_END);long _sz=ftell(_f);fseek(_f,0,SEEK_SET); char*_b=(char*)malloc((size_t)_sz+1); if(!_b){fclose(_f);fprintf(stderr,\"[Axon] ERROR: malloc fallo\\n\");r=1;return r;} size_t _rd=fread(_b,1,(size_t)_sz,_f);fclose(_f);_b[_rd]=0; _AxnRoot _rt=_toml_parse((CadenaSegura){.longitud=(int)_rd,.datos=_b}); if(_rt.tipo<0){fprintf(stderr,\"[Axon] ERROR: TOML invalido\\n\");free(_b);r=1;return r;} fprintf(stderr,\"[Axon] OK: TOML valido, %%d secciones\\n\",_rt.longitud); for(int _ti=0;_ti<_rt.longitud;_ti++){fprintf(stderr,\"  seccion '%%s': %%d campos\\n\",_rt.pares[_ti].clave.datos,((_AxnRoot*)_rt.pares[_ti].valor)->longitud); for(int _tj=0;_tj<((_AxnRoot*)_rt.pares[_ti].valor)->longitud;_tj++){fprintf(stderr,\"    '%%s' = \",((_AxnRoot*)_rt.pares[_ti].valor)->pares[_tj].clave.datos); _AxnRoot*_sv=(_AxnRoot*)((_AxnRoot*)_rt.pares[_ti].valor)->pares[_tj].valor; if(_sv->tipo==2)fprintf(stderr,\"'%%s'\\n\",_sv->valor_str.datos); else fprintf(stderr,\"<tipo:%%d>\\n\",_sv->tipo);}} fprintf(stderr,\"[Axon] axon.toml procesado correctamente\\n\"); free(_b); r=0; return r; } fprintf(stderr,\"Subcomando desconocido: '%%s'\\n\",_sub.datos); r=1; return r; }")
+    // --- Pipeline de compilacion normal ---
     ruta = argv_str(1)
     salida_ruta = argv_str(2)
     inseguro:

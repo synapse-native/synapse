@@ -1474,6 +1474,29 @@ struct NodoToml {
     int longitud;
 };
 
+// --- Ed25519 Verification (via TweetNaCl) ---
+// Verifica una firma Ed25519 sobre un mensaje.
+// Parametros:
+//   mensaje: texto plano original
+//   firma: firma de 64 bytes (R || S)
+//   clave_publica: clave publica de 32 bytes
+// Retorna: 0 si la firma es valida, -1 si es invalida
+int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
+    if (firma.longitud < 64 || clave_publica.longitud < 32) {
+        return -1;
+    }
+    unsigned long long mlen = 0;
+    unsigned char* sm = (unsigned char*)malloc((size_t)(mensaje.longitud + 64));
+    if (!sm) return -1;
+    memcpy(sm, firma.datos, 64);
+    memcpy(sm + 64, mensaje.datos, (size_t)mensaje.longitud);
+    unsigned long long smlen = (unsigned long long)(mensaje.longitud + 64);
+    unsigned char* pk = (unsigned char*)clave_publica.datos;
+    int rc = crypto_sign_open(sm, &mlen, sm, smlen, pk);
+    free(sm);
+    return rc;
+}
+
 // --- TOML parser state ---
 static CadenaSegura _t_input;
 static int _t_pos;
@@ -1814,7 +1837,10 @@ void _syn_dormir_ms(int ms) {
 }
 
 // ============================================================
-// std.cripto — SHA-256 (FIPS 180-4)
+// std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)
+#include "tweetnacl.h"
+
+// --- SHA-256 (sin cambios) ---
 // ============================================================
 
 #define SHA256_BLOCK_SIZE 64
