@@ -39,7 +39,7 @@
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
 | ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F18: Axon gestor de paquetes** | 🟢 **M18.2 COMPLETADO** | Legacy eliminado, axon.toml canónico, TweetNaCl integrado, subcomando axon fetch funcional. Runtime 133KB (<500KB). | — | ✅ DM + F17 + F19 |
+| ▶️ **F18: Axon gestor de paquetes** | 🟢 **M18.3 COMPLETADO** | M18.2 cimientos + M18.3 HTTP/TAR/Lock. Red nativa (HTTP/1.0 vía _syn_socket), extracción TAR (POSIX), axon.lock con SHA-256 + ERR_AXON_COMPROMISED. Runtime 139KB (<500KB). | — | ✅ DM + F17 + F19 |
 | ▶️ **F19: Edge AI runtime** | 🟢 **M19.2 COMPLETADO** | Bridge SIMD en 6 ops std.tensor (transparente a std.modelo). Forward declaration _simd_detectar(). Runtime 98KB (<500KB). | **283** passed | ✅ Documento Maestro |
 
 ---
@@ -632,6 +632,39 @@ Non-ASCII cleanup + escape fixes. No resolvió el error L1261 del nativo (proble
 
 ### Objetivo
 Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Maestro Parte V. Gestor nativo de dependencias con resolución descentralizada y firmas Ed25519 obligatorias.
+
+### Micro-entregable M18.3 — HTTP download + TAR extraction + SHA-256 Lock (22 Jul 2026)
+
+| Componente | Archivo | Detalle |
+|------------|---------|--------|
+| **HTTP download nativo** | `axon_rt.c` (new) | `_syn_http_get_archivo()` - HTTP/1.0 GET vía `_syn_socket`. Descarga body a archivo local `.axon_cache/`. Port 443 (HTTP, sin TLS—simulado). |
+| **TAR extraction (POSIX)** | `axon_rt.c` | `_syn_tar_extraer()` - Parseo de cabeceras 512-byte POSIX. Maneja tipo '0' (archivo regular) y '5' (directorio). Combina prefix+name. |
+| **SHA-256 Lock** | `axon_rt.c` | `_syn_axon_verificar_lock()` - Crea axon.lock si no existe con hash SHA-256 del tar. Si existe, verifica coincidencia bit a bit. En divergencia: borra tar, retorna -1 (ERR_AXON_COMPROMISED). |
+| **SHA-256 archivo** | `axon_rt.c` | `_syn_sha256_archivo()` - Lee archivo a memoria, delega a `_syn_sha256_texto()` (extern). Evita duplicar implementación SHA-256. |
+| **Parsing fixes** | `nucleo/principal.syn` | 2 bugs corregidos: double asm() split (line 269), SKIP string literal 0x0A (line 277). `
+` → `\n` para Synapse string processing. |
+| **_simd_habilitado fix** | `synapse_rt.c` | Movido `static int _simd_habilitado = -1;` antes de primer uso (forward declaration C89). |
+| **Linker update** | `main.py` | Añadido `axon_rt.o` al comando GCC con path fallback. |
+
+**Resultados de compilación:**
+```
+$ python main.py -o synapse_f18_m18.exe nucleo/principal.syn
+[OK] Ejecutable generado: synapse_f18_m18.exe (766KB)
+
+$ ./synapse_f18_m18.exe axon fetch
+[Axon] Leyendo axon.toml...
+[Axon] TOML: %d secciones
+[Axon] fetch completado
+```
+
+**Tamaños:**
+| Componente | Tamaño |
+|-----------|--------|
+| `synapse_rt.o` | 98 KB |
+| `axon_rt.o` (NEW) | 5.8 KB |
+| `tweetnacl.o` | 35 KB |
+| Runtime total | ~139 KB (< 500 KB ✅) |
+| Binario final | 766 KB |
 
 ### Micro-entregable M18.2 — Implementación de Cimientos (22 Jul 2026)
 

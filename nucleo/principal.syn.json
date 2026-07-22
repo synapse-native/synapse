@@ -43735,7 +43735,462 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if(strcmp(cmd.datos,\"axon\")==0){ if(_argc()<3){fprintf(stderr,\"Uso: %%s axon fetch\\n\",_argv(0).datos);r=1;return r;} CadenaSegura _sub=_argv(2); if(strcmp(_sub.datos,\"fetch\")==0){ fprintf(stderr,\"[Axon] Leyendo axon.toml...\\n\"); FILE*_f=fopen(\"axon.toml\",\"rb\"); if(!_f){fprintf(stderr,\"[Axon] ERROR: axon.toml no encontrado\\n\");r=1;return r;} fseek(_f,0,SEEK_END);long _sz=ftell(_f);fseek(_f,0,SEEK_SET); char*_b=(char*)malloc((size_t)_sz+1); if(!_b){fclose(_f);fprintf(stderr,\"[Axon] ERROR: malloc fallo\\n\");r=1;return r;} size_t _rd=fread(_b,1,(size_t)_sz,_f);fclose(_f);_b[_rd]=0; _AxnRoot _rt=_toml_parse((CadenaSegura){.longitud=(int)_rd,.datos=_b}); if(_rt.tipo<0){fprintf(stderr,\"[Axon] ERROR: TOML invalido\\n\");free(_b);r=1;return r;} fprintf(stderr,\"[Axon] OK: TOML valido, %%d secciones\\n\",_rt.longitud); for(int _ti=0;_ti<_rt.longitud;_ti++){fprintf(stderr,\"  seccion '%%s': %%d campos\\n\",_rt.pares[_ti].clave.datos,((_AxnRoot*)_rt.pares[_ti].valor)->longitud); for(int _tj=0;_tj<((_AxnRoot*)_rt.pares[_ti].valor)->longitud;_tj++){fprintf(stderr,\"    '%%s' = \",((_AxnRoot*)_rt.pares[_ti].valor)->pares[_tj].clave.datos); _AxnRoot*_sv=(_AxnRoot*)((_AxnRoot*)_rt.pares[_ti].valor)->pares[_tj].valor; if(_sv->tipo==2)fprintf(stderr,\"'%%s'\\n\",_sv->valor_str.datos); else fprintf(stderr,\"<tipo:%%d>\\n\",_sv->tipo);}} fprintf(stderr,\"[Axon] axon.toml procesado correctamente\\n\"); free(_b); r=0; return r; } fprintf(stderr,\"Subcomando desconocido: '%%s'\\n\",_sub.datos); r=1; return r; }"
+                  "instruccion": "if(strcmp(cmd.datos,\"axon\")==0){ if(_argc()<3){fprintf(stderr,\"Uso: %%s axon fetch\\n\",_argv(0).datos);r=1;return r;} CadenaSegura _sub=_argv(2);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if(strcmp(_sub.datos,\"fetch\")==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fprintf(stderr,\"[Axon] Leyendo axon.toml...\\n\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    FILE*_f=fopen(\"axon.toml\",\"rb\"); if(!_f){fprintf(stderr,\"[Axon] ERROR: axon.toml no encontrado\\n\");r=1;return r;}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fseek(_f,0,SEEK_END);long _sz=ftell(_f);fseek(_f,0,SEEK_SET);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char*_b=(char*)malloc((size_t)_sz+1); if(!_b){fclose(_f);fprintf(stderr,\"[Axon] ERROR: malloc fallo\\n\");r=1;return r;}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    size_t _rd=fread(_b,1,(size_t)_sz,_f);fclose(_f);_b[_rd]=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _AxnRoot _rt=_toml_parse((CadenaSegura){.longitud=(int)_rd,.datos=_b});"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if(_rt.tipo<0){fprintf(stderr,\"[Axon] ERROR: TOML invalido\\n\");free(_b);r=1;return r;}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fprintf(stderr,\"[Axon] TOML: %%d secciones\\n\",_rt.longitud);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Create cache directory"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    system(\"mkdir .axon_cache 2>nul\"); system(\"mkdir axon_modules 2>nul\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Iterate dependencies section"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    for(int _ti=0;_ti<_rt.longitud;_ti++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(strcmp(_rt.pares[_ti].clave.datos,\"dependencias\")==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _AxnRoot*_dep=(_AxnRoot*)_rt.pares[_ti].valor;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            fprintf(stderr,\"[Axon] %%d dependencias encontradas\\n\",_dep->longitud);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for(int _tj=0;_tj<_dep->longitud;_tj++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                CadenaSegura _pkg=_dep->pares[_tj].clave;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _AxnRoot*_pkg_val=(_AxnRoot*)_dep->pares[_tj].valor;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Extract version from inline table"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _ver[64]=\"\";"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                for(int _tk=0;_tk<_pkg_val->longitud;_tk++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if(strcmp(_pkg_val->pares[_tk].clave.datos,\"version\")==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        strncpy(_ver,((_AxnRoot*)_pkg_val->pares[_tk].valor)->valor_str.datos,63);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                fprintf(stderr,\"[Axon] Procesando: '%%s' v%%s\\n\",_pkg.datos,_ver);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Build download URL: github.com/synapse-native/PKG/archive/refs/heads/main.tar"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _tar_url[512], _tar_path[512], _extract_dir[512], _lock_path[512];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_tar_url,sizeof(_tar_url),\"/synapse-native/%%s/archive/refs/heads/main.tar\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_tar_path,sizeof(_tar_path),\".axon_cache/%%s.tar\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_extract_dir,sizeof(_extract_dir),\"axon_modules/%%s\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_lock_path,sizeof(_lock_path),\"axon.lock\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                extern int _syn_http_get_archivo(CadenaSegura,int,CadenaSegura,const char*);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                extern int _syn_axon_verificar_lock(const char*,const char*,const char*,const char*);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                extern int _syn_tar_extraer(const char*,const char*);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Step 1: Download"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                fprintf(stderr,\"[Axon] Descargando %%s...\\n\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                CadenaSegura _gh_host={.longitud=14,.datos=\"github.com\"};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                CadenaSegura _gh_path={.longitud=(int)strlen(_tar_url),.datos=_tar_url};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                int _dl=_syn_http_get_archivo(_gh_host,443,_gh_path,_tar_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if(_dl<0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    fprintf(stderr,\"[Axon] WARNING: No se pudo descargar %%s (sin internet?)\\n\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    fprintf(stderr,\"[Axon] Usando fallback local...\\n\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // Check if already extracted"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    char _ck[512]; snprintf(_ck,sizeof(_ck),\"%%s/principal.syn\",_extract_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    FILE*_fe=fopen(_ck,\"rb\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if(_fe){fclose(_fe);fprintf(stderr,\"[Axon] Ya instalado: %%s\\n\",_pkg.datos);continue;}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    fprintf(stderr,\"[Axon] SKIP: %%s (no hay red ni cache)\\\\n\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                fprintf(stderr,\"[Axon] Descargado: %%s\\n\",_tar_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Step 2: Verify/Create lock"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                int _lk=_syn_axon_verificar_lock(_pkg.datos,_ver,_tar_path,_lock_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(_lk<0){fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: hash mismatch\\n\");r=1;free(_b);return r;}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Step 3: Extract TAR"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                fprintf(stderr,\"[Axon] Extrayendo a %%s...\\n\",_extract_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _syn_tar_extraer(_tar_path,_extract_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                fprintf(stderr,\"[Axon] Instalado: %%s v%%s\\n\",_pkg.datos,_ver);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fprintf(stderr,\"[Axon] fetch completado\\n\"); free(_b); r=0; return r;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "fprintf(stderr,\"Subcomando desconocido: '%%s'\\n\",_sub.datos); r=1; return r; }"
                 }
               }
             ]
