@@ -1,18 +1,18 @@
 /**
  * Synapse Language Support for VS Code
  *
- * Extension principal que conecta VS Code con el servidor LSP de Synapse
- * (synapse_lsp/server.py) a través del protocolo estándar JSON-RPC.
+ * Extension principal que conecta VS Code con el servidor LSP nativo de Synapse
+ * (test_lsp_bin.exe / synapse_lsp.exe) a través del protocolo estándar JSON-RPC.
  *
  * Arquitectura:
  * - Activa cuando se abre un archivo .syn
- * - Lanza `python main.py --lsp` como proceso hijo
+ * - Lanza `synapse_lsp.exe` como proceso hijo (sin dependencia Python)
  * - Conecta VS Code LanguageClient al proceso
- * - Expone comandos para IA local (F12.3)
+ * - Expone comandos para IA local (Ollama, integrado via LSP)
  *
  * Requisitos:
- * - Python 3.8+
- * - Synapse compiler en la raíz del proyecto (main.py)
+ * - Synapse compiler en la raíz del proyecto
+ * - Binario LSP nativo compilado: synapse_lsp.exe o test_lsp_bin.exe
  * - Opcional: Ollama para características IA (phi3:mini, llama3.2)
  */
 
@@ -36,51 +36,68 @@ function _cargar_languageclient() {
 
 // ---------------------------------------------------------------------------
 // Detección de la raíz del proyecto Synapse
-// Busca main.py en la jerarquía de directorios
+// Busca el binario LSP nativo o main.py en la jerarquía
 // ---------------------------------------------------------------------------
 
 function _encontrar_raiz_synapse(uriDocumento) {
-    // Intentar desde la carpeta del workspace
     const carpetaWorkspace = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
     if (carpetaWorkspace) {
-        const candidato = path.join(carpetaWorkspace, 'main.py');
-        if (fs.existsSync(candidato)) {
+        // Check for test_lsp_bin.exe (LSP nativo) or main.py (build root)
+        if (fs.existsSync(path.join(carpetaWorkspace, 'test_lsp_bin.exe')) ||
+            fs.existsSync(path.join(carpetaWorkspace, 'main.py'))) {
             return carpetaWorkspace;
         }
     }
 
-    // Intentar desde el documento abierto, subiendo directorios
     if (uriDocumento) {
         let dir = path.dirname(uriDocumento.fsPath);
         while (dir !== path.parse(dir).root) {
-            if (fs.existsSync(path.join(dir, 'main.py'))) {
+            if (fs.existsSync(path.join(dir, 'test_lsp_bin.exe')) ||
+                fs.existsSync(path.join(dir, 'main.py'))) {
                 return dir;
             }
             dir = path.dirname(dir);
         }
     }
 
-    // Fallback a la raíz del primer workspace
     return carpetaWorkspace || process.cwd();
 }
 
 // ---------------------------------------------------------------------------
-// Construcción de opciones para el LanguageClient
+// Construcción de opciones para el LanguageClient (usa binario LSP nativo)
 // ---------------------------------------------------------------------------
 
 function _crear_opciones_servidor(raizSynapse) {
     const cfg = vscode.workspace.getConfiguration('synapse');
-    const pythonPath = cfg.get('lsp.pythonPath', 'python');
+
+    // Buscar binario LSP nativo: test_lsp_bin.exe > nucleo/lsp_test.exe > config
+    let lspBinary = cfg.get('lsp.nativeBinary', '');
+    if (!lspBinary) {
+        const candidates = [
+            path.join(raizSynapse, 'test_lsp_bin.exe'),
+            path.join(raizSynapse, 'nucleo', 'lsp_test.exe'),
+            path.join(raizSynapse, 'build', 'bin', 'synapse_lsp.exe'),
+        ];
+        for (const c of candidates) {
+            if (fs.existsSync(c)) {
+                lspBinary = c;
+                break;
+            }
+        }
+        if (!lspBinary) {
+            lspBinary = path.join(raizSynapse, 'test_lsp_bin.exe');
+        }
+    }
 
     return {
-        command: pythonPath,
-        args: ['main.py', '--lsp'],
+        command: lspBinary,
+        args: [],
         options: {
             cwd: raizSynapse,
             env: { ...process.env },
             stdio: 'pipe',
         },
-        transport: 0, // TransportKind.stdio
+        transport: 0,
     };
 }
 
@@ -230,19 +247,17 @@ async function activate(contexto) {
     const documentoActual = vscode.window.activeTextEditor?.document;
     const raizSynapse = _encontrar_raiz_synapse(documentoActual?.uri);
 
-    if (!raizSynapse || !fs.existsSync(path.join(raizSynapse, 'main.py'))) {
-        salida.appendLine('[Synapse] ⚠️  main.py no encontrado. El servidor LSP no se iniciará.');
-        salida.appendLine(`[Synapse] Buscado en: ${raizSynapse}`);
+    if (!raizSynapse) {
+        salida.appendLine('[Synapse] ⚠️  Raiz del proyecto no detectada.');
         vscode.window.showWarningMessage(
-            'Synapse: main.py no encontrado. Abre una carpeta del proyecto Synapse.'
+            'Synapse: No se pudo detectar la raíz del proyecto. Abre una carpeta del proyecto Synapse.'
         );
         return;
     }
 
     salida.appendLine(`[Synapse] Raíz del proyecto: ${raizSynapse}`);
-    salida.appendLine('[Synapse] Iniciando servidor LSP: python main.py --lsp');
-
     const opcionesServidor = _crear_opciones_servidor(raizSynapse);
+    salida.appendLine(`[Synapse] Iniciando servidor LSP nativo: ${opcionesServidor.command}`);
 
     const cliente = new LanguageClient(
         'synapseLsp',

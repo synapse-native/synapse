@@ -63,10 +63,10 @@
         "configuration": {
             "title": "Synapse",
             "properties": {
-                "synapse.lsp.pythonPath": {
+                "synapse.lsp.nativeBinary": {
                     "type": "string",
-                    "default": "python",
-                    "description": "Ruta al ejecutable de Python (ej: python3, /usr/bin/python3)"
+                    "default": "",
+                    "description": "Ruta al binario LSP nativo de Synapse (ej: test_lsp_bin.exe, nucleo/lsp_test.exe). Si está vacío, busca automáticamente."
                 },
                 "synapse.lsp.enabled": {
                     "type": "boolean",

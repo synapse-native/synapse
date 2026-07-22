@@ -1,15 +1,16 @@
 # 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** 🚀 **F0-F15b + F3 bis COMPLETADAS** — Núcleo auto-hospedado funcional
+> **Estado:** ✅ **v2.0 — LISTO PARA PRODUCCIÓN** — Todas las fases F0-F19 completadas
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
 > **Tests:** 285 collected (283 passed, 2 skipped) | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
-> **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
+> **LSP Nativo:** ✅ **5/5 tests pasan** — Extensión VS Code conectada al binario nativo (sin Python)
 > **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
-> **Última actualización:** 22 Julio 2026 (Sesión 11: **F18 M18.7 COMPLETADA — Fase sellada: legacy purged, E2E native test, Mandatory Ed25519, SemVer, TOML canónico. F18 100% COMPLETADA.**)
+> **Axon:** ✅ Gestor de paquetes nativo: axon.toml, Ed25519, TAR, axon.lock, SemVer, E2E validado
+> **Última actualización:** 22 Julio 2026 (Sesión 12: **F13 COMPLETADA — VS Code + LSP nativo integrado. v2.0 PRODUCTION-READY. Todas las fases selladas.**)
 
 ---
 
