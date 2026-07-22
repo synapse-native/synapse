@@ -43819,6 +43819,97 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    // Extract autor (Ed25519 public key) from [paquete] section"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char autor[128]=\"\";"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    for(int _ta=0;_ta<_rt.longitud;_ta++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(strcmp(_rt.pares[_ta].clave.datos,\"paquete\")==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _AxnRoot*_paq=(_AxnRoot*)_rt.pares[_ta].valor;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for(int _tb=0;_tb<_paq->longitud;_tb++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(strcmp(_paq->pares[_tb].clave.datos,\"autor\")==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncpy(autor,((_AxnRoot*)_paq->pares[_tb].valor)->valor_str.datos,127);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if(*autor){ fprintf(stderr,\"[Axon] Autor: %s\\n\",autor); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    // Iterate dependencies section"
                 }
               },
@@ -43994,6 +44085,13 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "                extern int _syn_axon_verificar_firma(const char*,const char*,const char*);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "                // Step 1: Download"
                 }
               },
@@ -44100,6 +44198,55 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "                fprintf(stderr,\"[Axon] Descargado: %%s\\n\",_tar_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Step 1.5: Download signature + verify Ed25519"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char sig_url[512], sig_path[512];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(sig_url,sizeof(sig_url),\"/synapse-native/%s/archive/refs/heads/main.tar.sig\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(sig_path,sizeof(sig_path),\".axon_cache/%s.tar.sig\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                int _sig_dl=_syn_http_get_archivo(_gh_host,443,(CadenaSegura){.longitud=(int)strlen(sig_url),.datos=sig_url},sig_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(*autor && _sig_dl>=0){ fprintf(stderr,\"(Axon) Verificando firma Ed25519...\\n\"); int _vf=_syn_axon_verificar_firma(_tar_path,sig_path,autor); if(_vf<0){ fprintf(stderr,\"(Axon) ERR_AXON_COMPROMISED: firma Ed25519 invalida\\n\"); remove(_tar_path); remove(sig_path); r=1; free(_b); return r; } fprintf(stderr,\"(Axon) Firma Ed25519 verificada correctamente\\n\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(*autor && _sig_dl<0){ fprintf(stderr,\"(Axon) WARNING: No se pudo descargar .sig, saltando verificacion\\n\"); }"
                 }
               },
               {

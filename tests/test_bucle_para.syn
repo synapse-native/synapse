@@ -1,0 +1,5 @@
+#lang: es
+
+funcion principal() -> nulo:
+    para i = 0; i < 3; i = i + 1:
+        escribir_linea(i)

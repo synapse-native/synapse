@@ -613,12 +613,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             rt_objs = f'"{synapse_rt}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
-            # Axon runtime (HTTP download, TAR extraction, SHA-256 Lock)
-            axon_rt_obj = os.path.join(SYNAPSE_BIN, "axon_rt.o")
-            if not os.path.exists(axon_rt_obj):
-                axon_rt_obj = ""
-            if axon_rt_obj:
-                rt_objs += f' "{axon_rt_obj}"'
+
             gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp -Wl,--gc-sections -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] GCC: {gcc_cmd}")
         rc = os.system(gcc_cmd)

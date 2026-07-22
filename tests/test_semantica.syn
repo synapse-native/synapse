@@ -1,0 +1,6 @@
+#lang: es
+
+funcion principal() -> nulo:
+    activo: booleano = verdadero
+    inactivo: booleano = falso
+    si activo y no inactivo: escribir_linea("OK_BOOL")

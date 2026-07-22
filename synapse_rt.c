@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <time.h>
 #include "librerias/embedded_libs.h"
+#include "tweetnacl.h"
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -365,10 +366,15 @@ static int _simd_habilitado = -1;  // -1 = no detectado aun
 // porque las variantes escalar y SIMD tienen el mismo comportamiento
 // de pool_free/pasaje por copia.
 
-// Forward declaration: _simd_detectar() se define en la seccion std.simd
-// (mas abajo en este mismo archivo), pero es llamada por las funciones
-// bridge que estan antes en el orden de compilacion.
+// Forward declarations: funciones SIMD definidas mas abajo en este archivo,
+// pero llamadas por las funciones bridge que estan antes en el orden de compilacion.
 static void _simd_detectar(void);
+static void _syn_simd_llenar_tensor_constante(Tensor t, float valor);
+static Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b);
+static void _syn_simd_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida);
+static void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon);
+static void _syn_simd_silu(Tensor salida, Tensor entrada);
+static void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala);
 
 void _syn_llenar_tensor_constante(Tensor t, float valor) {
     _simd_detectar();
@@ -1482,6 +1488,15 @@ struct NodoToml {
 //   firma: firma de 64 bytes (R || S)
 //   clave_publica: clave publica de 32 bytes
 // Retorna: 0 si la firma es valida, -1 si es invalida
+
+// randombytes stub for TweetNaCl (only needed if crypto_sign_keypair is linked)
+void randombytes(unsigned char* x, unsigned long long xlen) ;
+void randombytes(unsigned char* x, unsigned long long xlen) {
+    for (unsigned long long i = 0; i < xlen; i++) {
+        x[i] = (unsigned char)(rand() & 0xFF);
+    }
+}
+
 int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
     if (firma.longitud < 64 || clave_publica.longitud < 32) {
         return -1;
@@ -1493,8 +1508,12 @@ int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegur
     memcpy(sm + 64, mensaje.datos, (size_t)mensaje.longitud);
     unsigned long long smlen = (unsigned long long)(mensaje.longitud + 64);
     unsigned char* pk = (unsigned char*)clave_publica.datos;
-    int rc = crypto_sign_open(sm, &mlen, sm, smlen, pk);
+    // Use separate buffer for output (TweetNaCl requires m != sm)
+    unsigned char* m_buf = (unsigned char*)malloc((size_t)(mensaje.longitud > 0 ? mensaje.longitud : 1));
+    if (!m_buf) { free(sm); return -1; }
+    int rc = crypto_sign_open(m_buf, &mlen, sm, smlen, pk);
     free(sm);
+    free(m_buf);
     return rc;
 }
 
@@ -4292,4 +4311,51 @@ int _syn_axon_verificar_lock(const char* paquete, const char* version, const cha
     free((void*)actual_hash.datos);
     fprintf(stderr, "[Axon] Hash verificado: sha256:%s\n", expected_hash);
     return 0;
+}
+
+// --- Axon: Ed25519 signature verification ---
+int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const char* clave_publica_hex) {
+    // 1. Read tar file (mensaje)
+    FILE* f = fopen(tar_ruta, "rb");
+    if (!f) return -1;
+    fseek(f, 0, SEEK_END);
+    long tar_sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (tar_sz <= 0) { fclose(f); return -1; }
+    unsigned char* buf = (unsigned char*)malloc((size_t)tar_sz);
+    if (!buf) { fclose(f); return -1; }
+    fread(buf, 1, (size_t)tar_sz, f);
+    fclose(f);
+    CadenaSegura mensaje = { .longitud = (int)tar_sz, .datos = (char*)buf };
+
+    // 2. Read sig file (expect 64 bytes binary Ed25519 signature)
+    f = fopen(sig_ruta, "rb");
+    if (!f) { free(buf); return -1; }
+    fseek(f, 0, SEEK_END);
+    long sig_sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (sig_sz < 64) { fclose(f); free(buf); return -1; }
+    unsigned char sig[64];
+    size_t sig_rd = fread(sig, 1, 64, f);
+    fclose(f);
+    if (sig_rd < 64) { free(buf); return -1; }
+    CadenaSegura firma = { .longitud = 64, .datos = (char*)sig };
+
+    // 3. Convert hex public key (64 hex chars) to 32 bytes
+    int pk_hex_len = (int)strlen(clave_publica_hex);
+    if (pk_hex_len < 64) { free(buf); return -1; }
+    unsigned char pk[32];
+    for (int i = 0; i < 32; i++) {
+        unsigned int byte_val;
+        char hex_pair[3] = { clave_publica_hex[i*2], clave_publica_hex[i*2+1], 0 };
+        if (sscanf(hex_pair, "%x", &byte_val) != 1) { free(buf); return -1; }
+        pk[i] = (unsigned char)byte_val;
+    }
+    CadenaSegura clave_publica = { .longitud = 32, .datos = (char*)pk };
+
+    // 4. Verify Ed25519 signature (calls _syn_ed25519_verificar defined above)
+    int rc = _syn_ed25519_verificar(mensaje, firma, clave_publica);
+
+    free(buf);  // sig and pk are stack-allocated
+    return rc;  // 0 = signature valid, -1 = invalid
 }

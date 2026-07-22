@@ -1,0 +1,93 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "a",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "b",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "a"
+              },
+              "operador": "*",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "c",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "a"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "b"
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Hola mundo"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "Resultado final"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}
