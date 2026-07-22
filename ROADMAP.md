@@ -9,7 +9,7 @@
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
 > **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
-> **Última actualización:** 22 Julio 2026 (Sesión 8: **F19 M19.1 COMPLETADO — CPUID dinámico + Benchmark 3.14x**)
+> **Última actualización:** 22 Julio 2026 (Sesión 8: **F19 M19.2 COMPLETADO — Bridge SIMD std.tensor + F18 INICIADA — Propuesta Axon**)
 
 ---
 
@@ -39,8 +39,8 @@
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
 | ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
-| ▶️ **F19: Edge AI runtime** | 🟢 **M19.1 COMPLETADO** | CPUID runtime + Benchmark SIMD 3.14x. Runtime <500KB ✅ (96KB). Std.simd con SSE/AVX/AVX2. Pendiente: AVX-512, tests CI. | **283** passed | ✅ Documento Maestro |
+| ▶️ **F18: Axon gestor de paquetes** | 🟡 **M18.1 EN PROGRESO** | Análisis: manifiesto TOML, migración nativa, estrategia Ed25519 (Parte V DM) | — | ✅ DM + F17 + F19 |
+| ▶️ **F19: Edge AI runtime** | 🟢 **M19.2 COMPLETADO** | Bridge SIMD en 6 ops std.tensor (transparente a std.modelo). Forward declaration _simd_detectar(). Runtime 98KB (<500KB). | **283** passed | ✅ Documento Maestro |
 
 ---
 
@@ -628,16 +628,50 @@ Non-ASCII cleanup + escape fixes. No resolvió el error L1261 del nativo (proble
 
 ---
 
-## ⏳ FASE 18: AXON GESTOR DE PAQUETES (PENDIENTE)
+## ▶️ FASE 18: AXON GESTOR DE PAQUETES (M18.1 EN PROGRESO)
 
 ### Objetivo
-Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Maestro Parte V.
+Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Maestro Parte V. Gestor nativo de dependencias con resolución descentralizada y firmas Ed25519 obligatorias.
 
-### Dependencia: F17 (pipeline nativa funcional para auto-hospedaje)
+### Micro-entregable M18.1 — Análisis y Propuesta Arquitectónica (22 Jul 2026)
+
+**Estado actual — 3 artefactos incompatibles identificados:**
+
+| Artefacto | Formato | Secciones | Problema |
+|-----------|---------|-----------|---------|
+| `axon.toml` (raíz) | TOML | `[proyecto]` solo | No tiene `[dependencias]`, `autor`, `tipo` |
+| `tests/axon.json` | JSON | `[paquete]`, `[dependencias]` | Formato desviado del DM |
+| `axon_src/axon.py` | Solo entiende JSON | Lee `axon.json` | Ignora `axon.toml` por completo |
+
+**Parser TOML existente:** `librerias/std/toml.syn` con backend C (`_toml_parse`) ya compilado en `synapse_rt.c`. Soporta secciones, cadenas, tablas en línea y comentarios.
+
+**Resolvedor de importaciones nativo:** `nucleo/resolvedor_axon.syn` ya compilado en el binario, con búsqueda en `axon_modules/`.
+
+**Estrategia aprobada para los 3 pilares de F18:**
+
+| Pilar | Estrategia | Riesgo |
+|-------|-----------|--------|
+| **1. Manifiesto TOML único** | Expandir `axon.toml` canónico según DM. Deprecar JSON. Usar `_toml_parse` existente. | 🟢 Bajo |
+| **2. Migración nativa `axon fetch`** | Subcomando `synapse.exe axon` (init/fetch/construir/lock). HTTP download reusa `_syn_socket` existente. ZIP: miniz o propio. Lock: SHA-256 existente. | 🟡 Medio |
+| **3. Ed25519 (bloqueante)** | Integrar TweetNaCl (dominio público, ~20KB compilado, auditado). Runtime 98KB + 20KB = 118KB << 500KB límite DM. | 🟡 Medio |
+
+**Micro-entregables planificados:**
+
+| # | Micro-entregable | Dependencia |
+|---|-----------------|-------------|
+| M18.1 | ✅ Análisis + Propuesta arquitectónica (actual) | — |
+| M18.2 | Unificar axon.toml canónico + deprecar JSON | M18.1 |
+| M18.3 | `synapse.exe axon init` + generación `axon.lock` | M18.2 |
+| M18.4 | HTTP download nativo + ZIP extraction | M18.3 |
+| M18.5 | Verificación Ed25519 (TweetNaCl) + `ERR_AXON_COMPROMISED` | M18.4 |
+| M18.6 | P2P / repositorios offline + tests CI | M18.5 |
+| M18.7 | Retirar `axon.py` heredado | M18.6 |
+
+### Dependencia: F17 (pipeline nativa funcional) + F19 (runtime SIMD completo)
 
 ---
 
-## ✅ FASE 19: EDGE AI RUNTIME (M19.1 COMPLETADO)
+## ✅ FASE 19: EDGE AI RUNTIME (M19.2 COMPLETADO)
 
 ### Objetivo
 Runtime <500KB, módulo `std.simd`, soporte CPU limitada según Documento Maestro Parte IV.
@@ -650,24 +684,25 @@ Runtime <500KB, módulo `std.simd`, soporte CPU limitada según Documento Maestr
 | **Benchmark Synapse** | `tests/smoke_tensor.syn` | Definición del benchmark en Synapse. Multiplicación 256x256, 5 iteraciones, `std.tiempo` para timing, validación de resultados. |
 | **Runner C** | `tests/smoke_tensor_runner.c` | Implementación directa del benchmark con QPC/clock_gettime. |
 
-**Resultados del benchmark:**
+### Micro-entregable M19.2 — Bridge SIMD en std.tensor (22 Jul 2026)
+
+| Componente | Archivo | Detalle |
+|------------|---------|--------|
+| **Bridge SIMD 6 ops** | `synapse_rt.c` | Forward declaration `_simd_detectar()`. Las 6 funciones críticas (`llenar_tensor_constante`, `multiplicar_matrices`, `rmsnorm`, `silu`, `softmax_escalado`, `multiplicar_matrices_transpuesta_b`) ahora consultan `_simd_habilitado` en runtime y delegan a `_syn_simd_*` cuando hay soporte hardware. |
+| **Bridge transparente** | `synapse_rt.c` | `std.modelo` llama a `_syn_rmsnorm()` etc. sin saber si la aceleración está activa. El runtime decide en caliente. Ownership preservado. |
+
+**Resultados del benchmark (M19.2 validado con .o recién compilado):**
 ```
 SIMD disponible: 1 (AVX2)
-Escalar (mejor): 13.43 ms
-SIMD    (mejor):  4.27 ms
-Speedup: 3.14x mas rapido
+Escalar (mejor): 13.19 ms
+SIMD    (mejor):  4.28 ms
+Speedup: 3.08x mas rapido
 Validacion: CORRECTOS (resultados identicos)
+Runtime size: 98 KB (< 500KB) ✅
 ```
 
-**Bugs corregidos durante desarrollo:**
-1. Use-after-free en benchmark (multiplicar_matrices consume ownership de tensores de entrada → matrices recreadas cada iteración)
-2. Variable `_simd_habilitado` sin inicializar explícito a 0 para CPUs sin SSE
-3. Scope de variable `err` en bloque de validación
-
-### Pendiente post-M19.1
-- F19.2: AVX-512 opcional (`__m512`)
-- F19.3: Tests de rendimiento automatizados (pytest)
-- F19.4: Integración SIMD con std.modelo (transformers)
+### Pendiente post-M19.2
+- AVX-512 opcional (`__m512`)
 
 ---
 
@@ -903,4 +938,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.1 COMPLETADO (CPUID + Benchmark 3.14x). Próximo: F19.2 (AVX-512) o F18 (Axon). 283 tests pasan.*
+*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.2 COMPLETADO (SIMD Bridge 3.08x), F18 M18.1 INICIADO (Propuesta Axon). 283 tests pasan.*

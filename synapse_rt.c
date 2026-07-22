@@ -355,14 +355,35 @@ Tensor relu(Tensor a) {
     return r;
 }
 
-// --- std.tensor (cache-optimized) ---
+// --- std.tensor (cache-optimized + auto-SIMD bridge) ---
+// Todas las funciones escalares consultan _simd_habilitado en runtime
+// y delegan a la variante SIMD cuando el hardware lo soporta.
+// El bridge es transparente: std.modelo llama a _syn_rmsnorm sin saber
+// si la aceleracion esta activa. La semantica de ownership se preserva
+// porque las variantes escalar y SIMD tienen el mismo comportamiento
+// de pool_free/pasaje por copia.
+
+// Forward declaration: _simd_detectar() se define en la seccion std.simd
+// (mas abajo en este mismo archivo), pero es llamada por las funciones
+// bridge que estan antes en el orden de compilacion.
+static void _simd_detectar(void);
+
 void _syn_llenar_tensor_constante(Tensor t, float valor) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        _syn_simd_llenar_tensor_constante(t, valor);
+        return;
+    }
     for (int _i = 0; _i < (int)(t.filas * t.columnas); _i++) {
         t.datos[_i] = valor;
     }
 }
 
 Tensor _syn_multiplicar_matrices(Tensor a, Tensor b) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        return _syn_simd_multiplicar_matrices(a, b);
+    }
     if (a.columnas != b.filas) {
         fprintf(stderr, "ESCAPA_DEL_ALCANCE: dimensiones incompatibles en multiplicar_matrices()\n");
         return (Tensor){ .filas = 0, .columnas = 0, .datos = NULL };
@@ -388,6 +409,7 @@ Tensor _syn_multiplicar_matrices(Tensor a, Tensor b) {
 
 // --- std.tensor (Transformer primitives) ---
 // extraer_fila: copia una fila de tabla_embeddings(indice_token, :) hacia salida(1, :)
+// Sin SIMD equivalente (es memcpy puro)
 void _syn_extraer_fila(Tensor salida, Tensor tabla_embeddings, int indice_token) {
     if (indice_token < 0 || indice_token >= (int)tabla_embeddings.filas) {
         fprintf(stderr, "ESCAPA_DEL_ALCANCE: indice_token %d fuera de rango [0, %u)\n",
@@ -400,7 +422,13 @@ void _syn_extraer_fila(Tensor salida, Tensor tabla_embeddings, int indice_token)
 }
 
 // rmsnorm: salida[i] = entrada[i] / sqrt(mean(entrada^2) + epsilon) * peso_normalizacion[i]
+// Bridge SIMD: mismo ownership (pasaje por copia, sin pool_free)
 void _syn_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        _syn_simd_rmsnorm(salida, entrada, peso_normalizacion, epsilon);
+        return;
+    }
     uint32_t n = entrada.columnas;
     float suma_cuadrados = 0.0f;
     for (uint32_t _i = 0; _i < n; _i++) {
@@ -414,7 +442,13 @@ void _syn_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, floa
 }
 
 // silu (Swish): salida[i] = entrada[i] / (1 + exp(-entrada[i]))
+// Bridge SIMD: mismo ownership (pasaje por copia, sin pool_free)
 void _syn_silu(Tensor salida, Tensor entrada) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        _syn_simd_silu(salida, entrada);
+        return;
+    }
     uint32_t n = entrada.columnas;
     for (uint32_t _i = 0; _i < n; _i++) {
         float x = entrada.datos[_i];
@@ -424,6 +458,7 @@ void _syn_silu(Tensor salida, Tensor entrada) {
 
 // --- std.tensor (Attention primitives) ---
 // rope: aplica Rotary Position Embedding in-place sobre un tensor 1D (1xN)
+// Sin SIMD equivalente (operacion pares-impar especializada)
 void _syn_rope(Tensor tensor, int posicion_token, int head_dim, float theta_base) {
     uint32_t n = tensor.columnas;
     if (head_dim > (int)n) head_dim = (int)n;
@@ -439,7 +474,13 @@ void _syn_rope(Tensor tensor, int posicion_token, int head_dim, float theta_base
 }
 
 // softmax_escalado: aplica softmax con factor de escala sobre cada fila (estabilidad: resta max)
+// Bridge SIMD: mismo ownership (pasaje por copia, modifica in-place)
 void _syn_softmax_escalado(Tensor tensor, float factor_escala) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        _syn_simd_softmax_escalado(tensor, factor_escala);
+        return;
+    }
     uint32_t filas = tensor.filas;
     uint32_t cols = tensor.columnas;
     for (uint32_t _f = 0; _f < filas; _f++) {
@@ -464,10 +505,16 @@ void _syn_softmax_escalado(Tensor tensor, float factor_escala) {
 }
 
 // multiplicar_matrices_transpuesta_b: C = A * B^T  (zero-copy, B se lee transpuesto)
+// Bridge SIMD: mismo ownership (salida pre-asignada, sin pool_free de entradas)
 void _syn_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida) {
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        _syn_simd_multiplicar_matrices_transpuesta_b(a, b, salida);
+        return;
+    }
     uint32_t M = a.filas;
-    uint32_t K = a.columnas;  // tambien = b.columnas (B sin transponer)
-    uint32_t N = b.filas;     // resultado = M x N
+    uint32_t K = a.columnas;
+    uint32_t N = b.filas;
     for (uint32_t _i = 0; _i < M; _i++) {
         for (uint32_t _j = 0; _j < N; _j++) {
             float _sum = 0.0f;
