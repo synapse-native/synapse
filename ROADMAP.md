@@ -39,7 +39,7 @@
 | | | | | |
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
 | ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F18: Axon gestor de paquetes** | 🟢 **M18.4 COMPLETADO** | M18.4: Ed25519 + Hotfix. Tolerancia Cero autor vacío, TOML cleanup, wrapper seguro (HTTP/1.0 vía _syn_socket), extracción TAR (POSIX), axon.lock con SHA-256 + ERR_AXON_COMPROMISED. Runtime 139KB (<500KB). | — | ✅ DM + F17 + F19 |
+| ▶️ **F18: Axon gestor de paquetes** | 🟢 **M18.5 COMPLETADO** | M18.4: Ed25519 + Hotfix. Tolerancia Cero autor vacío, TOML cleanup, wrapper seguro (HTTP/1.0 vía _syn_socket), extracción TAR (POSIX), axon.lock con SHA-256 + ERR_AXON_COMPROMISED. Runtime 139KB (<500KB). | — | ✅ DM + F17 + F19 |
 | ▶️ **F19: Edge AI runtime** | 🟢 **M19.2 COMPLETADO** | Bridge SIMD en 6 ops std.tensor (transparente a std.modelo). Forward declaration _simd_detectar(). Runtime 98KB (<500KB). | **283** passed | ✅ Documento Maestro |
 
 ---

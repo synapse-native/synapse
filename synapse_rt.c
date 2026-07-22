@@ -4166,6 +4166,15 @@ int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir) {
         typeflag = block[156];
         memcpy(prefix, block + 345, 155); prefix[155] = 0;
 
+        // --- Path traversal protection ---
+        // Reject absolute paths (starting with /) and directory escapes (..)
+        if (name[0] == '/' || strstr(name, "..") != NULL ||
+            prefix[0] == '/' || strstr(prefix, "..") != NULL) {
+            fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: path traversal detectado en TAR: %s/%s\n", prefix, name);
+            fclose(f);
+            return -1;
+        }
+
         // Build full path (prefix + "/" + name)
         char full_path[512];
         if (prefix[0]) {
@@ -4364,4 +4373,54 @@ int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const 
 void _syn_axon_limpiar_toml(void* n) {
     if (!n) return;
     _toml_nodo_liberar(*(NodoToml*)n);
+}
+
+// --- Axon: busqueda local (offline-first resolution) ---
+// Returns:
+//  0 = package already installed (extract_dir/principal.syn exists)
+//  1 = package tar available in .axon_cache/
+//  2 = package tar available in paquetes_oficiales/<ver>/
+//  3+ = package found via AXON_PATH environment variable
+// -1 = not found locally
+int _syn_axon_buscar_local(const char* paquete, const char* version,
+                           char* tar_path, int tar_sz,
+                           char* extract_dir, int ext_sz) {
+    // 0. Pre-set extract_dir regardless (needed by caller)
+    snprintf(extract_dir, ext_sz, "axon_modules/%s", paquete);
+
+    // 1. Check installed: axon_modules/<pkg>/principal.syn
+    char chk[1024];
+    snprintf(chk, sizeof(chk), "%s/principal.syn", extract_dir);
+    FILE* f = fopen(chk, "rb");
+    if (f) { fclose(f); fprintf(stderr, "[Axon] Local: ya instalado en %s\n", extract_dir); return 0; }
+
+    // 2. Check .axon_cache/<pkg>.tar
+    snprintf(tar_path, tar_sz, ".axon_cache/%s.tar", paquete);
+    f = fopen(tar_path, "rb");
+    if (f) { fclose(f); fprintf(stderr, "[Axon] Local: cache encontrado %s\n", tar_path); return 1; }
+
+    // 3. Check paquetes_oficiales/<pkg>/<ver>.tar
+    snprintf(tar_path, tar_sz, "paquetes_oficiales/%s/%s.tar", paquete, version);
+    f = fopen(tar_path, "rb");
+    if (f) { fclose(f); fprintf(stderr, "[Axon] Local: oficial %s\n", tar_path); return 2; }
+
+    // 4. Check AXON_PATH env var directories (semicolon-separated)
+    const char* axon_path = getenv("AXON_PATH");
+    if (axon_path && axon_path[0]) {
+        char path_copy[4096];
+        strncpy(path_copy, axon_path, sizeof(path_copy)-1);
+        path_copy[sizeof(path_copy)-1] = '\0';
+        char* save;
+        char* tok = strtok_r(path_copy, ";", &save);
+        int origin = 3;
+        while (tok) {
+            snprintf(tar_path, tar_sz, "%s/%s/%s.tar", tok, paquete, version);
+            f = fopen(tar_path, "rb");
+            if (f) { fclose(f); fprintf(stderr, "[Axon] Local: AXON_PATH %s\n", tar_path); return origin; }
+            tok = strtok_r(NULL, ";", &save);
+            origin++;
+        }
+    }
+
+    return -1; // not found
 }

@@ -43728,7 +43728,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; CadenaSegura valor_str; _AxnPar* pares; int longitud; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura); extern void _syn_axon_limpiar_toml(void*);"
+                  "instruccion": "typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; CadenaSegura valor_str; _AxnPar* pares; int longitud; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura); extern void _syn_axon_limpiar_toml(void*); extern int _syn_axon_buscar_local(const char*,const char*,char*,int,char*,int);"
                 }
               },
               {
@@ -43813,6 +43813,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    system(\"mkdir .axon_cache 2>nul\"); system(\"mkdir axon_modules 2>nul\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Parse --online flag (default: offline strict)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _online = 0; for(int _ai=3;_ai<_argc();_ai++){ CadenaSegura _a=_argv(_ai); if(strcmp(_a.datos,\"--online\")==0){ _online=1; break; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    fprintf(stderr,\"[Axon] Modo: %s\\n\",_online?\"online\":\"offline (air-gapped)\");"
                 }
               },
               {
@@ -44099,35 +44120,84 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // Step 1: Download"
+                  "instruccion": "                // Step 0: Try local resolution first (offline-first)"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                fprintf(stderr,\"[Axon] Descargando %%s...\\n\",_pkg.datos);"
+                  "instruccion": "                int _local_st = _syn_axon_buscar_local(_pkg.datos,_ver,_tar_path,512,_extract_dir,512);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                CadenaSegura _gh_host={.longitud=14,.datos=\"github.com\"};"
+                  "instruccion": "                if(_local_st < 0){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                CadenaSegura _gh_path={.longitud=(int)strlen(_tar_url),.datos=_tar_url};"
+                  "instruccion": "                    if(!_online){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                int _dl=_syn_http_get_archivo(_gh_host,443,_gh_path,_tar_path);"
+                  "instruccion": "                        fprintf(stderr,\"[Axon] ERR_AXON_NOT_FOUND: %%s v%%s no encontrado localmente (use --online)\n\",_pkg.datos,_ver);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        r=1; free(_b); return r;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // Online mode: download from HTTP"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    fprintf(stderr,\"[Axon] Descargando %%s...\\n\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    CadenaSegura _gh_host={.longitud=14,.datos=\"github.com\"};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    CadenaSegura _gh_path={.longitud=(int)strlen(_tar_url),.datos=_tar_url};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    int _dl=_syn_http_get_archivo(_gh_host,443,_gh_path,_tar_path);"
                 }
               },
               {
@@ -44141,56 +44211,84 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    fprintf(stderr,\"[Axon] WARNING: No se pudo descargar %%s (sin internet?)\\n\",_pkg.datos);"
+                  "instruccion": "                        fprintf(stderr,\"[Axon] ERROR: No se pudo descargar %%s\\n\",_pkg.datos);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    fprintf(stderr,\"[Axon] Usando fallback local...\\n\");"
+                  "instruccion": "                        fprintf(stderr,\"[Axon] ERR_AXON_NOT_FOUND: %%s v%%s (red no disponible)\n\",_pkg.datos,_ver);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    // Check if already extracted"
+                  "instruccion": "                        r=1; free(_b); return r;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    char _ck[512]; snprintf(_ck,sizeof(_ck),\"%%s/principal.syn\",_extract_dir);"
+                  "instruccion": "                    }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    FILE*_fe=fopen(_ck,\"rb\");"
+                  "instruccion": "                    fprintf(stderr,\"[Axon] Descargado: %%s\\n\",_tar_path);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    if(_fe){fclose(_fe);fprintf(stderr,\"[Axon] Ya instalado: %%s\\n\",_pkg.datos);continue;}"
+                  "instruccion": "                }else{"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    fprintf(stderr,\"[Axon] SKIP: %%s (no hay red ni cache)\\\\n\",_pkg.datos);"
+                  "instruccion": "                    if(_local_st==0){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    continue;"
+                  "instruccion": "                        // Already installed, skip"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        fprintf(stderr,\"[Axon] Ya instalado: %%s\\n\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    fprintf(stderr,\"[Axon] Local: %%s\\n\",_tar_path);"
                 }
               },
               {
@@ -44204,13 +44302,6 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                fprintf(stderr,\"[Axon] Descargado: %%s\\n\",_tar_path);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
                   "instruccion": "                // Step 1.5: Download signature + verify Ed25519"
                 }
               },
@@ -44218,14 +44309,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                char sig_url[512], sig_path[512];"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(sig_url,sizeof(sig_url),\"/synapse-native/%s/archive/refs/heads/main.tar.sig\",_pkg.datos);"
+                  "instruccion": "                char sig_path[512];"
                 }
               },
               {
@@ -44239,21 +44323,91 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                int _sig_dl=_syn_http_get_archivo(_gh_host,443,(CadenaSegura){.longitud=(int)strlen(sig_url),.datos=sig_url},sig_path);"
+                  "instruccion": "                // Try local .sig first, then online if --online"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(*autor && _sig_dl>=0){ fprintf(stderr,\"(Axon) Verificando firma Ed25519...\\n\"); int _vf=_syn_axon_verificar_firma(_tar_path,sig_path,autor); if(_vf<0){ fprintf(stderr,\"(Axon) ERR_AXON_COMPROMISED: firma Ed25519 invalida\\n\"); remove(_tar_path); remove(sig_path); r=1; free(_b); return r; } fprintf(stderr,\"(Axon) Firma Ed25519 verificada correctamente\\n\"); }"
+                  "instruccion": "                int _sig_dl=-1;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(*autor && _sig_dl<0){ fprintf(stderr,\"(Axon) WARNING: No se pudo descargar .sig, saltando verificacion\\n\"); }"
+                  "instruccion": "                FILE* _sig_f = fopen(sig_path,\"rb\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(_sig_f){ fclose(_sig_f); _sig_dl=0; fprintf(stderr,\"[Axon] .sig local encontrado\\n\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                else if(_online){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    char sig_url[512];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    CadenaSegura _gh_host_sig={.longitud=14,.datos=\"github.com\"};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    snprintf(sig_url,sizeof(sig_url),\"/synapse-native/%s/archive/refs/heads/main.tar.sig\",_pkg.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    CadenaSegura _gh_path_sig={.longitud=(int)strlen(sig_url),.datos=sig_url};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _sig_dl=_syn_http_get_archivo(_gh_host_sig,443,_gh_path_sig,sig_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(*autor && _sig_dl>=0){ fprintf(stderr,\"[Axon] Verificando firma Ed25519...\\n\"); int _vf=_syn_axon_verificar_firma(_tar_path,sig_path,autor); if(_vf<0){ fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: firma Ed25519 invalida\\n\"); remove(_tar_path); remove(sig_path); r=1; free(_b); return r; } fprintf(stderr,\"[Axon] Firma Ed25519 verificada correctamente\\n\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(*autor && _sig_dl<0){ fprintf(stderr,\"[Axon] WARNING: No se pudo obtener .sig, saltando verificacion\\n\"); }"
                 }
               },
               {
