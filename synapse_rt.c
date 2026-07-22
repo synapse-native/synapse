@@ -4359,3 +4359,9 @@ int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const 
     free(buf);  // sig and pk are stack-allocated
     return rc;  // 0 = signature valid, -1 = invalid
 }
+
+// Axon TOML cleanup wrapper (takes pointer, calls _toml_nodo_liberar by value)
+void _syn_axon_limpiar_toml(void* n) {
+    if (!n) return;
+    _toml_nodo_liberar(*(NodoToml*)n);
+}

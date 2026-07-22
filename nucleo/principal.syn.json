@@ -43728,7 +43728,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; int longitud; CadenaSegura valor_str; _AxnPar* pares; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura);"
+                  "instruccion": "typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; CadenaSegura valor_str; _AxnPar* pares; int longitud; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura); extern void _syn_axon_limpiar_toml(void*);"
                 }
               },
               {
@@ -43904,6 +43904,13 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    if(*autor){ fprintf(stderr,\"[Axon] Autor: %s\\n\",autor); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if(!*autor || strlen(autor)<64){ fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: clave publica Ed25519 invalida o ausente\\n\"); free(_b); r=1; return r; }"
                 }
               },
               {
@@ -44323,7 +44330,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    fprintf(stderr,\"[Axon] fetch completado\\n\"); free(_b); r=0; return r;"
+                  "instruccion": "    _syn_axon_limpiar_toml((void*)&_rt); fprintf(stderr,\"[Axon] fetch completado\\n\"); free(_b); r=0; return r;"
                 }
               },
               {
