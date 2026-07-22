@@ -18,6 +18,10 @@ Synapse v2.0 se distribuye como **un único binario autónomo** que integra:
 
 **No requiere Python, Node.js, ni ningún intérprete en tiempo de ejecución.**
 
+> **Nota importante:** Python (`python main.py`) solo es necesario para la **compilación inicial** del binario.
+> El binario resultante (`synapse.exe`, `synapse_lsp.exe`) es completamente autónomo y no requiere
+> Python ni ningún otro intérprete para ejecutarse ni para compilar programas `.syn`.
+
 ---
 
 ## 2. Requisitos del Sistema
@@ -72,16 +76,27 @@ tweetnacl.o     19 KB
 
 ### 3.3 Compilar el binario único (con Python)
 
+> **Python solo es necesario en esta etapa.** El binario resultante es autónomo.
+
 ```bash
 python main.py -o synapse.exe nucleo/principal.syn
 ```
 
-**Resultado esperado:**
+**Resultado esperado (compilación exitosa):**
 ```
 [OK] Codigo C generado: synapse_unity.c
 [OK] Compilando: gcc -O2 ... -o "synapse.exe" ...
 [OK] Ejecutable generado: synapse.exe
 synapse.exe     ~727 KB
+```
+
+**Alternativa — binario precompilado:**
+Si la compilación vía `main.py` falla por errores en el código C generado (problema conocido
+en el bootstrap auto-hospedado), el repositorio incluye `synapse_bootstrap.exe` (727 KB)
+como binario de referencia funcional:
+```bash
+# Usar el binario precompilado directamente
+./synapse_bootstrap.exe programa.syn
 ```
 
 ### 3.4 Compilar el servidor LSP nativo
@@ -230,10 +245,15 @@ synapse programa.syn --tokens
 ### 7.4 Servidor LSP
 
 ```bash
-synapse --lsp                    # Iniciar servidor LSP (Python)
-# o directamente:
-synapse_lsp.exe                  # Servidor LSP nativo (sin Python)
+# Opción 1 (recomendada — sin Python):
+synapse_lsp.exe
+
+# Opción 2 (legado, requiere Python):
+synapse --lsp
 ```
+
+**La opción 1 es la recomendada.** El binario nativo (`synapse_lsp.exe`) es autónomo,
+no requiere Python, y es el predeterminado para la extensión de VS Code.
 
 ### 7.5 Ver AST canónico
 
@@ -292,28 +312,29 @@ synapse axon fetch --online
 ## 9. Arquitectura del Despliegue
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   synapse.exe                        │
-│                                                      │
-│  ┌─────────────────┐  ┌──────────────────────────┐  │
-│  │  Compilador      │  │  Axon (gestor paquetes)  │  │
-│  │  Nativo (.syn)   │  │  - axon.toml parser      │  │
-│  │  - Lexer         │  │  - Ed25519 verificador   │  │
-│  │  - Parser        │  │  - HTTP download         │  │
-│  │  - Semántico     │  │  - TAR extracción        │  │
-│  │  - Generador C   │  │  - axon.lock SHA-256     │  │
-│  └─────────────────┘  └──────────────────────────┘  │
-│                                                      │
-│  ┌──────────────────────────────────────────────┐   │
-│  │  Runtime Nativo (synapse_rt.o)               │   │
-│  │  Canales │ SIMD │ SHA-256 │ JSON │ TOML     │   │
-│  └──────────────────────────────────────────────┘   │
-│                                                      │
-│  ┌──────────────────────────────────────────────┐   │
-│  │  Criptografía (tweetnacl.o)                   │   │
-│  │  Ed25519 │ SHA-256                           │   │
-│  └──────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    synapse.exe                                │
+│                                                              │
+│  ┌─────────────────┐  ┌────────────────────────────────┐    │
+│  │  Compilador      │  │  Axon (gestor paquetes)        │    │
+│  │  Nativo (.syn)   │  │  (axon_rt.o)                   │    │
+│  │  - Lexer         │  │  - axon.toml parser            │    │
+│  │  - Parser        │  │  - Ed25519 verificador         │    │
+│  │  - Semántico     │  │  - HTTP download               │    │
+│  │  - Generador C   │  │  - TAR extracción + path guard │    │
+│  └─────────────────┘  │  - SemVer matching              │    │
+│                        │  - axon.lock SHA-256            │    │
+│  ┌────────────────────────────────────────────────┐    │    │
+│  │  Runtime Nativo (synapse_rt.o)                  │    │    │
+│  │  Canales │ SIMD │ SHA-256 │ JSON │ TOML │ GGUF  │    │    │
+│  │  Hilos │ Sockets │ Memoria │ AI                 │    │    │
+│  └────────────────────────────────────────────────┘    │    │
+│                        │                              │    │
+│  ┌────────────────────────────────────────────────┐    │    │
+│  │  Criptografía (tweetnacl.o)                     │    │    │
+│  │  Ed25519 firmas digitales │ SHA-256             │    │    │
+│  └────────────────────────────────────────────────┘    │    │
+└─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────┐
 │                  synapse_lsp.exe                     │

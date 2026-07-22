@@ -29,6 +29,7 @@
 | [`MANUAL_LENGUAJE.md`](./MANUAL_LENGUAJE.md) | Sintaxis, tipos seguros, contratos lógicos, canales tipados |
 | [`AXON_SPEC.md`](./AXON_SPEC.md) | Especificación del gestor de paquetes Axon |
 | [`LSP_NATIVO.md`](./LSP_NATIVO.md) | Servidor LSP nativo + integración VS Code + IA local |
+| [`GUIA_DESPLIEGUE.md`](./GUIA_DESPLIEGUE.md) | Despliegue del ejecutable único, compilación, instalación |
 | [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F19 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
 
