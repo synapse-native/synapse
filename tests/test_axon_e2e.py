@@ -265,7 +265,8 @@ def main():
     total = PASS + FAIL
     print(f"  Total:  {total}")
     print(f"  Passed: {PASS}")
-    print(f"  Failed: {FAIL}")        if ERRORS:
+    print(f"  Failed: {FAIL}")
+    if ERRORS:
         print("  Fallos:")
         for e in ERRORS:
             print(f"    - {e}")

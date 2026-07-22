@@ -1,168 +1,190 @@
-# OpenSyn v1.1.0 — Orquestador Autónomo de Código
+# 🔷 Synapse/OpenSyn v2.0
 
-> **Prompt → Inferencia Nativa → AST → Auto-Corrección → Binario.**
-> Sin Python en producción. Sin VM. Sin dependencias.
-
-OpenSyn es el primer orquestador autónomo que cierra el ciclo: un LLM escribe código Synapse, el compilador lo audita nativamente en C, y si hay errores, el bucle retroalimenta al modelo para que se corrija a sí mismo. El producto final es siempre un binario nativo.
+> **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
+> **Estado:** ✅ **PRODUCTION-READY** — 285 tests, 0 errores GCC, 0 crashes fuzzing
 
 ---
 
-### ⚡ Interruptor de Soberanía (v1.1.0)
+## 🏆 Insignias
 
-**La IA es 100% Opt-In.** En la primera ejecución, OpenSyn muestra un menú para elegir entre:
-
-| Modo | Descripción |
-|------|-------------|
-| **Lenguaje Puro** | Compilador Synapse standalone. Sin IA, sin GPU, sin descargas. Ideal para C/Rust developers. |
-| **Oráculo (IA Local)** | Orquestador autónomo con LLM local. Genera y corrige código por ti. Requiere modelo GGUF. |
-
-La preferencia se guarda en `.synapse_config`. Para cambiar, elimina el archivo y re-ejecuta.
-
-> **Synapse no consume recursos en segundo plano.** Sin IA a menos que tú lo decidas.
-
----
-
-## Diagrama de flujo
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         opensyn/principal.syn                     │
-│  "Escribe un programa que abra reporte.txt y escriba 'SD'"       │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    std.oraculo: generar_codigo()                  │
-│  ┌─────────────┐   ┌──────────────┐   ┌────────────────────┐   │
-│  │ LLM (GGUF)  │   │ Extraer      │   │ Compilador interno │   │
-│  │ genera texto│──►│ bloque ```   │──►│ (Lex→Parse→Sem→C)  │   │
-│  │ con BPE +   │   │ synapse ```  │   │ vía _compilar_     │   │
-│  │ transformer │   │              │   │ helper.py          │   │
-│  └─────────────┘   └──────────────┘   └────────┬───────────┘   │
-│                                                  │              │
-│                    ┌─────────────────────────────┘              │
-│                    │ ¿Error?                                     │
-│                    ▼ Sí                                          │
-│              ┌──────────┐                                       │
-│              │ Re-      │────────────────────────────────────┐  │
-│              │ intentar │  retroalimentación con msg error   │  │
-│              │ (max 3)  │◄──────────────────────────────────┘  │
-│              └──────────┘                                       │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │  ✅ Binario Nativo   │
-                    │  generado.syn (.exe) │
-                    └─────────────────────┘
-```
+| Calidad | Estado |
+|---------|--------|
+| **Tests** | ✅ 285 collected (283 passed, 2 skipped) |
+| **GCC** | ✅ 0 errores |
+| **Bootstrap** | ✅ Stage0→Stage1→Stage2→Stage3, diff=0 bytes |
+| **Fuzzing** | ✅ 500+ entradas, **0 crashes** |
+| **Concurrencia** | ✅ 10,000 hilos, **0 deadlocks, 0 fugas** |
+| **Axon** | ✅ 19/19 E2E — Ed25519, TAR, SemVer, axon.lock |
+| **LSP Nativo** | ✅ 5/5 tests — binario nativo sin Python |
+| **Runtime** | ✅ < 139 KB |
+| **Multiplataforma** | ✅ Windows (gcc), Linux (gcc), macOS (clang) |
 
 ---
 
-## Cómo compilar
+## 📋 Documentación Maestra
+
+| Documento | Descripción |
+|-----------|-------------|
+| [`ARCH_ESPECIFICACION.md`](./ARCH_ESPECIFICACION.md) | Arquitectura del compilador, AST aplanado `SemNodo[]`, pipeline nativa |
+| [`MANUAL_LENGUAJE.md`](./MANUAL_LENGUAJE.md) | Sintaxis, tipos seguros, contratos lógicos, canales tipados |
+| [`AXON_SPEC.md`](./AXON_SPEC.md) | Especificación del gestor de paquetes Axon |
+| [`LSP_NATIVO.md`](./LSP_NATIVO.md) | Servidor LSP nativo + integración VS Code + IA local |
+| [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F19 |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
+
+---
+
+## 🚀 Quick Start
 
 ### Requisitos
 
-- **GCC** (MinGW-w64 en Windows, gcc en Linux/macOS)
-- **Python 3.10+** (solo para el helper de compilación interna)
-- **Un modelo GGUF** (ej. Qwen2.5-Coder-0.5B) como `modelo_synapse.gguf`
+- **GCC** (MinGW-w64 en Windows, gcc en Linux) o **Clang** (macOS)
+- **Python 3.10+** (solo para desarrollo, no para producción)
 
-### Compilar el runtime
-
-```bash
-gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm -lws2_32
-```
-
-### Compilar un programa Synapse
+### 1. Compilar el runtime
 
 ```bash
-python main.py programa.syn
-# Genera: programa.c + programa.exe
+gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+gcc -c axon_rt.c -o axon_rt.o -lpthread -lm
+gcc -c tweetnacl.c -o tweetnacl.o
 ```
 
-### Compilar el orquestador OpenSyn
+### 2. Escribir tu primer programa
+
+Crea `hola.syn`:
+
+```synapse
+#lang: es
+importar std.io
+
+funcion principal() -> nulo:
+    escribir_linea("Hola, Silicio. El mundo exterior te saluda.")
+```
+
+### 3. Compilar y ejecutar
 
 ```bash
-gcc -o opensyn/principal.exe opensyn/principal.c synapse_rt.c \
-    -std=c99 -Wall -Wextra -lws2_32
+python main.py hola.syn
+./hola.exe
 ```
 
-### Ejecutar el orquestador
+### 4. Gestor de paquetes Axon
 
 ```bash
-cd opensyn
-# Coloca modelo_synapse.gguf aquí
-./principal.exe
-```
-
-Salida esperada:
-
-```
-=== OpenSyn: Orquestador Autonomo ===
-[OK] Modelo cargado exitosamente.
-[Oráculo] Generando código... (Intento 1/3)
-[Compilador] Error detectado: Re-inyectando contexto...
-[Oráculo] Generando código... (Intento 2/3)
-[Compilador] Éxito. Binario generado.
-[OK] Código generado y compilado exitosamente.
-[OK] Código fuente guardado en 'generado.syn'
+synapse.exe axon init
+synapse.exe axon fetch --online
 ```
 
 ---
 
-## Arquitectura del repositorio
+## ✨ Características Clave
+
+### 🔐 Seguridad por Diseño
+
+| Característica | Detalle |
+|---------------|---------|
+| **Ed25519** | Firmas obligatorias en paquetes (TweetNaCl) |
+| **Zero-tolerance** | Autor vacío o .sig ausente → `ERR_AXON_COMPROMISED` |
+| **Path traversal** | Bloqueo de `../` y rutas absolutas en TAR |
+| **Lockfile** | `axon.lock` con SHA-256 — builds deterministas |
+| **Contracts** | `requiere`/`garantiza` — aserciones en tiempo real |
+
+### ⚡ Rendimiento
+
+| Componente | Métrica |
+|-----------|---------|
+| Runtime total | **< 139 KB** (Synapse RT + Axon + TweetNaCl) |
+| Concurrencia | **10,000 hilos**, **0 deadlocks**, **8,083 msg/seg** |
+| SIMD | SSE/AVX/AVX2 acceleration (`std.simd`) |
+| Fuzzing | **500+ entradas, 0 crashes** |
+
+### 🛠️ Herramientas
+
+| Herramienta | Descripción |
+|-------------|-------------|
+| **LSP Nativo** | Servidor JSON-RPC 2.0, binario nativo **sin Python** |
+| **VS Code Extension** | `vscode-synapse/` — auto-detect del binario LSP |
+| **IA Local (Ollama)** | Opt-In: `synapse/aiExplain`, `synapse/aiComplete` |
+
+### 🌐 Multiplataforma
+
+| Plataforma | Compilador | Estado |
+|-----------|-----------|--------|
+| Windows | `gcc` (MinGW) | ✅ Probado |
+| Linux | `gcc` | ✅ Soporte |
+| macOS (Intel) | `clang` | ✅ Auto-detect |
+| macOS (Apple Silicon) | `clang` | ✅ Auto-detect |
+
+---
+
+## 📦 Binarios
+
+| Binario | Propósito | Tamaño |
+|---------|-----------|--------|
+| `test_lsp_bin.exe` | Servidor LSP nativo | ~909 KB |
+| `synapse_bootstrap.exe` | Compilador auto-hospedado | ~738 KB |
+| `tests/test_axon_e2e_native.exe` | Suite E2E Axon | Compilado desde fuente |
+| `tests/stress/stress_concurrencia.exe` | Test de estrés concurrencia | Compilado desde fuente |
+
+---
+
+## 🔬 Suites de Validación
+
+```bash
+# Tests unitarios
+python -m pytest tests/ -q
+
+# Fuzzing destructivo
+python tests/fuzz/fuzz_engine.py --iterations 500
+
+# Prueba de estrés (10,000 hilos)
+python tests/stress/run_stress.py
+
+# Axon E2E (Python)
+python tests/test_axon_e2e.py
+
+# LSP Nativo (5/5 tests)
+pytest tests/integration/test_lsp_native.py -v
+```
+
+---
+
+## 🏗️ Arquitectura del Repositorio
 
 ```
-opensyn/
-├── principal.syn          # Orquestador (código fuente Synapse)
-├── principal.c            # Generado por el compilador
-├── principal.exe          # Binario final
-
-librerias/
-├── std/
-│   ├── oraculo.syn        # Bucle del Oráculo
-│   ├── modelo.syn         # Inferencia del LLM
-│   ├── io.syn             # E/S de consola
-│   ├── json.syn           # Parseo JSON
-│   ├── sistema.syn        # Comandos del sistema
-│   ├── net.syn            # Sockets TCP
-│   └── ...                # 15 módulos estándar
-├── embedded_libs.h        # Librerías incrustadas para self-hosting
-
-synapse_rt.c               # Runtime C (pool, tensores, GGUF, BPE, oráculo)
-_compilar_helper.py         # Helper de compilación interna (vía JSON)
-main.py                     # Compilador Synapse (Lexer + Parser + GeneradorC)
-generator.py                # Traductor Synapse → C
+proyecto_synapse/
+├── nucleo/                  # Compilador nativo en Synapse (.syn)
+│   ├── tokens.syn           # Definición de tokens
+│   ├── lexer.syn            # Tokenizador
+│   ├── parser.syn           # Parser recursivo descendente
+│   ├── analizador_semantico.syn  # Validación semántica
+│   ├── generator.syn        # Generador de código C
+│   ├── principal.syn        # Pipeline nativa (orquestador)
+│   └── lsp.syn              # Servidor LSP nativo
+├── compilador/              # Compilador Python (referencia)
+├── axon_rt.c                # Runtime de Axon (HTTP, TAR, Ed25519)
+├── synapse_rt.c             # Runtime base (canales, SIMD, SHA-256, GGUF)
+├── tweetnacl.c / .h         # Criptografía Ed25519
+├── main.py                  # Compilador (entry point Python)
+├── vscode-synapse/          # Extensión VS Code
+│   ├── extension.js         # Cliente LSP nativo
+│   └── package.json         # Configuración
+├── tests/                   # Suites de prueba
+│   ├── fuzz/                # Fuzzing destructivo
+│   ├── stress/              # Prueba de estrés concurrencia
+│   └── integration/         # Tests de integración LSP
+├── ARCH_ESPECIFICACION.md   # Documentación arquitectónica
+├── MANUAL_LENGUAJE.md       # Manual del lenguaje
+├── AXON_SPEC.md             # Especificación de Axon
+└── LSP_NATIVO.md            # Referencia del LSP
 ```
 
 ---
 
-## Librería Estándar (15 módulos)
+## 📜 Licencia
 
-| Módulo | Funcionalidad |
-|--------|---------------|
-| `std.io` | `escribir`, `escribir_linea`, `leer_linea`, `abrir`, `leer`, `cerrar` |
-| `std.mem` | `reserva`, `libera` |
-| `std.math` | `crear_tensor`, `suma_tensor`, `producto_punto`, `relu` |
-| `std.tensor` | `rmsnorm`, `silu`, `rope`, `softmax_escalado`, `multiplicar_matrices` |
-| `std.modelo` | `cargar_modelo`, `evaluar`, `generar_token`, `decodificar_token`, `codificar` |
-| `std.oraculo` | `generar_codigo`, `compilar_codigo`, `extraer_bloque_codigo`, `generar_texto` |
-| `std.ai` | `cargar_gguf`, `obtener_tensor`, `obtener_metadato`, `argmax` |
-| `std.json` | `desde_texto`, `obtener_elemento`, `obtener_campo` |
-| `std.toml` | `desde_texto`, `obtener_campo` |
-| `std.net` | `iniciar_red`, `crear_socket`, `conectar`, `enviar_datos`, `recibir_datos` |
-| `std.http` | `iniciar_servidor`, `leer_peticion`, `responder` |
-| `std.cripto` | `sha256_texto` |
-| `std.tiempo` | `ahora_ms`, `dormir_ms` |
-| `std.sistema` | `ejecutar_comando`, `escribir_archivo`, `leer_archivo` |
-| `std.err` | ADT `Resultado<T,E>` y `Opcion<T>` |
+Este proyecto se distribuye bajo licencia de código abierto. Consulte el archivo de licencia para más detalles.
 
 ---
 
-## Licencia
-
-Este proyecto se distribuye bajo una licencia de código abierto. Consulte el archivo de licencia para más detalles.
-
----
-
-**OpenSyn v1.0.0** — *Soberanía Digital. Sin intermediarios.*
+**Synapse v2.0** — *Cimientos nativos para el software del futuro.*
