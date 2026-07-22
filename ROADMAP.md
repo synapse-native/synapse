@@ -8,7 +8,8 @@
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
-> **Última actualización:** 21 Julio 2026 (Sesión 5 — **M17.2 COMPLETADO**: escaping cadenas + constructor structs + unity build multi-archivo)
+> **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
+> **Última actualización:** 21 Julio 2026 (Sesión 5—6: **F16 PARCIAL + F19 std.simd**)
 
 ---
 
@@ -36,10 +37,10 @@
 | **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
-| ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix: NODO_CONTRATO=46 (conflicto con NODO_PARA=45 resuelto). 46 constantes consistentes en parser/generator/analizador | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | **M17.1 COMPLETADO** Crash temprano resuelto (3 contramedidas). **M17.2 COMPLETADO** Resolución de divergencia (3 órdenes: escaping cadenas, constructor structs, unity build multi-archivo). Pendiente: M17.3 - diagnosticar errores GCC en código generado (stray backslash, tipos). | **283** passed | ✅ F8 + generar() OK |
+| ✅ **F16: Contratos lógicos nativos** | 🟡 **PARCIAL (Python OK, Nativo OK sin verificar)** | Fix NODO_CONTRATO=45 (corregido conflicto con PARA). Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. Pendiente verificación con binario nuevo (F17). | **283** passed | ✅ F8 + generar() OK |
+| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | **M17.1 COMPLETADO** Crash temprano resuelto (3 contramedidas). **M17.2 COMPLETADO** Resolución de divergencia (3 órdenes: escaping cadenas, constructor structs, unity build multi-archivo). **M17.3 PENDIENTE**: binario nuevo crash (STATUS_ACCESS_VIOLATION) en principal.syn. | **283** passed | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
-| ▶️ **F19: Edge AI runtime** | ⏳ **PENDIENTE** | Runtime <500KB, módulo std.simd, CPU limitada (Parte IV DM) | — | ✅ Documento Maestro |
+| ▶️ **F19: Edge AI runtime** | 🟡 **EN PROGRESO** | Runtime <500KB ✅ (96KB). Módulo `std.simd` creado. SSE/AVX intrinsics: matmul, rmsnorm, silu, softmax, llenar, matmul_transpuesta. Compilado con -msse -msse2 -msse3. Pendiente: tests de rendimiento. | **283** passed | ✅ Documento Maestro |
 
 ---
 
@@ -892,4 +893,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F16 COMPLETADAS, F17 Micro-entregable 17.1 COMPLETADO (crash temprano resuelto).*
+*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F15b COMPLETADAS, F16 PARCIAL, F17 BLOQUEADO (M17.3), F19 PARCIAL (std.simd + SSE/AVX). 283 tests pasan.*

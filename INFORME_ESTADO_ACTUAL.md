@@ -7,16 +7,17 @@
 | Proyecto | Synapse/OpenSyn v2.0 |
 | Última actualización | Julio 21, 2026 |
 | Última verificación | Pipeline: 0 GCC errors ✅ | 283 tests passed, 2 skipped ✅ |
-| Último commit | F17: tokenizer unescape + ptr_str 64-bit split + principal.syn cleanup |
+| Último commit | F16: Contratos logicos nativos + F19: std.simd module + SIMD acceleration |
 | Stress test (F10.5) | ✅ 10,000 hilos, 0 leaks, 0 deadlocks |
 | Fuzzing (F11) | ✅ 850+ entradas, 0 crashes |
 | Bootstrap | ✅ Pipeline nativa funcional (F8 + generar() reparados) |
-| Fase actual | **F0-F16 COMPLETADAS, F17 EN PROGRESO (M17.2 COMPLETADO)** |
+| Fase actual | **F0-F15b COMPLETADAS, F16 PARCIAL, F17 BLOQUEADO, F19 PARCIAL** |
 | Tests | **283 passed, 2 skipped** |
 | GCC errors (nucleo/principal.syn) | **0 errores** ✅ |
 | Pipeline (principal.syn) | **✅ Compila y genera ejecutable (738KB)** |
-| **F16: Contratos lógicos** | ✅ **COMPLETADA** — conflicto NODO_CONTRATO/PARA resuelto |
-| **F17: Bootstrap auto-hospedado** | 🟡 **M17.1 COMPLETADO** (crash temprano resuelto). **M17.2 COMPLETADO** (3 órdenes: escaping cadenas + constructor structs + unity build multi-archivo). Pendiente M17.3: diagnosticar GCC errors en código generado. |
+| **F16: Contratos lógicos** | 🟡 **PARCIAL** — Python garantiza ✅, Nativo parser+generator implementado. Verificación con binario nuevo bloqueada por F17. |
+| **F17: Bootstrap auto-hospedado** | 🟡 **M17.1 COMPLETADO** (crash temprano resuelto). **M17.2 COMPLETADO** (3 órdenes). **M17.3 PENDIENTE**: nuevo binario crash (STATUS_ACCESS_VIOLATION) al compilar principal.syn. Mini test de 3 tokens funciona. |
+| **F19: Edge AI runtime** | 🟡 **PARCIAL** — Runtime 96KB (<500KB ✅). `std.simd` creado. SSE/AVX intrinsics para matmul, rmsnorm, silu, softmax, llenar. Compilado con -msse -msse2 -msse3. |
 
 ## 2. ARQUITECTURA MODULAR
 
@@ -130,6 +131,28 @@ clean → fixup → 231 tests OK → bootstrap (compila synapse_rt.o + main.syn)
 | F14 | Estabilización LSP nativo | ✅ **COMPLETADA** | F14.4: Causa raíz del EOF diagnosticada y corregida: `#define EOF (57)` de tokens.syn colisiona con `<stdio.h>`. Fix: `(-1)` en asm blocks. |
 | **F15b** | Pipeline nativa reentrante | ✅ **COMPLETADA** | Reset estado global por request + validacion `#lang` en lsp.syn. **5/5 tests LSP pasan** |
 
+### Progreso Fase 16 (detalle)
+| # | Tarea | Estado |
+|---|-------|--------|
+| 16.1 | Python: garantiza asserts en return y void-exit | ✅ |
+| 16.2 | Nativo parser.syn: NODO_CONTRATO=45, requiere/garantiza en nodo_func | ✅ |
+| 16.3 | Nativo generator.syn: gen_visitar_funcion + gen_visitar_retornar con asserts | ✅ |
+| 16.4 | Verificación con binario nuevo (requiere F17 desbloqueado) | ⏳ |
+
+### Progreso Fase 19 (detalle)
+| # | Tarea | Estado |
+|---|-------|--------|
+| 19.1 | Runtime <500KB | ✅ (96KB .o) |
+| 19.2 | Módulo std.simd.syn con wrappers Synapse | ✅ |
+| 19.3 | SIMD: multiplicar_matrices (SSE 4-wide) | ✅ |
+| 19.4 | SIMD: multiplicar_matrices_transpuesta_b (SSE) | ✅ |
+| 19.5 | SIMD: rmsnorm (SSE sumacuadrados + normalización) | ✅ |
+| 19.6 | SIMD: softmax_escalado (SSE max + divide) | ✅ |
+| 19.7 | SIMD: llenar_tensor_constante (SSE store) | ✅ |
+| 19.8 | SIMD: silu (expf escalar) | ✅ |
+| 19.9 | Compilación condicional con -msse -msse2 -msse3 | ✅ |
+| 19.10 | Tests de rendimiento SIMD vs escalar | ⏳ |
+
 ### Progreso Fase 10 (detalle)
 | # | Tarea | Estado |
 |---|-------|--------|
@@ -230,10 +253,10 @@ OK: test_f8_v2.exe
 
 | Prioridad | Fase | Descripción | Impacto |
 |-----------|------|-------------|---------|
-| 🟡 P2 | **F16: Contratos lógicos nativos** | Python: garantiza asserts emitidos ✅. Nativo: parser + generator con NODO_CONTRATO (45) implementados en nucleo/parser.syn + generator.syn | Validación formal |
-| 🟡 P2 | **F17: Bootstrap full auto-hospedado** | Stage1→Stage2→Stage3 diff 0 con nuevo pipeline nativo | Auto-hospedaje real |
+| 🟡 P1 | **F17: Bootstrap full auto-hospedado** | Diagnosticar crash del nuevo binario en principal.syn. Mini test funciona → problema escala/complejidad. | Auto-hospedaje real |
+| 🟡 P2 | **F16: Contratos lógicos nativos** | Verificación con binario nuevo (post-F17). Nativo: parser + generator ya implementados | Validación formal |
+| 🟢 P3 | **F19: Edge AI runtime** | Módulo `std.simd` + SSE/AVX aceleración ya implementados. Pendiente: tests de rendimiento, verificación binaria. | Despliegue edge |
 | 🟢 P3 | **F18: Axon gestor de paquetes** | Implementar `axon fetch`, verificación Ed25519 (Parte V DM) | Ecosistema soberano |
-| 🟢 P3 | **F19: Edge AI runtime** | Runtime <500KB, módulo `std.simd`, CPU limitada (Parte IV DM) | Despliegue edge |
 
 ### Deuda técnica remanente
 | Ítem | Impacto | Prioridad |
@@ -253,4 +276,4 @@ OK: test_f8_v2.exe
 
 ---
 
-> *Documento actualizado en vivo — 20 Julio 2026. 🚀 F0-F15b + F3 bis COMPLETADAS. 285 tests, 0 xfails. Pipeline nativa funcional con F8.*
+> *Documento actualizado en vivo — 21 Julio 2026. 🚀 F0-F15b COMPLETADAS, F16 PARCIAL, F17 BLOQUEADO, F19 PARCIAL. 283 tests, 0 xfails. Pipeline nativa funcional con F8. SIMD aceleración vía std.simd + -msse.*

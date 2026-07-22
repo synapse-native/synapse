@@ -33321,6 +33321,37 @@
       },
       {
         "_tipo": "DefinicionFuncion",
+        "nombre": "gen_escribir_cadena_escapada",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "GeneradorCEst"
+          },
+          {
+            "nombre": "str",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;gen_emitir_linea(est,_esc);"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
         "nombre": "gen_emitir_token_defs",
         "parametros": [
           {
@@ -33551,7 +33582,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_BREAK 10"
+                  "valor": "#define T_BREAK 49"
                 }
               ]
             }
@@ -33687,7 +33718,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_EQ 18"
+                  "valor": "#define T_EQ 25"
                 }
               ]
             }
@@ -33704,7 +33735,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_NE 19"
+                  "valor": "#define T_NE 26"
                 }
               ]
             }
@@ -33721,7 +33752,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_LE 20"
+                  "valor": "#define T_LE 27"
                 }
               ]
             }
@@ -33738,7 +33769,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_GE 21"
+                  "valor": "#define T_GE 28"
                 }
               ]
             }
@@ -33755,7 +33786,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_ASSIGN 22"
+                  "valor": "#define T_ASSIGN 29"
                 }
               ]
             }
@@ -33772,7 +33803,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_PLUS 23"
+                  "valor": "#define T_PLUS 30"
                 }
               ]
             }
@@ -33789,7 +33820,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_MINUS 24"
+                  "valor": "#define T_MINUS 31"
                 }
               ]
             }
@@ -33806,7 +33837,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_MUL 25"
+                  "valor": "#define T_MUL 32"
                 }
               ]
             }
@@ -33823,7 +33854,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_DIV 26"
+                  "valor": "#define T_DIV 33"
                 }
               ]
             }
@@ -33840,7 +33871,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_MOD 27"
+                  "valor": "#define T_MOD 34"
                 }
               ]
             }
@@ -33857,7 +33888,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_ARROW 28"
+                  "valor": "#define T_ARROW 35"
                 }
               ]
             }
@@ -33874,7 +33905,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_LPAREN 29"
+                  "valor": "#define T_LPAREN 38"
                 }
               ]
             }
@@ -33891,7 +33922,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_RPAREN 30"
+                  "valor": "#define T_RPAREN 39"
                 }
               ]
             }
@@ -33908,7 +33939,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_COLON 31"
+                  "valor": "#define T_COLON 40"
                 }
               ]
             }
@@ -33925,7 +33956,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_COMMA 32"
+                  "valor": "#define T_COMMA 41"
                 }
               ]
             }
@@ -33942,7 +33973,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_NL 33"
+                  "valor": "#define T_NL 42"
                 }
               ]
             }
@@ -33959,7 +33990,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_INDENT 34"
+                  "valor": "#define T_INDENT 43"
                 }
               ]
             }
@@ -33976,7 +34007,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_DEDENT 35"
+                  "valor": "#define T_DEDENT 44"
                 }
               ]
             }
@@ -33993,7 +34024,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_EOF 36"
+                  "valor": "#define T_EOF 57"
                 }
               ]
             }
@@ -34010,7 +34041,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_STRUCT 37"
+                  "valor": "#define T_STRUCT 10"
                 }
               ]
             }
@@ -34027,7 +34058,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_AND 38"
+                  "valor": "#define T_AND 14"
                 }
               ]
             }
@@ -34044,7 +34075,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_OR 39"
+                  "valor": "#define T_OR 15"
                 }
               ]
             }
@@ -34061,7 +34092,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_NOT 40"
+                  "valor": "#define T_NOT 16"
                 }
               ]
             }
@@ -34078,7 +34109,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_TRUE 41"
+                  "valor": "#define T_TRUE 17"
                 }
               ]
             }
@@ -34095,7 +34126,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_FALSE 42"
+                  "valor": "#define T_FALSE 18"
                 }
               ]
             }
@@ -34112,7 +34143,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_INSEGURO 43"
+                  "valor": "#define T_INSEGURO 46"
                 }
               ]
             }
@@ -34129,7 +34160,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_IMPORTAR_C 44"
+                  "valor": "#define T_IMPORTAR_C 47"
                 }
               ]
             }
@@ -34163,7 +34194,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "#define T_EXTERNO 46"
+                  "valor": "#define T_EXTERNO 48"
                 }
               ]
             }
@@ -34444,7 +34475,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "const char* _str = _np[4] ? (const char*)_np[4] : \"\";"
+                  "instruccion": "uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";"
                 }
               },
               {
@@ -34577,7 +34608,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_tipo == 40) { gen_emitir_linea(est, _str); return; }"
+                  "instruccion": "if (_tipo == 40) { gen_escribir_cadena_escapada(est, _str); return; }"
                 }
               },
               {
@@ -36348,7 +36379,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    snprintf(_buf, 4096, \"%s %s = %s;\", _gen_tmp_buf, _name, _val);"
+                  "instruccion": "    if (strcmp(_gen_tmp_buf,\"int\")!=0&&strcmp(_gen_tmp_buf,\"float\")!=0&&strcmp(_gen_tmp_buf,\"double\")!=0&&strcmp(_gen_tmp_buf,\"char\")!=0&&strcmp(_gen_tmp_buf,\"CadenaSegura\")!=0&&strcmp(_gen_tmp_buf,\"void\")!=0&&strcmp(_gen_tmp_buf,\"Tensor\")!=0&&strcmp(_gen_tmp_buf,\"Canal\")!=0&&strcmp(_gen_tmp_buf,\"CanalConcurrencia*\")!=0&&strcmp(_gen_tmp_buf,\"Resultado_T\")!=0) snprintf(_buf, 4096, \"struct %s %s = {0};\", _gen_tmp_buf, _name);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    else snprintf(_buf, 4096, \"%s %s = %s;\", _gen_tmp_buf, _name, _val);"
                 }
               },
               {
@@ -38864,7 +38902,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "const char* _str = _np[4] ? (const char*)_np[4] : \"\";"
+                  "instruccion": "uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";"
                 }
               },
               {
@@ -39464,7 +39502,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "const char* _str = _np[4] ? (const char*)_np[4] : \"\";"
+                  "instruccion": "uintptr_t _fstr = (uintptr_t)(unsigned int)_np[4] | ((uintptr_t)(int)_np[10] << 32); const char* _str = _fstr ? (const char*)_fstr : \"\";"
                 }
               },
               {
@@ -40488,7 +40526,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\\\"    \\\"); fprintf(_G_out,\\\"%s\\\\n\\\",s); }\");"
+                  "instruccion": "gen_emitir_linea(est, \"void _G_emit(const char* s) { for(int i=0;i<_G_indent;i++) fprintf(_G_out,\\\\x22    \\\\x22); fprintf(_G_out,\\\\x22%s\\\\n\\\\x22,s); }\");"
                 }
               },
               {
@@ -40530,35 +40568,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"if(sl>4&&ruta.datos[sl-4]=='.'&&(ruta.datos[sl-3]=='s'||ruta.datos[sl-3]=='S')&&(ruta.datos[sl-2]=='y'||ruta.datos[sl-2]=='Y')&&(ruta.datos[sl-1]=='n'||ruta.datos[sl-1]=='N')){memcpy(sal,ruta.datos,sl-4);sal[sl-4]='.';sal[sl-3]='c';sal[sl-2]=0;}else snprintf(sal,sizeof(sal),\\\"%.*s.c\\\",ruta.longitud,ruta.datos);\");"
+                  "instruccion": "gen_emitir_linea(est, \"if(sl>4&&ruta.datos[sl-4]=='.'&&(ruta.datos[sl-3]=='s'||ruta.datos[sl-3]=='S')&&(ruta.datos[sl-2]=='y'||ruta.datos[sl-2]=='Y')&&(ruta.datos[sl-1]=='n'||ruta.datos[sl-1]=='N')){memcpy(sal,ruta.datos,sl-4);sal[sl-4]='.';sal[sl-3]='c';sal[sl-2]=0;}else snprintf(sal,sizeof(sal),\\\\x22%.*s.c\\\\x22,ruta.longitud,ruta.datos);\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"_G_out=fopen(sal,\\\"w\\\"); if(!_G_out){fprintf(stderr,\\\"Error: no se puede crear %%s\\\\n\\\",sal);return 1;}\");"
+                  "instruccion": "gen_emitir_linea(est, \"_G_out=fopen(sal,\\\\x22w\\\\x22); if(!_G_out){fprintf(stderr,\\\\x22Error: no se puede crear %s\\\\n\\\\x22,sal);return 1;}\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\"// Generado por Synapse (auto-hospedado)\\\\n\\\");\");"
+                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\\x22// Generado por Synapse (auto-hospedado)\\\\n\\\\x22);\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\"#include <stdio.h>\\\\n#include <stdlib.h>\\\\n#include <stdint.h>\\\\n#include <string.h>\\\\n#include <pthread.h>\\\\n\\\");\");"
+                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\\x22#include <stdio.h>\\\\n#include <stdlib.h>\\\\n#include <stdint.h>\\\\n#include <string.h>\\\\n#include <pthread.h>\\\\n\\\\x22);\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\"typedef struct {int longitud;const char* datos;} CadenaSegura;\\\\n\\\");\");"
+                  "instruccion": "gen_emitir_linea(est, \"fprintf(_G_out,\\\\x22typedef struct {int longitud;const char* datos;} CadenaSegura;\\\\n\\\\x22);\");"
                 }
               },
               {
@@ -41954,126 +41992,70 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fprintf(stderr, \"[Synapse] Pipeline nativa: leyendo fuente...\\n\");"
+                  "instruccion": "fprintf(stderr, \"[Synapse] Pipeline nativa: Unity Build - leyendo nucleo...\\n\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// 1. Read source file"
+                  "instruccion": "// ORDEN 3 M17.2: Multi-file unity build"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "FILE* _f = fopen(ruta.datos, \"rb\");"
+                  "instruccion": "extern int tokenizar(CadenaSegura); extern struct Programa parsear(CadenaSegura);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (!_f) { struct ResultadoEtapa _e = {1, 2}; return _e; }"
+                  "instruccion": "struct Programa _ast; memset(&_ast,0,sizeof(_ast));"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fseek(_f, 0, SEEK_END); long _fsz = ftell(_f); fseek(_f, 0, SEEK_SET);"
+                  "instruccion": "struct ListaNodo* _merged = NULL;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_fsz > 1048576) { fprintf(stderr, \"FATAL: fuente > 1MB (%ld bytes). Compilar manual.\\n\", _fsz); fclose(_f); struct ResultadoEtapa _e = {1, 6}; return _e; }"
+                  "instruccion": "struct ListaNodo** _mcur = &_merged;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "char* _buf = (char*)malloc((size_t)(_fsz < 1048576 ? 1048576 : _fsz) + 1);"
+                  "instruccion": "const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/parser.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/generator.syn\",\"nucleo/principal.syn\",NULL};"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "fread(_buf, 1, (size_t)_fsz, _f); fclose(_f); _buf[_fsz] = 0;"
+                  "instruccion": "for(int _fi=0;_files[_fi];_fi++){ _P_ntks=0;_P_tpos=0;_P_p_err=0; fprintf(stderr,\"[Synapse] Procesando %s...\\n\",_files[_fi]); FILE* _f=fopen(_files[_fi],\"rb\"); if(!_f){struct ResultadoEtapa _e={1,2};return _e;} fseek(_f,0,SEEK_END);long _fsz=ftell(_f);fseek(_f,0,SEEK_SET); if(_fsz>1048576){fprintf(stderr,\"FATAL:%%s >1MB\\n\",_files[_fi]);fclose(_f);struct ResultadoEtapa _e={1,6};return _e;} char* _buf=(char*)malloc((size_t)(_fsz<1048576?1048576:_fsz)+1); fread(_buf,1,(size_t)_fsz,_f);fclose(_f);_buf[_fsz]=0; CadenaSegura _fuente={.longitud=(int)_fsz,.datos=_buf}; int _ntok=tokenizar(_fuente); if(_ntok<0){free(_buf);struct ResultadoEtapa _e={1,3};return _e;} struct Programa _prog=parsear(_fuente); free(_buf); struct ListaNodo* _cur=_prog.sentencias; while(_cur){if(_cur->cabeza){*_mcur=(struct ListaNodo*)calloc(1,sizeof(struct ListaNodo));(*_mcur)->cabeza=_cur->cabeza;(*_mcur)->cola=NULL;_mcur=&(*_mcur)->cola;}_cur=_cur->cola;} }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "CadenaSegura _fuente = { .longitud = (int)_fsz, .datos = _buf };"
+                  "instruccion": "_ast.sentencias = _merged;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": ""
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "// 2. Tokenizar"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "extern int tokenizar(CadenaSegura);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "int _ntok = tokenizar(_fuente);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "if (_ntok < 0) { free(_buf); struct ResultadoEtapa _e = {1, 3}; return _e; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": ""
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "// 3. Parsear (obtener AST)"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "extern struct Programa parsear(CadenaSegura);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "struct Programa _ast = parsear(_fuente);"
+                  "instruccion": "fprintf(stderr, \"[Synapse] Unity Build: AST fusionado\\n\");"
                 }
               },
               {
@@ -42374,7 +42356,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        { uintptr_t _tp=(uintptr_t)_f->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
+                  "instruccion": "        { uintptr_t _tp=(uintptr_t)_f->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); ((int*)&_f8_nodos[idx])[10]=(int)(_tp>>32); }"
                 }
               },
               {
@@ -42514,7 +42496,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        { uintptr_t _tp=(uintptr_t)_a->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
+                  "instruccion": "        { uintptr_t _tp=(uintptr_t)_a->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); ((int*)&_f8_nodos[idx])[10]=(int)(_tp>>32); }"
                 }
               },
               {
@@ -42773,7 +42755,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_gen_rc != 0) { free(_buf); struct ResultadoEtapa _e = {1, 4}; return _e; }"
+                  "instruccion": "if (_gen_rc != 0) { struct ResultadoEtapa _e = {1, 4}; return _e; }"
                 }
               },
               {
@@ -42816,13 +42798,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "int _gcc_rc = system(_cmd);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "free(_buf);"
                 }
               },
               {

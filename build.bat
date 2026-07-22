@@ -46,7 +46,7 @@ exit /b %ERRORLEVEL%
 
 :bootstrap
 echo [BOOTSTRAP] Compiling synapse_rt.o...
-gcc -c -O2 "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o"
+gcc -c -O2 -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o"
 if errorlevel 1 (
     echo [FAIL] synapse_rt.o compilation failed
     exit /b 1

@@ -1,0 +1,58 @@
+#lang: es
+// std.simd — Aceleracion SIMD para operaciones tensoriales
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Este modulo provee versiones aceleradas via SSE/AVX de las
+// operaciones tensoriales basicas. Se importa explicitamente:
+//   importar std.simd
+//
+// Las funciones tienen prefijo simd_ y reemplazan semanticamente
+// a las de std.tensor cuando hay soporte hardware.
+//
+// Uso:
+//   importar std.simd
+//   a = crear_tensor(256, 256)
+//   b = crear_tensor(256, 256)
+//   c = simd_multiplicar_matrices(a, b)
+
+// Deteccion de soporte SIMD en tiempo de ejecucion
+externo funcion _syn_simd_disponible() -> entero
+externo funcion _syn_simd_tipo() -> texto
+
+// Operaciones SIMD (equivalen a las de std.tensor pero aceleradas)
+externo funcion _syn_simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor
+externo funcion _syn_simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo
+externo funcion _syn_simd_silu(salida: tensor, entrada: tensor) -> nulo
+externo funcion _syn_simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo
+externo funcion _syn_simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo
+externo funcion _syn_simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo
+
+// Wrappers Synapse
+funcion simd_disponible() -> booleano:
+    retornar _syn_simd_disponible() == 1
+
+funcion simd_tipo() -> texto:
+    retornar _syn_simd_tipo()
+
+funcion simd_multiplicar_matrices(a: tensor, b: tensor) -> tensor:
+    retornar _syn_simd_multiplicar_matrices(a, b)
+
+funcion simd_rmsnorm(salida: tensor, entrada: tensor, peso_normalizacion: tensor, epsilon: decimal) -> nulo:
+    _syn_simd_rmsnorm(salida, entrada, peso_normalizacion, epsilon)
+    retornar
+
+funcion simd_silu(salida: tensor, entrada: tensor) -> nulo:
+    _syn_simd_silu(salida, entrada)
+    retornar
+
+funcion simd_softmax_escalado(tensor: tensor, factor_escala: decimal) -> nulo:
+    _syn_simd_softmax_escalado(tensor, factor_escala)
+    retornar
+
+funcion simd_llenar_tensor_constante(t: tensor, valor: decimal) -> nulo:
+    _syn_simd_llenar_tensor_constante(t, valor)
+    retornar
+
+funcion simd_multiplicar_matrices_transpuesta_b(a: tensor, b: tensor, salida: tensor) -> nulo:
+    _syn_simd_multiplicar_matrices_transpuesta_b(a, b, salida)
+    retornar

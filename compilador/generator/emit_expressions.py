@@ -670,14 +670,14 @@ def emitir_token_defs(ctx: GeneratorContext):
         ("T_SPAWN",5),("T_RECOVER",6),("T_LISTEN",7),("T_WHILE",8),
         ("T_IMPORT",9),("T_BREAK",10),("T_CONTINUE",11),("T_DOT",12),
         ("T_IDENT",13),("T_NUM",14),("T_STR",15),("T_GT",16),
-        ("T_LT",17),("T_EQ",18),("T_NE",19),("T_LE",20),("T_GE",21),
-        ("T_ASSIGN",22),("T_PLUS",23),("T_MINUS",24),("T_MUL",25),
-        ("T_DIV",26),("T_MOD",27),("T_ARROW",28),("T_LPAREN",29),
-        ("T_RPAREN",30),("T_COLON",31),("T_COMMA",32),("T_NL",33),
-        ("T_INDENT",34),("T_DEDENT",35),("T_EOF",36),("T_STRUCT",37),
-        ("T_AND",38),("T_OR",39),("T_NOT",40),("T_TRUE",41),
-        ("T_FALSE",42),("T_INSEGURO",43),("T_IMPORTAR_C",44),
-        ("T_AMPERSAND",45),("T_EXTERNO",46),
+        ("T_LT",17),("T_EQ",25),("T_NE",26),("T_LE",27),("T_GE",28),
+        ("T_ASSIGN",29),("T_PLUS",30),("T_MINUS",31),("T_MUL",32),
+        ("T_DIV",33),("T_MOD",34),("T_ARROW",35),("T_LPAREN",38),
+        ("T_RPAREN",39),("T_COLON",40),("T_COMMA",41),("T_NL",42),
+        ("T_INDENT",43),("T_DEDENT",44),("T_EOF",57),("T_STRUCT",10),
+        ("T_AND",14),("T_OR",15),("T_NOT",16),("T_TRUE",17),
+        ("T_FALSE",18),("T_INSEGURO",46),("T_IMPORTAR_C",47),
+        ("T_AMPERSAND",45),("T_EXTERNO",48),
     ]
     for name, val in tokens:
         ctx.write_line(f"#define {name} {val}")
