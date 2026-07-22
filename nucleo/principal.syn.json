@@ -44113,7 +44113,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                extern int _syn_axon_verificar_firma(const char*,const char*,const char*);"
+                  "instruccion": "                extern int _syn_axon_verificar_firma(const char*,const char*,const char*); extern int _syn_axon_escribir_lock(const char*,const char*,const char*);"
                 }
               },
               {
@@ -44457,6 +44457,13 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "                fprintf(stderr,\"[Axon] Instalado: %%s v%%s\\n\",_pkg.datos,_ver);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                CadenaSegura _lk_hash=_syn_sha256_archivo(_tar_path); if(_lk_hash.datos&&_lk_hash.longitud>0){ _syn_axon_escribir_lock(_pkg.datos,_ver,_lk_hash.datos); free((void*)_lk_hash.datos); };"
                 }
               },
               {

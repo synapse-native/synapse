@@ -4424,3 +4424,16 @@ int _syn_axon_buscar_local(const char* paquete, const char* version,
 
     return -1; // not found
 }
+
+// --- Axon: escribir lock (append mode, crea entrada en axon.lock) ---
+int _syn_axon_escribir_lock(const char* paquete, const char* version, const char* hash_sha256) {
+    if (!hash_sha256 || !*hash_sha256) { fprintf(stderr,"[Axon] WARNING: hash vacio para lock\n"); return -1; }
+    FILE* f = fopen("axon.lock", "ab");
+    if (!f) { fprintf(stderr,"[Axon] WARNING: no se pudo abrir axon.lock\n"); return -1; }
+    fseek(f, 0, SEEK_END);
+    if (ftell(f) == 0) { fprintf(f, "[lock]\n"); }
+    fprintf(f, "\"%s\" = { version = \"%s\", hash = \"sha256:%s\" }\n", paquete, version, hash_sha256);
+    fclose(f);
+    fprintf(stderr, "[Axon] Lock actualizado: %s v%s\n", paquete, version);
+    return 0;
+}
