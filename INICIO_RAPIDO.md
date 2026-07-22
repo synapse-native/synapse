@@ -59,11 +59,11 @@ python main.py --version
 Synapse extrae código directamente desde la nube a tu disco duro local. Vamos a inyectar la librería de sistema estándar externa (std.sys) en tu proyecto para que veas cómo opera la red:
 
 ```bash
-# Inicializa tu ecosistema local apuntando a la carpeta de Axon
-python ../axon/axon.py init
+# Inicializa tu ecosistema local (gestor nativo Axon)
+synapse.exe axon init
 
 # Instala el paquete oficial desde la organización Synapse-Native
-python ../axon/axon.py instalar std.sys
+synapse.exe axon fetch --online
 ```
 
 Axon aislará la dependencia en `axon_modules/`. Sin conflictos globales.
