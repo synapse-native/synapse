@@ -51,6 +51,7 @@ struct ArgumentoTransferido;
 struct SentenciaImportar;
 struct ImportarC;
 struct DeclaracionExterna;
+struct DeclaracionVariable;
 struct BloqueInseguro;
 struct ExprObtenerDireccion;
 struct ExprDereferencia;

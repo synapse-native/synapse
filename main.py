@@ -603,22 +603,41 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             tweetnacl_obj = os.path.join(SYNAPSE_BIN, "..", "dist", "lib", "tweetnacl.o")
             if not os.path.exists(tweetnacl_obj):
                 tweetnacl_obj = ""
+        # ============================================================
+        # Compilador multiplataforma: macOS (clang) / Linux y Windows (gcc)
+        # ============================================================
+        if sys.platform == "darwin":
+            compiler = "clang"
+            # macOS (ld64): --stack y --no-insert-timestamp son PE-only (error)
+            # gc-sections → -dead_strip; -fno-ident es GCC-only (warning)
+            platform_flags = "-Wl,-dead_strip"
+            thread_flag = "-lpthread"
+        else:
+            compiler = "gcc"
+            platform_flags = "-fno-ident -Wl,--gc-sections"
+            thread_flag = "-lpthread"
+            if sys.platform == "win32":
+                platform_flags += " -Wl,--no-insert-timestamp -Wl,--stack,8388608"
+            else:
+                platform_flags += " -Wl,--stack,8388608"
+
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
+
         # Add no_std flags if compiling in bare-metal mode
         if ast.is_no_std:
             no_std_flags = "-ffreestanding -fno-builtin"
             # Bare-metal: no runtime object, no pthreads, no networking
-            gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp {no_std_flags} -I. "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
+            gcc_cmd = f'{compiler} -O2 {platform_flags} {no_std_flags} -I. "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
         else:
             rt_objs = f'"{synapse_rt}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
 
-            gcc_cmd = f'gcc -O2 -Wl,--stack,8388608 -fno-ident -Wl,--no-insert-timestamp -Wl,--gc-sections -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" -lpthread -lm {linker_net} {linker_extra}'.strip()
-        print(f"[OK] GCC: {gcc_cmd}")
+            gcc_cmd = f'{compiler} -O2 {platform_flags} -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" {thread_flag} -lm {linker_net} {linker_extra}'.strip()
+        print(f"[OK] Compilando: {gcc_cmd}")
         rc = os.system(gcc_cmd)
         if rc != 0:
-            print(f"[!] GCC fallo con codigo {rc}", file=sys.stderr)
+            print(f"[!] Compilador fallo con codigo {rc}", file=sys.stderr)
         else:
             print(f"[OK] Ejecutable generado: {ruta_exe}")
 
