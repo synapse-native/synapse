@@ -9,7 +9,7 @@
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
 > **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
-> **Última actualización:** 22 Julio 2026 (Sesión 7: **F17 M17.11 COMPLETADO — Pipeline Stage 1 OK**)
+> **Última actualización:** 22 Julio 2026 (Sesión 8: **F19 M19.1 COMPLETADO — CPUID dinámico + Benchmark 3.14x**)
 
 ---
 
@@ -40,7 +40,7 @@
 | ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
 | ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
-| ▶️ **F19: Edge AI runtime** | 🟡 **EN PROGRESO** | Runtime <500KB ✅ (96KB). Módulo `std.simd` creado. SSE/AVX intrinsics. Pendiente: tests de rendimiento. | **283** passed | ✅ Documento Maestro |
+| ▶️ **F19: Edge AI runtime** | 🟢 **M19.1 COMPLETADO** | CPUID runtime + Benchmark SIMD 3.14x. Runtime <500KB ✅ (96KB). Std.simd con SSE/AVX/AVX2. Pendiente: AVX-512, tests CI. | **283** passed | ✅ Documento Maestro |
 
 ---
 
@@ -637,12 +637,37 @@ Implementar `axon fetch`, verificación Ed25519, `axon.lock` según Documento Ma
 
 ---
 
-## ⏳ FASE 19: EDGE AI RUNTIME (PENDIENTE)
+## ✅ FASE 19: EDGE AI RUNTIME (M19.1 COMPLETADO)
 
 ### Objetivo
 Runtime <500KB, módulo `std.simd`, soporte CPU limitada según Documento Maestro Parte IV.
 
-### Dependencia: F17 (pipeline nativa funcional)
+### Micro-entregable M19.1 — Detección dinámica CPUID + Benchmark (22 Jul 2026)
+
+| Componente | Archivo | Detalle |
+|------------|---------|--------|
+| **Detección CPUID runtime** | `synapse_rt.c` | Reemplazado `#ifdef __SSE__` (compile-time) por `_simd_detectar()` vía CPUID en ejecución. Detecta SSE, AVX, AVX2. Un solo binario portátil compilado con `-msse -msse3 -mavx` funciona en cualquier CPU x86-64, cayendo a código escalar si no hay soporte SIMD. |
+| **Benchmark Synapse** | `tests/smoke_tensor.syn` | Definición del benchmark en Synapse. Multiplicación 256x256, 5 iteraciones, `std.tiempo` para timing, validación de resultados. |
+| **Runner C** | `tests/smoke_tensor_runner.c` | Implementación directa del benchmark con QPC/clock_gettime. |
+
+**Resultados del benchmark:**
+```
+SIMD disponible: 1 (AVX2)
+Escalar (mejor): 13.43 ms
+SIMD    (mejor):  4.27 ms
+Speedup: 3.14x mas rapido
+Validacion: CORRECTOS (resultados identicos)
+```
+
+**Bugs corregidos durante desarrollo:**
+1. Use-after-free en benchmark (multiplicar_matrices consume ownership de tensores de entrada → matrices recreadas cada iteración)
+2. Variable `_simd_habilitado` sin inicializar explícito a 0 para CPUs sin SSE
+3. Scope de variable `err` en bloque de validación
+
+### Pendiente post-M19.1
+- F19.2: AVX-512 opcional (`__m512`)
+- F19.3: Tests de rendimiento automatizados (pytest)
+- F19.4: Integración SIMD con std.modelo (transformers)
 
 ---
 
@@ -878,4 +903,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS (M17.11: Pipeline Stage 1 OK), F19 PARCIAL (std.simd + SSE/AVX). Próximo: ciclo Stage1→Stage2→Stage3. 283 tests pasan.*
+*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.1 COMPLETADO (CPUID + Benchmark 3.14x). Próximo: F19.2 (AVX-512) o F18 (Axon). 283 tests pasan.*

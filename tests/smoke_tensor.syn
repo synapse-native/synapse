@@ -1,30 +1,128 @@
 #lang: es
+// smoke_tensor.syn — Benchmark: multiplicacion de matrices Escalar vs SIMD
+// Prueba: std.tensor (multiplicar_matrices) vs std.simd (simd_multiplicar_matrices)
+//
+// Compilar (via pipeline):
+//   python main.py tests/smoke_tensor.syn -o tests/smoke_tensor
+//   gcc -O2 -msse -msse3 tests/smoke_tensor.c synapse_rt.o -o tests/smoke_tensor.exe -lm -lpthread
+//
+// Ejecutar:
+//   tests/smoke_tensor.exe
+
+importar std.tiempo
 importar std.tensor
+importar std.simd
+importar std.math
+
+constante DIM = 256
+constante ITERACIONES = 5
+constante TOLERANCIA = 0.001
+
+funcion validar_resultado(esperado: tensor, obtenido: tensor, nombre: texto) -> entero:
+    si esperado.filas != obtenido.filas o esperado.columnas != obtenido.columnas:
+        log("ERROR: ", nombre, " - dimensiones diferentes")
+        retornar 1
+    fila: entero = 0
+    col: entero = 0
+    mientras fila < esperado.filas:
+        col = 0
+        mientras col < esperado.columnas:
+            idx = fila * esperado.columnas + col
+            diff = esperado.datos[idx] - obtenido.datos[idx]
+            si diff < 0: diff = -diff
+            si diff > TOLERANCIA:
+                log("ERROR: ", nombre, " - diferencia en [", fila, ",", col, "]: ",
+                    esperado.datos[idx], " vs ", obtenido.datos[idx])
+                retornar 1
+            col = col + 1
+        fila = fila + 1
+    retornar 0
 
 funcion principal() -> nulo:
-    // Crear tensores A y B de 2x2
-    A = crear_tensor_2d(2, 2)
-    B = crear_tensor_2d(2, 2)
-    C = crear_tensor_2d(2, 2)
+    log("=== Benchmark Tensorial: Escalar vs SIMD ===")
+    log("Dimension: ", DIM, "x", DIM, " | Iteraciones: ", ITERACIONES)
+    log("SIMD disponible: ", simd_disponible(), " (", simd_tipo(), ")")
+    log("")
 
-    // A = [[1, 2], [3, 4]]
-    escribir_tensor(A, 0, 0, 1.0)
-    escribir_tensor(A, 0, 1, 2.0)
-    escribir_tensor(A, 1, 0, 3.0)
-    escribir_tensor(A, 1, 1, 4.0)
+    // --- Benchmark Escalar (multiplicar_matrices) ---
+    // NOTA: multiplicar_matrices CONSUME ownership (pool_free).
+    // Re-creamos matrices en cada iteracion para evitar use-after-free.
+    log("--- Benchmark: multiplicar_matrices (ESCALAR) ---")
+    tiempo_escalar: entero = 9999999
 
-    // B = [[5, 6], [7, 8]]
-    escribir_tensor(B, 0, 0, 5.0)
-    escribir_tensor(B, 0, 1, 6.0)
-    escribir_tensor(B, 1, 0, 7.0)
-    escribir_tensor(B, 1, 1, 8.0)
+    i: entero = 0
+    mientras i < ITERACIONES:
+        a = crear_tensor(DIM, DIM)
+        b = crear_tensor(DIM, DIM)
+        llenar_tensor_constante(a, 1.0)
+        llenar_tensor_constante(b, 2.0)
+        inicio = ahora_ms()
+        c = multiplicar_matrices(a, b)
+        fin = ahora_ms()
+        diff = fin - inicio
+        log("  Iteracion ", i + 1, ": ", diff, " ms")
+        si diff < tiempo_escalar:
+            tiempo_escalar = diff
+        i = i + 1
 
-    // C = A * B
-    multiplicar_tensor(A, B, C)
+    log("Mejor tiempo ESCALAR: ", tiempo_escalar, " ms")
+    log("")
 
-    v = leer_tensor(C, 0, 0)
-    log("C[0,0] = ", v)
+    // --- Benchmark SIMD (simd_multiplicar_matrices) ---
+    log("--- Benchmark: simd_multiplicar_matrices (SIMD) ---")
+    tiempo_simd: entero = 9999999
 
-    liberar_tensor(A)
-    liberar_tensor(B)
-    liberar_tensor(C)
+    i = 0
+    mientras i < ITERACIONES:
+        a2 = crear_tensor(DIM, DIM)
+        b2 = crear_tensor(DIM, DIM)
+        llenar_tensor_constante(a2, 1.0)
+        llenar_tensor_constante(b2, 2.0)
+        inicio = ahora_ms()
+        c2 = simd_multiplicar_matrices(a2, b2)
+        fin = ahora_ms()
+        diff = fin - inicio
+        log("  Iteracion ", i + 1, ": ", diff, " ms")
+        si diff < tiempo_simd:
+            tiempo_simd = diff
+        i = i + 1
+
+    log("Mejor tiempo SIMD: ", tiempo_simd, " ms")
+    log("")
+
+    // --- Validacion de resultado ---
+    log("--- Validacion de resultados ---")
+    a_val = crear_tensor(DIM, DIM)
+    b_val = crear_tensor(DIM, DIM)
+    llenar_tensor_constante(a_val, 1.0)
+    llenar_tensor_constante(b_val, 2.0)
+    c_ref = multiplicar_matrices(a_val, b_val)
+
+    a_val2 = crear_tensor(DIM, DIM)
+    b_val2 = crear_tensor(DIM, DIM)
+    llenar_tensor_constante(a_val2, 1.0)
+    llenar_tensor_constante(b_val2, 2.0)
+    c_simd = simd_multiplicar_matrices(a_val2, b_val2)
+
+    err = validar_resultado(c_ref, c_simd, "simd_multiplicar_matrices")
+    si err == 0:
+        log("Resultados: CORRECTOS (coinciden escalar y SIMD)")
+    sino:
+        log("ERROR: Resultados NO coinciden!")
+    log("")
+
+    // --- Reporte final ---
+    log("=== RESULTADOS ===")
+    log("Escalar (mejor): ", tiempo_escalar, " ms")
+    log("SIMD    (mejor): ", tiempo_simd, " ms")
+
+    si tiempo_simd < tiempo_escalar y tiempo_simd > 0:
+        // speedup_x100 = (escalar * 100) / simd  -> ej: 357 para 3.57x
+        speedup_x100 = (tiempo_escalar * 100) / tiempo_simd
+        entero_part = speedup_x100 / 100
+        dec_part = speedup_x100 - (entero_part * 100)
+        log("Speedup: ", entero_part, ".", dec_part, "x mas rapido")
+    sino:
+        log("Speedup: N/A (SIMD no disponible o no mas rapido)")
+
+    log("=== Fin del Benchmark ===")

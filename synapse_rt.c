@@ -487,44 +487,82 @@ void _syn_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida) 
 #include <pmmintrin.h>
 #endif
 
-// Deteccion de soporte SIMD (compilacion condicional)
-#ifdef __SSE__
-static int _simd_habilitado = 1;
+// Deteccion de soporte SIMD (RUN-time via CPUID)
+// Unico binario portatil: compilar con -msse -msse3 -mavx,
+// pero delegar a codigo escalar si el CPU no soporta SIMD.
+static int _simd_habilitado = -1;  // -1 = no detectado aun
+static const char* _simd_tipo_str = "NONE";
+
+static void _simd_detectar(void) {
+    if (_simd_habilitado >= 0) return;  // ya detectado
+    unsigned int eax, ebx, ecx, edx;
+    eax = 1;
+#if defined(__GNUC__) || defined(__clang__)
+    __asm__ volatile(
+        "cpuid"
+        : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+        : "a"(eax)
+    );
 #else
-static int _simd_habilitado = 0;
+    // Fallback: asumir no SIMD en compiladores desconocidos
+    _simd_habilitado = 0;
+    _simd_tipo_str = "NONE";
+    return;
 #endif
+    _simd_habilitado = 0;  // default: no SIMD hasta que se detecte
+    _simd_tipo_str = "NONE";
+    if (edx & (1 << 25)) {  // bit 25 = SSE
+        _simd_habilitado = 1;
+        _simd_tipo_str = "SSE";
+    }
+    if (ecx & (1 << 28)) {  // bit 28 = AVX
+        _simd_habilitado = 1;
+        _simd_tipo_str = "AVX";
+    }
+    // AVX2: CPUID leaf 7, EBX bit 5
+    if (ecx & (1 << 28)) {
+        eax = 7; ebx = 0; ecx = 0; edx = 0;
+#if defined(__GNUC__) || defined(__clang__)
+        __asm__ volatile(
+            "cpuid"
+            : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+            : "a"(eax), "c"(ecx)
+        );
+#endif
+        if (ebx & (1 << 5)) {
+            _simd_tipo_str = "AVX2";
+        }
+    }
+}
 
 int _syn_simd_disponible(void) {
-    return _simd_habilitado;
+    _simd_detectar();
+    return _simd_habilitado > 0 ? 1 : 0;
 }
 
 const char* _syn_simd_tipo(void) {
-#ifdef __AVX__
-    return "AVX";
-#elif defined(__SSE__)
-    return "SSE";
-#else
-    return "NONE";
-#endif
+    _simd_detectar();
+    return _simd_tipo_str;
 }
 
 // --- SIMD: llenar_tensor_constante (vectorizado con SSE) ---
 void _syn_simd_llenar_tensor_constante(Tensor t, float valor) {
-#ifdef __SSE__
-    __m128 v4 = _mm_set1_ps(valor);
-    uint32_t n = t.filas * t.columnas;
-    uint32_t i = 0;
-    for (; i + 4 <= n; i += 4) {
-        _mm_storeu_ps(t.datos + i, v4);
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        __m128 v4 = _mm_set1_ps(valor);
+        uint32_t n = t.filas * t.columnas;
+        uint32_t i = 0;
+        for (; i + 4 <= n; i += 4) {
+            _mm_storeu_ps(t.datos + i, v4);
+        }
+        for (; i < n; i++) {
+            t.datos[i] = valor;
+        }
+    } else {
+        for (uint32_t _i = 0; _i < t.filas * t.columnas; _i++) {
+            t.datos[_i] = valor;
+        }
     }
-    for (; i < n; i++) {
-        t.datos[i] = valor;
-    }
-#else
-    for (uint32_t _i = 0; _i < t.filas * t.columnas; _i++) {
-        t.datos[_i] = valor;
-    }
-#endif
 }
 
 // --- SIMD: multiplicar_matrices (SSE: 4-floats por iteracion interna) ---
@@ -540,32 +578,33 @@ Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b) {
     r.datos = (float*)_pool_malloc(r.filas * r.columnas * sizeof(float));
     memset(r.datos, 0, r.filas * r.columnas * sizeof(float));
 
-#ifdef __SSE__
-    for (uint32_t _i = 0; _i < r.filas; _i++) {
-        for (uint32_t _k = 0; _k < a.columnas; _k++) {
-            __m128 _a_ik = _mm_set1_ps(a.datos[_i * a.columnas + _k]);
-            uint32_t _j = 0;
-            for (; _j + 4 <= r.columnas; _j += 4) {
-                __m128 _b_kj = _mm_loadu_ps(b.datos + _k * b.columnas + _j);
-                __m128 _r_ij = _mm_loadu_ps(r.datos + _i * r.columnas + _j);
-                _r_ij = _mm_add_ps(_r_ij, _mm_mul_ps(_a_ik, _b_kj));
-                _mm_storeu_ps(r.datos + _i * r.columnas + _j, _r_ij);
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        for (uint32_t _i = 0; _i < r.filas; _i++) {
+            for (uint32_t _k = 0; _k < a.columnas; _k++) {
+                __m128 _a_ik = _mm_set1_ps(a.datos[_i * a.columnas + _k]);
+                uint32_t _j = 0;
+                for (; _j + 4 <= r.columnas; _j += 4) {
+                    __m128 _b_kj = _mm_loadu_ps(b.datos + _k * b.columnas + _j);
+                    __m128 _r_ij = _mm_loadu_ps(r.datos + _i * r.columnas + _j);
+                    _r_ij = _mm_add_ps(_r_ij, _mm_mul_ps(_a_ik, _b_kj));
+                    _mm_storeu_ps(r.datos + _i * r.columnas + _j, _r_ij);
+                }
+                for (; _j < r.columnas; _j++) {
+                    r.datos[_i * r.columnas + _j] += a.datos[_i * a.columnas + _k] * b.datos[_k * b.columnas + _j];
+                }
             }
-            for (; _j < r.columnas; _j++) {
-                r.datos[_i * r.columnas + _j] += a.datos[_i * a.columnas + _k] * b.datos[_k * b.columnas + _j];
+        }
+    } else {
+        for (uint32_t _i = 0; _i < r.filas; _i++) {
+            for (uint32_t _k = 0; _k < a.columnas; _k++) {
+                float _a_ik = a.datos[_i * a.columnas + _k];
+                for (uint32_t _j = 0; _j < r.columnas; _j++) {
+                    r.datos[_i * r.columnas + _j] += _a_ik * b.datos[_k * b.columnas + _j];
+                }
             }
         }
     }
-#else
-    for (uint32_t _i = 0; _i < r.filas; _i++) {
-        for (uint32_t _k = 0; _k < a.columnas; _k++) {
-            float _a_ik = a.datos[_i * a.columnas + _k];
-            for (uint32_t _j = 0; _j < r.columnas; _j++) {
-                r.datos[_i * r.columnas + _j] += _a_ik * b.datos[_k * b.columnas + _j];
-            }
-        }
-    }
-#endif
     if (!a.es_mapeado) { pool_free(a.datos); }
     if (!b.es_mapeado) { pool_free(b.datos); }
     return r;
@@ -576,73 +615,75 @@ void _syn_simd_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor sal
     uint32_t M = a.filas;
     uint32_t K = a.columnas;
     uint32_t N = b.filas;
-#ifdef __SSE__
-    for (uint32_t _i = 0; _i < M; _i++) {
-        for (uint32_t _j = 0; _j < N; _j++) {
-            __m128 _sum4 = _mm_setzero_ps();
-            uint32_t _k = 0;
-            for (; _k + 4 <= K; _k += 4) {
-                __m128 _a4 = _mm_loadu_ps(a.datos + _i * K + _k);
-                __m128 _b4 = _mm_loadu_ps(b.datos + _j * K + _k);
-                _sum4 = _mm_add_ps(_sum4, _mm_mul_ps(_a4, _b4));
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        for (uint32_t _i = 0; _i < M; _i++) {
+            for (uint32_t _j = 0; _j < N; _j++) {
+                __m128 _sum4 = _mm_setzero_ps();
+                uint32_t _k = 0;
+                for (; _k + 4 <= K; _k += 4) {
+                    __m128 _a4 = _mm_loadu_ps(a.datos + _i * K + _k);
+                    __m128 _b4 = _mm_loadu_ps(b.datos + _j * K + _k);
+                    _sum4 = _mm_add_ps(_sum4, _mm_mul_ps(_a4, _b4));
+                }
+                float _sum = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
+                for (; _k < K; _k++) {
+                    _sum += a.datos[_i * K + _k] * b.datos[_j * K + _k];
+                }
+                salida.datos[_i * N + _j] = _sum;
             }
-            float _sum = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
-            for (; _k < K; _k++) {
-                _sum += a.datos[_i * K + _k] * b.datos[_j * K + _k];
+        }
+    } else {
+        for (uint32_t _i = 0; _i < M; _i++) {
+            for (uint32_t _j = 0; _j < N; _j++) {
+                float _sum = 0.0f;
+                for (uint32_t _k = 0; _k < K; _k++) {
+                    _sum += a.datos[_i * K + _k] * b.datos[_j * K + _k];
+                }
+                salida.datos[_i * N + _j] = _sum;
             }
-            salida.datos[_i * N + _j] = _sum;
         }
     }
-#else
-    for (uint32_t _i = 0; _i < M; _i++) {
-        for (uint32_t _j = 0; _j < N; _j++) {
-            float _sum = 0.0f;
-            for (uint32_t _k = 0; _k < K; _k++) {
-                _sum += a.datos[_i * K + _k] * b.datos[_j * K + _k];
-            }
-            salida.datos[_i * N + _j] = _sum;
-        }
-    }
-#endif
 }
 
 // --- SIMD: rmsnorm (SSE: sumacuadrados vectorizada + normalizacion 4-wide) ---
 void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon) {
     uint32_t n = entrada.columnas;
-#ifdef __SSE__
-    __m128 _sum4 = _mm_setzero_ps();
-    uint32_t i = 0;
-    for (; i + 4 <= n; i += 4) {
-        __m128 _v = _mm_loadu_ps(entrada.datos + i);
-        _sum4 = _mm_add_ps(_sum4, _mm_mul_ps(_v, _v));
+    _simd_detectar();
+    if (_simd_habilitado > 0) {
+        __m128 _sum4 = _mm_setzero_ps();
+        uint32_t i = 0;
+        for (; i + 4 <= n; i += 4) {
+            __m128 _v = _mm_loadu_ps(entrada.datos + i);
+            _sum4 = _mm_add_ps(_sum4, _mm_mul_ps(_v, _v));
+        }
+        float suma_cuadrados = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
+        for (; i < n; i++) {
+            float v = entrada.datos[i];
+            suma_cuadrados += v * v;
+        }
+        float rms = sqrtf(suma_cuadrados / (float)n + epsilon);
+        __m128 _rms4 = _mm_set1_ps(rms);
+        i = 0;
+        for (; i + 4 <= n; i += 4) {
+            __m128 _e = _mm_loadu_ps(entrada.datos + i);
+            __m128 _w = _mm_loadu_ps(peso_normalizacion.datos + i);
+            _mm_storeu_ps(salida.datos + i, _mm_mul_ps(_mm_div_ps(_e, _rms4), _w));
+        }
+        for (; i < n; i++) {
+            salida.datos[i] = (entrada.datos[i] / rms) * peso_normalizacion.datos[i];
+        }
+    } else {
+        float suma_cuadrados = 0.0f;
+        for (uint32_t _i = 0; _i < n; _i++) {
+            float v = entrada.datos[_i];
+            suma_cuadrados += v * v;
+        }
+        float rms = sqrtf(suma_cuadrados / (float)n + epsilon);
+        for (uint32_t _i = 0; _i < n; _i++) {
+            salida.datos[_i] = (entrada.datos[_i] / rms) * peso_normalizacion.datos[_i];
+        }
     }
-    float suma_cuadrados = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
-    for (; i < n; i++) {
-        float v = entrada.datos[i];
-        suma_cuadrados += v * v;
-    }
-    float rms = sqrtf(suma_cuadrados / (float)n + epsilon);
-    __m128 _rms4 = _mm_set1_ps(rms);
-    i = 0;
-    for (; i + 4 <= n; i += 4) {
-        __m128 _e = _mm_loadu_ps(entrada.datos + i);
-        __m128 _w = _mm_loadu_ps(peso_normalizacion.datos + i);
-        _mm_storeu_ps(salida.datos + i, _mm_mul_ps(_mm_div_ps(_e, _rms4), _w));
-    }
-    for (; i < n; i++) {
-        salida.datos[i] = (entrada.datos[i] / rms) * peso_normalizacion.datos[i];
-    }
-#else
-    float suma_cuadrados = 0.0f;
-    for (uint32_t _i = 0; _i < n; _i++) {
-        float v = entrada.datos[_i];
-        suma_cuadrados += v * v;
-    }
-    float rms = sqrtf(suma_cuadrados / (float)n + epsilon);
-    for (uint32_t _i = 0; _i < n; _i++) {
-        salida.datos[_i] = (entrada.datos[_i] / rms) * peso_normalizacion.datos[_i];
-    }
-#endif
 }
 
 // --- SIMD: silu (expf escalar, SSE ~2x por carga/almacenamiento de 4 floats) ---
@@ -660,67 +701,68 @@ void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala) {
     uint32_t cols = tensor.columnas;
     for (uint32_t _f = 0; _f < filas; _f++) {
         float* fila = tensor.datos + _f * cols;
-#ifdef __SSE__
-        __m128 _max4 = _mm_set1_ps(-1e30f);
-        uint32_t _c = 0;
-        for (; _c + 4 <= cols; _c += 4) {
-            __m128 _v = _mm_mul_ps(_mm_loadu_ps(fila + _c), _mm_set1_ps(factor_escala));
-            _max4 = _mm_max_ps(_max4, _v);
-        }
-        float max_val = _max4[0];
-        if (_max4[1] > max_val) max_val = _max4[1];
-        if (_max4[2] > max_val) max_val = _max4[2];
-        if (_max4[3] > max_val) max_val = _max4[3];
-        for (; _c < cols; _c++) {
-            float v = fila[_c] * factor_escala;
-            if (v > max_val) max_val = v;
-        }
-        __m128 _sum4 = _mm_setzero_ps();
-        _c = 0;
-        for (; _c + 4 <= cols; _c += 4) {
-            __m128 _e = _mm_set_ps(
-                expf(fila[_c+3] * factor_escala - max_val),
-                expf(fila[_c+2] * factor_escala - max_val),
-                expf(fila[_c+1] * factor_escala - max_val),
-                expf(fila[_c]   * factor_escala - max_val)
-            );
-            _mm_storeu_ps(fila + _c, _e);
-            _sum4 = _mm_add_ps(_sum4, _e);
-        }
-        float suma = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
-        for (; _c < cols; _c++) {
-            float e = expf(fila[_c] * factor_escala - max_val);
-            fila[_c] = e;
-            suma += e;
-        }
-        if (suma > 0.0f) {
-            __m128 _sumv = _mm_set1_ps(suma);
+        _simd_detectar();
+        if (_simd_habilitado > 0) {
+            __m128 _max4 = _mm_set1_ps(-1e30f);
+            uint32_t _c = 0;
+            for (; _c + 4 <= cols; _c += 4) {
+                __m128 _v = _mm_mul_ps(_mm_loadu_ps(fila + _c), _mm_set1_ps(factor_escala));
+                _max4 = _mm_max_ps(_max4, _v);
+            }
+            float max_val = _max4[0];
+            if (_max4[1] > max_val) max_val = _max4[1];
+            if (_max4[2] > max_val) max_val = _max4[2];
+            if (_max4[3] > max_val) max_val = _max4[3];
+            for (; _c < cols; _c++) {
+                float v = fila[_c] * factor_escala;
+                if (v > max_val) max_val = v;
+            }
+            __m128 _sum4 = _mm_setzero_ps();
             _c = 0;
             for (; _c + 4 <= cols; _c += 4) {
-                _mm_storeu_ps(fila + _c, _mm_div_ps(_mm_loadu_ps(fila + _c), _sumv));
+                __m128 _e = _mm_set_ps(
+                    expf(fila[_c+3] * factor_escala - max_val),
+                    expf(fila[_c+2] * factor_escala - max_val),
+                    expf(fila[_c+1] * factor_escala - max_val),
+                    expf(fila[_c]   * factor_escala - max_val)
+                );
+                _mm_storeu_ps(fila + _c, _e);
+                _sum4 = _mm_add_ps(_sum4, _e);
             }
+            float suma = _sum4[0] + _sum4[1] + _sum4[2] + _sum4[3];
             for (; _c < cols; _c++) {
-                fila[_c] /= suma;
+                float e = expf(fila[_c] * factor_escala - max_val);
+                fila[_c] = e;
+                suma += e;
             }
-        }
-#else
-        float max_val = -1e30f;
-        for (uint32_t _c = 0; _c < cols; _c++) {
-            float v = fila[_c] * factor_escala;
-            if (v > max_val) max_val = v;
-        }
-        float suma = 0.0f;
-        for (uint32_t _c = 0; _c < cols; _c++) {
-            float e = expf(fila[_c] * factor_escala - max_val);
-            fila[_c] = e;
-            suma += e;
-        }
-        if (suma > 0.0f) {
+            if (suma > 0.0f) {
+                __m128 _sumv = _mm_set1_ps(suma);
+                _c = 0;
+                for (; _c + 4 <= cols; _c += 4) {
+                    _mm_storeu_ps(fila + _c, _mm_div_ps(_mm_loadu_ps(fila + _c), _sumv));
+                }
+                for (; _c < cols; _c++) {
+                    fila[_c] /= suma;
+                }
+            }
+        } else {
+            float max_val = -1e30f;
             for (uint32_t _c = 0; _c < cols; _c++) {
-                fila[_c] /= suma;
+                float v = fila[_c] * factor_escala;
+                if (v > max_val) max_val = v;
+            }
+            float suma = 0.0f;
+            for (uint32_t _c = 0; _c < cols; _c++) {
+                float e = expf(fila[_c] * factor_escala - max_val);
+                fila[_c] = e;
+                suma += e;
+            }
+            if (suma > 0.0f) {
+                for (uint32_t _c = 0; _c < cols; _c++) {
+                    fila[_c] /= suma;
+                }
             }
         }
-#endif
     }
 }
 
