@@ -44302,7 +44302,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // Step 1.5: Download signature + verify Ed25519"
+                  "instruccion": "                // Step 1.5: Verify Ed25519 (mandatory: zero-tolerance, before lock/extract)"
                 }
               },
               {
@@ -44316,42 +44316,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(sig_path,sizeof(sig_path),\".axon_cache/%s.tar.sig\",_pkg.datos);"
+                  "instruccion": "                FILE* _sf=NULL;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // Try local .sig first, then online if --online"
+                  "instruccion": "                // Try .sig at: 1) alongside tar_path (paquetes_oficiales/), 2) .axon_cache/<pkg>.tar.sig, 3) HTTP"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                int _sig_dl=-1;"
+                  "instruccion": "                snprintf(sig_path,sizeof(sig_path),\"%s.sig\",_tar_path); _sf=fopen(sig_path,\"rb\");"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                FILE* _sig_f = fopen(sig_path,\"rb\");"
+                  "instruccion": "                if(!_sf){ snprintf(sig_path,sizeof(sig_path),\".axon_cache/%s.tar.sig\",_pkg.datos); _sf=fopen(sig_path,\"rb\"); }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(_sig_f){ fclose(_sig_f); _sig_dl=0; fprintf(stderr,\"[Axon] .sig local encontrado\\n\"); }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                else if(_online){"
+                  "instruccion": "                if(!_sf && _online){"
                 }
               },
               {
@@ -44386,7 +44379,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    _sig_dl=_syn_http_get_archivo(_gh_host_sig,443,_gh_path_sig,sig_path);"
+                  "instruccion": "                    if(_syn_http_get_archivo(_gh_host_sig,443,_gh_path_sig,sig_path)>=0) _sf=fopen(sig_path,\"rb\");"
                 }
               },
               {
@@ -44400,14 +44393,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(*autor && _sig_dl>=0){ fprintf(stderr,\"[Axon] Verificando firma Ed25519...\\n\"); int _vf=_syn_axon_verificar_firma(_tar_path,sig_path,autor); if(_vf<0){ fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: firma Ed25519 invalida\\n\"); remove(_tar_path); remove(sig_path); r=1; free(_b); return r; } fprintf(stderr,\"[Axon] Firma Ed25519 verificada correctamente\\n\"); }"
+                  "instruccion": "                // Zero-tolerance: if autor is set but no .sig, abort"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(*autor && _sig_dl<0){ fprintf(stderr,\"[Axon] WARNING: No se pudo obtener .sig, saltando verificacion\\n\"); }"
+                  "instruccion": "                if(!_sf && *autor){ fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: .sig no encontrado\\n\"); remove(_tar_path); r=1; free(_b); return r; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Mandatory verification before lock+extract"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(_sf){ fclose(_sf); fprintf(stderr,\"[Axon] Verificando firma Ed25519...\\n\"); int _vf=_syn_axon_verificar_firma(_tar_path,sig_path,autor); if(_vf<0){ fprintf(stderr,\"[Axon] ERR_AXON_COMPROMISED: firma Ed25519 invalida\\n\"); remove(_tar_path); remove(sig_path); r=1; free(_b); return r; } fprintf(stderr,\"[Axon] Firma Ed25519 verificada correctamente\\n\"); }"
                 }
               },
               {
