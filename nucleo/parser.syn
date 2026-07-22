@@ -816,6 +816,9 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         token_avanzar(est)
         mientras r == 1:
             t = token_mirar(est)
+            si t == T_NUEVALINEA:
+                token_avanzar(est)
+                siguiente
             si t == T_DESINDENTAR:
                 token_avanzar(est)
                 r = 0
@@ -848,6 +851,9 @@ funcion parsear_si(est: ParserEst) -> entero:
             token_avanzar(est)
             mientras r == 1:
                 t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
                 si t == T_DESINDENTAR:
                     token_avanzar(est)
                     r = 0
@@ -868,6 +874,9 @@ funcion parsear_si(est: ParserEst) -> entero:
                 token_avanzar(est)
                 mientras r == 1:
                     t = token_mirar(est)
+                    si t == T_NUEVALINEA:
+                        token_avanzar(est)
+                        siguiente
                     si t == T_DESINDENTAR:
                         token_avanzar(est)
                         r = 0
@@ -897,6 +906,9 @@ funcion parsear_mientras(est: ParserEst) -> entero:
             r = 1
             mientras r == 1:
                 t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
                 si t == T_DESINDENTAR:
                     token_avanzar(est)
                     r = 0
@@ -930,6 +942,9 @@ funcion parsear_para(est: ParserEst) -> entero:
             r = 1
             mientras r == 1:
                 t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
                 si t == T_DESINDENTAR:
                     token_avanzar(est)
                     r = 0
@@ -1089,6 +1104,9 @@ funcion parsear_inseguro(est: ParserEst) -> entero:
             r = 1
             mientras r == 1:
                 t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
                 si t == T_DESINDENTAR:
                     token_avanzar(est)
                     r = 0

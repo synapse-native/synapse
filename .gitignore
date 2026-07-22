@@ -39,7 +39,19 @@ synapse_stage3.exe*
 synapse_bootstrap.exe*
 test_salida.exe
 
+# Artefactos de depuración
+stderr*.txt
+stdout*.txt
+bootstrap_output.txt
+output.txt
+c_nat.c
+c_ref.c
+--help.c
+entero
+fix_*.py
+
 # Directorios externos no fuente
 Native/
+axon_src/
 axon_modules/
 paquetes_oficiales/

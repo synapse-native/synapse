@@ -104,11 +104,31 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
     elif isinstance(nodo, SentenciaExpr):
         val = expr_a_c(ctx, nodo.expr)
         if isinstance(nodo.expr, ExprAsm):
-            if not val.endswith(';'):
+            # Raw C block — add ; only if it's a complete statement ending with neither
+            # ';', '{', nor a pure closer '}' (compound literals like (T){...} DO need ;)
+            trimmed = val.rstrip()
+            needs_semi = True
+            if not trimmed:
+                needs_semi = False
+            elif trimmed.endswith(';'):
+                needs_semi = False
+            elif trimmed.endswith('{'):
+                needs_semi = False
+            elif trimmed.endswith('}'):
+                last_brace = trimmed.rfind('}')
+                pre_brace = trimmed[:last_brace].rstrip()
+                if pre_brace.endswith(';'):
+                    needs_semi = False  # statement already terminated before closer
+                else:
+                    inner_open = trimmed.rfind('{', 0, last_brace)
+                    if inner_open < 0:
+                        needs_semi = False  # pure closer like "}"
+            if needs_semi:
                 val += ';'
+            ctx.write_line(val)
         else:
             val += ';'
-        ctx.write_line(val)
+            ctx.write_line(val)
     elif isinstance(nodo, DeclaracionVariable):
         visitar_declaracion(ctx, nodo)
     elif isinstance(nodo, AsignacionVariable):
@@ -185,7 +205,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
               'SentenciaLanzar', 'SentenciaRecuperar', 'SentenciaEscuchar',
               'ExprTensor', 'ExprIndice', 'ArgumentoTransferido',
               'SentenciaImportar',
-              'ImportarC', 'DeclaracionExterna', 'BloqueInseguro',
+              'ImportarC', 'DeclaracionExterna', 'DeclaracionVariable', 'BloqueInseguro',
               'ExprObtenerDireccion', 'ExprDereferencia']:
         ctx.write_line(f"struct {t};")
     ctx.write_line("")

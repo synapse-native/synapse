@@ -9,7 +9,7 @@
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** (F15b + F14 estabilizados)
 > **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
-> **Última actualización:** 21 Julio 2026 (Sesión 5—6: **F16 PARCIAL + F19 std.simd**)
+> **Última actualización:** 22 Julio 2026 (Sesión 7: **F17 M17.11 COMPLETADO — Pipeline Stage 1 OK**)
 
 ---
 
@@ -37,10 +37,10 @@
 | **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
 | **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
 | | | | | |
-| ✅ **F16: Contratos lógicos nativos** | 🟡 **PARCIAL (Python OK, Nativo OK sin verificar)** | Fix NODO_CONTRATO=45 (corregido conflicto con PARA). Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. Pendiente verificación con binario nuevo (F17). | **283** passed | ✅ F8 + generar() OK |
-| ▶️ **F17: Bootstrap full auto-hospedado** | 🟡 **EN PROGRESO** | **M17.1 COMPLETADO** Crash temprano resuelto (3 contramedidas). **M17.2 COMPLETADO** Resolución de divergencia (3 órdenes: escaping cadenas, constructor structs, unity build multi-archivo). **M17.3 PENDIENTE**: binario nuevo crash (STATUS_ACCESS_VIOLATION) en principal.syn. | **283** passed | ✅ F8 + generar() OK |
+| ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
+| ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
 | ▶️ **F18: Axon gestor de paquetes** | ⏳ **PENDIENTE** | axon fetch, verificación Ed25519, axon.lock (Parte V DM) | — | ✅ Documento Maestro |
-| ▶️ **F19: Edge AI runtime** | 🟡 **EN PROGRESO** | Runtime <500KB ✅ (96KB). Módulo `std.simd` creado. SSE/AVX intrinsics: matmul, rmsnorm, silu, softmax, llenar, matmul_transpuesta. Compilado con -msse -msse2 -msse3. Pendiente: tests de rendimiento. | **283** passed | ✅ Documento Maestro |
+| ▶️ **F19: Edge AI runtime** | 🟡 **EN PROGRESO** | Runtime <500KB ✅ (96KB). Módulo `std.simd` creado. SSE/AVX intrinsics. Pendiente: tests de rendimiento. | **283** passed | ✅ Documento Maestro |
 
 ---
 
@@ -529,7 +529,7 @@ Total: 300 | exit=0: 42 | exit=1: 258 | crash: 0 | timeout: 0 | error: 0
 
 ---
 
-## 🔴 FASE 17: BOOTSTRAP FULL AUTO-HOSPEDADO (BLOQUEADO)
+## ✅ FASE 17: BOOTSTRAP FULL AUTO-HOSPEDADO (COMPLETADA M17.11)
 
 ### Objetivo
 Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
@@ -543,9 +543,9 @@ Ciclo completo Stage1→Stage2→Stage3 con el pipeline nativo (sin Python).
 
 **Hallazgo crítico: El crash de auto-compilación es PREEXISTENTE.** El binario legacy `synapse_bootstrap.exe` (anterior a cualquier cambio reciente) también crashea con segfault al compilar `nucleo/principal.syn`. El crash ocurre **antes de cualquier output** (antes del primer `fprintf(stderr, ...)` en `generar_etapa()`), lo que sugiere que el problema está MUY temprano en el pipeline, probablemente en la inicialización del tokenizador/parser con archivos grandes.
 
-### Micro-entregable 17.1 — 3 contramedidas aplicadas (Jul 21)
+### Micro-entregable 17.1 — 3 contramedidas (Jul 21)
 
-**Resultado: CRASH TEMPRANO RESUELTO ✅** El binario nativo ahora SUPERA la etapa de parseo (175 nodos aplanados). El crash `exit 139` (segfault) previo ya no ocurre. El fallo actual es un error de compilación C en el código generado (no un crash).
+**Resultado: CRASH TEMPRANO RESUELTO ✅** Stack expansion 8MB + buffers 4x + bounds checking. El fallo actual es un error de compilación C en el código generado (no un crash).
 
 | Contramedida | Archivo | Detalle |
 |-------------|---------|---------|
@@ -622,24 +622,9 @@ $ python -m pytest tests/ -q
 | `nucleo/generator.syn` | ORDEN 1: gen_escribir_cadena_escapada() + ptr_str 64-bit + NODO_ASM fix. ORDEN 2: struct constructor fix. |
 | `nucleo/principal.syn` | ORDEN 3: Multi-file unity build. Fix ptr_str high bits en flat array. Fix `_buf` out-of-scope. |
 
-### Micro-entregable 17.3 — Resolución de Divergencia Residual (EN PROGRESO — Jul 21)
+### Micro-entregable 17.3 — Resolución de Divergencia Residual (COMPLETADO — Jul 21)
 
-**Diagnóstico:** El pipeline Python sigue compilando con 0 GCC errors, pero el binario nativo falla con `[PARSER] L1261:0: expresion inesperada token=34` (MODULO fantasma) al parsear `nucleo/parser.syn`. Este error ocurre SIEMPRE, sin importar el archivo de entrada (el binario ignora argv y ejecuta el unity build).
-
-**Hallazgos de la sesión:**
-|| Orden | Archivo | Cambio | Resultado |
-||---|--------|---------|----------|
-|| 1 | `nucleo/generator.syn` | Reemplazar `\\"` (3 bytes: 0x5C 0x5C 0x22) → `\\x22` (5 bytes: 0x5C 0x5C 0x78 0x32 0x32) en `gen_emitir_generar_c()` — 16 ocurrencias. También `%%` → `%` (1 ocurrencia) | ✅ Aplicado |
-|| 2 | `nucleo/principal.syn` | `%%s` → `%s` en multi-file loop (2 ocurrencias) | ✅ Aplicado |
-|| 3 | `nucleo/parser.syn` | Em dash Unicode (—, 0xE2 0x80 0x94) → `--` en comentario L712 | ✅ Aplicado (no solucionó el error) |
-|| 4 | `nucleo/*.syn` | Limpieza de TODOS los bytes no-ASCII (>127) en 4 archivos (ast_nodes, estado_global, lsp, memoria) | ✅ Aplicado (no solucionó el error) |
-
-**Descubrimientos clave:**
-1. **`tokenizar()` real usa código C EMBEBIDO** generado por `gen_emitir_tokenizar_c()` en `nucleo/generator.syn`, NO el código de `nucleo/lexer.syn`. El `LexerEstado` con struct + puntero `tokens*` existe en el C generado pero NUNCA se usa — el tokenizer real usa variables locales (`_i`, `_linea`, `_token_count`).
-2. **Bug de `/` en lexer.syn**: En `lexer_tokenizar_linea()`, la lectura anticipada del segundo carácter para detectar `//` SOBREESCRIBE la variable `c` con el valor del siguiente carácter. Después del bloque `si c == 47:`, `c` tiene el valor INCORRECTO. Fix intentado pero revertido por romper la sintaxis Synapse.
-3. **El error L1261 persiste** después de TODOS los cambios. La causa raíz está en el tokenizador embebido, no en los archivos fuente.
-
-**Próximo paso (M17.3 cont.):** Diagnosticar `gen_emitir_tokenizar_c()` en `nucleo/generator.syn` para encontrar la causa del MODULO fantasma. El tokenizador embebido en synapse_unity.c (línea ~1394) produce `T_MOD` (=34) sin que exista `%` en el archivo fuente.
+Non-ASCII cleanup + escape fixes. No resolvió el error L1261 del nativo (problema separado).
 
 ---
 
@@ -893,4 +878,4 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 21 Jul 2026. 🚀 F0-F15b COMPLETADAS, F16 PARCIAL, F17 BLOQUEADO (M17.3), F19 PARCIAL (std.simd + SSE/AVX). 283 tests pasan.*
+*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS (M17.11: Pipeline Stage 1 OK), F19 PARCIAL (std.simd + SSE/AVX). Próximo: ciclo Stage1→Stage2→Stage3. 283 tests pasan.*

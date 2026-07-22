@@ -314,6 +314,7 @@ struct Nodo* """ + _P + """sentencia() {
     fflush(stderr);
 #endif
     while (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); }
+_P_retry:;
     """ + _P + """Token* t = """ + _P + """mirar();
     if (t->tipo == T_FUNC) {
         """ + _P + """avanzar();
@@ -389,9 +390,22 @@ struct Nodo* """ + _P + """sentencia() {
         """ + _P + """avanzar();
         struct Nodo* cond=""" + _P + """expr();
         """ + _P + """esperar(T_COLON);
-        struct ListaNodo* cpo=""" + _P + """bloque();
+        struct ListaNodo* cpo=NULL;
+        if (""" + _P + """mirar()->tipo == T_NL) {
+            cpo=""" + _P + """bloque();
+        } else {
+            struct Nodo* _st=""" + _P + """sentencia();
+            if (_st) { cpo=""" + _P + """mk_list(_st,NULL); }
+        }
         struct ListaNodo* sino = NULL;
-        if (""" + _P + """mirar()->tipo == T_ELSE) { """ + _P + """avanzar(); """ + _P + """esperar(T_COLON); sino=""" + _P + """bloque(); }
+        if (""" + _P + """mirar()->tipo == T_ELSE) { """ + _P + """avanzar(); """ + _P + """esperar(T_COLON);
+            if (""" + _P + """mirar()->tipo == T_NL) {
+                sino=""" + _P + """bloque();
+            } else {
+                struct Nodo* _st=""" + _P + """sentencia();
+                if (_st) { sino=""" + _P + """mk_list(_st,NULL); }
+            }
+        }
         struct SentenciaSi* n = (struct SentenciaSi*)calloc(1,sizeof(struct SentenciaSi));
         n->tipo=""" + _P + """cs("SentenciaSi"); n->condicion=cond;
         n->cuerpo=cpo; n->cuerpo_sino=sino;
@@ -401,7 +415,13 @@ struct Nodo* """ + _P + """sentencia() {
         """ + _P + """avanzar();
         struct Nodo* cond=""" + _P + """expr();
         """ + _P + """esperar(T_COLON);
-        struct ListaNodo* cpo=""" + _P + """bloque();
+        struct ListaNodo* cpo=NULL;
+        if (""" + _P + """mirar()->tipo == T_NL) {
+            cpo=""" + _P + """bloque();
+        } else {
+            struct Nodo* _st=""" + _P + """sentencia();
+            if (_st) { cpo=""" + _P + """mk_list(_st,NULL); }
+        }
         struct SentenciaMientras* n = (struct SentenciaMientras*)calloc(1,sizeof(struct SentenciaMientras));
         n->tipo=""" + _P + """cs("SentenciaMientras"); n->condicion=cond; n->cuerpo=cpo;
         return (struct Nodo*)n;
@@ -501,7 +521,13 @@ struct Nodo* """ + _P + """sentencia() {
     }
     if (t->tipo == T_INSEGURO) { """ + _P + """avanzar();
         """ + _P + """esperar(T_COLON);
-        struct ListaNodo* cpo=""" + _P + """bloque();
+        struct ListaNodo* cpo=NULL;
+        if (""" + _P + """mirar()->tipo == T_NL) {
+            cpo=""" + _P + """bloque();
+        } else {
+            struct Nodo* _st=""" + _P + """sentencia();
+            if (_st) { cpo=""" + _P + """mk_list(_st,NULL); }
+        }
         struct BloqueInseguro* n = (struct BloqueInseguro*)calloc(1,sizeof(struct BloqueInseguro));
         n->tipo=""" + _P + """cs("BloqueInseguro"); n->cuerpo=cpo;
         return (struct Nodo*)n;
@@ -515,6 +541,12 @@ struct Nodo* """ + _P + """sentencia() {
         n->nombre=""" + _P + """cs(_vn); n->expresion=val;
         return (struct Nodo*)n;
     }
+    // Guard: skip stray INDENT/DEDENT/NL and retry keyword matching
+    if (""" + _P + """mirar()->tipo == T_INDENT || """ + _P + """mirar()->tipo == T_DEDENT || """ + _P + """mirar()->tipo == T_NL) {
+        """ + _P + """avanzar();
+        goto _P_retry;
+    }
+    if (""" + _P + """mirar()->tipo == T_EOF) { return NULL; }
     { struct Nodo* e=""" + _P + """expr();
         if (e && """ + _P + """mirar()->tipo == T_ASSIGN) {
             """ + _P + """avanzar();
@@ -1048,6 +1080,7 @@ void {_PH}v(struct Nodo* n) {{
     if(strcmp(t,"AsignacionVariable")==0){{
         struct AsignacionVariable* a=(struct AsignacionVariable*)n; {_PH}cp(m,a->nombre); {_PH}ea(a->expresion,v,4096);
         const char* vt={_PH}tex(a->expresion); if(!vt) vt="int";
+        {{ int _ac=1; char* _p=m; while(*_p){{ if(!((*_p>='A'&&*_p<='Z')||(*_p>='0'&&*_p<='9')||*_p=='_')){{ _ac=0; break; }} _p++; }} if(_ac&&m[0]){{ snprintf(b,sizeof(b),"#define %s (%s)",m,v); {_PH}emit(b); return; }} }}
         if({_PH}find(m)<0){{ {_PH}decl(m,vt); snprintf(b,sizeof(b),"%s %s = %s;",vt,m,v); }}
         else snprintf(b,sizeof(b),"%s = %s;",m,v);
         {_PH}emit(b); return;
@@ -1065,7 +1098,27 @@ void {_PH}v(struct Nodo* n) {{
         }}else snprintf(b,sizeof(b),"return;");
         {_PH}emit(b); return;
     }}
-    if(strcmp(t,"SentenciaExpr")==0){{ struct SentenciaExpr* e=(struct SentenciaExpr*)n; if(e->expr){{ if(strcmp(e->expr->tipo.datos,"LogLlamada")==0){{ {_PH}v_log((struct LogLlamada*)e->expr); }} else {{ {_PH}ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); {_PH}emit(b); }} }} return; }}
+    if(strcmp(t,"SentenciaExpr")==0){{
+        struct SentenciaExpr* e=(struct SentenciaExpr*)n;
+        if(e->expr){{
+            if(strcmp(e->expr->tipo.datos,"LogLlamada")==0){{
+                {_PH}v_log((struct LogLlamada*)e->expr);
+            }}else if(strcmp(e->expr->tipo.datos,"LlamadaFuncion")==0){{
+                struct LlamadaFuncion* _lf=(struct LlamadaFuncion*)e->expr;
+                char _fn[256]; {_PH}cp(_fn,_lf->nombre);
+                if(strcmp(_fn,"asm")==0&&_lf->argumentos){{
+                    char _as[4096];
+                    struct LiteralCadena* _lc=(struct LiteralCadena*)_lf->argumentos->cabeza;
+                    {_PH}cp(_as,_lc->valor);
+                    snprintf(b,sizeof(b),"__asm__(\\"%s\\");",_as);
+                    {_PH}emit(b);
+                }}else{{ {_PH}ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); {_PH}emit(b); }}
+            }}else if(strcmp(e->expr->tipo.datos,"Identificador")==0){{
+                /* Skip orphan identifiers (bare constant keyword etc.) */
+            }}else{{ {_PH}ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); {_PH}emit(b); }}
+        }}
+        return;
+    }}
     if(strcmp(t,"LogLlamada")==0){{ {_PH}v_log((struct LogLlamada*)n); return; }}
     if(strcmp(t,"SentenciaRomper")==0){{ {_PH}emit("break;"); return; }}
     if(strcmp(t,"SentenciaSiguiente")==0){{ {_PH}emit("continue;"); return; }}

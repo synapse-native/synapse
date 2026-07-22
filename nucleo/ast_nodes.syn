@@ -59,6 +59,13 @@ estructura AsignacionVariable:
     nombre: texto
     expresion: Nodo
 
+estructura DeclaracionVariable:
+    tipo: texto
+    nombre: texto
+    expresion: Nodo
+    linea: entero
+    columna: entero
+
 estructura AsignacionCampo:
     tipo: texto
     objeto: Nodo

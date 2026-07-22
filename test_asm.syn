@@ -1,6 +1,5 @@
 #lang: es
-#pragma: no_std
-
-funcion principal() -> nulo:
+funcion principal() -> entero:
     inseguro:
-        asm("nop")
+        asm("printf("test");")
+    retornar 0
