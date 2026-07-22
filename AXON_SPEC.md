@@ -282,6 +282,6 @@ python tests/test_axon_e2e.py
 | Componente | Archivo | Tamaño (.o) |
 |-----------|---------|-------------|
 | Runtime base | `synapse_rt.o` | 98 KB |
-| Axon | `axon_rt.o` | 10 KB |
+| Axon | `axon_rt.o` | 133 KB |
 | TweetNaCl | `tweetnacl.o` | 35 KB |
 | **Total runtime** | — | **< 139 KB** (< 500 KB ✅) |

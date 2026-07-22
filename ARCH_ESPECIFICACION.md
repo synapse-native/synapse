@@ -257,7 +257,7 @@ Tipos definidos por el usuario (structs) se inicializan con `{0}`:
 | Componente | Archivo | Tamaño | Propósito |
 |-----------|---------|--------|-----------|
 | Runtime base | `synapse_rt.c` | 98KB .o | Canales, SIMD, red, JSON, TOML, SHA-256, GGUF |
-| Axon | `axon_rt.c` | 10KB .o | HTTP download, TAR, Ed25519, SemVer, axon.lock |
+| Axon | `axon_rt.c` | 133KB .o | HTTP download, TAR, Ed25519, SemVer, axon.lock, TOML parser |
 | Criptografía | `tweetnacl.c` | 35KB .o | Ed25519 firmas digitales |
 
 ### 7.2 Gestión de Memoria
