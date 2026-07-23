@@ -1,0 +1,197 @@
+#lang: es
+
+// ============================================================
+// contexto.syn  —  Estado y tipos del generador nativo
+// ============================================================
+// Propósito: Definir la estructura de estado GeneradorCEst
+// (único punto de estado mutable), los typedefs nombrados
+// de tipos base, y las constantes de tipos de nodo/token.
+//
+// Convención de tipos:
+//   - CadenaSegura == struct { int longitud; const char* datos; }
+//   - Named structs resuelven el problema 'struct X' != 'X'.
+//   - Todos los tipos base se definen AQUÍ (no en asm()).
+//   - ast_types.h es incluido desde _emitir_encabezado (Python).
+// ============================================================
+
+// ----------------------------------------------------------
+// Constantes de tipo de nodo (AST)
+// Deben coincidir con parser.syn / analizador_semantico.syn
+// ----------------------------------------------------------
+constante NODO_PROGRAMA      = 1
+constante NODO_FUNCION       = 2
+constante NODO_SI            = 3
+constante NODO_MIENTRAS      = 4
+constante NODO_RETORNAR      = 5
+constante NODO_EXPR          = 6
+constante NODO_ASIGNACION    = 7
+constante NODO_IDENTIFICADOR = 8
+constante NODO_NUMERO        = 9
+constante NODO_DECIMAL       = 10
+constante NODO_CADENA_LIT    = 11
+constante NODO_BINARIA       = 12
+constante NODO_UNARIA        = 13
+constante NODO_LLAMADA       = 14
+constante NODO_PARAMETRO     = 15
+constante NODO_ESTRUCTURA    = 16
+constante NODO_IMPORTAR      = 17
+constante NODO_LANZAR        = 18
+constante NODO_ESCUCHAR      = 19
+constante NODO_ROMPER        = 20
+constante NODO_SIGUIENTE     = 21
+constante NODO_BOOLEANO      = 22
+constante NODO_CONSTANTE     = 23
+constante NODO_INSEGURO      = 24
+constante NODO_IMPORTAR_C    = 25
+constante NODO_EXTERNO       = 26
+constante NODO_RECUPERAR     = 27
+constante NODO_TENSOR        = 28
+constante NODO_INDICE        = 29
+constante NODO_TRANSFERIDO   = 30
+constante NODO_ACCESO_CAMPO  = 31
+constante NODO_ASIGNACION_CAMPO = 32
+constante NODO_PARRAFO       = 33
+constante NODO_DECLARACION   = 34
+constante NODO_LOG           = 35
+constante NODO_PUNTERO       = 36
+constante NODO_DEREF         = 37
+constante NODO_COINCIDIR     = 38
+constante NODO_CASO          = 39
+constante NODO_ASM           = 40
+constante NODO_CANAL_CREAR   = 41
+constante NODO_ENVIAR_CANAL  = 42
+constante NODO_RECIBIR_CANAL = 43
+constante NODO_VACIO         = 44
+constante NODO_PARA          = 45
+constante NODO_CONTRATO      = 46
+
+// ----------------------------------------------------------
+// Constantes de tipo de token
+// Deben coincidir con tokens.syn
+// ----------------------------------------------------------
+constante T_IDENTIFICADOR = 19
+constante T_NUMERO        = 20
+constante T_CADENA        = 22
+constante T_FLECHA_DER    = 37
+constante T_PAREN_IZQ     = 38
+constante T_PAREN_DER     = 39
+constante T_DOSPUNTOS     = 40
+constante T_COMA          = 41
+constante T_NUEVALINEA    = 42
+constante T_INDENTAR      = 43
+constante T_DESINDENTAR   = 44
+constante T_ASIGNAR       = 29
+constante T_MAS           = 30
+constante T_MENOS         = 31
+constante T_POR           = 32
+constante T_DIV           = 33
+constante T_MOD           = 34
+constante T_PUNTO         = 13
+constante T_IGUAL         = 25
+constante T_DISTINTO      = 26
+constante T_MENOR         = 24
+constante T_MAYOR         = 23
+constante T_MENOR_IGUAL   = 27
+constante T_MAYOR_IGUAL   = 28
+constante T_Y             = 14
+constante T_O             = 15
+constante T_NO            = 16
+constante T_AMPERSAND     = 45
+constante T_FLECHA        = 35
+constante T_FIN           = 57
+
+// ----------------------------------------------------------
+// Estructura de estado del generador (única, pasada por valor)
+// ----------------------------------------------------------
+estructura GeneradorCEst:
+    // --- Output buffer ---
+    buf_lineas: entero       // pointer to buffer (void* stored as int)
+    buf_capacidad: entero    // total buffer capacity
+    buf_longitud: entero     // current write position
+    indent_actual: entero    // current indentation level (spaces * 4)
+
+    // --- Function tracking ---
+    contador_thread: entero
+    contador_listener: entero
+    funciones_emitidas: entero
+    func_emitidas_nombres: cadena
+    func_return_types_nombres: cadena
+    func_return_types_tipos: cadena
+    func_return_types_total: entero
+    in_function_scope: booleano
+
+    // --- Variable tracking ---
+    var_nombres: cadena
+    var_tipos: cadena
+    var_total: entero
+    var_capacidad: entero
+    const_types_nombres: cadena
+    const_types_tipos: cadena
+    const_types_total: entero
+
+    // --- Scope stack (RAII) ---
+    scope_var_nombres: cadena
+    scope_var_tipos: cadena
+    scope_var_total: entero
+    scope_stack_top: entero
+    scope_stack_at: entero
+
+    // --- Tensor / canal tracking ---
+    tensor_vars: cadena
+    tensor_vars_total: entero
+    tensor_transferidas: cadena
+    tensor_transferidas_total: entero
+    canal_vars: cadena
+    canal_vars_total: entero
+    canal_cerradas: cadena
+    canal_cerradas_total: entero
+
+    // --- Listener tracking ---
+    listener_funciones: cadena
+    listener_total: entero
+
+    // --- Struct tracking ---
+    struct_nombres: cadena
+    struct_total: entero
+    struct_nombres_c: cadena
+    struct_total_c: entero
+
+    // --- External function tracking ---
+    extern_nombres: cadena
+    extern_params: cadena
+    extern_total: entero
+
+    // --- Destructor map (RAII) ---
+    dtor_tipos: cadena
+    dtor_funcs: cadena
+    dtor_total: entero
+
+    // --- Emit flags ---
+    gen_tok_emitido: booleano
+    gen_parse_emitido: booleano
+    gen_defs_emitido: booleano
+
+    // --- Contract (requiere/garantiza) ---
+    garantizas_nombres: cadena
+    garantizas_valores: cadena
+    garantizas_total: entero
+
+    // --- Program-level flags ---
+    es_no_std: booleano
+    linker_libs: cadena
+    linker_libs_total: entero
+
+    // --- Build buffer for code generation ---
+    build_buf: cadena
+
+    // --- Current function return type ---
+    func_retorno_actual: cadena
+
+    // --- Strings on heap ---
+    strings_heap: cadena
+    strings_heap_total: entero
+
+// ----------------------------------------------------------
+// Tamaño del buffer temporal global
+// ----------------------------------------------------------
+constante _GEN_TMP_SIZE = 4096

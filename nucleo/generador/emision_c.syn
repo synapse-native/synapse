@@ -1,0 +1,157 @@
+#lang: es
+
+// ============================================================
+// emision_c.syn  —  API de emisión de código C de bajo nivel
+// ============================================================
+// Propósito: Proveer funciones de escritura segura al buffer
+// de salida C. Toda función acepta CadenaSegura para garantizar
+// seguridad de tipos. Para bloques asm() que construyen cadenas
+// C en buffers locales, existe gen_emitir_str() que toma puntero.
+//
+// Jerarquía:
+//   gen_emitir_linea(est, CadenaSegura)  ← API principal
+//   gen_emitir_str(est, puntero)         ← API para asm() blocks
+//   gen_emitir_nueva_linea(est)          ← newline solamente
+//   gen_obtener_salida(est) → cadena     ← leer buffer
+//   traducir_tipo_c(tipo)                ← Synapse → C string
+//
+// El buffer interno usa un array estático de 1MB (como el legacy,
+// pero el diseño permite migrar a heap dinámico después).
+// ============================================================
+
+// ----------------------------------------------------------
+// Buffer temporal global para construcción de strings C
+// (definido en _emitir_encabezado)
+// ----------------------------------------------------------
+// char _gen_tmp_buf[4096];  — definido externamente
+
+// ----------------------------------------------------------
+// traducir_tipo_c
+// Traduce un nombre de tipo Synapse a su representación C.
+// El resultado se escribe en _gen_tmp_buf (buffer global).
+// ----------------------------------------------------------
+funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
+    inseguro:
+        asm("const char* _t = (const char*)tipo_synapse;")
+        asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
+        asm("int _len = (int)strlen(_t);")
+        asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<')")
+        asm("    { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
+        asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<')")
+        asm("    { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
+        asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
+        asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
+        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0) { strcpy(_gen_tmp_buf, \"float\"); return; }")
+        asm("if (strcmp(_t, \"Tensor\")==0 || strcmp(_t, \"tensor\")==0) { strcpy(_gen_tmp_buf, \"Tensor\"); return; }")
+        asm("if (strcmp(_t, \"Canal\")==0 || strcmp(_t, \"canal\")==0) { strcpy(_gen_tmp_buf, \"Canal\"); return; }")
+        asm("if (strcmp(_t, \"texto\")==0 || strcmp(_t, \"cadena\")==0) { strcpy(_gen_tmp_buf, \"CadenaSegura\"); return; }")
+        asm("if (strcmp(_t, \"booleano\")==0 || strcmp(_t, \"logico\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
+        asm("if (strcmp(_t, \"char\")==0) { strcpy(_gen_tmp_buf, \"char\"); return; }")
+        asm("if (strcmp(_t, \"double\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")
+        asm("if (strcmp(_t, \"puntero\")==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        asm("snprintf(_gen_tmp_buf, 64, \"struct %s\", _t);")
+
+// ----------------------------------------------------------
+// gen_emitir_linea
+// API PRINCIPAL. Escribe una línea indentada al buffer de
+// salida, agregando un newline ('\n') al final.
+// 
+// Parámetros:
+//   est   — estado del generador (indent_actual, buffer)
+//   linea — CadenaSegura con el contenido a escribir
+//
+// Seguridad de tipos: acepta SOLAMENTE CadenaSegura.
+// Para cadenas C nativas, use gen_emitir_str().
+// ----------------------------------------------------------
+funcion gen_emitir_linea(est: GeneradorCEst, linea: CadenaSegura) -> nulo:
+    inseguro:
+        asm("{")
+        asm("    static char _gebuf[1048576];")
+        asm("    static int _gepos = 0;")
+        asm("    const char* _gs = linea.datos;")
+        asm("    int _gl = linea.longitud;")
+        asm("    if (_gepos + _gl + 2 > 1048576) return;")
+        asm("    memcpy(_gebuf + _gepos, _gs, _gl);")
+        asm("    _gepos += _gl;")
+        asm("    _gebuf[_gepos] = 10;")
+        asm("    _gepos++;")
+        asm("    _gebuf[_gepos] = 0;")
+        asm("}")
+
+// ----------------------------------------------------------
+// gen_emitir_str
+// API DE BAJO NIVEL para uso EXCLUSIVO desde bloques asm().
+// Acepta un puntero a const char* (pasado como 'puntero'
+// desde Synapse) y lo envuelve en un CadenaSegura para
+// delegar en gen_emitir_linea.
+//
+// Útil cuando un bloque asm() construye una cadena en un
+// buffer local (char[4096]) y necesita emitirla.
+// ----------------------------------------------------------
+funcion gen_emitir_str(est: GeneradorCEst, str: puntero) -> nulo:
+    inseguro:
+        asm("if (!str) return;")
+        asm("const char* _s = (const char*)str;")
+        asm("int _len = (int)strlen(_s);")
+        asm("CadenaSegura _cs = {_len, _s};")
+        asm("gen_emitir_linea(est, _cs);")
+
+// ----------------------------------------------------------
+// gen_emitir_nueva_linea
+// Emite solamente un newline (sin indentación).
+// ----------------------------------------------------------
+funcion gen_emitir_nueva_linea(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("{")
+        asm("    static char _genbuf[1048576];")
+        asm("    static int _genpos = 0;")
+        asm("    if (_genpos + 2 > 1048576) return;")
+        asm("    _genbuf[_genpos] = 10;")
+        asm("    _genpos++;")
+        asm("    _genbuf[_genpos] = 0;")
+        asm("}")
+
+// ----------------------------------------------------------
+// gen_obtener_salida
+// Retorna el contenido del buffer de salida como CadenaSegura.
+// Útil para pruebas o para que el orquestador principal
+// obtenga el código C generado.
+// ----------------------------------------------------------
+funcion gen_obtener_salida(est: GeneradorCEst) -> cadena:
+    r = ""
+    inseguro:
+        asm("if (est.buf_longitud > 0 && est.buf_lineas) {")
+        asm("    ((char*)est.buf_lineas)[est.buf_longitud] = 0;")
+        asm("    strcpy(_gen_tmp_buf, (const char*)est.buf_lineas);")
+        asm("} else {")
+        asm("    strcpy(_gen_tmp_buf, \"\");")
+        asm("}")
+        asm("r = (CadenaSegura){.longitud=(int)strlen(_gen_tmp_buf), .datos=strdup(_gen_tmp_buf)};")
+    retornar r
+
+// ----------------------------------------------------------
+// gen_escribir_cadena_escapada
+// Escapa caracteres especiales (\, ", \n, \t, \r) en una
+// cadena C y emite el resultado como una línea asm().
+// Útil para emitir bloques asm() desde el contenido de
+// cadenas Synapse (ej. el visitante de nodos ASM).
+// ----------------------------------------------------------
+funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
+    inseguro:
+        asm("const char* _s=(const char*)str;if(!_s)return;char _esc[16384];int _epos=0;int _ei=0;while(_s[_ei]&&_epos<16380){char _c=_s[_ei];if(_c==10){_esc[_epos++]=92;_esc[_epos++]=110;}else if(_c==34){_esc[_epos++]=92;_esc[_epos++]=34;}else if(_c==92){_esc[_epos++]=92;_esc[_epos++]=92;}else if(_c==9){_esc[_epos++]=92;_esc[_epos++]=116;}else if(_c==13){_esc[_epos++]=92;_esc[_epos++]=114;}else{_esc[_epos++]=_c;}_ei++;}_esc[_epos]=0;CadenaSegura _esc_cs={.longitud=_epos,.datos=_esc};gen_emitir_linea(est,_esc_cs);")
+
+// ----------------------------------------------------------
+// gen_emitir_indent
+// Emite espacios de indentación al buffer de salida.
+// NOTA: El buffer _gebuf/_gepos es compartido con gen_emitir_linea.
+//       La declaración real (static char _gebuf[1048576]; static int _gepos;)
+//       está en gen_emitir_linea y debe ser la PRIMERA en ejecutarse
+//       para inicializar el buffer antes de cualquier llamada.
+// ----------------------------------------------------------
+funcion gen_emitir_indent(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("extern char _gebuf[1048576]; extern int _gepos;")
+        asm("for (int _ii = 0; _ii < est.indent_actual * 4; _ii++) {")
+        asm("    if (_gepos + 1 > 1048576) return;")
+        asm("    _gebuf[_gepos++] = 32;")
+        asm("}")
