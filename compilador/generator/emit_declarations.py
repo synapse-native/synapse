@@ -19,7 +19,7 @@ from .emit_expressions import (
     emitir_tokenizar, emitir_token_defs,
 )
 from .emit_selfhost import (
-    emitir_parsear, emitir_volcar_ast, emitir_generar,
+    emitir_parsear, emitir_volcar_ast,
 )
 
 
@@ -30,7 +30,6 @@ from .emit_selfhost import (
 _BUILTIN_EMITTER_MAP = {
     'tokenizar': emitir_tokenizar,
     'parsear': emitir_parsear,
-    'generar': emitir_generar,
     'volcar_ast': emitir_volcar_ast,
 }
 

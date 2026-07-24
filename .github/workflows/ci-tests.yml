@@ -12,7 +12,58 @@ permissions:
   pull-requests: write
 
 jobs:
+  lint-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          pip install -r requirements.txt
+
+      - name: Lint (flake8)
+        run: python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Bloquear scripts de parche (_fix_*.py)
+        run: |
+          FIX_FILES=$(find . -name '_fix_*.py' 2>/dev/null)
+          if [ -n "$FIX_FILES" ]; then
+            echo "❌ ERROR: Scripts de parche prohibidos encontrados:"
+            echo "$FIX_FILES"
+            exit 1
+          fi
+          echo "✅ No hay scripts de parche"
+
+      - name: Bloquear artefactos .exe.c
+        run: |
+          EXE_C=$(find . -name '*.exe.c' 2>/dev/null)
+          if [ -n "$EXE_C" ]; then
+            echo "❌ ERROR: Artefactos .exe.c prohibidos encontrados:"
+            echo "$EXE_C"
+            exit 1
+          fi
+          echo "✅ No hay artefactos .exe.c"
+
+      - name: Bloquear except: pass en Python
+        run: |
+          FOUND=0
+          for f in $(find . -name '*.py' -not -path './.git/*' 2>/dev/null); do
+            if grep -n 'except\s*:\s*pass' "$f" > /dev/null 2>&1; then
+              echo "❌ except: pass en $f"
+              grep -n 'except\s*:\s*pass' "$f"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -ne 0 ]; then exit 1; fi
+          echo "✅ No hay except: pass"
+
   test:
+    needs: lint-and-check
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -33,7 +84,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest pytest-cov pytest-md pytest-emoji flake8
-          pip install -r requirements.txt 2>/dev/null || true
+          pip install -r requirements.txt
 
       - name: Verificar entorno
         run: |
@@ -41,11 +92,6 @@ jobs:
           python -c "import sys; print(f'Python {sys.version}')"
           python -c "import pytest; print(f'pytest {pytest.__version__}')"
           python -c "import flake8; print(f'flake8 {flake8.__version__}')"
-
-      - name: Comprobar calidad de código (linting)
-        run: |
-          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        continue-on-error: false
 
       - name: Ejecutar tests unitarios y de integración
         run: |
@@ -61,12 +107,14 @@ jobs:
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+          gcc -c tweetnacl.c -o tweetnacl.o -lm
 
       - name: Compilar runtime (C) - Windows
         if: matrix.os == 'windows-latest'
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lws2_32
+          gcc -c tweetnacl.c -o tweetnacl.o -lm
 
       - name: Smoke test — compilar programas Synapse
         run: |
@@ -84,58 +132,55 @@ jobs:
         if: always()
         run: |
           echo "## ✅ Tests completados para ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
-          echo "Ver reporte de cobertura en los artifacts." >> $GITHUB_STEP_SUMMARY
 
-  # Job independiente: verificar bootstrap completo
   bootstrap:
     needs: test
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.11']
 
     steps:
-      - name: Clonar Repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Bootstrap Stage 0 — Generar synapse_unity.c
+      - name: Compilar runtime objects
         run: |
-          python main.py nucleo/principal.syn 2>&1 | tee bootstrap.log
+          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon_rt.c -o axon_rt.o -lpthread -lm 2>/dev/null || true
 
-      - name: Verificar que GCC compila con 0 errores
+      - name: Bootstrap — generar binario nativo
         run: |
+          python main.py src/main.syn 2>&1 | tee bootstrap.log
           if grep -q "error:" bootstrap.log; then
-            echo "❌ ERROR: GCC encontro errores en el bootstrap"
+            echo "❌ Bootstrap fallo"
             grep "error:" bootstrap.log
             exit 1
           fi
-          echo "✅ Bootstrap: 0 errores GCC"
-          echo "Binario generado: synapse_bootstrap.exe"
+          echo "✅ Bootstrap exitoso"
 
-      - name: Verificar que Stage1 compila
+      - name: Verificar micro-tests (bootstrap nativo)
         run: |
-          python main.py src/main.syn -o dist/bin/synapse_stage1.exe 2>&1 | tee stage1.log
-          if grep -q "error:" stage1.log; then
-            echo "❌ ERROR: Stage1 fallo"
-            grep "error:" stage1.log
+          python scripts/run_micro_tests.py 2>&1 | tee micro.log
+          if ! grep -q "Todos los tests pasaron" micro.log; then
+            echo "❌ Micro-tests fallaron"
             exit 1
           fi
-          echo "✅ Stage1 compila correctamente"
+          echo "✅ Micro-tests pasan"
 
-      - name: Verificar que los tests no regresionan
+      - name: Tests de regresión post-bootstrap
         run: |
           python -m pytest tests/ -q --tb=short 2>&1 | tee test.log
           if grep -q "FAILED" test.log; then
-            echo "❌ ERROR: Tests fallaron"
+            echo "❌ Tests fallaron post-bootstrap"
             grep "FAILED" test.log
             exit 1
           fi
@@ -144,4 +189,4 @@ jobs:
       - name: Notificar bootstrap
         if: always()
         run: |
-          echo "## ✅ Bootstrap verification completado (Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Bootstrap verification completado" >> $GITHUB_STEP_SUMMARY

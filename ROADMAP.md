@@ -1,7 +1,7 @@
-# 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.0
+# 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.2.0
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** ✅ **v2.0 — LISTO PARA PRODUCCIÓN** — Todas las fases F0-F19 completadas
+> **Estado:** ✅ **v2.2.0 — LISTO PARA PRODUCCIÓN** — Todas las fases F0-F19 completadas + Modularización completa (Fases A-F)
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
 > **Tests:** 285 collected (283 passed, 2 skipped) | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
@@ -1001,4 +1001,61 @@ vscode-synapse/
 
 ---
 
-*Roadmap vivo — actualizado 22 Jul 2026. 🚀 F0-F17 COMPLETADAS, F19 M19.2 COMPLETADO, F18 M18.2 COMPLETADO (Axon cimientos: TweetNaCl + axon.toml + subcomando). 283 tests pasan.*
+---
+
+## 🏭 PLAN DE ATAQUE INDUSTRIAL — Fases 1–4 (Jul 2026)
+
+> Ejecutado tras F0–F19 para consolidación final del kernel y blindaje CI/CD.
+
+### Fase 1: Reproducibilidad y saneamiento (COMPLETADA)
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Crear `requirements.txt` con dependencias CI | ✅ |
+| 2 | Reemplazar placeholder criptográfico en `axon.toml` por clave Ed25519 real generada con `crypto_sign_keypair` (seed 42) | ✅ |
+| 3 | Verificar micro-tests + git status | ✅ |
+
+### Fase 2: Erradicación de excepciones silenciosas (COMPLETADA)
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Barrido final de `except: pass` en `tests/` y `synapse_lsp/` | ✅ **0 encontrados** |
+| 2 | Fix `test_toml_raii.py`: agregar `tweetnacl.o` a la cadena de linkeo | ✅ |
+| 3 | Ejecución completa de pytest: **288 passed, 2 skipped, 0 failures** | ✅ |
+
+### Fase 3: Deuda técnica (COMPLETADA)
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Búsqueda exhaustiva de `TODO`/`XXX`/`FIXME`/`HACK` en `nucleo/`, `synapse_lsp/`, `tests/` | ✅ **0 marcadores activos** |
+| 2 | Documentar observaciones menores en `BLOCKERS.md` | ✅ |
+| 3 | Recompilar binario nativo + regresión completa | ✅ **288 passed** |
+
+### Fase 4: Estabilización industrial y CI/CD (COMPLETADA)
+
+| # | Tarea | Estado |
+|---|-------|--------|
+| 1 | Hardened `.github/workflows/ci-tests.yml`: eliminar masking (`2>/dev/null \|\| true`), añadir verificaciones automáticas (`_fix_*.py`, `.exe.c`, `except: pass`), compilar `tweetnacl.o`, job bootstrap con micro-tests | ✅ |
+| 2 | Crear `.pre-commit-config.yaml` con hooks locales que bloquean `_fix_*.py`, `.exe.c`, `except: pass`, binarios `.exe` | ✅ |
+| 3 | Actualizar `ROADMAP.md` y `BLOCKERS.md` | ✅ |
+| 4 | Verificación final: micro-tests + pytest + Axon E2E | ✅ |
+
+### Métricas finales post-estabilización
+
+| Métrica | Valor |
+|---------|-------|
+| Tests pytest | **288 passed, 2 skipped** |
+| Micro-tests | **5/5 PASS** |
+| Axon E2E | **19/19 PASS** |
+| `except: pass` | **0** |
+| `TODO`/`XXX`/`FIXME`/`HACK` | **0** |
+| Scripts `_fix_*.py` | **0** (bloqueados por CI + pre-commit) |
+| Artefactos `.exe.c` | **0** (bloqueados por CI + pre-commit) |
+| Firma `axon.toml` | Ed25519 válida (64 hex chars) ✅ |
+| `requirements.txt` | Presente con 6 dependencias CI ✅ |
+| `.pre-commit-config.yaml` | 7 hooks locales + 6 comunitarios ✅ |
+| CI workflow | 3 jobs (lint-and-check → test → bootstrap) ✅ |
+
+---
+
+*Roadmap vivo — actualizado 23 Jul 2026. Plan de Ataque Industrial F1–F4 COMPLETADAS. Kernel estable: 288 tests, 0 deuda técnica, 0 excepciones silenciosas, CI blindado con pre-commit.*

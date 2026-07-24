@@ -1,4 +1,4 @@
-# 🔷 Synapse/OpenSyn v2.0
+# 🔷 Synapse/OpenSyn v2.2.0
 
 > **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
 > **Estado:** ✅ **PRODUCTION-READY** — 285 tests, 0 errores GCC, 0 crashes fuzzing

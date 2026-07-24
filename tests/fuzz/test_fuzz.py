@@ -13,6 +13,8 @@ import subprocess
 import tempfile
 import random
 import time
+import logging
+import traceback
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MAIN_PY = os.path.join(PROJECT_ROOT, 'main.py')
@@ -55,9 +57,11 @@ def _compilar_y_verificar(contenido: str, timeout: int = 10) -> dict:
     finally:
         if fd is not None:
             try: os.close(fd)
-            except: pass
+            except OSError:
+                logging.error("test_fuzz: error closing fd:\n%s", traceback.format_exc())
         try: os.remove(path)
-        except: pass
+        except OSError:
+            logging.error("test_fuzz: error removing temp:\n%s", traceback.format_exc())
 
 
 # ============================================================
@@ -77,7 +81,7 @@ def test_fuzz_sin_lang():
     r = _compilar_y_verificar('funcion main() -> entero:\n    retornar 0\n')
     assert not r.get('crash'), f"Crash en archivo sin lang: {r}"
     assert r.get('exit_code') == 1, f"Esperaba exit=1, obtuvo {r['exit_code']}"
-    assert not r.get('unhandled'), f"Error no controlado"
+    assert not r.get('unhandled'), "Error no controlado"
 
 
 def test_fuzz_binario():
@@ -86,7 +90,7 @@ def test_fuzz_binario():
     r = _compilar_y_verificar(data)
     assert not r.get('crash'), f"Crash en archivo binario: {r}"
     assert r.get('exit_code') == 1, f"Esperaba exit=1, obtuvo {r['exit_code']}"
-    assert not r.get('unhandled'), f"Error no controlado en binario"
+    assert not r.get('unhandled'), "Error no controlado en binario"
 
 
 def test_fuzz_unicode_corrupto():

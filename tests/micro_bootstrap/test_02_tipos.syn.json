@@ -1,0 +1,51 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "x",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 42
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "valor",
+            "expresion": {
+              "_tipo": "LiteralDecimal",
+              "valor": 3.14
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "z",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "hola"
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "x"
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

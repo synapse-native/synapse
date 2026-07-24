@@ -1,0 +1,44 @@
+#lang: es
+// std.testing — Primitivas de aserción para tests nativos en Synapse
+//
+// Uso desde Synapse:
+//   importar std.testing
+//   fallos = 0
+//   fallos = fallos + assert_igual(1 + 1, 2, "1+1 debe ser 2")
+//   fallos = fallos + assert_verdadero(verdadero, "verdadero")
+//   retornar fallos  // 0 = éxito, >0 = fallos
+//
+// Cada función retorna 0 si la aserción pasa, 1 si falla.
+
+importar std.io
+
+funcion assert_verdadero(condicion: booleano, nombre: texto) -> entero:
+    si condicion:
+        escribir_linea(concat("  [PASS] ", nombre))
+        retornar 0
+    escribir_linea(concat("  [FAIL] ", nombre))
+    retornar 1
+
+funcion assert_falso(condicion: booleano, nombre: texto) -> entero:
+    si no condicion:
+        escribir_linea(concat("  [PASS] ", nombre))
+        retornar 0
+    escribir_linea(concat("  [FAIL] ", nombre))
+    retornar 1
+
+funcion assert_igual(actual: entero, esperado: entero, nombre: texto) -> entero:
+    si actual == esperado:
+        escribir_linea(concat("  [PASS] ", nombre))
+        retornar 0
+    a_str = entero_a_texto(actual)
+    e_str = entero_a_texto(esperado)
+    msg = concat(concat(concat(concat("  [FAIL] ", nombre), " — esperado: "), e_str), concat(", actual: ", a_str))
+    escribir_linea(msg)
+    retornar 1
+
+funcion assert_diferente(actual: entero, esperado: entero, nombre: texto) -> entero:
+    si actual != esperado:
+        escribir_linea(concat("  [PASS] ", nombre))
+        retornar 0
+    escribir_linea(concat(concat("  [FAIL] ", nombre), " — no debía ser igual"))
+    retornar 1

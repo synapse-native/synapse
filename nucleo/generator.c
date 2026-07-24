@@ -270,7 +270,16 @@ void gen_set_var_type(struct GeneradorCEst est, int idx, void* tipo);
 void gen_agregar_return_type(struct GeneradorCEst est, void* nombre, void* tipo);
 CadenaSegura gen_func_return_type(struct GeneradorCEst est, void* nombre);
 void gen_agregar_struct_c(struct GeneradorCEst est, void* nombre);
-void gen_emitir_linea(struct GeneradorCEst est, void* linea);
+void _gen_emitir_linea_cs(struct GeneradorCEst est, struct CadenaSegura linea);
+// --- Enrutador polimórfico C11 ---
+static inline void gen_emitir_linea_str(struct GeneradorCEst est, const char* s) {
+    struct CadenaSegura cs = {(int)strlen(s), s};
+    _gen_emitir_linea_cs(est, cs);
+}
+#define gen_emitir_linea(est, linea) _Generic((linea), \
+    struct CadenaSegura: _gen_emitir_linea_cs, \
+    default: gen_emitir_linea_str \
+)(est, linea)
 void gen_emitir_nueva_linea(struct GeneradorCEst est);
 void gen_emitir_token_defs(struct GeneradorCEst est);
 CadenaSegura gen_obtener_salida(struct GeneradorCEst est);
@@ -569,13 +578,13 @@ void gen_agregar_struct_c(struct GeneradorCEst est, void* nombre) {
     }
 }
 
-void gen_emitir_linea(struct GeneradorCEst est, void* linea) {
+void _gen_emitir_linea_cs(struct GeneradorCEst est, struct CadenaSegura linea) {
     { /* unsafe */
         {
             static char _gebuf[1048576];
             static int _gepos = 0;
-            const char* _gs = (const char*)linea;
-            int _gl = (int)strlen(_gs);
+            const char* _gs = linea.datos;
+            int _gl = linea.longitud;
             if (_gepos + _gl + 2 > 1048576) return;
             memcpy(_gebuf + _gepos, _gs, _gl);
             _gepos += _gl;

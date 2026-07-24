@@ -43,4 +43,9 @@ def resolver(ruta_import: str, dir_base: str,
     if os.path.exists(ruta_directa):
         return ruta_directa
 
+    # Try with dots converted to slashes (for subdirectory imports like generador.contexto)
+    ruta_subdir = os.path.normpath(os.path.join(dir_base, ruta_import.replace('.', '/') + '.syn'))
+    if os.path.exists(ruta_subdir):
+        return ruta_subdir
+
     raise DepNoDeclaradaError(f"No se pudo resolver la importacion: {ruta_import}")

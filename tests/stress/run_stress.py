@@ -174,9 +174,9 @@ def mostrar_resultados(r: dict):
                     r['exito'] = False  # Fuga invalida el test
     if not tiene_watchdog:
         if 'SYNAPSE_DEBUG_MEM' in stderr_text:
-            print(f"  MemoryWatchdog:     no activado (sin -DSYNAPSE_DEBUG_MEM)")
+            print("  MemoryWatchdog:     no activado (sin -DSYNAPSE_DEBUG_MEM)")
         else:
-            print(f"  MemoryWatchdog:     revisar salida manualmente")
+            print("  MemoryWatchdog:     revisar salida manualmente")
 
     estado = "[PASS]" if r['exito'] else "[FAIL]"
     print(f"\n  {estado} Prueba F10.5 {'superada' if r['exito'] else 'fallo'} "
@@ -224,11 +224,11 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"\n[STRESS] SYNAPSE STRESS TEST F10.5")
-    print(f"         Documento Maestro Parte VII")
+    print("\n[STRESS] SYNAPSE STRESS TEST F10.5")
+    print("         Documento Maestro Parte VII")
     print(f"         Hilos: {args.hilos} | Mensajes/hilo: {args.mensajes}")
     if args.tsan:
-        print(f"         ThreadSanitizer: ACTIVADO")
+        print("         ThreadSanitizer: ACTIVADO")
     print()
 
     if not compilar_stress(tsan=args.tsan):

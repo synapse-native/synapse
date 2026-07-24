@@ -5,10 +5,10 @@ las respuestas. Usa envio batch + wait() para evitar bloqueos de pipe en Windows
 """
 
 import subprocess
-import sys
 import json
 import os
-import time
+import logging
+import traceback
 import pytest
 
 BINARIO_LSP = os.path.join(
@@ -55,7 +55,7 @@ def _parsear_respuesta(raw: bytes) -> list:
         try:
             resultados.append(json.loads(body.decode("utf-8")))
         except json.JSONDecodeError:
-            pass
+            logging.warning("[test_lsp_native] JSON decode error:\n%s", traceback.format_exc())
         pos = body_start + cl
     return resultados
 

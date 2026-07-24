@@ -1,7 +1,7 @@
 [paquete]
 nombre = "synapse"
-version = "2.1.0"
-autor = "Firma_Publica_Hex_a1b2c3d4e5f6..."
+version = "2.2.0"
+autor = "3431e4dcf87432bdf03412a784e4a7b1cee9be459a2aab5cf32332710160c84e"
 tipo = "ejecutable"
 punto_entrada = "src/main.syn"
 

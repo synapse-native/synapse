@@ -1,0 +1,8 @@
+#lang: es
+
+funcion principal() -> entero:
+    n = _argc()
+    si n > 1:
+        x = _argv(1)
+        escribir_linea(x)
+    retornar 0

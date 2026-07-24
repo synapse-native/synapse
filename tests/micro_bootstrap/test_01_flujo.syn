@@ -1,0 +1,11 @@
+#lang: es
+
+funcion principal() -> entero:
+    x = 10
+    si x > 5:
+        z = 20
+    sino:
+        z = 30
+    mientras x > 0:
+        x = x - 1
+    retornar 0

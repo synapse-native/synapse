@@ -1,0 +1,7 @@
+#lang: es
+
+funcion principal() -> entero:
+    x = 42
+    valor = 3.14
+    z = "hola"
+    retornar x

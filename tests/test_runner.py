@@ -16,7 +16,7 @@ def run_cmd(cmd, cwd=None):
     try:
         result = subprocess.run(cmd, check=True, text=True, capture_output=True, cwd=cwd)
         return result.stdout
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         return None
 
 def limpiar_artefactos(base):
@@ -87,7 +87,7 @@ def main():
 
     print()
     if fallos == 0:
-        print(f"[OK] Todos los tests pasaron.")
+        print("[OK] Todos los tests pasaron.")
         sys.exit(0)
     else:
         print(f"[{ROJO}FAIL{RESET}] {fallos} de {total} tests fallaron.")

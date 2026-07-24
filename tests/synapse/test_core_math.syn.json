@@ -1,0 +1,1756 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "assert_verdadero",
+        "parametros": [
+          {
+            "nombre": "condicion",
+            "tipo": "booleano"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "Identificador",
+              "nombre": "condicion"
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [PASS] "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nombre"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "  [FAIL] "
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nombre"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "assert_falso",
+        "parametros": [
+          {
+            "nombre": "condicion",
+            "tipo": "booleano"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpUnaria",
+              "operador": "!",
+              "expr": {
+                "_tipo": "Identificador",
+                "nombre": "condicion"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [PASS] "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nombre"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "  [FAIL] "
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nombre"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "assert_igual",
+        "parametros": [
+          {
+            "nombre": "actual",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "esperado",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "actual"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "esperado"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [PASS] "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nombre"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "a_str",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "entero_a_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "actual"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "e_str",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "entero_a_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "esperado"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "msg",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "concat",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "concat",
+                          "argumentos": [
+                            {
+                              "_tipo": "LiteralCadena",
+                              "valor": "  [FAIL] "
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "nombre"
+                            }
+                          ]
+                        },
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": " — esperado: "
+                        }
+                      ]
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "e_str"
+                    }
+                  ]
+                },
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": ", actual: "
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "a_str"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "msg"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "assert_diferente",
+        "parametros": [
+          {
+            "nombre": "actual",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "esperado",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "actual"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "esperado"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [PASS] "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nombre"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [FAIL] "
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nombre"
+                        }
+                      ]
+                    },
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": " — no debía ser igual"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "[TEST] test_core_math — Pruebas aritméticas básicas"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 2
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "1 + 1 == 2"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    },
+                    "operador": "-",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 2
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "5 - 3 == 2"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 4
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 12
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "4 * 3 == 12"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 10
+                    },
+                    "operador": "/",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 5
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "10 / 2 == 5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 2
+                      }
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 9
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "(1 + 2) * 3 == 9"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "OpUnaria",
+                      "operador": "-",
+                      "expr": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 5
+                      }
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "OpUnaria",
+                    "operador": "-",
+                    "expr": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "-5 + 3 == -2"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "OpUnaria",
+                      "operador": "-",
+                      "expr": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 5
+                      }
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "OpUnaria",
+                      "operador": "-",
+                      "expr": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 2
+                      }
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 10
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "-5 * -2 == 10"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    },
+                    "operador": "-",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 10
+                    }
+                  },
+                  {
+                    "_tipo": "OpUnaria",
+                    "operador": "-",
+                    "expr": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "5 - 10 == -5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "0 + 0 == 0"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "5 * 0 == 0"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    },
+                    "operador": "/",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "0 / 1 == 0"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    },
+                    "operador": ">",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "3 > 2"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    },
+                    "operador": "<",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "2 < 3"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    },
+                    "operador": ">=",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "3 >= 3"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 4
+                    },
+                    "operador": "<=",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "4 <= 5"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_falso",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    },
+                    "operador": ">",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 5
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "3 > 5 es falso"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_falso",
+                "argumentos": [
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    },
+                    "operador": "==",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 3
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "2 == 3 es falso"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_diferente",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 2
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 3
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "2 != 3"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralBooleano",
+                    "valor": true
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "verdadero es verdadero"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_falso",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralBooleano",
+                    "valor": false
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "falso es falso"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_verdadero",
+                "argumentos": [
+                  {
+                    "_tipo": "OpUnaria",
+                    "operador": "!",
+                    "expr": {
+                      "_tipo": "LiteralBooleano",
+                      "valor": false
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "no falso es verdadero"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_falso",
+                "argumentos": [
+                  {
+                    "_tipo": "OpUnaria",
+                    "operador": "!",
+                    "expr": {
+                      "_tipo": "LiteralBooleano",
+                      "valor": true
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "no verdadero es falso"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "contador",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "contador"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "contador",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "contador"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "contador"
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 3
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "mientras: contador llega a 3"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LiteralNumero",
+                "valor": 10
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 5
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "resultado",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "resultado",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 2
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "resultado"
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "si: rama correcta (10 > 5)"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado2",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 10
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "resultado2",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "resultado2",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 2
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "assert_igual",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "resultado2"
+                  },
+                  {
+                    "_tipo": "LiteralNumero",
+                    "valor": 2
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "si: rama sino correcta (3 > 10)"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fallos"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "  [OK] Todos los tests pasaron."
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "_tipo": "LiteralCadena",
+                          "valor": "  [FAIL] "
+                        },
+                        {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "entero_a_texto",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "fallos"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

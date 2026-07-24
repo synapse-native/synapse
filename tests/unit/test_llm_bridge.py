@@ -12,14 +12,12 @@ Cubre:
 
 import pytest
 from synapse_lsp.llm_bridge import (
-    OllamaClient,
     OllamaClientMock,
     RespuestaOllama,
     generar_completado,
     explicar_codigo,
     sugerir_correccion,
     reiniciar_cliente,
-    _obtener_cliente,
 )
 from synapse_lsp.server import (
     _manejar_ai_complete,
@@ -59,9 +57,9 @@ def mock_ollama(monkeypatch):
 
     # Parchear _obtener_cliente() en su modulo de origen
     monkeypatch.setattr("synapse_lsp.llm_bridge._obtener_cliente", lambda: mock)
-    monkeypatch.setattr("synapse_lsp.server.generar_completado", generar_completado)
-    monkeypatch.setattr("synapse_lsp.server.explicar_codigo", explicar_codigo)
-    monkeypatch.setattr("synapse_lsp.server.sugerir_correccion", sugerir_correccion)
+    monkeypatch.setattr("synapse_lsp.features.ai.generar_completado", generar_completado)
+    monkeypatch.setattr("synapse_lsp.features.ai.explicar_codigo", explicar_codigo)
+    monkeypatch.setattr("synapse_lsp.features.ai.sugerir_correccion", sugerir_correccion)
 
     return mock
 

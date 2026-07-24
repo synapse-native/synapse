@@ -63,12 +63,12 @@ for rel_path, var_name in libraries:
             continue
     contents[rel_path] = content
 
-# Generate the C header, handling hex escape sequences properly
+# Generate the C header, splitting strings at hex boundaries and under 4095 chars
 lines = ['// Auto-generated header embedding .syn files as string literals', '#pragma once', '']
 
+CHUNK_LIMIT = 4000
+
 for rel_path, content in contents.items():
-    # Use string concatenation to break up hex sequences
-    # Replace raw bytes with \xNN, but close and reopen string between hex bytes
     var_name = dict(libraries)[rel_path]
     escaped_chunks = []
     current = ''
@@ -86,17 +86,41 @@ for rel_path, content in contents.items():
         elif b == 92:
             current += '\\\\'
         else:
-            # Hex escape - close current string, emit hex, open new string
             if current:
                 escaped_chunks.append(current)
                 current = ''
             escaped_chunks.append(f'\\x{b:02x}')
     if current:
         escaped_chunks.append(current)
-    
-    # Join chunks: if two consecutive chunks are both string content, separate with ""
-    escaped = ''.join(escaped_chunks)
-    lines.append(f'static const char {var_name}[] = "{escaped}";')
+
+    # Build string literal segments, splitting at hex boundaries and at CHUNK_LIMIT
+    segments = []
+    seg = []
+    seg_len = 0
+    for chunk in escaped_chunks:
+        is_hex = chunk.startswith('\\x')
+        if is_hex:
+            # Each hex escape starts a new segment to avoid merging
+            if seg:
+                s = ''.join(seg)
+                segments.append(f'"{s}"')
+                seg = []
+                seg_len = 0
+            segments.append(f'"\\x{chunk[2:]}"')
+        else:
+            if seg_len + len(chunk) > CHUNK_LIMIT:
+                s = ''.join(seg)
+                segments.append(f'"{s}"')
+                seg = []
+                seg_len = 0
+            seg.append(chunk)
+            seg_len += len(chunk)
+    if seg:
+        s = ''.join(seg)
+        segments.append(f'"{s}"')
+
+    escaped = ' '.join(segments)
+    lines.append(f'static const char {var_name}[] = {escaped};')
     lines.append('')
 
 # Also create the var_name lookup dict

@@ -48,7 +48,16 @@ c_nat.c
 c_ref.c
 --help.c
 entero
-fix_*.py
+-o.c
+test_asm.syn
+
+# Temporales diversos
+test_01_flujo
+test_01_flujo.exe
+
+# Scripts de parche y utilidad temporal en raíz
+/_*.py
+archived_patches/
 
 # Directorios externos no fuente
 Native/

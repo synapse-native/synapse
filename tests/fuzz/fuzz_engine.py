@@ -23,6 +23,8 @@ import random
 import string
 import tempfile
 import time
+import logging
+import traceback
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MAIN_PY = os.path.join(PROJECT_ROOT, 'main.py')
@@ -69,10 +71,10 @@ def generar_semivalido() -> str:
     """Genera codigo semi-valido con errores comunes."""
     patrones = [
         lambda: f'#lang: {random.choice(IDIOMAS)}\n' +
-                f'funcion main() -> entero:\n' +
+                'funcion main() -> entero:\n' +
                 '    retornar ' + str(random.randint(-1000, 1000)) + '\n',
         lambda: f'#lang: {random.choice(IDIOMAS)}\n' +
-                f'funcion f(a: entero) -> entero:\n' +
+                'funcion f(a: entero) -> entero:\n' +
                 '    ' + random.choice(['si', 'mientras']) + ' ' +
                 str(random.randint(0, 1)) + ' ' +
                 random.choice(['==', '<', '>', '!=']) + ' ' +
@@ -80,10 +82,10 @@ def generar_semivalido() -> str:
                 '        retornar ' + str(random.randint(0, 100)) + '\n' +
                 '    retornar 0\n',
         lambda: f'#lang: {random.choice(IDIOMAS)}\n' +
-                f'estructura Punto:\n' +
+                'estructura Punto:\n' +
                 '    x: entero\n' +
                 '    y: entero\n\n' +
-                f'funcion main() -> entero:\n' +
+                'funcion main() -> entero:\n' +
                 '    retornar 0\n',
     ]
     return random.choice(patrones)()
@@ -218,7 +220,7 @@ class FuzzEngine:
             )
         except subprocess.TimeoutExpired:
             raise
-        except Exception as e:
+        except Exception:
             raise
 
     def _registrar_crash(self, **kwargs):
@@ -288,11 +290,11 @@ class FuzzEngine:
                     try:
                         os.close(fd)
                     except Exception:
-                        pass
+                        logging.error("[FUZZ_ENGINE] Error closing fd:\n%s", traceback.format_exc())
                 try:
                     os.remove(path)
                 except Exception:
-                    pass
+                    logging.error("[FUZZ_ENGINE] Error removing temp:\n%s", traceback.format_exc())
             if (i + 1) % 100 == 0:
                 r = self.resultado
                 print(f"[FUZZ] {i+1}/{n} iteraciones... "
@@ -325,7 +327,7 @@ def mostrar_resultados(r: ResultadoFuzz, seed: int):
             print(f"    - [{caso['generador']}] exit={caso.get('exit','?')}: "
                   f"{caso.get('stderr','')[:100]}")
     else:
-        print(f"  [PASS] Cero crashes, cero errores no controlados")
+        print("  [PASS] Cero crashes, cero errores no controlados")
     print("=" * 60)
 
 
@@ -344,7 +346,7 @@ def main():
                        help='Solo verificar funcionamiento basico')
     args = parser.parse_args()
     engine = FuzzEngine(seed=args.seed, use_native=args.native)
-    print(f"\n[FUZZ] F11 - Fuzzing Destructivo (Documento Maestro Parte VII)")
+    print("\n[FUZZ] F11 - Fuzzing Destructivo (Documento Maestro Parte VII)")
     print(f"[FUZZ] Seed: {engine.seed} | Iteraciones: {args.iterations}")
     print(f"[FUZZ] Target: {'NATIVO' if args.native else 'PYTHON'} compiler")
     print()

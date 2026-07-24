@@ -1,0 +1,15 @@
+#lang: es
+
+// test_03_funciones.syn
+// Funciones sin parametros y llamadas a funciones.
+// Usa tipos de nodo soportados: DefinicionFuncion, AsignacionVariable,
+// SentenciaRetornar, SentenciaExpr, LlamadaFuncion, OpBinaria.
+
+funcion obtener_valor() -> entero:
+    retornar 42
+
+funcion principal() -> entero:
+    x = 10
+    b = 20
+    resultado = obtener_valor()
+    retornar resultado + x

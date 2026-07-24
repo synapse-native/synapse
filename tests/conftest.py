@@ -9,8 +9,8 @@ from compilador.parser import Parser
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from exceptions import SynapseError
 
-# Reuse the canonical encoder from main.py
-from main import _nodo_a_dict
+# Reuse the canonical encoder from compilador.canonical
+from compilador.canonical import _nodo_a_dict
 
 
 DIR_FIXTURES = os.path.join(os.path.dirname(__file__), 'fixtures')

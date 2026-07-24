@@ -8,7 +8,7 @@
 // de tipos base, y las constantes de tipos de nodo/token.
 //
 // Convención de tipos:
-//   - CadenaSegura == struct { int longitud; const char* datos; }
+//   - CadenaSegura == struct (int longitud, const char* datos)
 //   - Named structs resuelven el problema 'struct X' != 'X'.
 //   - Todos los tipos base se definen AQUÍ (no en asm()).
 //   - ast_types.h es incluido desde _emitir_encabezado (Python).
@@ -109,6 +109,7 @@ estructura GeneradorCEst:
     buf_capacidad: entero    // total buffer capacity
     buf_longitud: entero     // current write position
     indent_actual: entero    // current indentation level (spaces * 4)
+    archivo_actual: entero   // FILE* stored as intptr_t (for fwrite/fclose)
 
     // --- Function tracking ---
     contador_thread: entero

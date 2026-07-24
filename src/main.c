@@ -51,6 +51,7 @@ struct ArgumentoTransferido;
 struct SentenciaImportar;
 struct ImportarC;
 struct DeclaracionExterna;
+struct DeclaracionVariable;
 struct BloqueInseguro;
 struct ExprObtenerDireccion;
 struct ExprDereferencia;
@@ -67,6 +68,10 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #include "librerias/embedded_libs.h"
 
 char _gen_tmp_buf[4096];
+
+char _G_emit_buf[1048576];
+int _G_emit_pos = 0;
+FILE* _G_fp = NULL;
 
 extern int _G_indent;
 

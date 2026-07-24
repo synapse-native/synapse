@@ -15,7 +15,6 @@ from synapse_lsp.server import (
     _formatear_codigo,
     _errores_a_diagnostics,
     _almacenar_documento,
-    _obtener_documento,
     _DOCS,
 )
 from compilador.ast_nodes import (

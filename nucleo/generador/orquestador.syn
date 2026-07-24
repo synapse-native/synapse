@@ -1,0 +1,147 @@
+#lang: es
+
+// ============================================================
+// orquestador.syn  —  Orquestador del generador nativo
+// ============================================================
+
+// ----------------------------------------------------------
+// generar — Punto de entrada principal
+// ----------------------------------------------------------
+
+// ----------------------------------------------------------
+// _syn_tipo_nombre
+// Convierte ID entero de nodo del parser a string de tipo OO.
+// Switch exhaustivo con fail-fast para IDs desconocidos.
+// ----------------------------------------------------------
+funcion generar(programa: Programa, ruta: cadena) -> entero:
+    r = 0
+    est = GeneradorCEst()
+    inseguro:
+        asm("fprintf(stderr, \"[Orquestador] Abriendo archivo...\\n\"); fflush(stderr);")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("_G_emit_pos = 0;")
+        asm("FILE* _G_out = fopen(ruta.datos, \"w\");")
+        asm("if (!_G_out) { fprintf(stderr, \"[Orquestador] ERROR FATAL: No se pudo abrir %s\\n\", ruta.datos); r = 1; return r; }")
+        asm("extern FILE* _G_fp; _G_fp = _G_out;")
+        asm("fprintf(stderr, \"[Orquestador] Archivo abierto\\n\"); fflush(stderr);")
+
+    gen_emitir_linea(est, "// Generado por Synapse (nuevo generador modular)")
+    gen_emitir_linea(est, "#include <stdio.h>")
+    gen_emitir_linea(est, "#include <stdlib.h>")
+    gen_emitir_linea(est, "#include <string.h>")
+    gen_emitir_linea(est, "typedef struct { int longitud; const char* datos; } CadenaSegura;")
+    gen_emitir_linea(est, "#define nulo ((void*)0)")
+    gen_emitir_linea(est, "#define verdadero 1")
+    gen_emitir_linea(est, "#define falso 0")
+    gen_emitir_linea(est, "int _g_argc;")
+    gen_emitir_linea(est, "char** _g_argv;")
+
+    // WALK TOP-LEVEL AST
+    inseguro:
+        asm("fprintf(stderr, \"[Orquestador] Iniciando recorrido AST\\n\"); fflush(stderr);")
+        asm("struct ListaNodo* _cur = programa.sentencias;")
+        asm("if (!_cur) { fprintf(stderr, \"[Orquestador] ERROR FATAL: AST vacio (sentencias nulo)\\n\"); r = 1; return r; }")
+        asm("int _count = 0;")
+        asm("while (_cur) {")
+        asm("    _count++;")
+        asm("    struct Nodo* _n = _cur->cabeza;")
+        asm("    if (!_n) { _cur = _cur->cola; continue; }")
+        asm("    fprintf(stderr, \"[Orquestador] Node %d: tipo='%s'\\n\", _count, _n->tipo.datos ? _n->tipo.datos : \"(null)\"); fflush(stderr);")
+        asm("    gen_visitar_top_level(est, _n);")
+        asm("    _cur = _cur->cola;")
+        asm("}")
+        asm("fprintf(stderr, \"[Orquestador] Recorrido AST completado: %d nodos\\n\", _count); fflush(stderr);")
+
+    // Emit main() wrapper
+    gen_emitir_linea(est, "int main(int argc, char** argv) {")
+    gen_emitir_linea(est, "    _g_argc = argc;")
+    gen_emitir_linea(est, "    _g_argv = argv;")
+    gen_emitir_linea(est, "    pool_init(64, 4096);")
+    gen_emitir_linea(est, "    return principal();")
+    gen_emitir_linea(est, "}")
+
+    inseguro:
+        asm("fprintf(stderr, \"[Orquestador] Escribiendo archivo de salida...\\n\"); fflush(stderr);")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern FILE* _G_fp;")
+        asm("if (!_G_fp) { fprintf(stderr, \"[Orquestador] ERROR FATAL: _G_fp nulo\\n\"); r = 1; return r; }")
+        asm("if (_G_emit_pos > 0) {")
+        asm("    fwrite(_G_emit_buf, 1, _G_emit_pos, _G_fp);")
+        asm("}")
+        asm("fclose(_G_fp);")
+        asm("_G_fp = nulo;")
+        asm("fprintf(stderr, \"[Nuevo Generador] Codigo C generado exitosamente\\n\"); fflush(stderr);")
+    retornar r
+
+// ----------------------------------------------------------
+// gen_visitar_top_level — Dispatcher para nodos top-level
+// ----------------------------------------------------------
+funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct Nodo* _n = (struct Nodo*)stmt;")
+        asm("if (!_n) { fprintf(stderr, \"[DEBUG] gen_visitar_top_level: stmt is NULL\\n\"); return; }")
+        asm("const char* _t = _n->tipo.datos;")
+        asm("if (!_t) { fprintf(stderr, \"[DEBUG] gen_visitar_top_level: tipo.datos is NULL\\n\"); exit(1); }")
+        asm("fprintf(stderr, \"[DEBUG] gen_visitar_top_level: tipo='%s'\\n\", _t);")
+        asm("if (_syn_es_tipo(_t, \"DefinicionFuncion\")) {")
+        asm("    struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_n;")
+        asm("    fprintf(stderr, \"[DEBUG]   DefinicionFuncion: _f=%p\\n\", (void*)_f);")
+        asm("    fprintf(stderr, \"[DEBUG]   nombre.datos=%p\\n\", (void*)_f->nombre.datos);")
+        asm("    const char* _fn = _f->nombre.datos;")
+        asm("    if (!_fn) { fprintf(stderr, \"Error Fatal: DefinicionFuncion sin nombre\\n\"); exit(1); }")
+        asm("    fprintf(stderr, \"[DEBUG]   nombre='%s'\\n\", _fn);")
+        asm("    char _sig[4096];")
+        asm("    snprintf(_sig, 4096, \"int %s()\", _fn);")
+        asm("    fprintf(stderr, \"[DEBUG]   emit function signature\\n\");")
+        asm("    gen_emitir_str(est, _sig);")
+        asm("    gen_abrir_bloque_c(est);")
+        asm("    fprintf(stderr, \"[DEBUG]   start walking body\\n\");")
+        asm("    struct ListaNodo* _bc = _f->cuerpo;")
+        asm("    fprintf(stderr, \"[DEBUG]   cuerpo=%p\\n\", (void*)_bc);")
+        asm("    int _bs_count = 0;")
+        asm("    while (_bc) {")
+        asm("        _bs_count++;")
+        asm("        struct Nodo* _bs = _bc->cabeza;")
+        asm("        fprintf(stderr, \"[DEBUG]   body stmt %d: _bs=%p\\n\", _bs_count, (void*)_bs);")
+        asm("        if (!_bs) { _bc = _bc->cola; continue; }")
+        asm("        if (_bs->tipo.datos) {")
+        asm("            fprintf(stderr, \"[DEBUG]     tipo='%s'\\n\", _bs->tipo.datos);")
+        asm("        }")
+        asm("        fprintf(stderr, \"[DEBUG]     calling gen_visitar_stmt_generico...\\n\");")
+        asm("        gen_visitar_stmt_generico(est, _bs);")
+        asm("        fprintf(stderr, \"[DEBUG]     return OK\\n\");")
+        asm("        _bc = _bc->cola;")
+        asm("    }")
+        asm("    fprintf(stderr, \"[DEBUG]   body done (%d stmts)\\n\", _bs_count);")
+        asm("    gen_cerrar_bloque_c(est);")
+        asm("    fprintf(stderr, \"[DEBUG]   function done\\n\");")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaExpr\")) {")
+        asm("    gen_visitar_expr(est, stmt);")
+        asm("} else if (_syn_es_tipo(_t, \"AsignacionVariable\")) {")
+        asm("    gen_visitar_asignacion(est, stmt);")
+        asm("} else if (_syn_es_tipo(_t, \"DefinicionEstructura\")) {")
+        asm("    /* skip struct */")
+        asm("} else if (_syn_es_tipo(_t, \"DeclaracionExterna\")) {")
+        asm("    /* skip extern */")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaImportar\")) {")
+        asm("    /* skip import - NOT a BloqueInseguro, do NOT cast */")
+        asm("}")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaSi\")) { gen_visitar_si(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaMientras\")) { gen_visitar_mientras(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaRetornar\")) { gen_visitar_retornar(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"DeclaracionVariable\")) { gen_visitar_declaracion(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")
+        asm("    struct BloqueInseguro* _sbi = (struct BloqueInseguro*)stmt;")
+        asm("    struct ListaNodo* _sbl = (struct ListaNodo*)_sbi->cuerpo;")
+        asm("    while (_sbl) {")
+        asm("        struct Nodo* _sbs = _sbl->cabeza;")
+        asm("        if (_sbs) { gen_visitar_stmt_generico(est, _sbs); }")
+        asm("        _sbl = _sbl->cola;")
+        asm("    }")
+        asm("}")
+        asm("else {")
+        asm("    fprintf(stderr, \"Error Fatal Generador: Nodo tipo [%s] no reconocido\\n\", _t);")
+        asm("    exit(1);")
+        asm("}")

@@ -1,0 +1,80 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "n",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_argc",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "n"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "x",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "_argv",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "x"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

@@ -311,7 +311,7 @@ Tensor suma_tensor(Tensor a, Tensor b) {
     r.columnas = a.columnas;
     r.es_mapeado = 0;
     r.datos = _pool_malloc(r.filas * r.columnas * sizeof(float));
-    for (int _i = 0; _i < r.filas * r.columnas; _i++) {
+    for (uint32_t _i = 0; _i < r.filas * r.columnas; _i++) {
         r.datos[_i] = a.datos[_i] + b.datos[_i];
     }
     if (!a.es_mapeado) { pool_free(a.datos); }
@@ -329,10 +329,10 @@ Tensor producto_punto(Tensor a, Tensor b) {
     r.columnas = b.columnas;
     r.es_mapeado = 0;
     r.datos = (float*)calloc(r.filas * r.columnas, sizeof(float));
-    for (int _i = 0; _i < r.filas; _i++) {
-        for (int _j = 0; _j < r.columnas; _j++) {
+    for (uint32_t _i = 0; _i < r.filas; _i++) {
+        for (uint32_t _j = 0; _j < r.columnas; _j++) {
             float _sum = 0;
-            for (int _k = 0; _k < a.columnas; _k++) {
+            for (uint32_t _k = 0; _k < a.columnas; _k++) {
                 _sum += a.datos[_i * a.columnas + _k] * b.datos[_k * b.columnas + _j];
             }
             r.datos[_i * r.columnas + _j] = _sum;
@@ -349,7 +349,7 @@ Tensor relu(Tensor a) {
     r.columnas = a.columnas;
     r.es_mapeado = 0;
     r.datos = _pool_malloc(a.filas * a.columnas * sizeof(float));
-    for (int _i = 0; _i < a.filas * a.columnas; _i++) {
+    for (uint32_t _i = 0; _i < a.filas * a.columnas; _i++) {
         r.datos[_i] = (a.datos[_i] > 0) ? a.datos[_i] : 0.0f;
     }
     if (!a.es_mapeado) { pool_free(a.datos); }
@@ -1509,7 +1509,8 @@ int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegur
     unsigned long long smlen = (unsigned long long)(mensaje.longitud + 64);
     unsigned char* pk = (unsigned char*)clave_publica.datos;
     // Use separate buffer for output (TweetNaCl requires m != sm)
-    unsigned char* m_buf = (unsigned char*)malloc((size_t)(mensaje.longitud > 0 ? mensaje.longitud : 1));
+    // crypto_sign_open writes smlen (mensaje.longitud+64) bytes into m, so allocate that.
+    unsigned char* m_buf = (unsigned char*)malloc((size_t)(mensaje.longitud + 64));
     if (!m_buf) { free(sm); return -1; }
     int rc = crypto_sign_open(m_buf, &mlen, sm, smlen, pk);
     free(sm);
@@ -2764,7 +2765,7 @@ float _syn_sumar_elementos(Tensor t) {
 }
 
 void _syn_fijar_elemento(Tensor t, int indice, float valor) {
-    if (t.datos && indice >= 0 && indice < (t.filas * t.columnas)) {
+    if (t.datos && indice >= 0 && indice < (int)(t.filas * t.columnas)) {
         t.datos[indice] = valor;
     }
 }
@@ -2916,16 +2917,6 @@ static int _bpe_merge_cmp(const void* a, const void* b) {
     const BpeMerge* mb = (const BpeMerge*)b;
     if (ma->first != mb->first) return ma->first - mb->first;
     return ma->second - mb->second;
-}
-
-// Look up pair (first, second) in sorted merges; returns result token ID or -1
-static int _bpe_buscar_fusion(BpeMerge* merges, int num_merges, int first, int second) {
-    BpeMerge key;
-    key.first = first;
-    key.second = second;
-    key.result = -1;
-    BpeMerge* found = (BpeMerge*)bsearch(&key, merges, (size_t)num_merges, sizeof(BpeMerge), _bpe_merge_cmp);
-    return found ? found->result : -1;
 }
 
 // Load tokenizer data from GGUF arrays into a BpeContext
@@ -4330,10 +4321,11 @@ int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const 
     fseek(f, 0, SEEK_END);
     long tar_sz = ftell(f);
     fseek(f, 0, SEEK_SET);
-    if (tar_sz <= 0) { fclose(f); return -1; }
-    unsigned char* buf = (unsigned char*)malloc((size_t)tar_sz);
+    if (tar_sz < 0) { fclose(f); return -1; }
+    size_t alloc_sz = (size_t)(tar_sz > 0 ? tar_sz : 1);
+    unsigned char* buf = (unsigned char*)malloc(alloc_sz);
     if (!buf) { fclose(f); return -1; }
-    fread(buf, 1, (size_t)tar_sz, f);
+    if (tar_sz > 0) fread(buf, 1, (size_t)tar_sz, f);
     fclose(f);
     CadenaSegura mensaje = { .longitud = (int)tar_sz, .datos = (char*)buf };
 

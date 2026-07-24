@@ -22,7 +22,8 @@ import json
 import urllib.request
 import urllib.error
 import logging
-from typing import Optional, Any
+import traceback
+from typing import Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger("synapse-lsp.llm")
@@ -100,6 +101,7 @@ class OllamaClient:
                 modelos = data.get("models", [])
                 return [m.get("name", "?") for m in modelos]
         except Exception:
+            logging.error("[LSP] Error listando modelos Ollama:\n%s", traceback.format_exc())
             return []
 
     def modelo_disponible(self, modelo: Optional[str] = None) -> bool:

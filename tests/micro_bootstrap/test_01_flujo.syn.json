@@ -1,0 +1,103 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "x",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 10
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "x"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 5
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "z",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 20
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "z",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 30
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "x"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "x",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "x"
+                  },
+                  "operador": "-",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

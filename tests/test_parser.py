@@ -6,9 +6,9 @@ from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.diagnostics import DiagnosticManager
 from compilador.ast_nodes import (
-    TokenID, Programa, DefinicionFuncion, DefinicionEstructura,
+    Programa, DefinicionFuncion, DefinicionEstructura,
     SentenciaSi, SentenciaMientras, SentenciaLanzar, SentenciaRetornar,
-    AsignacionVariable, OpBinaria, LiteralNumero, Identificador,
+    AsignacionVariable, OpBinaria, LiteralNumero,
     LlamadaFuncion, LiteralCadena, LiteralDecimal, SentenciaRomper,
     SentenciaSiguiente, SentenciaImportar, AsignacionCampo, ExprAccesoCampo,
     SentenciaEscuchar, SentenciaRecuperar, OpUnaria, ExprTensor, ArgumentoTransferido

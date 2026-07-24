@@ -1,10 +1,8 @@
-import pytest
 from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
-from compilador.ast_nodes import Programa
 
 
 class TestGeneradorCFunciones:

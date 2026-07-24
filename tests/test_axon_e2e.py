@@ -17,7 +17,6 @@ import sys
 import subprocess
 import tempfile
 import hashlib
-import shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTS_DIR = os.path.join(ROOT, "tests")
@@ -87,11 +86,10 @@ def test_ed25519_binary():
     print("[ESCENARIO 1] Verificacion Ed25519 (test_ed25519_axon)")
     print("=" * 60)
     rc, out, err = run_binary(BIN_ED25519, cwd=TESTS_DIR)
-    # NOTE: test_ed25519_axon has a pre-existing STATUS_HEAP_CORRUPTION (0xC0000374)
-    # issue unrelated to F18 changes. Test framework is in place for when the
-    # heap bug is fixed upstream.
-    check("test_ed25519_axon binario ejecutable",
-          rc in (0, 3221226356),  # 0=success, 0xC0000374=known heap bug
+    # FAIL-FAST: heap corruption (0xC0000374=3221226356) is NOT tolerated.
+    # Only rc==0 constitutes a pass.
+    check("test_ed25519_axon binario ejecutable (rc==0)",
+          rc == 0,
           f"rc={rc}, err={err[:300]}")
 
 

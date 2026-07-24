@@ -1,0 +1,255 @@
+from typing import List, Optional
+
+from compilador.ast_nodes import (
+    TokenID, Nodo,
+    SentenciaSi, SentenciaLanzar, SentenciaRetornar,
+    SentenciaEscuchar, SentenciaMientras, SentenciaPara,
+    SentenciaRomper, SentenciaSiguiente,
+    BloqueInseguro,
+    NodoCaso, NodoCoincidir,
+)
+from compilador.diagnostics import ErrorCodes
+from compilador.parser_base import ParserBase, _SYNC_STMT, _SYNC_BLOCK
+
+
+class ParserControlMixin(ParserBase):
+    def _parsear_si(self) -> Optional[SentenciaSi]:
+        tok_si = self._esperar(TokenID.IF)
+        if tok_si is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        condicion = self._parsear_expresion()
+        if self._esperar(TokenID.COLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
+        cuerpo_sino = None
+        if self._mirar().tipo == TokenID.ELSE:
+            self._avanzar()
+            if self._esperar(TokenID.COLON) is None:
+                self._sincronizar(_SYNC_STMT)
+            else:
+                if self._mirar().tipo == TokenID.NEWLINE:
+                    cuerpo_sino = self._parsear_bloque() or []
+                else:
+                    cuerpo_sino = []
+                    stmt = self._parsear_sentencia()
+                    if stmt is not None:
+                        cuerpo_sino.append(stmt)
+        return SentenciaSi(
+            condicion=condicion,
+            cuerpo=cuerpo,
+            cuerpo_sino=cuerpo_sino,
+            linea=tok_si.linea,
+            columna=tok_si.columna,
+        )
+
+    def _parsear_lanzar(self) -> Optional[SentenciaLanzar]:
+        tok_spawn = self._esperar(TokenID.SPAWN)
+        if tok_spawn is None:
+            return None
+        llamada = self._parsear_llamada()
+        return SentenciaLanzar(
+            llamada=llamada,
+            linea=tok_spawn.linea,
+            columna=tok_spawn.columna,
+        )
+
+    def _parsear_retornar(self) -> SentenciaRetornar:
+        tok_ret = self._avanzar()
+        expr = None
+        es_transferencia = False
+        if self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
+            if self._mirar().tipo == TokenID.ARROW:
+                self._avanzar()
+                es_transferencia = True
+            expr = self._parsear_expresion()
+        return SentenciaRetornar(
+            expr=expr,
+            es_transferencia=es_transferencia,
+            linea=tok_ret.linea,
+            columna=tok_ret.columna,
+        )
+
+    def _parsear_escuchar(self) -> Optional[SentenciaEscuchar]:
+        tok_listen = self._esperar(TokenID.LISTEN)
+        if tok_listen is None:
+            return None
+        canal = self._parsear_expresion()
+        if self._esperar(TokenID.ARROW) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        respuesta = self._parsear_llamada()
+        return SentenciaEscuchar(
+            canal=canal,
+            respuesta=respuesta,
+            linea=tok_listen.linea,
+            columna=tok_listen.columna,
+        )
+
+    def _parsear_mientras(self) -> Optional[SentenciaMientras]:
+        tok_mientras = self._esperar(TokenID.WHILE)
+        if tok_mientras is None:
+            return None
+        condicion = self._parsear_expresion()
+        if self._esperar(TokenID.COLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
+        return SentenciaMientras(
+            condicion=condicion,
+            cuerpo=cuerpo,
+            linea=tok_mientras.linea,
+            columna=tok_mientras.columna,
+        )
+
+    def _parsear_para(self) -> Optional[SentenciaPara]:
+        tok_para = self._esperar(TokenID.PARA)
+        if tok_para is None:
+            return None
+        inicializacion = self._parsear_asignacion()
+        if self._esperar(TokenID.SEMICOLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        condicion = self._parsear_expresion()
+        if self._esperar(TokenID.SEMICOLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        incremento = self._parsear_asignacion()
+        if self._esperar(TokenID.COLON) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
+        return SentenciaPara(
+            inicializacion=inicializacion,
+            condicion=condicion,
+            incremento=incremento,
+            cuerpo=cuerpo,
+            linea=tok_para.linea,
+            columna=tok_para.columna,
+        )
+
+    def _parsear_romper(self) -> Optional[SentenciaRomper]:
+        tok = self._avanzar()
+        return SentenciaRomper(linea=tok.linea, columna=tok.columna)
+
+    def _parsear_siguiente(self) -> Optional[SentenciaSiguiente]:
+        tok = self._avanzar()
+        return SentenciaSiguiente(linea=tok.linea, columna=tok.columna)
+
+    def _parsear_inseguro(self) -> Optional[BloqueInseguro]:
+        if self._esperar(TokenID.INSEGURO) is None:
+            return None
+        if self._esperar(TokenID.COLON) is None:
+            return None
+        cuerpo = self._parsear_bloque() or []
+        return BloqueInseguro(cuerpo=cuerpo)
+
+    def _parsear_coincidir(self) -> Optional[NodoCoincidir]:
+        tok_coincidir = self._esperar(TokenID.MATCH)
+        if tok_coincidir is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+
+        expresion = self._parsear_expresion()
+
+        if self._esperar(TokenID.COLON) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado=':', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_STMT)
+            return None
+
+        if self._esperar(TokenID.NEWLINE) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado='NEWLINE', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_BLOCK)
+            return None
+        if self._esperar(TokenID.INDENT) is None:
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                               esperado='INDENT', encontrado=self._mirar().tipo.name)
+            self._sincronizar(_SYNC_BLOCK)
+            return None
+
+        casos: List[NodoCaso] = []
+        while self._mirar().tipo not in (TokenID.DEDENT, TokenID.EOF):
+            if self._mirar().tipo == TokenID.NEWLINE:
+                self._avanzar()
+                continue
+
+            tok_patron = self._esperar(TokenID.IDENTIFIER)
+            if tok_patron is None:
+                self._sincronizar(_SYNC_BLOCK)
+                break
+
+            nombre_patron = tok_patron.valor
+
+            if self._esperar(TokenID.LPAREN) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado='(', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+
+            tok_var = self._esperar(TokenID.IDENTIFIER)
+            if tok_var is None:
+                self._sincronizar(_SYNC_BLOCK)
+                break
+
+            var_patron = tok_var.valor
+
+            if self._esperar(TokenID.RPAREN) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado=')', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+
+            patron_completo = f"{nombre_patron}({var_patron})"
+
+            if self._esperar(TokenID.ARROW_RIGHT) is None:
+                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                   esperado='=>', encontrado=self._mirar().tipo.name)
+                self._sincronizar(_SYNC_BLOCK)
+                break
+
+            cuerpo_caso: List[Nodo] = []
+            while self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
+                stmt = self._parsear_sentencia()
+                if stmt is not None:
+                    cuerpo_caso.append(stmt)
+                else:
+                    self._avanzar()
+
+            caso = NodoCaso(
+                patron=patron_completo,
+                cuerpo=cuerpo_caso,
+                linea=tok_patron.linea,
+                columna=tok_patron.columna,
+            )
+            casos.append(caso)
+
+        if self._mirar().tipo != TokenID.EOF:
+            self._esperar(TokenID.DEDENT)
+
+        return NodoCoincidir(
+            expresion=expresion,
+            casos=casos,
+            linea=tok_coincidir.linea,
+            columna=tok_coincidir.columna,
+        )

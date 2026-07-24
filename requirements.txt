@@ -1,0 +1,6 @@
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-md>=0.2.0
+pytest-emoji>=0.2.0
+flake8>=6.0.0
+vscode-languageclient>=8.0.0

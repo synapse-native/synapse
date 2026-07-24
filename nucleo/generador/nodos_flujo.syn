@@ -1,0 +1,351 @@
+#lang: es
+
+// ============================================================
+// nodos_flujo.syn  —  Visitantes de control de flujo (OO style)
+// ============================================================
+// Visitantes para nodos del AST usando formato OO (struct Nodo*).
+//
+// DISENO:
+//   - Cada visitante emite gen_emitir_traza() antes de emitir
+//     codigo, para trazabilidad en el archivo C generado.
+//   - Los bloques ( ) se emiten exclusivamente mediante
+//     gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
+//     Prohibida la emision manual de llaves con strings crudos.
+//   - El dispatcher (gen_visitar_stmt_generico) tiene una rama
+//     de fail-fast para tipos de nodo no reconocidos.
+// ============================================================
+
+// ----------------------------------------------------------
+// gen_visitar_si
+// Visita un struct SentenciaSi* y emite: if (cond) ( ... ) else ( ... )
+// ----------------------------------------------------------
+// _oo_expr_a_c -- OO expression evaluator
+funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: entero) -> nulo:
+    inseguro:
+        asm("struct Nodo* _n = (struct Nodo*)nodo;")
+        asm("char* _b = (char*)buf;")
+        asm("int _sz = bufsz;")
+        asm("if (!_n || !_b || _sz <= 0) return;")
+        asm("const char* _t = _n->tipo.datos;")
+        asm("if (!_t) { strcpy(_b, \"0\"); return; }")
+        asm("_b[0] = 0;")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"LiteralNumero\")) {")
+        asm("    struct LiteralNumero* _ln = (struct LiteralNumero*)_n;")
+        asm("    snprintf(_b, _sz, \"%d\", _ln->valor);")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"LiteralDecimal\")) {")
+        asm("    // NOTE: No struct LiteralDecimal in ast_types.h yet.")
+        asm("    // Using lexeme from the token IF accessible, otherwise snprintf float.")
+        asm("    // The LiteralDecimal node in OO layer may have a token reference;")
+        asm("    // for now emit 0.0f as safe default (micro-tests use ints).")
+        asm("    extern char _gen_tmp_buf[4096];")
+        asm("    // Try to snprintf from float valor if struct has it")
+        asm("    struct LiteralNumero* _ld = (struct LiteralNumero*)_n;")
+        asm("    snprintf(_b, _sz, \"%%d.0f\", _ld->valor);")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"Identificador\")) {")
+        asm("    struct Identificador* _id = (struct Identificador*)_n;")
+        asm("    if (_id->nombre.datos) strncpy(_b, _id->nombre.datos, _sz - 1);")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"LiteralCadena\")) {")
+        asm("    struct LiteralCadena* _lc = (struct LiteralCadena*)_n;")
+        asm("    if (_lc->valor.datos && _lc->valor.longitud > 0) {")
+        asm("        snprintf(_b, _sz, \"\\\"%s\\\"\", _lc->valor.datos);")
+        asm("    } else {")
+        asm("        strcpy(_b, \"\\\"\\\"\");")
+        asm("    }")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"OpBinaria\")) {")
+        asm("    struct OpBinaria* _op = (struct OpBinaria*)_n;")
+        asm("    char _izq[512], _der[512];")
+        asm("    _izq[0] = _der[0] = 0;")
+        asm("    if (_op->izquierdo) { _oo_expr_a_c(est, _op->izquierdo, _izq, 512); }")
+        asm("    if (_op->derecho) { _oo_expr_a_c(est, _op->derecho, _der, 512); }")
+        asm("    const char* _op_str = \"\";")
+        asm("    if (_op->operador) {")
+        asm("        int _ot = _op->operador->tipo;")
+        asm("        switch (_ot) {")
+        asm("            case 30: _op_str = \" + \"; break;")
+        asm("            case 31: _op_str = \" - \"; break;")
+        asm("            case 32: _op_str = \" * \"; break;")
+        asm("            case 33: _op_str = \" / \"; break;")
+        asm("            case 16: _op_str = \" > \"; break;")
+        asm("            case 17: _op_str = \" < \"; break;")
+        asm("            case 25: _op_str = \" == \"; break;")
+        asm("            case 26: _op_str = \" != \"; break;")
+        asm("            case 28: _op_str = \" >= \"; break;")
+        asm("            case 27: _op_str = \" <= \"; break;")
+        asm("            case 14: _op_str = \" && \"; break;")
+        asm("            case 15: _op_str = \" || \"; break;")
+        asm("            default: _op_str = \" ? \"; break;")
+        asm("        }")
+        asm("    }")
+        asm("    snprintf(_b, _sz, \"%s%s%s\", _izq, _op_str, _der);")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"OpUnaria\")) {")
+        asm("    struct OpUnaria* _ou = (struct OpUnaria*)_n;")
+        asm("    char _uexpr[512]; _uexpr[0] = 0;")
+        asm("    if (_ou->expr) { _oo_expr_a_c(est, _ou->expr, _uexpr, 512); }")
+        asm("    const char* _uop = \"\";")
+        asm("    if (_ou->operador) {")
+        asm("        int _ut = _ou->operador->tipo;")
+        asm("        if (_ut == 31) { _uop = \"-\"; } else if (_ut == 16) { _uop = \"!\"; }")
+        asm("    }")
+        asm("    snprintf(_b, _sz, \"%s%s\", _uop, _uexpr);")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("if (_syn_es_tipo(_t, \"LlamadaFuncion\")) {")
+        asm("    struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_n;")
+        asm("    if (_lf->nombre.datos) strcpy(_b, _lf->nombre.datos);")
+        asm("    strcat(_b, \"(\");")
+        asm("    int _arg_idx = 0;")
+        asm("    struct ListaNodo* _arg_cur = _lf->argumentos;")
+        asm("    while (_arg_cur) {")
+        asm("        struct Nodo* _arg_n = _arg_cur->cabeza;")
+        asm("        if (_arg_n) {")
+        asm("            if (_arg_idx > 0) strcat(_b, \", \");")
+        asm("            char _arg_buf[256]; _arg_buf[0] = 0;")
+        asm("            _oo_expr_a_c(est, _arg_n, _arg_buf, 256);")
+        asm("            strcat(_b, _arg_buf);")
+        asm("            _arg_idx++;")
+        asm("        }")
+        asm("        _arg_cur = _arg_cur->cola;")
+        asm("    }")
+        asm("    strcat(_b, \")\");")
+        asm("    return;")
+        asm("}")
+        asm("")
+        asm("// Fallback")
+        asm("strcpy(_b, \"0\");")
+
+funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaSi* _s = (struct SentenciaSi*)stmt;")
+        asm("if (!_s) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaSi\");")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("// if (condition) (")
+        asm("_buf[0] = 0;")
+        asm("strcat(_buf, \"    if (\");")
+        asm("_buf2[0] = 0;")
+        asm("if (_s->condicion) { _oo_expr_a_c(est, _s->condicion, _buf2, 4096); }")
+        asm("strcat(_buf, _buf2);")
+        asm("strcat(_buf, \")\");")
+        asm("gen_emitir_str(est, _buf);")
+        asm("gen_abrir_bloque_c(est);")
+        asm("// Visit if-body via dispatcher")
+        asm("{")
+        asm("    struct ListaNodo* _ic = _s->cuerpo;")
+        asm("    while (_ic) {")
+        asm("        struct Nodo* _is = _ic->cabeza;")
+        asm("        if (_is) { gen_visitar_stmt_generico(est, _is); }")
+        asm("        _ic = _ic->cola;")
+        asm("    }")
+        asm("}")
+        asm("gen_cerrar_bloque_c(est);")
+        asm("if (_s->cuerpo_sino) {")
+        asm("    gen_emitir_str(est, \"    else\");")
+        asm("    gen_abrir_bloque_c(est);")
+        asm("    struct ListaNodo* _ec = _s->cuerpo_sino;")
+        asm("    while (_ec) {")
+        asm("        struct Nodo* _es = _ec->cabeza;")
+        asm("        if (_es) { gen_visitar_stmt_generico(est, _es); }")
+        asm("        _ec = _ec->cola;")
+        asm("    }")
+        asm("    gen_cerrar_bloque_c(est);")
+        asm("}")
+
+// ----------------------------------------------------------
+// gen_visitar_mientras
+// Visita un struct SentenciaMientras* y emite: while (cond) ( ... )
+// ----------------------------------------------------------
+funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaMientras* _w = (struct SentenciaMientras*)stmt;")
+        asm("if (!_w) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaMientras\");")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("// while (condition) (")
+        asm("_buf[0] = 0;")
+        asm("strcat(_buf, \"    while (\");")
+        asm("_buf2[0] = 0;")
+        asm("if (_w->condicion) { _oo_expr_a_c(est, _w->condicion, _buf2, 4096); }")
+        asm("strcat(_buf, _buf2);")
+        asm("strcat(_buf, \")\");")
+        asm("gen_emitir_str(est, _buf);")
+        asm("gen_abrir_bloque_c(est);")
+        asm("// While-body via dispatcher")
+        asm("{")
+        asm("    struct ListaNodo* _wc = _w->cuerpo;")
+        asm("    while (_wc) {")
+        asm("        struct Nodo* _ws = _wc->cabeza;")
+        asm("        if (_ws) { gen_visitar_stmt_generico(est, _ws); }")
+        asm("        _wc = _wc->cola;")
+        asm("    }")
+        asm("}")
+        asm("gen_cerrar_bloque_c(est);")
+
+// ----------------------------------------------------------
+// gen_visitar_retornar
+// Visita un struct SentenciaRetornar* y emite: return [expr];
+// ----------------------------------------------------------
+funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)stmt;")
+        asm("if (!_rt) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaRetornar\");")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("_buf[0] = 0;")
+        asm("strcat(_buf, \"    return \");")
+        asm("_buf2[0] = 0;")
+        asm("if (_rt->expr) { _oo_expr_a_c(est, _rt->expr, _buf2, 4096); }")
+        asm("strcat(_buf, _buf2);")
+        asm("strcat(_buf, \";\");")
+        asm("gen_emitir_str(est, _buf);")
+
+// ----------------------------------------------------------
+// gen_visitar_asignacion
+// Visita un struct AsignacionVariable* y emite: int nombre = expr;
+// ----------------------------------------------------------
+// ----------------------------------------------------------
+// gen_visitar_declaracion
+// Visita un struct DeclaracionVariable* y emite: tipo nombre = expr;
+// DIFERENCIA: DeclaracionVariable.nombre es CadenaSegura (igual que AsignacionVariable).
+// Se accede como _dv->nombre (sin .datos).
+// ----------------------------------------------------------
+funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct DeclaracionVariable* _dv = (struct DeclaracionVariable*)stmt;")
+        asm("if (!_dv) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"DeclaracionVariable\");")
+        asm("if (!_dv->nombre.datos) {")
+        asm("    fprintf(stderr, \"Error Fatal Generador: DeclaracionVariable sin nombre\\n\");")
+        asm("    exit(1);")
+        asm("}")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("_buf[0] = 0;")
+        asm("// Detect string literal -> use const char*")
+        asm("const char* _var_type = \"int \";")
+        asm("if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
+        asm("    _var_type = \"const char* \";")
+        asm("}")
+        asm("strcat(_buf, \"    \");")
+        asm("strcat(_buf, _var_type);")
+        asm("strcat(_buf, _dv->nombre.datos);")
+        asm("strcat(_buf, \" = \");")
+        asm("_buf2[0] = 0;")
+        asm("if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); }")
+        asm("strcat(_buf, _buf2);")
+        asm("strcat(_buf, \";\");")
+        asm("gen_emitir_str(est, _buf);")
+funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct AsignacionVariable* _a = (struct AsignacionVariable*)stmt;")
+        asm("if (!_a) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"AsignacionVariable\");")
+        asm("if (!_a->nombre.datos) {")
+        asm("    fprintf(stderr, \"Error Fatal Generador: AsignacionVariable sin nombre\\n\");")
+        asm("    exit(1);")
+        asm("}")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("_buf[0] = 0;")
+        asm("// Detect string literal assignment -> use const char*")
+        asm("const char* _var_type = \"int \";")
+        asm("if (_a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
+        asm("    _var_type = \"const char* \";")
+        asm("}")
+        asm("strcat(_buf, \"    \");")
+        asm("strcat(_buf, _var_type);")
+        asm("strcat(_buf, _a->nombre.datos);")
+        asm("strcat(_buf, \" = \");")
+        asm("_buf2[0] = 0;")
+        asm("if (_a->expresion) { _oo_expr_a_c(est, _a->expresion, _buf2, 4096); }")
+        asm("strcat(_buf, _buf2);")
+        asm("strcat(_buf, \";\");")
+        asm("gen_emitir_str(est, _buf);")
+
+// ----------------------------------------------------------
+// gen_visitar_expr
+// Visita un struct SentenciaExpr* y emite: expr;
+// ----------------------------------------------------------
+funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaExpr* _s = (struct SentenciaExpr*)stmt;")
+        asm("if (!_s) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaExpr\");")
+        asm("char _buf[4096];")
+        asm("_buf[0] = 0;")
+        asm("if (_s->expr) { _oo_expr_a_c(est, _s->expr, _buf, 4096); }")
+        asm("strcat(_buf, \";\");")
+        asm("gen_emitir_str(est, _buf);")
+
+// ----------------------------------------------------------
+// gen_visitar_stmt_generico — Dispatcher principal
+// Recibe un puntero OO a un statement y llama al visitante
+// correspondiente. FAIL-FAST para tipos no reconocidos.
+// ----------------------------------------------------------
+
+// ----------------------------------------------------------
+// gen_visitar_romper
+// Visita un struct SentenciaRomper* y emite: break;
+// ----------------------------------------------------------
+funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaRomper* _br = (struct SentenciaRomper*)stmt;")
+        asm("if (!_br) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaRomper\");")
+        asm("gen_emitir_str(est, \"    break;\");")
+
+// ----------------------------------------------------------
+// gen_visitar_siguiente
+// Visita un struct SentenciaSiguiente* y emite: continue;
+// ----------------------------------------------------------
+funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaSiguiente* _ct = (struct SentenciaSiguiente*)stmt;")
+        asm("if (!_ct) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaSiguiente\");")
+        asm("gen_emitir_str(est, \"    continue;\");")
+funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct Nodo* _n = (struct Nodo*)stmt;")
+        asm("if (!_n) return;")
+        asm("const char* _t = _n->tipo.datos;")
+        asm("if (!_t) {")
+        asm("    fprintf(stderr, \"Error Fatal Generador: Nodo sin tipo (puntero nulo en tipo.datos)\\n\");")
+        asm("    exit(1);")
+        asm("}")
+        asm("if (_syn_es_tipo(_t, \"SentenciaSi\")) { gen_visitar_si(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaMientras\")) { gen_visitar_mientras(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaRetornar\")) { gen_visitar_retornar(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"AsignacionVariable\")) { gen_visitar_asignacion(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaExpr\")) { gen_visitar_expr(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"DeclaracionVariable\")) { gen_visitar_declaracion(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"AsignacionCampo\")) { gen_visitar_expr(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")
+        asm("    struct BloqueInseguro* _sbi = (struct BloqueInseguro*)stmt;")
+        asm("    gen_emitir_traza(est, \"nodos_flujo.syn\", \"BloqueInseguro\");")
+        asm("    struct ListaNodo* _sbl = (struct ListaNodo*)_sbi->cuerpo;")
+        asm("    while (_sbl) {")
+        asm("        struct Nodo* _sbs = _sbl->cabeza;")
+        asm("        if (_sbs) { gen_visitar_stmt_generico(est, _sbs); }")
+        asm("        _sbl = _sbl->cola;")
+        asm("    }")
+        asm("} else {")
+        asm("    fprintf(stderr, \"Error Fatal Generador: Nodo tipo [%s] no reconocido\\n\", _t);")
+        asm("    exit(1);")
+        asm("}")

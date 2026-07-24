@@ -1,6 +1,8 @@
 import os
 import tempfile
 import subprocess
+import logging
+import traceback
 import pytest
 from compilador.lexer import Lexer
 from compilador.parser import Parser
@@ -337,7 +339,7 @@ class TestIntegrationCompilacionReal:
                         if os.path.exists(temp_file):
                             os.unlink(temp_file)
             except:
-                pass
+                logging.error("[test_end_to_end] Cleanup error:\n%s", traceback.format_exc())
     
     def test_compilacion_gcc_simple(self):
         """Test compilación con gcc de código simple"""

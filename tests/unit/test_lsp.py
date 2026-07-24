@@ -1,5 +1,5 @@
 from synapse_lsp.server import (
-    _manejar_completado, _manejar_hover, _manejar_definicion, _PALABRAS_CLAVE_LSP,
+    _manejar_completado, _manejar_hover, _manejar_definicion,
 )
 
 
@@ -22,7 +22,7 @@ def test_completado_palabras_clave():
 
 
 def test_completado_con_simbolos():
-    from synapse_lsp.server import _DOCS, _almacenar_documento
+    from synapse_lsp.server import _almacenar_documento
     from compilador.ast_nodes import Programa
 
     prog = Programa()
@@ -42,7 +42,7 @@ def test_completado_con_simbolos():
 
 
 def test_hover_variable():
-    from synapse_lsp.server import _DOCS, _almacenar_documento
+    from synapse_lsp.server import _almacenar_documento
     from compilador.lexer import Lexer
     from compilador.parser import Parser
     from compilador.diagnostics import DiagnosticManager
@@ -69,7 +69,7 @@ def test_hover_variable():
 
 
 def test_definicion_variable():
-    from synapse_lsp.server import _DOCS, _almacenar_documento
+    from synapse_lsp.server import _almacenar_documento
     from compilador.lexer import Lexer
     from compilador.parser import Parser
     from compilador.diagnostics import DiagnosticManager

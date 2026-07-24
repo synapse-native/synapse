@@ -1,0 +1,78 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_valor",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 42
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "x",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 10
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "b",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 20
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "obtener_valor",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "x"
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

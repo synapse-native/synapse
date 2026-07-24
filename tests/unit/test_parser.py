@@ -1,10 +1,8 @@
-import pytest
 from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.ast_nodes import (
-    TokenID, Programa, SentenciaSi, AsignacionVariable,
-    OpBinaria, OpUnaria, LiteralNumero, Identificador,
-    SentenciaExpr, LlamadaFuncion,
+    SentenciaSi, AsignacionVariable,
+    OpBinaria, OpUnaria,
 )
 from compilador.diagnostics import DiagnosticManager
 
