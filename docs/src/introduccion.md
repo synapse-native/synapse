@@ -1,6 +1,6 @@
 # Introducción
 
-Synapse es un lenguaje de sistemas moderno, compilado, determinista y seguro, diseñado para ofrecer el control del hardware con las garantías de un lenguaje de alto nivel. Su compilador es 100% auto-alojado (self-hosted) y genera código C directamente, sin runtime ni máquina virtual.
+Synapse v2.2.0 es un lenguaje de sistemas moderno, compilado, determinista y seguro, diseñado para ofrecer el control del hardware con las garantías de un lenguaje de alto nivel. Su compilador es 100% auto-alojado (self-hosted) y genera código C directamente, sin runtime ni máquina virtual.
 
 ## Filosofía
 

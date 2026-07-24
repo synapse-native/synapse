@@ -1,14 +1,14 @@
-# Synapse v2.0 — Guía de Despliegue Nativo
+# Synapse v2.2.0 — Guía de Despliegue Nativo
 
 > **Documento:** `GUIA_DESPLIEGUE.md`
-> **Versión:** 2.0 — PRODUCTION-READY
-> **Última actualización:** 22 Julio 2026
+> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Última actualización:** 24 Julio 2026
 
 ---
 
 ## 1. El Ejecutable Único
 
-Synapse v2.0 se distribuye como **un único binario autónomo** que integra:
+Synapse v2.2.0 se distribuye como **un único binario autónomo** que integra:
 
 | Componente | Función | Dependencias |
 |-----------|---------|-------------|

@@ -17,7 +17,7 @@ Tu elección se guarda en `.synapse_config`. Elimínalo para cambiar de modo.
 Un solo comando:
 
 ```powershell
-powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.1.0/instalar.ps1 | iex"
+powershell -c "iwr -useb https://github.com/synapse-native/synapse/releases/download/v2.2.0/instalar.ps1 | iex"
 ```
 
 Esto descarga el binario a `C:\Synapse\synapse.exe` y agrega el directorio al `PATH` del usuario.

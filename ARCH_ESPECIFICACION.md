@@ -1,8 +1,8 @@
-# Synapse: Especificación Arquitectónica del Compilador v2.0
+# Synapse: Especificación Arquitectónica del Compilador v2.2.0
 
 > **Documento:** `ARCH_ESPECIFICACION.md`
-> **Versión:** 2.0 — PRODUCTION-READY
-> **Última actualización:** 22 Julio 2026
+> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Última actualización:** 24 Julio 2026
 
 ---
 
@@ -51,6 +51,18 @@ La pipeline Python (`main.py + compilador/`) se usa como referencia para bootstr
 python main.py -o salida.exe nucleo/principal.syn
   → lexer.py → parser.py → analizador_semantico.py → generator.py → GCC
 ```
+
+### 1.3 Modularización v2.2.0 (Fases A-F)
+
+En v2.2.0, el punto de entrada monolítico `main.py` (656 líneas) fue desacoplado en submódulos limpios:
+
+- **`main.py`** (10 líneas): Lanzador minimalista que delega a `cli.py`
+- **`cli.py`** (110 líneas): Manejo de argumentos con `argparse` y ruteo de comandos
+- **`pipeline.py`** (317 líneas): Orquestación del pipeline de compilación
+
+Esta modularización mejora la mantenibilidad y separa responsabilidades:
+- CLI: Argumentos, comandos (`construir`, LSP), flags (`--tokens`, `--dump-ast`)
+- Pipeline: Lectura, análisis léxico, parseo, análisis semántico, generación C, compilación nativa
 
 ---
 

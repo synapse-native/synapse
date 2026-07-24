@@ -1,8 +1,8 @@
-# Synapse: Manual del Lenguaje v2.0
+# Synapse: Manual del Lenguaje v2.2.0
 
 > **Documento:** `MANUAL_LENGUAJE.md`
-> **Versión:** 2.0 — PRODUCTION-READY
-> **Última actualización:** 22 Julio 2026
+> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Última actualización:** 24 Julio 2026
 
 ---
 

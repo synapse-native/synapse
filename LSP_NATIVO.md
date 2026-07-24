@@ -1,8 +1,8 @@
-# Synapse: Servidor LSP Nativo v2.0
+# Synapse: Servidor LSP Nativo v2.2.0
 
 > **Documento:** `LSP_NATIVO.md`
-> **Versión:** 2.0 — PRODUCTION-READY
-> **Última actualización:** 22 Julio 2026
+> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Última actualización:** 24 Julio 2026
 
 ---
 
