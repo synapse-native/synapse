@@ -19,6 +19,7 @@
 const path = require('path');
 const fs = require('fs');
 const vscode = require('vscode');
+const child_process = require('child_process');
 
 // ---------------------------------------------------------------------------
 // Lazy-load vscode-languageclient solo cuando se activa la extensión
@@ -32,6 +33,159 @@ function _cargar_languageclient() {
         const lc = require('vscode-languageclient/node');
         LanguageClient = lc.LanguageClient;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Constantes de rutas de instalación
+// ---------------------------------------------------------------------------
+
+const SYNAPSE_INSTALL_DIR = 'C:\\Synapse';
+const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIR, 'bin', 'synapse.exe');
+const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip';
+
+// ---------------------------------------------------------------------------
+// Auto-descubrimiento e instalación automática del binario LSP
+// ---------------------------------------------------------------------------
+
+async function _asegurar_binario_lsp(salida) {
+    // 1. Buscar en la ruta de instalación estándar (configurada por install.ps1)
+    if (fs.existsSync(SYNAPSE_LSP_PATH)) {
+        salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${SYNAPSE_LSP_PATH}`);
+        return SYNAPSE_LSP_PATH;
+    }
+
+    // 2. Buscar en PATH del sistema
+    const pathEntries = process.env.PATH?.split(';') || [];
+    for (const entry of pathEntries) {
+        const candidate = path.join(entry, 'synapse_lsp.exe');
+        if (fs.existsSync(candidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
+            return candidate;
+        }
+    }
+
+    // 3. Buscar en el workspace actual (desarrollo local)
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
+    if (workspaceRoot) {
+        const candidates = [
+            path.join(workspaceRoot, 'test_lsp_bin.exe'),
+            path.join(workspaceRoot, 'nucleo', 'lsp_test.exe'),
+            path.join(workspaceRoot, 'build', 'bin', 'synapse_lsp.exe'),
+        ];
+        for (const c of candidates) {
+            if (fs.existsSync(c)) {
+                salida.appendLine(`[Synapse] Binario LSP encontrado en workspace: ${c}`);
+                return c;
+            }
+        }
+    }
+
+    // 4. No encontrado - ofrecer instalación automática
+    salida.appendLine('[Synapse] ⚠️  Binario LSP no encontrado. Ofreciendo instalación automática...');
+    
+    const accion = await vscode.window.showInformationMessage(
+        'Synapse: Servidor LSP no encontrado. ¿Desea descargar e instalar Synapse automáticamente?',
+        { modal: true },
+        'Instalar Synapse',
+        'Configurar ruta manualmente',
+        'Cancelar'
+    );
+
+    if (accion === 'Instalar Synapse') {
+        return await _instalar_synapse_automatico(salida);
+    } else if (accion === 'Configurar ruta manualmente') {
+        const ruta = await vscode.window.showInputBox({
+            prompt: 'Introduzca la ruta completa a synapse_lsp.exe',
+            placeHolder: 'C:\\ruta\\a\\synapse_lsp.exe',
+            ignoreFocusOut: true,
+        });
+        if (ruta && fs.existsSync(ruta)) {
+            salida.appendLine(`[Synapse] Usando ruta manual: ${ruta}`);
+            return ruta;
+        }
+    }
+
+    throw new Error('Synapse LSP no disponible. Instale Synapse o configure la ruta manualmente.');
+}
+
+async function _instalar_synapse_automatico(salida) {
+    salida.appendLine('[Synapse] Iniciando descarga automática del instalador...');
+    
+    const tempDir = process.env.TEMP || process.env.TMP || 'C:\\Windows\\Temp';
+    const zipPath = path.join(tempDir, 'synapse-install.zip');
+    
+    // Descargar usando PowerShell (más fiable en Windows)
+    return new Promise((resolve, reject) => {
+        const psScript = `
+            $ProgressPreference = 'silentlyContinue'
+            try {
+                Write-Host "Descargando Synapse..."
+                Invoke-WebRequest -Uri "${SYNAPSE_INSTALLER_URL}" -OutFile "${zipPath}" -UseBasicParsing -ErrorAction Stop
+                Write-Host "DESCARGA_OK"
+                
+                Write-Host "Extrayendo..."
+                [System.IO.Compression.ZipFile]::ExtractToDirectory("${zipPath}", "${SYNAPSE_INSTALL_DIR}")
+                Write-Host "EXTRACTION_OK"
+                
+                # Ejecutar post-instalación (MinGW toolchain)
+                $PostInstall = Join-Path "${SYNAPSE_INSTALL_DIR}" "install.ps1"
+                if (Test-Path $PostInstall) {
+                    Write-Host "Ejecutando post-instalacion (MinGW)..."
+                    & powershell.exe -ExecutionPolicy Bypass -NoProfile -File $PostInstall
+                    Write-Host "POST_INSTALL_OK"
+                } else {
+                    Write-Host "ADVERTENCIA: install.ps1 no encontrado, saltando post-instalacion"
+                }
+                
+                # Verificar que el binario existe (synapse.exe, no synapse_lsp.exe)
+                $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse.exe"
+                if (Test-Path $LspPath) {
+                    Write-Host "INSTALL_OK"
+                    exit 0
+                } else {
+                    Write-Host "ERROR: synapse.exe no encontrado tras extraccion"
+                    exit 1
+                }
+            } catch {
+                Write-Host "ERROR: $($_.Exception.Message)"
+                exit 1
+            }
+        `;
+        
+        const psProcess = child_process.spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', psScript], {
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        psProcess.stdout.on('data', (data) => {
+            const text = data.toString();
+            stdout += text;
+            salida.appendLine(`[Install] ${text.trim()}`);
+        });
+
+        psProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+            salida.appendLine(`[Install ERROR] ${data.toString().trim()}`);
+        });
+
+        psProcess.on('close', (code) => {
+            if (code === 0 && stdout.includes('INSTALL_OK')) {
+                salida.appendLine('[Synapse] ✅ Instalación automática completada');
+                resolve(SYNAPSE_LSP_PATH);
+            } else {
+                const errorMsg = stderr || stdout || `Proceso terminó con código ${code}`;
+                salida.appendLine(`[Synapse] ❌ Falló la instalación automática: ${errorMsg}`);
+                reject(new Error(`Instalación fallida: ${errorMsg}`));
+            }
+        });
+
+        psProcess.on('error', (err) => {
+            salida.appendLine(`[Synapse] ❌ Error lanzando PowerShell: ${err.message}`);
+            reject(err);
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -67,30 +221,27 @@ function _encontrar_raiz_synapse(uriDocumento) {
 // Construcción de opciones para el LanguageClient (usa binario LSP nativo)
 // ---------------------------------------------------------------------------
 
-function _crear_opciones_servidor(raizSynapse) {
+function _crear_opciones_servidor(raizSynapse, lspBinaryPath) {
     const cfg = vscode.workspace.getConfiguration('synapse');
 
-    // Buscar binario LSP nativo: test_lsp_bin.exe > nucleo/lsp_test.exe > config
-    let lspBinary = cfg.get('lsp.nativeBinary', '');
-    if (!lspBinary) {
-        const candidates = [
-            path.join(raizSynapse, 'test_lsp_bin.exe'),
-            path.join(raizSynapse, 'nucleo', 'lsp_test.exe'),
-            path.join(raizSynapse, 'build', 'bin', 'synapse_lsp.exe'),
-        ];
-        for (const c of candidates) {
-            if (fs.existsSync(c)) {
-                lspBinary = c;
-                break;
-            }
-        }
-        if (!lspBinary) {
-            lspBinary = path.join(raizSynapse, 'test_lsp_bin.exe');
-        }
+    // Si el usuario configuró una ruta manual, usarla
+    const manualBinary = cfg.get('lsp.nativeBinary', '');
+    if (manualBinary && fs.existsSync(manualBinary)) {
+        return {
+            command: manualBinary,
+            args: [],
+            options: {
+                cwd: raizSynapse,
+                env: { ...process.env },
+                stdio: 'pipe',
+            },
+            transport: 0,
+        };
     }
 
+    // Usar la ruta validada (instalación o auto-descubierta)
     return {
-        command: lspBinary,
+        command: lspBinaryPath,
         args: [],
         options: {
             cwd: raizSynapse,
@@ -256,7 +407,18 @@ async function activate(contexto) {
     }
 
     salida.appendLine(`[Synapse] Raíz del proyecto: ${raizSynapse}`);
-    const opcionesServidor = _crear_opciones_servidor(raizSynapse);
+
+    // Auto-descubrimiento / instalación del binario LSP
+    let lspBinaryPath;
+    try {
+        lspBinaryPath = await _asegurar_binario_lsp(salida);
+    } catch (err) {
+        salida.appendLine(`[Synapse] ❌ Error crítico: ${err.message}`);
+        vscode.window.showErrorMessage(`Synapse LSP no disponible: ${err.message}`);
+        return;
+    }
+
+    const opcionesServidor = _crear_opciones_servidor(raizSynapse, lspBinaryPath);
     salida.appendLine(`[Synapse] Iniciando servidor LSP nativo: ${opcionesServidor.command}`);
 
     const cliente = new LanguageClient(

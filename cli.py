@@ -9,7 +9,30 @@ from pipeline import ejecutar_compilador
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "construir":
+    parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota", add_help=False)
+    parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
+    parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
+    parser.add_argument("archivo", nargs="?", default="programa.syn",
+                        help="Archivo fuente .syn (o .syn.json para canonico)")
+    parser.add_argument("-o", "--output", type=str, default=None,
+                        help="Ruta del ejecutable de salida")
+    parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
+    parser.add_argument("--lang", type=str, default=None,
+                        help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
+    parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
+    parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
+    parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
+    args, _ = parser.parse_known_args()
+
+    if args.help:
+        parser.print_help()
+        sys.exit(0)
+
+    if args.version:
+        print("Synapse Compiler v2.0.0")
+        sys.exit(0)
+
+    if args.construir == "construir":
         tokens_flag = "--tokens" in sys.argv
         dump_flag = "--dump-ast" in sys.argv
         lang_val = None
@@ -87,18 +110,6 @@ def main():
                                      dependencias=dependencias)
         sys.exit(codigo)
 
-    parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota")
-    parser.add_argument("archivo", nargs="?", default="programa.syn",
-                        help="Archivo fuente .syn (o .syn.json para canonico)")
-    parser.add_argument("-o", "--output", type=str, default=None,
-                        help="Ruta del ejecutable de salida")
-    parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
-    parser.add_argument("--lang", type=str, default=None,
-                        help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
-    parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
-    parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
-    args = parser.parse_args()
-
     if args.lsp:
         from synapse_lsp.server import iniciar
         iniciar()
@@ -107,3 +118,7 @@ def main():
                                      output_lang=args.lang, dump_ast=args.dump_ast,
                                      output_path=args.output)
         sys.exit(codigo)
+
+
+if __name__ == "__main__":
+    main()

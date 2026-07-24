@@ -1,0 +1,70 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "generar_tensor",
+        "parametros": [],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "datos",
+            "expresion": {
+              "_tipo": "ExprTensor",
+              "filas": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              },
+              "columnas": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "datos"
+            },
+            "es_transferencia": true
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "matriz",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "generar_tensor",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "Tensor recibido y memoria gestionada correctamente."
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

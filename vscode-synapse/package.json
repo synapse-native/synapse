@@ -2,7 +2,7 @@
     "name": "synapse",
     "displayName": "Synapse Language",
     "description": "Synapse language support for VS Code — LSP server + AI local (Ollama)",
-    "version": "0.2.0",
+    "version": "2.2.2",
     "publisher": "synapse-lang",
     "license": "MIT",
     "engines": {
@@ -15,10 +15,7 @@
         "Formatters"
     ],
     "activationEvents": [
-        "onLanguage:synapse",
-        "onCommand:synapse.aiStatus",
-        "onCommand:synapse.aiExplain",
-        "onCommand:synapse.aiComplete"
+        "onLanguage:synapse"
     ],
     "main": "./extension.js",
     "dependencies": {
@@ -28,9 +25,8 @@
         "languages": [
             {
                 "id": "synapse",
-                "aliases": ["Synapse", "synapse"],
                 "extensions": [".syn"],
-                "configuration": "./language-configuration.json"
+                "aliases": ["Synapse"]
             }
         ],
         "grammars": [

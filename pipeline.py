@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import subprocess
 from typing import List, Optional, Dict, Tuple, Any, Set
 
 from compilador.ast_nodes import (
@@ -24,6 +25,26 @@ from compilador.canonical import (
 # IMPORT SYSTEM — Bifurcación estricta Sysroot / Axon
 # ============================================================
 SYNAPSE_BIN = os.path.dirname(os.path.abspath(__file__))
+
+
+class ToolchainNotFoundError(Exception):
+    """Excepción lanzada cuando el toolchain C interno no se encuentra."""
+    pass
+
+
+def _resolver_toolchain_gcc() -> str:
+    """
+    Resuelve la ruta absoluta al GCC del toolchain interno.
+    Lanza ToolchainNotFoundError si no existe el ejecutable.
+    """
+    ruta_toolchain = os.path.normpath(os.path.join(SYNAPSE_BIN, 'toolchain', 'bin', 'gcc.exe'))
+    if not os.path.isfile(ruta_toolchain):
+        raise ToolchainNotFoundError(
+            f"Toolchain C interno no encontrado en: {ruta_toolchain}. "
+            "Ejecute el instalador (install.ps1) para provisionar MinGW-w64 portable."
+        )
+    return ruta_toolchain
+
 
 _imports_usados: Set[str] = set()
 
@@ -262,7 +283,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             platform_flags = "-Wl,-dead_strip"
             thread_flag = "-lpthread"
         else:
-            compiler = "gcc"
+            # Windows/Linux: usar toolchain interno estricto (MinGW-w64 portable)
+            compiler = _resolver_toolchain_gcc()
             platform_flags = "-fno-ident -Wl,--gc-sections"
             thread_flag = "-lpthread"
             if sys.platform == "win32":
@@ -281,7 +303,12 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 rt_objs += f' "{tweetnacl_obj}"'
             gcc_cmd = f'{compiler} -O2 {platform_flags} -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" {thread_flag} -lm {linker_net} {linker_extra}'.strip()
         print(f"[OK] Compilando: {gcc_cmd}")
-        rc = os.system(gcc_cmd)
+        try:
+            rc = subprocess.run(gcc_cmd, shell=True).returncode
+        except FileNotFoundError:
+            raise ToolchainNotFoundError(
+                f"Ejecutable del toolchain no encontrado: {compiler}"
+            )
         if rc != 0:
             print(f"[!] Compilador fallo con codigo {rc}", file=sys.stderr)
         else:
