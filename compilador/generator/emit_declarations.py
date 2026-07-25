@@ -11,7 +11,7 @@ from compilador.ast_nodes import (
     SentenciaEnviarCanal, SentenciaLanzar, SentenciaRecuperar,
     SentenciaRetornar, SentenciaEscuchar,
     BloqueInseguro, SentenciaExpr,
-    ExprAsm, Identificador,
+    ExprAsm, Identificador, LlamadaFuncion, ArgumentoTransferido,
 )
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
@@ -420,13 +420,37 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
 
 
 def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
-    """Genera código C para spawn/lanzar (crear hilo)."""
+    """Genera código C para spawn/lanzar (crear hilo) con ownership transfer."""
     fn = expr_a_c(ctx, nodo.llamada)
     ctx._contador_thread += 1
-    ctx.write_line(
-        f"synapse_lanzar_hilo("
-        f"(void*(*)(void*)){fn}, NULL);"
-    )
+    tid = ctx._contador_thread
+    arg_fields = []
+    arg_copies = []
+    if isinstance(nodo.llamada, LlamadaFuncion):
+        for i, arg in enumerate(nodo.llamada.argumentos):
+            if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
+                var_name = arg.expr.nombre
+                arg_t = ctx._variables.get(var_name, 'void*')
+                arg_fields.append(f"    {ctx.traducir_tipo_c(arg_t)} v{i};")
+                arg_copies.append(f"    args_{tid}.v{i} = {var_name};")
+                ctx.unregister_var(var_name)
+    if arg_fields:
+        ctx.write_line(f"struct {{")
+        for f in arg_fields:
+            ctx.write_line(f)
+        ctx.write_line(f"}} args_{tid};")
+        for c in arg_copies:
+            ctx.write_line(c)
+        ctx.write_line(
+            f"synapse_lanzar_hilo("
+            f"(void*(*)(void*)){fn}, "
+            f"(void*)&args_{tid});"
+        )
+    else:
+        ctx.write_line(
+            f"synapse_lanzar_hilo("
+            f"(void*(*)(void*)){fn}, NULL);"
+        )
 
 
 def visitar_recuperar(ctx: GeneratorContext, nodo: SentenciaRecuperar):
