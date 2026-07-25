@@ -85,7 +85,9 @@
 **M3.1 Módulos Core (std)**
 - [ ] `std.net`: HTTP/TCP nativo alto rendimiento en C (epoll/kqueue/IOCP) — 🚀 Planificado
 - [ ] `std.json`: Serialización SIMD-accelerada (AVX2/SSE4/NEON) — 🚀 Planificado
-- [x] `std.concurrency`: Canales tipados `Canal<T>`, `lanzar`, `escuchar`, `recuperar` — ✅ Completado (F10)
+- [x] `std.concurrencia`: `Canal<T>` tipado con `enviar`, `recibir`, `cerrar`, `destruir`, `ErrorCanal` — ✅ Completado (v2.2.2 M3.1)
+- [x] `analizador_semantico.syn`: Ownership enforcement en `SentenciaLanzar` — move incondicional de variables capturadas, `ERR_MEM_USE_AFTER_MOVE` (E-504) — ✅ Completado
+- [x] Test E2E: `tests/e2e/e2e_concurrencia.syn` — comunicación bidireccional `Canal<T>`, validación ownership — ✅ Completado
 
 **M3.2 Axon Hub e Inmutabilidad**
 - [ ] Registro centralizado: `axon.toml` canónico + validación SemVer estricta
