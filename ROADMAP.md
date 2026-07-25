@@ -15,36 +15,169 @@
 
 ---
 
-## 📊 TABLERO DE PROGRESO
+# 🗺️ ROADMAP v3.0 — EXPANSIÓN MULTIPLATAFORMA Y MIGRACIÓN PYTHON → SYNAPSE
 
-| Fase | Estado | Avance | Tests | Dependencia |
-|------|--------|--------|-------|-------------|
-| **F0: Saneamiento del repositorio** | ✅ **COMPLETADA** | 7/7 tareas | 231 passed | — |
-| **F1: Eliminación de código muerto** | ✅ **COMPLETADA** | 4/4 tareas | 231 passed | — |
-| **F2: Reparación del generador C** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
-| **F3: Bootstrap** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed | — |
-| **F3 bis: Bootstrap reparación** | ✅ **COMPLETADA** | 2 bugs: generar() crash + F8 reactivado | **285** passed | — |
-| **F4: Refactor del generador** | ✅ **COMPLETADA** | 6/6 tareas | 231 passed | — |
-| **F4.5: Post-processing asm()** | ✅ **COMPLETADA** | 5/5 reparaciones | 231 passed | — |
-| **F5: CI/CD** | ✅ **COMPLETADA** | 5/5 tareas | 231 passed | — |
-| **F6: Refactor .syn + eliminar TEMP** | ✅ **COMPLETADA** | 6/6 pasos | 231 passed | — |
-| **F7: Generador nativo (sin Python)** | ✅ **COMPLETADA** | 2/2 pasos | 231 passed | — |
-| **F8: Análisis semántico nativo** | ✅ **COMPLETADA V2** | flatten linked-list → SemNodo[] + analizar() | 285 passed | — |
-| **F9: Eliminar post-processing + fix emisores** | ✅ **COMPLETADA** | 8/8 tareas | 231 passed | — |
-| **F10: Concurrencia (canales tipados)** | ✅ **COMPLETADA** | 5/5 tareas | 240 passed | ✅ Preparado |
-| **F11: Fuzzing destructivo (Parte VII DM)** | ✅ **COMPLETADA** | 2/2 tareas | 240 passed | ✅ Preparado |
-| **F12: LSP nativo (Parte VI DM)** | ✅ **COMPLETADA** | 3/3 tareas | 283 passed | ✅ Completa |
-| **F13: Extensión VS Code + LSP** | ✅ **COMPLETADA** | 3/3 tareas | 283 passed | ✅ Completa |
-| **F14: Estabilización LSP nativo** | ✅ **COMPLETADA** | 4/4 tareas | 283 passed | ✅ Completa |
-| **F15: Renombrar EOF→T_FIN** | ✅ **COMPLETADA** | tokens.syn: eliminado `constante EOF = 57` | **285** passed | ✅ |
-| **F15b: Pipeline nativa reentrante** | ✅ **COMPLETADA** | lsp.syn: reset global + validacion `#lang` | **285 passed, 0 xfails** | ✅ |
-| | | | | |
-| ✅ **F16: Contratos lógicos nativos** | ✅ **COMPLETADA** | Fix NODO_CONTRATO=46. Python: garantiza asserts emitidos. Nativo: parser.syn + generator.syn contratos implementados. | **283** passed | ✅ F8 + generar() OK |
-| ✅ **F17: Bootstrap full auto-hospedado** | ✅ **COMPLETADA** | **M17.1-M17.11**: 6 parches al codegen + flatten + ast_nodes. Pipeline Python → GCC **0 errores**. Stage 1 generado: `synapse_stage1_v6.exe`. Pendiente: ciclo Stage1→Stage2→Stage3 con diff. | **283** passed | ✅ F8 + generar() OK |
-| ✅ **F18: Axon gestor de paquetes** | ✅ **COMPLETADA** | **M18.1-M18.7 COMPLETADOS**: axon.toml + TweetNaCl + Ed25519 + TAR + axon.lock SHA-256 + path traversal + SemVer + HTTP download + resolución local + E2E test suite + Mandatory Ed25519 + legacy purge. Runtime 139KB (<500KB). Fase sellada formalmente. | 19/19 E2E ✅ | ✅ DM + F17 + F19 |
-| ✅ **F19: Edge AI runtime** | ✅ **COMPLETADA** | Bridge SIMD en 6 ops std.tensor (transparente a std.modelo). Forward declaration _simd_detectar(). Runtime 98KB (<500KB). CPUID runtime detection SSE/AVX/AVX2. | **283** passed | ✅ Documento Maestro |
+> **Estado:** 🚀 **v3.0 — PLANIFICACIÓN ACTIVA** — Fases M1-M5 definidas | v2.2.2 base estable ✅
+> **Base:** v2.2.2 — Núcleo estable: 297 tests Python + 20 C/nativos | GCC 0 errores | Pipeline nativa | IA nativa | Axon | LSP | SIMD
+> **Objetivo:** Multiplataforma real + Migración automática Python→Synapse + Dominio IDE + Posicionamiento comercial
 
 ---
+
+## 📊 TABLERO DE PROGRESO — HISTORIAL COMPLETO (v1.0 → v3.0)
+
+| Fase | Descripción | Estado | Tests | Versión |
+|------|-------------|--------|-------|---------|
+| **F0** | Saneamiento del repositorio | ✅ **COMPLETADA** | 231 passed | v1.x |
+| **F1** | Eliminación de código muerto | ✅ **COMPLETADA** | 231 passed | v1.x |
+| **F2** | Reparación del generador C | ✅ **COMPLETADA** | 231 passed | v1.x |
+| **F3** | Bootstrap (Python→Stage1→2→3) | ✅ **COMPLETADA** | 285 passed | v1.x |
+| **F3 bis** | Bootstrap reparación (generar + F8) | ✅ **COMPLETADA** | 285 passed | v1.x |
+| **F4** | Refactor generador (7 módulos) | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F4.5** | Post-processing asm() | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F5** | CI/CD | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F6** | Refactor .syn + eliminar TEMP | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F7** | Generador nativo (sin Python) | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F8** | Análisis semántico nativo V2 | ✅ **COMPLETADA V2** | 285 passed | v2.x |
+| **F9** | Eliminar post-processing + fix emisores | ✅ **COMPLETADA** | 231 passed | v2.x |
+| **F10** | Concurrencia (canales tipados) | ✅ **COMPLETADA** | 240 passed | v2.x |
+| **F11** | Fuzzing destructivo | ✅ **COMPLETADA** | 240 passed | v2.x |
+| **F12** | LSP nativo (Parte VI DM) | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **F13** | Extensión VS Code + LSP | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **F14** | Estabilización LSP nativo | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **F15** | Renombrar EOF→T_FIN | ✅ **COMPLETADA** | 285 passed | v2.x |
+| **F15b** | Pipeline nativa reentrante | ✅ **COMPLETADA** | 285 passed | v2.x |
+| **F16** | Contratos lógicos nativos | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **F17** | Bootstrap full auto-hospedado | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **F18** | Axon gestor de paquetes | ✅ **COMPLETADA** | 19/19 E2E | v2.x |
+| **F19** | Edge AI runtime (SIMD) | ✅ **COMPLETADA** | 283 passed | v2.x |
+| **M1** | **Infraestructura Multiplataforma** | 🚀 **EN PLANIFICACIÓN** | — | v3.0 |
+| **M2** | **Migrador Python → Synapse (OpenSyn)** | 🚀 **EN PLANIFICACIÓN** | — | v3.0 |
+| **M3** | **Stdlib + Axon Hub** | 🚀 **EN PLANIFICACIÓN** | — | v3.x |
+| **M4** | **Dominio IDE + Expansión OpenSyn** | 🚀 **EN PLANIFICACIÓN** | — | v3.x |
+| **M5** | **Rendimiento + Posicionamiento** | 🚀 **EN PLANIFICACIÓN** | — | v3.x |
+
+---
+
+## 📋 FASE M1: INFRAESTRUCTURA MULTIPLATAFORMA Y DISTRIBUCIÓN GLOBAL
+
+### M1.1 Pipeline de Compilación Cruzada (CI/CD Matrix)
+**Objetivo:** Compilación paralela en 4 targets con toolchain estático inyectado.
+
+| Target | OS | Arch | Toolchain | Flags |
+|--------|-----|------|-----------|-------|
+| `linux_x86_64` | Ubuntu latest | x86_64 | `gcc` (static) | `-static -O2 -lpthread -lm` |
+| `linux_arm64` | Ubuntu latest | arm64 | `aarch64-linux-gnu-gcc` | `-static -O2 -lpthread -lm` |
+| `darwin_arm64` | macOS latest | arm64 | `clang` | `-O2 -lpthread -lm` |
+| `windows_x64` | Windows latest | x86_64 | `x86_64-w64-mingw32-gcc` | `-static -O2 -lpthread -lm -lws2_32` |
+
+**Artefactos por target:**
+- `synapse-{target}.exe` / `synapse-{target}` (compilador)
+- `synapse_lsp-{target}.exe` / `synapse_lsp-{target}` (LSP nativo)
+- `synapse_rt.o`, `axon_rt.o`, `tweetnacl.o` (runtime estático)
+
+### M1.2 Firma Criptográfica de Artefactos (Ed25519 & SHA-256)
+- `axon fetch` y `axon verify` validan `axon.lock` (SHA-256) + firma Ed25519 del publicador
+- GitHub Actions: step `sign-artifacts` usa `cosign` / `gpg` + Ed25519 (TweetNaCl) por release
+- `synapse.exe --verify <binario>` verifica SHA-256 + firma Ed25519 embebida
+
+### M1.3 Empaquetado Unix Nativo
+- `install.sh` (Linux/macOS): descarga binario + runtime + LSP, instala en `/usr/local/bin`, configura PATH
+- `install.ps1` (Windows): equivalente PowerShell con MinGW portable embebido
+- Descarga opcional de `llama-server.exe` + modelo `.gguf` (auto-selección por VRAM detectada)
+
+---
+
+## 📋 FASE M2: EL CABALLO DE TROYA — MIGRADOR AUTOMATIZADO PYTHON → SYNAPSE (OPENSYN)
+
+### M2.1 Analizador Estructural de Python (py_parser)
+- `synapse_lsp/open_syn/py_parser.py`: usa `ast` nativo de Python → mapea a AST Universal Canónico (`.syn.json`)
+- Mapeo: `ast.FunctionDef` → `DefinicionFuncion`, `ast.If` → `SentenciaSi`, `ast.While` → `SentenciaMientras`, `ast.ClassDef` → `DefinicionEstructura`, `ast.Import` → `Importar`
+- **Prohibido:** manipulación de texto plano / regex — solo transformación AST→AST
+
+### M2.2 Inferencia de Tipos Estrictos
+- `Any` → requiere anotación explícita (`entero`, `decimal`, `texto`, `booleano`, `Resultado<T,E>`, `Opcion<T>`)
+- Variables sin tipo inferible → error de compilación con sugerencia de anotación
+- `typing.Optional[T]` → `Opcion<T>`, `typing.Union[T,E]` → `Resultado<T,E>`
+
+### M2.3 Endpoint LSP de Migración (`synapse/migrateFile`)
+- VS Code: Code Action `synapse.migrateFile` en archivo `.py` → invoca `py_parser` → genera `.syn` optimizado
+- RAG local inyecta contexto: imports resueltos, tipos inferidos, contratos sugeridos
+- Diff interactivo: diff VS Code nativo (original .py ↔ generado .syn) antes de aceptar
+
+---
+
+## 📋 FASE M3: CONSOLIDACIÓN DE LA BIBLIOTECA ESTÁNDAR Y AXON HUB
+
+### M3.1 Módulos Core (std)
+| Módulo | Descripción | Estado |
+|--------|-------------|--------|
+| `std.net` | HTTP/TCP nativo alto rendimiento en C (epoll/kqueue/IOCP) | 🚀 Planificado |
+| `std.json` | Serialización SIMD-accelerada (AVX2/SSE4/NEON) | 🚀 Planificado |
+| `std.concurrency` | Canales tipados `Canal<T>`, `lanzar`, `escuchar`, `recuperar` | ✅ Completado (F10) |
+
+### M3.2 Axon Hub e Inmutabilidad
+- Registro centralizado: `axon.toml` canónico + validación SemVer estricta
+- `axon fetch`: verificación Ed25519 obligatoria (zero-tolerance) + `axon.lock` SHA-256
+- Cero scripts arbitrarios pre/post-instalación — solo declarativo TOML
+- Resolución local: caché `.axon_cache/` + `axon.lock` persistente
+
+---
+
+## 📋 FASE M4: DOMINIO DEL IDE Y EXPANSIÓN DE OPENSYN (VS CODE)
+
+### M4.1 Publicación en Marketplace
+- `vsce package` → `synapse-vscode-v3.x.vsix`
+- `synapse-vscode-v3.x.vsix` en Visual Studio Marketplace (publicación automática en tag `v3.x`)
+- Configuración: `synapse.lsp.nativeBinary` auto-detecta binario nativo por OS/arch
+
+### M4.2 Optimización RAG Quirúrgico
+- Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico
+- Sugerencias: optimización SIMD (`std.simd`), detección dead-code (variables no usadas post-análisis)
+
+### M4.3 Auditoría Dinámica de Hardware
+- `synapse.exe --detect-hardware` → detecta VRAM/RAM/CPU → sugiere modelo `.gguf` (1.2B/7B/70B)
+- Auto-config en `axon.toml`: `ia.modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"`
+
+---
+
+## 📋 FASE M5: GUERRA DE RENDIMIENTO Y POSICIONAMIENTO COMERCIAL
+
+### M5.1 Suite de Benchmarks Abiertos
+| Benchmark | Métrica | Objetivo |
+|-----------|---------|----------|
+| Bucles concurrentes 10K hilos | Throughput msg/s | > 8000 msg/s (actual: 8083) |
+| Parseo JSON SIMD 100MB | Throughput MB/s | > 500 MB/s |
+| Multiplicación matriz 256x256 | Latencia | < 5ms (actual: 4.28ms AVX2) |
+| Bootstrap auto-hospedado | Tiempo | < 30s |
+
+### M5.2 Casos de Estudio y Whitepapers
+- Migración backend Python → Synapse: reducción RAM 60%+, latencia -40%
+- Soberanía de datos: cero telemetría, cero nube, binario autónomo
+
+---
+
+## 📦 ARTEFACTOS DE DISTRIBUCIÓN v3.x (PROYECTADOS)
+
+| Artefacto | Targets | Estado |
+|-----------|---------|--------|
+| `synapse-{target}` | linux_x86_64, linux_arm64, darwin_arm64, windows_x64 | 🚀 Planificado |
+| `synapse_lsp-{target}` | linux_x86_64, linux_arm64, darwin_arm64, windows_x64 | 🚀 Planificado |
+| `synapse-vscode-v3.x.vsix` | Universal (VS Code) | 🚀 Planificado |
+| `install.sh` / `install.ps1` | Linux/macOS / Windows | 🚀 Planificado |
+| `synapse-3.x-source.tar.gz` | Source tarball | 🚀 Planificado |
+
+---
+
+## 🛠️ IMPLEMENTACIÓN INMEDIATA (PRÓXIMOS PASOS)
+
+1. **`.github/workflows/cross-compile.yml`** — Matrix CI/CD 4 targets + firma + upload
+2. **`docs/OPEN_SYN.md`** — Especificación técnica completa del migrador Python→Synapse
+3. **`compilador/open_syn/`** — Nuevo submódulo: `py_parser.py`, `type_inference.py`, `ast_mapper.py`
+4. **`synapse_lsp/open_syn/`** — Endpoint LSP `synapse/migrateFile` + CodeAction `synapse.migrateFile`
+
+---
+
+*Roadmap vivo — actualizado 24 Julio 2026. v2.2.2 base estable. v3.0 inicia ejecución M1-M5.*
 
 ## ✅ FASE 0: SANEAMIENTO DEL REPOSITORIO (COMPLETADA)
 
