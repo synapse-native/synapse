@@ -355,6 +355,64 @@ Tipo            ::= "entero" | "decimal" | "booleano" | "texto" | "caracter"
 
 ---
 
+## 11. IA Local Nativa (llama.cpp) — v2.2.2
+
+**Integración nativa sin dependencias externas:** Synapse v2.2.2 integra el motor de inferencia `llama.cpp` directamente en el servidor LSP nativo, eliminando la dependencia de Ollama y garantizando privacidad total (procesamiento 100% local).
+
+### 11.1 Pipeline RAG Quirúrgico
+
+Cuando se invoca `synapse/aiExplain` desde el editor, el LSP ejecuta:
+
+| Paso | Componente | Descripción |
+|------|------------|-------------|
+| 1 | **Extracción quirúrgica** | Ventana de 11 líneas (±5 de cursor), línea exacta, tipo nodo AST en posición, diagnósticos recientes |
+| 2 | **Construcción de prompt** | `synapse_rag_construir_prompt()` con presupuesto de tokens controlado |
+| 3 | **Negociación n_ctx** | Lee `n_ctx` desde `/props` del modelo, calcula `max_tokens = clamp(n_ctx * 0.3, 64, 2048)` |
+| 4 | **Inferencia nativa** | `llama_generar()` con payload JSON estricto `{"prompt": "...", "n_predict": N, "temperature": 0.7, "stop": ["\n\n\n", "```"]}` |
+
+### 11.2 Negociación Dinámica de Contexto
+
+El modelo cargado expone su ventana de contexto vía endpoint `/props`:
+
+```bash
+# Ejemplo: modelo con n_ctx = 4096
+max_tokens = clamp(4096 * 0.3, 64, 2048) = 1228
+```
+
+La regla **30% para inyección / 70% para generación** garantiza que el modelo siempre tenga espacio para completar la respuesta.
+
+### 11.3 Shutdown Hooks Garantizados
+
+`synapse_shutdown_hook()` registra handlers `atexit` + signals que garantizan:
+
+| Plataforma | Señales | Acción |
+|------------|---------|--------|
+| Windows | `CTRL_C_EVENT`, `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, `CTRL_SHUTDOWN_EVENT` | `TerminateProcess` + `EmptyWorkingSet` + `cuDevicePrimaryCtxRelease` |
+| POSIX | `SIGINT`, `SIGTERM`, `SIGHUP` | `SIGKILL` + `waitpid` + `malloc_trim(0)` + `cuDevicePrimaryCtxRelease` vía `dlopen` |
+
+**Validado:** 7/7 tests `test_synapse_shutdown_hook.c` — sin leaks, sin procesos huérfanos, VRAM liberada.
+
+### 11.4 Comandos LSP IA Disponibles
+
+| Comando LSP | Método | Descripción |
+|-------------|--------|-------------|
+| `synapse/aiStatus` | GET | Verifica disponibilidad de `llama-server.exe` y lista modelos |
+| `synapse/aiExplain` | POST | Explica código en contexto (pipeline RAG quirúrgico) |
+| `synapse/aiComplete` | POST | Genera código Synapse con contexto |
+
+### 11.5 Requisitos de IA Local
+
+| Componente | Requerido | Notas |
+|------------|-----------|-------|
+| `llama-server.exe` | ✅ | Binario llama.cpp (auto-descargable vía `fetch_ai_engine.py`) |
+| Modelo `.gguf` | ✅ | `Llama-3.2-1B-Instruct-Q4_K_M.gguf` (~700MB) |
+| VRAM mínima | ✅ | 4 GB (modelo 1.2B Q4_K_M) |
+| Puerto por defecto | ✅ | `127.0.0.1:8088` |
+
+**Auto-aprovisionamiento:** `python fetch_ai_engine.py --force` — descarga `llama-server.exe` (GitHub releases) + modelo (HuggingFace) y verifica SHA-256.
+
+---
+
 ## 11. Convenciones de Estilo
 
 - **Indentación:** 4 espacios (no tabs)

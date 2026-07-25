@@ -8,7 +8,7 @@
 
 ## 1. El Ejecutable Único
 
-Synapse v2.2.0 se distribuye como **un único binario autónomo** que integra:
+Synapse v2.2.2 se distribuye como **un único binario autónomo** que integra:
 
 | Componente | Función | Dependencias |
 |-----------|---------|-------------|
@@ -260,6 +260,73 @@ no requiere Python, y es el predeterminado para la extensión de VS Code.
 ```bash
 synapse programa.syn --dump-ast
 ```
+
+---
+
+## 7.6 Integración LSP + IA Local Nativa (llama.cpp) — v2.2.2
+
+**Nuevo en v2.2.2:** El servidor LSP nativo integra ahora un motor de IA local totalmente autónomo
+basado en **llama.cpp**, eliminando la dependencia de Ollama.
+
+### 7.6.1 Componentes
+
+| Componente | Archivo | Función |
+|------------|---------|---------|
+| **Orquestador IA** | `nucleo/ai_orchestrator.c` | Ciclo de vida de `llama-server.exe` (inicio, health-check, apagado) |
+| **Cliente HTTP nativo** | `nucleo/llama_client.c` | 4 endpoints llama.cpp: `/completion`, `/slot_save`, `/slot_restore`, `/embedding` |
+| **Pipeline RAG quirúrgico** | `nucleo/synapse_rag.h/c` | Extracción de nodo AST actual, línea activa, diagnósticos; prompt con presupuesto de tokens |
+| **Shutdown Hooks** | `nucleo/ai_orchestrator.c` | `synapse_shutdown_hook()` — atexit + signals → terminación forzosa + liberación RAM/VRAM |
+
+### 7.6.2 Pipeline RAG — Negociación Dinámica de Contexto
+
+```
+n_ctx del modelo (leído vía /props)
+        │
+        ▼
+max_tokens = clamp(n_ctx * 0.3, 64, 2048)  ← 30% para inyección, 70% reservado a generación
+        │
+        ▼
+Prompt = [CONTEXTO_ARCHIVO (11 líneas)] + [LINEA_ACTUAL] + [NODO_AST] + [DIAGNOSTICOS]
+        │
+        ▼
+POST /completion { prompt, n_predict: max_tokens, temperature: 0.7, stop: ["\n\n\n", "```"] }
+```
+
+### 7.6.3 Shutdown Hooks — Liberación Garantizada
+
+| Hook | Plataforma | Acción |
+|------|------------|--------|
+| `synapse_shutdown_hook()` | Windows | `SetConsoleCtrlHandler` → `CTRL_C_EVENT`, `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, `CTRL_SHUTDOWN_EVENT` → `TerminateProcess` + `EmptyWorkingSet` + `cuDevicePrimaryCtxRelease` |
+| `synapse_shutdown_hook()` | POSIX | `signal(SIGINT/SIGTERM/SIGHUP)` → `SIGKILL` + `waitpid` + `malloc_trim(0)` + `cuDevicePrimaryCtxRelease` vía `dlopen` |
+
+**Garantía:** Al cerrar el editor o LSP, `llama-server.exe` es exterminado y la VRAM liberada — **sin procesos huérfanos**.
+
+### 7.6.4 Configuración LSP con IA Nativa
+
+En `settings.json` de VS Code:
+
+```json
+{
+    "synapse.lsp.nativeBinary": "C:\\tools\\synapse\\synapse_lsp.exe",
+    "synapse.lsp.enabled": true
+}
+```
+
+Comandos disponibles en la paleta:
+- `Synapse: Verificar estado de IA local` → `synapse/aiStatus`
+- `Synapse: Explicar código con IA local` → `synapse/aiExplain` (usa pipeline RAG quirúrgico)
+- `Synapse: Generar código con IA local` → `synapse/aiComplete`
+
+### 7.6.5 Requisitos de IA Local
+
+| Componente | Requerido | Notas |
+|------------|-----------|-------|
+| `llama-server.exe` | ✅ | Binario llama.cpp (descargado por `fetch_ai_engine.py`) |
+| Modelo `.gguf` | ✅ | `Llama-3.2-1B-Instruct-Q4_K_M.gguf` (~700MB) |
+| VRAM mínima | ✅ | 4 GB (modelo 1.2B Q4_K_M) |
+| Puerto por defecto | ✅ | `127.0.0.1:8088` |
+
+**Auto-aprovisionamiento:** Ejecutar `python fetch_ai_engine.py --force` — descarga `llama-server.exe` (GitHub releases) + modelo (HuggingFace) y verifica SHA-256.
 
 ---
 
