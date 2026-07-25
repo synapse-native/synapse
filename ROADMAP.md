@@ -45,84 +45,84 @@
 ### M1: INFRAESTRUCTURA MULTIPLATAFORMA Y DISTRIBUCIÓN GLOBAL
 
 **M1.1 Pipeline de Compilación Cruzada (CI/CD Matrix)**
-- Targets: linux_x86_64, linux_arm64, darwin_arm64, windows_x64
-- Toolchain estático inyectado con flags `-static -O2 -lpthread -lm`
-- Artefactos: `synapse-{target}`, `synapse_lsp-{target}`, runtime estático
+- [ ] Targets: linux_x86_64, linux_arm64, darwin_arm64, windows_x64
+- [ ] Toolchain estático inyectado con flags `-static -O2 -lpthread -lm`
+- [ ] Artefactos: `synapse-{target}`, `synapse_lsp-{target}`, runtime estático
 
 **M1.2 Firma Criptográfica de Artefactos (Ed25519 & SHA-256)**
-- `axon fetch` y `axon verify` validan `axon.lock` + firma Ed25519
-- GitHub Actions: step `sign-artifacts` con `cosign`/`gpg` + Ed25519 (TweetNaCl)
-- `synapse.exe --verify <binario>` verifica SHA-256 + firma embebida
+- [ ] `axon fetch` y `axon verify` validan `axon.lock` + firma Ed25519
+- [ ] GitHub Actions: step `sign-artifacts` con `cosign`/`gpg` + Ed25519 (TweetNaCl)
+- [ ] `synapse.exe --verify <binario>` verifica SHA-256 + firma embebida
 
 **M1.3 Empaquetado Unix Nativo**
-- `install.sh` (Linux/macOS): descarga binario + runtime + LSP, instala en `/usr/local/bin`
-- `install.ps1` (Windows): equivalente PowerShell con MinGW portable
-- Descarga opcional de `llama-server.exe` + modelo `.gguf` (auto-selección VRAM)
+- [ ] `install.sh` (Linux/macOS): descarga binario + runtime + LSP, instala en `/usr/local/bin`
+- [ ] `install.ps1` (Windows): equivalente PowerShell con MinGW portable
+- [ ] Descarga opcional de `llama-server.exe` + modelo `.gguf` (auto-selección VRAM)
 
 ---
 
 ### M2: MIGRADOR AUTOMATIZADO PYTHON → SYNAPSE (OPENSYN)
 
 **M2.1 Analizador Estructural de Python (py_parser)**
-- `synapse_lsp/open_syn/py_parser.py`: usa `ast` nativo → AST Universal Canónico
-- Mapeo: `FunctionDef` → `DefinicionFuncion`, `If` → `SentenciaSi`, `ClassDef` → `DefinicionEstructura`
-- **Prohibido:** manipulación de texto plano / regex — solo transformación AST→AST
+- [ ] `synapse_lsp/open_syn/py_parser.py`: usa `ast` nativo → AST Universal Canónico
+- [ ] Mapeo: `FunctionDef` → `DefinicionFuncion`, `If` → `SentenciaSi`, `ClassDef` → `DefinicionEstructura`
+- [ ] **Prohibido:** manipulación de texto plano / regex — solo transformación AST→AST
 
 **M2.2 Inferencia de Tipos Estrictos**
-- `Any` → requiere anotación explícita (`entero`, `decimal`, `texto`, `booleano`, `Resultado<T,E>`, `Opcion<T>`)
-- Variables sin tipo inferible → error con sugerencia de anotación
-- `typing.Optional[T]` → `Opcion<T>`, `typing.Union[T,E]` → `Resultado<T,E>`
+- [ ] `Any` → requiere anotación explícita (`entero`, `decimal`, `texto`, `booleano`, `Resultado<T,E>`, `Opcion<T>`)
+- [ ] Variables sin tipo inferible → error con sugerencia de anotación
+- [ ] `typing.Optional[T]` → `Opcion<T>`, `typing.Union[T,E]` → `Resultado<T,E>`
 
 **M2.3 Endpoint LSP de Migración (`synapse/migrateFile`)**
-- VS Code: Code Action `synapse.migrateFile` en `.py` → genera `.syn` optimizado
-- RAG local inyecta contexto: imports resueltos, tipos inferidos, contratos sugeridos
-- Diff interactivo: VS Code nativo (original .py ↔ generado .syn)
+- [ ] VS Code: Code Action `synapse.migrateFile` en `.py` → genera `.syn` optimizado
+- [ ] RAG local inyecta contexto: imports resueltos, tipos inferidos, contratos sugeridos
+- [ ] Diff interactivo: VS Code nativo (original .py ↔ generado .syn)
 
 ---
 
 ### M3: CONSOLIDACIÓN DE LA BIBLIOTECA ESTÁNDAR Y AXON HUB
 
 **M3.1 Módulos Core (std)**
-- `std.net`: HTTP/TCP nativo alto rendimiento en C (epoll/kqueue/IOCP) — 🚀 Planificado
-- `std.json`: Serialización SIMD-accelerada (AVX2/SSE4/NEON) — 🚀 Planificado
-- `std.concurrency`: Canales tipados `Canal<T>`, `lanzar`, `escuchar`, `recuperar` — ✅ Completado (F10)
+- [ ] `std.net`: HTTP/TCP nativo alto rendimiento en C (epoll/kqueue/IOCP) — 🚀 Planificado
+- [ ] `std.json`: Serialización SIMD-accelerada (AVX2/SSE4/NEON) — 🚀 Planificado
+- [x] `std.concurrency`: Canales tipados `Canal<T>`, `lanzar`, `escuchar`, `recuperar` — ✅ Completado (F10)
 
 **M3.2 Axon Hub e Inmutabilidad**
-- Registro centralizado: `axon.toml` canónico + validación SemVer estricta
-- `axon fetch`: verificación Ed25519 obligatoria + `axon.lock` SHA-256
-- Cero scripts arbitrarios pre/post-instalación — solo declarativo TOML
-- Resolución local: caché `.axon_cache/` + `axon.lock` persistente
+- [ ] Registro centralizado: `axon.toml` canónico + validación SemVer estricta
+- [ ] `axon fetch`: verificación Ed25519 obligatoria + `axon.lock` SHA-256
+- [ ] Cero scripts arbitrarios pre/post-instalación — solo declarativo TOML
+- [ ] Resolución local: caché `.axon_cache/` + `axon.lock` persistente
 
 ---
 
 ### M4: DOMINIO DEL IDE Y EXPANSIÓN DE OPENSYN (VS CODE)
 
 **M4.1 Publicación en Marketplace**
-- `vsce package` → `synapse-vscode-v3.x.vsix`
-- Publicación automática en Visual Studio Marketplace (tag `v3.x`)
-- Configuración: `synapse.lsp.nativeBinary` auto-detecta binario por OS/arch
+- [ ] `vsce package` → `synapse-vscode-v3.x.vsix`
+- [ ] Publicación automática en Visual Studio Marketplace (tag `v3.x`)
+- [ ] Configuración: `synapse.lsp.nativeBinary` auto-detecta binario por OS/arch
 
 **M4.2 Optimización RAG Quirúrgico**
-- Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico
-- Sugerencias: optimización SIMD (`std.simd`), detección dead-code
+- [ ] Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico
+- [ ] Sugerencias: optimización SIMD (`std.simd`), detección dead-code
 
 **M4.3 Auditoría Dinámica de Hardware**
-- `synapse.exe --detect-hardware` → detecta VRAM/RAM/CPU → sugiere modelo `.gguf` (1.2B/7B/70B)
-- Auto-config en `axon.toml`: `ia.modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"`
+- [ ] `synapse.exe --detect-hardware` → detecta VRAM/RAM/CPU → sugiere modelo `.gguf` (1.2B/7B/70B)
+- [ ] Auto-config en `axon.toml`: `ia.modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"`
 
 ---
 
 ### M5: GUERRA DE RENDIMIENTO Y POSICIONAMIENTO COMERCIAL
 
 **M5.1 Suite de Benchmarks Abiertos**
-- Bucles concurrentes 10K hilos: > 8000 msg/s (actual: 8083)
-- Parseo JSON SIMD 100MB: > 500 MB/s
-- Multiplicación matriz 256x256: < 5ms (actual: 4.28ms AVX2)
-- Bootstrap auto-hospedado: < 30s
+- [ ] Bucles concurrentes 10K hilos: > 8000 msg/s (actual: 8083)
+- [ ] Parseo JSON SIMD 100MB: > 500 MB/s
+- [ ] Multiplicación matriz 256x256: < 5ms (actual: 4.28ms AVX2)
+- [ ] Bootstrap auto-hospedado: < 30s
 
 **M5.2 Casos de Estudio y Whitepapers**
-- Migración backend Python → Synapse: reducción RAM 60%+, latencia -40%
-- Soberanía de datos: cero telemetría, cero nube, binario autónomo
+- [ ] Migración backend Python → Synapse: reducción RAM 60%+, latencia -40%
+- [ ] Soberanía de datos: cero telemetría, cero nube, binario autónomo
 
 ---
 
