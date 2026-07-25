@@ -8,7 +8,7 @@ from compilador.ast_nodes import (
     SentenciaRetornar, SentenciaLanzar, SentenciaExpr,
     SentenciaEscuchar, SentenciaRecuperar, BloqueInseguro,
     SentenciaEnviarCanal, LogLlamada, NodoCoincidir, Identificador,
-    LlamadaFuncion, DeclaracionExterna,
+    LlamadaFuncion, DeclaracionExterna, ArgumentoTransferido,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
@@ -218,6 +218,10 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 )
         elif isinstance(nodo, SentenciaLanzar):
             self._inferir_tipo(nodo.llamada)
+            if isinstance(nodo.llamada, LlamadaFuncion):
+                for arg in nodo.llamada.argumentos:
+                    if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
+                        self.tabla.marcar_movido(arg.expr.nombre)
         elif isinstance(nodo, SentenciaExpr):
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):

@@ -122,6 +122,19 @@ funcion analizar_sentencia(analizador: AnalizadorSemantico, nodo: Nodo) -> nulo:
             analizar_bloque(analizador, bloquear2)
         retornar
 
+    si nodo.tipo == "SentenciaLanzar":
+        // lanzar transfiere ownership solo de argumentos marcados con ->
+        // Otros argumentos se pasan por referencia (borrowing)
+        si nodo.llamada.tipo == "LlamadaFuncion":
+            actual = nodo.llamada.argumentos
+            mientras actual.cabeza.tipo != "":
+                si actual.cabeza.tipo == "ArgumentoTransferido":
+                    si actual.cabeza.expr.tipo == "Identificador":
+                        validar_acceso(analizador, actual.cabeza.expr.nombre)
+                        marcar_movido(analizador, actual.cabeza.expr.nombre)
+                actual = actual.cola
+        retornar
+
     si nodo.tipo == "BloqueInseguro":
         bloquear = NodoBloque()
         bloquear.tipo = "NodoBloque"

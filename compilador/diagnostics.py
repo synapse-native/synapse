@@ -39,6 +39,7 @@ class ErrorCodes(Enum):
     ERR_GIT_FAILURE = auto()
     ERR_SEM_ASM_FUERA_INSEGURO = auto()
     ERR_SEM_CONSTANTE_INMUTABLE = auto()
+    ERR_MEM_USE_AFTER_MOVE = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -75,6 +76,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Error de red o revisión Git inválida para la dependencia '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acceso a variable '{nombre}' despues de move por lanzar/concurrencia (E-504)",
     },
     'en': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Expected {esperado}, found '{encontrado}'",
@@ -109,6 +111,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Network error or invalid Git revision for dependency '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Access to variable '{nombre}' after move by lanzar/concurrency (E-504)",
     },
     'fr': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Attendu {esperado}, trouve '{encontrado}'",
@@ -143,6 +146,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Erreur reseau ou revision Git invalide pour la dependance '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() ne peut etre utilise qu'a l'interieur d'un bloc 'dangereux:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossible de reassigner la constante '{nombre}'",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acces a la variable '{nombre}' apres deplacement par lancer/concurrence (E-504)",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -177,6 +181,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Erro de rede ou revisao Git invalida para a dependencia '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() so pode ser usado dentro de um bloco 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Nao e possivel reatribuir a constante '{nombre}'",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acesso a variavel '{nombre}' apos move por lancar/concorrencia (E-504)",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -211,6 +216,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Netzwerkfehler oder ungueltige Git-Revision fuer Abhaengigkeit '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() kann nur innerhalb eines 'unsicher:' Blocks verwendet werden",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Konstante '{nombre}' kann nicht neu zugewiesen werden",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Zugriff auf Variable '{nombre}' nach Verschiebung durch lanzar/Nebenlaufigkeit (E-504)",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -245,6 +251,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_GIT_FAILURE: "Errore di rete o revisione Git non valida per la dipendenza '{modulo}' (E-605)",
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() puo essere usato solo all'interno di un blocco 'non_sicuro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossibile riassegnare la costante '{nombre}'",
+        ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Accesso alla variabile '{nombre}' dopo spostamento da lanciare/concorrenza (E-504)",
     },
 }
 
