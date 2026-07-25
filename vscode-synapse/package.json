@@ -1,7 +1,7 @@
 {
     "name": "synapse",
     "displayName": "Synapse Language",
-    "description": "Synapse language support for VS Code — LSP server + AI local (Ollama)",
+    "description": "Synapse language support for VS Code — LSP nativo + IA local. CERO telemetría, 100% privacidad.",
     "version": "2.2.2",
     "publisher": "synapse-lang",
     "license": "MIT",
@@ -20,6 +20,17 @@
     "main": "./extension.js",
     "dependencies": {
         "vscode-languageclient": "^8.0.0"
+    },
+    "__metadata": {
+        "privacy": {
+            "telemetry": "NONE",
+            "policy": "Zero Telemetry — No data is collected, transmitted, or stored externally. All processing happens 100% locally on the user's machine.",
+            "ai": {
+                "opt_in": true,
+                "local_only": true,
+                "hardware_gated": true
+            }
+        }
     },
     "contributes": {
         "languages": [
@@ -62,12 +73,17 @@
                 "synapse.lsp.nativeBinary": {
                     "type": "string",
                     "default": "",
-                    "description": "Ruta al binario LSP nativo de Synapse (ej: test_lsp_bin.exe, nucleo/lsp_test.exe). Si está vacío, busca automáticamente."
+                    "description": "Ruta al binario LSP nativo de Synapse. Si está vacío, busca automáticamente en instalación, PATH y workspace."
                 },
                 "synapse.lsp.enabled": {
                     "type": "boolean",
                     "default": true,
                     "description": "Habilitar/deshabilitar el servidor LSP de Synapse"
+                },
+                "synapse.ai.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Habilitar funciones de IA local (Hardware-gated: se desactiva automáticamente si RAM < 8GB)"
                 },
                 "synapse.trace.server": {
                     "type": "string",

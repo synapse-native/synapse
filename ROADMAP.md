@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP — Synapse/OpenSyn v2.2.2 → v3.0
 
-> **Estado Actual:** ✅ **v2.2.2 — RELEASE CANDIDATE** — Base estable: 297 tests Python + 20 C/nativos | GCC 0 errores | Pipeline nativa | IA nativa | Axon | LSP | SIMD
+> **Estado Actual:** ✅ **v2.2.2 — RELEASE CANDIDATE** — Base estable: 297 tests Python + 85 C/nativos | GCC 0 errores | Pipeline nativa | IA nativa con HW detect | Axon + validación | LSP + VSIX | SIMD
 > **Próximo:** 🚀 **v3.0 — PLANIFICACIÓN ACTIVA** — Multiplataforma + Migración Python→Synapse + Dominio IDE
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
 
@@ -102,9 +102,21 @@
 ### M4: DOMINIO DEL IDE Y EXPANSIÓN DE OPENSYN (VS CODE)
 
 **M4.1 Publicación en Marketplace**
-- [ ] `vsce package` → `synapse-vscode-v3.x.vsix`
-- [ ] Publicación automática en Visual Studio Marketplace (tag `v3.x`)
-- [ ] Configuración: `synapse.lsp.nativeBinary` auto-detecta binario por OS/arch
+- [x] `vsce package` → `synapse-vscode-v3.x.vsix`
+  - [x] `build_vsix.bat`: empaquetado automático con control de versión, SHA-256, y firma Ed25519 opcional
+  - [x] `.vscodeignore`: exclusión explícita de telemetría, analytics, binarios, devDependencies
+- [ ] Publicación automática en Visual Studio Marketplace (tag `v3.x`) — requiere CI/CD configurado
+- [x] Configuración: `synapse.lsp.nativeBinary` auto-detecta binario por OS/arch
+  - [x] Búsqueda en: instalación C:\Synapse, PATH del sistema, workspace actual
+  - [x] Instalación automática con PowerShell si no se encuentra
+- [x] Inicialización asíncrona JSON-RPC 2.0 sobre stdio
+  - [x] `_detectar_hardware()`: ejecuta `--detect-hardware --json` antes de iniciar LSP
+  - [x] Opt-in forzoso: IA deshabilitada si RAM < 8GB o VRAM < 2GB
+  - [x] Notificación no intrusiva al usuario si IA no disponible por hardware
+  - [x] Args hardware-conscientes pasados al LSP (`--ai-enabled`, `--ctx-size`, `--threads`)
+- [x] Manifiesto Zero Telemetría
+  - [x] `package.json`: `__metadata.privacy.telemetry = "NONE"`, política documentada
+  - [x] Procesamiento 100% local, sin servidores externos
 
 **M4.2 Optimización RAG Quirúrgico**
 - [x] Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico

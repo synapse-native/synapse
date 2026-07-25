@@ -2,18 +2,25 @@
  * Synapse Language Support for VS Code
  *
  * Extension principal que conecta VS Code con el servidor LSP nativo de Synapse
- * (test_lsp_bin.exe / synapse_lsp.exe) a través del protocolo estándar JSON-RPC.
+ * via JSON-RPC 2.0 sobre stdio. Cero telemetría — 100% local.
  *
  * Arquitectura:
  * - Activa cuando se abre un archivo .syn
- * - Lanza `synapse_lsp.exe` como proceso hijo (sin dependencia Python)
- * - Conecta VS Code LanguageClient al proceso
- * - Expone comandos para IA local (Ollama, integrado via LSP)
+ * - Ejecuta `synapse --detect-hardware --json` para perfilar el host
+ * - Lanza `synapse_lsp.exe` como proceso hijo con flags hardware-conscientes
+ * - IA local solo si hardware suficiente (Opt-in forzoso)
+ * - Conecta VS Code LanguageClient al proceso mediante JSON-RPC 2.0 sobre stdio
+ *
+ * Política de Privacidad (INNEGOCIABLE):
+ * - CERO telemetría. CERO datos de uso. CERO analytics.
+ * - Todo el procesamiento es 100% local en la máquina del usuario.
+ * - No se envía código, contexto ni métricas a ningún servidor externo.
+ * - El modelo de IA (si se usa) corre localmente via llama.cpp / Ollama.
  *
  * Requisitos:
  * - Synapse compiler en la raíz del proyecto
- * - Binario LSP nativo compilado: synapse_lsp.exe o test_lsp_bin.exe
- * - Opcional: Ollama para características IA (phi3:mini, llama3.2)
+ * - Binario LSP nativo compilado: synapse_lsp.exe
+ * - Opcional: Synapse IA (hardware suficiente + llama.cpp / Ollama local)
  */
 
 const path = require('path');
@@ -218,18 +225,88 @@ function _encontrar_raiz_synapse(uriDocumento) {
 }
 
 // ---------------------------------------------------------------------------
+// Detección de hardware asíncrona (--detect-hardware)
+// Retorna: { ai_enabled: bool, hw_profile: object|null }
+// ---------------------------------------------------------------------------
+
+async function _detectar_hardware(salida) {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
+    const candidates = [
+        path.join(workspaceRoot || '', 'nucleo', 'detect_hardware.exe'),
+        path.join(workspaceRoot || '', '..', 'nucleo', 'detect_hardware.exe'),
+        path.join('C:\\Synapse', 'bin', 'synapse.exe'),
+    ];
+    let hwBinary = null;
+    for (const c of candidates) {
+        if (fs.existsSync(c)) {
+            hwBinary = c;
+            break;
+        }
+    }
+    if (!hwBinary) {
+        salida.appendLine('[Synapse] HW-DETECT: binario no encontrado, asumiendo IA activa');
+        return { ai_enabled: true, hw_profile: null };
+    }
+    salida.appendLine(`[Synapse] HW-DETECT: ejecutando ${hwBinary} --detect-hardware`);
+    try {
+        const result = child_process.spawnSync(hwBinary, ['--detect-hardware', '--json'], {
+            encoding: 'utf-8',
+            timeout: 10000,
+        });
+        if (result.status === 0 && result.stdout) {
+            const data = JSON.parse(result.stdout.trim());
+            const ram = parseFloat(data.ram_gb) || 0;
+            const vram = parseFloat(data.vram_gb) || 0;
+            const tier = (data.tier || '').toLowerCase();
+            const ai_enabled = ram >= 8.0 || vram >= 2.0;
+            salida.appendLine(`[Synapse] HW-DETECT: ${ram.toFixed(1)}GB RAM, ${vram.toFixed(1)}GB VRAM, tier=${tier}`);
+            if (ai_enabled) {
+                salida.appendLine(`[Synapse] HW-DETECT: IA habilitada (modelo: ${data.modelo || 'desconocido'})`);
+            } else {
+                salida.appendLine(`[Synapse] HW-DETECT: IA deshabilitada por hardware insuficiente (<8GB RAM o <2GB VRAM)`);
+            }
+            return {
+                ai_enabled,
+                hw_profile: {
+                    ctx_size: data.ctx_size || 4096,
+                    threads: data.threads || 4,
+                    ngl: data.ngl || 0,
+                    modelo: data.modelo || 'desconocido',
+                },
+            };
+        }
+    } catch (err) {
+        salida.appendLine(`[Synapse] HW-DETECT: error — ${err.message}`);
+    }
+    salida.appendLine('[Synapse] HW-DETECT: fallback — IA activa por defecto');
+    return { ai_enabled: true, hw_profile: null };
+}
+
+// ---------------------------------------------------------------------------
 // Construcción de opciones para el LanguageClient (usa binario LSP nativo)
 // ---------------------------------------------------------------------------
 
-function _crear_opciones_servidor(raizSynapse, lspBinaryPath) {
+function _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult) {
     const cfg = vscode.workspace.getConfiguration('synapse');
+
+    // Construir args de línea de comandos para el LSP
+    const args = ['--lsp'];
+    if (detectResult && !detectResult.ai_enabled) {
+        args.push('--ai-enabled=false');
+    }
+    if (detectResult && detectResult.hw_profile) {
+        if (detectResult.hw_profile.ctx_size)
+            args.push('--ctx-size', String(detectResult.hw_profile.ctx_size));
+        if (detectResult.hw_profile.threads)
+            args.push('--threads', String(detectResult.hw_profile.threads));
+    }
 
     // Si el usuario configuró una ruta manual, usarla
     const manualBinary = cfg.get('lsp.nativeBinary', '');
     if (manualBinary && fs.existsSync(manualBinary)) {
         return {
             command: manualBinary,
-            args: [],
+            args: args,
             options: {
                 cwd: raizSynapse,
                 env: { ...process.env },
@@ -242,7 +319,7 @@ function _crear_opciones_servidor(raizSynapse, lspBinaryPath) {
     // Usar la ruta validada (instalación o auto-descubierta)
     return {
         command: lspBinaryPath,
-        args: [],
+        args: args,
         options: {
             cwd: raizSynapse,
             env: { ...process.env },
@@ -418,8 +495,21 @@ async function activate(contexto) {
         return;
     }
 
-    const opcionesServidor = _crear_opciones_servidor(raizSynapse, lspBinaryPath);
+    // Detectar hardware (asíncrono) para decidir si IA está disponible
+    const detectResult = await _detectar_hardware(salida);
+
+    // Notificar al usuario si IA está deshabilitada por hardware insuficiente
+    if (!detectResult.ai_enabled) {
+        vscode.window.showInformationMessage(
+            'Synapse IA: deshabilitada — RAM (' + (detectResult.hw_profile?.ram_gb?.toFixed(1) || '?') +
+            ' GB) por debajo del mínimo (8 GB). El LSP iniciará sin funciones de IA.',
+            'Cerrar'
+        );
+    }
+
+    const opcionesServidor = _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult);
     salida.appendLine(`[Synapse] Iniciando servidor LSP nativo: ${opcionesServidor.command}`);
+    salida.appendLine(`[Synapse] Args: ${opcionesServidor.args.join(' ')}`);
 
     const cliente = new LanguageClient(
         'synapseLsp',
@@ -439,7 +529,12 @@ async function activate(contexto) {
     );
 
     // Registrar comandos de IA antes de iniciar el cliente
-    _registrar_comandos_ia(contexto, cliente);
+    if (detectResult.ai_enabled) {
+        _registrar_comandos_ia(contexto, cliente);
+        salida.appendLine('[Synapse]   - Comandos IA registrados (hardware suficiente)');
+    } else {
+        salida.appendLine('[Synapse]   - Comandos IA omitidos (hardware insuficiente — Opt-in)');
+    }
 
     // Iniciar el cliente LSP
     _clienteLsp = cliente;
@@ -447,8 +542,8 @@ async function activate(contexto) {
 
     salida.appendLine('[Synapse] ✅ Servidor LSP iniciado correctamente');
     salida.appendLine('[Synapse]   - Diagnósticos en tiempo real');
-    salida.appendLine('[Synapse]   - Comandos IA: synapse.aiStatus, synapse.aiExplain, synapse.aiComplete');
-    salida.appendLine('[Synapse]   - IA local: Ollama en localhost:11434 (opcional)');
+    salida.appendLine('[Synapse]   - Comunicación: JSON-RPC 2.0 sobre stdio');
+    salida.appendLine('[Synapse]   - Telemetría: CERO — todo el procesamiento es 100% local');
 }
 
 // ---------------------------------------------------------------------------

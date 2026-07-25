@@ -1,0 +1,57 @@
+# Synapse VS Code Extension — Zero Telemetry Packaging
+# ====================================================
+# POLÍTICA DE SEGURIDAD:
+# - CERO telemetría, CERO analytics, CERO seguimiento de uso
+# - Solo se incluyen los archivos necesarios para el LSP + sintaxis
+# - Excluir binarios no firmados (se inyectan vía CI/CD firmados)
+# - Excluir dependencias de desarrollo, fuentes, y herramientas internas
+
+# Node.js dev
+node_modules/.cache/
+node_modules/*/test/
+node_modules/*/tests/
+node_modules/*/docs/
+
+# Development & build
+.gitignore
+*.js.map
+*.ts
+tsconfig.json
+*.tsbuildinfo
+
+# Source control
+.git/
+.gitattributes
+.gitkeep
+
+# VS Code extension dev
+.vscode-test/
+.vscode/
+*.vsix
+
+# Documentation & internal notes
+CHANGELOG*
+*.md
+LICENSE
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Synapse internal build files (not for distribution)
+*.exe
+*.o
+*.obj
+build/
+nucleo/
+compilador/
+tests/
+
+# Telemetry policies — ensure zero data collection
+**/telemetry/**
+**/analytics/**
+**/tracking/**
+**/metrics/**
