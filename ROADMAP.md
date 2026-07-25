@@ -1,16 +1,17 @@
-# 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.2.0
+# 🗺️ ROADMAP DE ESTABILIZACIÓN — Synapse/OpenSyn v2.2.2
 
 > **Basado en:** Auditoría independiente (Julio 2026)
-> **Estado:** ✅ **v2.2.0 — LISTO PARA PRODUCCIÓN** — Todas las fases F0-F19 completadas + Modularización completa (Fases A-F)
+> **Estado:** ✅ **v2.2.2 — RELEASE CANDIDATE** — Todas las fases F0-F19 completadas + Modularización completa (Fases A-F) + IA Nativa Integrada + Saneamiento Estructural
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
-> **Tests:** 285 collected (283 passed, 2 skipped) | GCC: **0 errores** ✅
+> **Tests:** 297 collected (295 passed, 2 skipped) + 20 C/nativos | GCC: **0 errores** ✅
 > **Stress test:** ✅ 10,000 hilos, 0 leaks, 0 deadlocks
 > **Fuzzing:** ✅ 850+ entradas, 0 crashes
 > **Bootstrap:** ✅ Pipeline nativa funcional (F3 bis: generar() + F8 reparados)
 > **LSP Nativo:** ✅ **5/5 tests pasan** — Extensión VS Code conectada al binario nativo (sin Python)
-> **Synapse RT:** 96KB .o, SSE/AVX SIMD acceleration (std.simd)
+> **Synapse RT:** 98KB .o, SSE/AVX SIMD acceleration (std.simd)
 > **Axon:** ✅ Gestor de paquetes nativo: axon.toml, Ed25519, TAR, axon.lock, SemVer, E2E validado
-> **Última actualización:** 22 Julio 2026 (Sesión 12: **F13 COMPLETADA — VS Code + LSP nativo integrado. v2.0 PRODUCTION-READY. Todas las fases selladas.**)
+> **IA Local Nativa:** ✅ Pipeline RAG quirúrgico + negociación dinámica n_ctx + shutdown hooks verificados
+> **Última actualización:** 24 Julio 2026 (Release v2.2.2 — IA Nativa Integrada y Saneamiento Estructural)
 
 ---
 
@@ -1023,38 +1024,43 @@ vscode-synapse/
 | 2 | Fix `test_toml_raii.py`: agregar `tweetnacl.o` a la cadena de linkeo | ✅ |
 | 3 | Ejecución completa de pytest: **288 passed, 2 skipped, 0 failures** | ✅ |
 
-### Fase 3: Deuda técnica (COMPLETADA)
+### Fase 3: Deuda técnica (COMPLETADA — v2.2.2)
 
 | # | Tarea | Estado |
 |---|-------|--------|
 | 1 | Búsqueda exhaustiva de `TODO`/`XXX`/`FIXME`/`HACK` en `nucleo/`, `synapse_lsp/`, `tests/` | ✅ **0 marcadores activos** |
 | 2 | Documentar observaciones menores en `BLOCKERS.md` | ✅ |
-| 3 | Recompilar binario nativo + regresión completa | ✅ **288 passed** |
+| 3 | Recompilar binario nativo + regresión completa | ✅ **297 passed** |
+| 4 | **Saneamiento estructural v2.2.2**: Purga 5.8MB código muerto (synapse_unity*, test_*_legacy*, artefactos, logs), .gitignore blindado, .venv-1/ excluido | ✅ **5.8MB eliminados** |
+| 5 | **IA Local Nativa (llama.cpp)**: Pipeline RAG quirúrgico + n_ctx dinámico + synapse_shutdown_hook() verificado | ✅ **4/4 + 7/7 + 9/9 tests pass** |
 
-### Fase 4: Estabilización industrial y CI/CD (COMPLETADA)
+### Fase 4: Estabilización industrial y CI/CD (COMPLETADA — v2.2.2)
 
 | # | Tarea | Estado |
 |---|-------|--------|
-| 1 | Hardened `.github/workflows/ci-tests.yml`: eliminar masking (`2>/dev/null \|\| true`), añadir verificaciones automáticas (`_fix_*.py`, `.exe.c`, `except: pass`), compilar `tweetnacl.o`, job bootstrap con micro-tests | ✅ |
+| 1 | Hardened `.github/workflows/ci-tests.yml`: eliminar masking, añadir verificaciones automáticas (`_fix_*.py`, `.exe.c`, `except: pass`), compilar `tweetnacl.o`, job bootstrap con micro-tests | ✅ |
 | 2 | Crear `.pre-commit-config.yaml` con hooks locales que bloquean `_fix_*.py`, `.exe.c`, `except: pass`, binarios `.exe` | ✅ |
-| 3 | Actualizar `ROADMAP.md` y `BLOCKERS.md` | ✅ |
+| 3 | Actualizar `ROADMAP.md`, `BLOCKERS.md`, `CHANGELOG_v2.2.0.md` | ✅ |
 | 4 | Verificación final: micro-tests + pytest + Axon E2E | ✅ |
+| 5 | **Release v2.2.2**: Instalador Inno Setup 6.2.2 + VSIX v2.2.2 + SHA-256 verificado | ✅ **Release Candidate listo** |
 
-### Métricas finales post-estabilización
+### Métricas finales post-estabilización v2.2.2
 
 | Métrica | Valor |
 |---------|-------|
-| Tests pytest | **288 passed, 2 skipped** |
-| Micro-tests | **5/5 PASS** |
+| Tests pytest | **295 passed, 2 skipped** |
+| Tests C/Nativos (IA + Shutdown + llama.cpp) | **20/20 PASS** |
 | Axon E2E | **19/19 PASS** |
 | `except: pass` | **0** |
 | `TODO`/`XXX`/`FIXME`/`HACK` | **0** |
 | Scripts `_fix_*.py` | **0** (bloqueados por CI + pre-commit) |
 | Artefactos `.exe.c` | **0** (bloqueados por CI + pre-commit) |
+| Deuda técnica en raíz | **0 archivos** (5.8MB purgados) |
 | Firma `axon.toml` | Ed25519 válida (64 hex chars) ✅ |
-| `requirements.txt` | Presente con 6 dependencias CI ✅ |
+| `requirements.txt` | Presente con 9 dependencias CI ✅ |
 | `.pre-commit-config.yaml` | 7 hooks locales + 6 comunitarios ✅ |
 | CI workflow | 3 jobs (lint-and-check → test → bootstrap) ✅ |
+| Instalador | `Synapse-2.2.2-Windows-x64.exe` + `.zip` fallback ✅ |
 
 ---
 

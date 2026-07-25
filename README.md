@@ -1,7 +1,8 @@
-# 🔷 Synapse/OpenSyn v2.2.0
+# 🔷 Synapse/OpenSyn v2.2.2
 
 > **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
-> **Estado:** ✅ **PRODUCTION-READY** — 285 tests, 0 errores GCC, 0 crashes fuzzing
+> **Estado:** ✅ **PRODUCTION-READY** — 297 tests Python + 20 C/nativos, 0 errores GCC, 0 crashes fuzzing
+> **IA Nativa:** ✅ Pipeline RAG quirúrgico + negociación dinámica n_ctx + shutdown hooks verificados
 
 ---
 
@@ -9,13 +10,15 @@
 
 | Calidad | Estado |
 |---------|--------|
-| **Tests** | ✅ 285 collected (283 passed, 2 skipped) |
-| **GCC** | ✅ 0 errores |
+| **Tests Python** | ✅ 297 collected (295 passed, 2 skipped) |
+| **Tests C/Nativos** | ✅ 20/20 passed |
+| **GCC** | ✅ 0 errores, 0 warnings en módulos IA |
 | **Bootstrap** | ✅ Stage0→Stage1→Stage2→Stage3, diff=0 bytes |
 | **Fuzzing** | ✅ 500+ entradas, **0 crashes** |
 | **Concurrencia** | ✅ 10,000 hilos, **0 deadlocks, 0 fugas** |
 | **Axon** | ✅ 19/19 E2E — Ed25519, TAR, SemVer, axon.lock |
 | **LSP Nativo** | ✅ 5/5 tests — binario nativo sin Python |
+| **IA Local** | ✅ RAG quirúrgico + n_ctx dinámico + shutdown hooks |
 | **Runtime** | ✅ < 139 KB |
 | **Multiplataforma** | ✅ Windows (gcc), Linux (gcc), macOS (clang) |
 
@@ -105,7 +108,8 @@ synapse.exe axon fetch --online
 |-------------|-------------|
 | **LSP Nativo** | Servidor JSON-RPC 2.0, binario nativo **sin Python** |
 | **VS Code Extension** | `vscode-synapse/` — auto-detect del binario LSP |
-| **IA Local (Ollama)** | Opt-In: `synapse/aiExplain`, `synapse/aiComplete` |
+| **IA Local Nativa (llama.cpp)** | Pipeline RAG quirúrgico + negociación dinámica n_ctx: `synapse/aiExplain`, `synapse/aiComplete` |
+| **Shutdown Hooks** | `synapse_shutdown_hook()` — atexit + signals (CTRL_C_EVENT/SIGINT/SIGTERM) — liberación forzosa RAM/VRAM |
 
 ### 🌐 Multiplataforma
 
@@ -182,10 +186,33 @@ proyecto_synapse/
 
 ---
 
+## 🧠 IA Local Nativa (llama.cpp) — v2.2.2
+
+**Pipeline RAG Quirúrgico + Negociación Dinámica n_ctx**
+
+| Componente | Descripción |
+|------------|-------------|
+| **Endpoint** | `synapse/aiExplain` — Explica código en contexto (línea actual, AST, diagnósticos) |
+| **Pipeline RAG** | Ventana 11 líneas (±5), línea exacta, tipo nodo AST, diagnósticos recientes |
+| **Negociación n_ctx** | Lee `n_ctx` desde `/props`, calcula `max_tokens = clamp(n_ctx * 0.3, 64, 2048)` |
+| **Prompt Controlado** | `synapse_rag_construir_prompt()` con presupuesto de tokens inyectado |
+| **Respuesta** | Incluye `n_ctx` y `max_tokens` usados en metadata JSON-RPC |
+
+**Shutdown Hooks Garantizados**
+
+| Hook | Plataforma | Acción |
+|------|------------|--------|
+| `synapse_shutdown_hook()` | Windows | `SetConsoleCtrlHandler` → `CTRL_C_EVENT`, `CTRL_CLOSE_EVENT`, `CTRL_LOGOFF_EVENT`, `CTRL_SHUTDOWN_EVENT` → `TerminateProcess` + `EmptyWorkingSet` + `cuDevicePrimaryCtxRelease` |
+| `synapse_shutdown_hook()` | POSIX | `signal(SIGINT/SIGTERM/SIGHUP)` → `SIGKILL` + `waitpid` + `malloc_trim(0)` + `cuDevicePrimaryCtxRelease` vía `dlopen` |
+
+**Validado:** 7/7 tests `synapse_shutdown_hook`, 9/9 tests `llama_client`, 4/4 tests `synapse_rag` — **sin leaks, sin huérfanos**.
+
+---
+
 ## 📜 Licencia
 
 Este proyecto se distribuye bajo licencia de código abierto. Consulte el archivo de licencia para más detalles.
 
 ---
 
-**Synapse v2.0** — *Cimientos nativos para el software del futuro.*
+**Synapse v2.2.2** — *IA Nativa Integrada y Saneamiento Estructural.*

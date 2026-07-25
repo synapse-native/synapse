@@ -1,7 +1,7 @@
-# Synapse: Especificación Arquitectónica del Compilador v2.2.0
+# Synapse: Especificación Arquitectónica del Compilador v2.2.2
 
 > **Documento:** `ARCH_ESPECIFICACION.md`
-> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Versión:** 2.2.2 — RELEASE CANDIDATE
 > **Última actualización:** 24 Julio 2026
 
 ---

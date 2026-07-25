@@ -28,6 +28,10 @@ nul
 # Python
 *.pyc
 __pycache__/
+.venv/
+.venv-*/
+venv/
+venv-*/
 
 # Fuzz temporales
 tests/fuzz/_test_*.syn
@@ -64,3 +68,22 @@ Native/
 axon_src/
 axon_modules/
 paquetes_oficiales/
+
+# Archivos de distribución en raíz (deben ir en dist/)
+*.zip
+
+# Entornos virtuales y cachés
+.pytest_cache/
+.coverage
+.mypy_cache/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

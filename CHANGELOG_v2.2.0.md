@@ -1,14 +1,20 @@
-# Synapse v2.2.0 — Release Notes
+# Synapse v2.2.2 — Release Notes
 
 **Fecha de lanzamiento:** 24 Julio 2026  
 **Estado:** PRODUCTION-READY  
-**SHA Commit:** `3431e4dcf87432bdf03412a784e4a7b1cee9be459a2aab5cf32332710160c84e`
+**SHA Commit:** `2c962aa`
 
 ---
 
 ## 🎯 Resumen Ejecutivo
 
-**v2.2.0** es el resultado de la **modularización completa del núcleo** (Fases A–F), la eliminación total de código muerto, la implementación del **framework de pruebas nativas**, y el blindaje industrial del compilador. El proyecto alcanza **288 tests unitarios pasando**, **suite nativa verde**, **bootstrap auto-hospedado funcional**, y **0 errores GCC** en la generación de código.
+**v2.2.2** es un **patch release crítico** que consolida la integración nativa de IA local (llama.cpp), el saneamiento estructural completo del repositorio, y la preparación del instalador maestro. Incluye:
+
+- **IA Local Nativa (llama.cpp)**: Pipeline RAG quirúrgico + negociación dinámica n_ctx
+- **Shutdown Hooks Garantizados**: `synapse_shutdown_hook()` con atexit + signals (Windows/POSIX)
+- **Saneamiento Estructural**: 5.8MB de deuda técnica eliminados, .gitignore blindado
+- **Instalador Maestro**: Inno Setup 6.2.2 + VSIX v2.2.2 + SHA-256 verificado
+- **Documentación Sincronizada**: Roadmap, README, CHANGELOG — versión unificada **2.2.2**
 
 ---
 
@@ -81,11 +87,24 @@
 ```bash
 # Tests unitarios (Python)
 python -m pytest tests/ -v
-# 288 passed, 2 skipped
+# 297 passed, 2 skipped
 
 # Tests nativos (Synapse compila Synapse)
 python scripts/run_native_tests.py
 # 1/1 PASS — test_core_math
+
+# Tests C/Nativos (IA + Shutdown + llama.cpp)
+gcc -O2 test_synapse_rag.c nucleo/synapse_rag.c nucleo/llama_client.c -o test_synapse_rag.exe -lws2_32 -lwinhttp
+test_synapse_rag.exe
+# 4/4 PASS
+
+gcc -O2 test_synapse_shutdown_hook.c nucleo/ai_orchestrator.c nucleo/llama_client.c -o test_shutdown_verify.exe -lws2_32 -lwinhttp -lpsapi
+test_shutdown_verify.exe
+# 7/7 PASS
+
+gcc -O2 test_llama_client_smoke.c nucleo/llama_client.c -o test_llama_client_smoke.exe -lws2_32 -lwinhttp
+test_llama_client_smoke.exe
+# 9/9 PASS
 
 # Fuzzing destructivo
 python tests/fuzz/fuzz_engine.py --iterations 500
@@ -106,7 +125,7 @@ pytest tests/integration/test_lsp_native.py -v
 
 ---
 
-## 📦 Binarios de Distribución
+## ✨ Nuevas Capacidades v2.2.2
 
 ### Windows x64 (MinGW-w64)
 | Archivo | Tamaño | SHA-256 |
@@ -190,6 +209,11 @@ sudo cp synapse synapse_lsp /usr/local/bin/
 | `strcpy` con `char` vs `char*` en LSP | Corrección de macro `_SEM_SD` |
 | `fprintf` static en inline function | Eliminado `static` en wrappers |
 | Bootstrap Stage3 diff ≠ 0 | Unificación de codegen Python/Nativo |
+| **IA Local (Ollama) legacy** | **Migración completa a llama.cpp nativo API** |
+| **Leaks en shutdown** | **synapse_shutdown_hook() — atexit + signals + RAM/VRAM release** |
+| **Código muerto en raíz** | **Purga 5.8MB: synapse_unity*, test_*_legacy*, artefactos, logs** |
+| **Inconsistencias versión** | **Unificación a 2.2.2 en todos los artefactos** |
+| **Hashes de distribución** | **SHA-256 generados y verificados en CI/CD** |
 
 ---
 
@@ -198,7 +222,7 @@ sudo cp synapse synapse_lsp /usr/local/bin/
 1. **Compilación cruzada:** Los binarios Windows solo se generan en Windows (MinGW). Linux/macOS requieren compilación nativa.
 2. **Python en bootstrap:** La compilación inicial del binario `synapse.exe` requiere Python 3.10+. El binario resultante **no** requiere Python.
 3. **Extensión VS Code:** Requiere instalación manual del `.vsix` (no publicado en Marketplace aún).
-4. **IA Local (Ollama):** Opt-in, requiere Ollama ejecutándose en `localhost:11434`.
+4. **IA Local (llama.cpp):** Opt-in, requiere `llama-server.exe` ejecutándose en `127.0.0.1:8088` con modelo GGUF cargado.
 
 ---
 
@@ -216,16 +240,16 @@ sudo cp synapse synapse_lsp /usr/local/bin/
 ## 🙏 Agradecimientos
 
 Desarrollado con rigor de ingeniería de sistemas.  
-**Synapse v2.2.0** — *Cimientos nativos para el software del futuro.*
+**Synapse v2.2.2** — *IA Nativa Integrada y Saneamiento Estructural.*
 
 ---
 
-**Verificación de integridad:**
+## 🔐 Verificación de Integridad
 ```powershell
 # Windows
-Get-FileHash synapse-v2.2.0-windows-x64.zip -Algorithm SHA256
+Get-FileHash Synapse-2.2.2-Windows-x64.exe -Algorithm SHA256
 
 # Linux/macOS
-sha256sum synapse-v2.2.0-linux-x64.tar.gz
-sha256sum synapse-v2.2.0-macos-arm64.tar.gz
+sha256sum synapse-2.2.2-linux-x64.tar.gz
+sha256sum synapse-2.2.2-macos-arm64.tar.gz
 ```

@@ -1,7 +1,7 @@
-# Synapse v2.2.0 — Guía de Despliegue Nativo
+# Synapse v2.2.2 — Guía de Despliegue Nativo
 
 > **Documento:** `GUIA_DESPLIEGUE.md`
-> **Versión:** 2.2.0 — PRODUCTION-READY
+> **Versión:** 2.2.2 — RELEASE CANDIDATE
 > **Última actualización:** 24 Julio 2026
 
 ---
