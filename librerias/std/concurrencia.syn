@@ -1,0 +1,73 @@
+#lang: es
+// std.concurrencia — Canales tipados Canal<T> para paso de mensajes thread-safe
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse:
+//   importar std.concurrencia
+//   ch = canal(entero, 10)
+//   lanzar productor(ch)
+//   valor = ch ->
+//   coincidir valor:
+//       ok(v) => escribir_linea(v)
+//       err(e) => escribir_linea("error canal")
+
+importar std.err
+
+// ErrorCanal — tipo algebraico para errores de canal
+estructura ErrorCanal:
+    tag: entero
+    // tag 0: CanalCerrado
+    // tag 1: Timeout
+    // tag 2: CapacidadAgotada
+
+// Canal<T> — cola FIFO thread-safe para paso de mensajes
+// T: tipo del contenido (entero, decimal, texto, booleano, puntero)
+// capacidad: tamaño maximo del buffer interno (0 = sincrono/buffered)
+// NOTA: La estructura es opaca; el runtime C maneja la cola interna con mutex + condvar
+estructura Canal:
+    descriptor: entero
+    tipo_contenido: texto
+    capacidad: entero
+
+// canal — constructor: crea un nuevo canal tipado
+// T: tipo del contenido
+// capacidad: tamaño del buffer (0 = unbuffered sincrono)
+// retorna: Canal* (puntero a canal)
+externo funcion _syn_canal_crear(tipo_contenido: texto, capacidad: entero) -> puntero
+
+funcion canal(tipo_contenido: texto, capacidad: entero) -> puntero:
+    retornar _syn_canal_crear(tipo_contenido, capacidad)
+
+// enviar — envia un valor al canal (bloqueante si buffer lleno)
+// fuerza un move de la variable transmitida (ownership transfer)
+// ch: canal destino
+// -> valor: valor a enviar (transferencia de posesion)
+externo funcion _syn_canal_enviar(ch: puntero, valor: puntero) -> entero
+
+funcion enviar(ch: puntero, -> valor: puntero) -> entero:
+    retornar _syn_canal_enviar(ch, valor)
+
+// recibir — recibe un valor del canal (bloqueante si vacio)
+// retorna Resultado<T, ErrorCanal> obligando uso de coincidir
+// ch: canal origen
+externo funcion _syn_canal_recibir(ch: puntero) -> Resultado
+
+funcion recibir(ch: puntero) -> Resultado:
+    retornar _syn_canal_recibir(ch)
+
+// cerrar — cierra el canal (no se pueden enviar mas mensajes)
+// los mensajes pendientes aun pueden recibirse
+// ch: canal a cerrar
+externo funcion _syn_canal_cerrar(ch: puntero) -> entero
+
+funcion cerrar(ch: puntero) -> entero:
+    retornar _syn_canal_cerrar(ch)
+
+// destruir — libera los recursos del canal
+// fuerza un move del puntero
+// -> ch: canal a destruir (transferencia de posesion)
+externo funcion _syn_canal_destruir(-> ch: puntero) -> nulo
+
+funcion destruir(-> ch: puntero) -> nulo:
+    _syn_canal_destruir(ch)
+    retornar

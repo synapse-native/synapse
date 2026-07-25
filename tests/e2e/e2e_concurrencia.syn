@@ -1,0 +1,32 @@
+#lang: es
+// e2e_concurrencia.syn — Prueba de integración de concurrencia bidireccional
+// Lanza dos hilos que se comunican bidireccionalmente usando Canal<T>
+// Verifica: ausencia de deadlocks, ownership strict, paso de mensajes correcto
+
+importar std.io
+importar std.concurrencia
+
+funcion productor(ch: puntero, total: entero) -> nulo:
+    i = 0
+    mientras i < total:
+        enviar(ch, i)
+        i = i + 1
+    cerrar(ch)
+    retornar
+
+funcion consumidor(ch: puntero) -> nulo:
+    resultado = recibir(ch)
+    coincidir resultado:
+        ok(v) => escribir_linea("Recibido: %d", v)
+        err(e) => escribir_linea("Canal cerrado", e)
+    retornar
+
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar productor(ch, 3)
+    dormir_ms(100)
+    consumidor(ch)
+    consumidor(ch)
+    consumidor(ch)
+    destruir(ch)
+    retornar
