@@ -4362,6 +4362,121 @@ int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const 
     return rc;  // 0 = signature valid, -1 = invalid
 }
 
+// --- Axon manifest validation ---
+// Validates axon.toml manifest for required fields and prohibited hooks.
+// Returns 0 on success, -1 on failure with error message printed to stderr.
+int _syn_axon_validar_manifiesto(const char* toml_path) {
+    FILE* f = fopen(toml_path, "rb");
+    if (!f) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: no se pudo abrir %s\n", toml_path);
+        return -1;
+    }
+    fseek(f, 0, SEEK_END);
+    long fsz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (fsz <= 0) { fclose(f); return -1; }
+    char* buf = (char*)malloc((size_t)fsz + 1);
+    if (!buf) { fclose(f); return -1; }
+    size_t nread = fread(buf, 1, (size_t)fsz, f);
+    fclose(f);
+    if ((long)nread != fsz) { free(buf); return -1; }
+    buf[fsz] = 0;
+
+    CadenaSegura input = { .longitud = (int)fsz, .datos = buf };
+    NodoToml root = _toml_parse(input);
+    free(buf);
+
+    if (root.tipo < 0) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: error de parseo en %s\n", toml_path);
+        if (root.valor_str.datos) free((void*)root.valor_str.datos);
+        return -1;
+    }
+
+    int has_paquete = 0, has_nombre = 0, has_version = 0, has_autor = 0;
+    int has_tipo = 0, has_punto_entrada = 0;
+    int valid = 1;
+
+    for (int i = 0; i < root.longitud; i++) {
+        ParToml* sec = &root.pares[i];
+        int slen = sec->clave.longitud;
+        const char* sname = sec->clave.datos;
+
+        if (slen == 7 && memcmp(sname, "paquete", 7) == 0) {
+            has_paquete = 1;
+            NodoToml* paq = sec->valor;
+            if (paq->tipo == 1 || paq->tipo == 3) {
+                for (int j = 0; j < paq->longitud; j++) {
+                    ParToml* fld = &paq->pares[j];
+                    int flen = fld->clave.longitud;
+                    const char* fname = fld->clave.datos;
+                    if (flen == 6 && memcmp(fname, "nombre", 6) == 0) {
+                        has_nombre = 1;
+                    } else if (flen == 7 && memcmp(fname, "version", 7) == 0) {
+                        has_version = 1;
+                    } else if (flen == 5 && memcmp(fname, "autor", 5) == 0) {
+                        has_autor = 1;
+                        NodoToml* v = fld->valor;
+                        if (v->tipo == 2) {
+                            int alen = v->valor_str.longitud;
+                            const char* adata = v->valor_str.datos;
+                            if (alen != 64) {
+                                fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: 'autor' debe tener 64 caracteres hex (longitud=%d)\n", alen);
+                                valid = 0;
+                            }
+                            for (int k = 0; k < alen && valid; k++) {
+                                char c = adata[k];
+                                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+                                    fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: 'autor' contiene caracter invalido '%c' en posicion %d\n", c, k);
+                                    valid = 0;
+                                }
+                            }
+                        } else {
+                            fprintf(stderr, "[Axon] ERR_MANIFEST: 'autor' debe ser texto (string)\n");
+                            valid = 0;
+                        }
+                    } else if (flen == 4 && memcmp(fname, "tipo", 4) == 0) {
+                        has_tipo = 1;
+                    } else if (flen == 13 && memcmp(fname, "punto_entrada", 13) == 0) {
+                        has_punto_entrada = 1;
+                    }
+                }
+            }
+        }
+
+        if (slen == 7 && memcmp(sname, "scripts", 7) == 0) {
+            NodoToml* scr = sec->valor;
+            if (scr->tipo == 1 || scr->tipo == 3) {
+                for (int j = 0; j < scr->longitud; j++) {
+                    ParToml* hook = &scr->pares[j];
+                    int hlen = hook->clave.longitud;
+                    const char* hname = hook->clave.datos;
+                    if ((hlen == 10 && memcmp(hname, "preinstall", 10) == 0) ||
+                        (hlen == 11 && memcmp(hname, "postinstall", 11) == 0)) {
+                        fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: script '%s' prohibido en [scripts]\n", hname);
+                        valid = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!has_paquete) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta seccion [paquete]\n"); valid = 0; }
+    if (!has_nombre) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta campo 'nombre' en [paquete]\n"); valid = 0; }
+    if (!has_version) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta campo 'version' en [paquete]\n"); valid = 0; }
+    if (!has_autor) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta campo 'autor' en [paquete]\n"); valid = 0; }
+    if (!has_tipo) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta campo 'tipo' en [paquete]\n"); valid = 0; }
+    if (!has_punto_entrada) {
+        fprintf(stderr, "[Axon] ERR_MANIFEST: falta campo 'punto_entrada' en [paquete]\n"); valid = 0; }
+
+    _toml_nodo_liberar(root);
+    return valid ? 0 : -1;
+}
+
 // Axon TOML cleanup wrapper (takes pointer, calls _toml_nodo_liberar by value)
 void _syn_axon_limpiar_toml(void* n) {
     if (!n) return;

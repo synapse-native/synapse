@@ -31,7 +31,7 @@
 | **F15b** | Pipeline nativa reentrante | ✅ | 285 |
 | **F16** | Contratos lógicos nativos | ✅ | 283 |
 | **F17** | Bootstrap full auto-hospedado | ✅ | 283 |
-| **F18** | Axon gestor de paquetes | ✅ | 19/19 E2E |
+| **F18** | Axon gestor de paquetes | ✅ | 33/33 E2E + Fuzz |
 | **F19** | Edge AI runtime (SIMD) | ✅ | 283 |
 
 **Plan de Ataque Industrial v2.2.2:** Fases 1-4 completadas (Reproducibilidad, Erradicación excepciones, Deuda técnica, Estabilización CI/CD). 5.8MB código muerto purgado. IA Nativa integrada.
@@ -90,10 +90,12 @@
 - [x] Test E2E: `tests/e2e/e2e_concurrencia.syn` — comunicación bidireccional `Canal<T>`, validación ownership — ✅ Completado
 
 **M3.2 Axon Hub e Inmutabilidad**
-- [ ] Registro centralizado: `axon.toml` canónico + validación SemVer estricta
-- [ ] `axon fetch`: verificación Ed25519 obligatoria + `axon.lock` SHA-256
-- [ ] Cero scripts arbitrarios pre/post-instalación — solo declarativo TOML
-- [ ] Resolución local: caché `.axon_cache/` + `axon.lock` persistente
+- [x] Registro centralizado: `axon.toml` canónico + validación SemVer estricta
+- [x] `axon fetch`: verificación Ed25519 obligatoria + `axon.lock` SHA-256
+- [x] Cero scripts arbitrarios pre/post-instalación — solo declarativo TOML
+  - [x] `_syn_axon_validar_manifiesto()`: valida campos requeridos, rechaza `[scripts]` con `preinstall`/`postinstall`
+  - [x] Prueba de fuzzing: 14/14 tests con TAR malicioso + firma falsificada + `../` + hooks combinados
+- [x] Resolución local: caché `.axon_cache/` + `axon.lock` persistente
 
 ---
 
