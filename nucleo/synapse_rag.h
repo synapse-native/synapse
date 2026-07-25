@@ -37,7 +37,8 @@ typedef struct {
     char* diagnosticos;              // Diagnósticos recientes
     char* nodo_actual_tipo;          // Tipo del nodo AST en posición cursor
     int n_ctx_modelo;                // n_ctx del modelo (leído de /props)
-    int max_tokens_inyectados;       // n_ctx * 0.3 (calculado dinámicamente)
+    int max_tokens_inyectados;       // n_ctx * 0.3 (30% para contexto)
+    int max_tokens_generacion;       // n_ctx * 0.7 (70% para respuesta)
 } SynapseRagContexto;
 
 // API Principal

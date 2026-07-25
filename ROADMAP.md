@@ -107,12 +107,19 @@
 - [ ] Configuración: `synapse.lsp.nativeBinary` auto-detecta binario por OS/arch
 
 **M4.2 Optimización RAG Quirúrgico**
-- [ ] Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico
-- [ ] Sugerencias: optimización SIMD (`std.simd`), detección dead-code
+- [x] Contexto micro-dosis: nodo AST actual + 5 líneas arriba/abajo + diagnóstico
+  - [x] Ventana 11 líneas centrada en cursor (5 antes + actual + 5 después)
+  - [x] Prompt compacto: `[CONTEXTO]` + `[LINEA]` + `[AST]` + `[DIAG]` en una sola línea por sección
+  - [x] Partición estricta 30/70: 30% n_ctx para contexto inyectado, 70% para generación
+  - [x] `max_tokens_generacion` en `SynapseRagContexto` para que el llamante limite la respuesta
 
 **M4.3 Auditoría Dinámica de Hardware**
-- [ ] `synapse.exe --detect-hardware` → detecta VRAM/RAM/CPU → sugiere modelo `.gguf` (1.2B/7B/70B)
-- [ ] Auto-config en `axon.toml`: `ia.modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"`
+- [x] `synapse --detect-hardware` → detecta VRAM/RAM/CPU → sugiere modelo `.gguf` (1.2B/7B/70B)
+  - [x] `synapse_detectar_hardware()`: RAM vía `GlobalMemoryStatusEx` / `sysinfo`, VRAM vía WinSAT/`nvidia-smi`, CPUs vía `GetSystemInfo` / `_SC_NPROCESSORS_CONF`
+  - [x] `synapse_hw_sugerir_config()`: tier 1B (≥8GB), 7B (≥32GB), 70B (≥64GB); ctx-size 2048/4096/8192; threads = cores-1; ngl según VRAM
+  - [x] `ai_orch_perfilar_sistema()`: API pública del orquestador para obtener `HwConfig` óptimo
+  - [x] `ai_orch_iniciar()` ahora usa `--ctx-size`, `--threads`, `--ngl` dinámicos en lugar de hardcode
+  - [x] Prueba de integración: 43/43 tests validan 8GB vs 32GB producen tiers, modelos, ctx-size y threads distintos
 
 ---
 

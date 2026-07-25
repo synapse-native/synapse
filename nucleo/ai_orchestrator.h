@@ -18,6 +18,8 @@ extern "C" {
 #define AI_ORCH_MODEL_PATH "C:\\Synapse\\ia\\model.gguf"
 #define AI_ORCH_STARTUP_TIMEOUT_MS 15000
 #define AI_ORCH_REQUEST_TIMEOUT_MS 30000
+#define AI_ORCH_DEFAULT_CTX_SIZE 4096
+#define AI_ORCH_DEFAULT_THREADS 4
 
 // Include platform-specific headers for type definitions
 #ifdef _WIN32
@@ -27,6 +29,17 @@ extern "C" {
 #include <sys/types.h>
 #endif
 
+// Configuración hardware-consciente
+typedef struct {
+    int ctx_size;
+    int threads;
+    int ngl;
+    double ram_gb;
+    double vram_gb;
+    int cpu_fisicos;
+    char modelo[128];
+} HwConfig;
+
 // Contexto opaco del orquestador
 typedef struct AIOrchestrator AIOrchestrator;
 
@@ -34,9 +47,13 @@ typedef struct AIOrchestrator AIOrchestrator;
 AIOrchestrator* ai_orch_crear(const char* server_exe, const char* model_path,
                                const char* host, int port);
 
-// Inicia llama-server.exe como proceso hijo con los argumentos necesarios
+// Inicia llama-server.exe como proceso hijo con parámetros hardware-conscientes
 // Retorna 0 en éxito, -1 en error
 int ai_orch_iniciar(AIOrchestrator* orch);
+
+// Ejecuta detección de hardware y devuelve configuración óptima
+// Retorna 0 en éxito, -1 en error
+int ai_orch_perfilar_sistema(HwConfig* config);
 
 // Detiene el proceso hijo (SIGTERM / TerminateProcess)
 void ai_orch_detener(AIOrchestrator* orch);

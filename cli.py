@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+import subprocess
 import argparse
 from typing import Dict, Any
 
@@ -21,6 +23,10 @@ def main():
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
     parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
     parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
+    parser.add_argument("--migrate", type=str, default=None,
+                        help="Migrar archivo Python (.py) a Synapse (.syn)")
+    parser.add_argument("--detect-hardware", action="store_true",
+                        help="Detectar hardware y sugerir configuracion optima para IA")
     parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
     args, _ = parser.parse_known_args()
 
@@ -30,6 +36,65 @@ def main():
 
     if args.version:
         print("Synapse Compiler v2.0.0")
+        sys.exit(0)
+
+    if args.detect_hardware:
+        hw_exe = os.path.join(os.path.dirname(__file__), "nucleo", "detect_hardware.exe")
+        if not os.path.exists(hw_exe):
+            hw_exe = os.path.join(os.path.dirname(__file__), "..", "nucleo", "detect_hardware.exe")
+        if os.path.exists(hw_exe):
+            result = subprocess.run([hw_exe, "--json"], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0 and result.stdout.strip():
+                try:
+                    data = json.loads(result.stdout.strip())
+                    print("========================================")
+                    print("  Synapse — Perfil de Hardware")
+                    print("========================================")
+                    print(f"  RAM total:       {data['ram_gb']:.1f} GB")
+                    print(f"  VRAM detectada:  {data['vram_gb']:.1f} GB")
+                    print(f"  CPUs lógicos:    {data['cpu_logicos']}")
+                    print(f"  CPUs físicos:    {data['cpu_fisicos']}")
+                    print("----------------------------------------")
+                    tiers = {"insuficiente": "INSUFICIENTE (< 8 GB)", "1b": "1B (8–31 GB)", "7b": "7B (32–63 GB)", "70b": "70B (≥ 64 GB)"}
+                    print(f"  Tier:            {tiers.get(data['tier'], data['tier'])}")
+                    print(f"  Modelo sugerido:  {data['modelo']}")
+                    print(f"  ctx-size sugerido: {data['ctx_size']}")
+                    print(f"  threads sugeridos: {data['threads']}")
+                    if data['ngl'] > 0:
+                        print(f"  ngl (GPU layers): {data['ngl']}")
+                    else:
+                        print("  ngl (GPU layers): desactivado (sin VRAM suficiente)")
+                    print("========================================")
+                except (json.JSONDecodeError, KeyError) as e:
+                    print(f"ERROR: No se pudo interpretar perfil: {e}", file=sys.stderr)
+                    sys.exit(1)
+            else:
+                print(f"ERROR: No se pudo detectar hardware", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(f"ERROR: '{hw_exe}' no encontrado. Compilar con: gcc -o nucleo/detect_hardware.exe nucleo/detect_hardware.c -lm -lgdi32", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
+    if args.migrate:
+        from synapse_lsp.open_syn.py_parser import parse_python_file_to_syn
+        from synapse_lsp.open_syn.ast_mapper import canonical_to_synapse
+        from synapse_lsp.open_syn.pretty_printer import syn_pretty_print_file, syn_pretty_print
+
+        py_path = args.migrate
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+
+        canonical = parse_python_file_to_syn(py_path)
+        syn_ast = canonical_to_synapse(canonical)
+
+        output_path = args.output
+        if output_path is None:
+            output_path = os.path.splitext(py_path)[0] + ".syn"
+
+        syn_pretty_print_file(syn_ast, output_path)
+        print(f"[OK] Migrado: {py_path} -> {output_path}")
         sys.exit(0)
 
     if args.construir == "construir":

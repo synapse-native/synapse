@@ -104,9 +104,11 @@ int synapse_rag_extraer_contexto(const SynapseRagInput* input, SynapseRagContext
         buscar_nodo_en_posicion(input->ast_root, input->linea, input->columna, out->nodo_actual_tipo, 128);
     }
 
-    // 5. Negociación n_ctx
+    // 5. Negociación n_ctx — partición 30/70 estricta
     out->n_ctx_modelo = input->n_ctx_modelo > 0 ? input->n_ctx_modelo : RAG_N_CTX_DEFAULT;
     out->max_tokens_inyectados = synapse_rag_calcular_max_tokens(out->n_ctx_modelo, RAG_RATIO_INYECCION_DEFAULT);
+    out->max_tokens_generacion = out->n_ctx_modelo - out->max_tokens_inyectados;
+    if (out->max_tokens_generacion < 64) out->max_tokens_generacion = 64;
 
     return 0;
 }
@@ -123,6 +125,7 @@ void synapse_rag_liberar_contexto(SynapseRagContexto* ctx) {
     ctx->nodo_actual_tipo = NULL;
     ctx->n_ctx_modelo = 0;
     ctx->max_tokens_inyectados = 0;
+    ctx->max_tokens_generacion = 0;
 }
 
 int synapse_rag_construir_prompt(const SynapseRagContexto* ctx, char* buf, size_t cap) {
@@ -131,19 +134,19 @@ int synapse_rag_construir_prompt(const SynapseRagContexto* ctx, char* buf, size_
     size_t pos = 0;
     buf[0] = '\0';
 
-    rag_append(buf, &pos, cap, "[CONTEXTO_ARCHIVO]:\n");
+    rag_append(buf, &pos, cap, "[CONTEXTO]:\n");
     rag_append(buf, &pos, cap, ctx->contexto_archivo ? ctx->contexto_archivo : "N/A");
-    rag_append(buf, &pos, cap, "\n\n[LINEA_ACTUAL]:\n");
+    rag_append(buf, &pos, cap, "\n[LINEA]: ");
     rag_append(buf, &pos, cap, ctx->linea_actual ? ctx->linea_actual : "N/A");
-    rag_append(buf, &pos, cap, "\n\n[NODO_AST]:\n");
+    rag_append(buf, &pos, cap, "\n[AST]: ");
     rag_append(buf, &pos, cap, ctx->nodo_actual_tipo ? ctx->nodo_actual_tipo : "N/A");
-    rag_append(buf, &pos, cap, "\n\n[DIAGNOSTICOS]:\n");
+    rag_append(buf, &pos, cap, "\n[DIAG]: ");
     rag_append(buf, &pos, cap, ctx->diagnosticos ? ctx->diagnosticos : "N/A");
-    rag_append(buf, &pos, cap, "\n\nInstrucción: Explica el código en la línea actual en español, considerando el contexto, el nodo AST y los diagnósticos. Sé conciso y técnico. Respuesta máxima: ");
 
-    char token_buf[32];
-    snprintf(token_buf, sizeof(token_buf), "%d tokens.", ctx->max_tokens_inyectados);
-    rag_append(buf, &pos, cap, token_buf);
+    rag_append(buf, &pos, cap, "\n\nExplica la linea en espanol. Max: ");
+    char tb[32];
+    snprintf(tb, sizeof(tb), "%d tokens.", ctx->max_tokens_inyectados);
+    rag_append(buf, &pos, cap, tb);
 
     return 0;
 }

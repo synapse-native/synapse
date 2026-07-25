@@ -4,6 +4,7 @@
 // Incluye synapse_shutdown_hook() con atexit + signal handlers para terminación forzosa y liberación RAM/VRAM
 
 #include "ai_orchestrator.h"
+#include "detect_hardware.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,6 +38,7 @@ struct AIOrchestrator {
     char* model_path;
     char* host;
     int port;
+    HwConfig hw;
     
 #ifdef _WIN32
     HANDLE hProcess;
@@ -48,6 +50,7 @@ struct AIOrchestrator {
 #endif
     
     int corriendo;
+    int hw_detectado;
 };
 
 // Variable global para el orquestador activo (solo uno a la vez)
@@ -210,6 +213,30 @@ static void signal_handler(int sig) {
 }
 #endif
 
+int ai_orch_perfilar_sistema(HwConfig* config) {
+    if (!config) return -1;
+    HwProfile perfil;
+    if (synapse_detectar_hardware(&perfil) != 0) {
+        config->ctx_size = AI_ORCH_DEFAULT_CTX_SIZE;
+        config->threads = AI_ORCH_DEFAULT_THREADS;
+        config->ngl = 0;
+        config->ram_gb = 0;
+        config->vram_gb = 0;
+        config->cpu_fisicos = 0;
+        config->modelo[0] = '\0';
+        return -1;
+    }
+    config->ctx_size = perfil.ctx_size_sugerido;
+    config->threads = perfil.threads_sugeridos;
+    config->ngl = perfil.ngl_sugerido;
+    config->ram_gb = perfil.total_ram_gb;
+    config->vram_gb = perfil.vram_gb;
+    config->cpu_fisicos = perfil.cpu_fisicos;
+    strncpy(config->modelo, perfil.modelo_sugerido, sizeof(config->modelo) - 1);
+    config->modelo[sizeof(config->modelo) - 1] = '\0';
+    return 0;
+}
+
 AIOrchestrator* ai_orch_crear(const char* server_exe, const char* model_path,
                                const char* host, int port) {
     AIOrchestrator* orch = (AIOrchestrator*)calloc(1, sizeof(AIOrchestrator));
@@ -220,6 +247,8 @@ AIOrchestrator* ai_orch_crear(const char* server_exe, const char* model_path,
     orch->host = host ? strdup(host) : strdup(AI_ORCH_DEFAULT_HOST);
     orch->port = port > 0 ? port : AI_ORCH_DEFAULT_PORT;
     orch->corriendo = 0;
+    orch->hw_detectado = 0;
+    memset(&orch->hw, 0, sizeof(orch->hw));
     
 #ifdef _WIN32
     orch->hProcess = NULL;
@@ -236,12 +265,41 @@ AIOrchestrator* ai_orch_crear(const char* server_exe, const char* model_path,
 int ai_orch_iniciar(AIOrchestrator* orch) {
     if (!orch || orch->corriendo) return -1;
     
-    // Construir línea de comandos para llama-server
-    // Formato: llama-server.exe -m <model> --host <host> --port <port> --ctx-size 4096 --threads 4 --no-mmap --mlock
+    // Detectar hardware si no se ha hecho antes
+    if (!orch->hw_detectado) {
+        HwProfile perfil;
+        if (synapse_detectar_hardware(&perfil) == 0) {
+            orch->hw.ctx_size = perfil.ctx_size_sugerido;
+            orch->hw.threads = perfil.threads_sugeridos;
+            orch->hw.ngl = perfil.ngl_sugerido;
+            orch->hw.ram_gb = perfil.total_ram_gb;
+            orch->hw.vram_gb = perfil.vram_gb;
+            orch->hw.cpu_fisicos = perfil.cpu_fisicos;
+            strncpy(orch->hw.modelo, perfil.modelo_sugerido, sizeof(orch->hw.modelo) - 1);
+            orch->hw.modelo[sizeof(orch->hw.modelo) - 1] = '\0';
+            orch->hw_detectado = 1;
+            fprintf(stderr, "[AI_ORCH] Hardware detectado: %.1f GB RAM, %d cores, modelo: %s\n",
+                perfil.total_ram_gb, perfil.cpu_fisicos, perfil.modelo_sugerido);
+        } else {
+            orch->hw.ctx_size = AI_ORCH_DEFAULT_CTX_SIZE;
+            orch->hw.threads = AI_ORCH_DEFAULT_THREADS;
+            orch->hw.ngl = 0;
+            orch->hw_detectado = 1;
+        }
+    }
+    
+    // Construir línea de comandos para llama-server con parámetros hardware-conscientes
+    // Formato: llama-server.exe -m <model> --host <host> --port <port> --ctx-size N --threads N [--ngl N] --no-mmap --mlock
     char cmdline[2048];
+    char ngl_arg[64] = "";
+    if (orch->hw.ngl > 0 && orch->hw.vram_gb >= 2.0) {
+        snprintf(ngl_arg, sizeof(ngl_arg), "--ngl %d", orch->hw.ngl);
+    }
     int len = snprintf(cmdline, sizeof(cmdline),
-        "\"%s\" -m \"%s\" --host %s --port %d --ctx-size 4096 --threads 4 --no-mmap --mlock",
-        orch->server_exe, orch->model_path, orch->host, orch->port);
+        "\"%s\" -m \"%s\" --host %s --port %d --ctx-size %d --threads %d %s%s--no-mmap --mlock",
+        orch->server_exe, orch->model_path, orch->host, orch->port,
+        orch->hw.ctx_size, orch->hw.threads,
+        ngl_arg[0] ? ngl_arg : "", ngl_arg[0] ? " " : "");
     
     if (len >= (int)sizeof(cmdline)) {
         fprintf(stderr, "[AI_ORCH] Línea de comandos demasiado larga\n");
