@@ -6151,3 +6151,591 @@ int tr_total_eventos(void) {
     if (!_tr_initialized) return 0;
     return _tr_secuencia;
 }
+
+// =========================================================================
+// M9.2 — Reversible Breakpoints & Historical Snapshot Inspection
+// =========================================================================
+// Engine for reverse execution replay: set breakpoints on line/variable/tag,
+// step backwards through the event trace, inspect call stacks and variable
+// values at any recorded point, and jump to the event just before a fault.
+// =========================================================================
+
+#define RP_MAX_BREAKPOINTS 16
+#define RP_POR_LINEA    0
+#define RP_POR_VARIABLE 1
+#define RP_POR_TAG      2
+
+typedef struct {
+    int activo;
+    int tipo;     // 0=linea, 1=variable, 2=tag
+    char patron[64];
+    int valor_int;
+} RpBreakpoint;
+
+static RpBreakpoint _rp_breakpoints[RP_MAX_BREAKPOINTS];
+static int _rp_total_bps = 0;
+static int _rp_posicion = -1;  // current replay cursor (event index)
+static int _rp_initialized = 0;
+
+// --- Helper: get event at logical index (handles circular buffer) ---
+static TraceEvent* _rp_get_event(int indice_logico) {
+    if (!g_trace_session.eventos) return NULL;
+    int total = g_trace_session.total_eventos;
+    if (indice_logico < 0 || indice_logico >= total) return NULL;
+    int inicio = (total < TRACE_MAX_EVENTS) ? 0 :
+                 (g_trace_session.cabeza % TRACE_MAX_EVENTS);
+    int idx = (inicio + indice_logico) % TRACE_MAX_EVENTS;
+    return &g_trace_session.eventos[idx];
+}
+
+// --- Initialize the reversible debug engine ---
+int rp_inicializar(void) {
+    for (int i = 0; i < RP_MAX_BREAKPOINTS; i++) {
+        _rp_breakpoints[i].activo = 0;
+    }
+    _rp_total_bps = 0;
+    _rp_posicion = -1;
+    _rp_initialized = 1;
+    return 0;
+}
+
+// --- Set a reversible breakpoint ---
+// tipo: 0=linea, 1=variable, 2=tag
+// patron: line number as string for linea, variable name for variable, tag name for tag
+// valor_int: for tipo=2 the tag integer, for tipo=0 the line number, for tipo=1 ignored
+// Returns breakpoint ID (0-based), or -1 if full
+int rp_establecer_breakpoint(int tipo, CadenaSegura patron, int valor_int) {
+    if (!_rp_initialized) return -1;
+    if (_rp_total_bps >= RP_MAX_BREAKPOINTS) return -1;
+    if (tipo < 0 || tipo > 2) return -1;
+
+    int id = _rp_total_bps;
+    _rp_breakpoints[id].activo = 1;
+    _rp_breakpoints[id].tipo = tipo;
+    _rp_breakpoints[id].valor_int = valor_int;
+    if (patron.datos) {
+        int plen = patron.longitud < 63 ? patron.longitud : 63;
+        memcpy(_rp_breakpoints[id].patron, patron.datos, (size_t)plen);
+        _rp_breakpoints[id].patron[plen] = '\0';
+    } else {
+        _rp_breakpoints[id].patron[0] = '\0';
+    }
+    _rp_total_bps++;
+    return id;
+}
+
+// --- Remove a breakpoint by ID ---
+int rp_eliminar_breakpoint(int id) {
+    if (!_rp_initialized) return -1;
+    if (id < 0 || id >= _rp_total_bps) return -1;
+    _rp_breakpoints[id].activo = 0;
+    // Compact: shift remaining breakpoints down
+    for (int i = id; i < _rp_total_bps - 1; i++) {
+        _rp_breakpoints[i] = _rp_breakpoints[i + 1];
+    }
+    _rp_total_bps--;
+    return 0;
+}
+
+// --- Clear all breakpoints ---
+int rp_limpiar_breakpoints(void) {
+    if (!_rp_initialized) return -1;
+    for (int i = 0; i < RP_MAX_BREAKPOINTS; i++) {
+        _rp_breakpoints[i].activo = 0;
+    }
+    _rp_total_bps = 0;
+    return 0;
+}
+
+// --- Find event index matching a breakpoint, searching backwards ---
+// Returns logical event index, or -1 if not found
+int rp_buscar_breakpoint(int id) {
+    if (!_rp_initialized || !g_trace_session.eventos) return -1;
+    if (id < 0 || id >= _rp_total_bps) return -1;
+    if (!_rp_breakpoints[id].activo) return -1;
+
+    int total = g_trace_session.total_eventos;
+    if (total <= 0) return -1;
+
+    RpBreakpoint* bp = &_rp_breakpoints[id];
+
+    // Search backwards from end
+    for (int i = total - 1; i >= 0; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (!e) continue;
+
+        int match = 0;
+        switch (bp->tipo) {
+            case RP_POR_LINEA:
+                match = (e->linea == bp->valor_int);
+                break;
+            case RP_POR_VARIABLE:
+                match = (e->variable && bp->patron[0] &&
+                         strcmp(e->variable, bp->patron) == 0);
+                break;
+            case RP_POR_TAG:
+                match = (e->tag == bp->valor_int);
+                break;
+        }
+        if (match) return i;
+    }
+    return -1;
+}
+
+// --- Step backwards N events from a given position ---
+// Returns the new position (event index), or -1 if at start
+int rp_retroceder(int pasos, int desde_evento) {
+    if (!_rp_initialized) return -1;
+    int total = g_trace_session.total_eventos;
+    if (total <= 0) return -1;
+
+    int inicio = desde_evento >= 0 ? desde_evento : (total - 1);
+    if (inicio >= total) inicio = total - 1;
+    if (pasos <= 0) {
+        _rp_posicion = inicio;
+        return _rp_posicion;
+    }
+
+    int nueva_pos = inicio - pasos;
+    if (nueva_pos < 0) nueva_pos = -1;
+
+    _rp_posicion = nueva_pos;
+    return _rp_posicion;
+}
+
+// --- Get the current replay cursor position ---
+int rp_posicion_actual(void) {
+    if (!_rp_initialized) return -1;
+    return _rp_posicion;
+}
+
+// --- Jump to the event index just before the last error ---
+// Returns the event index of the last non-error event before the error, or -1
+int rp_ir_a_pre_error(void) {
+    if (!_rp_initialized || !g_trace_session.eventos) return -1;
+    int total = g_trace_session.total_eventos;
+    if (total <= 0) return -1;
+
+    // Find the last ERROR event
+    int error_idx = -1;
+    for (int i = total - 1; i >= 0; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (e && e->tag == EVENT_ERROR) {
+            error_idx = i;
+            break;
+        }
+    }
+    if (error_idx < 0) return -1;
+
+    // Return event just before the error
+    int pre = error_idx - 1;
+    if (pre < 0) return -1;
+
+    _rp_posicion = pre;
+    return pre;
+}
+
+// --- Inspect a variable's value at a specific event index ---
+// Searches backwards from indice_evento (inclusive) for the most recent
+// occurrence of the named variable. Returns "entero:<val>" or "texto:<val>",
+// or empty CadenaSegura if the variable was never recorded.
+CadenaSegura rp_inspeccionar_variable(int indice_evento, CadenaSegura nombre) {
+    if (!_rp_initialized || !g_trace_session.eventos) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    if (!nombre.datos || nombre.longitud <= 0) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int total = g_trace_session.total_eventos;
+    if (indice_evento < 0 || indice_evento >= total) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    // Search backwards from indice_evento for the named variable
+    for (int i = indice_evento; i >= 0; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (!e) continue;
+        if ((e->tag == EVENT_VARIABLE_CHANGE || e->tag == EVENT_ASSIGNMENT)
+            && e->variable && strcmp(e->variable, nombre.datos) == 0) {
+            // Found the most recent occurrence
+            char buf[64];
+            int len = 0;
+            if (e->valor_texto && strlen(e->valor_texto) > 0) {
+                len = snprintf(buf, sizeof(buf), "texto:%s", e->valor_texto);
+            } else {
+                len = snprintf(buf, sizeof(buf), "entero:%lld", (long long)e->valor_decimal);
+            }
+            char* result = (char*)pool_alloc((size_t)(len + 1));
+            if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+            memcpy(result, buf, (size_t)(len + 1));
+            return (CadenaSegura){ .longitud = len, .datos = result };
+        }
+    }
+    return (CadenaSegura){ .longitud = 0, .datos = NULL };
+}
+
+// --- Build call stack string at a specific event index ---
+// Returns "funcion:linea|funcion:linea|..." (innermost first), or empty
+CadenaSegura rp_pila_llamadas(int indice_evento) {
+    if (!_rp_initialized || !g_trace_session.eventos) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int total = g_trace_session.total_eventos;
+    if (indice_evento < 0 || indice_evento >= total) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    // Walk backwards from indice_evento, tracking call/return pairs
+    // Use a simple stack: push on FUNCTION_CALL, pop on FUNCTION_RETURN
+    char stack_buf[1024];
+    int stack_len = 0;
+    int depth = 0;
+    // Track unmatched calls
+    int call_lineas[64];
+    const char* call_funcs[64];
+
+    for (int i = indice_evento; i >= 0; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (!e) break;
+
+        if (e->tag == EVENT_FUNCTION_RETURN) {
+            depth++;
+        } else if (e->tag == EVENT_FUNCTION_CALL) {
+            if (depth > 0) {
+                depth--;  // matched a return
+            } else {
+                // Unmatched call: add to stack
+                int idx = stack_len / 2; // placeholder
+                (void)idx;
+                // Build "funcion:linea|" segment
+                const char* fname = e->funcion ? e->funcion : "?";
+                int seg_len = snprintf(stack_buf + stack_len,
+                                       sizeof(stack_buf) - (size_t)stack_len,
+                                       "%s:%d|", fname, e->linea);
+                if (seg_len > 0 && stack_len + seg_len < (int)sizeof(stack_buf)) {
+                    stack_len += seg_len;
+                }
+            }
+        }
+    }
+
+    // Remove trailing '|'
+    if (stack_len > 0 && stack_buf[stack_len - 1] == '|') {
+        stack_len--;
+    }
+
+    if (stack_len <= 0) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    char* result = (char*)pool_alloc((size_t)(stack_len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, stack_buf, (size_t)(stack_len + 1));
+    return (CadenaSegura){ .longitud = stack_len, .datos = result };
+}
+
+// --- Search backwards for a variable change to a specific value ---
+// Returns event index, or -1 if not found
+int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
+    if (!_rp_initialized || !g_trace_session.eventos) return -1;
+    if (!nombre.datos || nombre.longitud <= 0) return -1;
+
+    int total = g_trace_session.total_eventos;
+    if (total <= 0) return -1;
+
+    for (int i = total - 1; i >= 0; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (!e) continue;
+        if ((e->tag == EVENT_VARIABLE_CHANGE || e->tag == EVENT_ASSIGNMENT)
+            && e->variable && strcmp(e->variable, nombre.datos) == 0
+            && (int)e->valor_decimal == valor) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// =========================================================================
+// M9.3 — Memory Snapshots & Historical State Diff
+// =========================================================================
+// Engine for capturing compressed variable-state snapshots from the event
+// trace and computing structural diffs between two execution points.
+//
+// Snapshot format (newline-separated entries):
+//     var1|entero|42
+//     var2|texto|hello
+//
+// Diff format (prefix identifies change type):
+//     +name|tipo|val          — added in B
+//     -name|tipo|val          — removed in B
+//     ~name|tipo_a|val_a|tipo_b|val_b  — changed
+// =========================================================================
+
+#define MS_MAX_VARS 256
+#define MS_LINE_MAX 128
+
+// --- Helper: find event index for a given sequence number ---
+// Seq numbers are assigned monotonically by _tr_next_seq. Since events
+// are stored consecutively (1:1 with seq), we derive index = seq - 1.
+// Returns -1 if out of range.
+static int _ms_seq_a_indice(int seq) {
+    if (!g_trace_session.eventos) return -1;
+    int total = g_trace_session.total_eventos;
+    if (total <= 0 || seq < 1) return -1;
+    int idx = seq - 1;
+    if (idx >= total) idx = total - 1;  // clamp to last event
+    return idx;
+}
+
+// --- Helper: append one line to a snapshot buffer ---
+static int _ms_append_line(char* buf, int offset, int cap,
+                           const char* name, const char* tipo,
+                           const char* valor) {
+    if (!name) name = "?";
+    if (!tipo) tipo = "?";
+    if (!valor) valor = "";
+    int needed = snprintf(buf + offset, (size_t)(cap - offset),
+                          "%s|%s|%s\n", name, tipo, valor);
+    if (needed < 0) return offset;
+    if (offset + needed >= cap) return offset;
+    return offset + needed;
+}
+
+// --- Helper: parse a snapshot line into name / tipo / valor ---
+// Returns 1 if parsed OK, 0 on error
+static int _ms_parse_line(const char* line, int line_len,
+                          char* name_out, int name_cap,
+                          char* tipo_out, int tipo_cap,
+                          char* val_out, int val_cap) {
+    if (!line || line_len <= 0) return 0;
+    const char* p1 = strchr(line, '|');
+    if (!p1 || p1 >= line + line_len) return 0;
+    int name_len = (int)(p1 - line);
+    if (name_len >= name_cap) name_len = name_cap - 1;
+    memcpy(name_out, line, (size_t)name_len);
+    name_out[name_len] = '\0';
+
+    const char* p2 = strchr(p1 + 1, '|');
+    if (!p2 || p2 >= line + line_len) return 0;
+    int tipo_len = (int)(p2 - (p1 + 1));
+    if (tipo_len >= tipo_cap) tipo_len = tipo_cap - 1;
+    memcpy(tipo_out, p1 + 1, (size_t)tipo_len);
+    tipo_out[tipo_len] = '\0';
+
+    int val_len = line_len - (int)(p2 + 1 - line);
+    if (val_len >= val_cap) val_len = val_cap - 1;
+    memcpy(val_out, p2 + 1, (size_t)val_len);
+    val_out[val_len] = '\0';
+    return 1;
+}
+
+// --- Capture a compressed variable-state snapshot at a given sequence ---
+// Walks backward from the event matching seq, collecting the most recent
+// value of each unique variable.
+// Returns serialized snapshot string, or empty CadenaSegura on error.
+CadenaSegura ms_tomar_en(int secuencia) {
+    if (!g_trace_session.eventos) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int idx = _ms_seq_a_indice(secuencia);
+    if (idx < 0) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    char names[MS_MAX_VARS][64];
+    char tipos[MS_MAX_VARS][16];
+    char vals[MS_MAX_VARS][64];
+    int nvars = 0;
+
+    for (int i = idx; i >= 0 && nvars < MS_MAX_VARS; i--) {
+        TraceEvent* e = _rp_get_event(i);
+        if (!e) continue;
+        if (e->tag != EVENT_VARIABLE_CHANGE && e->tag != EVENT_ASSIGNMENT) continue;
+        if (!e->variable || strlen(e->variable) == 0) continue;
+
+        int found = 0;
+        for (int j = 0; j < nvars; j++) {
+            if (strcmp(names[j], e->variable) == 0) { found = 1; break; }
+        }
+        if (found) continue;
+
+        int nlen = (int)strlen(e->variable);
+        if (nlen >= 64) nlen = 63;
+        memcpy(names[nvars], e->variable, (size_t)nlen);
+        names[nvars][nlen] = '\0';
+
+        if (e->valor_texto && strlen(e->valor_texto) > 0) {
+            memcpy(tipos[nvars], "texto", 6);
+            int vlen = (int)strlen(e->valor_texto);
+            if (vlen >= 64) vlen = 63;
+            memcpy(vals[nvars], e->valor_texto, (size_t)vlen);
+            vals[nvars][vlen] = '\0';
+        } else {
+            memcpy(tipos[nvars], "entero", 7);
+            snprintf(vals[nvars], 64, "%lld", (long long)e->valor_decimal);
+        }
+        nvars++;
+    }
+
+    int cap = nvars * 128 + 16;
+    char* buf = (char*)pool_alloc((size_t)cap);
+    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    int pos = 0;
+    for (int i = nvars - 1; i >= 0; i--) {
+        pos = _ms_append_line(buf, pos, cap, names[i], tipos[i], vals[i]);
+    }
+
+    return (CadenaSegura){ .longitud = pos, .datos = buf };
+}
+
+// --- Compare two snapshots and produce a structural diff ---
+// Returns diff string, or empty on error.
+CadenaSegura ms_diferenciar(CadenaSegura snap_a, CadenaSegura snap_b) {
+    if (!snap_a.datos || snap_a.longitud <= 0) return snap_b;
+    if (!snap_b.datos || snap_b.longitud <= 0) return snap_a;
+
+    char a_names[MS_MAX_VARS][64];
+    char a_tipos[MS_MAX_VARS][16];
+    char a_vals[MS_MAX_VARS][64];
+    int na = 0;
+
+    const char* p = snap_a.datos;
+    const char* end = snap_a.datos + snap_a.longitud;
+    while (p < end && na < MS_MAX_VARS) {
+        const char* nl = strchr(p, '\n');
+        int line_len = nl ? (int)(nl - p) : (int)(end - p);
+        if (line_len > 0) {
+            _ms_parse_line(p, line_len,
+                          a_names[na], 64, a_tipos[na], 16, a_vals[na], 64);
+            if (strlen(a_names[na]) > 0) na++;
+        }
+        p = nl ? nl + 1 : end;
+    }
+
+    char b_names[MS_MAX_VARS][64];
+    char b_tipos[MS_MAX_VARS][16];
+    char b_vals[MS_MAX_VARS][64];
+    int nb = 0;
+
+    p = snap_b.datos;
+    end = snap_b.datos + snap_b.longitud;
+    while (p < end && nb < MS_MAX_VARS) {
+        const char* nl = strchr(p, '\n');
+        int line_len = nl ? (int)(nl - p) : (int)(end - p);
+        if (line_len > 0) {
+            _ms_parse_line(p, line_len,
+                          b_names[nb], 64, b_tipos[nb], 16, b_vals[nb], 64);
+            if (strlen(b_names[nb]) > 0) nb++;
+        }
+        p = nl ? nl + 1 : end;
+    }
+
+    int cap = (na + nb + na) * 128 + 16;
+    char* buf = (char*)pool_alloc((size_t)cap);
+    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    int pos = 0;
+
+    for (int i = 0; i < na; i++) {
+        int found_in_b = 0;
+        for (int j = 0; j < nb; j++) {
+            if (strcmp(a_names[i], b_names[j]) == 0) {
+                found_in_b = 1;
+                if (strcmp(a_tipos[i], b_tipos[j]) != 0 ||
+                    strcmp(a_vals[i], b_vals[j]) != 0) {
+                    pos += snprintf(buf + pos, (size_t)(cap - pos),
+                                    "~%s|%s|%s|%s|%s\n",
+                                    a_names[i], a_tipos[i], a_vals[i],
+                                    b_tipos[j], b_vals[j]);
+                }
+                break;
+            }
+        }
+        if (!found_in_b) {
+            pos += snprintf(buf + pos, (size_t)(cap - pos),
+                            "-%s|%s|%s\n", a_names[i], a_tipos[i], a_vals[i]);
+        }
+    }
+
+    for (int j = 0; j < nb; j++) {
+        int found_in_a = 0;
+        for (int i = 0; i < na; i++) {
+            if (strcmp(b_names[j], a_names[i]) == 0) { found_in_a = 1; break; }
+        }
+        if (!found_in_a) {
+            pos += snprintf(buf + pos, (size_t)(cap - pos),
+                            "+%s|%s|%s\n", b_names[j], b_tipos[j], b_vals[j]);
+        }
+    }
+
+    if (pos > 0 && buf[pos - 1] == '\n') pos--;
+    return (CadenaSegura){ .longitud = pos, .datos = buf };
+}
+
+// --- Convenience: diff between two sequence numbers ---
+CadenaSegura ms_diff_entre(int seq_a, int seq_b) {
+    if (seq_a == seq_b) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    CadenaSegura snap_a = ms_tomar_en(seq_a);
+    CadenaSegura snap_b = ms_tomar_en(seq_b);
+    if (!snap_a.datos && !snap_b.datos) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    return ms_diferenciar(snap_a, snap_b);
+}
+
+// --- Count variables in a snapshot ---
+int ms_snapshot_contar_vars(CadenaSegura snapshot) {
+    if (!snapshot.datos || snapshot.longitud <= 0) return 0;
+    int count = 0;
+    const char* p = snapshot.datos;
+    const char* end = snapshot.datos + snapshot.longitud;
+    while (p < end) {
+        const char* nl = strchr(p, '\n');
+        if (nl) { if (nl > p) count++; p = nl + 1; }
+        else { if (end > p) count++; break; }
+    }
+    return count;
+}
+
+// --- Get byte size of a snapshot string ---
+int ms_snapshot_tamano(CadenaSegura snapshot) {
+    if (!snapshot.datos) return 0;
+    return snapshot.longitud;
+}
+
+// --- Check if a variable exists in a snapshot ---
+// Returns "tipo:valor" or empty CadenaSegura
+CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
+    if (!snapshot.datos || snapshot.longitud <= 0 ||
+        !nombre.datos || nombre.longitud <= 0) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    const char* p = snapshot.datos;
+    const char* end = snapshot.datos + snapshot.longitud;
+    while (p < end) {
+        const char* nl = strchr(p, '\n');
+        int line_len = nl ? (int)(nl - p) : (int)(end - p);
+        if (line_len > 0) {
+            char nb[64], tb[16], vb[64];
+            if (_ms_parse_line(p, line_len, nb, 64, tb, 16, vb, 64)) {
+                if (strcmp(nb, nombre.datos) == 0) {
+                    char result_buf[128];
+                    int rlen = snprintf(result_buf, sizeof(result_buf), "%s:%s", tb, vb);
+                    if (rlen < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+                    char* result = (char*)pool_alloc((size_t)(rlen + 1));
+                    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+                    memcpy(result, result_buf, (size_t)(rlen + 1));
+                    return (CadenaSegura){ .longitud = rlen, .datos = result };
+                }
+            }
+        }
+        p = nl ? nl + 1 : end;
+    }
+    return (CadenaSegura){ .longitud = 0, .datos = NULL };
+}

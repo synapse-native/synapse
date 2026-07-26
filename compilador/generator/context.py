@@ -84,6 +84,15 @@ class GeneratorContext:
             'cm_restaurar_checkpoint': 'int', 'cm_migrar_tarea': 'texto',
             'cm_migrar_entre_nodos': 'int', 'cm_ultima_migracion': 'texto',
             'cm_migraciones_completadas': 'int', 'cm_migraciones_fallidas': 'int',
+            'rp_inicializar': 'int', 'rp_establecer_breakpoint': 'int',
+            'rp_eliminar_breakpoint': 'int', 'rp_limpiar_breakpoints': 'int',
+            'rp_buscar_breakpoint': 'int', 'rp_retroceder': 'int',
+            'rp_posicion_actual': 'int', 'rp_ir_a_pre_error': 'int',
+            'rp_inspeccionar_variable': 'texto', 'rp_pila_llamadas': 'texto',
+            'rp_buscar_cambio_variable': 'int',
+            'ms_tomar_en': 'texto', 'ms_diferenciar': 'texto',
+            'ms_diff_entre': 'texto', 'ms_snapshot_contar_vars': 'int',
+            'ms_snapshot_tamano': 'int', 'ms_snapshot_contiene': 'texto',
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
@@ -116,6 +125,14 @@ class GeneratorContext:
             'cm_restaurar_checkpoint', 'cm_migrar_tarea',
             'cm_migrar_entre_nodos', 'cm_ultima_migracion',
             'cm_migraciones_completadas', 'cm_migraciones_fallidas',
+            'rp_inicializar', 'rp_establecer_breakpoint',
+            'rp_eliminar_breakpoint', 'rp_limpiar_breakpoints',
+            'rp_buscar_breakpoint', 'rp_retroceder',
+            'rp_posicion_actual', 'rp_ir_a_pre_error',
+            'rp_inspeccionar_variable', 'rp_pila_llamadas',
+            'rp_buscar_cambio_variable',
+            'ms_tomar_en', 'ms_diferenciar', 'ms_diff_entre',
+            'ms_snapshot_contar_vars', 'ms_snapshot_tamano', 'ms_snapshot_contiene',
         })
 
         self._TABLA_COERCION: Dict[tuple, str] = {

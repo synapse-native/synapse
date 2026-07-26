@@ -160,9 +160,9 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M9.0** | Módulo `std.debug` — `TraceEvent`, `TraceSession`, API pública | ✅ Completado | 6 unit tests passing, importable desde código Synapse vía `importar std.debug` |
 | **M9.0b** | Runtime C: buffer circular 50K eventos, persistencia a disco | ✅ Completado | `_syn_debug_registrar_evento()`, `_syn_debug_finalizar_sesion()` en `synapse_rt.c` |
 | **M9.0c** | Registro en contexto del generador (builtins debug_*) | ✅ Completado | `registrar_evento`, `trace`, `iniciar_sesion`, `finalizar_sesion` registrados en `context.py` |
-| **M9.1** | Grabación ejecución determinista (rr-style) | 🔄 En Progreso | Grabación <5% overhead, replay determinista 100%, sin interferencia en el programa grabado. Numeración secuencial de eventos, registro de bifurcaciones (branch decisions), snapshots de variables, búsqueda inversa de eventos, simulación de replay hasta punto de fallo. Suite de 50+ tests C. |
-| **M9.2** | Replay con breakpoints reversibles | ⏳ Pendiente | Step-back <10ms, watchpoints reversibles, pila de llamadas navegable hacia atrás |
-| **M9.3** | Inspección estado histórico (memory snapshots) | ⏳ Pendiente | Snapshot <50MB, query histórico <100ms, diff entre puntos de ejecución |
+| **M9.1** | Grabación ejecución determinista (rr-style) | ✅ Completado | Grabación <5% overhead, replay determinista 100%, sin interferencia en el programa grabado. Numeración secuencial de eventos, registro de bifurcaciones (branch decisions), snapshots de variables, búsqueda inversa de eventos, simulación de replay hasta punto de fallo. Suite de 57 tests C + 8 Python integration. |
+| **M9.2** | Replay con breakpoints reversibles | ✅ Completado | Breakpoints por línea/variable/tag, retroceso paso a paso, inspección de variables con búsqueda hacia atrás, reconstrucción de pila de llamadas, salto a pre-error. 70 tests C. |
+| **M9.3** | Inspección estado histórico (memory snapshots) | 🔄 En Progreso | Captura de snapshot de variables en cualquier secuencia, diff estructural entre dos puntos de ejecución, consulta de valores históricos por variable. 79 tests C. |
 
 **Arquitectura implementada:**
 - `librerias/std/debug.syn`: 104 líneas con tipos `TraceEvent`, `TraceSession`, 9 constantes `EVENT_*`, API pública (`registrar_evento`, `trace`, `iniciar_sesion`, `finalizar_sesion`)

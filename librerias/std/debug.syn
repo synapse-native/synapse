@@ -118,6 +118,78 @@ externo funcion tr_indice_ultimo_error() -> entero
 externo funcion tr_total_eventos() -> entero
 
 // ============================================================
+// Funciones Externas — M9.2 (Replay con Breakpoints Reversibles)
+// ============================================================
+
+// rp_inicializar — Inicializa el motor de replay inverso
+externo funcion rp_inicializar() -> entero
+
+// rp_establecer_breakpoint — Configura un breakpoint reversible
+//   tipo: 0=por línea, 1=por variable, 2=por tag
+//   patron: nombre de variable (tipo=1) o texto (tipo=0/2 ignorado)
+//   valor_int: línea (tipo=0) o tag (tipo=2) o ignorado (tipo=1)
+//   Retorna ID del breakpoint (0-based) o -1 si hay error
+externo funcion rp_establecer_breakpoint(tipo: entero, patron: texto, valor_int: entero) -> entero
+
+// rp_eliminar_breakpoint — Elimina un breakpoint por su ID
+externo funcion rp_eliminar_breakpoint(id: entero) -> entero
+
+// rp_limpiar_breakpoints — Limpia todos los breakpoints
+externo funcion rp_limpiar_breakpoints() -> entero
+
+// rp_buscar_breakpoint — Busca hacia atrás un evento que cumpla el breakpoint
+//   Retorna índice lógico del evento, o -1 si no se encuentra
+externo funcion rp_buscar_breakpoint(id: entero) -> entero
+
+// rp_retroceder — Retrocede N eventos desde una posición
+//   desde_evento: -1 para empezar desde el final
+//   Retorna nueva posición, o -1 si al inicio
+externo funcion rp_retroceder(pasos: entero, desde_evento: entero) -> entero
+
+// rp_posicion_actual — Retorna la posición actual del cursor de replay
+externo funcion rp_posicion_actual() -> entero
+
+// rp_ir_a_pre_error — Salta al evento inmediatamente anterior al último error
+//   Retorna índice del evento pre-error, o -1 si no hay error
+externo funcion rp_ir_a_pre_error() -> entero
+
+// rp_inspeccionar_variable — Obtiene el valor de una variable en un evento
+//   Retorna "tipo:valor" o vacío si no coincide
+externo funcion rp_inspeccionar_variable(indice_evento: entero, nombre: texto) -> texto
+
+// rp_pila_llamadas — Construye la pila de llamadas en un punto de la traza
+//   Retorna "funcion:linea|funcion:linea|..." o vacío
+externo funcion rp_pila_llamadas(indice_evento: entero) -> texto
+
+// rp_buscar_cambio_variable — Busca hacia atrás un cambio de variable a un valor específico
+//   Retorna índice del evento, o -1 si no se encuentra
+externo funcion rp_buscar_cambio_variable(nombre: texto, valor: entero) -> entero
+
+// ============================================================
+// Funciones Externas — M9.3 (Snapshots de Memoria y Diff Histórico)
+// ============================================================
+
+// ms_tomar_en — Captura un snapshot del estado de variables en una secuencia
+//   Retorna snapshot serializado "nombre|tipo|valor\n..." o vacío
+externo funcion ms_tomar_en(secuencia: entero) -> texto
+
+// ms_diferenciar — Compara dos snapshots y produce diff estructural
+//   Retorna diff con prefijos +/-/~ o vacío si son iguales
+externo funcion ms_diferenciar(snap_a: texto, snap_b: texto) -> texto
+
+// ms_diff_entre — Atajo: diff entre dos números de secuencia
+externo funcion ms_diff_entre(seq_a: entero, seq_b: entero) -> texto
+
+// ms_snapshot_contar_vars — Cuenta variables en un snapshot
+externo funcion ms_snapshot_contar_vars(snapshot: texto) -> entero
+
+// ms_snapshot_tamano — Tamaño en bytes del snapshot
+externo funcion ms_snapshot_tamano(snapshot: texto) -> entero
+
+// ms_snapshot_contiene — Busca variable en snapshot, retorna "tipo:valor"
+externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
+
+// ============================================================
 // API Publica Synapse
 // ============================================================
 
