@@ -40,6 +40,10 @@ class ErrorCodes(Enum):
     ERR_SEM_ASM_FUERA_INSEGURO = auto()
     ERR_SEM_CONSTANTE_INMUTABLE = auto()
     ERR_MEM_USE_AFTER_MOVE = auto()
+    ERR_VER_WHILE_INACOTADO = auto()
+    ERR_VER_MUTACION_GLOBAL = auto()
+    ERR_VER_RECURSION_NO_TERMINAL = auto()
+    ERR_VER_CONTRATO_INVALIDO = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -77,6 +81,10 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acceso a variable '{nombre}' despues de move por lanzar/concurrencia (E-504)",
+        ErrorCodes.ERR_VER_WHILE_INACOTADO: "Bucle 'mientras' sin cota estatica comprobable en modo --safe (E-700). Use 'para' con rango fijo.",
+        ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Mutacion de variable global '{nombre}' prohibida en modo --safe (E-701)",
+        ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Funcion '{nombre}' recursiva sin convergencia estructural comprobable en modo --safe (E-702)",
+        ErrorCodes.ERR_VER_CONTRATO_INVALIDO: "Contrato invalido en funcion '{nombre}': {detalle} (E-703)",
     },
     'en': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Expected {esperado}, found '{encontrado}'",
@@ -112,6 +120,10 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Access to variable '{nombre}' after move by lanzar/concurrency (E-504)",
+        ErrorCodes.ERR_VER_WHILE_INACOTADO: "Unbounded 'while' loop without static bound in --safe mode (E-700). Use 'for' with fixed range.",
+        ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Global variable '{nombre}' mutation forbidden in --safe mode (E-701)",
+        ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Recursive function '{nombre}' without structural convergence in --safe mode (E-702)",
+        ErrorCodes.ERR_VER_CONTRATO_INVALIDO: "Invalid contract in function '{nombre}': {detalle} (E-703)",
     },
     'fr': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Attendu {esperado}, trouve '{encontrado}'",

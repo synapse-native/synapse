@@ -1,4 +1,5 @@
 import os, sys, json, re
+import pytest
 from typing import Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -52,3 +53,52 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
 
 def ast_a_canonico_test(programa: Programa) -> str:
     return json.dumps(_nodo_a_dict(programa), indent=2, ensure_ascii=False)
+
+
+# Project root and safe-guarded module-level globals
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+_original_cwd = os.getcwd()
+
+
+def _snapshot_pipeline():
+    """Snapshot pipeline.SYNAPSE_BIN if the module is loaded."""
+    try:
+        import pipeline as _p
+        return _p.SYNAPSE_BIN
+    except (ImportError, AttributeError):
+        return None
+
+
+def _restore_pipeline_synapse_bin(value):
+    """Restore pipeline.SYNAPSE_BIN if the module is loaded."""
+    if value is None:
+        return
+    try:
+        import pipeline as _p
+        _p.SYNAPSE_BIN = value
+    except (ImportError, AttributeError):
+        pass
+
+
+def pytest_configure(config):
+    """Set working directory to project root for all tests."""
+    os.chdir(PROJECT_ROOT)
+
+
+def pytest_unconfigure(config):
+    """Restore original working directory."""
+    os.chdir(_original_cwd)
+
+
+@pytest.fixture(autouse=True)
+def _aislar_entorno():
+    """
+    Aseguramiento absoluto del entorno de pruebas.
+    - Restaura PROJECT_ROOT como directorio de trabajo antes y después de cada test.
+    - Restaura pipeline.SYNAPSE_BIN antes y después de cada test (si pipeline está cargado).
+    """
+    snapshot_bin = _snapshot_pipeline()
+    os.chdir(PROJECT_ROOT)
+    yield
+    os.chdir(PROJECT_ROOT)
+    _restore_pipeline_synapse_bin(snapshot_bin)

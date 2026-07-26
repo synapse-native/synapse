@@ -1,0 +1,49 @@
+#lang: es
+// concurrencia.syn — Benchmark: paso de mensajes (Synapse Canal<T>)
+// 50 productores -> Canal<entero> -> 1 consumidor (main thread)
+// Usa operadores nativos <- y -> (sin std.concurrencia)
+// Compilar: python main.py benchmarks/concurrencia.syn
+
+importar std.tiempo
+
+constante N_PROD = 50
+constante MSG_X_PROD = 2000
+constante TOTAL = N_PROD * MSG_X_PROD
+
+funcion productor(ch: CanalConcurrencia*, id: entero) -> nulo:
+    j: entero = 0
+    mientras j < MSG_X_PROD:
+        ch <- (id * MSG_X_PROD + j)
+        j = j + 1
+
+funcion principal() -> nulo:
+    log("--- Benchmark: Canal<T> Concurrente (Synapse) ---")
+    log("Productores: ", N_PROD)
+    log("Mensajes/productor: ", MSG_X_PROD)
+    log("Total: ", TOTAL)
+    log("")
+
+    ch = canal(entero, 64)
+
+    i: entero = 0
+    mientras i < N_PROD:
+        lanzar productor(ch, i)
+        i = i + 1
+
+    inicio = ahora_ms()
+
+    recibidos: entero = 0
+    mientras recibidos < TOTAL:
+        valor = ch ->
+        recibidos = recibidos + 1
+
+    fin = ahora_ms()
+    tiempo_total = fin - inicio
+    tasa: entero = 0
+    si tiempo_total > 0:
+        tasa = (TOTAL * 1000) / tiempo_total
+
+    log("")
+    log("Resultados (Synapse Canal<T>):")
+    log("  Tiempo total: ", tiempo_total, " ms")
+    log("  Throughput: ", tasa, " mensajes/segundo")

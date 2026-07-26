@@ -1,0 +1,6 @@
+========================================================
+  M8.4 — Live Task Migration (Checkpoint/Restore)
+  Serializacion CKPT + Integridad + Ownership + Fugas
+========================================================
+[INIT] Calling pool_init...
+[INIT] pool_init OK

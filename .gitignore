@@ -84,6 +84,12 @@ paquetes_oficiales/
 *.swp
 *.swo
 
+# Benchmarks (M5.1)
+benchmarks/data.json
+benchmarks/*.exe
+benchmarks/*.c
+benchmarks/*.syn.json
+
 # OS
 .DS_Store
 Thumbs.db

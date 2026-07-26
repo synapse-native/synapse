@@ -7,15 +7,11 @@
 // ----------------------------------------------------------
 // generar — Punto de entrada principal
 // ----------------------------------------------------------
-
-// ----------------------------------------------------------
-// _syn_tipo_nombre
-// Convierte ID entero de nodo del parser a string de tipo OO.
-// Switch exhaustivo con fail-fast para IDs desconocidos.
-// ----------------------------------------------------------
 funcion generar(programa: Programa, ruta: cadena) -> entero:
     r = 0
     est = GeneradorCEst()
+    // PGO: Inicializar contadores al comenzar la generacion
+    pgo_inicializar()
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] Abriendo archivo...\\n\"); fflush(stderr);")
         asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
@@ -51,6 +47,9 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
         asm("    _cur = _cur->cola;")
         asm("}")
         asm("fprintf(stderr, \"[Orquestador] Recorrido AST completado: %d nodos\\n\", _count); fflush(stderr);")
+
+    // [PGO] Finalizar instrumentacion y emitir volcado antes de main()
+    asm("pgo_finalizar(est);")
 
     // Emit main() wrapper
     gen_emitir_linea(est, "int main(int argc, char** argv) {")
@@ -95,6 +94,9 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    fprintf(stderr, \"[DEBUG]   emit function signature\\n\");")
         asm("    gen_emitir_str(est, _sig);")
         asm("    gen_abrir_bloque_c(est);")
+        asm("    // [PGO] Emitir contadores estaticos para funcion")
+        asm("    int _base_pgo = pgo_emitir_contadores_funcion(est, 1);")
+        asm("    pgo_emitir_incremento_id(est, _base_pgo);")
         asm("    fprintf(stderr, \"[DEBUG]   start walking body\\n\");")
         asm("    struct ListaNodo* _bc = _f->cuerpo;")
         asm("    fprintf(stderr, \"[DEBUG]   cuerpo=%p\\n\", (void*)_bc);")

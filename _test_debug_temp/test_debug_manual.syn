@@ -1,0 +1,13 @@
+#lang: es
+importar std.debug
+
+funcion principal() -> nulo:
+    evt = TraceEvent()
+    evt.tag = EVENT_ASSIGNMENT
+    evt.fn_nombre = "principal"
+    evt.archivo = "test.syn"
+    evt.linea = 1
+    evt.variable = "x"
+    evt.valor_entero = 42
+    registrar_evento(evt)
+    retornar

@@ -44,7 +44,7 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("    extern char _gen_tmp_buf[4096];")
         asm("    // Try to snprintf from float valor if struct has it")
         asm("    struct LiteralNumero* _ld = (struct LiteralNumero*)_n;")
-        asm("    snprintf(_b, _sz, \"%%d.0f\", _ld->valor);")
+        asm("    snprintf(_b, _sz, \"%d.0f\", _ld->valor);")
         asm("    return;")
         asm("}")
         asm("")
@@ -130,6 +130,9 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("// Fallback")
         asm("strcpy(_b, \"0\");")
 
+// ----------------------------------------------------------
+// gen_visitar_si  (INSTRUMENTADO con PGO via asm())
+// ----------------------------------------------------------
 funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
         asm("struct SentenciaSi* _s = (struct SentenciaSi*)stmt;")
@@ -145,6 +148,8 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        asm("// [PGO] Counter at if-true block entry")
+        asm("pgo_instrumentar_if_true(est);")
         asm("// Visit if-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _ic = _s->cuerpo;")
@@ -158,6 +163,8 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (_s->cuerpo_sino) {")
         asm("    gen_emitir_str(est, \"    else\");")
         asm("    gen_abrir_bloque_c(est);")
+        asm("    // [PGO] Counter at if-false (else) block entry")
+        asm("    pgo_instrumentar_if_false(est);")
         asm("    struct ListaNodo* _ec = _s->cuerpo_sino;")
         asm("    while (_ec) {")
         asm("        struct Nodo* _es = _ec->cabeza;")
@@ -168,8 +175,7 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
-// gen_visitar_mientras
-// Visita un struct SentenciaMientras* y emite: while (cond) ( ... )
+// gen_visitar_mientras  (INSTRUMENTADO con PGO via asm())
 // ----------------------------------------------------------
 funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -186,6 +192,8 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        asm("// [PGO] Counter at while-body entry")
+        asm("pgo_instrumentar_while_body(est);")
         asm("// While-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _wc = _w->cuerpo;")
@@ -198,8 +206,34 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_cerrar_bloque_c(est);")
 
 // ----------------------------------------------------------
+// gen_visitar_para  (INSTRUMENTADO con PGO via asm())
+// ----------------------------------------------------------
+funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaPara* _p = (struct SentenciaPara*)stmt;")
+        asm("if (!_p) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaPara\");")
+        asm("char _buf[4096], _init[512], _cond[512], _step[512];")
+        asm("_init[0] = _cond[0] = _step[0] = 0;")
+        asm("// Evaluate init, cond, step expressions")
+        asm("if (_p->inicializacion) { _oo_expr_a_c(est, _p->inicializacion, _init, 512); }")
+        asm("if (_p->condicion) { _oo_expr_a_c(est, _p->condicion, _cond, 512); }")
+        asm("if (_p->incremento) { _oo_expr_a_c(est, _p->incremento, _step, 512); }")
+        asm("// Emit: for (init; cond; step) {")
+        asm("snprintf(_buf, 4096, \"    for (%s; %s; %s)\", _init, _cond, _step);")
+        asm("gen_emitir_str(est, _buf);")
+        asm("gen_abrir_bloque_c(est);")
+        asm("// [PGO] Counter at for-body entry")
+        asm("pgo_instrumentar_for_body(est);")
+        asm("// For-body via dispatcher")
+        asm("{")
+        asm("    struct Nodo* _fc = _p->cuerpo;")
+        asm("    if (_fc) { gen_visitar_stmt_generico(est, _fc); }")
+        asm("}")
+        asm("gen_cerrar_bloque_c(est);")
+
+// ----------------------------------------------------------
 // gen_visitar_retornar
-// Visita un struct SentenciaRetornar* y emite: return [expr];
 // ----------------------------------------------------------
 funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -216,14 +250,7 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, _buf);")
 
 // ----------------------------------------------------------
-// gen_visitar_asignacion
-// Visita un struct AsignacionVariable* y emite: int nombre = expr;
-// ----------------------------------------------------------
-// ----------------------------------------------------------
 // gen_visitar_declaracion
-// Visita un struct DeclaracionVariable* y emite: tipo nombre = expr;
-// DIFERENCIA: DeclaracionVariable.nombre es CadenaSegura (igual que AsignacionVariable).
-// Se accede como _dv->nombre (sin .datos).
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -250,6 +277,7 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
+
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
         asm("struct AsignacionVariable* _a = (struct AsignacionVariable*)stmt;")
@@ -278,7 +306,6 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_visitar_expr
-// Visita un struct SentenciaExpr* y emite: expr;
 // ----------------------------------------------------------
 funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -292,14 +319,7 @@ funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, _buf);")
 
 // ----------------------------------------------------------
-// gen_visitar_stmt_generico — Dispatcher principal
-// Recibe un puntero OO a un statement y llama al visitante
-// correspondiente. FAIL-FAST para tipos no reconocidos.
-// ----------------------------------------------------------
-
-// ----------------------------------------------------------
 // gen_visitar_romper
-// Visita un struct SentenciaRomper* y emite: break;
 // ----------------------------------------------------------
 funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -310,7 +330,6 @@ funcion gen_visitar_romper(est: GeneradorCEst, stmt: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_visitar_siguiente
-// Visita un struct SentenciaSiguiente* y emite: continue;
 // ----------------------------------------------------------
 funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -318,6 +337,10 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (!_ct) return;")
         asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaSiguiente\");")
         asm("gen_emitir_str(est, \"    continue;\");")
+
+// ----------------------------------------------------------
+// gen_visitar_stmt_generico — Dispatcher principal
+// ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)stmt;")
@@ -329,6 +352,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
         asm("if (_syn_es_tipo(_t, \"SentenciaSi\")) { gen_visitar_si(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaMientras\")) { gen_visitar_mientras(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaPara\")) { gen_visitar_para(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRetornar\")) { gen_visitar_retornar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"AsignacionVariable\")) { gen_visitar_asignacion(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaExpr\")) { gen_visitar_expr(est, stmt); }")

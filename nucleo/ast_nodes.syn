@@ -125,6 +125,15 @@ estructura SentenciaRomper:
 estructura SentenciaSiguiente:
     tipo: texto
 
+estructura SentenciaPara:
+    tipo: texto
+    linea: entero
+    columna: entero
+    inicializacion: Nodo
+    condicion: Nodo
+    incremento: Nodo
+    cuerpo: Nodo
+
 estructura SentenciaLanzar:
     tipo: texto
     llamada: Nodo

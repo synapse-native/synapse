@@ -97,6 +97,10 @@ class ParserBase:
             self._avanzar()
         return nodos
 
+    def _saltar_nueva_linea(self):
+        while self._mirar().tipo in (TokenID.NEWLINE,):
+            self._avanzar()
+
     def _parsear_tipo_parametro(self) -> str:
         tok_tipo = self._esperar(TokenID.IDENTIFIER)
         if tok_tipo is None:

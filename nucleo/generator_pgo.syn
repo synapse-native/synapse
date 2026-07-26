@@ -1,0 +1,239 @@
+#lang: es
+// nucleo/generator_pgo.syn — Emisor de Instrumentación PGO (Nivel 1)
+// ============================================================
+// Profile-Guided Optimization: Inyecta contadores estáticos en
+// las fronteras de bloques básicos durante la traducción a C.
+//
+// DISEÑO:
+//   - El estado PGO (contador ID, total) se gestiona a través
+//     de una única función pgo_estado_administrar() que usa un
+//     asm() block compartido. Esto evita el problema de que
+//     múltiples funciones Synapse generen múltiples variables
+//     static independientes en C.
+//
+//   Por función: declara contadores estáticos
+//     static uint64_t __pgo_counter_N = 0;
+//
+//   Por bloque básico (if-true, if-else, while-body, for-body):
+//     __pgo_counter_N++;  /* [PGO] */
+//
+//   Al final se emite:
+//     void __pgo_dump(void) { ... }
+//     atexit(__pgo_dump);
+//
+// INTEGRACIÓN:
+//   Llamar pgo_inicializar() al inicio de generar().
+//   Llamar pgo_emitir_contadores_funcion() al emitir cada función.
+//   Llamar pgo_emitir_incremento_bb() en cada frontera de bloque.
+//   Llamar pgo_finalizar() al final de generar().
+// ============================================================
+
+// ----------------------------------------------------------
+// pgo_estado_administrar
+// Única función que gestiona el estado PGO.
+// Usa un solo bloque asm() para que todas las operaciones
+// compartan las mismas variables static de C.
+//
+// PARAMS:
+//   modo: 0 = inicializar (reset), 1 = siguiente (asignar ID),
+//         2 = total (retorna contador actual)
+//
+// RETORNA:
+//   Para modo 0: -1 (indicador de reset)
+//   Para modo 1: el siguiente ID de contador disponible
+//   Para modo 2: el número total de contadores asignados
+// ----------------------------------------------------------
+funcion pgo_estado_administrar(modo: entero) -> entero:
+    r = 0
+    inseguro:
+        asm("// PGO: Administrador de estado unico")
+        asm("static int _pgo_syn_id = 0;")
+        asm("static int _pgo_syn_total = 0;")
+        asm("if (modo == 0) {")
+        asm("    // Inicializar: resetear contadores")
+        asm("    _pgo_syn_id = 0;")
+        asm("    _pgo_syn_total = 0;")
+        asm("    r = -1;")
+        asm("} else if (modo == 1) {")
+        asm("    // Siguiente: asignar y retornar ID")
+        asm("    r = _pgo_syn_id;")
+        asm("    _pgo_syn_id = _pgo_syn_id + 1;")
+        asm("    _pgo_syn_total = _pgo_syn_id;")
+        asm("} else if (modo == 2) {")
+        asm("    // Total: retornar contador actual")
+        asm("    r = _pgo_syn_total;")
+        asm("}")
+    retornar r
+
+// ----------------------------------------------------------
+// pgo_inicializar
+// Reinicia el estado PGO a 0.
+// Debe llamarse al comenzar generar().
+// ----------------------------------------------------------
+funcion pgo_inicializar() -> nulo:
+    _ = pgo_estado_administrar(0)
+
+// ----------------------------------------------------------
+// pgo_nuevo_contador
+// Asigna un nuevo ID de contador PGO.
+// Retorna el ID asignado (0, 1, 2, ...).
+// ----------------------------------------------------------
+funcion pgo_nuevo_contador() -> entero:
+    retornar pgo_estado_administrar(1)
+
+// ----------------------------------------------------------
+// pgo_total_contadores
+// Retorna el número total de contadores asignados hasta ahora.
+// ----------------------------------------------------------
+funcion pgo_total_contadores() -> entero:
+    retornar pgo_estado_administrar(2)
+
+// ----------------------------------------------------------
+// pgo_emitir_contadores_funcion
+// Emite N contadores estáticos para una función, asignando
+// IDs automáticamente desde el contador global PGO.
+//
+// EFECTO: Asigna N contadores mediante pgo_nuevo_contador()
+// y emite al buffer _G_emit_buf:
+//   /* [PGO] contadores de funcion */
+//   static uint64_t __pgo_counter_<id0> = 0;
+//   static uint64_t __pgo_counter_<id1> = 0;
+//   ...
+//
+// PARAMS:
+//   est      - Estado del generador (GeneradorCEst)
+//   num_ctrs - Cantidad de contadores a asignar y emitir (entero)
+//
+// RETORNA: El ID del primer contador asignado (base).
+// ----------------------------------------------------------
+funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> entero:
+    id_base = pgo_nuevo_contador()
+    inseguro:
+        asm("// PGO: Emitir contadores estaticos para funcion")
+        asm("int _base = id_base;")
+        asm("int _n = num_ctrs;")
+        asm("char _tmp[256];")
+        asm("gen_emitir_str(est, \"    /* [PGO] contadores de funcion */\");")
+        asm("for (int _i = 0; _i < _n; _i++) {")
+        asm("    snprintf(_tmp, 256, \"    static uint64_t __pgo_counter_%d = 0;\", _base + _i);")
+        asm("    gen_emitir_str(est, _tmp);")
+        asm("}")
+    retornar id_base
+
+// ----------------------------------------------------------
+// pgo_emitir_incremento_bb
+// Inyecta un incremento de contador PGO en la frontera de
+// un bloque básico. Asigna automáticamente un nuevo ID.
+//
+// EFECTO: Asigna ID via pgo_nuevo_contador() y emite:
+//   __pgo_counter_<ID>++;  /* [PGO] */
+// ----------------------------------------------------------
+funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
+    id_ctr = pgo_nuevo_contador()
+    inseguro:
+        asm("// PGO: Emitir incremento en frontera de bloque basico")
+        asm("int _id = id_ctr;")
+        asm("char _tmp[128];")
+        asm("snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);")
+        asm("gen_emitir_str(est, _tmp);")
+
+// ----------------------------------------------------------
+// pgo_emitir_incremento_id
+// Inyecta un incremento para un ID de contador específico.
+// Útil para reutilizar contadores pre-asignados.
+// ----------------------------------------------------------
+funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
+    inseguro:
+        asm("// PGO: Emitir incremento para contador especifico")
+        asm("int _id = id;")
+        asm("char _tmp[128];")
+        asm("snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);")
+        asm("gen_emitir_str(est, _tmp);")
+
+// ----------------------------------------------------------
+// pgo_emitir_volcado
+// Emite la función __pgo_dump() que escribe todos los
+// contadores PGO a un archivo "synapse.profdata" en
+// formato CSV simple (una línea por contador).
+//
+// PARAMS:
+//   est       - Estado del generador (GeneradorCEst)
+//   num_ctrs  - Número TOTAL de contadores a volcar
+// ----------------------------------------------------------
+funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
+    inseguro:
+        asm("// PGO: Emitir funcion de volcado de contadores")
+        asm("int _total = num_ctrs;")
+        asm("char _tmp[512];")
+        asm("")
+        asm("gen_emitir_str(est, \"\");")
+        asm("gen_emitir_str(est, \"// ================================================\");")
+        asm("gen_emitir_str(est, \"// PGO: Volcado automatico de contadores\");")
+        asm("gen_emitir_str(est, \"// ================================================\");")
+        asm("gen_emitir_str(est, \"static int _pgo_ya_volcado = 0;\");")
+        asm("gen_emitir_str(est, \"void __pgo_dump(void) {\");")
+        asm("gen_emitir_str(est, \"    if (_pgo_ya_volcado) return;\");")
+        asm("gen_emitir_str(est, \"    _pgo_ya_volcado = 1;\");")
+        asm("gen_emitir_str(est, \"    FILE* _pf = fopen(\\\"synapse.profdata\\\", \\\"a\\\");\");")
+        asm("gen_emitir_str(est, \"    if (!_pf) return;\");")
+        asm("gen_emitir_str(est, \"    // Cabecera: version y total de contadores\");")
+        asm("snprintf(_tmp, 512, \"    fprintf(_pf, \\\"synapse_pgo_v1 %%d\\\\\\\\n\\\", %d);\", _total);")
+        asm("gen_emitir_str(est, _tmp);")
+        asm("gen_emitir_str(est, \"    // Volcar cada contador\");")
+        asm("// Emitir declaraciones externas y fprintf para cada contador")
+        asm("for (int _i = 0; _i < _total; _i++) {")
+        asm("    snprintf(_tmp, 512, \"    extern uint64_t __pgo_counter_%d;\", _i);")
+        asm("    gen_emitir_str(est, _tmp);")
+        asm("}")
+        asm("for (int _i = 0; _i < _total; _i++) {")
+        asm("    snprintf(_tmp, 512, \"    fprintf(_pf, \\\"%%llu\\\\\\\\n\\\", __pgo_counter_%d);\", _i);")
+        asm("    gen_emitir_str(est, _tmp);")
+        asm("}")
+        asm("gen_emitir_str(est, \"    fclose(_pf);\");")
+        asm("gen_emitir_str(est, \"}\");")
+        asm("gen_emitir_str(est, \"\");")
+
+// ----------------------------------------------------------
+// pgo_registrar_atexit
+// Emite atexit(__pgo_dump) para volcado automático.
+// Debe ir dentro de main(), después de pool_init().
+// ----------------------------------------------------------
+funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("gen_emitir_str(est, \"    atexit(__pgo_dump);  /* [PGO] Registro de volcado */\");")
+
+// ----------------------------------------------------------
+// pgo_finalizar
+// Finaliza la instrumentación PGO para la unidad actual.
+// Emite __pgo_dump() y atexit() si hay contadores.
+// Llamar al final de generar(), antes de main().
+// ----------------------------------------------------------
+funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
+    total = pgo_total_contadores()
+    si total > 0:
+        pgo_emitir_volcado(est, total)
+        pgo_registrar_atexit(est)
+
+// ============================================================
+// WRAPPERS DE VISITANTES INSTRUMENTADOS
+// ============================================================
+// Funciones para inyectar instrumentación en fronteras de
+// bloque. Llamar desde los visitantes en nodos_flujo.syn.
+//
+// USO (en gen_visitar_si, tras abrir bloque):
+//   pgo_instrumentar_if_true(est);
+//   ...cuerpo del if...
+//
+// ============================================================
+
+funcion pgo_instrumentar_if_true(est: GeneradorCEst) -> nulo:
+    pgo_emitir_incremento_bb(est)
+
+funcion pgo_instrumentar_if_false(est: GeneradorCEst) -> nulo:
+    pgo_emitir_incremento_bb(est)
+
+funcion pgo_instrumentar_while_body(est: GeneradorCEst) -> nulo:
+    pgo_emitir_incremento_bb(est)
+
+funcion pgo_instrumentar_for_body(est: GeneradorCEst) -> nulo:
+    pgo_emitir_incremento_bb(est)

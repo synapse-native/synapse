@@ -84,15 +84,15 @@ void _G_vest(struct DefinicionEstructura* n);
 #define TAG_NINGUNO 1
 
 // --- Helpers de serialización primitiva ---
-inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
-inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
-inline void* _synapse_box_float(float v) {
+static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
+static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
+static inline void* _synapse_box_float(float v) {
     float* _p = (float*)malloc(sizeof(float));
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\\n"); exit(1); }
     *_p = v;
     return (void*)_p;
 }
-inline float _synapse_unbox_float(void* p) {
+static inline float _synapse_unbox_float(void* p) {
     float _v = *(float*)p;
     free(p);
     return _v;
@@ -100,6 +100,8 @@ inline float _synapse_unbox_float(void* p) {
 
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void pool_free(void* ptr);
+extern void* pool_alloc(size_t size);
+extern void pool_destroy(void);
 extern void escribir(CadenaSegura contenido);
 extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
@@ -131,6 +133,9 @@ extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
+// --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
+extern void _simd_detectar(void);
+
 // --- Contratos (requiere/garantiza) ---
 #ifdef SYNAPSE_RELEASE
 #define assert_contrato(expr, msg) ((void)0)
@@ -175,6 +180,7 @@ Tensor generar_tensor(void) {
 
 void principal(void) {
     Tensor matriz;
+    _simd_detectar();
     matriz = generar_tensor();
     printf("%s\
 ", (CadenaSegura){ .longitud = (int)strlen("Tensor recibido y memoria gestionada correctamente."), .datos = "Tensor recibido y memoria gestionada correctamente." }.datos);
@@ -186,5 +192,6 @@ int main(int argc, char** argv) {
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     principal();
     synapse_esperar_hilos();
+    pool_destroy();
     return 0;
 }

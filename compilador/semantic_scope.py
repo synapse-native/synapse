@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict, Tuple
 
 from compilador.ast_nodes import (
-    Programa, DefinicionEstructura, Token, TokenID,
+    Programa, DefinicionEstructura, Parametro, Token, TokenID,
 )
 from compilador.diagnostics import DiagnosticManager
 from compilador.symbol_table import SymbolTable
@@ -58,6 +58,19 @@ class AnalizadorSemanticoScope:
         self._estructuras: Dict[str, DefinicionEstructura] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False
+        self._inicializar_estructuras_nativas()
+
+    def _inicializar_estructuras_nativas(self):
+        tensor_campos = [
+            Parametro(nombre='filas', tipo='entero', es_transferencia=False),
+            Parametro(nombre='columnas', tipo='entero', es_transferencia=False),
+            Parametro(nombre='datos', tipo='puntero', es_transferencia=False),
+        ]
+        tensor_def = DefinicionEstructura(nombre='tensor',
+                                          campos=tensor_campos,
+                                          linea=0, columna=0)
+        self._estructuras['tensor'] = tensor_def
+        self._estructuras['Tensor'] = tensor_def
 
     def _token(self, linea: int, columna: int) -> Token:
         return Token(TokenID.IDENTIFIER, linea, columna)

@@ -1187,6 +1187,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     fprintf({_PH}out,"extern void synapse_esperar_hilos(void);\\n");
     fprintf({_PH}out,"extern void pool_init(uint32_t total_blocks, uint32_t block_size);\\n");
     fprintf({_PH}out,"extern void pool_free(void* ptr);\\n");
+    fprintf({_PH}out,"extern void* pool_alloc(size_t size);\\n");
     fprintf({_PH}out,"int _g_argc;\\nchar** _g_argv;\\nint _argc(){{return _g_argc;}}\\n");
     fprintf({_PH}out,"CadenaSegura _argv(int i){{if(i<0||i>=_g_argc)return (CadenaSegura){{0,(char*)\\"\\"}};return (CadenaSegura){{.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]}};}}\\n");
     fprintf({_PH}out,"void salir(int c){{exit(c);}}\\n");

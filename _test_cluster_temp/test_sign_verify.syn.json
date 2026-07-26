@@ -1,0 +1,337 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Resultado",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Opcion",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ParEd25519",
+        "campos": [
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_privada",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "NodoCluster",
+        "campos": [
+          {
+            "nombre": "id",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "direccion",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "CanalRemoto",
+        "campos": [
+          {
+            "nombre": "id",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "id_destino",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "direccion",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_generar_par_claves",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_firmar_mensaje",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_privada_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_verificar_firma",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma_hex",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_iniciar_nodo",
+        "parametros": [
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_detener_nodo",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_enviar_hello",
+        "parametros": [
+          {
+            "nombre": "ip",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "id_origen",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "pubkey_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_canal_remoto_enviar",
+        "parametros": [
+          {
+            "nombre": "ip",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "lon",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "chan_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_recibir_paquete",
+        "parametros": [
+          {
+            "nombre": "timeout_ms",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "mensaje",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "Prueba de firma"
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "mensaje"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "valido",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "mensaje"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "valido"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

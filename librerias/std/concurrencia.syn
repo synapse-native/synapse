@@ -29,14 +29,9 @@ estructura Canal:
     tipo_contenido: texto
     capacidad: entero
 
-// canal — constructor: crea un nuevo canal tipado
-// T: tipo del contenido
-// capacidad: tamaño del buffer (0 = unbuffered sincrono)
-// retorna: Canal* (puntero a canal)
-externo funcion _syn_canal_crear(tipo_contenido: texto, capacidad: entero) -> puntero
-
-funcion canal(tipo_contenido: texto, capacidad: entero) -> puntero:
-    retornar _syn_canal_crear(tipo_contenido, capacidad)
+// NOTA: canal() es una expresion nativa del lenguaje (built-in).
+// No definimos funcion canal() aqui porque 'canal' es una palabra reservada.
+// Uso: ch = canal(entero, 64)
 
 // enviar — envia un valor al canal (bloqueante si buffer lleno)
 // fuerza un move de la variable transmitida (ownership transfer)

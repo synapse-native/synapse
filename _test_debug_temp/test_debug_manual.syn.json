@@ -1,0 +1,509 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Resultado",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Opcion",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "TraceEvent",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "timestamp",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "fn_nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "archivo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_entero",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_decimal",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "valor_texto",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "variable",
+            "tipo": "texto"
+          }
+        ]
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_ASSIGNMENT",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 0
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_FUNCTION_CALL",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 1
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_FUNCTION_RETURN",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 2
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_ERROR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 3
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_BRANCH_TAKEN",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 4
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_LOOP_ITERATION",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 5
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_VARIABLE_CHANGE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 6
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_CONTRACT_CHECK",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 7
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "EVENT_USER_TRACE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 8
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "TRACE_MAX_EVENTOS",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 50000
+        }
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "TraceSession",
+        "campos": [
+          {
+            "nombre": "id",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "programa",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "eventos",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "total_eventos",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_debug_iniciar_sesion",
+        "parametros": [
+          {
+            "nombre": "programa",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "TraceSession"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_debug_registrar_evento",
+        "parametros": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "fn_nombre",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "archivo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "variable",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_entero",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_decimal",
+            "tipo": "decimal"
+          },
+          {
+            "nombre": "valor_texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Resultado"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_debug_trace",
+        "parametros": [
+          {
+            "nombre": "expresion_texto",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Resultado"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_debug_finalizar_sesion",
+        "parametros": [],
+        "tipo_retorno": "Resultado"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_debug_obtener_sesion",
+        "parametros": [],
+        "tipo_retorno": "TraceSession"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "registrar_evento",
+        "parametros": [
+          {
+            "nombre": "evento",
+            "tipo": "TraceEvent"
+          }
+        ],
+        "tipo_retorno": "Resultado",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct TraceEvent* _e = (struct TraceEvent*)evento;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "return _syn_debug_registrar_evento(_e->tag, _e->fn_nombre.datos, _e->archivo.datos, _e->linea, _e->variable.datos, _e->valor_entero, _e->valor_decimal, _e->valor_texto.datos);"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "trace",
+        "parametros": [
+          {
+            "nombre": "expresion",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Resultado",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "return _syn_debug_trace(#expr, &expr, typeof(expr));"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "iniciar_sesion",
+        "parametros": [
+          {
+            "nombre": "programa",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "TraceSession",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_debug_iniciar_sesion",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "programa"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "finalizar_sesion",
+        "parametros": [],
+        "tipo_retorno": "Resultado",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_debug_finalizar_sesion",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "evt",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "TraceEvent",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "tag",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "EVENT_ASSIGNMENT"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "fn_nombre",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "principal"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "archivo",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "test.syn"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "linea",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "variable",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "x"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "evt"
+            },
+            "nombre_campo": "valor_entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 42
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "registrar_evento",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "evt"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

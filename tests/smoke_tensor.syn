@@ -31,8 +31,8 @@ funcion validar_resultado(esperado: tensor, obtenido: tensor, nombre: texto) -> 
             diff = esperado.datos[idx] - obtenido.datos[idx]
             si diff < 0: diff = -diff
             si diff > TOLERANCIA:
-                log("ERROR: ", nombre, " - diferencia en [", fila, ",", col, "]: ",
-                    esperado.datos[idx], " vs ", obtenido.datos[idx])
+                log("ERROR: ", nombre, " - diff=", diff, " en [", fila, ",", col, "]: ",
+                esperado.datos[idx], " vs ", obtenido.datos[idx])
                 retornar 1
             col = col + 1
         fila = fila + 1

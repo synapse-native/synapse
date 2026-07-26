@@ -24,9 +24,105 @@ from .emit_declarations import (
     visitar_retornar, visitar_lanzar, visitar_recuperar, visitar_escuchar,
 )
 from .emit_expressions import (
-    expr_a_c, visitar_log,
+    expr_a_c, tipo_de_expr, visitar_log,
 )
 from .emit_contracts import emit_contract_header
+
+
+def _preprocess_lanzar(ctx: GeneratorContext):
+    """Pre-scan: recorre el AST en busca de SentenciaLanzar con LlamadaFuncion y args,
+    pre-poblando _deferred_typedefs y _deferred_wrap_decls usando el MISMO contador
+    que usara visitar_lanzar durante la emision.
+
+    Construye un mapa de variables local al escanear cuerpos de funcion,
+    para resolver tipos correctamente (no hardcodear 'int').
+    """
+    from compilador.ast_nodes import (
+        SentenciaLanzar, LlamadaFuncion,
+        ArgumentoTransferido, Identificador,
+        DeclaracionVariable, AsignacionVariable, BloqueInseguro,
+    )
+
+    def _col_vars_local(nodo):
+        """Recolecta declaraciones/asignaciones en un ambito para inferir tipos."""
+        local_vars = {}
+        def _scan_local(stmts):
+            for st in stmts:
+                if isinstance(st, DeclaracionVariable):
+                    if st.expresion:
+                        t_syn = tipo_de_expr(ctx, st.expresion)
+                        local_vars[st.nombre] = t_syn
+                    elif st.tipo:
+                        local_vars[st.nombre] = st.tipo
+                elif isinstance(st, AsignacionVariable):
+                    if st.nombre not in local_vars:
+                        t_syn = tipo_de_expr(ctx, st.expresion)
+                        local_vars[st.nombre] = t_syn
+                if isinstance(st, BloqueInseguro):
+                    _scan_local(st.cuerpo)
+                elif hasattr(st, 'cuerpo') and isinstance(getattr(st, 'cuerpo'), list):
+                    _scan_local(st.cuerpo)
+                if hasattr(st, 'cuerpo_sino') and getattr(st, 'cuerpo_sino'):
+                    _scan_local(st.cuerpo_sino)
+        _scan_local(nodo)
+        return local_vars
+
+    def _scan_node(nodo, local_vars=None):
+        if isinstance(nodo, SentenciaLanzar):
+            if isinstance(nodo.llamada, LlamadaFuncion):
+                args = nodo.llamada.argumentos
+                if args:
+                    ctx._contador_thread += 1
+                    tid = ctx._contador_thread
+                    arg_type_names = []
+                    for i, arg in enumerate(args):
+                        if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
+                            var_name = arg.expr.nombre
+                            # Try local_vars first, then ctx._variables, fallback void*
+                            if local_vars and var_name in local_vars:
+                                arg_t = local_vars[var_name]
+                            else:
+                                arg_t = ctx._variables.get(var_name, 'void*')
+                            arg_type_names.append(ctx.traducir_tipo_c(arg_t))
+                        else:
+                            # For non-transfer args: try local_vars + Identificador lookup
+                            if isinstance(arg, Identificador) and local_vars and arg.nombre in local_vars:
+                                arg_t = local_vars[arg.nombre]
+                            elif isinstance(arg, Identificador) and arg.nombre in ctx._variables:
+                                arg_t = ctx._variables[arg.nombre]
+                            else:
+                                arg_t = tipo_de_expr(ctx, arg)
+                            arg_type_names.append(ctx.traducir_tipo_c(arg_t))
+
+                    args_type_name = f"_args_{tid}_t"
+                    wrapper_name = f"_wrap_{tid}"
+
+                    fields_str = " ".join(f"{tn} v{i};" for i, tn in enumerate(arg_type_names))
+                    td_line = f"typedef struct {{ {fields_str} }} {args_type_name};"
+                    if td_line not in ctx._emitted_typedefs:
+                        ctx._deferred_typedefs.append(td_line)
+                        ctx._emitted_typedefs.add(td_line)
+                    wd_line = f"static void* {wrapper_name}(void* arg);"
+                    if wd_line not in ctx._emitted_wrap_decls:
+                        ctx._deferred_wrap_decls.append(wd_line)
+                        ctx._emitted_wrap_decls.add(wd_line)
+        if hasattr(nodo, 'cuerpo') and isinstance(getattr(nodo, 'cuerpo'), list):
+            # Collect variable types from this block to resolve lanzar argument types
+            child_vars = _col_vars_local(nodo.cuerpo)
+            # Incluir parametros de funcion (DefinicionFuncion.parametros)
+            if hasattr(nodo, 'parametros'):
+                for p in nodo.parametros:
+                    if p.nombre not in child_vars:
+                        child_vars[p.nombre] = p.tipo
+            merged = {**(local_vars or {}), **child_vars}
+            for s in nodo.cuerpo:
+                _scan_node(s, merged)
+        if hasattr(nodo, 'cuerpo_sino') and getattr(nodo, 'cuerpo_sino'):
+            for s in nodo.cuerpo_sino:
+                _scan_node(s, local_vars)
+
+    for s in ctx.programa.sentencias:
+        _scan_node(s)
 
 
 def _extract_listener_name(func_str: str) -> str:
@@ -217,16 +313,15 @@ def _emitir_encabezado(ctx: GeneratorContext):
 
     if not ctx.is_no_std():
         ctx.write_line("// --- Helpers de serialización primitiva ---")
-        ctx.write_line(
-            "inline void* _synapse_box_int(int v) "
+        ctx.write_line("static inline void* _synapse_box_int(int v) "
             "{ return (void*)(intptr_t)v; }"
         )
         ctx.write_line(
-            "inline int _synapse_unbox_int(void* p) "
+            "static inline int _synapse_unbox_int(void* p) "
             "{ return (int)(intptr_t)p; }"
         )
         ctx.write_line(
-            "inline void* _synapse_box_float(float v) {"
+            "static inline void* _synapse_box_float(float v) {"
         )
         ctx.inc_indent()
         ctx.write_line("float* _p = (float*)malloc(sizeof(float));")
@@ -239,7 +334,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.dec_indent()
         ctx.write_line("}")
         ctx.write_line(
-            "inline float _synapse_unbox_float(void* p) {"
+            "static inline float _synapse_unbox_float(void* p) {"
         )
         ctx.inc_indent()
         ctx.write_line("float _v = *(float*)p;")
@@ -251,6 +346,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
 
     ctx.write_line("extern void pool_init(uint32_t total_blocks, uint32_t block_size);")
     ctx.write_line("extern void pool_free(void* ptr);")
+    ctx.write_line("extern void* pool_alloc(size_t size);")
+    ctx.write_line("extern void pool_destroy(void);")
     if ctx.is_no_std():
         ctx.write_line("extern void* __syn_asignar(int tamano);")
         ctx.write_line("extern void __syn_liberar(void* ptr);")
@@ -295,6 +392,16 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "void cerrar_canal(CanalConcurrencia* canal)",
         ]:
             ctx.write_line(f"extern {ext};")
+
+    # _simd_detectar(): deteccion SIMD unificada via runtime (synapse_rt.o)
+    # NOTA: _syn_simd_disponible y _syn_simd_tipo NO se declaran aqui porque
+    # sus declaraciones estan en las bibliotecas std (e.g. std/tensor.syn) que
+    # las emite como extern CadenaSegura/CadenaSegura. Duplicarlas aqui causa
+    # conflictos de tipos (const char* vs CadenaSegura).
+    if not ctx.is_no_std():
+        ctx.write_line("// --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---")
+        ctx.write_line("extern void _simd_detectar(void);")
+        ctx.write_line("")
 
     emit_contract_header(ctx)
 
@@ -418,6 +525,22 @@ class GeneradorC:
         ):
             ctx.write_line("")
 
+        # Pre-pass: escanear SentenciaLanzar para pre-poblar _deferred_typedefs y _wrap_decls
+        # (necesario para que los typedefs/decls se emitan ANTES de los cuerpos de funcion)
+        _preprocess_lanzar(ctx)
+
+        # IMPORTANTE: resetear contador para que visitar_lanzar genere los MISMOS IDs
+        # (el pre-pass ya los consumio)
+        ctx._contador_thread = 0
+
+        # Emitir typedefs y forward declarations de wrappers ANTES de los cuerpos
+        for td in ctx._deferred_typedefs:
+            ctx.write_line(td)
+        for decl in ctx._deferred_wrap_decls:
+            ctx.write_line(decl)
+        if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
+            ctx.write_line("")
+
         for s in ctx.programa.sentencias:
             visitar(ctx, s)
 
@@ -431,6 +554,10 @@ class GeneradorC:
         for func in ctx._listener_funciones:
             ctx.lineas.append(func)
             ctx.lineas.append("")
+
+        for wrap in ctx._deferred_wrappers:
+            ctx.write_line(wrap)
+            ctx.write_line("")
 
         principal = ctx.encontrar_principal()
         if ctx.is_no_std():
@@ -454,6 +581,7 @@ class GeneradorC:
                 else:
                     ctx.write_line(f"return {principal}();")
             ctx.write_line("synapse_esperar_hilos();")
+            ctx.write_line("pool_destroy();")
             ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")

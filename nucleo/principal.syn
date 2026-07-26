@@ -11,7 +11,9 @@ importar tabla_simbolos
 importar analizador_semantico
 importar memoria
 importar generator
+importar generator_pgo
 importar resolvedor_axon
+importar cache
 
 // --- ADT for stage results ---
 estructura ResultadoEtapa:

@@ -1,0 +1,72 @@
+========================================================
+  M8.4 — Live Task Migration (Checkpoint/Restore)
+  Serializacion CKPT + Integridad + Ownership + Fugas
+========================================================
+
+--- Test 1: Checkpoint/Restore basico ---
+  [PASS] ws_encolar(1001, payload) ok
+  [PASS] 1 tarea en cola origen
+  [PASS] cm_serializar_checkpoint() devuelve checkpoint
+  [PASS] checkpoint comienza con 'CKPT:'
+  [PASS] cm_verificar_integridad() devuelve 0 (valido)
+  [PASS] cm_deserializar_checkpoint() devuelve datos
+  [PASS] datos restaurados coinciden con original
+  [PASS] cm_restaurar_checkpoint() ok
+  [PASS] cola tiene 2 tareas (original + restaurada)
+  [PASS] desencolar tarea restaurada
+
+--- Test 2: Deteccion de corrupcion via checksum ---
+  [PASS] checkpoint creado
+  [PASS] checkpoint intacto es valido
+  [PASS] checkpoint corrupto es detectado (-1)
+  [PASS] deserializar checkpoint corrupto devuelve vacio
+  [PASS] restaurar checkpoint corrupto falla (-1)
+
+--- Test 3: Migracion con transferencia de ownership ---
+  [PASS] 3 tareas en cola origen
+  [PASS] cm_migrar_tarea() devuelve checkpoint
+  [PASS] cola tiene 2 tareas (ownership transferido: 1 eliminada)
+  [PASS] cm_ultima_migracion() devuelve resultado
+  [PASS] ultima migracion fue exitosa
+  [PASS] segunda migracion ok
+  [PASS] 1 tarea restante en cola origen
+  [PASS] tercera migracion ok
+  [PASS] 0 tareas restantes (todas migradas)
+  [PASS] migrar de cola vacia devuelve vacio
+  [PASS] 1 migracion fallida registrada
+  [PASS] 3 migraciones completadas
+  [PASS] checkpoint de migracion tiene formato valido
+  [PASS] checkpoint contiene al menos header + datos
+
+--- Test 4: Serializacion round-trip ---
+  [PASS] checkpoint creado para payload no vacio
+  [PASS] deserializacion ok para payload no vacio
+  [PASS] datos restaurados coinciden exactamente con original
+  [PASS] checkpoint creado para payload no vacio
+  [PASS] deserializacion ok para payload no vacio
+  [PASS] datos restaurados coinciden exactamente con original
+  [PASS] checkpoint creado para payload no vacio
+  [PASS] deserializacion ok para payload no vacio
+  [PASS] datos restaurados coinciden exactamente con original
+  [PASS] payload vacio da checkpoint con datos vacios
+  [PASS] checkpoint creado para payload no vacio
+  [PASS] deserializacion ok para payload no vacio
+  [PASS] datos restaurados coinciden exactamente con original
+
+--- Test 5: Migracion entre nodos simulada ---
+
+--- Test 5: Migracion entre nodos simulada ---
+  [PASS] nodo A tiene 5 tareas
+  [PASS] migraciones entre nodos exitosas
+  [PASS] cola nodo A operativa despues de migraciones
+  [PASS] resultado de migracion disponible
+
+--- Test 6: Ausencia de fugas de memoria ---
+  [PASS] 10 tareas encoladas
+  [PASS] 10 tareas migradas exitosamente
+  [PASS] al menos 10 migraciones completadas
+  [PASS] 0 migraciones fallidas
+
+========================================================
+  Resultados: 50 passed, 0 failed
+========================================================

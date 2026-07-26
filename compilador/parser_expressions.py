@@ -6,6 +6,7 @@ from compilador.ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor,
     ArgumentoTransferido, ExprCrearCanal,
     ExprObtenerDireccion, ExprDereferencia, ExprAccesoCampo, ExprAsm,
+    ExprIndice,
 )
 from compilador.lexer import OPERADORES_BINARIOS
 from compilador.diagnostics import ErrorCodes
@@ -149,17 +150,28 @@ class ParserExpressionsMixin(ParserBase):
                     return self._parsear_crear_canal(t)
                 return self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
             expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
-            while self._mirar().tipo == TokenID.DOT:
-                self._avanzar()
-                tok_campo = self._esperar(TokenID.IDENTIFIER)
-                if tok_campo is None:
-                    break
-                expr = ExprAccesoCampo(
-                    objeto=expr,
-                    nombre_campo=tok_campo.valor,
-                    linea=expr.linea,
-                    columna=expr.columna,
-                )
+            while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
+                if self._mirar().tipo == TokenID.DOT:
+                    self._avanzar()
+                    tok_campo = self._esperar(TokenID.IDENTIFIER)
+                    if tok_campo is None:
+                        break
+                    expr = ExprAccesoCampo(
+                        objeto=expr,
+                        nombre_campo=tok_campo.valor,
+                        linea=expr.linea,
+                        columna=expr.columna,
+                    )
+                else:
+                    self._avanzar()  # consume [
+                    indice = self._parsear_expresion()
+                    self._esperar(TokenID.RBRACKET)
+                    expr = ExprIndice(
+                        expr=expr,
+                        indice=indice,
+                        linea=expr.linea,
+                        columna=expr.columna,
+                    )
             return expr
         if t.tipo == TokenID.LPAREN:
             self._avanzar()
@@ -194,6 +206,7 @@ class ParserExpressionsMixin(ParserBase):
         self._esperar(TokenID.LPAREN)
         args: List[Nodo] = []
         if self._mirar().tipo != TokenID.RPAREN:
+            self._saltar_nueva_linea()
             if self._mirar().tipo == TokenID.ARROW:
                 self._avanzar()
                 args.append(ArgumentoTransferido(expr=self._parsear_expresion()))
@@ -201,11 +214,13 @@ class ParserExpressionsMixin(ParserBase):
                 args.append(self._parsear_expresion())
             while self._mirar().tipo == TokenID.COMMA:
                 self._avanzar()
+                self._saltar_nueva_linea()
                 if self._mirar().tipo == TokenID.ARROW:
                     self._avanzar()
                     args.append(ArgumentoTransferido(expr=self._parsear_expresion()))
                 else:
                     args.append(self._parsear_expresion())
+        self._saltar_nueva_linea()
         self._esperar(TokenID.RPAREN)
         nombre = tok_id.nombre if isinstance(tok_id, Nodo) and hasattr(tok_id, 'nombre') else getattr(tok_id, 'valor', '?')
         return LlamadaFuncion(

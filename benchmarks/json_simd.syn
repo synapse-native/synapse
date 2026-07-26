@@ -1,0 +1,47 @@
+#lang: es
+// json_simd.syn — Benchmark: parseo masivo de JSON (Synapse C vs Python json)
+// Lee benchmarks/data.json, mide tiempo de parseo en 5 iteraciones
+// Compilar: python main.py benchmarks/json_simd.syn
+
+importar std.json
+importar std.tiempo
+importar std.sistema
+
+constante CANTIDAD = 50000
+constante ITERACIONES = 5
+
+funcion principal() -> nulo:
+    log("--- Benchmark: Parseo JSON masivo (Synapse) ---")
+    log("Objetos: ", CANTIDAD)
+    log("")
+
+    json_str = leer_archivo("benchmarks/data.json")
+    log("")
+
+    suma_ms: entero = 0
+    i: entero = 0
+    mientras i < ITERACIONES:
+        inicio = ahora_ms()
+        doc = desde_texto(json_str)
+        fin = ahora_ms()
+
+        tiempo = fin - inicio
+        suma_ms = suma_ms + tiempo
+        log("  Iteracion ", i + 1, ": ", tiempo, " ms")
+
+        val0 = obtener_elemento(doc, 0)
+        id0 = obtener_campo(val0, "id")
+        valN = obtener_elemento(doc, CANTIDAD - 1)
+        idN = obtener_campo(valN, "id")
+        liberar_nodo(->doc)
+        i = i + 1
+
+    promedio = suma_ms / ITERACIONES
+    tasa: entero = 0
+    si promedio > 0:
+        tasa = (CANTIDAD * 1000) / promedio
+
+    log("")
+    log("Resultados (Synapse):")
+    log("  Promedio: ", promedio, " ms")
+    log("  Tasa: ", tasa, " objetos/segundo")

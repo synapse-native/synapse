@@ -1,0 +1,2658 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ahora_ms",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_dormir_ms",
+        "parametros": [
+          {
+            "nombre": "ms",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ahora_ms",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ahora_ms",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "dormir_ms",
+        "parametros": [
+          {
+            "nombre": "ms",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_dormir_ms",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ms"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_llenar_tensor_constante",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_multiplicar_matrices",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_extraer_fila",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "tabla_embeddings",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "indice_token",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_rmsnorm",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "peso_normalizacion",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "epsilon",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_silu",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_rope",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "posicion_token",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "head_dim",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "theta_base",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_softmax_escalado",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "factor_escala",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_multiplicar_matrices_transpuesta_b",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_fijar_elemento",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "llenar_tensor_constante",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "t"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "valor"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "multiplicar_matrices",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_multiplicar_matrices",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "extraer_fila",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "tabla_embeddings",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "indice_token",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_extraer_fila",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "tabla_embeddings"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "indice_token"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "rmsnorm",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "peso_normalizacion",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "epsilon",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_rmsnorm",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "entrada"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "peso_normalizacion"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "epsilon"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "silu",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_silu",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "entrada"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "rope",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "posicion_token",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "head_dim",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "theta_base",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_rope",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "tensor"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "posicion_token"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "head_dim"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "theta_base"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "softmax_escalado",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "factor_escala",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_softmax_escalado",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "tensor"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "factor_escala"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "multiplicar_matrices_transpuesta_b",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_multiplicar_matrices_transpuesta_b",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "fijar_elemento",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_fijar_elemento",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "t"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "indice"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "valor"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_disponible",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_tipo",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_multiplicar_matrices",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_rmsnorm",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "peso_normalizacion",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "epsilon",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_silu",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_softmax_escalado",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "factor_escala",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_llenar_tensor_constante",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_simd_multiplicar_matrices_transpuesta_b",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_disponible",
+        "parametros": [],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_syn_simd_disponible",
+                "argumentos": []
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_tipo",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_tipo",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_multiplicar_matrices",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_multiplicar_matrices",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_rmsnorm",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "peso_normalizacion",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "epsilon",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_rmsnorm",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "entrada"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "peso_normalizacion"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "epsilon"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_silu",
+        "parametros": [
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "entrada",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_silu",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "entrada"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_softmax_escalado",
+        "parametros": [
+          {
+            "nombre": "tensor",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "factor_escala",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_softmax_escalado",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "tensor"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "factor_escala"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_llenar_tensor_constante",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "decimal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "t"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "valor"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "simd_multiplicar_matrices_transpuesta_b",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "salida",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_simd_multiplicar_matrices_transpuesta_b",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "salida"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "crear_tensor",
+        "parametros": [
+          {
+            "nombre": "filas",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columnas",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "suma_tensor",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "producto_punto",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "b",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "relu",
+        "parametros": [
+          {
+            "nombre": "a",
+            "tipo": "tensor"
+          }
+        ],
+        "tipo_retorno": "tensor",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "DIM",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 256
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "ITERACIONES",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 5
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "TOLERANCIA",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralDecimal",
+          "valor": 0.001
+        }
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "validar_resultado",
+        "parametros": [
+          {
+            "nombre": "esperado",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "obtenido",
+            "tipo": "tensor"
+          },
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "esperado"
+                  },
+                  "nombre_campo": "filas"
+                },
+                "operador": "!=",
+                "derecho": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "obtenido"
+                  },
+                  "nombre_campo": "filas"
+                }
+              },
+              "operador": "||",
+              "derecho": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "esperado"
+                  },
+                  "nombre_campo": "columnas"
+                },
+                "operador": "!=",
+                "derecho": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "obtenido"
+                  },
+                  "nombre_campo": "columnas"
+                }
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ERROR: "
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "nombre"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": " - dimensiones diferentes"
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "fila",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "col",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "fila"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "esperado"
+                },
+                "nombre_campo": "filas"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "col",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              },
+              {
+                "_tipo": "SentenciaMientras",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "col"
+                  },
+                  "operador": "<",
+                  "derecho": {
+                    "_tipo": "ExprAccesoCampo",
+                    "objeto": {
+                      "_tipo": "Identificador",
+                      "nombre": "esperado"
+                    },
+                    "nombre_campo": "columnas"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "idx",
+                    "expresion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "Identificador",
+                          "nombre": "fila"
+                        },
+                        "operador": "*",
+                        "derecho": {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "esperado"
+                          },
+                          "nombre_campo": "columnas"
+                        }
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "col"
+                      }
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "diff",
+                    "expresion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "ExprIndice",
+                        "expr": {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "esperado"
+                          },
+                          "nombre_campo": "datos"
+                        },
+                        "indice": {
+                          "_tipo": "Identificador",
+                          "nombre": "idx"
+                        }
+                      },
+                      "operador": "-",
+                      "derecho": {
+                        "_tipo": "ExprIndice",
+                        "expr": {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "obtenido"
+                          },
+                          "nombre_campo": "datos"
+                        },
+                        "indice": {
+                          "_tipo": "Identificador",
+                          "nombre": "idx"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "diff"
+                      },
+                      "operador": "<",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "diff",
+                        "expresion": {
+                          "_tipo": "OpUnaria",
+                          "operador": "-",
+                          "expr": {
+                            "_tipo": "Identificador",
+                            "nombre": "diff"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "diff"
+                      },
+                      "operador": ">",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "TOLERANCIA"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "LogLlamada",
+                        "argumentos": [
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": "ERROR: "
+                          },
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "nombre"
+                          },
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": " - diff="
+                          },
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "diff"
+                          },
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": " en ["
+                          },
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "fila"
+                          },
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": ","
+                          },
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "col"
+                          },
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": "]: "
+                          },
+                          {
+                            "_tipo": "ExprIndice",
+                            "expr": {
+                              "_tipo": "ExprAccesoCampo",
+                              "objeto": {
+                                "_tipo": "Identificador",
+                                "nombre": "esperado"
+                              },
+                              "nombre_campo": "datos"
+                            },
+                            "indice": {
+                              "_tipo": "Identificador",
+                              "nombre": "idx"
+                            }
+                          },
+                          {
+                            "_tipo": "LiteralCadena",
+                            "valor": " vs "
+                          },
+                          {
+                            "_tipo": "ExprIndice",
+                            "expr": {
+                              "_tipo": "ExprAccesoCampo",
+                              "objeto": {
+                                "_tipo": "Identificador",
+                                "nombre": "obtenido"
+                              },
+                              "nombre_campo": "datos"
+                            },
+                            "indice": {
+                              "_tipo": "Identificador",
+                              "nombre": "idx"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaRetornar",
+                        "expr": {
+                          "_tipo": "LiteralNumero",
+                          "valor": 1
+                        },
+                        "es_transferencia": false
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "col",
+                    "expresion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "col"
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fila",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fila"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "=== Benchmark Tensorial: Escalar vs SIMD ==="
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "Dimension: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "DIM"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "x"
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "DIM"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " | Iteraciones: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "ITERACIONES"
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "SIMD disponible: "
+              },
+              {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "simd_disponible",
+                "argumentos": []
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " ("
+              },
+              {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "simd_tipo",
+                "argumentos": []
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": ")"
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "--- Benchmark: multiplicar_matrices (ESCALAR) ---"
+              }
+            ]
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "tiempo_escalar",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 9999999
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "i",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ITERACIONES"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "a",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "crear_tensor",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "b",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "crear_tensor",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "llenar_tensor_constante",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "a"
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "llenar_tensor_constante",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "b"
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 2.0
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "inicio",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "ahora_ms",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "c",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "multiplicar_matrices",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "a"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "b"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fin",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "ahora_ms",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "diff",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fin"
+                  },
+                  "operador": "-",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "inicio"
+                  }
+                }
+              },
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "  Iteracion "
+                  },
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "i"
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": ": "
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "diff"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": " ms"
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "diff"
+                  },
+                  "operador": "<",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "tiempo_escalar"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "tiempo_escalar",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "diff"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "i",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "i"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "Mejor tiempo ESCALAR: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "tiempo_escalar"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " ms"
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "--- Benchmark: simd_multiplicar_matrices (SIMD) ---"
+              }
+            ]
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "tiempo_simd",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 9999999
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "i",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ITERACIONES"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "a2",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "crear_tensor",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "b2",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "crear_tensor",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "DIM"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "llenar_tensor_constante",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "a2"
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "llenar_tensor_constante",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "b2"
+                    },
+                    {
+                      "_tipo": "LiteralDecimal",
+                      "valor": 2.0
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "inicio",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "ahora_ms",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "c2",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "simd_multiplicar_matrices",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "a2"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "b2"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fin",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "ahora_ms",
+                  "argumentos": []
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "diff",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fin"
+                  },
+                  "operador": "-",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "inicio"
+                  }
+                }
+              },
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "  Iteracion "
+                  },
+                  {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "i"
+                    },
+                    "operador": "+",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": ": "
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "diff"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": " ms"
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "diff"
+                  },
+                  "operador": "<",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "tiempo_simd"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "tiempo_simd",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "diff"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "i",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "i"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "Mejor tiempo SIMD: "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "tiempo_simd"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " ms"
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "--- Validacion de resultados ---"
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "a_val",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_tensor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "b_val",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_tensor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a_val"
+                },
+                {
+                  "_tipo": "LiteralDecimal",
+                  "valor": 1.0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b_val"
+                },
+                {
+                  "_tipo": "LiteralDecimal",
+                  "valor": 2.0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "c_ref",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "multiplicar_matrices",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a_val"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b_val"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "a_val2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_tensor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "b_val2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "crear_tensor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "DIM"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a_val2"
+                },
+                {
+                  "_tipo": "LiteralDecimal",
+                  "valor": 1.0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "llenar_tensor_constante",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b_val2"
+                },
+                {
+                  "_tipo": "LiteralDecimal",
+                  "valor": 2.0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "c_simd",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "simd_multiplicar_matrices",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a_val2"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b_val2"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "err",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "validar_resultado",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "c_ref"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "c_simd"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "simd_multiplicar_matrices"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "err"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Resultados: CORRECTOS (coinciden escalar y SIMD)"
+                  }
+                ]
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ERROR: Resultados NO coinciden!"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "=== RESULTADOS ==="
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "Escalar (mejor): "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "tiempo_escalar"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " ms"
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "SIMD    (mejor): "
+              },
+              {
+                "_tipo": "Identificador",
+                "nombre": "tiempo_simd"
+              },
+              {
+                "_tipo": "LiteralCadena",
+                "valor": " ms"
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "Identificador",
+                  "nombre": "tiempo_simd"
+                },
+                "operador": "<",
+                "derecho": {
+                  "_tipo": "Identificador",
+                  "nombre": "tiempo_escalar"
+                }
+              },
+              "operador": "&&",
+              "derecho": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "Identificador",
+                  "nombre": "tiempo_simd"
+                },
+                "operador": ">",
+                "derecho": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "speedup_x100",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "tiempo_escalar"
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 100
+                    }
+                  },
+                  "operador": "/",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "tiempo_simd"
+                  }
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "entero_part",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "speedup_x100"
+                  },
+                  "operador": "/",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 100
+                  }
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "dec_part",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "speedup_x100"
+                  },
+                  "operador": "-",
+                  "derecho": {
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "entero_part"
+                    },
+                    "operador": "*",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 100
+                    }
+                  }
+                }
+              },
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Speedup: "
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "entero_part"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "."
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "dec_part"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "x mas rapido"
+                  }
+                ]
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "LogLlamada",
+                "argumentos": [
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "Speedup: N/A (SIMD no disponible o no mas rapido)"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "LogLlamada",
+            "argumentos": [
+              {
+                "_tipo": "LiteralCadena",
+                "valor": "=== Fin del Benchmark ==="
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

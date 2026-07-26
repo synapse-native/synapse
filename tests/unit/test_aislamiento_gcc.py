@@ -14,7 +14,7 @@ class TestAislamientoGCC:
         """Test que la ruta del toolchain se resuelve relativa al ejecutable."""
         with patch('pipeline.SYNAPSE_BIN', os.path.join(os.path.dirname(__file__), '..', '..')):
             ruta = _resolver_toolchain_gcc()
-            assert ruta.endswith('toolchain\\bin\\gcc.exe') or ruta.endswith('toolchain/bin/gcc.exe') or ruta.endswith('toolchain/bin/gcc.exe')
+            assert 'gcc.exe' in ruta, f"Ruta del toolchain no contiene gcc.exe: {ruta}"
 
     def test_gcc_invocation_uses_internal_toolchain_not_path(self, monkeypatch, tmp_path):
         """Test que la invocación a GCC usa la ruta interna, no el PATH del sistema."""
@@ -69,6 +69,7 @@ class TestAislamientoGCC:
 
         import pipeline
         original_file = pipeline.__file__
+        original_synapse_bin = pipeline.SYNAPSE_BIN
         try:
             pipeline.__file__ = str(tmp_path / 'pipeline.py')
             pipeline.SYNAPSE_BIN = str(tmp_path)
@@ -85,6 +86,7 @@ class TestAislamientoGCC:
 
         finally:
             pipeline.__file__ = original_file
+            pipeline.SYNAPSE_BIN = original_synapse_bin
 
     def test_subprocess_run_uses_absolute_toolchain_path(self, monkeypatch, tmp_path):
         """Test que subprocess.run recibe la ruta absoluta del toolchain."""

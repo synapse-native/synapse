@@ -215,11 +215,33 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         args = []
         if nodo.argumentos:
             for a in nodo.argumentos:
-                args.append(expr_a_c(ctx, a))
+                arg_c = expr_a_c(ctx, a)
+                args.append(arg_c)
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
 
         args_str = ", ".join(args)
+
+        # Move semantics via transfer (->): si un argumento es ArgumentoTransferido,
+        # la variable subyacente se considera consumida INCONDICIONALMENTE.
+        # Esto maneja casos como liberar_nodo(->doc) donde la funcion NO es
+        # el destructor directo sino un wrapper que internamente llama al destructor.
+        if nodo.argumentos:
+            for i, a in enumerate(nodo.argumentos):
+                inner = a
+                while hasattr(inner, 'expr') and not isinstance(inner, Identificador):
+                    inner = inner.expr
+                if isinstance(inner, Identificador):
+                    var_name = inner.nombre
+                    # Caso 1: ArgumentoTransferido explicito (->var) → consumir incondicional
+                    if isinstance(a, ArgumentoTransferido):
+                        ctx._consumed_vars.add(var_name)
+                    # Caso 2: funcion es el destructor directo del tipo de la variable
+                    else:
+                        var_tipo = ctx._variables.get(var_name, '')
+                        dtor = ctx._destructor_map.get(var_tipo, '')
+                        if dtor and dtor == nombre:
+                            ctx._consumed_vars.add(var_name)
 
         # Struct constructor: use C compound literal instead of function call
         if nombre in ctx._estructuras:
@@ -283,7 +305,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, ExprIndice):
         obj = expr_a_c(ctx, nodo.expr)
         idx = expr_a_c(ctx, nodo.indice)
-        return f"{obj}.datos[{idx}]"
+        obj_tipo = tipo_de_expr(ctx, nodo.expr)
+        if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return f"{obj}.datos[{idx}]"
+        return f"{obj}[{idx}]"
 
     if isinstance(nodo, ExprObtenerDireccion):
         return f"&({expr_a_c(ctx, nodo.expr)})"
@@ -302,7 +327,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return f"canal_crear({cap})"
 
     if isinstance(nodo, ExprRecibirCanal):
-        canal = expr_a_c(ctx, nodo.expr_canal) if hasattr(nodo, 'expr_canal') else "NULL"
+        canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
         return f"canal_recibir({canal})"
 
     return "0"

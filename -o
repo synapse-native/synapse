@@ -1,0 +1,126 @@
+// Generado por Synapse (nuevo generador modular)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+typedef struct { int longitud; const char* datos; } CadenaSegura;
+#define nulo ((void*)0)
+#define verdadero 1
+#define falso 0
+int _g_argc;
+char** _g_argv;
+int principal()
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = 0;
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea("[TEST] test_core_math — Pruebas aritméticas básicas");
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea("");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(1 + 1, 2, "1 + 1 == 2");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(5 - 3, 2, "5 - 3 == 2");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(4 * 3, 12, "4 * 3 == 12");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(10 / 2, 5, "10 / 2 == 5");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(1 + 2 * 3, 9, "(1 + 2) * 3 == 9");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(-5 + 3, -2, "-5 + 3 == -2");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(-5 * -2, 10, "-5 * -2 == 10");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(5 - 10, -5, "5 - 10 == -5");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(0 + 0, 0, "0 + 0 == 0");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(5 * 0, 0, "5 * 0 == 0");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(0 / 1, 0, "0 / 1 == 0");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(3 > 2, "3 > 2");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(2 < 3, "2 < 3");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(3 >= 3, "3 >= 3");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(4 <= 5, "4 <= 5");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_falso(3 > 5, "3 > 5 es falso");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_falso(2 == 3, "2 == 3 es falso");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_diferente(2, 3, "2 != 3");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(1, "verdadero es verdadero");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_falso(0, "falso es falso");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_verdadero(!0, "no falso es verdadero");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_falso(!1, "no verdadero es falso");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int contador = 0;
+  /* [Traza: nodos_flujo.syn - SentenciaMientras] */
+    while (contador < 3)
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int contador = contador + 1;
+}
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(contador, 3, "mientras: contador llega a 3");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado = 0;
+  /* [Traza: nodos_flujo.syn - SentenciaSi] */
+    if (10 > 5)
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado = 1;
+}
+    else
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado = 2;
+}
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(resultado, 1, "si: rama correcta (10 > 5)");
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado2 = 0;
+  /* [Traza: nodos_flujo.syn - SentenciaSi] */
+    if (3 > 10)
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado2 = 1;
+}
+    else
+{
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int resultado2 = 2;
+}
+  /* [Traza: nodos_flujo.syn - AsignacionVariable] */
+    int fallos = fallos + assert_igual(resultado2, 2, "si: rama sino correcta (3 > 10)");
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea("");
+  /* [Traza: nodos_flujo.syn - SentenciaSi] */
+    if (fallos == 0)
+{
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea("  [OK] Todos los tests pasaron.");
+}
+    else
+{
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea(concat("  [FAIL] ", entero_a_texto(fallos)));
+}
+  /* [Traza: nodos_flujo.syn - SentenciaExpr] */
+escribir_linea("");
+  /* [Traza: nodos_flujo.syn - SentenciaRetornar] */
+    return fallos;
+}
+int main(int argc, char** argv) {
+    _g_argc = argc;
+    _g_argv = argv;
+    pool_init(64, 4096);
+    return principal();
+}

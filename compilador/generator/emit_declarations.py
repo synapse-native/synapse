@@ -279,6 +279,7 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx._canal_vars_cerradas = set()
     ctx._canal_vars_concurrencia = set()
     ctx._strings_heap = set()
+    ctx._consumed_vars = set()
 
     # Register parameters (store Synapse type for consistency with tipo_de_expr)
     for p in nodo.parametros:
@@ -339,6 +340,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     for vn, vt_syn in _auto_vars:
         vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
         ctx.write_line(f"{vt_c} {vn};")
+
+    # Inyectar _simd_detectar() al inicio de principal() para diagnóstico SIMD
+    if nodo.nombre == 'principal' and not ctx.is_no_std():
+        ctx.write_line("_simd_detectar();")
 
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
@@ -420,33 +425,81 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
 
 
 def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
-    """Genera código C para spawn/lanzar (crear hilo) con ownership transfer."""
-    fn = expr_a_c(ctx, nodo.llamada)
+    """Genera código C para spawn/lanzar (crear hilo) con ownership transfer.
+
+    C99 strict: usa wrapper static top-level + struct args con pool allocator (_syn_malloc/_syn_free)
+    para evitar desajustes de ciclo de vida heap entre hilo principal e hijo.
+    El wrapper se emite como funcion static al final del archivo via _deferred_wrappers.
+    """
     ctx._contador_thread += 1
     tid = ctx._contador_thread
-    arg_fields = []
-    arg_copies = []
+
     if isinstance(nodo.llamada, LlamadaFuncion):
-        for i, arg in enumerate(nodo.llamada.argumentos):
-            if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
-                var_name = arg.expr.nombre
-                arg_t = ctx._variables.get(var_name, 'void*')
-                arg_fields.append(f"    {ctx.traducir_tipo_c(arg_t)} v{i};")
-                arg_copies.append(f"    args_{tid}.v{i} = {var_name};")
-                ctx.unregister_var(var_name)
-    if arg_fields:
-        ctx.write_line(f"struct {{")
-        for f in arg_fields:
-            ctx.write_line(f)
-        ctx.write_line(f"}} args_{tid};")
-        for c in arg_copies:
-            ctx.write_line(c)
-        ctx.write_line(
-            f"synapse_lanzar_hilo("
-            f"(void*(*)(void*)){fn}, "
-            f"(void*)&args_{tid});"
-        )
+        fn_name = nodo.llamada.nombre
+        args = nodo.llamada.argumentos
+
+        if args:
+            # Construir struct args + wrapper top-level
+            arg_type_names = []
+            arg_c_exprs = []
+            for i, arg in enumerate(args):
+                if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
+                    var_name = arg.expr.nombre
+                    arg_t = ctx._variables.get(var_name, 'void*')
+                    arg_type_names.append(ctx.traducir_tipo_c(arg_t))
+                    arg_c_exprs.append(var_name)
+                    ctx.unregister_var(var_name)
+                else:
+                    arg_expr_c = expr_a_c(ctx, arg)
+                    arg_t = tipo_de_expr(ctx, arg)
+                    arg_type_names.append(ctx.traducir_tipo_c(arg_t))
+                    arg_c_exprs.append(arg_expr_c)
+
+            args_type_name = f"_args_{tid}_t"
+            wrapper_name = f"_wrap_{tid}"
+
+            # Typedef (emitido antes del cuerpo de la funcion actual)
+            # Evitar duplicados via _emitted_typedefs
+            fields_str = " ".join(f"{tn} v{i};" for i, tn in enumerate(arg_type_names))
+            typedef_line = f"typedef struct {{ {fields_str} }} {args_type_name};"
+            if typedef_line not in ctx._emitted_typedefs:
+                ctx._deferred_typedefs.append(typedef_line)
+                ctx._emitted_typedefs.add(typedef_line)
+
+            # Forward declaration del wrapper (evitar duplicados)
+            wrap_decl = f"static void* {wrapper_name}(void* arg);"
+            if wrap_decl not in ctx._emitted_wrap_decls:
+                ctx._deferred_wrap_decls.append(wrap_decl)
+                ctx._emitted_wrap_decls.add(wrap_decl)
+
+            # Wrapper body: liberar ARGS inmediatamente despues de desempaquetar
+            # y ANTES de ejecutar el bloque logico de usuario (propiedad estricta).
+            # Se usa pool_alloc/pool_free para mantener compatibilidad con el runtime
+            # (malloc/free directo causa segfault en hilos por desajuste de ciclo de vida).
+            wrap_lines = [f"static void* {wrapper_name}(void* _arg) {{"]
+            wrap_lines.append(f"    {args_type_name}* _a = ({args_type_name}*)_arg;")
+            wrap_lines.append(f"    {ctx.syn_pool_free('_arg')};")
+            unpacked = ", ".join(f"_a->v{i}" for i in range(len(args)))
+            wrap_lines.append(f"    {fn_name}({unpacked});")
+            wrap_lines.append(f"    return NULL;")
+            wrap_lines.append(f"}}")
+            ctx._deferred_wrappers.append("\n".join(wrap_lines))
+
+            # Call-site: usar pool_alloc con tamaño exacto (pool_alloc ahora acepta
+            # size_t size y deriva a malloc si el tamaño excede el bloque del pool).
+            ctx.write_line(f"{args_type_name}* _args_{tid} = ({args_type_name}*){ctx.syn_pool_alloc(f'sizeof({args_type_name})')};")
+            for i, expr_c in enumerate(arg_c_exprs):
+                ctx.write_line(f"_args_{tid}->v{i} = {expr_c};")
+            ctx.write_line(f"synapse_lanzar_hilo({wrapper_name}, _args_{tid});")
+        else:
+            # Sin argumentos: pasar funcion directamente
+            ctx.write_line(
+                f"synapse_lanzar_hilo("
+                f"(void*(*)(void*)){fn_name}, NULL);"
+            )
     else:
+        # No es LlamadaFuncion (expresion directa)
+        fn = expr_a_c(ctx, nodo.llamada)
         ctx.write_line(
             f"synapse_lanzar_hilo("
             f"(void*(*)(void*)){fn}, NULL);"

@@ -1,0 +1,8 @@
+DBG: Test 5 starting
+DBG: starting migration loop
+DBG: iteration 0
+DBG: rc=0
+DBG: iteration 1
+DBG: rc=0
+DBG: iteration 2
+DBG: rc=0

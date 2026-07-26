@@ -4,7 +4,7 @@ from compilador.ast_nodes import (
     Nodo, LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
     Identificador, OpBinaria, OpUnaria, LlamadaFuncion, ExprTensor,
     ArgumentoTransferido, ExprAsm, ExprObtenerDireccion, ExprDereferencia,
-    ExprAccesoCampo, ExprCrearCanal, ExprRecibirCanal,
+    ExprAccesoCampo, ExprCrearCanal, ExprRecibirCanal, ExprIndice,
     DefinicionFuncion,
 )
 from compilador.diagnostics import ErrorCodes
@@ -169,6 +169,10 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         elif isinstance(nodo, ExprRecibirCanal):
             self._inferir_tipo(nodo.canal)
             return 'void*'
+        elif isinstance(nodo, ExprIndice):
+            self._inferir_tipo(nodo.expr)
+            self._inferir_tipo(nodo.indice)
+            return 'int'
         return None
 
     def _inferir_tipo_llamada(self, nodo: LlamadaFuncion) -> Optional[str]:

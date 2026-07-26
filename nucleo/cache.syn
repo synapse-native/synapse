@@ -1,0 +1,197 @@
+#lang: es
+// nucleo/cache.syn — Sistema de Caché de Compilación Incremental
+// Implementa caché SHA-256 para acelerar compilaciones repetidas
+
+importar std.cripto
+importar std.io
+importar std.toml
+importar std.sistema
+
+// --- Estructuras de Caché ---
+
+estructura CacheEntry:
+    clave: texto                    // SHA-256 hex string (64 chars)
+    archivo_fuente: texto           // Ruta del archivo fuente original
+    archivo_objeto: texto           // Ruta al .o almacenado
+    hash_fuente: texto              // SHA-256 del contenido del fuente
+    hashes_deps: texto              // JSON array de hashes de dependencias
+    flags_compilacion: texto        // Flags del compilador (ej: -O2)
+    version_compilador: texto       // __VERSION__ del compilador
+    timestamp: entero               // Unix epoch
+    tamano_bytes: entero            // Tamaño del .o en bytes
+
+estructura CacheStats:
+    total_entradas: entero
+    hits: entero
+    misses: entero
+    tamano_total_bytes: entero
+    hits_ultima_ejecucion: entero
+    misses_ultima_ejecucion: entero
+
+// --- Funciones internas ---
+
+funcion _cache_dir() -> texto:
+    home = obtener_env("USERPROFILE")
+    si home == "":
+        home = obtener_env("HOME")
+    si home == "":
+        home = "."
+    retornar concat(concat(home, "/.synapse/cache/"), "")
+
+funcion _asegurar_cache_dir() -> nulo:
+    dir = _cache_dir()
+    inseguro:
+        asm("mkdir -p \"" + dir + "\" 2>nul")
+        asm("mkdir -p \"" + dir + "obj\" 2>nul")
+        asm("mkdir -p \"" + dir + "meta\" 2>nul")
+
+funcion _cache_index_path() -> texto:
+    retornar concat(_cache_dir(), "index.toml")
+
+funcion _entrada_path(clave: texto) -> texto:
+    retornar concat(concat(_cache_dir(), "obj/"), concat(clave, ".o"))
+
+funcion _meta_path(clave: texto) -> texto:
+    retornar concat(concat(_cache_dir(), "meta/"), concat(clave, ".toml"))
+
+// --- Funciones públicas ---
+
+funcion cache_inicializar() -> nulo:
+    _asegurar_cache_dir()
+
+funcion _calcular_hash_archivo(ruta: texto) -> texto:
+    contenido = leer_archivo(ruta)
+    retornar sha256_texto(contenido)
+
+funcion _obtener_hashes_dependencias(archivo: texto) -> texto:
+    // Por ahora retorna array vacío - en el futuro expandir para rastrear imports
+    retornar "[]"
+
+funcion _leer_flags_compilacion() -> texto:
+    // Retorna flags estándar del compilador
+    retornar "-O2 -Wl,--stack,8388608 -Wl,--gc-sections"
+
+funcion calcular_clave(archivo: texto, deps: texto, flags: texto) -> texto:
+    // Lee el contenido del archivo
+    contenido = leer_archivo(archivo)
+    hash_fuente = sha256_texto(contenido)
+    
+    // Combina: hash_fuente + deps + flags + version
+    version = "__VERSION__"
+    combinado = concat(concat(concat(concat(hash_fuente, deps), flags), version), "")
+    retornar sha256_texto(combinado)
+
+funcion cache_buscar(clave: texto) -> CacheEntry:
+    entry = CacheEntry()
+    entry.clave = ""
+    
+    meta_path = _meta_path(clave)
+    si no existe_archivo(meta_path):
+        retornar entry
+    
+    meta_toml = leer_archivo(meta_path)
+    doc = desde_texto(meta_toml)
+    
+    entry.clave = obtener_campo(doc, "clave").valor_str
+    entry.archivo_fuente = obtener_campo(doc, "archivo_fuente").valor_str
+    entry.archivo_objeto = obtener_campo(doc, "archivo_objeto").valor_str
+    entry.hash_fuente = obtener_campo(doc, "hash_fuente").valor_str
+    entry.hashes_deps = obtener_campo(doc, "hashes_deps").valor_str
+    entry.flags_compilacion = obtener_campo(doc, "flags_compilacion").valor_str
+    entry.version_compilador = obtener_campo(doc, "version_compilador").valor_str
+    entry.timestamp = obtener_campo(doc, "timestamp").valor_ent
+    entry.tamano_bytes = obtener_campo(doc, "tamano_bytes").valor_ent
+    retornar entry
+
+funcion cache_guardar(entry: CacheEntry) -> nulo:
+    meta = CacheEntry()
+    meta.clave = entry.clave
+    meta.archivo_fuente = entry.archivo_fuente
+    meta.archivo_objeto = entry.archivo_objeto
+    meta.hash_fuente = entry.hash_fuente
+    meta.hashes_deps = entry.hashes_deps
+    meta.flags_compilacion = entry.flags_compilacion
+    meta.version_compilador = entry.version_compilador
+    meta.timestamp = entry.timestamp
+    meta.tamano_bytes = entry.tamano_bytes
+    
+    // Serializa a TOML
+    doc = toml_desde_entrada(meta)
+    escribir_archivo(_meta_path(entry.clave), doc)
+    
+    // Actualiza índice
+    _actualizar_indice(entry)
+
+funcion _actualizar_indice(entry: CacheEntry) -> nulo:
+    index_path = _cache_index_path()
+    doc = desde_texto("")
+    si existe_archivo(index_path):
+        doc = desde_texto(leer_archivo(index_path))
+    
+    // Agrega/actualiza entrada en el índice
+    clave = entry.clave
+    // Simplificación: el índice es un array TOML
+    doc = actualizar_indice(doc, entry)
+    escribir_archivo(index_path, a_texto(doc))
+
+funcion cache_eliminar(clave: texto) -> nulo:
+    eliminar_archivo(_entrada_path(clave))
+    eliminar_archivo(_meta_path(clave))
+    // Actualizar índice (omitir por simplicidad)
+
+funcion cache_limpiar() -> nulo:
+    dir = _cache_dir()
+    inseguro:
+        asm("rm -rf \"" + dir + "obj\" 2>nul")
+        asm("rm -rf \"" + dir + "meta\" 2>nul")
+    _asegurar_cache_dir()
+
+funcion cache_stats() -> CacheStats:
+    stats = CacheStats()
+    stats.total_entradas = 0
+    stats.hits = 0
+    stats.misses = 0
+    stats.tamano_total_bytes = 0
+    stats.hits_ultima_ejecucion = 0
+    stats.misses_ultima_ejecucion = 0
+    
+    // Leer stats persistidos si existen
+    stats_path = concat(_cache_dir(), "stats.toml")
+    si existe_archivo(stats_path):
+        doc = desde_texto(leer_archivo(stats_path))
+        stats.total_entradas = obtener_campo(doc, "total_entradas").valor_ent
+        stats.hits = obtener_campo(doc, "hits").valor_ent
+        stats.misses = obtener_campo(doc, "misses").valor_ent
+        stats.tamano_total_bytes = obtener_campo(doc, "tamano_total_bytes").valor_ent
+        stats.hits_ultima_ejecucion = obtener_campo(doc, "hits_ultima_ejecucion").valor_ent
+        stats.misses_ultima_ejecucion = obtener_campo(doc, "misses_ultima_ejecucion").valor_ent
+    
+    retornar stats
+
+funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
+    stats = cache_stats()
+    stats.total_entradas = stats.total_entradas + 1
+    si hit:
+        stats.hits = stats.hits + 1
+        stats.hits_ultima_ejecucion = stats.hits_ultima_ejecucion + 1
+    sino:
+        stats.misses = stats.misses + 1
+        stats.misses_ultima_ejecucion = stats.misses_ultima_ejecucion + 1
+    stats.tamano_total_bytes = stats.tamano_total_bytes + tamano
+    
+    // Persistir
+    doc = toml_desde_entrada(stats)
+    escribir_archivo(concat(_cache_dir(), "stats.toml"), doc)
+
+// --- Funciones de ayuda TOML (stubs para ser implementadas en generator) ---
+
+externo funcion toml_desde_entrada(entry: CacheEntry) -> NodoToml
+externo funcion a_texto(doc: NodoToml) -> texto
+externo funcion actualizar_indice(doc: NodoToml, entry: CacheEntry) -> NodoToml
+externo funcion obtener_campo(doc: NodoToml, clave: texto) -> CampoToml
+
+// CampoToml estructura para acceso a valores TOML
+estructura CampoToml:
+    tipo: entero
+    valor_str: texto
+    valor_ent: entero

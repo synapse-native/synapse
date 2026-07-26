@@ -398,7 +398,9 @@ class TestIntegrationFixtures:
     
     def test_fixture_basico(self):
         """Test usando fixture básico existente"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\01_basico.syn"
+        fixture_path = os.path.join(
+            os.path.dirname(__file__), '..', '..', 'examples', '01_calculadora', 'main.syn'
+        )
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")
@@ -413,7 +415,9 @@ class TestIntegrationFixtures:
     
     def test_fixture_estructuras(self):
         """Test usando fixture de estructuras"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\02_estructuras.syn"
+        fixture_path = os.path.join(
+            os.path.dirname(__file__), '..', '..', 'examples', '02_estructuras', 'main.syn'
+        )
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")

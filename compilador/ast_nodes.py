@@ -63,6 +63,8 @@ class TokenID(Enum):
     CONSTANTE = auto()    # constante IDENTIFICADOR = EXPR
     SEMICOLON = auto()    # ; separador de sentencias
     PARA = auto()         # para (bucle for)
+    LBRACKET = auto()     # [ índice de arreglo/tensor
+    RBRACKET = auto()     # ]
 
     EOF = auto()
 

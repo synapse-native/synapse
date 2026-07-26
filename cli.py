@@ -7,17 +7,22 @@ from typing import Dict, Any
 
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from compilador.ast_nodes import Token, TokenID
-from pipeline import ejecutar_compilador
+from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
+
+
+def _print_cache_help():
+    print("Comandos de caché disponibles:")
+    print("  synapse cache stats     - Muestra estadísticas del caché")
+    print("  synapse cache clean     - Limpia todo el caché (~/.synapse/cache)")
+    print("  synapse build --incremental <archivo.syn>  - Compilación incremental")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota", add_help=False)
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
-    parser.add_argument("archivo", nargs="?", default="programa.syn",
-                        help="Archivo fuente .syn (o .syn.json para canonico)")
-    parser.add_argument("-o", "--output", type=str, default=None,
-                        help="Ruta del ejecutable de salida")
+    parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
+    parser.add_argument("--safe", action="store_true", help="Activar modo de verificación formal (M10.1)")
     parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
     parser.add_argument("--lang", type=str, default=None,
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
@@ -28,10 +33,94 @@ def main():
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
     parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
-    args, _ = parser.parse_known_args()
+    # NO hay argumento posicional 'archivo' aquí - lo detectamos manualmente
+    parser.add_argument("-o", "--output", type=str, default=None,
+                        help="Ruta del ejecutable de salida")
+    args, unknown = parser.parse_known_args()
+
+    # Detectar primer argumento no-opción manualmente desde sys.argv
+    first_non_option = None
+    for arg in sys.argv[1:]:
+        if not arg.startswith('-'):
+            first_non_option = arg
+            break
+
+    # Detectar subcomando
+    subcommand = None
+    if first_non_option in ('cache', 'build'):
+        subcommand = first_non_option
+
+    # Manejar subcomando 'cache'
+    if subcommand == 'cache':
+        # El siguiente argumento no-opción es el sub-subcomando
+        cache_subcmd = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                cache_subcmd = arg
+                break
+        
+        if not cache_subcmd or cache_subcmd == "cache":
+            _print_cache_help()
+            return 1
+        if cache_subcmd == "stats":
+            stats = _cache_stats()
+            print("========================================")
+            print("  Synapse Cache — Estadísticas")
+            print("========================================")
+            print(f"  Directorio:       {_cache_dir()}")
+            print(f"  Hits totales:     {stats.get('hits', 0)}")
+            print(f"  Misses totales:   {stats.get('misses', 0)}")
+            print(f"  Entradas totales: {stats.get('total_entries', 0)}")
+            print(f"  Bytes totales:    {stats.get('total_bytes', 0)}")
+            if 'archivos_obj' in stats:
+                print(f"  Archivos .o:      {stats['archivos_obj']}")
+            print("========================================")
+            return 0
+        elif cache_subcmd == "clean":
+            print("[CACHE] Limpiando ~/.synapse/cache/...")
+            _cache_clean()
+            print("[OK] Caché limpiado")
+            return 0
+        else:
+            print(f"Comando de caché desconocido: {cache_subcmd}")
+            _print_cache_help()
+            return 1
+
+    # Manejar subcomando 'build'
+    if subcommand == 'build':
+        # El siguiente argumento no-opción es el archivo
+        build_file = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                build_file = arg
+                break
+        
+        if not build_file:
+            print("ERROR: Se requiere archivo .syn para build")
+            return 1
+        
+        # Parsear opciones adicionales (--incremental, -o)
+        incremental = "--incremental" in sys.argv
+        output_path = None
+        for i, arg in enumerate(sys.argv):
+            if arg == "-o" or arg == "--output":
+                if i + 1 < len(sys.argv):
+                    output_path = sys.argv[i + 1]
+                break
+        
+        modo_safe = "--safe" in sys.argv
+        codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
+                                     output_lang=None, dump_ast=False,
+                                     modo_safe=modo_safe,
+                                     output_path=output_path,
+                                     incremental=incremental)
+        return codigo
 
     if args.help:
         parser.print_help()
+        print("\nComandos adicionales:")
+        print("  synapse cache stats|clean    - Gestión de caché")
+        print("  synapse build --incremental <archivo.syn> [-o salida]  - Build incremental")
         sys.exit(0)
 
     if args.version:
@@ -179,9 +268,23 @@ def main():
         from synapse_lsp.server import iniciar
         iniciar()
     else:
-        codigo = ejecutar_compilador(args.archivo, mostrar_tokens=args.tokens,
+        # Compilación normal: detectar archivo principal desde sys.argv
+        archivo_principal = None
+        for arg in sys.argv[1:]:
+            if not arg.startswith('-'):
+                archivo_principal = arg
+                break
+        
+        if archivo_principal is None:
+            print("[ERROR] Se requiere archivo .syn para compilar", file=sys.stderr)
+            parser.print_help()
+            sys.exit(1)
+        
+        codigo = ejecutar_compilador(archivo_principal, mostrar_tokens=args.tokens,
                                      output_lang=args.lang, dump_ast=args.dump_ast,
-                                     output_path=args.output)
+                                     modo_safe=args.safe,
+                                     output_path=args.output,
+                                     incremental=args.incremental)
         sys.exit(codigo)
 
 
