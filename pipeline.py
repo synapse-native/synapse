@@ -23,6 +23,8 @@ from compilador.canonical import (
     imprimir_ast, ast_a_canonico, canonico_a_ast, ast_a_texto
 )
 from compilador.verificador_formal import VerificadorFormal
+from nucleo.sbom import generar_sbom, generar_sbom_simplificado
+from nucleo.ed25519_signer import generar_par_claves, firmar_archivo, verificar_archivo, _calc_public_key as _calc_pub
 
 
 # ============================================================
@@ -368,7 +370,10 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         modo_safe: bool = False,
                         dependencias: Optional[Dict[str, str]] = None,
                         output_path: Optional[str] = None,
-                        incremental: bool = False) -> int:
+                        incremental: bool = False,
+                        generar_sbom: bool = False,
+                        firmar_binario: bool = False,
+                        clave_sbom: str = '') -> int:
     diag = DiagnosticManager()
 
     # Flags de compilación para la clave de caché
@@ -531,6 +536,90 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 with open(ruta_texto, 'w', encoding='utf-8') as f:
                     f.write(texto + "\n")
                 print(f"[OK] Fuente en '{output_lang}' generada: {ruta_texto}")
+
+        # === GENERACIÓN DE SBOM (M10.2) ===
+        if generar_sbom:
+            try:
+                ruta_proyecto = os.path.dirname(os.path.abspath(ruta_archivo)) or '.'
+                sbom_json = generar_sbom(ruta_proyecto)
+                ruta_sbom = os.path.join(os.path.dirname(ruta_exe) or '.',
+                                         os.path.splitext(os.path.basename(ruta_exe))[0] + '.spdx.json')
+                with open(ruta_sbom, 'w', encoding='utf-8') as f:
+                    f.write(sbom_json)
+                print(f"[SBOM] SPDX 2.3 generado: {ruta_sbom}")
+
+                # Generar resumen simplificado
+                resumen = generar_sbom_simplificado(ruta_proyecto)
+                ruta_resumen = os.path.join(os.path.dirname(ruta_sbom) or '.', 'sbom_resumen.json')
+                with open(ruta_resumen, 'w', encoding='utf-8') as f:
+                    json.dump(resumen, f, indent=2)
+                print(f"[SBOM] Resumen generado: {ruta_resumen}")
+            except Exception as e:
+                print(f"[SBOM] Advertencia: no se pudo generar SBOM: {e}", file=sys.stderr)
+
+        # === FIRMA CRIPTOGRÁFICA DEL BINARIO (M10.2 — SLSA Level 3) ===
+        if firmar_binario and os.path.exists(ruta_exe):
+            try:
+                # Usar clave proporcionada o generar una para desarrollo
+                if clave_sbom:
+                    clave_privada = clave_sbom
+                    # Calcular clave pública a partir de la privada
+                    clave_publica = _calc_pub(bytes.fromhex(clave_privada)).hex()
+                else:
+                    clave_privada, clave_publica = generar_par_claves()
+                    print(f"[SIGN] Clave pública (guardar para verificación): {clave_publica}")
+
+                # Firmar binario
+                ruta_sig = ruta_exe + '.sig'
+                firma = firmar_archivo(ruta_exe, clave_privada, ruta_sig)
+                print(f"[SIGN] Binario firmado Ed25519: {ruta_sig}")
+                print(f"[SIGN] Firma: {firma[:32]}...")
+
+                # Autoverificación
+                if verificar_archivo(ruta_exe, firma, clave_publica):
+                    print("[SIGN] ✅ Autoverificación de firma: VÁLIDA")
+                else:
+                    print("[SIGN] ⚠️ Autoverificación de firma: FALLIDA", file=sys.stderr)
+
+                # Generar attestación SLSA
+                att = {
+                    "version": "1.0.0",
+                    "buildType": "https://synapse-lang.org/build",
+                    "subject": [{
+                        "name": os.path.basename(ruta_exe),
+                        "digest": {"sha256": _cache_file_hash(ruta_exe)},
+                    }],
+                    "predicateType": "https://slsa.dev/provenance/v1",
+                    "predicate": {
+                        "builder": {"id": "https://synapse-lang.org/builder"},
+                        "buildType": "synapse-build",
+                        "recipe": {
+                            "type": "synapse-compiler",
+                            "version": os.environ.get('SYNAPSE_VERSION', '2.0.0'),
+                        },
+                        "metadata": {
+                            "completeness": {
+                                "parameters": True,
+                                "environment": False,
+                                "materials": False,
+                            },
+                            "reproducible": False,
+                        },
+                        "materials": [{
+                            "uri": f"git+https://github.com/synapse/{os.path.basename(ruta_archivo)}",
+                            "digest": {"sha256": _cache_file_hash(ruta_archivo)},
+                        }],
+                    },
+                    "signature": firma,
+                    "publicKey": clave_publica,
+                }
+                ruta_att = ruta_exe + '.attestation.json'
+                with open(ruta_att, 'w', encoding='utf-8') as f:
+                    json.dump(att, f, indent=2)
+                print(f"[SLSA] Attestación generada: {ruta_att}")
+
+            except Exception as e:
+                print(f"[SIGN] Advertencia: no se pudo firmar binario: {e}", file=sys.stderr)
 
     except FileNotFoundError as e:
         diag.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,

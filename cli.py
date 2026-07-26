@@ -23,6 +23,9 @@ def main():
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
     parser.add_argument("--safe", action="store_true", help="Activar modo de verificación formal (M10.1)")
+    parser.add_argument("--sbom", action="store_true", help="Generar SBOM SPDX 2.3 (M10.2)")
+    parser.add_argument("--sign", type=str, default=None,
+                        help="Firmar binario con clave privada Ed25519 (M10.2)")
     parser.add_argument("--tokens", action="store_true", help="Mostrar tokens")
     parser.add_argument("--lang", type=str, default=None,
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
@@ -109,11 +112,16 @@ def main():
                 break
         
         modo_safe = "--safe" in sys.argv
+        generar_sbom_flag = "--sbom" in sys.argv
+        clave_sbom = args.sign or ""
         codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
                                      output_lang=None, dump_ast=False,
                                      modo_safe=modo_safe,
                                      output_path=output_path,
-                                     incremental=incremental)
+                                     incremental=incremental,
+                                     generar_sbom=generar_sbom_flag,
+                                     firmar_binario=bool(clave_sbom),
+                                     clave_sbom=clave_sbom)
         return codigo
 
     if args.help:
@@ -284,7 +292,10 @@ def main():
                                      output_lang=args.lang, dump_ast=args.dump_ast,
                                      modo_safe=args.safe,
                                      output_path=args.output,
-                                     incremental=args.incremental)
+                                     incremental=args.incremental,
+                                     generar_sbom=args.sbom,
+                                     firmar_binario=bool(args.sign),
+                                     clave_sbom=args.sign or '')
         sys.exit(codigo)
 
 
