@@ -1,0 +1,4 @@
+#lang: es
+funcion f() -> entero:
+    retornar 0
+  

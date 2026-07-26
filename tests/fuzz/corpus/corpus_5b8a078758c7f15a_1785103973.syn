@@ -1,0 +1,5 @@
+#lang: es
+constante N = 42
+
+funcion principal() -> entero:
+    retornar N

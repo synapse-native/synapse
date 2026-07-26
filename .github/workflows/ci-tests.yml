@@ -133,8 +133,75 @@ jobs:
         run: |
           echo "## ✅ Tests completados para ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
 
-  bootstrap:
+  fuzz:
     needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar runtime objects
+        run: |
+          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+          gcc -c tweetnacl.c -o tweetnacl.o -lm
+
+      - name: Crear directorios de fuzzing
+        run: |
+          mkdir -p tests/fuzz/corpus tests/fuzz/crashes
+
+      - name: Fuzzing rapido (500 iteraciones)
+        run: |
+          python tests/fuzz/fuzz_engine.py -n 500 2>&1 | tee fuzz.log
+          if grep -q "CRASH" fuzz.log; then
+            echo "❌ Fuzzing detecto crashes"
+            grep "CRASH" fuzz.log
+            exit 1
+          fi
+          echo "✅ Fuzzing superado"
+
+      - name: Fuzzing con sanitizers (200 iteraciones)
+        run: |
+          python tests/fuzz/fuzz_engine.py -n 200 --sanitize 2>&1 | tee fuzz_san.log
+          if grep -q "CRASH\|SANITIZER" fuzz_san.log; then
+            echo "❌ Fuzzing con sanitizers detecto fallos"
+            grep -E "CRASH|SANITIZER" fuzz_san.log
+            exit 1
+          fi
+          echo "✅ Fuzzing con sanitizers superado"
+
+      - name: Tests de fuzzing unitarios
+        run: |
+          python -m pytest tests/fuzz/test_fuzz.py -v --tb=short 2>&1 | tee fuzz_tests.log
+          if grep -q "FAILED" fuzz_tests.log; then
+            echo "❌ Tests de fuzzing fallaron"
+            grep "FAILED" fuzz_tests.log
+            exit 1
+          fi
+          echo "✅ Tests de fuzzing pasan"
+
+      - name: Subir crashes como artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: tests/fuzz/crashes/
+          retention-days: 30
+
+      - name: Notificar fuzzing
+        if: always()
+        run: |
+          echo "## ✅ Fuzzing CI completado" >> $GITHUB_STEP_SUMMARY
+
+  bootstrap:
+    needs: [test, fuzz]
     runs-on: ubuntu-latest
     strategy:
       matrix:

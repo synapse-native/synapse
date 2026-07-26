@@ -176,8 +176,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
 | **M10.1** | Verificación formal subset (--safe mode) | ✅ Completado | Módulo `nucleo/verificador_formal.syn` implementado. Prohibición de bucles inacotados (E-700), mutaciones globales (E-701), recursión sin convergencia (E-702), validación de contratos (E-703). Integrado en pipeline vía `--safe`. 19 tests de regresión y fuzzing. |
-| **M10.2** | SBOM + SLSA Level 3 supply chain | 🔄 En Progreso | SBOM SPDX 2.3 completo con todas las dependencias, SLSA Level 3 attestation con firmas verificables Ed25519. Módulo `nucleo/sbom.py` genera SBOM estándar; `nucleo/ed25519_signer.py` implementa firma Ed25519 pura Python. Integrado en pipeline vía `--sbom` y `--sign`. |
-| **M10.3** | Fuzzing continuo 24/7 (oss-fuzz integration con sanitizers) | ⬜ Pendiente | 0 crashes en 30 días continuos, cobertura >90% en caminos críticos, integración ASan/MSan/TSan/UBSan en CI |
+| **M10.2** | SBOM + SLSA Level 3 supply chain | ✅ Completado | SBOM SPDX 2.3 completo con todas las dependencias, SLSA Level 3 attestation con firmas verificables Ed25519. Módulo `nucleo/sbom.py` genera SBOM estándar; `nucleo/ed25519_signer.py` implementa firma Ed25519 pura Python. Integrado en pipeline vía `--sbom` y `--sign`. |
+| **M10.3** | Fuzzing continuo 24/7 (oss-fuzz integration con sanitizers) | 🔄 En Progreso | 0 crashes en 30 días continuos, cobertura >90% en caminos críticos, integración ASan/MSan/TSan/UBSan en CI |
 
 **Métricas obligatorias:** 0 fugas memoria, sanitizers limpios en CI, cobertura >95% kernel paths, verificación formal discharge 100%.
 
@@ -190,12 +190,23 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ Contratos `requiere`/`garantiza` validados estáticamente como pre/postcondiciones en modo --safe
 - ✅ Commit consolidado en historial de git
 
-### Certificación parcial M10.2:
+### Certificación M10.2:
 - ✅ `nucleo/sbom.py` — Generación SBOM SPDX 2.3 con escaneo de dependencias y SHA-256
 - ✅ `nucleo/ed25519_signer.py` — Firma Ed25519 pura Python (RFC 8032, compatible con TweetNaCl/Axon)
 - ✅ `--sbom` y `--sign` flags en CLI y pipeline
 - ✅ Attestación SLSA Level 3 con autoverificación de firma
-- ✅ Suite de pruebas: 20+ tests de regresión + fuzzing de firmas parametrizado
+- ✅ Suite de pruebas: 37 tests (estructura + crypto + fuzzing)
+- ✅ Commit consolidado en historial de git
+
+### Certificación parcial M10.3:
+- ✅ `tests/fuzz/fuzz_engine.py` — Motor de fuzzing mejorado con modo 24/7, sanitizers y corpus
+- ✅ `tests/fuzz/test_fuzz.py` — Suite ampliada con tests de mutación y combinatoria (15+ tests)
+- ✅ Modo `--247` (continuo 24/7), `--sanitize` (ASan+UBSan), `--corpus` (gestión de semillas)
+- ✅ Crash triage y deduplicación con guardado automático a `tests/fuzz/crashes/`
+- ✅ CI integrado con jobs de fuzzing (500 iteraciones nativas + 200 sanitizers)
+- ⬜ 0 crashes en 30 días continuos de CI (requiere tiempo de ejecución)
+- ⬜ Cobertura >90% en caminos críticos (pendiente de medición con -fprofile-arcs)
+- ⬜ Integración MSan/TSan completa en matrix CI
 
 ---
 
@@ -254,6 +265,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | 2026-07-26 | 6.0 | Restauración del historial completo desde v0. Secciones jerarquizadas (1-7). Fechas de certificación por hito. Trazabilidad F0→M7.5. M1-M5 con notas de absorción. | Arquitecto |
 | 2026-07-26 | 7.0 | M10.1 implementado: nucleo/verificador_formal.syn + compilador/verificador_formal.py + --safe flag + suite de tests. M9.3 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 8.0 | M10.2 implementado: nucleo/sbom.py (SPDX 2.3) + nucleo/ed25519_signer.py (firma pura Python) + --sbom/--sign flags + attestación SLSA Level 3. M10.1 marcado COMPLETADO. | Ingeniero Ejecutor |
+| 2026-07-26 | 9.0 | M10.3 iniciado: fuzz_engine.py mejorado con modo 24/7, sanitizers ASan+UBSan, corpus management, crash triage, CI fuzzing integration. M10.2 marcado COMPLETADO. | Ingeniero Ejecutor |
 
 ---
 
