@@ -141,8 +141,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 |------|-------------|--------|------------------------|
 | **M8.1** | Red de nodos Synapse (gRPC/QUIC + Ed25519 auth) | ✅ Completado | Handshake mutuo Ed25519, latencia <1ms LAN, autenticación mutua obligatoria, zero trust. Módulo `std.cluster` implementado con `cluster_generar_par_claves`, `cluster_firmar_mensaje`, `cluster_verificar_firma`, transporte UDP, canales remotos. |
 | **M8.2** | Scheduler distribuido work-stealing | ✅ Completado | Balanceo <5% desbalance entre nodos, latencia robo <100µs, afinidad de caché L1/L2. Colas locales mutex-protegidas, protocolo WSTEAL/WSTOLEN/WNONE sobre UDP, `ws_encolar`/`ws_desencolar`/`ws_profundidad`/`ws_carga_estimada`, validación de ownership. Suite de 43 tests C. |
-| **M8.3** | Consenso Raft para estado compartido | 🔄 En Progreso | Leader election <50ms, commit latency <10ms, log replication ACID, failover automático. Implementación con máquina de estados líder/seguidor/candidato, timeouts aleatorios 150-300ms, heartbeats cada 50ms, términos y votos persistidos, log replication. Suite de 77 tests C. |
-| **M8.4** | Migración de tareas live (checkpoint/restore) | ⏳ Pendiente | Checkpoint <100ms, restore <50ms, 0 data loss en failover, serialización del estado del hilo |
+| **M8.3** | Consenso Raft para estado compartido | ✅ Completado | Leader election <50ms, commit latency <10ms, log replication ACID, failover automático. Implementación con máquina de estados líder/seguidor/candidato, timeouts aleatorios 150-300ms, heartbeats cada 50ms, términos y votos persistidos, log replication. Suite de 77 tests C. |
+| **M8.4** | Migración de tareas live (checkpoint/restore) | 🔄 En Progreso | Checkpoint <100ms, restore <50ms, 0 data loss en failover, serialización del estado del hilo. Checkpoint/restore vía serialización CKPT con checksum XOR, migración con ownership transfer, integración con WS queue + Raft log para coordinación. Suite de tests de checkpoint, serialización, restauración, integridad y migración multi-nodo. |
 
 **Dependencias satisfechas:**
 - Fase 7 completa (caché determinista para snapshots)

@@ -73,6 +73,11 @@ class GeneratorContext:
             'raft_commit_index': 'int', 'raft_forzar_abdicacion': 'int',
             'raft_agregar_entrada': 'int', 'raft_reiniciar_nodo': 'int',
             'raft_info': 'texto',
+            'cm_inicializar': 'int', 'cm_serializar_checkpoint': 'texto',
+            'cm_deserializar_checkpoint': 'texto', 'cm_verificar_integridad': 'int',
+            'cm_restaurar_checkpoint': 'int', 'cm_migrar_tarea': 'texto',
+            'cm_migrar_entre_nodos': 'int', 'cm_ultima_migracion': 'texto',
+            'cm_migraciones_completadas': 'int', 'cm_migraciones_fallidas': 'int',
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
@@ -96,6 +101,11 @@ class GeneratorContext:
             'raft_lider_actual', 'raft_log_entradas', 'raft_commit_index',
             'raft_forzar_abdicacion', 'raft_agregar_entrada', 'raft_reiniciar_nodo',
             'raft_info',
+            'cm_inicializar', 'cm_serializar_checkpoint',
+            'cm_deserializar_checkpoint', 'cm_verificar_integridad',
+            'cm_restaurar_checkpoint', 'cm_migrar_tarea',
+            'cm_migrar_entre_nodos', 'cm_ultima_migracion',
+            'cm_migraciones_completadas', 'cm_migraciones_fallidas',
         })
 
         self._TABLA_COERCION: Dict[tuple, str] = {

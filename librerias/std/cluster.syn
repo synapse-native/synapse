@@ -164,3 +164,43 @@ externo funcion raft_reiniciar_nodo(node_id: entero) -> entero
 
 // raft_info — Retorna string diagnóstico "term,state,leader,log,commit"
 externo funcion raft_info(node_id: entero) -> texto
+
+// ============================================================
+// Funciones Externas — M8.4 (Checkpoint/Restore — Migración Live)
+// ============================================================
+
+// cm_inicializar — Inicializa el subsistema de checkpoint
+externo funcion cm_inicializar() -> entero
+
+// cm_serializar_checkpoint — Serializa tarea a formato CKPT
+//   Retorna "CKPT:<id>:<seq>:<checksum_hex>:<data_len>:<data>"
+externo funcion cm_serializar_checkpoint(task_id: entero, datos: texto) -> texto
+
+// cm_deserializar_checkpoint — Deserializa y verifica un checkpoint
+//   Retorna los datos de la tarea, o vacío si corrupto
+externo funcion cm_deserializar_checkpoint(checkpoint_str: texto) -> texto
+
+// cm_verificar_integridad — Verifica checksum del checkpoint
+//   Retorna 0 si válido, -1 si corrupto
+externo funcion cm_verificar_integridad(checkpoint_str: texto) -> entero
+
+// cm_restaurar_checkpoint — Restaura tarea desde checkpoint en la cola WS
+//   Retorna 0 si ok, -1 si error
+externo funcion cm_restaurar_checkpoint(checkpoint_str: texto) -> entero
+
+// cm_migrar_tarea — Migración completa: checkpoint + ownership transfer
+//   Retorna el checkpoint generado, o vacío si falla
+externo funcion cm_migrar_tarea(datos_debug: texto) -> texto
+
+// cm_migrar_entre_nodos — Simula migración entre dos nodos del cluster
+//   Retorna 0 si ok, -1 si error
+externo funcion cm_migrar_entre_nodos(ip_destino: texto, puerto_destino: entero) -> entero
+
+// cm_ultima_migracion — Retorna info de la última migración
+externo funcion cm_ultima_migracion() -> texto
+
+// cm_migraciones_completadas — Retorna número de migraciones exitosas
+externo funcion cm_migraciones_completadas() -> entero
+
+// cm_migraciones_fallidas — Retorna número de migraciones fallidas
+externo funcion cm_migraciones_fallidas() -> entero

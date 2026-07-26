@@ -16,6 +16,7 @@
   #include <winsock2.h>
   #include <ws2tcpip.h>
   #include <windows.h>
+  #include <direct.h>
 #else
   #include <sys/socket.h>
   #include <netinet/in.h>
@@ -5233,6 +5234,7 @@ CadenaSegura ws_procesar_mensaje(CadenaSegura paquete) {
             // Queue empty — send "WNONE:<seq>"
             char resp[64];
             int rlen = snprintf(resp, sizeof(resp), "WNONE:%d", seq);
+            (void)rlen;
             // We need to know who sent it. Since we don't track sender addr,
             // we can't respond. The requester will timeout.
             // For now, just store that we were empty.
@@ -5377,7 +5379,7 @@ typedef struct {
 
 static RaftNode _raft_nodes[MAX_RAFT_NODES];
 static int _raft_inicializado = 0;
-static int _raft_simulation_mode = 0;
+// static int _raft_simulation_mode = 0;
 
 static long long _raft_now_ns(void) {
     return _get_timestamp_ns();
@@ -5632,4 +5634,287 @@ CadenaSegura raft_info(int node_id) {
     memcpy(result, buf, (size_t)len);
     result[len] = '\0';
     return (CadenaSegura){ .longitud = len, .datos = result };
+}
+
+// =========================================================================
+// M8.4 — Checkpoint/Restore (Migración de Tareas Live)
+// =========================================================================
+// Serialización de estado de tareas para migración en caliente entre nodos.
+// Formato checkpoint: CKPT:<task_id>:<seq>:<checksum_hex>:<data_len>:<data>
+// Checksum: XOR rolling hash (detección de corrupción de transporte)
+// =========================================================================
+
+static int _cm_seq = 0;
+static int _cm_completadas = 0;
+static int _cm_fallidas = 0;
+static char _cm_ultimo_resultado[256];
+
+static pthread_mutex_t _cm_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// --- Compute XOR rolling checksum ---
+static unsigned int _cm_checksum(const char* data, int len) {
+    unsigned int h = 0x811C9DC5u;
+    for (int i = 0; i < len; i++) {
+        h ^= (unsigned char)data[i];
+        h *= 0x01000193u;
+    }
+    return h;
+}
+
+// --- Initialize checkpoint subsystem ---
+int cm_inicializar(void) {
+    pthread_mutex_lock(&_cm_mutex);
+    _cm_seq = 0;
+    _cm_completadas = 0;
+    _cm_fallidas = 0;
+    _cm_ultimo_resultado[0] = '\0';
+    pthread_mutex_unlock(&_cm_mutex);
+    return 0;
+}
+
+// --- Serialize a task into a CKPT checkpoint string ---
+// Returns: "CKPT:<id>:<seq>:<checksum_hex>:<data_len>:<data>"
+CadenaSegura cm_serializar_checkpoint(int task_id, CadenaSegura datos) {
+    if (datos.longitud <= 0 || !datos.datos)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    pthread_mutex_lock(&_cm_mutex);
+    int seq = _cm_seq++;
+    pthread_mutex_unlock(&_cm_mutex);
+
+    unsigned int cksum = _cm_checksum(datos.datos, datos.longitud);
+
+    char header[64];
+    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%08X:%d:",
+                           task_id, seq, cksum, datos.longitud);
+
+    int total_len = hdr_len + datos.longitud;
+    char* buf = (char*)pool_alloc((size_t)(total_len + 1));
+    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    memcpy(buf, header, (size_t)hdr_len);
+    memcpy(buf + hdr_len, datos.datos, (size_t)datos.longitud);
+    buf[total_len] = '\0';
+
+    return (CadenaSegura){ .longitud = total_len, .datos = buf };
+}
+
+// --- Deserialize a CKPT checkpoint string ---
+// Parses "CKPT:<id>:<seq>:<cksum>:<len>:<data>"
+// Returns: { task_id via out pointer, datos as CadenaSegura }
+// On error returns CadenaSegura with longitud=0 and datos=NULL
+CadenaSegura cm_deserializar_checkpoint(CadenaSegura checkpoint_str,
+                                         int* out_task_id, int* out_seq) {
+    if (checkpoint_str.longitud < 5 || !checkpoint_str.datos
+        || memcmp(checkpoint_str.datos, "CKPT:", 5) != 0)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    const char* p = checkpoint_str.datos + 5;
+    const char* end = checkpoint_str.datos + checkpoint_str.longitud;
+
+    // Parse task_id
+    char* endp = NULL;
+    long task_id = strtol(p, &endp, 10);
+    if (endp == p || *endp != ':' || endp >= end)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    p = endp + 1;
+
+    // Parse seq
+    long seq = strtol(p, &endp, 10);
+    if (endp == p || *endp != ':' || endp >= end)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    p = endp + 1;
+
+    // Parse checksum hex
+    char cksum_str[9];
+    if (end - p < 8) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(cksum_str, p, 8);
+    cksum_str[8] = '\0';
+    unsigned int stored_cksum = (unsigned int)strtoul(cksum_str, NULL, 16);
+    p += 8;
+
+    if (*p != ':') return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    p++;
+
+    // Parse data length
+    long data_len = strtol(p, &endp, 10);
+    if (endp == p || *endp != ':' || endp >= end)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    p = endp + 1;
+
+    // Verify remaining data matches claimed length
+    int remaining = (int)(end - p);
+    if (remaining != (int)data_len)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    // Verify checksum
+    unsigned int computed = _cm_checksum(p, (int)data_len);
+    if (computed != stored_cksum)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    // Copy data into pool-allocated buffer
+    char* data_buf = (char*)pool_alloc((size_t)(data_len + 1));
+    if (!data_buf) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(data_buf, p, (size_t)data_len);
+    data_buf[data_len] = '\0';
+
+    if (out_task_id) *out_task_id = (int)task_id;
+    if (out_seq) *out_seq = (int)seq;
+
+    return (CadenaSegura){ .longitud = (int)data_len, .datos = data_buf };
+}
+
+// --- Verify checkpoint integrity (re-compute checksum) ---
+// Returns: 0 = valid, -1 = corrupted
+int cm_verificar_integridad(CadenaSegura checkpoint_str) {
+    int task_id_dummy, seq_dummy;
+    CadenaSegura data = cm_deserializar_checkpoint(checkpoint_str,
+                                                    &task_id_dummy, &seq_dummy);
+    if (data.longitud <= 0 || !data.datos) return -1;
+    pool_free((void*)data.datos);
+    return 0;
+}
+
+// --- Restore a task from a checkpoint string into the WS queue ---
+// Returns: 0 = ok, -1 = error
+int cm_restaurar_checkpoint(CadenaSegura checkpoint_str) {
+    int task_id;
+    int seq;
+    CadenaSegura task_data = cm_deserializar_checkpoint(checkpoint_str,
+                                                         &task_id, &seq);
+    if (task_data.longitud <= 0 || !task_data.datos) return -1;
+
+    int rc = ws_encolar(task_id, task_data);
+    pool_free((void*)task_data.datos);
+    return rc;
+}
+
+// --- Full migration: checkpoint + remove from WS queue ---
+// This simulates the migration of a task:
+//   1. Create checkpoint from task data
+//   2. Remove task from local WS queue (ownership transfer)
+//   3. Return checkpoint string for transport to remote node
+// Returns: checkpoint string, or empty on failure
+CadenaSegura cm_migrar_tarea(CadenaSegura datos_debug) {
+    pthread_mutex_lock(&_cm_mutex);
+
+    // Dequeue a task from the WS queue
+    CadenaSegura tarea = ws_desencolar();
+    if (tarea.longitud <= 0) {
+        _cm_fallidas++;
+        snprintf(_cm_ultimo_resultado, sizeof(_cm_ultimo_resultado),
+                 "MIGRACION_FALLIDA:cola_vacia");
+        pthread_mutex_unlock(&_cm_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    // Parse task_id from "id:data" format returned by ws_desencolar
+    const char* p = tarea.datos;
+    const char* colon = memchr(p, ':', (size_t)tarea.longitud);
+    int task_id = 0;
+    int data_offset = 0;
+    int data_len = 0;
+    if (colon) {
+        char id_str[32];
+        int id_len = (int)(colon - p);
+        if (id_len >= 32) id_len = 31;
+        memcpy(id_str, p, (size_t)id_len);
+        id_str[id_len] = '\0';
+        task_id = atoi(id_str);
+        data_offset = id_len + 1;
+        data_len = tarea.longitud - data_offset;
+    } else {
+        pool_free((void*)tarea.datos);
+        _cm_fallidas++;
+        snprintf(_cm_ultimo_resultado, sizeof(_cm_ultimo_resultado),
+                 "MIGRACION_FALLIDA:formato_invalido");
+        pthread_mutex_unlock(&_cm_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    // Build CadenaSegura for just the payload
+    CadenaSegura payload = { .longitud = data_len,
+                             .datos = tarea.datos + data_offset };
+
+    // Create checkpoint
+    int seq = _cm_seq++;
+    unsigned int cksum = _cm_checksum(payload.datos, payload.longitud);
+
+    char header[64];
+    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%08X:%d:",
+                           task_id, seq, cksum, payload.longitud);
+
+    int ckpt_total = hdr_len + payload.longitud;
+    char* ckpt_buf = (char*)pool_alloc((size_t)(ckpt_total + 1));
+    if (!ckpt_buf) {
+        pool_free((void*)tarea.datos);
+        _cm_fallidas++;
+        snprintf(_cm_ultimo_resultado, sizeof(_cm_ultimo_resultado),
+                 "MIGRACION_FALLIDA:pool_alloc_ckpt");
+        pthread_mutex_unlock(&_cm_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    memcpy(ckpt_buf, header, (size_t)hdr_len);
+    memcpy(ckpt_buf + hdr_len, payload.datos, (size_t)payload.longitud);
+    ckpt_buf[ckpt_total] = '\0';
+
+    _cm_completadas++;
+    snprintf(_cm_ultimo_resultado, sizeof(_cm_ultimo_resultado),
+             "MIGRACION_OK:%d:seq=%d", task_id, seq);
+
+    pool_free((void*)tarea.datos);
+    pthread_mutex_unlock(&_cm_mutex);
+
+    return (CadenaSegura){ .longitud = ckpt_total, .datos = ckpt_buf };
+}
+
+// --- Simulate full migration lifecycle between two nodes ---
+int cm_migrar_entre_nodos(CadenaSegura ip_destino, int puerto_destino) {
+    (void)ip_destino;
+    (void)puerto_destino;
+
+    CadenaSegura ckpt = cm_migrar_tarea((CadenaSegura){ .longitud = 0, .datos = NULL });
+    if (ckpt.longitud <= 0 || !ckpt.datos) return -1;
+
+    int rc = cm_restaurar_checkpoint(ckpt);
+    pool_free((void*)ckpt.datos);
+
+    pthread_mutex_lock(&_cm_mutex);
+    if (rc == 0)
+        _cm_completadas++;
+    else
+        _cm_fallidas++;
+    pthread_mutex_unlock(&_cm_mutex);
+
+    return rc;
+}
+
+// --- Get last migration result string ---
+CadenaSegura cm_ultima_migracion(void) {
+    pthread_mutex_lock(&_cm_mutex);
+    int len = (int)strlen(_cm_ultimo_resultado);
+    char* buf = (char*)pool_alloc((size_t)(len + 1));
+    if (!buf) {
+        pthread_mutex_unlock(&_cm_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    memcpy(buf, _cm_ultimo_resultado, (size_t)(len + 1));
+    pthread_mutex_unlock(&_cm_mutex);
+    return (CadenaSegura){ .longitud = len, .datos = buf };
+}
+
+// --- Get completed migration count ---
+int cm_migraciones_completadas(void) {
+    pthread_mutex_lock(&_cm_mutex);
+    int n = _cm_completadas;
+    pthread_mutex_unlock(&_cm_mutex);
+    return n;
+}
+
+// --- Get failed migration count ---
+int cm_migraciones_fallidas(void) {
+    pthread_mutex_lock(&_cm_mutex);
+    int n = _cm_fallidas;
+    pthread_mutex_unlock(&_cm_mutex);
+    return n;
 }
