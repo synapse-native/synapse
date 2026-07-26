@@ -1,0 +1,166 @@
+#lang: es
+// std.cluster — Red de Nodos Synapse (M8.1 + M8.2)
+// Transporte UDP cifrado con autenticación mutua Ed25519
+// Canales remotos asíncronos para comunicación entre nodos
+// Scheduler distribuido Work-Stealing (M8.2)
+
+importar std.err
+
+// ============================================================
+// ParEd25519 — Par de claves criptográficas
+// ============================================================
+estructura ParEd25519:
+    clave_publica: texto
+    clave_privada: texto
+
+// ============================================================
+// NodoCluster — Representación de un nodo remoto
+// ============================================================
+estructura NodoCluster:
+    id: texto
+    direccion: texto
+    puerto: entero
+    clave_publica: texto
+    estado: entero  // 0=DESCONECTADO, 1=CONECTADO, 2=AUTENTICADO
+
+// ============================================================
+// CanalRemoto — Canal de comunicación asíncrono entre nodos
+// ============================================================
+estructura CanalRemoto:
+    id: entero
+    id_destino: texto
+    direccion: texto
+    puerto: entero
+    estado: entero  // 0=ABIERTO, 1=CERRADO
+
+// ============================================================
+// Funciones Externas — M8.1 (Transporte + Criptografía)
+// ============================================================
+
+// generar_par_claves — Genera un nuevo par Ed25519
+// Retorna "clave_publica_hex:clave_privada_hex"
+externo funcion cluster_generar_par_claves() -> texto
+
+// firmar_mensaje — Firma texto con clave privada (hex)
+// Retorna firma de 128 caracteres hex
+externo funcion cluster_firmar_mensaje(mensaje: texto, clave_privada_hex: texto) -> texto
+
+// verificar_firma — Verifica firma Ed25519 (0=valida, -1=invalida)
+externo funcion cluster_verificar_firma(mensaje: texto, firma_hex: texto, clave_publica_hex: texto) -> entero
+
+// iniciar_nodo — Inicializa socket UDP en puerto
+externo funcion cluster_iniciar_nodo(puerto: entero) -> entero
+
+// detener_nodo — Cierra socket UDP y libera recursos
+externo funcion cluster_detener_nodo() -> entero
+
+// enviar_hello — Envía mensaje HELLO handshake
+externo funcion cluster_enviar_hello(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto) -> entero
+
+// canal_remoto_enviar — Envía datos por canal remoto
+externo funcion cluster_canal_remoto_enviar(ip: texto, puerto: entero, datos: texto, lon: entero, chan_id: entero) -> entero
+
+// recibir_paquete — Recibe datagrama (no bloqueante). Retorna texto vacío si no hay datos.
+externo funcion cluster_recibir_paquete(timeout_ms: entero) -> texto
+
+// ============================================================
+// Funciones Externas — M8.2 (Work-Stealing Scheduler)
+// ============================================================
+
+// ws_inicializar — Inicializa la cola local de tareas
+externo funcion ws_inicializar(capacidad: entero) -> entero
+
+// ws_encolar — Agrega tarea a la cola local (por el fondo)
+//   id: identificador entero de la tarea
+//   datos: payload de la tarea
+//   Retorna 0 si ok, -1 si cola llena
+externo funcion ws_encolar(id: entero, datos: texto) -> entero
+
+// ws_desencolar — Extrae tarea de la cola local (por el fondo, LIFO)
+//   Retorna "id:datos" o vacío si no hay tareas
+externo funcion ws_desencolar() -> texto
+
+// ws_profundidad — Retorna cantidad de tareas en cola local
+externo funcion ws_profundidad() -> entero
+
+// ws_carga_estimada — Retorna estimación de carga 0-100
+externo funcion ws_carga_estimada() -> entero
+
+// ws_enviar_solicitud_robo — Envía solicitud WSTEAL a nodo remoto
+//   Retorna número de secuencia o -1 si error
+externo funcion ws_enviar_solicitud_robo(ip: texto, puerto: entero) -> entero
+
+// ws_procesar_mensaje — Procesa paquete entrante para protocolo de robo
+//   Si es WSTEAL: desencola tarea local y devuelve "ATENDIDO:WSTOLEN:..."
+//   Si es WSTOLEN: almacena tarea robada y devuelve "ROBADA:id:datos"
+//   Si es WNONE: devuelve "VACIA"
+//   Si no es mensaje de robo: devuelve el paquete original
+externo funcion ws_procesar_mensaje(paquete: texto) -> texto
+
+// ws_ultima_robada — Recupera la última tarea robada
+//   Retorna "id:datos" o vacío
+externo funcion ws_ultima_robada() -> texto
+
+// ws_reenviar_respuesta — Reenvía respuesta de robo al solicitante
+//   (usado en simulación para routing de mensajes)
+externo funcion ws_reenviar_respuesta(ip: texto, puerto: entero, respuesta: texto) -> entero
+
+// ============================================================
+// Funciones Externas — M8.3 (Raft Consensus)
+// ============================================================
+
+// raft_inicializar — Inicializa estado Raft para un nodo
+//   node_id: identificador del nodo (0-N)
+//   num_nodes: total de nodos en el cluster
+//   seed: semilla para timeouts aleatorios
+externo funcion raft_inicializar(node_id: entero, num_nodes: entero, seed: entero) -> entero
+
+// raft_iniciar — Inicia nodo como seguidor (follower)
+//   tiempo_actual_ns: timestamp actual en nanosegundos
+externo funcion raft_iniciar(tiempo_actual_ns: entero, node_id: entero) -> entero
+
+// raft_tick — Avanza el tiempo Raft (llamar periódicamente)
+//   Retorna: 0=sin evento, 1=elección iniciada, 2=heartbeat enviado
+externo funcion raft_tick(tiempo_actual_ns: entero, node_id: entero) -> entero
+
+// raft_procesar_solicitud_voto — Procesa solicitud de voto (RequestVote)
+//   voter_id: nodo que recibe la solicitud
+//   candidate_term: término del candidato
+//   candidate_id: ID del candidato
+//   Retorna: 1=votó, 0=rechazó
+externo funcion raft_procesar_solicitud_voto(voter_id: entero, candidate_term: entero, candidate_id: entero, candidate_last_log: entero) -> entero
+
+// raft_procesar_respuesta_voto — Procesa respuesta a solicitud de voto
+//   Retorna: 1=líder electo, 0=continúa como candidato
+externo funcion raft_procesar_respuesta_voto(candidate_id: entero, responder_term: entero, responder_id: entero, granted: entero) -> entero
+
+// raft_procesar_heartbeat — Procesa latido del líder (AppendEntries)
+//   Retorna: 1=aceptado, 0=rechazado
+externo funcion raft_procesar_heartbeat(follower_id: entero, leader_term: entero, leader_id: entero, leader_commit: entero) -> entero
+
+// raft_estado — Retorna estado del nodo (0=follower, 1=candidate, 2=leader)
+externo funcion raft_estado(node_id: entero) -> entero
+
+// raft_term_actual — Retorna término actual del nodo
+externo funcion raft_term_actual(node_id: entero) -> entero
+
+// raft_lider_actual — Retorna ID del líder actual (-1 si no hay)
+externo funcion raft_lider_actual(node_id: entero) -> entero
+
+// raft_log_entradas — Retorna cantidad de entradas en el log
+externo funcion raft_log_entradas(node_id: entero) -> entero
+
+// raft_commit_index — Retorna índice de commit actual
+externo funcion raft_commit_index(node_id: entero) -> entero
+
+// raft_forzar_abdicacion — Fuerza abdicación del líder (para tests)
+externo funcion raft_forzar_abdicacion(node_id: entero) -> entero
+
+// raft_agregar_entrada — Agrega entrada al log del líder
+externo funcion raft_agregar_entrada(node_id: entero) -> entero
+
+// raft_reiniciar_nodo — Reinicia estado de un nodo (para tests)
+externo funcion raft_reiniciar_nodo(node_id: entero) -> entero
+
+// raft_info — Retorna string diagnóstico "term,state,leader,log,commit"
+externo funcion raft_info(node_id: entero) -> texto

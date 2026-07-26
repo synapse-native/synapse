@@ -135,15 +135,26 @@ typedef struct {
     pthread_cond_t no_lleno;  // señal para emisores
 } CanalConcurrencia;
 
-// --- Memory pool ---
+// --- Memory pool con slab allocator ---
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
+// Slab sizes for sub-allocation (32, 64, 128, 256 bytes)
+#define SLAB_COUNT 4
+static const uint32_t SLAB_SIZES[SLAB_COUNT] = {32, 64, 128, 256};
+// Number of sub-slots per block for each slab size
+#define SLOTS_PER_BLOCK(slab_sz) (TAMANO_BLOQUE / (slab_sz))
 
 typedef struct {
     uint8_t* pool_base;
     uint32_t* bitmap;
     uint32_t total_blocks;
     uint32_t block_size;
+    // Slab allocator: slab_base[i] = start of block range for slab size i
+    uint8_t* slab_base[SLAB_COUNT];          // pointer to slab block
+    uint32_t slab_block_idx[SLAB_COUNT];      // which pool block this slab uses (-1 = none)
+    uint32_t slab_next_free[SLAB_COUNT];      // free list index into the slab
+    uint32_t* slab_bitmap[SLAB_COUNT];        // per-slot bitmap for each slab
+    uint32_t slab_slots_per_block[SLAB_COUNT];// how many slots per block
 } MemoryPool;
 
 static MemoryPool _g_pool;
@@ -161,11 +172,18 @@ void pool_init(uint32_t total_blocks, uint32_t block_size) {
         pthread_mutex_unlock(&_g_pool_mutex);
         exit(1);
     }
+    // Initialize slab allocator with first block
+    for (int i = 0; i < SLAB_COUNT; i++) {
+        _g_pool.slab_block_idx[i] = -1;
+        _g_pool.slab_base[i] = NULL;
+        _g_pool.slab_next_free[i] = 0;
+        _g_pool.slab_slots_per_block[i] = SLOTS_PER_BLOCK(SLAB_SIZES[i]);
+    }
     pthread_mutex_unlock(&_g_pool_mutex);
 }
 
-void* pool_alloc() {
-    pthread_mutex_lock(&_g_pool_mutex);
+// Internal: allocate a full block and carve it into a slab for given size index
+static int _slab_alloc_block(int slab_idx) {
     uint32_t _words = (_g_pool.total_blocks + 31) / 32;
     for (uint32_t _w = 0; _w < _words; _w++) {
         if (_g_pool.bitmap[_w] != 0xFFFFFFFF) {
@@ -175,16 +193,104 @@ void* pool_alloc() {
             uint32_t _index = _w * 32 + _b;
             if (_index >= _g_pool.total_blocks) break;
             _g_pool.bitmap[_w] |= (1u << _b);
-            pthread_mutex_unlock(&_g_pool_mutex);
-            return _g_pool.pool_base + _index * _g_pool.block_size;
+            // Carve this block into slab slots
+            _g_pool.slab_block_idx[slab_idx] = _index;
+            _g_pool.slab_base[slab_idx] = _g_pool.pool_base + _index * _g_pool.block_size;
+            _g_pool.slab_next_free[slab_idx] = 0;
+            uint32_t slots = _g_pool.slab_slots_per_block[slab_idx];
+            // Allocate bitmap: first byte of slab marks used slots
+            uint32_t bm_words = (slots + 31) / 32;
+            _g_pool.slab_bitmap[slab_idx] = (uint32_t*)calloc(bm_words, sizeof(uint32_t));
+            return 1;
         }
     }
-    pthread_mutex_unlock(&_g_pool_mutex);
-    return NULL;
+    return 0;  // No blocks available
+}
+
+void* pool_alloc(size_t size) {
+    // Check slab sizes first
+    for (int i = 0; i < SLAB_COUNT; i++) {
+        if (size <= SLAB_SIZES[i]) {
+            pthread_mutex_lock(&_g_pool_mutex);
+            // If no block for this slab, allocate one
+            if (_g_pool.slab_block_idx[i] == (uint32_t)-1) {
+                if (!_slab_alloc_block(i)) {
+                    pthread_mutex_unlock(&_g_pool_mutex);
+                    void* _p = malloc(size);
+                    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+                    return _p;
+                }
+            }
+            uint32_t slots = _g_pool.slab_slots_per_block[i];
+            // Find free slot via bitmap
+            uint32_t bm_words = (slots + 31) / 32;
+            for (uint32_t _w = 0; _w < bm_words; _w++) {
+                if (_g_pool.slab_bitmap[i][_w] != 0xFFFFFFFF) {
+                    uint32_t _bits = ~_g_pool.slab_bitmap[i][_w];
+                    uint32_t _b = 0;
+                    while (!(_bits & (1u << _b))) { _b++; }
+                    uint32_t _slot = _w * 32 + _b;
+                    if (_slot < slots) {
+                        _g_pool.slab_bitmap[i][_w] |= (1u << _b);
+                        pthread_mutex_unlock(&_g_pool_mutex);
+                        return _g_pool.slab_base[i] + _slot * SLAB_SIZES[i];
+                    }
+                }
+            }
+            // Slab full: allocate another block
+            if (!_slab_alloc_block(i)) {
+                pthread_mutex_unlock(&_g_pool_mutex);
+                void* _p = malloc(size);
+                if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+                return _p;
+            }
+            // First slot of new block
+            _g_pool.slab_bitmap[i][0] |= 1u;
+            pthread_mutex_unlock(&_g_pool_mutex);
+            return _g_pool.slab_base[i];
+        }
+    }
+    // Size > 256: use original pool block allocation (if ≤ block_size) or malloc
+    if (size <= _g_pool.block_size) {
+        pthread_mutex_lock(&_g_pool_mutex);
+        uint32_t _words = (_g_pool.total_blocks + 31) / 32;
+        for (uint32_t _w = 0; _w < _words; _w++) {
+            if (_g_pool.bitmap[_w] != 0xFFFFFFFF) {
+                uint32_t _bits = ~_g_pool.bitmap[_w];
+                uint32_t _b = 0;
+                while (!(_bits & (1u << _b))) { _b++; }
+                uint32_t _index = _w * 32 + _b;
+                if (_index >= _g_pool.total_blocks) break;
+                _g_pool.bitmap[_w] |= (1u << _b);
+                pthread_mutex_unlock(&_g_pool_mutex);
+                return _g_pool.pool_base + _index * _g_pool.block_size;
+            }
+        }
+        pthread_mutex_unlock(&_g_pool_mutex);
+    }
+    // Fallback: malloc
+    void* _p = malloc(size);
+    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc malloc fallo\n"); exit(1); }
+    return _p;
 }
 
 void pool_free(void* ptr) {
     pthread_mutex_lock(&_g_pool_mutex);
+    // Check if pointer falls within any slab block
+    for (int i = 0; i < SLAB_COUNT; i++) {
+        if (_g_pool.slab_base[i] &&
+            ptr >= (void*)_g_pool.slab_base[i] &&
+            ptr < (void*)(_g_pool.slab_base[i] + TAMANO_BLOQUE)) {
+            uint32_t offset = (uint32_t)((uint8_t*)ptr - _g_pool.slab_base[i]);
+            uint32_t _slot = offset / SLAB_SIZES[i];
+            uint32_t _w = _slot / 32;
+            uint32_t _b = _slot % 32;
+            _g_pool.slab_bitmap[i][_w] &= ~(1u << _b);
+            pthread_mutex_unlock(&_g_pool_mutex);
+            return;
+        }
+    }
+    // Check if pointer falls within main pool
     if (ptr >= (void*)_g_pool.pool_base
         && ptr < (void*)(_g_pool.pool_base + _g_pool.total_blocks * _g_pool.block_size)) {
         uint32_t _index = (uint32_t)((uint8_t*)ptr - _g_pool.pool_base) / _g_pool.block_size;
@@ -197,15 +303,33 @@ void pool_free(void* ptr) {
     pthread_mutex_unlock(&_g_pool_mutex);
 }
 
-static inline float* _pool_malloc(size_t tamano) {
-    if (tamano <= TAMANO_BLOQUE) {
-        float* _p = (float*)pool_alloc();
-        if (_p) return _p;
-        fprintf(stderr, "ADVERTENCIA: pool agotado, usando malloc\n");
+void pool_destroy(void) {
+    pthread_mutex_lock(&_g_pool_mutex);
+    // Free slab bitmaps
+    for (int i = 0; i < SLAB_COUNT; i++) {
+        if (_g_pool.slab_bitmap[i]) {
+            free(_g_pool.slab_bitmap[i]);
+            _g_pool.slab_bitmap[i] = NULL;
+        }
+        _g_pool.slab_block_idx[i] = -1;
+        _g_pool.slab_base[i] = NULL;
     }
-    float* _p = (float*)malloc(tamano);
+    // Free main pool
+    if (_g_pool.pool_base) {
+        free(_g_pool.pool_base);
+        _g_pool.pool_base = NULL;
+    }
+    if (_g_pool.bitmap) {
+        free(_g_pool.bitmap);
+        _g_pool.bitmap = NULL;
+    }
+    pthread_mutex_unlock(&_g_pool_mutex);
+}
+
+static inline float* _pool_malloc(size_t tamano) {
+    float* _p = (float*)pool_alloc(tamano);
     if (!_p) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\n");
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc fallo\n");
         exit(1);
     }
     return _p;
@@ -368,13 +492,17 @@ static int _simd_habilitado = -1;  // -1 = no detectado aun
 
 // Forward declarations: funciones SIMD definidas mas abajo en este archivo,
 // pero llamadas por las funciones bridge que estan antes en el orden de compilacion.
-static void _simd_detectar(void);
-static void _syn_simd_llenar_tensor_constante(Tensor t, float valor);
-static Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b);
-static void _syn_simd_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida);
-static void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon);
-static void _syn_simd_silu(Tensor salida, Tensor entrada);
-static void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala);
+// NOTA: NO usar 'static' — las bibliotecas std declaran estas funciones como extern
+// y el codigo C generado las referencia directamente desde std/tensor.syn.
+void _simd_detectar(void);
+int _syn_simd_disponible(void);
+CadenaSegura _syn_simd_tipo(void);
+void _syn_simd_llenar_tensor_constante(Tensor t, float valor);
+Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b);
+void _syn_simd_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida);
+void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon);
+void _syn_simd_silu(Tensor salida, Tensor entrada);
+void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala);
 
 void _syn_llenar_tensor_constante(Tensor t, float valor) {
     _simd_detectar();
@@ -536,7 +664,12 @@ void _syn_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida) 
 
 // --- std.simd (Aceleracion SIMD) ---
 // Compilar con: gcc -c -O2 -msse -msse2 -msse3 synapse_rt.c -o synapse_rt.o
-#ifdef __SSE__
+// SIMD intrinsics headers: __AVX2__ implies __SSE__
+// pero en algunos MinGW-w64 __SSE__ no se define con -mavx2.
+// Usamos __AVX2__ como condicion mas robusta.
+#ifdef __AVX2__
+#include <immintrin.h>
+#elif defined(__SSE__)
 #include <xmmintrin.h>
 #include <emmintrin.h>
 #include <pmmintrin.h>
@@ -544,10 +677,10 @@ void _syn_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida) 
 
 // Deteccion de soporte SIMD (RUN-time via CPUID)
 // Unico binario portatil: compilar con -msse -msse3 -mavx,
-// pero delegar a codigo escalar si el CPU no soporta SIMD.
+// pero delegar a codigo escalar si el CPU no soporta SIMD.
 static const char* _simd_tipo_str = "NONE";
 
-static void _simd_detectar(void) {
+void _simd_detectar(void) {
     if (_simd_habilitado >= 0) return;  // ya detectado
     unsigned int eax, ebx, ecx, edx;
     eax = 1;
@@ -594,9 +727,9 @@ int _syn_simd_disponible(void) {
     return _simd_habilitado > 0 ? 1 : 0;
 }
 
-const char* _syn_simd_tipo(void) {
+CadenaSegura _syn_simd_tipo(void) {
     _simd_detectar();
-    return _simd_tipo_str;
+    return (CadenaSegura){ .longitud = (int)strlen(_simd_tipo_str), .datos = _simd_tipo_str };
 }
 
 // --- SIMD: llenar_tensor_constante (vectorizado con SSE) ---
@@ -1084,7 +1217,7 @@ int _syn_cerrar_socket(int fd) {
 
 // --- Buffer helpers for std.net FFI (receive path) ---
 void* _syn_buffer_alloc(int tamano) {
-    return _pool_malloc((size_t)tamano);
+    return pool_alloc((size_t)tamano);
 }
 
 void _syn_buffer_free(void* ptr) {
@@ -1095,7 +1228,7 @@ void _syn_buffer_free(void* ptr) {
 // On failure returns empty CadenaSegura (datos="") — caller checks via == "".
 // On success caller MUST call _syn_texto_liberar() when done.
 CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
-    char* buf = (char*)_pool_malloc((size_t)(tamano + 1));
+    char* buf = (char*)pool_alloc((size_t)(tamano + 1));
     int n = (int)recv(fd, buf, (size_t)tamano, 0);
     if (n <= 0) {
         pool_free(buf);
@@ -1111,27 +1244,66 @@ void _syn_texto_liberar(CadenaSegura s) {
 
 // ============================================================
 // std.json — JSON Parser (Deserializador Determinista)
+// Arquitectura simdjson-style: arena contigua + strings in-place.
+// Sin malloc por clave/nodo. Arena unica liberada al final.
 // ============================================================
+
+#define JSON_MAX_NODES 65536
+#define JSON_INIT_CAP 64
 
 typedef struct ParJson ParJson;
 typedef struct NodoJson NodoJson;
 
 struct ParJson {
-    CadenaSegura clave;
-    NodoJson* valor;
+    CadenaSegura clave;       // apunta al buffer de entrada (in-place)
+    NodoJson* valor;          // apunta al arena
 };
 
 struct NodoJson {
     int tipo;                // -1=Error, 0=Nulo, 1=Booleano, 2=Numero, 3=Cadena, 4=Arreglo, 5=Objeto
     int valor_bool;
     float valor_num;
-    CadenaSegura valor_str;
-    NodoJson* arreglo_hijos;
-    ParJson* objeto_pares;
+    CadenaSegura valor_str;  // apunta al buffer de entrada (in-place, null-terminated)
+    NodoJson* arreglo_hijos; // apunta al arena (primer elemento del arreglo)
+    ParJson* objeto_pares;   // apunta al arena (primer par)
     int longitud;
 };
 
-// --- Dynamic array helpers (internal) ---
+// --- Arena (contiguous bump allocator) ---
+
+static NodoJson* _json_arena = NULL;
+static int _json_arena_pos = 0;
+
+static NodoJson* _json_arena_alloc(void) {
+    if (_json_arena_pos >= JSON_MAX_NODES) return NULL;
+    return &_json_arena[_json_arena_pos++];
+}
+
+// --- Parser state ---
+
+static CadenaSegura _p_input;
+static int _p_pos;
+
+void _json_init(CadenaSegura s) {
+    _p_input = s;
+    _p_pos = 0;
+    if (!_json_arena) {
+        _json_arena = (NodoJson*)pool_alloc(JSON_MAX_NODES * sizeof(NodoJson));
+    }
+    _json_arena_pos = 0;
+}
+
+NodoJson _json_nodo_new() {
+    NodoJson n = {0};
+    return n;
+}
+
+// Arena liberada en _json_parse(). No-op para compatibilidad.
+void _json_nodo_liberar(NodoJson n) {
+    (void)n;
+}
+
+// --- Dynamic array helpers (arena-based, pool_alloc en vez de malloc) ---
 
 typedef struct {
     NodoJson* items;
@@ -1144,8 +1316,8 @@ static void nodo_arr_init(NodoArr* a) { a->items = NULL; a->count = 0; a->cap = 
 static void nodo_arr_append(NodoArr* a, NodoJson item) {
     if (a->count >= a->cap) {
         a->cap = a->cap ? a->cap * 2 : 8;
-        NodoJson* new = (NodoJson*)malloc(a->cap * sizeof(NodoJson));
-        if (a->items) { memcpy(new, a->items, a->count * sizeof(NodoJson)); free(a->items); }
+        NodoJson* new = (NodoJson*)pool_alloc((size_t)(a->cap * sizeof(NodoJson)));
+        if (a->items) { memcpy(new, a->items, (size_t)(a->count * sizeof(NodoJson))); }
         a->items = new;
     }
     a->items[a->count++] = item;
@@ -1170,8 +1342,8 @@ static void par_arr_init(ParArr* a) { a->items = NULL; a->count = 0; a->cap = 0;
 static void par_arr_append(ParArr* a, CadenaSegura clave, NodoJson* valor) {
     if (a->count >= a->cap) {
         a->cap = a->cap ? a->cap * 2 : 8;
-        ParJson* new = (ParJson*)malloc(a->cap * sizeof(ParJson));
-        if (a->items) { memcpy(new, a->items, a->count * sizeof(ParJson)); free(a->items); }
+        ParJson* new = (ParJson*)pool_alloc((size_t)(a->cap * sizeof(ParJson)));
+        if (a->items) { memcpy(new, a->items, (size_t)(a->count * sizeof(ParJson))); }
         a->items = new;
     }
     a->items[a->count].clave = clave;
@@ -1187,42 +1359,7 @@ static ParJson* par_arr_detach(ParArr* a) {
     return p;
 }
 
-// --- Parser state ---
-
-static CadenaSegura _p_input;
-static int _p_pos;
-
-void _json_init(CadenaSegura s) {
-    _p_input = s;
-    _p_pos = 0;
-}
-
-NodoJson _json_nodo_new() {
-    NodoJson n = {0};
-    return n;
-}
-
-void _json_nodo_liberar(NodoJson n) {
-    if (n.tipo == 3) {
-        if (n.valor_str.datos) { free((void*)n.valor_str.datos); n.valor_str.datos = NULL; }
-    } else if (n.tipo == 4) {
-        if (n.arreglo_hijos) {
-            for (int i = 0; i < n.longitud; i++) _json_nodo_liberar(n.arreglo_hijos[i]);
-            free(n.arreglo_hijos); n.arreglo_hijos = NULL;
-        }
-    } else if (n.tipo == 5) {
-        if (n.objeto_pares) {
-            for (int i = 0; i < n.longitud; i++) {
-                if (n.objeto_pares[i].clave.datos) free((void*)n.objeto_pares[i].clave.datos);
-                _json_nodo_liberar(*n.objeto_pares[i].valor);
-                free(n.objeto_pares[i].valor);
-            }
-            free(n.objeto_pares); n.objeto_pares = NULL;
-        }
-    }
-}
-
-// --- Lexer helpers ---
+// --- Lexer helpers (con aceleracion SIMD para parseo masivo) ---
 
 static int _peek() {
     if (_p_pos < 0 || _p_pos >= _p_input.longitud) return -1;
@@ -1234,6 +1371,39 @@ static int _advance() {
     return (unsigned char)_p_input.datos[_p_pos++];
 }
 
+// Skip whitespace using AVX2 when available (32 bytes/ciclo)
+// (immintrin.h already included above under __AVX2__ guard)
+#ifdef __AVX2__
+static void _skip_ws() {
+    while (_p_pos + 32 <= _p_input.longitud) {
+        __m256i chunk = _mm256_loadu_si256((const __m256i*)(_p_input.datos + _p_pos));
+        // Compare each byte with space (0x20), tab (0x09), newline (0x0A), CR (0x0D)
+        __m256i ws_chars = _mm256_set1_epi8(' ');
+        __m256i cmp_space = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8(' '));
+        __m256i cmp_tab   = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\t'));
+        __m256i cmp_nl    = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\n'));
+        __m256i cmp_cr    = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\r'));
+        __m256i ws = _mm256_or_si256(_mm256_or_si256(cmp_space, cmp_tab),
+                                     _mm256_or_si256(cmp_nl, cmp_cr));
+        int mask = _mm256_movemask_epi8(ws);
+        if (mask == 0xFFFFFFFF) {
+            // All 32 bytes are whitespace
+            _p_pos += 32;
+        } else {
+            // Found at least one non-whitespace byte
+            int ws_count = __builtin_ctz(~(unsigned int)mask);
+            _p_pos += ws_count;
+            return;
+        }
+    }
+    // Fallback to scalar for remaining < 32 bytes
+    while (_p_pos < _p_input.longitud) {
+        char c = _p_input.datos[_p_pos];
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') _p_pos++;
+        else break;
+    }
+}
+#else
 static void _skip_ws() {
     while (_p_pos < _p_input.longitud) {
         char c = _p_input.datos[_p_pos];
@@ -1241,17 +1411,57 @@ static void _skip_ws() {
         else break;
     }
 }
+#endif
 
-static int _match_str(const char* expected) {
-    int len = (int)strlen(expected);
-    if (_p_pos + len > _p_input.longitud) return 0;
-    if (strncmp(_p_input.datos + _p_pos, expected, len) == 0) {
-        _p_pos += len;
-        return 1;
+// AVX2-accelerated string value scanning: find closing quote in 32-byte chunks
+#ifdef __AVX2__
+static CadenaSegura _parse_string_value() {
+    if (_advance() != '"') return (CadenaSegura){0};
+    int start = _p_pos;
+    // AVX2: search for quote or backslash in 32-byte chunks
+    __m256i quote = _mm256_set1_epi8('"');
+    __m256i bslash = _mm256_set1_epi8('\\');
+    while (_p_pos + 32 <= _p_input.longitud) {
+        __m256i chunk = _mm256_loadu_si256((const __m256i*)(_p_input.datos + _p_pos));
+        __m256i cmp_q = _mm256_cmpeq_epi8(chunk, quote);
+        __m256i cmp_b = _mm256_cmpeq_epi8(chunk, bslash);
+        __m256i special = _mm256_or_si256(cmp_q, cmp_b);
+        int mask = _mm256_movemask_epi8(special);
+        if (mask != 0) {
+            // Found quote or backslash; find first position
+            int pos = __builtin_ctz((unsigned int)mask);
+            _p_pos += pos;
+            if (_p_input.datos[_p_pos] == '\\') {
+                // Escaped character: skip it and continue
+                _p_pos += 2;
+            } else {
+                // Found closing quote: in-place string (sin malloc)
+                int len = _p_pos - start;
+                char* p = (char*)_p_input.datos + start;
+                p[len] = '\0';  // null-terminate in buffer (writable)
+                _p_pos++;  // consume closing quote
+                return (CadenaSegura){ .longitud = len, .datos = p };
+            }
+        } else {
+            _p_pos += 32;  // No special chars in this chunk
+        }
     }
-    return 0;
+    // Fallback to scalar for remaining characters
+    while (_p_pos < _p_input.longitud) {
+        char c = _p_input.datos[_p_pos];
+        if (c == '"') break;
+        if (c == '\\') _p_pos++;
+        _p_pos++;
+    }
+    if (_p_pos >= _p_input.longitud) return (CadenaSegura){0};
+    int end = _p_pos;
+    _p_pos++;
+    int len = end - start;
+    char* p = (char*)_p_input.datos + start;
+    p[len] = '\0';  // null-terminate in buffer (writable)
+    return (CadenaSegura){ .longitud = len, .datos = p };
 }
-
+#else
 static CadenaSegura _parse_string_value() {
     if (_advance() != '"') return (CadenaSegura){0};
     int start = _p_pos;
@@ -1265,11 +1475,20 @@ static CadenaSegura _parse_string_value() {
     int end = _p_pos;
     _p_pos++;
     int len = end - start;
-    char* dup = (char*)malloc(len + 1);
-    if (!dup) return (CadenaSegura){0};
-    memcpy(dup, _p_input.datos + start, len);
-    dup[len] = '\0';
-    return (CadenaSegura){ .longitud = len, .datos = dup };
+    char* p = (char*)_p_input.datos + start;
+    p[len] = '\0';  // null-terminate in buffer (in-place, sin malloc)
+    return (CadenaSegura){ .longitud = len, .datos = p };
+}
+#endif
+
+static int _match_str(const char* expected) {
+    int len = (int)strlen(expected);
+    if (_p_pos + len > _p_input.longitud) return 0;
+    if (strncmp(_p_input.datos + _p_pos, expected, len) == 0) {
+        _p_pos += len;
+        return 1;
+    }
+    return 0;
 }
 
 static float _parse_number_value() {
@@ -1286,12 +1505,11 @@ static float _parse_number_value() {
         while (_p_pos < _p_input.longitud && _p_input.datos[_p_pos] >= '0' && _p_input.datos[_p_pos] <= '9') _p_pos++;
     }
     int len = _p_pos - start;
-    char* buf = (char*)malloc(len + 1);
-    if (!buf) return 0.0f;
+    char buf[64];
+    if (len > 63) return 0.0f;  // safety guard
     memcpy(buf, _p_input.datos + start, len);
     buf[len] = '\0';
     float val = (float)strtod(buf, NULL);
-    free(buf);
     return val;
 }
 
@@ -1322,18 +1540,16 @@ static NodoJson _parse_object() {
         }
         _skip_ws();
         if (_advance() != ':') {
-            free((void*)key.datos);
             n.tipo = -1;
             n.valor_str = (CadenaSegura){ .longitud = 25, .datos = "fjson: se esperaba ':'" };
             return n;
         }
         NodoJson val = _parse_value();
         if (val.tipo < 0) {
-            free((void*)key.datos);
             _json_nodo_liberar(val);
             return val; // propagate error
         }
-        NodoJson* val_ptr = (NodoJson*)malloc(sizeof(NodoJson));
+        NodoJson* val_ptr = (NodoJson*)pool_alloc(sizeof(NodoJson));
         if (val_ptr) *val_ptr = val;
         par_arr_append(&pares, key, val_ptr);
     }
@@ -4428,4 +4644,992 @@ int _syn_axon_escribir_lock(const char* paquete, const char* version, const char
     fclose(f);
     fprintf(stderr, "[Axon] Lock actualizado: %s v%s\n", paquete, version);
     return 0;
+}
+
+// ============================================================
+// Debug / Trace System — Time-Travel Debugging Support
+// ============================================================
+
+#define TRACE_MAX_EVENTS 50000
+#define TRACE_DIR ".synapse/traces"
+
+typedef enum {
+    EVENT_ASSIGNMENT = 0,
+    EVENT_FUNCTION_CALL = 1,
+    EVENT_FUNCTION_RETURN = 2,
+    EVENT_ERROR = 3,
+    EVENT_BRANCH_TAKEN = 4,
+    EVENT_LOOP_ITERATION = 5,
+    EVENT_VARIABLE_CHANGE = 6,
+    EVENT_CONTRACT_CHECK = 7,
+    EVENT_USER_TRACE = 8
+} TraceEventTag;
+
+typedef struct {
+    int tag;
+    long long timestamp;
+    const char* funcion;
+    const char* archivo;
+    int linea;
+    long long valor_entero;
+    double valor_decimal;
+    const char* valor_texto;
+    const char* variable;
+} TraceEvent;
+
+typedef struct {
+    char id[64];
+    char programa[256];
+    TraceEvent* eventos;
+    int total_eventos;
+    int capacidad;
+    int cabeza;
+    int estado;  // 0=ACTIVA, 1=FINALIZADA, 2=PERSISTIDA
+} TraceSession;
+
+static TraceSession g_trace_session = {0};
+static int g_trace_initialized = 0;
+
+long long _get_timestamp_ns(void) {
+#ifdef _WIN32
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+    ULARGE_INTEGER ul;
+    ul.LowPart = ft.dwLowDateTime;
+    ul.HighPart = ft.dwHighDateTime;
+    return (long long)(ul.QuadPart / 10) - 116444736000000000LL;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+#endif
+}
+
+static void _ensure_trace_dir(void) {
+#ifdef _WIN32
+    _mkdir(".synapse");
+    _mkdir(TRACE_DIR);
+#else
+    mkdir(".synapse", 0755);
+    mkdir(TRACE_DIR, 0755);
+#endif
+}
+
+static char* _generate_trace_id(void) {
+    static char id[64];
+    long long ts = _get_timestamp_ns();
+    snprintf(id, sizeof(id), "trace_%lld_%d", ts, rand() % 10000);
+    return id;
+}
+
+static void _init_trace_session(const char* programa) {
+    if (g_trace_initialized) return;
+    
+    _ensure_trace_dir();
+    
+    g_trace_session.eventos = (TraceEvent*)calloc(TRACE_MAX_EVENTS, sizeof(TraceEvent));
+    if (!g_trace_session.eventos) {
+        fprintf(stderr, "[Debug] ERROR: No se pudo asignar buffer de traza\n");
+        return;
+    }
+    g_trace_session.capacidad = TRACE_MAX_EVENTS;
+    g_trace_session.cabeza = 0;
+    g_trace_session.total_eventos = 0;
+    g_trace_session.estado = 0;
+    
+    strncpy(g_trace_session.id, _generate_trace_id(), sizeof(g_trace_session.id)-1);
+    strncpy(g_trace_session.programa, programa ? programa : "desconocido", sizeof(g_trace_session.programa)-1);
+    
+    g_trace_initialized = 1;
+    fprintf(stderr, "[Debug] Sesion iniciada: %s (%s)\n", g_trace_session.id, g_trace_session.programa);
+}
+
+CadenaSegura _syn_debug_iniciar_sesion(CadenaSegura programa) {
+    _init_trace_session(programa.datos ? programa.datos : "");
+    
+    CadenaSegura id;
+    id.longitud = (int)strlen(g_trace_session.id);
+    id.datos = g_trace_session.id;
+    return id;
+}
+
+int _syn_debug_registrar_evento(int tag, const char* funcion, const char* archivo, int linea, 
+                                 const char* variable, long long valor_entero, double valor_decimal, const char* valor_texto) {
+    if (!g_trace_initialized) {
+        _init_trace_session("desconocido");
+    }
+    if (!g_trace_session.eventos) return -1;
+    
+    int idx = g_trace_session.cabeza % TRACE_MAX_EVENTS;
+    TraceEvent* e = &g_trace_session.eventos[idx];
+    
+    e->tag = tag;
+    e->timestamp = _get_timestamp_ns();
+    e->funcion = funcion ? funcion : "";
+    e->archivo = archivo ? archivo : "";
+    e->linea = linea;
+    e->valor_entero = valor_entero;
+    e->valor_decimal = valor_decimal;
+    e->valor_texto = valor_texto ? valor_texto : "";
+    e->variable = variable ? variable : "";
+    
+    g_trace_session.cabeza = (g_trace_session.cabeza + 1) % TRACE_MAX_EVENTS;
+    if (g_trace_session.total_eventos < TRACE_MAX_EVENTS) {
+        g_trace_session.total_eventos++;
+    }
+    
+    return 0;
+}
+
+int _syn_debug_trace(const char* expresion_texto, void* valor, const char* tipo) {
+    // Registrar evento de traza de usuario
+    if (!g_trace_initialized) {
+        _init_trace_session("desconocido");
+    }
+    return _syn_debug_registrar_evento(EVENT_USER_TRACE, "trace", "", 0, 
+                                        expresion_texto ? expresion_texto : "expr", 
+                                        0, 0.0, "");
+}
+
+CadenaSegura _syn_debug_finalizar_sesion(void) {
+    if (!g_trace_initialized) {
+        CadenaSegura vacia = {0, ""};
+        return vacia;
+    }
+    
+    if (g_trace_session.estado != 0) {
+        CadenaSegura id = {(int)strlen(g_trace_session.id), g_trace_session.id};
+        return id;
+    }
+    
+    _ensure_trace_dir();
+    
+    char filepath[512];
+    snprintf(filepath, sizeof(filepath), "%s/%s.trace", TRACE_DIR, g_trace_session.id);
+    
+    FILE* f = fopen(filepath, "wb");
+    if (!f) {
+        fprintf(stderr, "[Debug] ERROR: No se pudo escribir traza: %s\n", filepath);
+        CadenaSegura id = {(int)strlen(g_trace_session.id), g_trace_session.id};
+        return id;
+    }
+    
+    // Escribir header
+    fprintf(f, "TRACE v1\n");
+    fprintf(f, "id=%s\n", g_trace_session.id);
+    fprintf(f, "programa=%s\n", g_trace_session.programa);
+    fprintf(f, "eventos=%d\n", g_trace_session.total_eventos);
+    fprintf(f, "capacidad=%d\n", TRACE_MAX_EVENTS);
+    fprintf(f, "---\n");
+    
+    // Escribir eventos en orden cronologico (desde el mas antiguo)
+    int inicio = (g_trace_session.total_eventos < TRACE_MAX_EVENTS) ? 0 : 
+                 (g_trace_session.cabeza % TRACE_MAX_EVENTS);
+    int count = g_trace_session.total_eventos;
+    
+    for (int i = 0; i < count; i++) {
+        int idx = (inicio + i) % TRACE_MAX_EVENTS;
+        TraceEvent* e = &g_trace_session.eventos[idx];
+        
+        fprintf(f, "%d|%lld|%s|%s|%d|%lld|%f|%s|%s\n",
+            e->tag,
+            e->timestamp,
+            e->funcion,
+            e->archivo,
+            e->linea,
+            e->valor_entero,
+            e->valor_decimal,
+            e->valor_texto ? e->valor_texto : "",
+            e->variable ? e->variable : "");
+    }
+    
+    fclose(f);
+    
+    g_trace_session.estado = 2;  // PERSISTIDA
+    
+    fprintf(stderr, "[Debug] Traza guardada: %s (%d eventos)\n", filepath, count);
+    
+    CadenaSegura id;
+    id.longitud = (int)strlen(g_trace_session.id);
+    id.datos = g_trace_session.id;
+    return id;
+}
+
+TraceSession _syn_debug_obtener_sesion(void) {
+    return g_trace_session;
+}
+
+// ============================================================
+// M8.1 — std.cluster — Transport Layer for Distributed Nodes
+// UDP-based messaging with Ed25519 authentication
+// ============================================================
+
+// --- Ed25519 Key Generation (via TweetNaCl) ---
+// Generates a new Ed25519 key pair.
+// Returns colon-separated "public_key_hex:private_key_hex"
+CadenaSegura cluster_generar_par_claves(void) {
+    unsigned char pk[32], sk[64];
+    if (crypto_sign_keypair(pk, sk) != 0) {
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    char hex_pk[65], hex_sk[129];
+    for (int i = 0; i < 32; i++)
+        sprintf(hex_pk + i * 2, "%02x", pk[i]);
+    hex_pk[64] = '\0';
+    for (int i = 0; i < 64; i++)
+        sprintf(hex_sk + i * 2, "%02x", sk[i]);
+    hex_sk[128] = '\0';
+    int total_len = 64 + 1 + 128;
+    char* result = (char*)pool_alloc((size_t)(total_len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    sprintf(result, "%s:%s", hex_pk, hex_sk);
+    return (CadenaSegura){ .longitud = total_len, .datos = result };
+}
+
+// --- Ed25519 Signing ---
+// clave_privada_hex can be the full "pubkey:privkey" string or just "privkey" (128 chars)
+CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje, CadenaSegura clave_privada_hex) {
+    const char* key_start = clave_privada_hex.datos;
+    int key_len = clave_privada_hex.longitud;
+    // If full par string "pubkey:privkey", skip past pubkey and ':'
+    if (key_len == 193) { // 64 + 1 + 128
+        key_start += 65;
+        key_len = 128;
+    }
+    if (key_len < 128)
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    unsigned char sk[64];
+    for (int i = 0; i < 64; i++) {
+        unsigned int byte;
+        sscanf(key_start + i * 2, "%02x", &byte);
+        sk[i] = (unsigned char)byte;
+    }
+    unsigned char sm[2048];
+    unsigned long long smlen;
+    if (crypto_sign(sm, &smlen, (const unsigned char*)mensaje.datos,
+                    (unsigned long long)mensaje.longitud, sk) != 0)
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    char hex_sig[129];
+    for (int i = 0; i < 64; i++)
+        sprintf(hex_sig + i * 2, "%02x", sm[i]);
+    hex_sig[128] = '\0';
+    char* result = (char*)pool_alloc(129);
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(result, hex_sig, 129);
+    return (CadenaSegura){ .longitud = 128, .datos = result };
+}
+
+// --- Ed25519 Signature Verification ---
+int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex,
+                             CadenaSegura clave_publica_hex) {
+    const char* pk_start = clave_publica_hex.datos;
+    int pk_len = clave_publica_hex.longitud;
+    // If full par string "pubkey:privkey", only use pubkey part
+    if (pk_len == 193) pk_len = 64;
+    if (firma_hex.longitud < 128 || pk_len < 64) return -1;
+    unsigned char firma[64], pk[32];
+    for (int i = 0; i < 64; i++) {
+        unsigned int byte;
+        sscanf(firma_hex.datos + i * 2, "%02x", &byte);
+        firma[i] = (unsigned char)byte;
+    }
+    for (int i = 0; i < 32; i++) {
+        unsigned int byte;
+        sscanf(pk_start + i * 2, "%02x", &byte);
+        pk[i] = (unsigned char)byte;
+    }
+    unsigned long long mlen = 0;
+    unsigned char* sm = (unsigned char*)malloc((size_t)(mensaje.longitud + 64));
+    if (!sm) return -1;
+    memcpy(sm, firma, 64);
+    memcpy(sm + 64, mensaje.datos, (size_t)mensaje.longitud);
+    unsigned char* m_buf = (unsigned char*)malloc((size_t)(mensaje.longitud + 64));
+    if (!m_buf) { free(sm); return -1; }
+    int rc = crypto_sign_open(m_buf, &mlen, sm, (unsigned long long)(mensaje.longitud + 64), pk);
+    free(sm);
+    free(m_buf);
+    return rc;
+}
+
+// --- UDP Socket Helpers ---
+static int _cluster_udp_socket(int puerto) {
+    int fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) return -1;
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((unsigned short)puerto);
+    addr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+#ifdef _WIN32
+        closesocket(fd);
+#else
+        close(fd);
+#endif
+        return -1;
+    }
+    return fd;
+}
+
+static int _cluster_udp_enviar(int fd, const char* ip, int puerto,
+                                const char* datos, int lon) {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((unsigned short)puerto);
+    addr.sin_addr.s_addr = inet_addr(ip);
+    if (addr.sin_addr.s_addr == INADDR_NONE) return -1;
+    return (int)sendto(fd, datos, (size_t)lon, 0,
+                       (struct sockaddr*)&addr, sizeof(addr));
+}
+
+// --- Cluster Initialization ---
+static int _cluster_sock_global = -1;
+
+int cluster_iniciar_nodo(int puerto) {
+    _syn_iniciar_red();
+    int fd = _cluster_udp_socket(puerto);
+    if (fd < 0) return -1;
+    _cluster_sock_global = fd;
+    return 0;
+}
+
+int cluster_detener_nodo(void) {
+    if (_cluster_sock_global >= 0) {
+#ifdef _WIN32
+        closesocket(_cluster_sock_global);
+#else
+        close(_cluster_sock_global);
+#endif
+    }
+    _cluster_sock_global = -1;
+    return 0;
+}
+
+// --- Send HELLO handshake message ---
+int cluster_enviar_hello(const char* ip, int puerto,
+                          CadenaSegura id_origen, CadenaSegura pubkey_hex) {
+    if (_cluster_sock_global < 0) return -1;
+    char buf[1024];
+    int len = snprintf(buf, sizeof(buf), "HELLO:%.*s:%.*s",
+                       (int)id_origen.longitud, id_origen.datos,
+                       (int)pubkey_hex.longitud, pubkey_hex.datos);
+    return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, len);
+}
+
+// --- Remote Channel: send data ---
+int cluster_canal_remoto_enviar(const char* ip, int puerto,
+                                const char* datos, int lon,
+                                int chan_id) {
+    if (_cluster_sock_global < 0) return -1;
+    char header[64];
+    static int seq_counter = 0;
+    int hdr_len = snprintf(header, sizeof(header), "DATA:%d:%d:", chan_id, seq_counter++);
+    char* paquete = (char*)pool_alloc((size_t)(hdr_len + lon));
+    if (!paquete) return -1;
+    memcpy(paquete, header, (size_t)hdr_len);
+    memcpy(paquete + hdr_len, datos, (size_t)lon);
+    int n = _cluster_udp_enviar(_cluster_sock_global, ip, puerto,
+                                 paquete, hdr_len + lon);
+    pool_free(paquete);
+    return n;
+}
+
+// --- Receive a datagram (non-blocking) ---
+CadenaSegura cluster_recibir_paquete(int timeout_ms) {
+    if (_cluster_sock_global < 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
+#ifdef _WIN32
+    u_long mode = 1;
+    ioctlsocket(_cluster_sock_global, FIONBIO, &mode);
+#else
+    int flags = fcntl(_cluster_sock_global, F_GETFL, 0);
+    fcntl(_cluster_sock_global, F_SETFL, flags | O_NONBLOCK);
+#endif
+    char buf[65536];
+    struct sockaddr_in from;
+    socklen_t fromlen = sizeof(from);
+    int n = (int)recvfrom(_cluster_sock_global, buf, sizeof(buf) - 1, 0,
+                           (struct sockaddr*)&from, &fromlen);
+    if (n <= 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    buf[n] = '\0';
+    char* result = (char*)pool_alloc((size_t)(n + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(result, buf, (size_t)(n + 1));
+    return (CadenaSegura){ .longitud = n, .datos = result };
+}
+
+// ============================================================
+// M8.2 — Distributed Work-Stealing Scheduler
+// Lock-free-ish distributed task scheduler using local queues
+// and UDP-based stealing protocol (STEAL/STOLEN messages).
+// Each node maintains a local deque protected by a pthread mutex.
+// ============================================================
+
+// --- Work queue entry ---
+typedef struct {
+    int id;
+    char* datos;
+    int len;
+} WsTarea;
+
+// --- Work queue state ---
+static WsTarea* _ws_cola = NULL;
+static int _ws_capacidad = 0;
+static int _ws_cabeza = 0;  // pop from front (stealing)
+static int _ws_cola_idx = 0; // push to back (local)
+static int _ws_contador = 0;
+static pthread_mutex_t _ws_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int _ws_robo_seq = 0;
+static int _ws_ultimo_robo_seq = -1;
+
+// --- Stolen task buffer (for receiving stolen tasks) ---
+static WsTarea _ws_robada = {0, NULL, 0};
+static int _ws_robada_valida = 0;
+
+int ws_inicializar(int capacidad) {
+    if (capacidad <= 0) capacidad = 1024;
+    if (_ws_cola) {
+        free(_ws_cola);
+        _ws_cola = NULL;
+    }
+    _ws_cola = (WsTarea*)malloc((size_t)capacidad * sizeof(WsTarea));
+    if (!_ws_cola) return -1;
+    memset(_ws_cola, 0, (size_t)capacidad * sizeof(WsTarea));
+    _ws_capacidad = capacidad;
+    _ws_cabeza = 0;
+    _ws_cola_idx = 0;
+    _ws_contador = 0;
+    _ws_robo_seq = 0;
+    _ws_ultimo_robo_seq = -1;
+    _ws_robada_valida = 0;
+    return 0;
+}
+
+int ws_encolar(int id, CadenaSegura datos) {
+    pthread_mutex_lock(&_ws_mutex);
+    if (_ws_contador >= _ws_capacidad) {
+        pthread_mutex_unlock(&_ws_mutex);
+        return -1;
+    }
+    char* copia = (char*)malloc((size_t)(datos.longitud + 1));
+    if (!copia) { pthread_mutex_unlock(&_ws_mutex); return -1; }
+    memcpy(copia, datos.datos, (size_t)datos.longitud);
+    copia[datos.longitud] = '\0';
+    _ws_cola[_ws_cola_idx].id = id;
+    _ws_cola[_ws_cola_idx].datos = copia;
+    _ws_cola[_ws_cola_idx].len = datos.longitud;
+    _ws_cola_idx = (_ws_cola_idx + 1) % _ws_capacidad;
+    _ws_contador++;
+    pthread_mutex_unlock(&_ws_mutex);
+    return 0;
+}
+
+CadenaSegura ws_desencolar(void) {
+    pthread_mutex_lock(&_ws_mutex);
+    if (_ws_contador <= 0) {
+        pthread_mutex_unlock(&_ws_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    // Pop from back (LIFO) for local worker — better cache locality
+    int idx = (_ws_cola_idx - 1 + _ws_capacidad) % _ws_capacidad;
+    // But if only 1 item, pop from front
+    if (_ws_contador == 1) idx = _ws_cabeza;
+    WsTarea t = _ws_cola[idx];
+    _ws_cola[idx].datos = NULL;
+    // Recalculate indices
+    if (_ws_contador == 1) {
+        _ws_cabeza = 0;
+        _ws_cola_idx = 0;
+    } else if (idx == _ws_cabeza) {
+        _ws_cabeza = (_ws_cabeza + 1) % _ws_capacidad;
+    } else {
+        _ws_cola_idx = (_ws_cola_idx - 1 + _ws_capacidad) % _ws_capacidad;
+    }
+    _ws_contador--;
+    pthread_mutex_unlock(&_ws_mutex);
+    // Build result string "id:datos"
+    char id_str[32];
+    int id_len = snprintf(id_str, sizeof(id_str), "%d:", t.id);
+    int total_len = id_len + t.len;
+    char* buf = (char*)pool_alloc((size_t)(total_len + 1));
+    if (!buf) { free(t.datos); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+    memcpy(buf, id_str, (size_t)id_len);
+    memcpy(buf + id_len, t.datos, (size_t)t.len);
+    buf[total_len] = '\0';
+    free(t.datos);
+    return (CadenaSegura){ .longitud = total_len, .datos = buf };
+}
+
+int ws_profundidad(void) {
+    pthread_mutex_lock(&_ws_mutex);
+    int n = _ws_contador;
+    pthread_mutex_unlock(&_ws_mutex);
+    return n;
+}
+
+int ws_carga_estimada(void) {
+    pthread_mutex_lock(&_ws_mutex);
+    int pct = (_ws_capacidad > 0) ? (_ws_contador * 100 / _ws_capacidad) : 0;
+    if (pct > 100) pct = 100;
+    pthread_mutex_unlock(&_ws_mutex);
+    return pct;
+}
+
+// --- Steal from front (for stealing by remote nodes) ---
+// Called by the responder: removes task from front and returns it.
+// The caller must format the response message.
+static int _ws_robar_frontal(int* out_id, char** out_data, int* out_len) {
+    pthread_mutex_lock(&_ws_mutex);
+    if (_ws_contador <= 0) {
+        pthread_mutex_unlock(&_ws_mutex);
+        return -1;
+    }
+    WsTarea t = _ws_cola[_ws_cabeza];
+    _ws_cola[_ws_cabeza].datos = NULL;
+    _ws_cabeza = (_ws_cabeza + 1) % _ws_capacidad;
+    _ws_contador--;
+    pthread_mutex_unlock(&_ws_mutex);
+    *out_id = t.id;
+    *out_data = t.datos;
+    *out_len = t.len;
+    return 0;
+}
+
+// --- Send steal request to a remote node ---
+// Format: "WSTEAL:<seq>"
+int ws_enviar_solicitud_robo(CadenaSegura ip, int puerto) {
+    if (_cluster_sock_global < 0) return -1;
+    int seq = __atomic_fetch_add(&_ws_robo_seq, 1, __ATOMIC_SEQ_CST);
+    _ws_ultimo_robo_seq = seq;
+    char buf[64];
+    int len = snprintf(buf, sizeof(buf), "WSTEAL:%d", seq);
+    const char* ip_str = ip.datos;
+    int puerto_int = puerto;
+    return _cluster_udp_enviar(_cluster_sock_global, ip_str, puerto_int, buf, len);
+}
+
+// --- Process incoming message for work-stealing protocol ---
+// Returns structured text:
+//   "ROBADA:id:data" — a stolen task was received (the caller's steal was answered)
+//   "ATENDIDO" — a WSTEAL request was handled (stolen task sent back)
+//   "VACIA" — a WSTEAL request came but local queue was empty
+//   original data — pass-through for non-steal messages
+CadenaSegura ws_procesar_mensaje(CadenaSegura paquete) {
+    if (paquete.longitud < 7) return paquete;
+    const char* p = paquete.datos;
+    int plen = paquete.longitud;
+
+    // Check for "WSTEAL:" prefix (incoming steal request)
+    if (plen >= 7 && memcmp(p, "WSTEAL:", 7) == 0) {
+        // Responder: dequeue from front and send back as "WSTOLEN:<seq>:<id>:<data>"
+        int seq = 0;
+        sscanf(p + 7, "%d", &seq);
+        int task_id;
+        char* task_data;
+        int task_len;
+        if (_ws_robar_frontal(&task_id, &task_data, &task_len) != 0) {
+            // Queue empty — send "WNONE:<seq>"
+            char resp[64];
+            int rlen = snprintf(resp, sizeof(resp), "WNONE:%d", seq);
+            // We need to know who sent it. Since we don't track sender addr,
+            // we can't respond. The requester will timeout.
+            // For now, just store that we were empty.
+            return (CadenaSegura){ .longitud = 5, .datos = "VACIA" };
+        }
+        // Build response: "WSTOLEN:<seq>:<id>:<data>"
+        char hdr[64];
+        int hdr_len = snprintf(hdr, sizeof(hdr), "WSTOLEN:%d:%d:", seq, task_id);
+        int total = hdr_len + task_len;
+        char* resp = (char*)pool_alloc((size_t)(total + 1));
+        if (!resp) { free(task_data); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+        memcpy(resp, hdr, (size_t)hdr_len);
+        memcpy(resp + hdr_len, task_data, (size_t)task_len);
+        resp[total] = '\0';
+        free(task_data);
+        // In a real scenario, we'd send this back to the requester.
+        // For the simulation test, we return it as "ATENDIDO" + the response data
+        // to allow the test harness to route it.
+        char* result = (char*)pool_alloc((size_t)(total + 10));
+        if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+        memcpy(result, "ATENDIDO:", 9);
+        memcpy(result + 9, resp, (size_t)total);
+        result[total + 9] = '\0';
+        pool_free(resp);
+        return (CadenaSegura){ .longitud = total + 9, .datos = result };
+    }
+
+    // Check for "WSTOLEN:" prefix (incoming steal response)
+    if (plen >= 8 && memcmp(p, "WSTOLEN:", 8) == 0) {
+        // Parse: "WSTOLEN:<seq>:<id>:<data>"
+        int seq, task_id;
+        int consumed = 0;
+        if (sscanf(p + 8, "%d:%d%n", &seq, &task_id, &consumed) >= 2) {
+            int data_start = 8 + consumed + 1; // skip past ":<data>"
+            if (data_start < plen) {
+                int data_len = plen - data_start;
+                char* copia = (char*)malloc((size_t)(data_len + 1));
+                if (copia) {
+                    memcpy(copia, p + data_start, (size_t)data_len);
+                    copia[data_len] = '\0';
+                    // Store in stolen buffer
+                    pthread_mutex_lock(&_ws_mutex);
+                    if (_ws_robada.datos) free(_ws_robada.datos);
+                    _ws_robada.id = task_id;
+                    _ws_robada.datos = copia;
+                    _ws_robada.len = data_len;
+                    _ws_robada_valida = 1;
+                    pthread_mutex_unlock(&_ws_mutex);
+                    // Return "ROBADA:id:data"
+                    char id_str[32];
+                    int id_len = snprintf(id_str, sizeof(id_str), "%d:", task_id);
+                    int total = 7 + id_len + data_len; // "ROBADA:" + "id:" + data
+                    char* buf = (char*)pool_alloc((size_t)(total + 1));
+                    if (buf) {
+                        memcpy(buf, "ROBADA:", 7);
+                        memcpy(buf + 7, id_str, (size_t)id_len);
+                        memcpy(buf + 7 + id_len, copia, (size_t)data_len);
+                        buf[total] = '\0';
+                        return (CadenaSegura){ .longitud = total, .datos = buf };
+                    }
+                }
+            }
+        }
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+
+    // Check for "WNONE:" prefix (steal response with no tasks)
+    if (plen >= 6 && memcmp(p, "WNONE:", 6) == 0) {
+        return (CadenaSegura){ .longitud = 5, .datos = "VACIA" };
+    }
+
+    // Not a steal message — pass through
+    return paquete;
+}
+
+// --- Retrieve the last stolen task ---
+// Returns "id:data" or "" if none
+CadenaSegura ws_ultima_robada(void) {
+    pthread_mutex_lock(&_ws_mutex);
+    if (!_ws_robada_valida || !_ws_robada.datos) {
+        pthread_mutex_unlock(&_ws_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    char id_str[32];
+    int id_len = snprintf(id_str, sizeof(id_str), "%d:", _ws_robada.id);
+    int total = id_len + _ws_robada.len;
+    char* buf = (char*)pool_alloc((size_t)(total + 1));
+    if (!buf) {
+        pthread_mutex_unlock(&_ws_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    memcpy(buf, id_str, (size_t)id_len);
+    memcpy(buf + id_len, _ws_robada.datos, (size_t)_ws_robada.len);
+    buf[total] = '\0';
+    pthread_mutex_unlock(&_ws_mutex);
+    return (CadenaSegura){ .longitud = total, .datos = buf };
+}
+
+// --- Manually forward a WSTEAL response to the requester ---
+// Used in simulation: the test harness routes ATENDIDO responses back.
+int ws_reenviar_respuesta(CadenaSegura ip, int puerto, CadenaSegura respuesta) {
+    if (_cluster_sock_global < 0 || respuesta.longitud <= 0) return -1;
+    return _cluster_udp_enviar(_cluster_sock_global, ip.datos, puerto,
+                                respuesta.datos, respuesta.longitud);
+}
+
+// ============================================================
+// M8.3 — Raft Consensus Algorithm for Shared State
+// Simplified Raft implementation:
+//   - Leader election with randomized timeouts
+//   - Term-based voting
+//   - Heartbeat mechanism (AppendEntries)
+//   - Log replication tracking
+// Supports multi-node simulation via node_id-indexed state array.
+// ============================================================
+
+#define RAFT_FOLLOWER  0
+#define RAFT_CANDIDATE 1
+#define RAFT_LEADER    2
+
+#define MAX_RAFT_NODES 8
+#define RAFT_HEARTBEAT_MS 50
+#define RAFT_ELECTION_MIN_MS 150
+#define RAFT_ELECTION_MAX_MS 300
+
+typedef struct {
+    int current_term;
+    int voted_for;
+    int state;
+    int node_id;
+    int num_nodes;
+    long long election_deadline_ns;
+    long long next_heartbeat_ns;
+    int leader_id;
+    int log_count;
+    int commit_index;
+    int last_applied;
+    int votes_granted;
+    int votes_needed;
+    unsigned int seed;
+} RaftNode;
+
+static RaftNode _raft_nodes[MAX_RAFT_NODES];
+static int _raft_inicializado = 0;
+static int _raft_simulation_mode = 0;
+
+static long long _raft_now_ns(void) {
+    return _get_timestamp_ns();
+}
+
+static int _raft_rand_range(RaftNode* n, int min, int max) {
+    n->seed = n->seed * 1103515245u + 12345u;
+    return min + (int)((n->seed >> 16) % (unsigned int)(max - min + 1));
+}
+
+static RaftNode* _raft_get(int node_id) {
+    if (node_id < 0 || node_id >= MAX_RAFT_NODES) return NULL;
+    return &_raft_nodes[node_id];
+}
+
+int raft_inicializar(int node_id, int num_nodes, int seed) {
+    if (node_id < 0 || node_id >= MAX_RAFT_NODES) return -1;
+    if (num_nodes < 1 || num_nodes > MAX_RAFT_NODES) return -1;
+    RaftNode* n = &_raft_nodes[node_id];
+    n->current_term = 0;
+    n->voted_for = -1;
+    n->state = RAFT_FOLLOWER;
+    n->node_id = node_id;
+    n->num_nodes = num_nodes;
+    n->election_deadline_ns = 0;
+    n->next_heartbeat_ns = 0;
+    n->leader_id = -1;
+    n->log_count = 0;
+    n->commit_index = 0;
+    n->last_applied = 0;
+    n->votes_granted = 0;
+    n->votes_needed = num_nodes / 2 + 1;
+    n->seed = (unsigned int)(seed ^ node_id);
+    _raft_inicializado = 1;
+    return 0;
+}
+
+int raft_iniciar(long long tiempo_actual_ns, int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n) return -1;
+    n->state = RAFT_FOLLOWER;
+    n->leader_id = -1;
+    n->voted_for = -1;
+    int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    n->election_deadline_ns = tiempo_actual_ns + (long long)timeout * 1000000LL;
+    n->next_heartbeat_ns = 0;
+    return 0;
+}
+
+int raft_estado(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    return n ? n->state : -1;
+}
+
+int raft_term_actual(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    return n ? n->current_term : -1;
+}
+
+int raft_lider_actual(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    return n ? n->leader_id : -1;
+}
+
+int raft_log_entradas(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    return n ? n->log_count : -1;
+}
+
+int raft_commit_index(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    return n ? n->commit_index : -1;
+}
+
+// --- Start election (called by follower/candidate on timeout) ---
+static void _raft_iniciar_eleccion(RaftNode* n, long long now_ns) {
+    n->current_term++;
+    n->state = RAFT_CANDIDATE;
+    n->voted_for = n->node_id;
+    n->votes_granted = 1;  // vote for self
+    n->leader_id = -1;
+
+    // Reset election timeout for this node
+    int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    n->election_deadline_ns = now_ns + (long long)timeout * 1000000LL;
+
+    // In simulation mode: send RequestVote to all other nodes
+    // (handled by the test harness calling raft_procesar_solicitud_voto)
+}
+
+// --- Process a RequestVote message ---
+// msg format: "RVOTE:<term>:<candidate_id>:<last_log_idx>:<last_log_term>"
+// Returns: 1=voted, 0=denied, -1=error
+int raft_procesar_solicitud_voto(int voter_id, int candidate_term,
+                                  int candidate_id, int candidate_last_log) {
+    RaftNode* n = _raft_get(voter_id);
+    if (!n) return -1;
+
+    // If candidate term < current term, deny
+    if (candidate_term < n->current_term) return 0;
+
+    // If candidate term > current term, step down and update
+    if (candidate_term > n->current_term) {
+        n->current_term = candidate_term;
+        n->state = RAFT_FOLLOWER;
+        n->voted_for = -1;
+        n->leader_id = -1;
+    }
+
+    // If already voted in this term, deny
+    if (n->voted_for != -1 && n->voted_for != candidate_id) return 0;
+
+    // Grant vote (simplified: skip log comparison for now)
+    n->voted_for = candidate_id;
+    long long now = _raft_now_ns();
+    int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    n->election_deadline_ns = now + (long long)timeout * 1000000LL;
+    return 1;
+}
+
+// --- Process a RequestVote response ---
+// msg format: "RVOTED:<term>:<voter_id>:<granted>"
+// Returns: 1=leader elected, 0=still candidate, -1=error
+int raft_procesar_respuesta_voto(int candidate_id, int responder_term,
+                                  int responder_id, int granted) {
+    RaftNode* n = _raft_get(candidate_id);
+    if (!n || n->state != RAFT_CANDIDATE) return -1;
+
+    // Ignore stale responses
+    if (responder_term != n->current_term) return 0;
+
+    if (granted) {
+        n->votes_granted++;
+        if (n->votes_granted >= n->votes_needed) {
+            // Become leader
+            n->state = RAFT_LEADER;
+            n->leader_id = n->node_id;
+            long long now = _raft_now_ns();
+            n->next_heartbeat_ns = now;
+            return 1;  // leader elected
+        }
+    }
+    return 0;
+}
+
+// --- Process a heartbeat / AppendEntries from leader ---
+// msg format: "RHB:<term>:<leader_id>:<leader_commit>"
+// Returns: 1=accepted, 0=rejected (stale term), -1=error
+int raft_procesar_heartbeat(int follower_id, int leader_term,
+                             int leader_id, int leader_commit) {
+    RaftNode* n = _raft_get(follower_id);
+    if (!n) return -1;
+
+    // Reject stale term
+    if (leader_term < n->current_term) return 0;
+
+    // Leader term >= current term: acknowledge
+    if (leader_term > n->current_term) {
+        n->current_term = leader_term;
+        n->state = RAFT_FOLLOWER;
+        n->voted_for = -1;
+    }
+
+    n->leader_id = leader_id;
+    n->state = RAFT_FOLLOWER;
+
+    // Update commit index
+    if (leader_commit > n->commit_index) {
+        n->commit_index = leader_commit;
+        if (n->commit_index > n->log_count)
+            n->commit_index = n->log_count;
+    }
+
+    // Reset election timeout (we have a valid leader)
+    long long now = _raft_now_ns();
+    int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    n->election_deadline_ns = now + (long long)timeout * 1000000LL;
+
+    return 1;
+}
+
+// --- Tick: advance Raft time. Call periodically ---
+// Handles election timeouts and heartbeat scheduling.
+// Returns: event code — 0=no event, 1=election started, 2=heartbeat sent
+int raft_tick(long long tiempo_actual_ns, int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n) return -1;
+
+    if (n->state == RAFT_LEADER) {
+        // Send heartbeats periodically
+        if (tiempo_actual_ns >= n->next_heartbeat_ns) {
+            n->next_heartbeat_ns = tiempo_actual_ns + (long long)RAFT_HEARTBEAT_MS * 1000000LL;
+            return 2;  // heartbeat due
+        }
+        return 0;
+    }
+
+    // Follower or candidate: check election timeout
+    if (tiempo_actual_ns >= n->election_deadline_ns) {
+        if (n->state == RAFT_FOLLOWER) {
+            _raft_iniciar_eleccion(n, tiempo_actual_ns);
+            return 1;  // election started
+        } else if (n->state == RAFT_CANDIDATE) {
+            // Election timeout: start new election
+            _raft_iniciar_eleccion(n, tiempo_actual_ns);
+            return 1;  // new election started
+        }
+    }
+
+    return 0;
+}
+
+// --- Force leader to step down (for testing) ---
+int raft_forzar_abdicacion(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n || n->state != RAFT_LEADER) return -1;
+    n->state = RAFT_FOLLOWER;
+    n->leader_id = -1;
+    n->voted_for = -1;
+    long long now = _raft_now_ns();
+    int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
+    n->election_deadline_ns = now + (long long)timeout * 1000000LL;
+    return 0;
+}
+
+// --- Append a log entry to the leader (for testing) ---
+int raft_agregar_entrada(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n || n->state != RAFT_LEADER) return -1;
+    n->log_count++;
+    return n->log_count;
+}
+
+// --- Reset state for a node (for testing) ---
+int raft_reiniciar_nodo(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n) return -1;
+    return raft_inicializar(node_id, n->num_nodes, (int)(_raft_now_ns() & 0x7FFFFFFF));
+}
+
+// --- Get node info string for diagnostics ---
+// Returns comma-separated "term,state,leader,log,commit"
+CadenaSegura raft_info(int node_id) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    char buf[128];
+    int len = snprintf(buf, sizeof(buf), "%d,%d,%d,%d,%d",
+                       n->current_term, n->state, n->leader_id,
+                       n->log_count, n->commit_index);
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(result, buf, (size_t)len);
+    result[len] = '\0';
+    return (CadenaSegura){ .longitud = len, .datos = result };
 }

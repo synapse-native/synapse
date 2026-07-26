@@ -25,7 +25,7 @@ MAPA_TIPOS_C: Dict[str, str] = {
     'texto': 'CadenaSegura', 'cadena': 'CadenaSegura',
     'booleano': 'int', 'logico': 'int',
     'void': 'void', 'char': 'char',
-    'double': 'double', 'puntero': 'void*',
+    'double': 'double', 'puntero': 'void*', 'void*': 'void*',
 }
 
 
@@ -54,6 +54,25 @@ class GeneratorContext:
             'canal_recibir': 'puntero', 'cerrar_canal': 'void',
             'texto_a_entero': 'int', 'texto_a_decimal': 'float',
             'decimal_a_texto': 'texto', 'entero_a_texto': 'texto',
+            'debug_registrar_evento': 'Resultado', 'debug_trace': 'Resultado',
+            'debug_iniciar_sesion': 'TraceSession', 'debug_finalizar_sesion': 'Resultado',
+            'cluster_generar_par_claves': 'texto', 'cluster_firmar_mensaje': 'texto',
+            'cluster_verificar_firma': 'int', 'cluster_iniciar_nodo': 'int',
+            'cluster_detener_nodo': 'int', 'cluster_enviar_hello': 'int',
+            'cluster_canal_remoto_enviar': 'int', 'cluster_recibir_paquete': 'texto',
+            'ws_inicializar': 'int', 'ws_encolar': 'int',
+            'ws_desencolar': 'texto', 'ws_profundidad': 'int',
+            'ws_carga_estimada': 'int', 'ws_enviar_solicitud_robo': 'int',
+            'ws_procesar_mensaje': 'texto', 'ws_ultima_robada': 'texto',
+            'ws_reenviar_respuesta': 'int',
+            'raft_inicializar': 'int', 'raft_iniciar': 'int',
+            'raft_tick': 'int', 'raft_procesar_solicitud_voto': 'int',
+            'raft_procesar_respuesta_voto': 'int', 'raft_procesar_heartbeat': 'int',
+            'raft_estado': 'int', 'raft_term_actual': 'int',
+            'raft_lider_actual': 'int', 'raft_log_entradas': 'int',
+            'raft_commit_index': 'int', 'raft_forzar_abdicacion': 'int',
+            'raft_agregar_entrada': 'int', 'raft_reiniciar_nodo': 'int',
+            'raft_info': 'texto',
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
@@ -64,6 +83,19 @@ class GeneratorContext:
             'reserva', 'libera', 'suma', 'producto',
             'texto_a_entero', 'texto_a_decimal', 'decimal_a_texto',
             'salir', 'canal_crear', 'canal_enviar', 'canal_recibir', 'cerrar_canal',
+            'debug_registrar_evento', 'debug_trace', 'debug_iniciar_sesion', 'debug_finalizar_sesion',
+            'cluster_generar_par_claves', 'cluster_firmar_mensaje', 'cluster_verificar_firma',
+            'cluster_iniciar_nodo', 'cluster_detener_nodo', 'cluster_enviar_hello',
+            'cluster_canal_remoto_enviar', 'cluster_recibir_paquete',
+            'ws_inicializar', 'ws_encolar', 'ws_desencolar',
+            'ws_profundidad', 'ws_carga_estimada', 'ws_enviar_solicitud_robo',
+            'ws_procesar_mensaje', 'ws_ultima_robada', 'ws_reenviar_respuesta',
+            'raft_inicializar', 'raft_iniciar', 'raft_tick',
+            'raft_procesar_solicitud_voto', 'raft_procesar_respuesta_voto',
+            'raft_procesar_heartbeat', 'raft_estado', 'raft_term_actual',
+            'raft_lider_actual', 'raft_log_entradas', 'raft_commit_index',
+            'raft_forzar_abdicacion', 'raft_agregar_entrada', 'raft_reiniciar_nodo',
+            'raft_info',
         })
 
         self._TABLA_COERCION: Dict[tuple, str] = {
@@ -130,6 +162,12 @@ class GeneratorContext:
         self._canal_vars_cerradas: set = set()
         self._canal_vars_concurrencia: set = set()
         self._listener_funciones: List[str] = []
+        self._deferred_wrappers: List[str] = []
+        self._deferred_typedefs: List[str] = []
+        self._deferred_wrap_decls: List[str] = []
+        self._emitted_typedefs: set = set()  # rastreo estricto contra duplicacion estatica
+        self._emitted_wrap_decls: set = set()  # idem para forward declarations
+        self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()
         self._contador_thread = 0
@@ -202,6 +240,10 @@ class GeneratorContext:
     def pop_scope(self):
         scope = self._scope_stack.pop() if self._scope_stack else {}
         for var_name in reversed(list(scope.keys())):
+            # Move semantics: skip vars already explicitly consumed/destroyed
+            if var_name in self._consumed_vars:
+                self._consumed_vars.discard(var_name)
+                continue
             dtor = self._destructor_map.get(scope[var_name])
             if dtor:
                 self.write_line(f"{dtor}({var_name});")
@@ -210,6 +252,10 @@ class GeneratorContext:
         for scope in reversed(self._scope_stack):
             for var_name in reversed(list(scope.keys())):
                 if var_name == exclude_var:
+                    continue
+                # Move semantics: skip vars already explicitly consumed/destroyed
+                if var_name in self._consumed_vars:
+                    self._consumed_vars.discard(var_name)
                     continue
                 dtor = self._destructor_map.get(scope[var_name])
                 if dtor:
@@ -250,7 +296,7 @@ class GeneratorContext:
     def syn_pool_alloc(self, size_expr: str) -> str:
         if self.is_no_std():
             return f'__syn_asignar({size_expr})'
-        return f'_pool_malloc({size_expr})'
+        return f'pool_alloc({size_expr})'
 
     def syn_pool_free(self, ptr_expr: str) -> str:
         if self.is_no_std():
