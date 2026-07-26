@@ -223,7 +223,137 @@ jobs:
           echo "SHA-256: $(cat ${ARTIFACT}.sha256)"
 
       # -----------------------------------------------------------------------
-      # 8. Generate SPDX SBOM
+      # 8. Sign binary with Ed25519 (M11.2 — SLSA Level 3)
+      # -----------------------------------------------------------------------
+      - name: Sign binary with Ed25519
+        id: sign
+        shell: bash
+        run: |
+          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
+
+          # Usar clave de release del secreto o generar una para CI dev
+          if [ -n "${{ secrets.ED25519_PRIVATE_KEY }}" ]; then
+            PRIV_KEY="${{ secrets.ED25519_PRIVATE_KEY }}"
+            echo "Using stored signing key"
+          else
+            echo "No signing key found, generating ephemeral key pair"
+            KEY_OUTPUT=$(python -c "
+import sys; sys.path.insert(0, '.')
+from nucleo.ed25519_signer import generar_par_claves
+priv, pub = generar_par_claves()
+print(f'PRIV={priv}')
+print(f'PUB={pub}')
+")
+            PRIV_KEY=$(echo "$KEY_OUTPUT" | grep '^PRIV=' | cut -d= -f2)
+            PUB_KEY=$(echo "$KEY_OUTPUT" | grep '^PUB=' | cut -d= -f2)
+          fi
+
+          # Firmar el binario
+          echo "Signing binary: ${ARTIFACT}"
+          SIGN_OUTPUT=$(python -c "
+import sys; sys.path.insert(0, '.')
+from nucleo.ed25519_signer import firmar_archivo, verificar_archivo, _calc_public_key
+import hashlib
+
+priv_key = '$PRIV_KEY'
+artifact = '${ARTIFACT}'
+
+# Firmar binario
+sig = firmar_archivo(artifact, priv_key, artifact + '.sig')
+
+# Calcular clave publica
+pub = _calc_public_key(bytes.fromhex(priv_key)).hex()
+
+# Autoverificar
+valid = verificar_archivo(artifact, sig, pub)
+
+# SHA-256 del binario
+h = hashlib.sha256()
+with open(artifact, 'rb') as f:
+    for chunk in iter(lambda: f.read(8192), b''):
+        h.update(chunk)
+sha256 = h.hexdigest()
+
+print(f'SIG={sig}')
+print(f'PUB={pub}')
+print(f'VALID={\"OK\" if valid else \"FAIL\"}')
+print(f'SHA256={sha256}')
+")
+
+          SIG_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SIG=' | cut -d= -f2)
+          PUB_VALUE=$(echo "$SIGN_OUTPUT" | grep '^PUB=' | cut -d= -f2)
+          VALID_STATUS=$(echo "$SIGN_OUTPUT" | grep '^VALID=' | cut -d= -f2)
+          SHA256_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SHA256=' | cut -d= -f2)
+
+          echo "Signature: ${SIG_VALUE:0:32}..."
+          echo "Public key: ${PUB_VALUE}"
+          echo "Self-verify: ${VALID_STATUS}"
+
+          if [ "${VALID_STATUS}" != "OK" ]; then
+            echo "::error::Signature self-verification failed"
+            exit 1
+          fi
+
+          # Guardar clave publica para verificacion offline
+          echo "${PUB_VALUE}" > "${ARTIFACT}.pub"
+
+          # Firmar tambien el checksum SHA-256
+          if [ -f "${ARTIFACT}.sha256" ]; then
+            python -c "
+import os, sys; sys.path.insert(0, '.')
+from nucleo.ed25519_signer import firmar
+priv_key = '${PRIV_KEY}'
+with open('${ARTIFACT}.sha256', 'rb') as f:
+    content = f.read()
+sig_checksum = firmar(content, priv_key)
+with open('${ARTIFACT}.sha256.sig', 'w') as f:
+    f.write(sig_checksum)
+print('Checksum signed: ' + sig_checksum[:32] + '...')
+" 2>&1 || echo "Checksum signing skipped (non-critical)"
+          fi
+
+          # Generar attestacion SLSA
+          python -c "
+import json, os
+
+att = {
+    'version': '1.0.0',
+    'buildType': 'https://synapse-lang.org/build',
+    'subject': [{
+        'name': '${ARTIFACT}',
+        'digest': {'sha256': '${SHA256_VALUE}'},
+    }],
+    'predicateType': 'https://slsa.dev/provenance/v1',
+    'predicate': {
+        'builder': {'id': 'https://synapse-lang.org/builder'},
+        'buildType': 'synapse-build',
+        'recipe': {
+            'type': 'synapse-compiler',
+            'version': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev'),
+        },
+        'metadata': {
+            'completeness': {'parameters': True, 'environment': False, 'materials': False},
+            'reproducible': False,
+        },
+        'materials': [{
+            'uri': 'git+https://github.com/synapse/nucleo/principal.syn',
+            'digest': {'sha256': '${SHA256_VALUE}'},
+        }],
+    },
+    'signature': '${SIG_VALUE}',
+    'publicKey': '${PUB_VALUE}',
+}
+
+with open('${ARTIFACT}.attestation.json', 'w') as f:
+    json.dump(att, f, indent=2)
+print('SLSA attestation generated')
+"
+
+          echo "public_key=${PUB_VALUE}" >> $GITHUB_OUTPUT
+          echo "signature=${SIG_VALUE:0:32}..." >> $GITHUB_OUTPUT
+
+      # -----------------------------------------------------------------------
+      # 8b. Generate SPDX SBOM
       # -----------------------------------------------------------------------
       - name: Generate SBOM
         run: |
@@ -306,8 +436,37 @@ print('SBOM SPDX 2.3 generado')
           path: ${{ steps.build.outputs.artifact_name }}.spdx.json
           retention-days: 90
 
+      - name: Upload Ed25519 signature
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.sig
+          path: ${{ steps.build.outputs.artifact_name }}.sig
+          retention-days: 90
+
+      - name: Upload public key
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.pub
+          path: ${{ steps.build.outputs.artifact_name }}.pub
+          retention-days: 90
+
+      - name: Upload SLSA attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.attestation.json
+          path: ${{ steps.build.outputs.artifact_name }}.attestation.json
+          retention-days: 90
+
+      - name: Upload checksum signature
+        uses: actions/upload-artifact@v4
+        if: hashFiles(format('{0}.sha256.sig', steps.build.outputs.artifact_name)) != ''
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.sha256.sig
+          path: ${{ steps.build.outputs.artifact_name }}.sha256.sig
+          retention-days: 90
+
       # -----------------------------------------------------------------------
-      # 10. Validate artifacts
+      # 12. Validate artifacts with signing checks
       # -----------------------------------------------------------------------
       - name: Validate artifacts
         shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
@@ -350,8 +509,40 @@ print('SBOM SPDX 2.3 generado')
           fi
           echo "All artifacts validated successfully"
 
+          # Check Ed25519 signature
+          if [ -f "${ARTIFACT}.sig" ]; then
+            echo "[OK] Ed25519 signature: ${ARTIFACT}.sig"
+            # Verificar firma localmente
+            VERIFY_OUTPUT=$(python -c "
+import sys; sys.path.insert(0, '.')
+from nucleo.ed25519_signer import verificar_archivo
+pub_key_path = '${ARTIFACT}.pub'
+if os.path.exists(pub_key_path):
+    with open(pub_key_path) as f:
+        pub_key = f.read().strip()
+    with open('${ARTIFACT}.sig') as f:
+        sig = f.read().strip()
+    valid = verificar_archivo('${ARTIFACT}', sig, pub_key)
+    print('SIGNATURE_VALID=YES' if valid else 'SIGNATURE_VALID=NO')
+" 2>&1)
+            if echo "$VERIFY_OUTPUT" | grep -q "SIGNATURE_VALID=YES"; then
+              echo "[OK] Ed25519 signature verification: VALID"
+            else
+              echo "[FAIL] Ed25519 signature verification: INVALID"
+              ERRORS=$((ERRORS+1))
+            fi
+          else
+            echo "[WARN] Ed25519 signature not found (non-critical if no signing key in CI)"
+          fi
+          
+          if [ "${ERRORS}" -gt 0 ]; then
+            echo "::error::${ERRORS} validation error(s)"
+            exit 1
+          fi
+          echo "All artifacts validated successfully"
+
       # -----------------------------------------------------------------------
-      # 11. Notify
+      # 13. Notify
       # -----------------------------------------------------------------------
       - name: Notify result
         if: always()

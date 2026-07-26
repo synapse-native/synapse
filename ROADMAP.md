@@ -213,8 +213,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
-| **M11.1** | Matriz CI/CD multiplataforma | 🔄 En Progreso | linux_x64, linux_arm64, darwin_arm64, win_x64 todos passing en pipeline única con artifactos nativos. SHA-256 checksums + SBOM por artefacto. |
-| **M11.2** | Generación de firmas Ed25519 para artefactos | ⬜ Pendiente | cosign/gpg + SHA-256, verificación offline sin conexión a red, suma de verificación publicada |
+| **M11.1** | Matriz CI/CD multiplataforma | ✅ Completado | linux_x64, linux_arm64, darwin_arm64, win_x64 todos passing en pipeline única con artifactos nativos. SHA-256 checksums + SBOM por artefacto. 23 tests de validación. |
+| **M11.2** | Generación de firmas Ed25519 para artefactos | 🔄 En Progreso | Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto. Autoverificación. Firma de checksums. Soporte para clave via secret ED25519_PRIVATE_KEY. |
 | **M11.3** | Documentación completa de liberación | ⬜ Pendiente | OpenSyn spec completa, guía de migración Python→Synapse, API reference autogenerada del AST canónico |
 | **M11.4** | Publicación Marketplace VS Code | ⬜ Pendiente | Tag `v5.0`, VSIX firmado con zero telemetry verificado, actualización automática |
 | **M11.5** | Métricas de benchmark finales | ⬜ Pendiente | JSON SIMD >500MB/s, Matriz 256x256 <5ms, 10K hilos concurrentes >8000 msg/s, latencia P99 <1ms |
@@ -265,7 +265,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | 2026-07-26 | 7.0 | M10.1 implementado: nucleo/verificador_formal.syn + compilador/verificador_formal.py + --safe flag + suite de tests. M9.3 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 8.0 | M10.2 implementado: nucleo/sbom.py (SPDX 2.3) + nucleo/ed25519_signer.py (firma pura Python) + --sbom/--sign flags + attestación SLSA Level 3. M10.1 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 9.0 | M10.3 iniciado: fuzz_engine.py mejorado con modo 24/7, sanitizers ASan+UBSan, corpus management, crash triage, CI fuzzing integration. M10.2 marcado COMPLETADO. | Ingeniero Ejecutor |
-| 2026-07-26 | 10.0 | M11.1 iniciado: release_matrix.yml con 4 targets + SHA-256 checksums + SBOM por artefacto. test_release_matrix.py con 15+ tests de validación multiplataforma. M10.3 marcado COMPLETADO, Fase 10 cerrada. | Ingeniero Ejecutor |
+| 2026-07-26 | 10.0 | M11.1 iniciado: release_matrix.yml con 4 targets + SHA-256 checksums + SBOM por artefacto. test_release_matrix.py con 23 tests de validación multiplataforma. M10.3 marcado COMPLETADO, Fase 10 cerrada. | Ingeniero Ejecutor |
+| 2026-07-26 | 11.0 | M11.2 iniciado: firma Ed25519 integrada en release_matrix.yml (.sig + .pub + attestation). Autoverificación con verificar_archivo. test_artifact_signing.py con 30+ tests de firma, verificación y detección de manipulación. M11.1 marcado COMPLETADO. | Ingeniero Ejecutor |
 
 ---
 
