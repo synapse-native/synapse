@@ -5918,3 +5918,236 @@ int cm_migraciones_fallidas(void) {
     pthread_mutex_unlock(&_cm_mutex);
     return n;
 }
+
+// =========================================================================
+// M9.1 — Deterministic Execution Recording (rr-style Time-Travel Debug)
+// =========================================================================
+// Integrates with existing M9.0 circular buffer. Adds sequential event
+// numbering, snapshot mechanism, backward search, and replay simulation.
+// =========================================================================
+
+static int _tr_secuencia = 0;
+static int _tr_initialized = 0;
+static int _tr_ultimo_error_idx = -1;
+
+static pthread_mutex_t _tr_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// --- Initialize recording with sequence numbering ---
+// Resets sequence counter and prepares the trace buffer for deterministic recording.
+// Must be called after iniciar_sesion().
+int tr_inicializar_recording(void) {
+    if (!g_trace_initialized) {
+        _init_trace_session("recording");
+    }
+    if (!g_trace_session.eventos) return -1;
+
+    // Reset buffer for deterministic recording
+    pthread_mutex_lock(&_tr_mutex);
+    _tr_secuencia = 0;
+    _tr_ultimo_error_idx = -1;
+    _tr_initialized = 1;
+    g_trace_session.total_eventos = 0;
+    g_trace_session.cabeza = 0;
+    pthread_mutex_unlock(&_tr_mutex);
+
+    return 0;
+}
+
+// --- Helper: get next sequence number (thread-safe) ---
+static int _tr_next_seq(void) {
+    pthread_mutex_lock(&_tr_mutex);
+    int s = _tr_secuencia++;
+    pthread_mutex_unlock(&_tr_mutex);
+    return s;
+}
+
+// --- Record a branch decision (which path was taken) ---
+// linea: source line of the branch
+// rama: 0 = false/else, 1 = true/if
+// id_funcion: function name context
+int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion) {
+    if (!_tr_initialized) return -1;
+    int seq = _tr_next_seq();
+    int rc = _syn_debug_registrar_evento(
+        EVENT_BRANCH_TAKEN,
+        id_funcion.datos ? id_funcion.datos : "",
+        "", linea,
+        "branch",
+        (long long)seq,
+        (double)rama,
+        rama ? "true" : "false");
+    if (rc != 0) return -1;
+    return seq;
+}
+
+// --- Record a variable snapshot at current execution point ---
+// nombre_variable: name of the variable being snapshotted
+// valor_entero: integer value (or 0 if using texto)
+// valor_texto: string value (or empty if using entero)
+// linea: source line number
+int tr_grabar_snapshot(CadenaSegura nombre_variable, long long valor_entero,
+                       CadenaSegura valor_texto, int linea) {
+    if (!_tr_initialized) return -1;
+    int seq = _tr_next_seq();
+    int rc = _syn_debug_registrar_evento(
+        EVENT_VARIABLE_CHANGE,
+        "", "", linea,
+        nombre_variable.datos ? nombre_variable.datos : "",
+        (long long)seq,
+        (double)valor_entero,
+        valor_texto.datos ? valor_texto.datos : "");
+    if (rc != 0) return -1;
+    return seq;
+}
+
+// --- Record a function call entry ---
+// funcion: function name
+// linea: source line of the call
+// num_args: number of arguments passed
+int tr_grabar_llamada(CadenaSegura funcion, int linea, int num_args) {
+    if (!_tr_initialized) return -1;
+    int seq = _tr_next_seq();
+    int rc = _syn_debug_registrar_evento(
+        EVENT_FUNCTION_CALL,
+        funcion.datos ? funcion.datos : "",
+        "", linea,
+        "args",
+        (long long)seq,
+        (double)num_args,
+        "");
+    if (rc != 0) return -1;
+    return seq;
+}
+
+// --- Record a function return ---
+// funcion: function name
+// linea: source line of the return
+int tr_grabar_retorno(CadenaSegura funcion, int linea) {
+    if (!_tr_initialized) return -1;
+    int seq = _tr_next_seq();
+    int rc = _syn_debug_registrar_evento(
+        EVENT_FUNCTION_RETURN,
+        funcion.datos ? funcion.datos : "",
+        "", linea,
+        "return",
+        (long long)seq,
+        0.0, "");
+    if (rc != 0) return -1;
+    return seq;
+}
+
+// --- Record an error event (for fault induction testing) ---
+// mensaje: description of the error
+// linea: source line where the error occurred
+int tr_grabar_error(CadenaSegura mensaje, int linea) {
+    if (!_tr_initialized) return -1;
+    int seq = _tr_next_seq();
+    int idx = g_trace_session.cabeza > 0 ? g_trace_session.cabeza - 1 : 0;
+    _tr_ultimo_error_idx = idx;
+    int rc = _syn_debug_registrar_evento(
+        EVENT_ERROR,
+        "", "", linea,
+        "error",
+        (long long)seq,
+        0.0,
+        mensaje.datos ? mensaje.datos : "unknown_error");
+    if (rc != 0) return -1;
+    return seq;
+}
+
+// --- Search backwards through recorded events for a specific tag ---
+// Returns sequence number of the found event, or -1 if not found.
+// Starts from the most recent event and searches backwards.
+int tr_buscar_evento(int tag, int desde_secuencia) {
+    if (!_tr_initialized || !g_trace_session.eventos) return -1;
+
+    int total = g_trace_session.total_eventos;
+    if (total <= 0) return -1;
+
+    int inicio = (g_trace_session.total_eventos < TRACE_MAX_EVENTS) ? 0 :
+                 (g_trace_session.cabeza % TRACE_MAX_EVENTS);
+
+    // Search backwards from the end
+    for (int i = total - 1; i >= 0; i--) {
+        int idx = (inicio + i) % TRACE_MAX_EVENTS;
+        TraceEvent* e = &g_trace_session.eventos[idx];
+        if (e->tag == tag) {
+            // Found an event with matching tag
+            // If desde_secuencia >= 0, only return if seq <= desde_secuencia
+            long long ev_seq = e->valor_entero;
+            if (desde_secuencia < 0 || ev_seq <= (long long)desde_secuencia) {
+                return (int)ev_seq;
+            }
+        }
+    }
+    return -1;
+}
+
+// --- Get recorded event at index as string for inspection ---
+// Returns "tag|seq|funcion|linea|variable|valor" or empty if not found
+CadenaSegura tr_obtener_evento(int indice) {
+    if (!_tr_initialized || !g_trace_session.eventos) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int total = g_trace_session.total_eventos;
+    if (indice < 0 || indice >= total) {
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int inicio = (total < TRACE_MAX_EVENTS) ? 0 :
+                 (g_trace_session.cabeza % TRACE_MAX_EVENTS);
+    int idx = (inicio + indice) % TRACE_MAX_EVENTS;
+    TraceEvent* e = &g_trace_session.eventos[idx];
+
+    char buf[256];
+    int len = snprintf(buf, sizeof(buf), "%d|%lld|%s|%d|%s|%lld",
+                       e->tag, e->valor_entero,
+                       e->funcion ? e->funcion : "",
+                       e->linea,
+                       e->variable ? e->variable : "",
+                       (long long)e->valor_decimal);
+
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
+
+// --- Simulate replay up to a target event sequence number ---
+// In a full rr implementation this would re-execute the program.
+// Here, we validate that events exist up to the target seq and return
+// the count of events that would be replayed.
+int tr_reproducir_hasta(int secuencia_objetivo) {
+    if (!_tr_initialized || !g_trace_session.eventos) return -1;
+    if (secuencia_objetivo < 0) return -1;
+
+    int total = g_trace_session.total_eventos;
+    int inicio = (total < TRACE_MAX_EVENTS) ? 0 :
+                 (g_trace_session.cabeza % TRACE_MAX_EVENTS);
+
+    int replayed = 0;
+    for (int i = 0; i < total; i++) {
+        int idx = (inicio + i) % TRACE_MAX_EVENTS;
+        TraceEvent* e = &g_trace_session.eventos[idx];
+        if (e->valor_entero <= (long long)secuencia_objetivo) {
+            replayed++;
+        } else {
+            break;
+        }
+    }
+    return replayed;
+}
+
+// --- Get the sequence number of the last error event ---
+// Returns sequence number, or -1 if no error recorded
+int tr_indice_ultimo_error(void) {
+    if (!_tr_initialized) return -1;
+    return _tr_ultimo_error_idx;
+}
+
+// --- Get total number of recorded events (sequence count) ---
+int tr_total_eventos(void) {
+    if (!_tr_initialized) return 0;
+    return _tr_secuencia;
+}
