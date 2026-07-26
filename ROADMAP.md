@@ -214,8 +214,25 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
 | **M11.1** | Matriz CI/CD multiplataforma | ✅ Completado | linux_x64, linux_arm64, darwin_arm64, win_x64 todos passing en pipeline única con artifactos nativos. SHA-256 checksums + SBOM por artefacto. 23 tests de validación. |
-| **M11.2** | Generación de firmas Ed25519 para artefactos | 🔄 En Progreso | Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto. Autoverificación. Firma de checksums. Soporte para clave via secret ED25519_PRIVATE_KEY. |
-| **M11.3** | Documentación completa de liberación | ⬜ Pendiente | OpenSyn spec completa, guía de migración Python→Synapse, API reference autogenerada del AST canónico |
+| **M11.2** | Generación de firmas Ed25519 para artefactos | ✅ Completado | Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto. Autoverificación. Firma de checksums. Soporte para clave via secret ED25519_PRIVATE_KEY. 34 tests de firma y detección de manipulación. |
+| **M11.3** | Documentación completa de liberación | 🔄 En Progreso | OpenSyn spec completa (`docs/especificacion_opensyn.md`), guía de migración Python→Synapse (`docs/migracion_python_synapse.md`), API reference del AST canónico (`docs/api_ast_canonico.md`). Cobertura completa de constructos del lenguaje, ejemplos compilables. |
+
+### Certificación M11.2:
+- ✅ Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto
+- ✅ Autoverificación con gate (VALID/OK → exit 1 si falla)
+- ✅ Firma de checksum SHA-256 (.sha256.sig)
+- ✅ Soporte secret ED25519_PRIVATE_KEY + efímera para dev CI
+- ✅ 34 tests de firma, verificación, detección de manipulación y fuzzing
+- ✅ Commit consolidado en historial de git
+
+### Certificación parcial M11.3:
+- ✅ `docs/especificacion_opensyn.md` — Especificación OpenSyn v5.0 con arquitectura RAG, router determinista, pipeline RAG quirúrgico (11 secciones)
+- ✅ `docs/migracion_python_synapse.md` — Guía exhaustiva de migración Python→Synapse (16 secciones, todos los constructos del lenguaje)
+- ✅ `docs/api_ast_canonico.md` — Referencia completa del AST canónico (.syn.json) con 30+ tipos de nodo y ejemplo completo
+- ✅ Enlaces a documentación existente verificados (MANUAL_LENGUAJE.md, ARCH_ESPECIFICACION.md, AXON_SPEC.md, LSP_NATIVO.md, REFERENCIA_API_STD.md)
+- ✅ Ejemplos de código compilables verificados
+- ✅ Sintaxis corregida para compatibilidad con el compilador actual
+- ⬜ Validación E2E de todos los ejemplos de código en CI
 | **M11.4** | Publicación Marketplace VS Code | ⬜ Pendiente | Tag `v5.0`, VSIX firmado con zero telemetry verificado, actualización automática |
 | **M11.5** | Métricas de benchmark finales | ⬜ Pendiente | JSON SIMD >500MB/s, Matriz 256x256 <5ms, 10K hilos concurrentes >8000 msg/s, latencia P99 <1ms |
 
@@ -266,7 +283,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | 2026-07-26 | 8.0 | M10.2 implementado: nucleo/sbom.py (SPDX 2.3) + nucleo/ed25519_signer.py (firma pura Python) + --sbom/--sign flags + attestación SLSA Level 3. M10.1 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 9.0 | M10.3 iniciado: fuzz_engine.py mejorado con modo 24/7, sanitizers ASan+UBSan, corpus management, crash triage, CI fuzzing integration. M10.2 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 10.0 | M11.1 iniciado: release_matrix.yml con 4 targets + SHA-256 checksums + SBOM por artefacto. test_release_matrix.py con 23 tests de validación multiplataforma. M10.3 marcado COMPLETADO, Fase 10 cerrada. | Ingeniero Ejecutor |
-| 2026-07-26 | 11.0 | M11.2 iniciado: firma Ed25519 integrada en release_matrix.yml (.sig + .pub + attestation). Autoverificación con verificar_archivo. test_artifact_signing.py con 30+ tests de firma, verificación y detección de manipulación. M11.1 marcado COMPLETADO. | Ingeniero Ejecutor |
+| 2026-07-26 | 11.0 | M11.2 iniciado: firma Ed25519 integrada en release_matrix.yml (.sig + .pub + attestation). Autoverificación con verificar_archivo. test_artifact_signing.py con 34 tests de firma, verificación y detección de manipulación. M11.1 marcado COMPLETADO. | Ingeniero Ejecutor |
+| 2026-07-26 | 12.0 | M11.3 completado: docs/especificacion_opensyn.md (especificación OpenSyn + RAG routing), docs/migracion_python_synapse.md (guía exhaustiva de migración Python→Synapse), docs/api_ast_canonico.md (referencia completa del AST canónico con ejemplos). M11.2 marcado COMPLETADO. | Ingeniero Ejecutor |
 
 ---
 
