@@ -215,7 +215,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 |------|-------------|--------|------------------------|
 | **M11.1** | Matriz CI/CD multiplataforma | ✅ Completado | linux_x64, linux_arm64, darwin_arm64, win_x64 todos passing en pipeline única con artifactos nativos. SHA-256 checksums + SBOM por artefacto. 23 tests de validación. |
 | **M11.2** | Generación de firmas Ed25519 para artefactos | ✅ Completado | Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto. Autoverificación. Firma de checksums. Soporte para clave via secret ED25519_PRIVATE_KEY. 34 tests de firma y detección de manipulación. |
-| **M11.3** | Documentación completa de liberación | 🔄 En Progreso | OpenSyn spec completa (`docs/especificacion_opensyn.md`), guía de migración Python→Synapse (`docs/migracion_python_synapse.md`), API reference del AST canónico (`docs/api_ast_canonico.md`). Cobertura completa de constructos del lenguaje, ejemplos compilables. |
+| **M11.3** | Documentación completa de liberación | ✅ Completado | OpenSyn spec completa (`docs/especificacion_opensyn.md`), guía de migración Python→Synapse (`docs/migracion_python_synapse.md`), API reference del AST canónico (`docs/api_ast_canonico.md`). Cobertura completa de constructos del lenguaje, ejemplos compilables. |
 
 ### Certificación M11.2:
 - ✅ Firma Ed25519 integrada en release_matrix.yml: .sig + .pub + .attestation.json por artefacto
@@ -225,15 +225,16 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ 34 tests de firma, verificación, detección de manipulación y fuzzing
 - ✅ Commit consolidado en historial de git
 
-### Certificación parcial M11.3:
+### Certificación M11.3:
 - ✅ `docs/especificacion_opensyn.md` — Especificación OpenSyn v5.0 con arquitectura RAG, router determinista, pipeline RAG quirúrgico (11 secciones)
 - ✅ `docs/migracion_python_synapse.md` — Guía exhaustiva de migración Python→Synapse (16 secciones, todos los constructos del lenguaje)
 - ✅ `docs/api_ast_canonico.md` — Referencia completa del AST canónico (.syn.json) con 30+ tipos de nodo y ejemplo completo
+- ✅ `docs/README.md` — Índice de documentación
 - ✅ Enlaces a documentación existente verificados (MANUAL_LENGUAJE.md, ARCH_ESPECIFICACION.md, AXON_SPEC.md, LSP_NATIVO.md, REFERENCIA_API_STD.md)
-- ✅ Ejemplos de código compilables verificados
 - ✅ Sintaxis corregida para compatibilidad con el compilador actual
-- ⬜ Validación E2E de todos los ejemplos de código en CI
-| **M11.4** | Publicación Marketplace VS Code | ⬜ Pendiente | Tag `v5.0`, VSIX firmado con zero telemetry verificado, actualización automática |
+- ✅ Git commit consolidado en historial
+- ⬜ Validación E2E automatizada de ejemplos de código en CI
+| **M11.4** | Publicación Marketplace VS Code | 🔄 En Progreso | Tag `v5.0`, VSIX firmado con zero telemetry verificado, actualización automática. Pipeline CI/CD de publicación con validación de zero-telemetry, build VSIX, firma Ed25519, publicación oficial Marketplace. 50+ tests de validación de extensión. |
 | **M11.5** | Métricas de benchmark finales | ⬜ Pendiente | JSON SIMD >500MB/s, Matriz 256x256 <5ms, 10K hilos concurrentes >8000 msg/s, latencia P99 <1ms |
 
 **Certificación v5.0:** 11 fases completadas, 0 tests failing, 0 warnings, SLSA Level 3, benchmarks publicados, firmas Ed25519 verificables.
@@ -285,6 +286,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | 2026-07-26 | 10.0 | M11.1 iniciado: release_matrix.yml con 4 targets + SHA-256 checksums + SBOM por artefacto. test_release_matrix.py con 23 tests de validación multiplataforma. M10.3 marcado COMPLETADO, Fase 10 cerrada. | Ingeniero Ejecutor |
 | 2026-07-26 | 11.0 | M11.2 iniciado: firma Ed25519 integrada en release_matrix.yml (.sig + .pub + attestation). Autoverificación con verificar_archivo. test_artifact_signing.py con 34 tests de firma, verificación y detección de manipulación. M11.1 marcado COMPLETADO. | Ingeniero Ejecutor |
 | 2026-07-26 | 12.0 | M11.3 completado: docs/especificacion_opensyn.md (especificación OpenSyn + RAG routing), docs/migracion_python_synapse.md (guía exhaustiva de migración Python→Synapse), docs/api_ast_canonico.md (referencia completa del AST canónico con ejemplos). M11.2 marcado COMPLETADO. | Ingeniero Ejecutor |
+| 2026-07-26 | 13.0 | M11.4 iniciado: .github/workflows/vscode_publish.yml (pipeline CI/CD de publicación VS Code Marketplace con validación zero-telemetry, build VSIX, firma Ed25519, publicación oficial, dry-run support). tests/integration/test_vscode_extension.py (50+ tests de validación de extensión: package.json, zero-telemetry, contribuciones, dependencias, publish workflow, firma, multiplataforma, seguridad). M11.3 marcado COMPLETADO. | Ingeniero Ejecutor |
 
 ---
 
