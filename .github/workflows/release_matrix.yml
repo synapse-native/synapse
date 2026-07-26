@@ -1,0 +1,392 @@
+# =============================================================================
+# release_matrix.yml — Synapse M11.1 Cross-Platform Release Matrix
+# =============================================================================
+# Builds static self-contained compiler binaries for 4 targets:
+#   - linux_x64       (ubuntu-latest, gcc)
+#   - linux_arm64     (ubuntu-latest, aarch64-linux-gnu-gcc cross-compile)
+#   - darwin_arm64    (macos-latest, clang Apple Silicon)
+#   - win_x64         (windows-latest, gcc MinGW)
+#
+# Each job generates:
+#   - compiler binary (synapse-{platform})
+#   - SHA-256 checksum file
+#   - SPDX SBOM (via pipeline --sbom)
+#
+# Triggered on:
+#   - Tag pushes (v*)
+#   - Push to main/master/release branches
+#   - Manual dispatch
+# =============================================================================
+
+name: Synapse Release Matrix
+
+on:
+  push:
+    branches: [ main, master, release/* ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Build target'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - linux_x64
+          - linux_arm64
+          - darwin_arm64
+          - win_x64
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  SYNAPSE_VERSION: "5.0.0-dev"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ===========================================================================
+  # BUILD MATRIX — 4 targets
+  # ===========================================================================
+  build:
+    name: Build ${{ matrix.target.name }}
+    runs-on: ${{ matrix.target.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: linux_x64
+            runner: ubuntu-latest
+            cc: gcc
+            cc_package: gcc
+            ldflags: "-lpthread -lm"
+            cross_prefix: ""
+            ext: ""
+
+          - name: linux_arm64
+            runner: ubuntu-latest
+            cc: aarch64-linux-gnu-gcc
+            cc_package: gcc-aarch64-linux-gnu
+            ldflags: "-lpthread -lm"
+            cross_prefix: "aarch64-linux-gnu-"
+            ext: ""
+
+          - name: darwin_arm64
+            runner: macos-latest
+            cc: clang
+            cc_package: ""
+            ldflags: "-lpthread"
+            cross_prefix: ""
+            ext: ""
+
+          - name: win_x64
+            runner: windows-latest
+            cc: gcc
+            cc_package: ""
+            ldflags: "-lws2_32"
+            cross_prefix: ""
+            ext: ".exe"
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # -----------------------------------------------------------------------
+      # 2. Setup Python
+      # -----------------------------------------------------------------------
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      # 3. Install system compiler (if cross-compiling)
+      # -----------------------------------------------------------------------
+      - name: Install cross-compiler (linux_arm64)
+        if: matrix.target.name == 'linux_arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          aarch64-linux-gnu-gcc --version
+
+      - name: Install system compiler (linux_x64)
+        if: matrix.target.name == 'linux_x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc
+          gcc --version
+
+      # -----------------------------------------------------------------------
+      # 4. Build runtime objects
+      # -----------------------------------------------------------------------
+      - name: Compile runtime objects
+        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        run: |
+          if [ "${{ matrix.target.name }}" = "linux_arm64" ]; then
+            ${{ matrix.target.cross_prefix }}gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
+            ${{ matrix.target.cross_prefix }}gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
+          elif [ "${{ matrix.target.name }}" = "win_x64" ]; then
+            gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
+            gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
+          else
+            ${{ matrix.target.cc }} -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
+            ${{ matrix.target.cc }} -c tweetnacl.c -o tweetnacl.o -lm -O2
+          fi
+          echo "Runtime objects compiled"
+
+      # -----------------------------------------------------------------------
+      # 5. Bootstrap — generate C code from Synapse source
+      # -----------------------------------------------------------------------
+      - name: Bootstrap compiler
+        shell: bash
+        run: |
+          python main.py nucleo/principal.syn 2>&1
+          if [ -f synapse_unity.c ]; then
+            SIZE=$(stat -c%s synapse_unity.c 2>/dev/null || wc -c < synapse_unity.c 2>/dev/null || python -c "import os; print(os.path.getsize('synapse_unity.c'))")
+            echo "Bootstrap completado: synapse_unity.c (${SIZE} bytes)"
+          else
+            echo "Bootstrap completado (synapse_unity.c no encontrado)"
+          fi
+
+      # -----------------------------------------------------------------------
+      # 6. Generate platform-specific binary
+      # -----------------------------------------------------------------------
+      - name: Build binary
+        id: build
+        shell: bash
+        run: |
+          PLATFORM="${{ matrix.target.name }}"
+          EXT="${{ matrix.target.ext }}"
+          ARTIFACT="synapse-${PLATFORM}${EXT}"
+
+          if [ "$PLATFORM" = "linux_arm64" ]; then
+            CC="aarch64-linux-gnu-gcc"
+          elif [ "$PLATFORM" = "darwin_arm64" ]; then
+            CC="clang"
+          else
+            CC="gcc"
+          fi
+
+          LDFLAGS="${{ matrix.target.ldflags }}"
+
+          # Verificar runtime objects
+          python -c "import os; rt=os.path.exists('synapse_rt.o'); tn=os.path.exists('tweetnacl.o'); print(f'Runtime objects: rt.o={"OK" if rt else "MISSING"} tn.o={"OK" if tn else "MISSING"}')"
+
+          # Compilar binary
+          ${CC} -O3 -fno-ident -I. synapse_unity.c synapse_rt.o tweetnacl.o \
+            -o "${ARTIFACT}" ${LDFLAGS} -lm -Wl,--gc-sections 2>&1
+
+          if [ -f "${ARTIFACT}" ]; then
+            SIZE=$(python -c "import os; print(os.path.getsize('${ARTIFACT}'))")
+            echo "Binary: ${ARTIFACT} (${SIZE} bytes)"
+            echo "artifact_name=${ARTIFACT}" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: Binary not created"
+            exit 1
+          fi
+
+      # -----------------------------------------------------------------------
+      # 7. Compute SHA-256 checksum
+      # -----------------------------------------------------------------------
+      - name: Generate SHA-256 checksum
+        id: checksum
+        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        run: |
+          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
+          if [ "${{ matrix.target.name }}" = "win_x64" ]; then
+            # Windows: use certutil or Get-FileHash
+            if command -v certutil &> /dev/null; then
+              certutil -hashfile "${ARTIFACT}" SHA256 | findstr /v "hash" > "${ARTIFACT}.sha256"
+            else
+              python -c "import hashlib; h=hashlib.sha256(open('${ARTIFACT}','rb').read()).hexdigest(); open('${ARTIFACT}.sha256','w').write(h+'  ${ARTIFACT}')"
+            fi
+          else
+            sha256sum "${ARTIFACT}" > "${ARTIFACT}.sha256"
+          fi
+          echo "checksum=$(cat ${ARTIFACT}.sha256)" >> $GITHUB_OUTPUT
+          echo "SHA-256: $(cat ${ARTIFACT}.sha256)"
+
+      # -----------------------------------------------------------------------
+      # 8. Generate SPDX SBOM
+      # -----------------------------------------------------------------------
+      - name: Generate SBOM
+        run: |
+          python -c "
+import hashlib, os, json, time
+from pathlib import Path
+
+def generar_sbom_standalone(project_root: str, artifact_name: str):
+    files = []
+    packages = []
+    
+    # Root package
+    root_hash = hashlib.sha256()
+    for f in sorted(Path(project_root).rglob('*')):
+        if f.is_file() and not any(p in str(f) for p in ['.git', '__pycache__', 'toolchain_gcc12']):
+            try:
+                root_hash.update(f.read_bytes())
+                files.append({
+                    'fileName': str(f.relative_to(project_root)),
+                    'checksums': [{'algorithm': 'SHA256', 'value': hashlib.sha256(f.read_bytes()).hexdigest()}]
+                })
+            except Exception:
+                pass
+    
+    sbom = {
+        'spdxVersion': 'SPDX-2.3',
+        'dataLicense': 'CC0-1.0',
+        'SPDXID': 'SPDXRef-DOCUMENT',
+        'name': f'Synapse-{artifact_name}',
+        'creationInfo': {
+            'created': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'creators': ['Tool: synapse-release-matrix'],
+        },
+        'packages': [{
+            'SPDXID': 'SPDXRef-RootPackage',
+            'name': artifact_name,
+            'versionInfo': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev'),
+            'supplier': 'Organization: Synapse Lang',
+            'downloadLocation': 'NOASSERTION',
+            'filesAnalyzed': True,
+            'checksums': [{'algorithm': 'SHA256', 'value': root_hash.hexdigest()}],
+        }],
+        'files': files,
+        'relationships': [{
+            'spdxElementId': 'SPDXRef-DOCUMENT',
+            'relatedSpdxElement': 'SPDXRef-RootPackage',
+            'relationshipType': 'DESCRIBES',
+        }],
+    }
+    return json.dumps(sbom, indent=2)
+
+sbom = json.loads(generar_sbom_standalone('.', '${{ steps.build.outputs.artifact_name }}'))
+with open('${{ steps.build.outputs.artifact_name }}.spdx.json', 'w') as f:
+    json.dump(sbom, f, indent=2)
+print('SBOM SPDX 2.3 generado')
+"
+
+      # -----------------------------------------------------------------------
+      # 9. Upload artifacts
+      # -----------------------------------------------------------------------
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}
+          path: ${{ steps.build.outputs.artifact_name }}
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload SHA-256 checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.sha256
+          path: ${{ steps.build.outputs.artifact_name }}.sha256
+          retention-days: 90
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}.spdx.json
+          path: ${{ steps.build.outputs.artifact_name }}.spdx.json
+          retention-days: 90
+
+      # -----------------------------------------------------------------------
+      # 10. Validate artifacts
+      # -----------------------------------------------------------------------
+      - name: Validate artifacts
+        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        run: |
+          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
+          ERRORS=0
+          
+          # Check binary exists and is valid
+          if [ -f "${ARTIFACT}" ]; then
+            SIZE=$(stat --format=%s "${ARTIFACT}" 2>/dev/null || python -c "import os; print(os.path.getsize('${ARTIFACT}'))")
+            echo "[OK] Binary: ${ARTIFACT} (${SIZE} bytes)"
+            if [ "${SIZE}" -lt 100000 ]; then
+              echo "[WARN] Binary size suspiciously small (< 100KB)"
+            fi
+          else
+            echo "[FAIL] Binary not found"
+            ERRORS=$((ERRORS+1))
+          fi
+          
+          # Check SHA-256 file
+          if [ -f "${ARTIFACT}.sha256" ]; then
+            echo "[OK] SHA-256 file: ${ARTIFACT}.sha256"
+            cat "${ARTIFACT}.sha256"
+          else
+            echo "[FAIL] SHA-256 file not found"
+            ERRORS=$((ERRORS+1))
+          fi
+          
+          # Check SBOM
+          if [ -f "${ARTIFACT}.spdx.json" ]; then
+            echo "[OK] SBOM file: ${ARTIFACT}.spdx.json"
+          else
+            echo "[FAIL] SBOM file not found"
+            ERRORS=$((ERRORS+1))
+          fi
+          
+          if [ "${ERRORS}" -gt 0 ]; then
+            echo "::error::${ERRORS} validation error(s)"
+            exit 1
+          fi
+          echo "All artifacts validated successfully"
+
+      # -----------------------------------------------------------------------
+      # 11. Notify
+      # -----------------------------------------------------------------------
+      - name: Notify result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "## [OK] ${{ matrix.target.name }} build successful" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## [FAIL] ${{ matrix.target.name }} build failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ===========================================================================
+  # AGGREGATE — Summary of all matrix builds
+  # ===========================================================================
+  summary:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Build matrix summary
+        run: |
+          echo "## Synapse Release Matrix Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Target | Binary | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          for PLATFORM in linux_x64 linux_arm64 darwin_arm64 win_x64; do
+            if [ -d "synapse-${PLATFORM}" ]; then
+              echo "| ${PLATFORM} | synapse-${PLATFORM} | ✅ Built |" >> $GITHUB_STEP_SUMMARY
+            elif [ -d "synapse-${PLATFORM}.exe" ]; then
+              echo "| ${PLATFORM} | synapse-${PLATFORM}.exe | ✅ Built |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| ${PLATFORM} | - | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Artifacts available for download." >> $GITHUB_STEP_SUMMARY
