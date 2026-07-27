@@ -1,0 +1,121 @@
+#lang: es
+
+// ============================================================
+//  std::atp_engine — Motor de Demostración Automática de Teoremas
+// ============================================================
+//  Bindings para el resolvedor SMT ligero (atp_engine.c/h).
+//  Proporciona verificación automática de contratos requiere/garantiza
+//  en tiempo de compilación (--safe) sin Coq/Lean interactivo.
+//
+//  Zero-telemetry: todo el proceso es local y soberano.
+// ============================================================
+
+constante ATP_UNKNOWN = 0
+constante ATP_VALID = 1
+constante ATP_INVALID = 2
+constante ATP_TIMEOUT = 3
+constante ATP_ERROR = 4
+
+// ============================================================
+//  Declaraciones externas C
+// ============================================================
+
+externo funcion _syn_atp_iniciar(use_arith: Entero, use_prop: Entero, use_contra: Entero) -> Puntero
+externo funcion _syn_atp_cerrar(engine: Puntero)
+externo funcion _syn_atp_agregar_precondicion(engine: Puntero, expr: Cadena) -> Entero
+externo funcion _syn_atp_agregar_postcondicion(engine: Puntero, expr: Cadena) -> Entero
+externo funcion _syn_atp_agregar_invariante(engine: Puntero, expr: Cadena) -> Entero
+externo funcion _syn_atp_establecer_funcion(engine: Puntero, nombre: Cadena)
+externo funcion _syn_atp_verificar_tautologia(engine: Puntero, expr: Cadena) -> Entero
+externo funcion _syn_atp_verificar_contradiccion(engine: Puntero) -> Entero
+externo funcion _syn_atp_propagar_restricciones(engine: Puntero) -> Entero
+externo funcion _syn_atp_demostrar(engine: Puntero) -> Entero
+externo funcion _syn_atp_verificar_contrato(engine: Puntero, pre: Puntero, np: Entero, post: Puntero, npost: Entero) -> Entero
+externo funcion _syn_atp_limpiar(engine: Puntero)
+externo funcion _syn_atp_guardar(engine: Puntero, ruta: Cadena) -> Entero
+externo funcion _syn_atp_cargar(engine: Puntero, ruta: Cadena) -> Entero
+
+// ============================================================
+//  Wrappers públicos
+// ============================================================
+
+// Inicializa el motor ATP con configuración por defecto
+funcion atp_iniciar() -> Puntero:
+    retornar _syn_atp_iniciar(1, 1, 1)
+
+// Inicializa el motor ATP con configuración personalizada
+funcion atp_iniciar_config(use_arith: Entero, use_prop: Entero, use_contra: Entero) -> Puntero:
+    retornar _syn_atp_iniciar(use_arith, use_prop, use_contra)
+
+// Cierra el motor y libera memoria
+funcion atp_cerrar(engine: Puntero):
+    _syn_atp_cerrar(engine)
+
+// Agrega una precondición (requiere)
+funcion atp_agregar_pre(engine: Puntero, expr: Cadena) -> Entero:
+    retornar _syn_atp_agregar_precondicion(engine, expr)
+
+// Agrega una postcondición (garantiza)
+funcion atp_agregar_post(engine: Puntero, expr: Cadena) -> Entero:
+    retornar _syn_atp_agregar_postcondicion(engine, expr)
+
+// Agrega un invariante
+funcion atp_agregar_inv(engine: Puntero, expr: Cadena) -> Entero:
+    retornar _syn_atp_agregar_invariante(engine, expr)
+
+// Establece el nombre de la función a verificar
+funcion atp_establecer_func(engine: Puntero, nombre: Cadena):
+    _syn_atp_establecer_funcion(engine, nombre)
+
+// Verifica si una expresión es una tautología
+funcion atp_es_tautologia(engine: Puntero, expr: Cadena) -> Entero:
+    retornar _syn_atp_verificar_tautologia(engine, expr)
+
+// Verifica si hay contradicciones en las restricciones
+funcion atp_hay_contradiccion(engine: Puntero) -> Entero:
+    retornar _syn_atp_verificar_contradiccion(engine)
+
+// Propaga restricciones entre variables
+funcion atp_propagar(engine: Puntero) -> Entero:
+    retornar _syn_atp_propagar_restricciones(engine)
+
+// Demuestra que las postcondiciones se siguen de las precondiciones
+funcion atp_demostrar(engine: Puntero) -> Entero:
+    retornar _syn_atp_demostrar(engine)
+
+// Verifica un contrato completo: pre → post
+funcion atp_verificar_contrato(engine: Puntero, pre: Lista<Cadena>, post: Lista<Cadena>) -> Entero:
+    retornar _syn_atp_verificar_contrato(engine, pre.datos, pre.longitud, post.datos, post.longitud)
+
+// Limpia todas las restricciones del motor
+funcion atp_limpiar(engine: Puntero):
+    _syn_atp_limpiar(engine)
+
+// Guarda el estado del motor a archivo
+funcion atp_guardar(engine: Puntero, ruta: Cadena) -> Entero:
+    retornar _syn_atp_guardar(engine, ruta)
+
+// Carga el estado del motor desde archivo
+funcion atp_cargar(engine: Puntero, ruta: Cadena) -> Entero:
+    retornar _syn_atp_cargar(engine, ruta)
+
+// ============================================================
+//  Funciones de alto nivel
+// ============================================================
+
+// Verifica un contrato completo en un solo paso
+// Retorna: Entero (ATP_VALID, ATP_INVALID, ATP_UNKNOWN)
+funcion atp_verificar(pre: Lista<Cadena>, post: Lista<Cadena>) -> Entero:
+    motor = atp_iniciar()
+    resultado = atp_verificar_contrato(motor, pre, post)
+    atp_cerrar(motor)
+    retornar resultado
+
+// Verifica que una función cumpla sus contratos
+// Retorna: Booleano (true si el contrato es válido)
+funcion atp_validar_contrato(nombre: Cadena, precondiciones: Lista<Cadena>, postcondiciones: Lista<Cadena>) -> Booleano:
+    motor = atp_iniciar()
+    atp_establecer_func(motor, nombre)
+    resultado = atp_verificar_contrato(motor, precondiciones, postcondiciones)
+    atp_cerrar(motor)
+    retornar resultado == ATP_VALID
