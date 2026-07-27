@@ -1,0 +1,66 @@
+#librerias/std/surface_code.syn — Bindings para Surface Code (M16.3)
+# ======================================================================
+# Expone las primitivas de correccion topologica de errores
+# (nucleo/surface_code.c) al lenguaje Synapse via std.surface_code.
+#
+# Zero-telemetry: todo el proceso es local y soberano.
+# ======================================================================
+
+# ============================================================
+# Constantes
+# ============================================================
+constante SC_MAX_L = 7
+constante SC_ERROR_X = 0
+constante SC_ERROR_Z = 1
+constante SC_ERROR_BOTH = 2
+
+# ============================================================
+# Declaraciones externas
+# ============================================================
+
+# Crear y liberar rejilla
+externo funcion _syn_sc_crear_rejilla(L: Entero) -> Puntero
+externo funcion _syn_sc_liberar_rejilla(rejilla: Puntero)
+
+# Inicializar
+externo funcion _syn_sc_inicializar_estado_cero(rejilla: Puntero) -> Entero
+
+# Inyectar error
+externo funcion _syn_sc_inyectar_error(rejilla: Puntero, fila: Entero,
+                                        col: Entero, tipo: Entero) -> Entero
+
+# Medir estabilizadores
+externo funcion _syn_sc_medir_estabilizadores(rejilla: Puntero) -> Entero
+
+# Corregir errores (mide + decodifica + corrige)
+externo funcion _syn_sc_corregir_errores(rejilla: Puntero) -> Entero
+
+# Verificar correccion
+externo funcion _syn_sc_verificar_correccion(rejilla: Puntero) -> Entero
+
+# ============================================================
+# Wrappers de alto nivel
+# ============================================================
+
+funcion crear_rejilla(L: Entero) -> Puntero:
+    requerir L >= 2 y L <= SC_MAX_L: "Dimension de rejilla fuera de rango"
+    retornar _syn_sc_crear_rejilla(L)
+
+funcion liberar_rejilla(rejilla: Puntero):
+    _syn_sc_liberar_rejilla(rejilla)
+
+funcion inicializar_estado_cero(rejilla: Puntero) -> Entero:
+    retornar _syn_sc_inicializar_estado_cero(rejilla)
+
+funcion inyectar_error(rejilla: Puntero, fila: Entero,
+                        col: Entero, tipo: Entero) -> Entero:
+    retornar _syn_sc_inyectar_error(rejilla, fila, col, tipo)
+
+funcion medir_estabilizadores(rejilla: Puntero) -> Entero:
+    retornar _syn_sc_medir_estabilizadores(rejilla)
+
+funcion corregir_errores(rejilla: Puntero) -> Entero:
+    retornar _syn_sc_corregir_errores(rejilla)
+
+funcion verificar_correccion(rejilla: Puntero) -> Entero:
+    retornar _syn_sc_verificar_correccion(rejilla)
