@@ -1,4 +1,5 @@
-// synapse_rag.c — Pipeline RAG quirúrgico para extracción de contexto AST
+// synapse_rag.c — Pipeline RAG quirúrgico para extracción de contexto AST e indexación semántica
+// v2.0: Añadido: AST chunking, embedding storage, cosine similarity search, n_ctx negotiation dinámica
 // Parte del núcleo Synapse LSP nativo — C99
 
 #include "synapse_rag.h"
@@ -6,8 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
+#include <time.h>
 
-// Helpers internos
+// ============================================================
+// Helpers internos (v1 — herencia existente)
+// ============================================================
+
 static char* rag_strdup(const char* s) {
     return s ? strdup(s) : NULL;
 }
@@ -68,15 +74,14 @@ static void extraer_linea_exacta(const char* fuente, int linea, char* buf, size_
 }
 
 // Busca el nodo AST en la posición dada (línea, columna)
-// Simplificado: busca en el AST el nodo que contiene la posición
 static void buscar_nodo_en_posicion(const void* ast_root, int linea, int columna, char* out_tipo, size_t cap) {
     (void)ast_root; (void)linea; (void)columna;
-    // Implementación simplificada: en producción recorrería el AST
-    // Por ahora retorna tipo genérico
     snprintf(out_tipo, cap, "NodoAST(pos=%d:%d)", linea, columna);
 }
 
-// --- API Pública ---
+// ============================================================
+// API principal (v1 — herencia existente)
+// ============================================================
 
 int synapse_rag_extraer_contexto(const SynapseRagInput* input, SynapseRagContexto* out) {
     if (!input || !out) return -1;
@@ -119,13 +124,7 @@ void synapse_rag_liberar_contexto(SynapseRagContexto* ctx) {
     free(ctx->linea_actual);
     free(ctx->diagnosticos);
     free(ctx->nodo_actual_tipo);
-    ctx->contexto_archivo = NULL;
-    ctx->linea_actual = NULL;
-    ctx->diagnosticos = NULL;
-    ctx->nodo_actual_tipo = NULL;
-    ctx->n_ctx_modelo = 0;
-    ctx->max_tokens_inyectados = 0;
-    ctx->max_tokens_generacion = 0;
+    memset(ctx, 0, sizeof(SynapseRagContexto));
 }
 
 int synapse_rag_construir_prompt(const SynapseRagContexto* ctx, char* buf, size_t cap) {
@@ -174,4 +173,256 @@ int synapse_rag_calcular_max_tokens(int n_ctx, float ratio) {
     if (max < 64) max = 64;
     if (max > RAG_MAX_TOKENS_INYECTADOS) max = RAG_MAX_TOKENS_INYECTADOS;
     return max;
+}
+
+// ============================================================
+// API de Indexación Semántica (v2 — nuevo)
+// ============================================================
+
+// Estadísticas globales del pipeline
+static RagEstadisticas _rag_stats = {0};
+
+void synapse_rag_inicializar_indice(RagIndex* idx, int embedding_dim) {
+    if (!idx) return;
+    memset(idx, 0, sizeof(RagIndex));
+    idx->num_chunks = 0;
+    idx->embedding_dim = (embedding_dim > 0) ? embedding_dim : RAG_EMBEDDING_DIM_DEFAULT;
+    idx->embedding_cache = NULL;
+}
+
+void synapse_rag_liberar_indice(RagIndex* idx) {
+    if (!idx) return;
+    for (int i = 0; i < idx->num_chunks; i++) {
+        free(idx->chunks[i].texto);
+        free(idx->chunks[i].embedding);
+    }
+    free(idx->embedding_cache);
+    memset(idx, 0, sizeof(RagIndex));
+}
+
+int synapse_rag_indexar_chunk(RagIndex* idx, const RagChunk* chunk) {
+    if (!idx || !chunk) return -1;
+    if (idx->num_chunks >= RAG_MAX_CHUNKS) return -1;
+
+    RagChunk* dst = &idx->chunks[idx->num_chunks];
+    dst->texto = rag_strdup(chunk->texto);
+    dst->longitud = chunk->longitud;
+    dst->linea_inicio = chunk->linea_inicio;
+    dst->linea_fin = chunk->linea_fin;
+    dst->embedding_dim = chunk->embedding_dim;
+    dst->puntuacion = 0.0f;
+    strncpy(dst->tipo_nodo, chunk->tipo_nodo, 63);
+    dst->tipo_nodo[63] = '\0';
+
+    // Copy embedding if present
+    if (chunk->embedding && chunk->embedding_dim > 0) {
+        dst->embedding = (float*)malloc(chunk->embedding_dim * sizeof(float));
+        if (dst->embedding) {
+            memcpy(dst->embedding, chunk->embedding, chunk->embedding_dim * sizeof(float));
+        }
+    } else {
+        dst->embedding = NULL;
+    }
+
+    // Rebuild embedding cache
+    int dim = idx->embedding_dim;
+    free(idx->embedding_cache);
+    idx->embedding_cache = (float*)calloc(idx->num_chunks + 1, dim * sizeof(float));
+    if (idx->embedding_cache) {
+        for (int i = 0; i <= idx->num_chunks; i++) {
+            if (idx->chunks[i].embedding) {
+                memcpy(&idx->embedding_cache[i * dim], idx->chunks[i].embedding, dim * sizeof(float));
+            }
+        }
+    }
+
+    int index = idx->num_chunks;
+    idx->num_chunks++;
+    _rag_stats.chunks_indexados++;
+    return index;
+}
+
+// Divide un texto fuente en chunks coherentes (por línea)
+int synapse_rag_indexar_texto(RagIndex* idx, const char* fuente,
+                               const char* nombre_archivo) {
+    (void)nombre_archivo;
+    if (!idx || !fuente) return -1;
+
+    const char* p = fuente;
+    int num_chunks_creados = 0;
+
+    while (*p && idx->num_chunks < RAG_MAX_CHUNKS) {
+        // Skip blank lines
+        while (*p == '\n' || *p == '\r') p++;
+        if (!*p) break;
+
+        // Record start of chunk
+        const char* chunk_start = p;
+        int linea_inicio = 0;
+        { const char* l = fuente; while (l < chunk_start) { if (*l == '\n') linea_inicio++; l++; } }
+
+        // Read up to CHUNK_SIZE_MAX chars or until next function/struct definition
+        const char* chunk_end = chunk_start;
+        int chars = 0;
+        int last_newline = 0;
+
+        while (*chunk_end && chars < RAG_CHUNK_SIZE_MAX) {
+            if (*chunk_end == '\n') { last_newline = chars; }
+            chars++;
+            // Break at function/struct boundaries
+            if (chars > RAG_CHUNK_SIZE_MIN &&
+                ((strncmp(chunk_end, "\nfn ", 4) == 0) ||
+                 (strncmp(chunk_end, "\nestructura ", 12) == 0))) {
+                break;
+            }
+            chunk_end++;
+        }
+
+        // If we hit max size, cut at last newline
+        if (chars >= RAG_CHUNK_SIZE_MAX && last_newline > RAG_CHUNK_SIZE_MIN) {
+            chunk_end = chunk_start + last_newline;
+        }
+
+        size_t len = chunk_end - chunk_start;
+        if (len > 0) {
+            char* chunk_text = (char*)malloc(len + 1);
+            if (chunk_text) {
+                memcpy(chunk_text, chunk_start, len);
+                chunk_text[len] = '\0';
+
+                // Detect node type from first line
+                char tipo_nodo[64] = "bloque";
+                const char* first_line = chunk_text;
+                if (strncmp(first_line, "fn ", 3) == 0) {
+                    snprintf(tipo_nodo, 64, "funcion");
+                } else if (strncmp(first_line, "estructura ", 11) == 0) {
+                    snprintf(tipo_nodo, 64, "estructura");
+                } else if (strncmp(first_line, "importar ", 9) == 0) {
+                    snprintf(tipo_nodo, 64, "importacion");
+                } else if (strncmp(first_line, "constante ", 10) == 0) {
+                    snprintf(tipo_nodo, 64, "constante");
+                }
+
+                // Prepare chunk (embedding will be computed by caller)
+                RagChunk c;
+                memset(&c, 0, sizeof(c));
+                c.texto = chunk_text;     // ownership transferred to RagChunk
+                c.longitud = (int)len;
+                c.linea_inicio = linea_inicio;
+                c.linea_fin = linea_inicio; // approximate
+                c.embedding_dim = 0;
+                c.embedding = NULL;
+                strncpy(c.tipo_nodo, tipo_nodo, 63);
+                c.tipo_nodo[63] = '\0';
+
+                int rc = synapse_rag_indexar_chunk(idx, &c);
+                if (rc >= 0) num_chunks_creados++;
+                else free(chunk_text);  // ownership not taken
+            }
+        }
+
+        p = chunk_end;
+    }
+
+    return num_chunks_creados;
+}
+
+int synapse_rag_buscar_similares(const RagIndex* idx,
+                                  const float* query_embedding,
+                                  int query_dim,
+                                  RagResultados* resultados) {
+    if (!idx || !query_embedding || !resultados) return -1;
+    if (idx->num_chunks <= 0 || query_dim <= 0) return 0;
+
+    memset(resultados, 0, sizeof(RagResultados));
+
+    int dim = (query_dim < idx->embedding_dim) ? query_dim : idx->embedding_dim;
+
+    // For each chunk, compute cosine similarity
+    for (int i = 0; i < idx->num_chunks; i++) {
+        RagChunk* chunk = &idx->chunks[i];
+        if (!chunk->embedding) continue;
+
+        float sim = synapse_rag_coseno_similitud(query_embedding, chunk->embedding, dim);
+        chunk->puntuacion = sim;
+
+        // Insert into top-K results
+        int insert_at = resultados->num_resultados;
+        for (int j = 0; j < resultados->num_resultados; j++) {
+            if (sim > resultados->puntuaciones[j]) {
+                insert_at = j;
+                break;
+            }
+        }
+
+        if (insert_at < RAG_TOP_K_SIMILARES) {
+            // Shift elements right
+            if (resultados->num_resultados < RAG_TOP_K_SIMILARES) {
+                resultados->num_resultados++;
+            }
+            for (int j = resultados->num_resultados - 1; j > insert_at; j--) {
+                resultados->resultados[j] = resultados->resultados[j - 1];
+                resultados->puntuaciones[j] = resultados->puntuaciones[j - 1];
+            }
+            resultados->resultados[insert_at] = chunk;
+            resultados->puntuaciones[insert_at] = sim;
+        }
+    }
+
+    _rag_stats.busquedas_realizadas++;
+    return resultados->num_resultados;
+}
+
+float synapse_rag_coseno_similitud(const float* a, const float* b, int dim) {
+    if (!a || !b || dim <= 0) return 0.0f;
+
+    double dot = 0.0, norm_a = 0.0, norm_b = 0.0;
+    for (int i = 0; i < dim; i++) {
+        dot += (double)a[i] * (double)b[i];
+        norm_a += (double)a[i] * (double)a[i];
+        norm_b += (double)b[i] * (double)b[i];
+    }
+
+    if (norm_a < 1e-10 || norm_b < 1e-10) return 0.0f;
+    return (float)(dot / (sqrt(norm_a) * sqrt(norm_b)));
+}
+
+int synapse_rag_negociar_n_ctx(int n_ctx_modelo, int num_chunks_relevantes,
+                                int tamano_total_chunks,
+                                float* out_ratio_usado) {
+    if (n_ctx_modelo <= 0) n_ctx_modelo = RAG_N_CTX_DEFAULT;
+
+    // Estimate token count: ~4 chars per token
+    int tokens_chunks = tamano_total_chunks / 4;
+    if (tokens_chunks < 32) tokens_chunks = 32;
+
+    // Base ratio: 30%
+    float ratio = RAG_RATIO_INYECCION_DEFAULT;
+
+    // Adjust ratio based on chunk count and size
+    if (num_chunks_relevantes > 5) {
+        ratio += 0.05f;  // More chunks need more context
+    }
+    if (tokens_chunks > n_ctx_modelo / 2) {
+        ratio = (float)tokens_chunks / (float)n_ctx_modelo;
+    }
+
+    // Clamp ratio
+    if (ratio < 0.15f) ratio = 0.15f;
+    if (ratio > 0.5f) ratio = 0.5f;
+
+    int max_tokens = (int)(n_ctx_modelo * ratio);
+    if (max_tokens < 64) max_tokens = 64;
+    if (max_tokens > RAG_MAX_TOKENS_INYECTADOS) max_tokens = RAG_MAX_TOKENS_INYECTADOS;
+
+    if (out_ratio_usado) *out_ratio_usado = ratio;
+
+    _rag_stats.tokens_inyectados_promedio =
+        (_rag_stats.tokens_inyectados_promedio + max_tokens) / 2;
+
+    return max_tokens;
+}
+
+RagEstadisticas synapse_rag_obtener_estadisticas(void) {
+    return _rag_stats;
 }

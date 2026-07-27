@@ -1,0 +1,275 @@
+#lang: es
+// opensyn/router.syn — Enrutador determinista basado en AST para el pipeline RAG quirúrgico
+// ================================================================================
+// Propósito: Conectar el análisis semántico del AST con el motor de inferencia
+// de modelos locales (std.modelo) a través del pipeline RAG (synapse_rag.c).
+//
+// Flujo:
+//   1. Recibe una consulta sobre código Synapse (diagnóstico, explicación, refactor)
+//   2. Analiza el AST para determinar el tipo de nodo y contexto relevante
+//   3. Decide el nivel de contexto RAG: micro (línea), local (función), archivo (completo)
+//   4. Negocia n_ctx con el modelo local
+//   5. Construye el prompt estructurado con contexto RAG
+//   6. Envía al modelo y retorna la respuesta con metadatos de enrutamiento
+//
+// Zero-telemetry: toda la inferencia ocurre localmente via std.modelo.
+// ================================================================================
+
+importar std.modelo
+importar std.conv
+
+// ============================================================
+// Constantes de enrutamiento
+// ============================================================
+
+constante RUTA_MICRO = 0     // Solo línea actual + diagnóstico
+constante RUTA_LOCAL = 1     // Función/estructura completa
+constante RUTA_ARCHIVO = 2   // Archivo completo (múltiples funciones)
+constante RUTA_PROYECTO = 3  // Múltiples archivos (importaciones)
+
+constante MAX_NIVELES_CONTEXTO = 4
+constante MAX_PROMPT_TOKENS = 2048
+constante TEMPERATURA_EXPLICACION = 0.3
+constante TEMPERATURA_REFACTOR = 0.5
+constante TEMPERATURA_GENERACION = 0.7
+
+// ============================================================
+// Tipos de datos para el enrutador
+// ============================================================
+
+tipo TipoRuta = entero
+tipo TipoConsulta = entero
+constante CONSULTA_EXPLICAR = 0
+constante CONSULTA_DIAGNOSTICO = 1
+constante CONSULTA_REFACTOR = 2
+constante CONSULTA_OPTIMIZAR = 3
+constante CONSULTA_GENERAR = 4
+
+estructura ConsultaRAG:
+    tipo: TipoConsulta
+    texto_consulta: texto
+    linea: entero
+    columna: entero
+    archivo: texto
+
+estructura RespuestaRAG:
+    texto_respuesta: texto
+    ruta_usada: TipoRuta
+    tokens_inyectados: entero
+    tokens_generados: entero
+    confianza: decimal  // 0.0 a 1.0 según nivel de contexto disponible
+
+estructura ConfiguracionRuta:
+    contexto_lineas_antes: entero  // líneas antes del cursor
+    contexto_lineas_despues: entero  // líneas después del cursor
+    incluir_ast: entero    // 1 = incluir tipo de nodo AST
+    incluir_diags: entero  // 1 = incluir diagnósticos
+    max_tokens: entero     // tokens máximos para esta ruta
+    temperatura: decimal   // temperatura de sampling
+
+// ============================================================
+// Configuración de rutas
+// ============================================================
+
+funcion obtener_configuracion_ruta(ruta: TipoRuta) -> ConfiguracionRuta:
+    cfg: ConfiguracionRuta
+    cfg.contexto_lineas_antes = 2
+    cfg.contexto_lineas_despues = 2
+    cfg.incluir_ast = 1
+    cfg.incluir_diags = 1
+    cfg.max_tokens = 256
+    cfg.temperatura = TEMPERATURA_EXPLICACION
+
+    si ruta == RUTA_MICRO:
+        cfg.contexto_lineas_antes = 0
+        cfg.contexto_lineas_despues = 0
+        cfg.incluir_ast = 1
+        cfg.incluir_diags = 1
+        cfg.max_tokens = 128
+        cfg.temperatura = TEMPERATURA_EXPLICACION
+
+    sino si ruta == RUTA_LOCAL:
+        cfg.contexto_lineas_antes = 5
+        cfg.contexto_lineas_despues = 5
+        cfg.incluir_ast = 1
+        cfg.incluir_diags = 1
+        cfg.max_tokens = 256
+        cfg.temperatura = TEMPERATURA_EXPLICACION
+
+    sino si ruta == RUTA_ARCHIVO:
+        cfg.contexto_lineas_antes = 20
+        cfg.contexto_lineas_despues = 10
+        cfg.incluir_ast = 1
+        cfg.incluir_diags = 1
+        cfg.max_tokens = 512
+        cfg.temperatura = TEMPERATURA_REFACTOR
+
+    sino si ruta == RUTA_PROYECTO:
+        cfg.contexto_lineas_antes = 50
+        cfg.contexto_lineas_despues = 20
+        cfg.incluir_ast = 1
+        cfg.incluir_diags = 0
+        cfg.max_tokens = 1024
+        cfg.temperatura = TEMPERATURA_GENERACION
+
+    retornar cfg
+
+// ============================================================
+// Determinación de ruta basada en tipo de nodo AST
+// ============================================================
+
+// Analiza el tipo de nodo AST y determina el nivel de contexto necesario
+funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: TipoConsulta) -> TipoRuta:
+    // Consultas de diagnóstico siempre usan contexto local o micro
+    si tipo_consulta == CONSULTA_DIAGNOSTICO:
+        retornar RUTA_MICRO
+
+    // Consultas de explicación: contexto local si es función, micro si es expresión
+    si tipo_consulta == CONSULTA_EXPLICAR:
+        si tipo_nodo == "funcion" o tipo_nodo == "DefinicionFuncion":
+            retornar RUTA_LOCAL
+        sino:
+            retornar RUTA_MICRO
+
+    // Refactorización: necesita contexto de archivo completo
+    si tipo_consulta == CONSULTA_REFACTOR:
+        retornar RUTA_ARCHIVO
+
+    // Optimización: contexto local o archivo
+    si tipo_consulta == CONSULTA_OPTIMIZAR:
+        retornar RUTA_LOCAL
+
+    // Generación de código: contexto de proyecto
+    si tipo_consulta == CONSULTA_GENERAR:
+        retornar RUTA_PROYECTO
+
+    // Default: contexto local
+    retornar RUTA_LOCAL
+
+// ============================================================
+// Construcción de prompt estructurado
+// ============================================================
+
+// Construye el prompt con el nivel de contexto apropiado
+funcion construir_prompt(consulta: ConsultaRAG, ruta: TipoRuta,
+    contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> texto:
+    cfg = obtener_configuracion_ruta(ruta)
+
+    prompt = ""
+    prompt = prompt + "Eres un asistente experto en el lenguaje Synapse.\n"
+    prompt = prompt + "Responde en espanol de forma concisa y tecnica.\n\n"
+
+    // Incluir contexto del archivo
+    si contexto_texto != "":
+        prompt = prompt + "[CONTEXTO]:\n"
+        prompt = prompt + contexto_texto
+        prompt = prompt + "\n\n"
+
+    // Incluir tipo de nodo AST
+    si cfg.incluir_ast y tipo_nodo != "":
+        prompt = prompt + "[NODO]: " + tipo_nodo + "\n\n"
+
+    // Incluir diagnósticos
+    si cfg.incluir_diags y diagnosticos != "":
+        prompt = prompt + "[DIAGNOSTICO]: " + diagnosticos + "\n\n"
+
+    // Incluir consulta del usuario
+    prompt = prompt + "[CONSULTA]: " + consulta.texto_consulta + "\n\n"
+
+    // Instrucción específica según tipo
+    si consulta.tipo == CONSULTA_EXPLICAR:
+        prompt = prompt + "Explica que hace este codigo Synapse.\n"
+
+    sino si consulta.tipo == CONSULTA_DIAGNOSTICO:
+        prompt = prompt + "Diagnostica el error en este codigo Synapse.\n"
+        prompt = prompt + "Sugiere la correccion especifica.\n"
+
+    sino si consulta.tipo == CONSULTA_REFACTOR:
+        prompt = prompt + "Sugiere mejoras de refactorizacion.\n"
+        prompt = prompt + "Explica cada cambio propuesto.\n"
+
+    sino si consulta.tipo == CONSULTA_OPTIMIZAR:
+        prompt = prompt + "Analiza el rendimiento y sugiere optimizaciones.\n"
+
+    sino si consulta.tipo == CONSULTA_GENERAR:
+        prompt = prompt + "Genera codigo Synapse para la siguiente especificacion:\n"
+        prompt = prompt + consulta.texto_consulta
+
+    prompt = prompt + "\n\nMaximo " + entero_a_texto(cfg.max_tokens) + " tokens."
+
+    retornar prompt
+
+// ============================================================
+// Función principal de enrutamiento
+// ============================================================
+
+// Procesa una consulta RAG a través del pipeline completo:
+// 1. Determina ruta según tipo de nodo AST y consulta
+// 2. Construye prompt con contexto apropiado
+// 3. Envía al modelo local
+// 4. Retorna respuesta con metadatos de enrutamiento
+funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG,
+    contexto_texto: texto, tipo_nodo: texto,
+    diagnosticos: texto) -> RespuestaRAG:
+    respuesta: RespuestaRAG
+    respuesta.texto_respuesta = ""
+    respuesta.confianza = 0.0
+
+    si ctx == nulo:
+        respuesta.texto_respuesta = "Error: modelo no disponible."
+        retornar respuesta
+
+    // 1. Determinar ruta
+    ruta = determinar_ruta(tipo_nodo, consulta.tipo)
+    respuesta.ruta_usada = ruta
+
+    // 2. Obtener configuración
+    cfg = obtener_configuracion_ruta(ruta)
+
+    // 3. Construir prompt con contexto
+    prompt = construir_prompt(consulta, ruta, contexto_texto, tipo_nodo, diagnosticos)
+
+    // 4. Estimar tokens de contexto (~4 chars/token)
+    inseguro:
+        asm("respuesta.tokens_inyectados = prompt.longitud / 4;")
+        asm("if (respuesta.tokens_inyectados > cfg.max_tokens) {")
+        asm("    if (cfg.max_tokens * 4 < prompt.longitud) {")
+        asm("        prompt.datos[cfg.max_tokens * 4] = '\\0';")
+        asm("        prompt.longitud = cfg.max_tokens * 4;")
+        asm("    }")
+        asm("}")
+
+    // 5. Generar respuesta con el modelo local
+    texto_generado = _syn_modelo_generar_texto(ctx, prompt,
+        cfg.max_tokens, cfg.temperatura, 40, 0.9)
+
+    respuesta.texto_respuesta = texto_generado
+    inseguro:
+        asm("respuesta.tokens_generados = texto_generado.longitud / 4;")
+
+    // 6. Calcular confianza basada en nivel de contexto disponible
+    si contexto_texto != "" y tipo_nodo != "":
+        respuesta.confianza = 0.85
+    sino si contexto_texto != "":
+        respuesta.confianza = 0.70
+    sino:
+        respuesta.confianza = 0.50
+
+    retornar respuesta
+
+// ============================================================
+// Función simplificada para integración rápida
+// ============================================================
+
+// Versión simplificada: infiere automáticamente la ruta desde el tipo de nodo
+funcion consultar(ctx: puntero, pregunta: texto, contexto: texto,
+    tipo_nodo: texto) -> texto:
+    consulta: ConsultaRAG
+    consulta.texto_consulta = pregunta
+    consulta.tipo = CONSULTA_EXPLICAR
+    consulta.linea = 0
+    consulta.columna = 0
+    consulta.archivo = "consulta"
+
+    respuesta = procesar_consulta(ctx, consulta, contexto, tipo_nodo, "")
+    retornar respuesta.texto_respuesta

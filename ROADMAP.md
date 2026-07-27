@@ -398,7 +398,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M12.1.2** | **Control de Flujo y Funciones (LLVM IR)** | **✅ COMPLETADO Y VERIFICADO** |
 | **M12.1.3** | **Motor de Ejecución JIT y Encriptación de Memoria** | **✅ COMPLETADO Y VERIFICADO** |
 | **M12.2** | **WebAssembly backend** | **✅ COMPLETADO Y VERIFICADO** |
-| **M13.1** | **AI nativa (modelos locales via std.modelo)** | **🔄 EN PROGRESO** |
+| **M13.1** | **AI nativa (modelos locales via std.modelo)** | **✅ COMPLETADO** |
+| **M13.2** | **OpenSyn RAG Pipeline con CI/CD** | **🔄 EN PROGRESO** |
 | M13.2 | OpenSyn RAG pipeline CI/CD | Media |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
