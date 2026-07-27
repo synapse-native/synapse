@@ -1,0 +1,114 @@
+#lang: es
+
+// ============================================================
+//  std::symbolic_exec — Motor de Ejecución Simbólica (M15.3)
+// ============================================================
+//  Bindings para el motor de exploración de rutas simbólicas
+//  (symbolic_exec.c/h). Integra con ATP Engine y Proof Bridge
+//  para detección de violaciones de contratos antes del runtime.
+//
+//  Zero-telemetry: todo el proceso es local y soberano.
+// ============================================================
+
+constante SE_PATH_ACTIVE = 0
+constante SE_PATH_FEASIBLE = 1
+constante SE_PATH_INFEASIBLE = 2
+constante SE_PATH_VIOLATION = 3
+constante SE_PATH_EXPLORED = 4
+
+constante SE_VIOLATION_NONE = 0
+constante SE_VIOLATION_DIV_BY_ZERO = 1
+constante SE_VIOLATION_OVERFLOW = 2
+constante SE_VIOLATION_BOUNDS = 3
+constante SE_VIOLATION_CONTRACT = 4
+
+constante SE_EXPLORE_ALL = 0
+constante SE_EXPLORE_FEASIBLE = 1
+constante SE_EXPLORE_VIOLATIONS = 2
+
+// ============================================================
+//  Declaraciones externas C
+// ============================================================
+
+externo funcion _syn_se_iniciar(explore_mode: Entero, max_depth: Entero) -> Puntero
+externo funcion _syn_se_cerrar(engine: Puntero)
+externo funcion _syn_se_agregar_variable(engine: Puntero, nombre: Cadena, cota_inf: Decimal, cota_sup: Decimal, tipo_hint: Entero) -> Entero
+externo funcion _syn_se_agregar_restriccion(engine: Puntero, expr: Cadena, tipo: Entero) -> Entero
+externo funcion _syn_se_bifurcar(engine: Puntero, condicion: Cadena) -> Entero
+externo funcion _syn_se_verificar_alcanzabilidad(engine: Puntero) -> Entero
+externo funcion _syn_se_detectar_div_por_cero(engine: Puntero, divisor: Cadena) -> Entero
+externo funcion _syn_se_detectar_desbordamiento(engine: Puntero, expr: Cadena, lim_inf: Decimal, lim_sup: Decimal) -> Entero
+externo funcion _syn_se_detectar_fuera_limites(engine: Puntero, idx: Cadena, tamano: Entero) -> Entero
+externo funcion _syn_se_explorar(engine: Puntero) -> Entero
+externo funcion _syn_se_activar_ruta(engine: Puntero, idx: Entero) -> Entero
+externo funcion _syn_se_limpiar(engine: Puntero)
+
+// ============================================================
+//  Wrappers públicos
+// ============================================================
+
+// Inicializa el motor de ejecución simbólica
+funcion se_iniciar(modo: Entero) -> Puntero:
+    retornar _syn_se_iniciar(modo, 100)
+
+// Inicializa con profundidad máxima personalizada
+funcion se_iniciar_profundo(modo: Entero, profundidad: Entero) -> Puntero:
+    retornar _syn_se_iniciar(modo, profundidad)
+
+// Cierra el motor
+funcion se_cerrar(engine: Puntero):
+    _syn_se_cerrar(engine)
+
+// Crea una variable simbólica
+funcion se_crear_variable(engine: Puntero, nombre: Cadena, cota_inf: Decimal, cota_sup: Decimal) -> Entero:
+    retornar _syn_se_agregar_variable(engine, nombre, cota_inf, cota_sup, 0)
+
+// Crea una variable simbólica entera
+funcion se_crear_entero(engine: Puntero, nombre: Cadena, cota_inf: Entero, cota_sup: Entero) -> Entero:
+    retornar _syn_se_agregar_variable(engine, nombre, (Decimal)cota_inf, (Decimal)cota_sup, 0)
+
+// Agrega una restricción a la ruta activa
+funcion se_agregar_restriccion(engine: Puntero, expr: Cadena) -> Entero:
+    retornar _syn_se_agregar_restriccion(engine, expr, 0)
+
+// Bifurca la ruta activa
+funcion se_bifurcar(engine: Puntero, condicion: Cadena) -> Entero:
+    retornar _syn_se_bifurcar(engine, condicion)
+
+// Verifica si la ruta activa es alcanzable
+funcion se_es_alcanzable(engine: Puntero) -> Booleano:
+    retornar _syn_se_verificar_alcanzabilidad(engine) == 1
+
+// Verifica si hay riesgo de división por cero
+funcion se_hay_div_por_cero(engine: Puntero, divisor: Cadena) -> Booleano:
+    retornar _syn_se_detectar_div_por_cero(engine, divisor) == SE_VIOLATION_DIV_BY_ZERO
+
+// Verifica si hay riesgo de desbordamiento
+funcion se_hay_desbordamiento(engine: Puntero, expr: Cadena, lim_inf: Decimal, lim_sup: Decimal) -> Booleano:
+    retornar _syn_se_detectar_desbordamiento(engine, expr, lim_inf, lim_sup) == SE_VIOLATION_OVERFLOW
+
+// Verifica si hay acceso fuera de límites
+funcion se_hay_fuera_limites(engine: Puntero, idx: Cadena, tamano: Entero) -> Booleano:
+    retornar _syn_se_detectar_fuera_limites(engine, idx, tamano) == SE_VIOLATION_BOUNDS
+
+// Explora todas las rutas factibles
+funcion se_explorar(engine: Puntero) -> Entero:
+    retornar _syn_se_explorar(engine)
+
+// Activa una ruta específica
+funcion se_activar_ruta(engine: Puntero, idx: Entero) -> Entero:
+    retornar _syn_se_activar_ruta(engine, idx)
+
+// Limpia el motor
+funcion se_limpiar(engine: Puntero):
+    _syn_se_limpiar(engine)
+
+// ============================================================
+//  Funciones de alto nivel
+// ============================================================
+
+// Verifica si una expresión es segura bajo las restricciones actuales
+funcion se_es_seguro(engine: Puntero, expr: Cadena) -> Booleano:
+    si se_hay_div_por_cero(engine, expr):
+        retornar falso
+    retornar verdadero
