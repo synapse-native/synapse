@@ -255,14 +255,14 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
                           dependencias: Optional[Dict[str, str]] = None) -> Tuple[Programa, DiagnosticManager]:
     ruta_abs = os.path.abspath(ruta_archivo)
     if ruta_abs in archivos_procesados:
-        return Programa(), diag or DiagnosticManager()
+        return Programa(), DiagnosticManager()
     archivos_procesados.add(ruta_abs)
 
     try:
         with open(ruta_archivo, 'rb') as f:
             raw = f.read()
     except OSError as e:
-        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local = DiagnosticManager(ruta_archivo=ruta_archivo)
         diag_local.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,
                            Token(TokenID.EOF, 0, 0), archivo=str(e))
         return Programa(), diag_local
@@ -270,18 +270,18 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
     try:
         fuente = raw.decode('utf-8')
     except UnicodeDecodeError:
-        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local = DiagnosticManager(ruta_archivo=ruta_archivo)
         diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0),
                            mensaje="El archivo no es texto UTF-8 valido (posible binario)")
         return Programa(), diag_local
     except LookupError:
-        diag_local = diag or DiagnosticManager(ruta_archivo=ruta_archivo)
+        diag_local = DiagnosticManager(ruta_archivo=ruta_archivo)
         diag_local.reportar(ErrorCodes.ERR_LEX, Token(TokenID.EOF, 1, 0),
                            mensaje="Codificacion no soportada")
         return Programa(), diag_local
 
     lineas = fuente.split('\n')
-    diag_local = diag or DiagnosticManager(fuente_lineas=lineas, ruta_archivo=ruta_archivo)
+    diag_local = DiagnosticManager(fuente_lineas=lineas, ruta_archivo=ruta_archivo)
 
     try:
         lexer = Lexer(fuente)
@@ -300,6 +300,9 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
 
     parser = Parser(tokens, diag_local, is_no_std=lexer.is_no_std)
     ast = parser.parsear()
+
+    if diag_local.hay_errores():
+        return ast, diag_local
 
     # FASE A: save deepcopy of per-module AST before flattening imports
     # (evita bug de referencia mutable: ast.sentencias se sobrescribe luego)
@@ -341,7 +344,9 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
                 return Programa(), diag_local
             if mostrar_tokens:
                 print(f"\n[Importando: {stmt.ruta} -> {ruta_importada}]")
-            ast_importado, _ = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, diag_local, dependencias)
+            ast_importado, diag_import = compilar_desde_texto(ruta_importada, archivos_procesados, dir_base, mostrar_tokens, None, dependencias)
+            if diag_import.hay_errores():
+                return ast, diag_import
             for s in ast_importado.sentencias:
                 nuevas_sentencias.append(s)
         else:
@@ -482,6 +487,18 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             tweetnacl_obj = os.path.join(SYNAPSE_BIN, "dist", "lib", "tweetnacl.o")
             if not os.path.exists(tweetnacl_obj):
                 tweetnacl_obj = ""
+
+        # Quantum runtime modules (M16.1-M16.4) in nucleo/ directory
+        quantum_objs = []
+        for qfile in ["quantum_runtime", "quantum_err_corr", "quantum_memory", "surface_code"]:
+            qo = os.path.join(SYNAPSE_BIN, "nucleo", f"{qfile}.o")
+            if not os.path.exists(qo):
+                qo = os.path.join(SYNAPSE_BIN, "dist", "lib", f"{qfile}.o")
+                if not os.path.exists(qo):
+                    qo = os.path.join(SYNAPSE_BIN, f"{qfile}.o")
+            if os.path.exists(qo):
+                quantum_objs.append(qo)
+
         if sys.platform == "darwin":
             compiler = "clang"
             platform_flags = "-Wl,-dead_strip"
@@ -504,6 +521,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             rt_objs = f'"{synapse_rt}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
+            for qo in quantum_objs:
+                rt_objs += f' "{qo}"'
         base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I.'.strip()
         link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
 

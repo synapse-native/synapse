@@ -7,6 +7,20 @@ importar std.io
 importar std.toml
 importar std.sistema
 
+// --- Funciones de ayuda TOML (implementadas en std.toml) ---
+
+externo funcion toml_desde_entrada(entry: CacheEntry) -> NodoToml
+externo funcion toml_desde_stats(entry: CacheStats) -> NodoToml
+externo funcion a_texto(doc: NodoToml) -> texto
+externo funcion actualizar_indice(doc: NodoToml, entry: CacheEntry) -> NodoToml
+externo funcion obtener_campo(doc: NodoToml, clave: texto) -> CampoToml
+
+// CampoToml estructura para acceso a valores TOML
+estructura CampoToml:
+    tipo: entero
+    valor_str: texto
+    valor_ent: entero
+
 // --- Estructuras de Caché ---
 
 estructura CacheEntry:
@@ -117,7 +131,7 @@ funcion cache_guardar(entry: CacheEntry) -> nulo:
     
     // Serializa a TOML
     doc = toml_desde_entrada(meta)
-    escribir_archivo(_meta_path(entry.clave), doc)
+    escribir_archivo(_meta_path(entry.clave), a_texto(doc))
     
     // Actualiza índice
     _actualizar_indice(entry)
@@ -128,9 +142,7 @@ funcion _actualizar_indice(entry: CacheEntry) -> nulo:
     si existe_archivo(index_path):
         doc = desde_texto(leer_archivo(index_path))
     
-    // Agrega/actualiza entrada en el índice
-    clave = entry.clave
-    // Simplificación: el índice es un array TOML
+    // Agrega/actualiza entrada en el índice (Simplificación: el índice es un array TOML)
     doc = actualizar_indice(doc, entry)
     escribir_archivo(index_path, a_texto(doc))
 
@@ -180,18 +192,6 @@ funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
     stats.tamano_total_bytes = stats.tamano_total_bytes + tamano
     
     // Persistir
-    doc = toml_desde_entrada(stats)
-    escribir_archivo(concat(_cache_dir(), "stats.toml"), doc)
+    doc = toml_desde_stats(stats)
+    escribir_archivo(concat(_cache_dir(), "stats.toml"), a_texto(doc))
 
-// --- Funciones de ayuda TOML (stubs para ser implementadas en generator) ---
-
-externo funcion toml_desde_entrada(entry: CacheEntry) -> NodoToml
-externo funcion a_texto(doc: NodoToml) -> texto
-externo funcion actualizar_indice(doc: NodoToml, entry: CacheEntry) -> NodoToml
-externo funcion obtener_campo(doc: NodoToml, clave: texto) -> CampoToml
-
-// CampoToml estructura para acceso a valores TOML
-estructura CampoToml:
-    tipo: entero
-    valor_str: texto
-    valor_ent: entero

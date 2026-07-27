@@ -1698,6 +1698,35 @@ struct NodoToml {
     int longitud;
 };
 
+// --- Cache types (matching _synapse_shared.h for linker) ---
+
+typedef struct CacheEntry {
+    CadenaSegura clave;
+    CadenaSegura archivo_fuente;
+    CadenaSegura archivo_objeto;
+    CadenaSegura hash_fuente;
+    CadenaSegura hashes_deps;
+    CadenaSegura flags_compilacion;
+    CadenaSegura version_compilador;
+    int timestamp;
+    int tamano_bytes;
+} CacheEntry;
+
+typedef struct CacheStats {
+    int total_entradas;
+    int hits;
+    int misses;
+    int tamano_total_bytes;
+    int hits_ultima_ejecucion;
+    int misses_ultima_ejecucion;
+} CacheStats;
+
+typedef struct CampoToml {
+    int tipo;
+    CadenaSegura valor_str;
+    int valor_ent;
+} CampoToml;
+
 // --- Ed25519 Verification (via TweetNaCl) ---
 // Verifica una firma Ed25519 sobre un mensaje.
 // Parametros:
@@ -3078,6 +3107,71 @@ CadenaSegura _syn_leer_archivo(CadenaSegura ruta) {
     if (!contenido) return (CadenaSegura){0, ""};
     CadenaSegura res = {.longitud = (int)strlen(contenido), .datos = contenido};
     return res;
+}
+
+CadenaSegura _syn_obtener_env(CadenaSegura nombre) {
+    if (nombre.datos == NULL || nombre.longitud <= 0) return (CadenaSegura){0, ""};
+    char* cstr = (char*)malloc((size_t)(nombre.longitud + 1));
+    if (!cstr) return (CadenaSegura){0, ""};
+    memcpy(cstr, nombre.datos, (size_t)nombre.longitud);
+    cstr[nombre.longitud] = '\0';
+    char* val = getenv(cstr);
+    free(cstr);
+    if (!val) return (CadenaSegura){0, ""};
+    return (CadenaSegura){.longitud = (int)strlen(val), .datos = strdup(val)};
+}
+
+int _syn_existe_archivo(CadenaSegura ruta) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return 0;
+    char* cstr = (char*)malloc((size_t)(ruta.longitud + 1));
+    if (!cstr) return 0;
+    memcpy(cstr, ruta.datos, (size_t)ruta.longitud);
+    cstr[ruta.longitud] = '\0';
+    FILE* f = fopen(cstr, "rb");
+    free(cstr);
+    if (f) { fclose(f); return 1; }
+    return 0;
+}
+
+int _syn_eliminar_archivo(CadenaSegura ruta) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return -1;
+    char* cstr = (char*)malloc((size_t)(ruta.longitud + 1));
+    if (!cstr) return -1;
+    memcpy(cstr, ruta.datos, (size_t)ruta.longitud);
+    cstr[ruta.longitud] = '\0';
+    int r = remove(cstr);
+    free(cstr);
+    return r;
+}
+
+// --- Cache-to-TOML helpers (externo stubs from cache.syn) ---
+
+struct NodoToml toml_desde_entrada(struct CacheEntry entry) {
+    (void)entry;
+    struct NodoToml doc = {0};
+    doc.tipo = 1; doc.pares = NULL; doc.longitud = 0; doc.valor_str = (CadenaSegura){0, ""};
+    return doc;
+}
+
+struct NodoToml toml_desde_stats(struct CacheStats entry) {
+    (void)entry;
+    struct NodoToml doc = {0};
+    doc.tipo = 1; doc.pares = NULL; doc.longitud = 0; doc.valor_str = (CadenaSegura){0, ""};
+    return doc;
+}
+
+CadenaSegura a_texto(struct NodoToml doc) {
+    // Convert NodoToml to TOML text string
+    // Minimal stub: returns empty string
+    (void)doc;
+    return (CadenaSegura){0, ""};
+}
+
+struct NodoToml actualizar_indice(struct NodoToml doc, struct CacheEntry entry) {
+    // Update TOML index document with a new entry
+    // Minimal stub: returns doc unchanged
+    (void)entry;
+    return doc;
 }
 
 // ============================================================================

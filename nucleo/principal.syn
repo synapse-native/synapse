@@ -226,7 +226,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("")
         asm("// 5. Compilar con GCC")
         asm("char _cmd[4096];")
-        asm("snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -Wl,--gc-sections -I. synapse_unity.c synapse_rt.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);")
+        asm("snprintf(_cmd, 4096, \"gcc -O2 -Wl,--stack,8388608 -Wl,--gc-sections -I. synapse_unity.c synapse_rt.o tweetnacl.o nucleo/quantum_runtime.o nucleo/quantum_err_corr.o nucleo/quantum_memory.o nucleo/surface_code.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);")
         asm("fprintf(stderr, \"[Synapse] GCC: %s\\n\", _cmd);")
         asm("int _gcc_rc = system(_cmd);")
         asm("if (_gcc_rc != 0) {")
@@ -243,7 +243,7 @@ funcion principal() -> entero:
     cmd = argv_str(1)
     // --- Subcomando: axon (single asm block to avoid ; between if/else) ---
     inseguro:
-        asm("typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; CadenaSegura valor_str; _AxnPar* pares; int longitud; } _AxnRoot; extern _AxnRoot _toml_parse(CadenaSegura); extern void _syn_axon_limpiar_toml(void*); extern int _syn_axon_buscar_local(const char*,const char*,char*,int,char*,int);")
+        asm("typedef struct { CadenaSegura clave; void* valor; } _AxnPar; typedef struct { int tipo; CadenaSegura valor_str; _AxnPar* pares; int longitud; } _AxnRoot; extern void _syn_axon_limpiar_toml(void*); extern int _syn_axon_buscar_local(const char*,const char*,char*,int,char*,int);")
         asm("if(strcmp(cmd.datos,\"axon\")==0){ if(_argc()<3){fprintf(stderr,\"Uso: %%s axon fetch\\n\",_argv(0).datos);r=1;return r;} CadenaSegura _sub=_argv(2);")
         asm("if(strcmp(_sub.datos,\"fetch\")==0){")
         asm("    fprintf(stderr,\"[Axon] Leyendo axon.toml...\\n\");")
@@ -251,7 +251,7 @@ funcion principal() -> entero:
         asm("    fseek(_f,0,SEEK_END);long _sz=ftell(_f);fseek(_f,0,SEEK_SET);")
         asm("    char*_b=(char*)malloc((size_t)_sz+1); if(!_b){fclose(_f);fprintf(stderr,\"[Axon] ERROR: malloc fallo\\n\");r=1;return r;}")
         asm("    size_t _rd=fread(_b,1,(size_t)_sz,_f);fclose(_f);_b[_rd]=0;")
-        asm("    _AxnRoot _rt=_toml_parse((CadenaSegura){.longitud=(int)_rd,.datos=_b});")
+        asm("    NodoToml _rt_n=_toml_parse((CadenaSegura){.longitud=(int)_rd,.datos=_b}); _AxnRoot _rt; memcpy(&_rt, &_rt_n, sizeof(_AxnRoot));")
         asm("    if(_rt.tipo<0){fprintf(stderr,\"[Axon] ERROR: TOML invalido\\n\");free(_b);r=1;return r;}")
         asm("    fprintf(stderr,\"[Axon] TOML: %%d secciones\\n\",_rt.longitud);")
         asm("    // Create cache directory")

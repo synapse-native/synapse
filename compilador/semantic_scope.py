@@ -41,6 +41,12 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'canal_enviar': (['CanalConcurrencia*', 'void*'], 'nulo'),
     'canal_recibir': (['CanalConcurrencia*'], 'void*'),
     'cerrar_canal': (['CanalConcurrencia*'], 'nulo'),
+    'obtener_env': (['texto'], 'texto'),
+    'existe_archivo': (['texto'], 'booleano'),
+    'eliminar_archivo': (['texto'], 'entero'),
+    '_syn_obtener_env': (['texto'], 'texto'),
+    '_syn_existe_archivo': (['texto'], 'entero'),
+    '_syn_eliminar_archivo': (['texto'], 'entero'),
 }
 
 

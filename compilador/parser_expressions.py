@@ -136,20 +136,23 @@ class ParserExpressionsMixin(ParserBase):
         if t.tipo == TokenID.ASM:
             self._avanzar()
             self._esperar(TokenID.LPAREN)
-            tok_str = self._esperar(TokenID.STRING)
-            instruccion = tok_str.valor if tok_str else ''
+            expr = self._parsear_expresion()
             self._esperar(TokenID.RPAREN)
-            return ExprAsm(instruccion=instruccion, linea=t.linea, columna=t.columna)
+            if isinstance(expr, LiteralCadena):
+                return ExprAsm(instruccion=expr.valor, linea=t.linea, columna=t.columna)
+            return ExprAsm(expr=expr, linea=t.linea, columna=t.columna)
         if t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL):
             self._avanzar()
             nombre = t.valor if t.tipo == TokenID.IDENTIFIER else 'canal'
             if self._mirar().tipo == TokenID.LPAREN:
                 if nombre == 'tensor':
-                    return self._parsear_tensor(t)
-                if nombre == 'canal':
-                    return self._parsear_crear_canal(t)
-                return self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
-            expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
+                    expr = self._parsear_tensor(t)
+                elif nombre == 'canal':
+                    expr = self._parsear_crear_canal(t)
+                else:
+                    expr = self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
+            else:
+                expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
             while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
                 if self._mirar().tipo == TokenID.DOT:
                     self._avanzar()

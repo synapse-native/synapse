@@ -178,27 +178,31 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
     elif isinstance(nodo, SentenciaExpr):
         val = expr_a_c(ctx, nodo.expr)
         if isinstance(nodo.expr, ExprAsm):
-            trimmed = val.rstrip()
-            needs_semi = True
-            if not trimmed:
-                needs_semi = False
-            elif trimmed.endswith(';'):
-                needs_semi = False
-            elif trimmed.endswith('{'):
-                needs_semi = False
-            elif trimmed.endswith('}'):
-                last_brace = trimmed.rfind('}')
-                pre_brace = trimmed[:last_brace].rstrip()
-                if pre_brace.endswith(';'):
+            if nodo.expr.expr is not None:
+                expr_c = expr_a_c(ctx, nodo.expr.expr)
+                ctx.write_line(f"{{ CadenaSegura _asm_expr = {expr_c}; system(_asm_expr.datos); free(_asm_expr.datos); }}")
+            else:
+                trimmed = val.rstrip()
+                needs_semi = True
+                if not trimmed:
                     needs_semi = False
-                else:
-                    inner_open = trimmed.rfind('{', 0, last_brace)
-                    if inner_open < 0:
+                elif trimmed.endswith(';'):
+                    needs_semi = False
+                elif trimmed.endswith('{'):
+                    needs_semi = False
+                elif trimmed.endswith('}'):
+                    last_brace = trimmed.rfind('}')
+                    pre_brace = trimmed[:last_brace].rstrip()
+                    if pre_brace.endswith(';'):
                         needs_semi = False
-            if needs_semi:
-                val += ';'
-            val = val.replace('\n', '\\n')
-            ctx.write_line(val)
+                    else:
+                        inner_open = trimmed.rfind('{', 0, last_brace)
+                        if inner_open < 0:
+                            needs_semi = False
+                if needs_semi:
+                    val += ';'
+                val = val.replace('\n', '\\n')
+                ctx.write_line(val)
         else:
             val += ';'
             ctx.write_line(val)
@@ -299,6 +303,9 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_emit_buf[1048576];")
     ctx.write_line("extern int _G_emit_pos;")
     ctx.write_line("extern FILE* _G_fp;")
+    ctx.write_line("")
+    ctx.write_line("// PGO variables (defined in self-hosted parser module)")
+    ctx.write_line("extern int _P_ntks, _P_tpos, _P_p_err;")
     ctx.write_line("")
     ctx.write_line("extern int _G_indent;")
     ctx.write_line("")

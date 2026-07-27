@@ -321,6 +321,7 @@ class NodoCoincidir(Nodo):
 @dataclass
 class ExprAsm(Nodo):
     instruccion: str = ''
+    expr: Optional[Nodo] = None
 
 @dataclass
 class ExprCrearCanal(Nodo):

@@ -17,6 +17,7 @@ estructura ParToml:
 estructura NodoToml:
     tipo: entero          // -1=Error, 0=Nulo, 1=Tabla, 2=Cadena, 3=TablaEnLinea
     valor_str: texto
+    valor_ent: entero     // Valor como entero (parseado desde valor_str)
     pares: ParToml
     longitud: entero
 

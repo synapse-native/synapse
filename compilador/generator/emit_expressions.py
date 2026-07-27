@@ -320,6 +320,8 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return expr_a_c(ctx, nodo.expr)
 
     if isinstance(nodo, ExprAsm):
+        if nodo.expr is not None:
+            return expr_a_c(ctx, nodo.expr)
         return nodo.instruccion
 
     if isinstance(nodo, ExprCrearCanal):

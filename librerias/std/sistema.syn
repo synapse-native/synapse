@@ -11,6 +11,9 @@
 externo funcion _syn_ejecutar_comando(cmd: texto) -> entero
 externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
 externo funcion _syn_leer_archivo(ruta: texto) -> texto
+externo funcion _syn_obtener_env(nombre: texto) -> texto
+externo funcion _syn_existe_archivo(ruta: texto) -> entero
+externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
 
 funcion ejecutar_comando(cmd: texto) -> entero:
     retornar _syn_ejecutar_comando(cmd)
@@ -20,3 +23,12 @@ funcion escribir_archivo(ruta: texto, contenido: texto) -> entero:
 
 funcion leer_archivo(ruta: texto) -> texto:
     retornar _syn_leer_archivo(ruta)
+
+funcion obtener_env(nombre: texto) -> texto:
+    retornar _syn_obtener_env(nombre)
+
+funcion existe_archivo(ruta: texto) -> booleano:
+    retornar _syn_existe_archivo(ruta) == 1
+
+funcion eliminar_archivo(ruta: texto) -> entero:
+    retornar _syn_eliminar_archivo(ruta)
