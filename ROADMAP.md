@@ -378,6 +378,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | M8.5 | Cluster auto-discovery y membership service | ✅ **Completado** |
 | **M8.6** | **UDP Multicast Real para Auto-Descubrimiento** | ✅ **Completado** |
 | **M9.1** | **Grabación de Ejecución Determinista (rr-style) — heredado de v5.0** | ✅ **Completado** |
+| **M9.2** | **Breakpoints Reversibles (rp_*) — heredado de v5.0** | ✅ **Completado** |
 | M9.4 | Debugging distribuido multi-nodo | Media |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
@@ -417,6 +418,13 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ `tests/unit/test_debug.py` — 6/6 tests PASS (tras corrección léxica)
 - ✅ `_test_debug_temp/test_direct.c`, `_test_debug_temp/test_debug_manual.c` — Renombradas constantes
 - ✅ `tests/test_time_travel.c` — Renombrada constante en comentario
+
+### Certificación M9.2 (Breakpoints Reversibles — verificación):
+- ✅ `tests/test_reversible_debug.c` — 70/70 asserts PASS, 0 FAIL. 11 funciones rp_* verificadas: `rp_inicializar`, `rp_establecer_breakpoint` (3 tipos: línea/variable/tag), `rp_eliminar_breakpoint`, `rp_limpiar_breakpoints`, `rp_buscar_breakpoint`, `rp_retroceder`, `rp_posicion_actual`, `rp_ir_a_pre_error`, `rp_inspeccionar_variable`, `rp_pila_llamadas`, `rp_buscar_cambio_variable`
+- ✅ `tests/integration/test_reversible_debug.py` — 9/9 PASS (compilación, ejecución, secciones, imports, múltiples ejecuciones)
+- ✅ `librerias/std/debug.syn` — 11 bindings `externo funcion` para API rp_*
+- ✅ `synapse_rt.c` — Implementación completa de motor de replay reversible en C
+- ✅ Compilación exitosa con toolchain GCC 12.4.0
 
 ---
 
