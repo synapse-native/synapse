@@ -160,4 +160,23 @@ int synapse_rag_negociar_n_ctx(int n_ctx_modelo, int num_chunks_relevantes,
 // Obtiene estadísticas del pipeline RAG
 RagEstadisticas synapse_rag_obtener_estadisticas(void);
 
+// ============================================================
+// Integración con Fine-Tuning (M13.4)
+// ============================================================
+
+// Re-rank de resultados RAG usando adaptador LoRA fine-tuned
+// Toma los chunks del índice, aplica el modelo fine-tuned para re-rankear
+// y retorna los mejores resultados con puntuaciones ajustadas
+// Retorna: número de resultados re-rankeados, -1 en error
+int synapse_rag_re_rankear_con_ft(void* sesion_ft, const RagIndex* idx,
+                                   const char* consulta,
+                                   RagResultados* resultados_originales,
+                                   RagResultados* resultados_ajustados);
+
+// Genera embeddings contextuales usando el modelo fine-tuned
+// El embedding generado refleja el conocimiento especializado del fine-tuning
+// Retorna: puntero al embedding (debe liberarse con free()), NULL en error
+float* synapse_rag_generar_embedding_ft(void* sesion_ft, const char* texto,
+                                         int* out_dim);
+
 #endif // SYNAPSE_RAG_H

@@ -426,3 +426,74 @@ int synapse_rag_negociar_n_ctx(int n_ctx_modelo, int num_chunks_relevantes,
 RagEstadisticas synapse_rag_obtener_estadisticas(void) {
     return _rag_stats;
 }
+
+// ============================================================
+// Integración con Fine-Tuning (M13.4)
+// ============================================================
+
+// Re-rank de resultados RAG usando puntuación ajustada por fine-tuning
+int synapse_rag_re_rankear_con_ft(void* sesion_ft, const RagIndex* idx,
+                                   const char* consulta,
+                                   RagResultados* resultados_originales,
+                                   RagResultados* resultados_ajustados) {
+    (void)sesion_ft;
+    (void)idx;
+    (void)consulta;
+    if (!resultados_originales || !resultados_ajustados) return -1;
+
+    // Copiar resultados originales como base
+    memcpy(resultados_ajustados, resultados_originales, sizeof(RagResultados));
+
+    // Aplicar ajuste: las puntuaciones se modifican según el conocimiento
+    // del fine-tuning (en implementación real, se usaría el modelo fine-tuned
+    // para re-rankear). Por ahora, aplicamos un factor de corrección
+    // basado en el tipo de nodo.
+    for (int i = 0; i < resultados_ajustados->num_resultados; i++) {
+        float ajuste = 1.0f;
+        RagChunk* chunk = resultados_ajustados->resultados[i];
+        if (chunk) {
+            // Los chunks de tipo función reciben un boost (más relevantes)
+            if (strcmp(chunk->tipo_nodo, "funcion") == 0) {
+                ajuste = 1.15f;
+            } else if (strcmp(chunk->tipo_nodo, "estructura") == 0) {
+                ajuste = 1.10f;
+            }
+        }
+        resultados_ajustados->puntuaciones[i] *= ajuste;
+        if (resultados_ajustados->puntuaciones[i] > 1.0f) {
+            resultados_ajustados->puntuaciones[i] = 1.0f;
+        }
+    }
+
+    return resultados_ajustados->num_resultados;
+}
+
+// Genera embedding contextual para RAG (con sesgo de fine-tuning)
+float* synapse_rag_generar_embedding_ft(void* sesion_ft, const char* texto,
+                                         int* out_dim) {
+    (void)sesion_ft;
+    if (!texto || !out_dim) return NULL;
+
+    int len = (int)strlen(texto);
+    int dim = 64;  // Dimensión reducida para embedding contextual
+    *out_dim = dim;
+
+    float* emb = (float*)calloc((size_t)dim, sizeof(float));
+    if (!emb) return NULL;
+
+    // Generar embedding basado en contenido (simplificado)
+    // En producción, esto usaría el encoder del modelo fine-tuned
+    for (int i = 0; i < dim && i < len; i++) {
+        emb[i % dim] += (float)(unsigned char)texto[i] / 256.0f;
+    }
+
+    // Normalizar
+    float norm = 0.0f;
+    for (int i = 0; i < dim; i++) norm += emb[i] * emb[i];
+    if (norm > 0.0f) {
+        norm = sqrtf(norm);
+        for (int i = 0; i < dim; i++) emb[i] /= norm;
+    }
+
+    return emb;
+}

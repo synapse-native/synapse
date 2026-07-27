@@ -134,6 +134,109 @@ funcion obtener_n_heads(ctx: puntero) -> entero:
     retornar _syn_modelo_obtener_n_heads(ctx)
 
 // ============================================================
+// Declaraciones externas de Fine-Tuning (implementadas en fine_tuning.c)
+// ============================================================
+
+// --- Ciclo de vida de sesión de fine-tuning ---
+externo funcion _syn_ft_iniciar(ctx: puntero, lr: decimal, rank: entero,
+    alpha: decimal) -> puntero
+externo funcion _syn_ft_cerrar(sesion: puntero) -> nulo
+
+// --- Gestión de adaptadores LoRA ---
+externo funcion _syn_ft_agregar_adaptador(sesion: puntero,
+    capa_idx: entero, tipo_capa: entero, rank: entero,
+    alpha: decimal, dim_in: entero, dim_out: entero) -> entero
+
+// --- Dataset ---
+externo funcion _syn_ft_agregar_ejemplo(sesion: puntero,
+    tokens_entrada: puntero, len_in: entero,
+    tokens_salida: puntero, len_out: entero,
+    peso: decimal) -> entero
+
+// --- Entrenamiento ---
+externo funcion _syn_ft_paso_entrenamiento(sesion: puntero) -> decimal
+externo funcion _syn_ft_entrenar(sesion: puntero) -> decimal
+externo funcion _syn_ft_evaluar_perdida(sesion: puntero, len_salida: entero,
+    target_id: entero) -> decimal
+
+// --- Persistencia ---
+externo funcion _syn_ft_guardar_pesos(sesion: puntero, ruta: texto) -> entero
+externo funcion _syn_ft_cargar_pesos(sesion: puntero, ruta: texto) -> entero
+
+// --- Control de adaptadores ---
+externo funcion _syn_ft_aplicar_adaptadores(sesion: puntero) -> entero
+externo funcion _syn_ft_remover_adaptadores(sesion: puntero) -> nulo
+
+// --- Estadísticas ---
+externo funcion _syn_ft_obtener_perdida(sesion: puntero) -> decimal
+externo funcion _syn_ft_obtener_paso(sesion: puntero) -> entero
+
+// ============================================================
+// Wrappers públicos de Fine-Tuning (Synapse idiomático)
+// ============================================================
+
+// Inicia una sesión de fine-tuning con la configuración dada
+funcion ft_iniciar(ctx: puntero, lr: decimal, rank: entero, alpha: decimal) -> puntero:
+    retornar _syn_ft_iniciar(ctx, lr, rank, alpha)
+
+// Cierra una sesión de fine-tuning y libera recursos
+funcion ft_cerrar(sesion: puntero) -> nulo:
+    _syn_ft_cerrar(sesion)
+    retornar
+
+// Agrega un adaptador LoRA para una capa específica
+funcion ft_agregar_adaptador(sesion: puntero, capa_idx: entero,
+    tipo_capa: entero, rank: entero, alpha: decimal,
+    dim_in: entero, dim_out: entero) -> entero:
+    retornar _syn_ft_agregar_adaptador(sesion, capa_idx, tipo_capa,
+        rank, alpha, dim_in, dim_out)
+
+// Agrega un ejemplo al dataset de fine-tuning
+funcion ft_agregar_ejemplo(sesion: puntero, tokens_in: puntero,
+    len_in: entero, tokens_out: puntero, len_out: entero,
+    peso: decimal) -> entero:
+    retornar _syn_ft_agregar_ejemplo(sesion, tokens_in, len_in,
+        tokens_out, len_out, peso)
+
+// Ejecuta un paso de entrenamiento
+funcion ft_paso_entrenamiento(sesion: puntero) -> decimal:
+    retornar _syn_ft_paso_entrenamiento(sesion)
+
+// Ejecuta entrenamiento completo (todas las épocas)
+funcion ft_entrenar(sesion: puntero) -> decimal:
+    retornar _syn_ft_entrenar(sesion)
+
+// Evalúa pérdida sin actualizar pesos
+funcion ft_evaluar_perdida(sesion: puntero, len_salida: entero,
+    target_id: entero) -> decimal:
+    retornar _syn_ft_evaluar_perdida(sesion, len_salida, target_id)
+
+// Guarda pesos de adaptadores a archivo
+funcion ft_guardar_pesos(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_ft_guardar_pesos(sesion, ruta)
+
+// Carga pesos de adaptadores desde archivo
+funcion ft_cargar_pesos(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_ft_cargar_pesos(sesion, ruta)
+
+// Aplica adaptadores a la inferencia del modelo
+funcion ft_aplicar_adaptadores(sesion: puntero) -> entero:
+    retornar _syn_ft_aplicar_adaptadores(sesion)
+
+// Remueve adaptadores (restaura modelo base)
+funcion ft_remover_adaptadores(sesion: puntero) -> nulo:
+    _syn_ft_remover_adaptadores(sesion)
+    retornar
+
+// Obtiene la pérdida actual
+funcion ft_perdida_actual(sesion: puntero) -> decimal:
+    retornar _syn_ft_obtener_perdida(sesion)
+
+// Obtiene el paso actual
+funcion ft_paso_actual(sesion: puntero) -> entero:
+    retornar _syn_ft_obtener_paso(sesion)
+
+// ============================================================
 // Funciones helper de alto nivel
 // ============================================================
 
