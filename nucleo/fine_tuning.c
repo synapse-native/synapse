@@ -40,13 +40,6 @@ static void init_he(float* m, int filas, int cols) {
     }
 }
 
-// Producto punto de dos vectores
-static float dot_product(const float* a, const float* b, int n) {
-    double s = 0.0;
-    for (int i = 0; i < n; i++) s += (double)a[i] * (double)b[i];
-    return (float)s;
-}
-
 // Norma L2 de un vector
 static float l2_norm(const float* v, int n) {
     double s = 0.0;
@@ -83,47 +76,6 @@ static float cross_entropy_loss(const float* logits, int vocab_size, int target_
     // log(softmax(target)) = logits[target] - max_val - log(sum_exp)
     double log_prob = (double)logits[target_id] - (double)max_val - log(sum_exp);
     return (float)(-log_prob);
-}
-
-// ============================================================
-// Forward pass con LoRA
-// ============================================================
-
-// Aplica el adaptador LoRA a una proyección lineal:
-//   salida[i] = entrada[i] + alpha * (B @ (A @ entrada[i])) / rank
-//   Donde entrada y salida son vectores 1D de tamaño dim
-static void aplicar_lora(float* salida, const float* entrada, int dim,
-                          const LoRAAdapter* adapter) {
-    if (!salida || !entrada || !adapter || !adapter->activo) return;
-    if (adapter->rank <= 0 || adapter->alpha <= 0.0f) return;
-
-    int r = adapter->rank;
-    int d_in = adapter->dim_in;
-    int d_out = adapter->dim_out;
-    float scale = adapter->alpha / (float)r;
-
-    // h = A @ entrada: [rank] = [rank x d_in] @ [d_in]
-    // Ya que entrada es 1D y A es [rank x d_in]:
-    // h[j] = sum_k A[j][k] * entrada[k] para j in [0, rank)
-    float* h = (float*)malloc((size_t)r * sizeof(float));
-    if (!h) return;
-    for (int j = 0; j < r; j++) {
-        h[j] = 0.0f;
-        for (int k = 0; k < d_in && k < dim; k++) {
-            h[j] += adapter->A[j * d_in + k] * entrada[k];
-        }
-    }
-
-    // delta = B @ h: [d_out] = [d_out x rank] @ [rank]
-    // delta[i] = sum_j B[i][j] * h[j] para i in [0, d_out)
-    for (int i = 0; i < d_out && i < dim; i++) {
-        float delta = 0.0f;
-        for (int j = 0; j < r; j++) {
-            delta += adapter->B[i * r + j] * h[j];
-        }
-        salida[i] += scale * delta;
-    }
-    free(h);
 }
 
 // ============================================================
@@ -571,6 +523,7 @@ float _syn_ft_entrenar(void* sesion) {
 
 float _syn_ft_evaluar_perdida(void* sesion, int len_salida, int target_id) {
     (void)len_salida;
+    (void)target_id;
     // Version simplificada para binding Synapse: evalua perdida en un token
     FTSession* s = (FTSession*)sesion;
     if (!s || s->dataset.num_ejemplos <= 0) return -1.0f;

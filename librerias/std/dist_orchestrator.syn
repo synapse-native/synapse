@@ -1,0 +1,125 @@
+#lang: es
+// std.dist_orchestrator — Orquestador de Entrenamiento Distribuido
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Arquitectura:
+//   - Partición inteligente de datasets para distribución en clúster
+//   - Asignación dinámica de workers del clúster (M8.x)
+//   - Coordinación de épocas de entrenamiento distribuidas
+//   - Integración nativa con std.modelo (fine-tuning + destilación)
+//   - Tolerancia a fallos con reintentos y redistribución
+//
+// Zero-telemetry: comunicación cifrada, soberanía de datos locales.
+//
+// Uso desde Synapse:
+//   importar std.dist_orchestrator
+//   sesion = orch_iniciar(10, 0.001, 0, 0)
+//   orch_crear_particiones(sesion, 10000, nulo)
+//   orch_asignar_workers(sesion, workers, 4, capacidades)
+//   perdida = orch_entrenar(sesion)
+//   orch_guardar(sesion, "orquestador.bin")
+//   orch_cerrar(sesion)
+
+// ============================================================
+// Declaraciones externas (implementadas en dist_orchestrator.c)
+// ============================================================
+
+// --- Ciclo de vida ---
+externo funcion _syn_orch_iniciar(epochs: entero, lr: decimal,
+    assign_mode: entero, sync_mode: entero) -> puntero
+externo funcion _syn_orch_cerrar(sesion: puntero) -> nulo
+
+// --- Partición de dataset ---
+externo funcion _syn_orch_crear_particiones(sesion: puntero,
+    dataset_size: entero, pesos: puntero) -> entero
+
+// --- Asignación de workers ---
+externo funcion _syn_orch_asignar_workers(sesion: puntero,
+    workers: puntero, n: entero, capacidades: puntero) -> entero
+
+// --- Entrenamiento ---
+externo funcion _syn_orch_ejecutar_epoch(sesion: puntero) -> decimal
+externo funcion _syn_orch_entrenar(sesion: puntero) -> decimal
+
+// --- Tolerancia a fallos ---
+externo funcion _syn_orch_manejar_fallo(sesion: puntero,
+    worker_id: texto) -> entero
+externo funcion _syn_orch_redistribuir(sesion: puntero) -> entero
+
+// --- Integración ---
+externo funcion _syn_orch_conectar_federated(sesion: puntero,
+    fed: puntero) -> entero
+externo funcion _syn_orch_conectar_ft(sesion: puntero,
+    ft: puntero) -> entero
+externo funcion _syn_orch_conectar_kd(sesion: puntero,
+    kd: puntero) -> entero
+
+// --- Persistencia ---
+externo funcion _syn_orch_guardar(sesion: puntero,
+    ruta: texto) -> entero
+externo funcion _syn_orch_cargar(sesion: puntero,
+    ruta: texto) -> entero
+
+// ============================================================
+// Wrappers públicos (Synapse idiomático)
+// ============================================================
+
+// Inicia el orquestador distribuido
+funcion orch_iniciar(epochs: entero, lr: decimal,
+    assign_mode: entero, sync_mode: entero) -> puntero:
+    retornar _syn_orch_iniciar(epochs, lr, assign_mode, sync_mode)
+
+// Cierra el orquestador y libera recursos
+funcion orch_cerrar(sesion: puntero) -> nulo:
+    _syn_orch_cerrar(sesion)
+    retornar
+
+// Crea particiones del dataset global
+funcion orch_crear_particiones(sesion: puntero,
+    dataset_size: entero, pesos: puntero) -> entero:
+    retornar _syn_orch_crear_particiones(sesion, dataset_size, pesos)
+
+// Asigna workers a particiones
+funcion orch_asignar_workers(sesion: puntero,
+    workers: puntero, n: entero, capacidades: puntero) -> entero:
+    retornar _syn_orch_asignar_workers(sesion, workers, n, capacidades)
+
+// Ejecuta una época de entrenamiento distribuido
+funcion orch_ejecutar_epoch(sesion: puntero) -> decimal:
+    retornar _syn_orch_ejecutar_epoch(sesion)
+
+// Ejecuta entrenamiento distribuido completo
+funcion orch_entrenar(sesion: puntero) -> decimal:
+    retornar _syn_orch_entrenar(sesion)
+
+// Maneja fallo de un worker
+funcion orch_manejar_fallo(sesion: puntero,
+    worker_id: texto) -> entero:
+    retornar _syn_orch_manejar_fallo(sesion, worker_id)
+
+// Redistribuye particiones de workers fallados
+funcion orch_redistribuir(sesion: puntero) -> entero:
+    retornar _syn_orch_redistribuir(sesion)
+
+// Conecta con una sesión federada (M14.1)
+funcion orch_conectar_federated(sesion: puntero,
+    fed: puntero) -> entero:
+    retornar _syn_orch_conectar_federated(sesion, fed)
+
+// Conecta con una sesión de fine-tuning LoRA
+funcion orch_conectar_ft(sesion: puntero,
+    ft: puntero) -> entero:
+    retornar _syn_orch_conectar_ft(sesion, ft)
+
+// Conecta con una sesión de destilación
+funcion orch_conectar_kd(sesion: puntero,
+    kd: puntero) -> entero:
+    retornar _syn_orch_conectar_kd(sesion, kd)
+
+// Guarda el estado del orquestador a archivo
+funcion orch_guardar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_orch_guardar(sesion, ruta)
+
+// Carga el estado del orquestador desde archivo
+funcion orch_cargar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_orch_cargar(sesion, ruta)

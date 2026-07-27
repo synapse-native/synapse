@@ -404,24 +404,25 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M13.4** | **Fine-Tuning Pipeline (LoRA local)** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.5** | **Quantization & Deployment Pipeline** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.6** | **Model Distillation (Teacher→Student via KL)** | **✅ COMPLETADO Y VERIFICADO** |
-| **M14.1** | **Federated Learning Runtime (FedAvg + Ed25519)** | **🔄 EN PROGRESO** |
+| **M14.1** | **Federated Learning Runtime (FedAvg + Ed25519)** | **✅ COMPLETADO Y VERIFICADO** |
+| **M14.2** | **Distributed Training Orchestrator** | **🔄 EN PROGRESO** |
 
 ---
 
 ## 9. ROADMAP v5.2 — EN PROGRESO (Fase 14)
 
-### M14.1: Federated Learning Runtime — EN PROGRESO
+### M14.2: Distributed Training Orchestrator — EN PROGRESO
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
-| **M13.6** | Destilación de conocimiento (Knowledge Distillation) teacher→student | ✅ Completado y Verificado | KL divergence sobre logits, pérdida combinada soft+hard, persistencia de sesión, layer reduction por interpolación lineal, ~100 tests passing, compilación -Werror 0 errores |
-| **M14.1** | Aprendizaje Federado (FedAvg + Ed25519) sobre red de nodos M8.x | 🔄 En Progreso | FedAvg estándar y ponderado, firmas Ed25519 para integridad, fault tolerance con timeouts, persistencia binaria, integración con fine-tuning LoRA + destilación, ~100 tests passing |
+| **M13.6** | Destilación de conocimiento (KD) teacher→student | ✅ Completado y Verificado | KL divergence, pérdida combinada soft+hard, persistencia, layer reduction, ~100 tests passing |
+| **M14.1** | Aprendizaje Federado (FedAvg + Ed25519) | ✅ Completado y Verificado | FedAvg estándar y ponderado, firmas simuladas Ed25519, fault tolerance, ~100 tests passing |
+| **M14.2** | Orquestador de Entrenamiento Distribuido | 🔄 En Progreso | Partición inteligente de datasets, asignación dinámica de workers (round-robin/capacidad), tolerancia a fallos (RETRY/REDISTRIBUTE/IGNORE), integración con fine-tuning LoRA + destilación, persistencia ORCH, ~100 tests passing |
 
 **Próximos hitos v5.2 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| **M14.1** | **Federated Learning Runtime** | **🔄 EN PROGRESO** |
-| M14.2 | Distributed Training Orchestrator | ⬜ Pendiente |
+| **M14.2** | **Distributed Training Orchestrator** | **🔄 EN PROGRESO** |
 | M15.1 | Formal Proof Assistant (Coq/Lean bridge) | ⬜ Pendiente |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
