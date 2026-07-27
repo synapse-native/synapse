@@ -1,0 +1,259 @@
+#lang: es
+// nucleo/optimizador_ia.syn — Optimizador de Código Asistido por IA
+// ================================================================
+// Submódulo opcional del compilador que utiliza el motor de modelos
+// locales (std.modelo) para analizar nodos del AST y proponer:
+//   - Sugerencias de refactorización
+//   - Detección de patrones ineficientes
+//   - Inyección de contratos lógicos automáticos
+//   - Análisis de complejidad ciclomática
+//
+// Integración:
+//   El optimizador es invocado como pasada opcional después del
+//   análisis semántico, antes de la generación de código.
+//
+// Zero-telemetry: toda la inferencia ocurre localmente via std.modelo.
+// ================================================================
+
+importar std.modelo
+
+// ============================================================
+// Constantes de análisis
+// ============================================================
+
+constante MAX_LONGITUD_SUGERENCIA = 512
+constante COMPLEJIDAD_MAXIMA_RECOMENDADA = 10
+constante LONGITUD_FUNCION_MAXIMA_RECOMENDADA = 50
+
+// ============================================================
+// Tipos de datos para las sugerencias del optimizador
+// ============================================================
+
+tipo TipoSugerencia = entero
+constante SUGERENCIA_REFACTOR = 0
+constante SUGERENCIA_CONTRATO = 1
+constante SUGERENCIA_RENDIMIENTO = 2
+constante SUGERENCIA_SEGURIDAD = 3
+constante SUGERENCIA_SIMPLIFICACION = 4
+
+constante MAX_SUGERENCIAS = 32
+
+estructura Sugerencia:
+    tipo: TipoSugerencia
+    linea: entero
+    columna: entero
+    mensaje: texto
+    confianza: decimal  // 0.0 a 1.0
+
+estructura AnalisisAST:
+    archivo: texto
+    num_funciones: entero
+    num_lineas: entero
+    complejidad_maxima: entero
+    sugerencia_actual: entero  // contador de sugerencias activas
+    sugerencias_arr: puntero   // puntero a arreglo Sugerencia[MAX_SUGERENCIAS]
+
+// Inicializa una estructura de análisis vacía
+funcion inicializar_analisis(archivo: texto) -> AnalisisAST:
+    r: AnalisisAST
+    r.archivo = archivo
+    r.num_funciones = 0
+    r.num_lineas = 0
+    r.complejidad_maxima = 0
+    r.sugerencia_actual = 0
+    inseguro:
+        asm("AnalisisAST _r; memset(&_r, 0, sizeof(_r));")
+        asm("// alloc fixed array of suggestions via pool")
+        asm("extern void* pool_alloc(size_t);")
+        asm("_r.sugerencias_arr = pool_alloc(MAX_SUGERENCIAS * sizeof(struct { int t; int l; int c; char m[256]; float conf; }));")
+        asm("// copy fields")
+        asm("_r.archivo = archivo;")
+        asm("r = _r;")
+    retornar r
+
+// Añade una sugerencia al análisis (usando asm() para acceso a memoria)
+funcion agregar_sugerencia(analisis: &mut AnalisisAST,
+    tipo: TipoSugerencia, linea: entero, columna: entero,
+    mensaje: texto, confianza: decimal) -> nulo:
+    inseguro:
+        asm("if (analisis->sugerencia_actual >= MAX_SUGERENCIAS) return;")
+        asm("struct { int t; int l; int c; char m[256]; float conf; }* _arr =")
+        asm("    (struct { int t; int l; int c; char m[256]; float conf; }*)analisis->sugerencias_arr;")
+        asm("int _idx = analisis->sugerencia_actual++;")
+        asm("_arr[_idx].t = tipo;")
+        asm("_arr[_idx].l = linea;")
+        asm("_arr[_idx].c = columna;")
+        asm("_arr[_idx].conf = (float)confianza;")
+        asm("if (mensaje.datos) { strncpy(_arr[_idx].m, mensaje.datos, 255); _arr[_idx].m[255] = 0; }")
+    retornar
+
+// ============================================================
+// Detectores de patrones (análisis local sin modelo)
+// ============================================================
+
+// Detecta funciones con complejidad ciclomática alta
+// mediante conteo de bifurcaciones en el AST
+funcion detectar_complejidad_alta(analisis: &mut AnalisisAST,
+    num_condicionales: entero, num_bucles: entero,
+    linea: entero, columna: entero, nombre_fn: texto) -> nulo:
+    complejidad = 1 + num_condicionales + num_bucles
+    si complejidad > analisis.complejidad_maxima:
+        analisis.complejidad_maxima = complejidad
+
+    si complejidad > COMPLEJIDAD_MAXIMA_RECOMENDADA:
+        mensaje = "La funcion '" + nombre_fn
+        mensaje = mensaje + "' tiene complejidad ciclomatica "
+        inseguro:
+            asm("char _num[16]; snprintf(_num, 16, \"%d\", complejidad);")
+            asm("mensaje = concat(mensaje, (CadenaSegura){.longitud=(int)strlen(_num), .datos=strdup(_num)});")
+        mensaje = mensaje + ". Considera dividirla en funciones mas pequenas."
+        agregar_sugerencia(analisis, SUGERENCIA_REFACTOR,
+            linea, columna, mensaje, 0.85)
+    retornar
+
+// Detecta funciones excesivamente largas
+funcion detectar_funcion_larga(analisis: &mut AnalisisAST,
+    num_lineas: entero, linea: entero, columna: entero,
+    nombre_fn: texto) -> nulo:
+    si num_lineas > LONGITUD_FUNCION_MAXIMA_RECOMENDADA:
+        mensaje = "La funcion '" + nombre_fn + "' tiene "
+        inseguro:
+            asm("char _num[16]; snprintf(_num, 16, \"%d\", num_lineas);")
+            asm("mensaje = concat(mensaje, (CadenaSegura){.longitud=(int)strlen(_num), .datos=strdup(_num)});")
+        mensaje = mensaje + " lineas. Considera refactorizarla."
+        agregar_sugerencia(analisis, SUGERENCIA_REFACTOR,
+            linea, columna, mensaje, 0.75)
+    retornar
+
+// Detecta bucles potencialmente infinitos (sin condición de salida visible)
+funcion detectar_bucle_sin_cota(analisis: &mut AnalisisAST,
+    es_bucle_infinito: entero, linea: entero, columna: entero) -> nulo:
+    si es_bucle_infinito:
+        agregar_sugerencia(analisis, SUGERENCIA_SEGURIDAD,
+            linea, columna,
+            "Bucle potencialmente infinito detectado. "
+            + "Agrega una condicion de salida explicita.",
+            0.90)
+    retornar
+
+// Detecta código muerto después de retornos incondicionales
+funcion detectar_codigo_muerto(analisis: &mut AnalisisAST,
+    hay_codigo_muerto: entero, linea: entero, columna: entero) -> nulo:
+    si hay_codigo_muerto:
+        agregar_sugerencia(analisis, SUGERENCIA_SIMPLIFICACION,
+            linea, columna,
+            "Codigo muerto detectado despues de retorno incondicional.",
+            0.95)
+    retornar
+
+// ============================================================
+// Inyección de contratos lógicos
+// ============================================================
+
+// Genera una sugerencia de contrato lógico (requiere/garantiza)
+// basada en el análisis de tipos y condiciones en la función
+funcion sugerir_contrato(analisis: &mut AnalisisAST,
+    nombre_fn: texto, param_nombres: Array<texto>,
+    param_tipos: Array<texto>, tiene_requiere: entero,
+    tiene_garantiza: entero, linea: entero) -> nulo:
+    si tiene_requiere == 0:
+        mensaje = "La funcion '" + nombre_fn
+        mensaje = mensaje + "' no tiene precondicion 'requiere'. "
+        mensaje = mensaje + "Considera agregar: requiere param > 0"
+        agregar_sugerencia(analisis, SUGERENCIA_CONTRATO,
+            linea, 0, mensaje, 0.65)
+
+    si tiene_garantiza == 0:
+        mensaje = "La funcion '" + nombre_fn
+        mensaje = mensaje + "' no tiene postcondicion 'garantiza'. "
+        mensaje = mensaje + "Considera agregar: garantiza resultado > 0"
+        agregar_sugerencia(analisis, SUGERENCIA_CONTRATO,
+            linea, 0, mensaje, 0.60)
+    retornar
+
+// ============================================================
+// Análisis de rendimiento
+// ============================================================
+
+// Detecta patrones de rendimiento subóptimos
+funcion detectar_rendimiento(analisis: &mut AnalisisAST,
+    hay_alloc_en_bucle: entero, hay_io_en_bucle: entero,
+    hay_operacion_costosa: entero, linea: entero, columna: entero) -> nulo:
+    si hay_alloc_en_bucle:
+        agregar_sugerencia(analisis, SUGERENCIA_RENDIMIENTO,
+            linea, columna,
+            "Asignacion de memoria dentro de bucle detectada. "
+            + "Mueve la reserva fuera del bucle para mejorar rendimiento.",
+            0.85)
+
+    si hay_io_en_bucle:
+        agregar_sugerencia(analisis, SUGERENCIA_RENDIMIENTO,
+            linea, columna,
+            "Operacion de E/S dentro de bucle detectada. "
+            + "Considera bufferizar la salida.",
+            0.80)
+
+    si hay_operacion_costosa:
+        agregar_sugerencia(analisis, SUGERENCIA_RENDIMIENTO,
+            linea, columna,
+            "Operacion potencialmente costosa detectada. "
+            + "Evalua si puede ser cacheada o simplificada.",
+            0.70)
+    retornar
+
+// ============================================================
+// Función principal de optimización (con modelo IA)
+// ============================================================
+
+// Analiza el código fuente y genera sugerencias usando el modelo local
+// Args:
+//   ctx: contexto del modelo (de std.modelo.cargar_modelo)
+//   codigo_fuente: texto completo del código a analizar
+// Retorna:
+//   Estructura AnalisisAST con sugerencias y métricas
+funcion analizar_codigo(ctx: puntero, codigo_fuente: texto) -> AnalisisAST:
+    resultado = inicializar_analisis("input.syn")
+
+    si ctx == nulo:
+        agregar_sugerencia(&resultado, SUGERENCIA_REFACTOR,
+            0, 0, "Modelo no disponible. Usando analisis estatico local.", 1.0)
+        retornar resultado
+
+    // Construir prompt para el modelo
+    prompt = "Eres un optimizador de codigo Synapse. "
+    prompt = prompt + "Analiza el siguiente codigo y sugiere "
+    prompt = prompt + "mejoras de rendimiento, seguridad y legibilidad. "
+    prompt = prompt + "Responde SOLO con sugerencias concisas:\n\n"
+    prompt = prompt + codigo_fuente
+
+    // Generar análisis con el modelo local
+    respuesta = _syn_modelo_generar_texto(ctx, prompt, 200, 0.5, 40, 0.9)
+
+    si respuesta != "":
+        agregar_sugerencia(&resultado, SUGERENCIA_REFACTOR,
+            0, 0, respuesta, 0.70)
+
+    retornar resultado
+
+// ============================================================
+// Función de inyección automática de contratos
+// ============================================================
+
+// Sugiere contratos lógicos (requiere/garantiza) para una función
+// usando el modelo local para analizar la firma y el cuerpo
+funcion sugerir_contratos_ia(ctx: puntero, codigo_fn: texto,
+    nombre_fn: texto, resultado: &mut AnalisisAST) -> nulo:
+    si ctx == nulo:
+        retornar
+
+    prompt = "Analiza la funcion '" + nombre_fn
+    prompt = prompt + "' y sugiere precondiciones (requiere) "
+    prompt = prompt + "y postcondiciones (garantiza) formales:\n"
+    prompt = prompt + codigo_fn
+
+    respuesta = _syn_modelo_generar_texto(ctx, prompt, 100, 0.4, 40, 0.8)
+
+    si respuesta != "":
+        agregar_sugerencia(resultado, SUGERENCIA_CONTRATO,
+            0, 0, respuesta, 0.60)
+    retornar

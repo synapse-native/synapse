@@ -1,6 +1,13 @@
 #lang: es
-// std.modelo — Inferencia de modelos de lenguaje (transformers)
+// std.modelo — Inferencia de modelos de lenguaje locales (transformers GGUF)
 // Integrante de la Biblioteca Estandar de Synapse.
+//
+// Arquitectura:
+//   - Carga segura de pesos GGUF via memory-mapped I/O
+//   - Gestión determinista de memoria (sin GC)
+//   - Zero-telemetry: inferencia completamente local
+//   - BPE tokenizer integrado
+//   - KV cache optimizada para inferencia autoregresiva
 //
 // Uso desde Synapse:
 //   importar std.modelo
@@ -9,14 +16,52 @@
 //       logits = evaluar(ctx, token_id)
 //       token = argmax(logits)
 //       texto = decodificar_token(ctx, token)
+//       // O directamente:
+//       respuesta = generar_texto(ctx, "Hola mundo", 100, 0.7, 40, 0.9)
 //   cerrar_modelo(ctx)
 
+// ============================================================
+// Declaraciones externas (implementadas en synapse_rt.c)
+// ============================================================
+
+// --- Carga y ciclo de vida ---
 externo funcion _syn_modelo_cargar(ruta: texto) -> puntero
 externo funcion _syn_modelo_cerrar(ctx: puntero) -> nulo
+
+// --- Evaluación e inferencia token a token ---
 externo funcion _syn_modelo_evaluar(ctx: puntero, token_id: entero) -> tensor
-externo funcion _syn_modelo_generar(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero
+externo funcion _syn_modelo_generar(ctx: puntero, token_id: entero,
+    temperatura: decimal, top_k: entero, top_p: decimal) -> entero
+
+// --- Contexto (n_past, max_seq_len) ---
 externo funcion _syn_modelo_n_past(ctx: puntero) -> entero
 externo funcion _syn_modelo_reiniciar(ctx: puntero) -> nulo
+externo funcion _syn_modelo_obtener_n_ctx(ctx: puntero) -> entero
+externo funcion _syn_modelo_establecer_n_ctx(ctx: puntero, max_tokens: entero) -> nulo
+
+// --- Tokenización ---
+externo funcion _syn_modelo_decodificar_token(ctx: puntero, token_id: entero) -> texto
+externo funcion _syn_modelo_vocab_tamano(ctx: puntero) -> entero
+externo funcion _syn_modelo_codificar_contar(ctx: puntero, texto: texto) -> entero
+externo funcion _syn_modelo_codificar_obtener(ctx: puntero, indice: entero) -> entero
+
+// --- Generación de texto de alto nivel ---
+// Procesa un prompt completo y genera texto autoregresivamente
+externo funcion _syn_modelo_generar_texto(ctx: puntero, prompt: texto,
+    max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto
+
+// --- Metadatos del modelo ---
+externo funcion _syn_modelo_obtener_metadato(ctx: puntero, clave: texto) -> texto
+externo funcion _syn_modelo_obtener_arquitectura(ctx: puntero) -> texto
+externo funcion _syn_modelo_obtener_n_layers(ctx: puntero) -> entero
+externo funcion _syn_modelo_obtener_n_embd(ctx: puntero) -> entero
+externo funcion _syn_modelo_obtener_n_heads(ctx: puntero) -> entero
+
+// ============================================================
+// Wrappers públicos (Synapse idiomático)
+// ============================================================
+
+// --- Carga y ciclo de vida ---
 
 funcion cargar_modelo(ruta: texto) -> puntero:
     retornar _syn_modelo_cargar(ruta)
@@ -25,11 +70,16 @@ funcion cerrar_modelo(ctx: puntero) -> nulo:
     _syn_modelo_cerrar(ctx)
     retornar
 
+// --- Evaluación e inferencia ---
+
 funcion evaluar(ctx: puntero, token_id: entero) -> tensor:
     retornar _syn_modelo_evaluar(ctx, token_id)
 
-funcion generar_token(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
+funcion generar_token(ctx: puntero, token_id: entero,
+    temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
     retornar _syn_modelo_generar(ctx, token_id, temperatura, top_k, top_p)
+
+// --- Gestión de contexto ---
 
 funcion n_past(ctx: puntero) -> entero:
     retornar _syn_modelo_n_past(ctx)
@@ -38,10 +88,14 @@ funcion reiniciar(ctx: puntero) -> nulo:
     _syn_modelo_reiniciar(ctx)
     retornar
 
-externo funcion _syn_modelo_decodificar_token(ctx: puntero, token_id: entero) -> texto
-externo funcion _syn_modelo_vocab_tamano(ctx: puntero) -> entero
-externo funcion _syn_modelo_codificar_contar(ctx: puntero, texto: texto) -> entero
-externo funcion _syn_modelo_codificar_obtener(ctx: puntero, indice: entero) -> entero
+funcion obtener_n_ctx(ctx: puntero) -> entero:
+    retornar _syn_modelo_obtener_n_ctx(ctx)
+
+funcion establecer_n_ctx(ctx: puntero, max_tokens: entero) -> nulo:
+    _syn_modelo_establecer_n_ctx(ctx, max_tokens)
+    retornar
+
+// --- Tokenización ---
 
 funcion decodificar_token(ctx: puntero, token_id: entero) -> texto:
     retornar _syn_modelo_decodificar_token(ctx, token_id)
@@ -54,3 +108,63 @@ funcion codificar_contar(ctx: puntero, texto: texto) -> entero:
 
 funcion codificar_obtener(ctx: puntero, indice: entero) -> entero:
     retornar _syn_modelo_codificar_obtener(ctx, indice)
+
+// --- Generación de texto de alto nivel ---
+
+funcion generar_texto(ctx: puntero, prompt: texto,
+    max_tokens: entero, temperatura: decimal,
+    top_k: entero, top_p: decimal) -> texto:
+    retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
+
+// --- Metadatos ---
+
+funcion obtener_metadato(ctx: puntero, clave: texto) -> texto:
+    retornar _syn_modelo_obtener_metadato(ctx, clave)
+
+funcion obtener_arquitectura(ctx: puntero) -> texto:
+    retornar _syn_modelo_obtener_arquitectura(ctx)
+
+funcion obtener_n_layers(ctx: puntero) -> entero:
+    retornar _syn_modelo_obtener_n_layers(ctx)
+
+funcion obtener_n_embd(ctx: puntero) -> entero:
+    retornar _syn_modelo_obtener_n_embd(ctx)
+
+funcion obtener_n_heads(ctx: puntero) -> entero:
+    retornar _syn_modelo_obtener_n_heads(ctx)
+
+// ============================================================
+// Funciones helper de alto nivel
+// ============================================================
+
+// argmax: retorna el índice del valor máximo en un tensor de logits
+// Equivalente a: argmax(logits) -> token_id
+funcion argmax(logits: tensor) -> entero:
+    inseguro:
+        asm("float* _d = logits.datos;")
+        asm("int _n = (int)(logits.columnas);")
+        asm("if (!_d || _n <= 0) return -1;")
+        asm("float _max = _d[0];")
+        asm("int _idx = 0;")
+        asm("for (int _i = 1; _i < _n; _i++) {")
+        asm("    if (_d[_i] > _max) { _max = _d[_i]; _idx = _i; }")
+        asm("}")
+        asm("return _idx;")
+
+// muestra_logits: imprime los primeros N logits para depuración
+funcion muestra_logits(logits: tensor, n: entero) -> nulo:
+    inseguro:
+        asm("float* _d = logits.datos;")
+        asm("int _max = n < (int)logits.columnas ? n : (int)logits.columnas;")
+        asm("fprintf(stderr, \"[Modelo] Logits (primeros %d): \", _max);")
+        asm("for (int _i = 0; _i < _max; _i++) {")
+        asm("    fprintf(stderr, \"%.4f \", _d[_i]);")
+        asm("}")
+        asm("fprintf(stderr, \"\\n\");")
+        retornar
+
+// generar_texto_simple: genera texto con parámetros por defecto
+// temperatura=0.7, top_k=40, top_p=0.9
+funcion generar_texto_simple(ctx: puntero, prompt: texto,
+    max_tokens: entero) -> texto:
+    retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, 0.7, 40, 0.9)
