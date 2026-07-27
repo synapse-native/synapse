@@ -1,0 +1,73 @@
+#lang: es
+
+# =============================================================================
+# librerias/std/llvm.syn — Synapse LLVM IR Backend Bindings (M12.1.2)
+#
+# Declaraciones externo funcion para la API LLVM IR text emitter
+# implementada en synapse_llvm.c.
+#
+# Los nombres de función coinciden EXACTAMENTE con las funciones C
+# implementadas en synapse_llvm.c.
+# =============================================================================
+
+# -------------------------------------------------------------------
+# LLVMContext
+# -------------------------------------------------------------------
+externo funcion LLVMContextCreate() -> puntero
+externo funcion LLVMContextDispose(ctx: puntero) -> nulo
+externo funcion LLVMContextGetErrorCount(ctx: puntero) -> entero
+externo funcion LLVMContextGetError(ctx: puntero) -> texto
+
+# -------------------------------------------------------------------
+# LLVMModule
+# -------------------------------------------------------------------
+externo funcion LLVMModuleCreateWithName(nombre: texto, ctx: puntero) -> puntero
+externo funcion LLVMModuleDispose(mod: puntero) -> nulo
+externo funcion LLVMModuleGetIR(mod: puntero) -> texto
+externo funcion LLVMModuleGetIRLength(mod: puntero) -> entero
+externo funcion LLVMModuleEmitHeader(mod: puntero) -> nulo
+externo funcion LLVMModuleEmitRuntimeDecls(mod: puntero) -> nulo
+
+# -------------------------------------------------------------------
+# LLVMBuilder
+# -------------------------------------------------------------------
+externo funcion LLVMBuilderCreate(ctx: puntero) -> puntero
+externo funcion LLVMBuilderDispose(b: puntero) -> nulo
+externo funcion LLVMBuilderSetModule(b: puntero, mod: puntero) -> nulo
+externo funcion LLVMBuilderBeginFunction(b: puntero, nombre: texto,
+    tipo_retorno: entero, param_count: entero) -> nulo
+externo funcion LLVMBuilderEndFunction(b: puntero) -> nulo
+externo funcion LLVMBuilderCreateEntryBlock(b: puntero) -> nulo
+externo funcion LLVMBuilderCreateRetConst(b: puntero, val: entero) -> nulo
+externo funcion LLVMBuilderEmitLabel(b: puntero, nombre: texto) -> nulo
+
+# -------------------------------------------------------------------
+# Control de flujo (M12.1.2)
+# -------------------------------------------------------------------
+externo funcion LLVMBuilderCreateBr(b: puntero, destino: texto) -> nulo
+externo funcion LLVMBuilderCreateCondBr(b: puntero, cond: texto,
+    etiqueta_true: texto, etiqueta_false: texto) -> nulo
+
+# -------------------------------------------------------------------
+# Constructores de alto nivel
+# -------------------------------------------------------------------
+
+# Programa mínimo: define main que retorna una constante
+externo funcion BuildMinimalProgram(ctx: puntero, nombre_modulo: texto,
+    valor_retorno: entero) -> texto
+
+# Programa aritmético: main() { return lhs <op> rhs; }
+externo funcion BuildArithmeticProgram(ctx: puntero, nombre_modulo: texto,
+    op: entero, lhs: entero, rhs: entero) -> texto
+
+# Programa if-else: if (a < b) return 1; else return 0;
+externo funcion BuildIfElseProgram(ctx: puntero, nombre_modulo: texto,
+    a: entero, b: entero) -> texto
+
+# Programa bucle: suma de 0 a n
+externo funcion BuildLoopProgram(ctx: puntero, nombre_modulo: texto,
+    n: entero) -> texto
+
+# Programa con llamada a función
+externo funcion BuildCallProgram(ctx: puntero, nombre_modulo: texto,
+    valor: entero) -> texto
