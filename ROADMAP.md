@@ -366,11 +366,23 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 |------|-------------|--------|------------------------|
 | **M8.4** | Migración de tareas live con checkpoint/restore | ✅ Completado | Checkpoint/restore básico (Test 1). Integridad checksum (Test 2). Ownership transfer (Test 3). Serialización round-trip (Test 4). Simulación inter-node (Test 5). Sin fugas de memoria (Test 6). Migración multi-nodo real con subprocess (Tests 7-12). Benchmark <5s (Test 13). **Total: 19 tests passing.** Commit: 71825c7. |
 
-### 🔄 M8.5: Cluster Auto-Discovery y Membership Service — EN PROGRESO
+### ✅ M8.1: Red de Nodos Synapse — COMPLETADO Y VERIFICADO
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
-| **M8.5** | Auto-descubrimiento multicast UDP + membresía con heartbeats | 🔄 En Progreso | Inicialización de tabla. Registro y consulta de nodos. Eliminación de nodos. Heartbeat tick con timeout y purga automática. Heartbeat revive nodos caídos. Generación y procesamiento de anuncios SYNCLUSTER. Información de membresía como texto. Verificación de salud de nodos. Manejo de tabla llena y nodos duplicados. Detener y reinicializar. |
+| **M8.1** | Transporte UDP + autenticación Ed25519 vía TweetNaCl | ✅ Completado | Socket UDP con SO_REUSEADDR. Handshake HELLO con identidad. Firma/verificación Ed25519 de todos los paquetes. Canales remotos con numeración de secuencia. Recepción no bloqueante. 6/6 tests integration PASS. |
+
+### ✅ M8.2: Scheduler Distribuido Work-Stealing — COMPLETADO Y VERIFICADO
+
+| Hito | Descripción | Estado | Criterio de Aceptación |
+|------|-------------|--------|------------------------|
+| **M8.2** | Colas circulares seguras + robo distribuido de tareas | ✅ Completado | Cola local LIFO mutex-protegida. Protocolo WSTEAL/WSTOLEN/WNONE sobre UDP. 4-nodo simulación con 10 tareas, 5 robos exitosos, carga estimada 5%. 43/43 asserts C PASS. |
+
+### ✅ M8.5: Cluster Auto-Discovery y Membership Service — COMPLETADO
+
+| Hito | Descripción | Estado | Criterio de Aceptación |
+|------|-------------|--------|------------------------|
+| **M8.5** | Auto-descubrimiento multicast UDP + membresía con heartbeats | ✅ Completado | Inicialización de tabla. Registro y consulta de nodos. Eliminación de nodos. Heartbeat tick con timeout y purga automática. Heartbeat revive nodos caídos. Generación y procesamiento de anuncios SYNCLUSTER. Información de membresía como texto. Verificación de salud de nodos. Manejo de tabla llena y nodos duplicados. Detener y reinicializar. |
 
 **Próximos hitos v5.1 (planificación):**
 | Hito | Descripción | Prioridad |
