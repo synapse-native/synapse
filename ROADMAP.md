@@ -392,7 +392,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M9.1** | **Grabación de Ejecución Determinista (rr-style) — heredado de v5.0** | ✅ **Completado** |
 | **M9.2** | **Breakpoints Reversibles (rp_*) — heredado de v5.0** | ✅ **Completado** |
 | **M9.3** | **Snapshots de Memoria y Diff Histórico (ms_*) — heredado de v5.0** | ✅ **Completado** |
-| M9.4 | Debugging distribuido multi-nodo | Media |
+| **M9.4** | **Debugging distribuido multi-nodo** | **🔄 En Progreso** |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
 | M12.2 | WebAssembly backend | Alta |

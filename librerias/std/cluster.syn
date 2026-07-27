@@ -310,3 +310,57 @@ externo funcion cluster_hilo_descubrimiento_activo() -> entero
 // multicast_info — Retorna información del grupo multicast configurado
 //   Formato: "grupo:puerto:fd"
 externo funcion cluster_multicast_info() -> texto
+
+// ============================================================
+// Funciones Externas — M9.4 (Debugging Distribuido Multi-Nodo)
+// ============================================================
+
+// dd_inicializar — Inicializa subsistema de debug distribuido
+//   nodo_id: identificador único de este nodo en el clúster
+externo funcion dd_inicializar(nodo_id: entero) -> entero
+
+// dd_registrar_nodo_remoto — Registra un nodo remoto para debug distribuido
+//   Retorna índice (0+) o -1 si error, -2 si tabla llena
+externo funcion dd_registrar_nodo_remoto(nodo_id: entero, ip: texto, puerto: entero) -> entero
+
+// dd_enviar_traza_remota — Envía eventos de traza local a nodo remoto
+//   Retorna 0 si ok, negativo si error de red
+externo funcion dd_enviar_traza_remota(ip: texto, puerto: entero, num_eventos: entero) -> entero
+
+// dd_recibir_traza_remota — Procesa paquete SYNDBG:TRACE entrante
+//   Retorna 0 si procesado, negativo si formato inválido
+externo funcion dd_recibir_traza_remota(paquete: texto) -> entero
+
+// dd_sincronizar_trazas — Sincroniza traza local con todos los nodos registrados
+//   Retorna número de nodos que recibieron la sincronización
+externo funcion dd_sincronizar_trazas(num_eventos: entero) -> entero
+
+// dd_buscar_evento_remoto — Busca evento en buffers remotos por tag
+//   Retorna "nodo_id:tag|seq|..." o vacío si no se encuentra
+externo funcion dd_buscar_evento_remoto(tag: entero, desde_secuencia: entero) -> texto
+
+// dd_breakpoint_remoto — Establece breakpoint en nodo remoto vía RPC
+//   tipo: 0=línea, 1=variable, 2=tag
+//   Retorna 0 si ok, negativo si error de red
+externo funcion dd_breakpoint_remoto(ip: texto, puerto: entero, bp_tipo: entero, patron: texto, valor_int: entero) -> entero
+
+// dd_inspeccionar_remoto — Inspecciona variable en nodo remoto vía RPC
+//   Retorna resultado de la inspección o vacío
+externo funcion dd_inspeccionar_remoto(ip: texto, puerto: entero, nombre_variable: texto) -> texto
+
+// dd_pila_remota — Obtiene pila de llamadas de nodo remoto vía RPC
+//   Retorna "remote_stack:local_id" o vacío
+externo funcion dd_pila_remota(ip: texto, puerto: entero) -> texto
+
+// dd_total_eventos_remotos — Total de eventos recibidos de todos los nodos remotos
+externo funcion dd_total_eventos_remotos() -> entero
+
+// dd_nodos_remotos_registrados — Número de nodos remotos registrados
+externo funcion dd_nodos_remotos_registrados() -> entero
+
+// dd_nodo_local_id — ID del nodo local configurado
+externo funcion dd_nodo_local_id() -> entero
+
+// dd_info — Información del subsistema de debug distribuido
+//   Formato: "local_id:num_remotos:total_eventos:ultima_sincro"
+externo funcion dd_info() -> texto
