@@ -6388,7 +6388,7 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
     }
 
     // Walk backwards from indice_evento, tracking call/return pairs
-    // Use a simple stack: push on FUNCTION_CALL, pop on FUNCTION_RETURN
+    // Use a simple stack: push on EVENT_FN_CALL, pop on EVENT_FN_RETURN
     char stack_buf[1024];
     int stack_len = 0;
     int depth = 0;
