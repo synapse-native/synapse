@@ -437,8 +437,10 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 |------|-------------|-----------|
 | **M15.1** | **Formal Proof Bridge (Coq/Lean)** | **✅ COMPLETADO Y VERIFICADO** |
 | **M15.2** | **Automated Theorem Proving Engine** | **✅ COMPLETADO Y VERIFICADO** |
-| **M15.3** | **Symbolic Execution Engine** | **🔄 EN PROGRESO** |
-| M16.1 | Quantum-Ready Runtime (simulated) | ⬜ Pendiente |
+| **M15.3** | **Symbolic Execution Engine** | **✅ COMPLETADO Y VERIFICADO** |
+| **M16.1** | **Quantum-Ready Runtime (simulated)** | **✅ COMPLETADO Y VERIFICADO (2026-07-27)** |
+| **M16.2** | **Quantum Error Correction (Shor 9-qubit)** | **✅ COMPLETADO Y VERIFICADO (2026-07-27)** |
+| M16.3 | Surface Code / Topological Error Correction | 🔄 EN PROGRESO |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
 - ✅ `synapse_llvm.c` — Nuevo backend LLVM IR text emitter (~430 líneas). Arquitectura: LLVMContext (estado y errores), LLVMModule (cabecera + declaraciones runtime + IR buffer), LLVMBuilder (emisión de instrucciones IR)
