@@ -237,6 +237,89 @@ funcion ft_paso_actual(sesion: puntero) -> entero:
     retornar _syn_ft_obtener_paso(sesion)
 
 // ============================================================
+// Declaraciones externas de Cuantización (implementadas en quantization.c)
+// ============================================================
+
+// --- Ciclo de vida ---
+externo funcion _syn_qt_iniciar(formato: entero, block_size: entero) -> puntero
+externo funcion _syn_qt_cerrar(sesion: puntero) -> nulo
+
+// --- Gestión de tensores ---
+externo funcion _syn_qt_agregar_tensor(sesion: puntero, datos: puntero,
+    filas: entero, columnas: entero, nombre: texto) -> entero
+externo funcion _syn_qt_cuantizar_tensor(sesion: puntero, idx: entero) -> entero
+externo funcion _syn_qt_cuantizar_todos(sesion: puntero) -> entero
+
+// --- Descuantización ---
+externo funcion _syn_qt_descuantizar_tensor(sesion: puntero, idx: entero) -> puntero
+
+// --- FP16 ↔ FP32 ---
+externo funcion _syn_qt_fp16_a_fp32(src: puntero, dst: puntero, n: entero) -> nulo
+externo funcion _syn_qt_fp32_a_fp16(src: puntero, dst: puntero, n: entero) -> nulo
+
+// --- Persistencia ---
+externo funcion _syn_qt_guardar(sesion: puntero, ruta: texto) -> entero
+externo funcion _syn_qt_cargar(sesion: puntero, ruta: texto) -> entero
+
+// --- Selección dinámica ---
+externo funcion _syn_qt_seleccionar_formato(ram_mb: entero) -> entero
+externo funcion _syn_qt_estimar_tamano_modelo(params_m: entero, formato: entero) -> decimal
+
+// ============================================================
+// Wrappers públicos de Cuantización (Synapse idiomático)
+// ============================================================
+
+// Inicia una sesión de cuantización
+funcion qt_iniciar(formato: entero, block_size: entero) -> puntero:
+    retornar _syn_qt_iniciar(formato, block_size)
+
+// Cierra la sesión y libera recursos
+funcion qt_cerrar(sesion: puntero) -> nulo:
+    _syn_qt_cerrar(sesion)
+    retornar
+
+// Agrega un tensor FP32 a la sesión
+funcion qt_agregar_tensor(sesion: puntero, datos: puntero,
+    filas: entero, columnas: entero, nombre: texto) -> entero:
+    retornar _syn_qt_agregar_tensor(sesion, datos, filas, columnas, nombre)
+
+// Cuantiza un tensor específico
+funcion qt_cuantizar_tensor(sesion: puntero, idx: entero) -> entero:
+    retornar _syn_qt_cuantizar_tensor(sesion, idx)
+
+// Cuantiza todos los tensores
+funcion qt_cuantizar_todos(sesion: puntero) -> entero:
+    retornar _syn_qt_cuantizar_todos(sesion)
+
+// Descuantiza un tensor a FP32
+funcion qt_descuantizar_tensor(sesion: puntero, idx: entero) -> puntero:
+    retornar _syn_qt_descuantizar_tensor(sesion, idx)
+
+// Convierte FP16 ↔ FP32
+funcion qt_fp16_a_fp32(src: puntero, dst: puntero, n: entero) -> nulo:
+    _syn_qt_fp16_a_fp32(src, dst, n)
+    retornar
+
+funcion qt_fp32_a_fp16(src: puntero, dst: puntero, n: entero) -> nulo:
+    _syn_qt_fp32_a_fp16(src, dst, n)
+    retornar
+
+// Guarda/Carga sesión cuantizada
+funcion qt_guardar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_qt_guardar(sesion, ruta)
+
+funcion qt_cargar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_qt_cargar(sesion, ruta)
+
+// Selecciona formato óptimo según RAM disponible
+funcion qt_seleccionar_formato(ram_mb: entero) -> entero:
+    retornar _syn_qt_seleccionar_formato(ram_mb)
+
+// Estima tamaño de modelo cuantizado
+funcion qt_estimar_tamano_modelo(params_m: entero, formato: entero) -> decimal:
+    retornar _syn_qt_estimar_tamano_modelo(params_m, formato)
+
+// ============================================================
 // Funciones helper de alto nivel
 // ============================================================
 
