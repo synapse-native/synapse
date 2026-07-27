@@ -102,8 +102,6 @@ static int _tokenizar(const char* expr, char tokens[256][ATP_MAX_VAR_NAME], int*
 
         // Saltar carácter desconocido
         p++;
-
-        p++; // Saltar carácter desconocido
     }
 
     *num_tokens = n;
@@ -533,8 +531,7 @@ int atp_agregar_invariante(ATPEngine* engine, const char* expresion) {
     if (engine->num_invariants >= ATP_MAX_CONSTRAINTS) return -1;
 
     ATPConstraint* c = &engine->invariants[engine->num_invariants];
-    strncpy(c->expresion, expresion, ATP_MAX_EXPR_LEN - 1);
-    c->expresion[ATP_MAX_EXPR_LEN - 1] = '\0';
+    snprintf(c->expresion, ATP_MAX_EXPR_LEN, "%s", expresion);
     c->tipo = ATP_CONSTRAINT_INVARIANTE;
     c->num_vars = 0;
     c->es_lineal = 1;
