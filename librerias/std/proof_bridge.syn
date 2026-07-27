@@ -1,0 +1,107 @@
+#lang: es
+// std.proof_bridge — Puente de Verificación Formal (Coq/Lean)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Conecta los contratos lógicos (requiere/garantiza) con asistentes
+// de demostración interactivos (Coq, Lean), exportando especificaciones
+// a términos lógicos verificables matemáticamente.
+//
+// Zero-telemetry: todo el proceso es local y soberano.
+//
+// Uso desde Synapse:
+//   importar std.proof_bridge
+//   sesion = pb_iniciar(0, 1, "MiTeoria")  // Coq, con axiomas
+//   pb_agregar_funcion(sesion, "fib", "entero", "n: entero")
+//   pb_agregar_contrato(sesion, "n >= 0", 0)  // requiere
+//   pb_agregar_contrato(sesion, "_resultado_ >= 0", 1)  // garantiza
+//   archivos = pb_exportar(sesion)
+//   pb_cerrar(sesion)
+
+// ============================================================
+// Declaraciones externas (implementadas en proof_bridge.c)
+// ============================================================
+
+// --- Ciclo de vida ---
+externo funcion _syn_pb_iniciar(formato: entero,
+    incluir_axiomas: entero, nombre_teoria: texto) -> puntero
+externo funcion _syn_pb_cerrar(sesion: puntero) -> nulo
+
+// --- Gestión de funciones y contratos ---
+externo funcion _syn_pb_agregar_funcion(sesion: puntero,
+    nombre: texto, tipo_ret: texto, params: texto) -> entero
+externo funcion _syn_pb_agregar_contrato(sesion: puntero,
+    expr: texto, tipo: entero) -> entero
+
+// --- Traducción a lógica formal ---
+externo funcion _syn_pb_traducir_a_coq(expr: texto) -> texto
+externo funcion _syn_pb_traducir_a_lean(expr: texto) -> texto
+
+// --- Generación de archivos ---
+externo funcion _syn_pb_generar_coq(sesion: puntero) -> entero
+externo funcion _syn_pb_generar_lean(sesion: puntero) -> entero
+externo funcion _syn_pb_exportar(sesion: puntero) -> entero
+
+// --- Certificados ---
+externo funcion _syn_pb_generar_certificado(sesion: puntero,
+    nombre_funcion: texto) -> entero
+
+// --- Persistencia ---
+externo funcion _syn_pb_guardar(sesion: puntero, ruta: texto) -> entero
+externo funcion _syn_pb_cargar(sesion: puntero, ruta: texto) -> entero
+
+// ============================================================
+// Wrappers públicos (Synapse idiomático)
+// ============================================================
+
+// Inicia una sesión del puente de verificación formal
+funcion pb_iniciar(formato: entero, incluir_axiomas: entero,
+    nombre_teoria: texto) -> puntero:
+    retornar _syn_pb_iniciar(formato, incluir_axiomas, nombre_teoria)
+
+// Cierra la sesión y libera recursos
+funcion pb_cerrar(sesion: puntero) -> nulo:
+    _syn_pb_cerrar(sesion)
+    retornar
+
+// Agrega una función con su firma para verificación
+funcion pb_agregar_funcion(sesion: puntero,
+    nombre: texto, tipo_ret: texto, params: texto) -> entero:
+    retornar _syn_pb_agregar_funcion(sesion, nombre, tipo_ret, params)
+
+// Agrega un contrato (requiere=0, garantiza=1) a la última función
+funcion pb_agregar_contrato(sesion: puntero,
+    expr: texto, tipo: entero) -> entero:
+    retornar _syn_pb_agregar_contrato(sesion, expr, tipo)
+
+// Traduce expresión Synapse a término Coq
+funcion pb_traducir_a_coq(expr: texto) -> texto:
+    retornar _syn_pb_traducir_a_coq(expr)
+
+// Traduce expresión Synapse a término Lean
+funcion pb_traducir_a_lean(expr: texto) -> texto:
+    retornar _syn_pb_traducir_a_lean(expr)
+
+// Genera archivo de teoría Coq (.v) en el buffer interno
+funcion pb_generar_coq(sesion: puntero) -> entero:
+    retornar _syn_pb_generar_coq(sesion)
+
+// Genera archivo de teoría Lean (.lean) en el buffer interno
+funcion pb_generar_lean(sesion: puntero) -> entero:
+    retornar _syn_pb_generar_lean(sesion)
+
+// Exporta todas las funciones a archivos y genera certificados
+funcion pb_exportar(sesion: puntero) -> entero:
+    retornar _syn_pb_exportar(sesion)
+
+// Genera certificado de verificación para una función
+funcion pb_generar_certificado(sesion: puntero,
+    nombre_funcion: texto) -> entero:
+    retornar _syn_pb_generar_certificado(sesion, nombre_funcion)
+
+// Guarda el estado de la sesión a archivo
+funcion pb_guardar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_pb_guardar(sesion, ruta)
+
+// Carga el estado de la sesión desde archivo
+funcion pb_cargar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_pb_cargar(sesion, ruta)

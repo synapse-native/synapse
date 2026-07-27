@@ -405,25 +405,28 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M13.5** | **Quantization & Deployment Pipeline** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.6** | **Model Distillation (Teacher→Student via KL)** | **✅ COMPLETADO Y VERIFICADO** |
 | **M14.1** | **Federated Learning Runtime (FedAvg + Ed25519)** | **✅ COMPLETADO Y VERIFICADO** |
-| **M14.2** | **Distributed Training Orchestrator** | **🔄 EN PROGRESO** |
+| **M14.2** | **Distributed Training Orchestrator** | **✅ COMPLETADO Y VERIFICADO** |
+| **M15.1** | **Formal Proof Bridge (Coq/Lean)** | **🔄 EN PROGRESO** |
 
 ---
 
-## 9. ROADMAP v5.2 — EN PROGRESO (Fase 14)
+## 9. ROADMAP v5.2 — EN PROGRESO (Fase 15)
 
-### M14.2: Distributed Training Orchestrator — EN PROGRESO
+### M15.1: Formal Proof Bridge — EN PROGRESO
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
 | **M13.6** | Destilación de conocimiento (KD) teacher→student | ✅ Completado y Verificado | KL divergence, pérdida combinada soft+hard, persistencia, layer reduction, ~100 tests passing |
 | **M14.1** | Aprendizaje Federado (FedAvg + Ed25519) | ✅ Completado y Verificado | FedAvg estándar y ponderado, firmas simuladas Ed25519, fault tolerance, ~100 tests passing |
-| **M14.2** | Orquestador de Entrenamiento Distribuido | 🔄 En Progreso | Partición inteligente de datasets, asignación dinámica de workers (round-robin/capacidad), tolerancia a fallos (RETRY/REDISTRIBUTE/IGNORE), integración con fine-tuning LoRA + destilación, persistencia ORCH, ~100 tests passing |
+| **M14.2** | Orquestador de Entrenamiento Distribuido | ✅ Completado y Verificado | Partición inteligente de datasets, asignación dinámica de workers, tolerancia a fallos, integración LoRA + KD, ~100 tests passing |
+| **M15.1** | Puente de Verificación Formal (Coq/Lean) | 🔄 En Progreso | Traducción Synapse→Coq/Lean de contratos requiere/garantiza, generación de archivos .v/.lean con esqueletos de prueba, certificados de verificación, exportación completa, ~80 tests passing |
 
 **Próximos hitos v5.2 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| **M14.2** | **Distributed Training Orchestrator** | **🔄 EN PROGRESO** |
-| M15.1 | Formal Proof Assistant (Coq/Lean bridge) | ⬜ Pendiente |
+| **M15.1** | **Formal Proof Bridge** | **🔄 EN PROGRESO** |
+| M15.2 | Automated Theorem Proving Engine | ⬜ Pendiente |
+| M16.1 | Quantum-Ready Runtime (simulated) | ⬜ Pendiente |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
 - ✅ `synapse_llvm.c` — Nuevo backend LLVM IR text emitter (~430 líneas). Arquitectura: LLVMContext (estado y errores), LLVMModule (cabecera + declaraciones runtime + IR buffer), LLVMBuilder (emisión de instrucciones IR)
