@@ -412,7 +412,18 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 ## 9. ROADMAP v5.2 — EN PROGRESO (Fase 15)
 
-### M15.1: Formal Proof Bridge — EN PROGRESO
+### M15.1-M15.2: Formal Proof Bridge + ATP Engine — COMPLETADO
+
+| Hito | Descripcion | Estado | Criterio de Aceptacion |
+|------|-------------|--------|------------------------|
+| **M15.1** | Puente de Verificacion Formal (Coq/Lean) | **Completado y Verificado** | Traduccion Synapse->Coq/Lean de contratos requiere/garantiza, generacion de archivos .v/.lean con esqueletos de prueba, certificados de verificacion, exportacion completa, ~80 tests passing |
+| **M15.2** | Motor de Demostracion Automatica de Teoremas (ATP) | **Completado y Verificado** | SMT-light solver con tokenizador, intervalos, tautologias (16 variantes), contradicciones (8 variantes), verificacion contractual, persistencia ATPZ. 12 wrappers _syn_atp_*. 90 tests C, 0 failed |
+
+### M15.3: Symbolic Execution Engine — EN PROGRESO
+
+| Hito | Descripcion | Estado | Criterio de Aceptacion |
+|------|-------------|--------|------------------------|
+| **M15.3** | Motor de Ejecucion Simbolica | **En Progreso** | Exploracion de rutas sobre valores simbolicos, bifurcaciones de control (then/else), deteccion de caminos imposibles, deteccion de division por cero, deteccion de desbordamiento, deteccion de fuera de limites, deteccion de violaciones de contrato. 15 API functions, 12 wrappers _syn_se_*. 66 tests C, 0 failed |
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
@@ -424,8 +435,9 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 **Próximos hitos v5.2 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| **M15.1** | **Formal Proof Bridge** | **🔄 EN PROGRESO** |
-| M15.2 | Automated Theorem Proving Engine | ⬜ Pendiente |
+| **M15.1** | **Formal Proof Bridge (Coq/Lean)** | **✅ COMPLETADO Y VERIFICADO** |
+| **M15.2** | **Automated Theorem Proving Engine** | **✅ COMPLETADO Y VERIFICADO** |
+| **M15.3** | **Symbolic Execution Engine** | **🔄 EN PROGRESO** |
 | M16.1 | Quantum-Ready Runtime (simulated) | ⬜ Pendiente |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
