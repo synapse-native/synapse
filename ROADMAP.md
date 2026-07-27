@@ -399,8 +399,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M12.1.3** | **Motor de Ejecución JIT y Encriptación de Memoria** | **✅ COMPLETADO Y VERIFICADO** |
 | **M12.2** | **WebAssembly backend** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.1** | **AI nativa (modelos locales via std.modelo)** | **✅ COMPLETADO** |
-| **M13.2** | **OpenSyn RAG Pipeline con CI/CD** | **🔄 EN PROGRESO** |
-| M13.2 | OpenSyn RAG pipeline CI/CD | Media |
+| **M13.2** | **OpenSyn RAG Pipeline con CI/CD** | **✅ COMPLETADO Y VERIFICADO** |
+| **M13.3** | **OpenSyn Code Generation + LSP** | **🔄 EN PROGRESO** |
 
 ### Certificación M12.1.1 (Contexto e IR Base LLVM):
 - ✅ `synapse_llvm.c` — Nuevo backend LLVM IR text emitter (~430 líneas). Arquitectura: LLVMContext (estado y errores), LLVMModule (cabecera + declaraciones runtime + IR buffer), LLVMBuilder (emisión de instrucciones IR)
