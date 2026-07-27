@@ -354,7 +354,39 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ Zero-telemetry certificado
 - ✅ Stage 2↔3 diff 0 bytes bootstrap
 
-**Próximo:** Fase 8 (Concurrencia Distribuida) — M8.4 Migración Live + Roadmap v5.1
+**Próximo:** M8.4 Migración Live (Checkpoint/Restore con integración UDP multi-nodo) + Roadmap v5.1
+
+---
+
+## 8. ROADMAP v5.1 — EN PROGRESO
+
+### M8.4: Migración de Tareas Live (Checkpoint/Restore) — EN PROGRESO
+
+| Hito | Descripción | Estado | Criterio de Aceptación |
+|------|-------------|--------|------------------------|
+| **M8.4** | Migración de tareas live con checkpoint/restore | 🔄 En Progreso | Checkpoint/restore básico ✅ (Test 1). Integridad checksum ✅ (Test 2). Ownership transfer ✅ (Test 3). Serialización round-trip ✅ (Test 4). Simulación inter-node ✅ (Test 5). Sin fugas de memoria ✅ (Test 6). Migración multi-nodo real con subprocess ✅ (Test 7-12). Benchmark <5s ✅ (Test 13). |
+
+**Próximos hitos v5.1 (planificación):**
+| Hito | Descripción | Prioridad |
+|------|-------------|-----------|
+| M8.5 | Cluster auto-discovery y membership service | Alta |
+| M9.4 | Debugging distribuido multi-nodo | Media |
+| M10.4 | Fuzzing distribuido multi-nodo | Media |
+| M12.1 | Compilación JIT (LLVM backend) | Alta |
+| M12.2 | WebAssembly backend | Alta |
+| M13.1 | AI nativa (modelos locales via std.modelo) | Alta |
+| M13.2 | OpenSyn RAG pipeline CI/CD | Media |
+
+### Certificación parcial M8.4:
+- ✅ `tests/test_live_migration.c` — 6 secciones de test C (checkpoint/restore, integridad, ownership, round-trip, inter-node, fugas)
+- ✅ `tests/integration/test_live_migration.py` — 7 tests de integración Python (compilación, ejecución, módulos Synapse)
+- ✅ `tests/integration/test_live_migration_cluster.py` — 13 tests multi-nodo (compilación, formato CKPT, migración A→B, ownership, determinismo, métricas, recuperación de fallos, benchmark)
+- ✅ `librerias/std/cluster.syn` — Declaraciones externo para cm_* funciones (10 funciones)
+- ✅ `synapse_rt.c` — Implementación cm_* con formato CKPT, checksum, restauración, migración entre nodos simulada
+- ✅ UDP transport y Ed25519 signing pre-integrados (M8.1)
+- ✅ WS scheduler pre-integrado (M8.2)
+- ⬜ Integración real UDP multi-proceso (vs simulación)
+- ⬜ Despliegue Raft-log de migraciones
 
 ---
 
