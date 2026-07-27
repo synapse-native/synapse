@@ -7163,3 +7163,283 @@ CadenaSegura cluster_info_heartbeat(void) {
     memcpy(result, buf, (size_t)(len + 1));
     return (CadenaSegura){ .longitud = len, .datos = result };
 }
+
+// ============================================================
+// M8.6 — UDP Multicast Real para Auto-Descubrimiento en Red
+// ============================================================
+// Conecta cluster_generar_anuncio / cluster_procesar_anuncio
+// con sockets UDP reales mediante multicast.
+// Grupo por defecto: 239.255.0.1:9700
+// ============================================================
+
+#define SYNAPSE_MC_GRUPO "239.255.0.1"
+#define SYNAPSE_MC_PUERTO 9700
+
+static int _cluster_mc_sock = -1;
+static char _cluster_mc_grupo[32];
+static int _cluster_mc_puerto = SYNAPSE_MC_PUERTO;
+static volatile int _hilo_descubrimiento_activo = 0;
+static pthread_t _hilo_descubrimiento_tid;
+
+// --- Inicializar socket multicast y unirse al grupo ---
+// grupo: "239.255.0.1" por defecto
+// Retorna fd del socket, o -1 si error
+int cluster_multicast_iniciar(const char* grupo, int puerto) {
+    if (!grupo) grupo = SYNAPSE_MC_GRUPO;
+    if (puerto <= 0) puerto = SYNAPSE_MC_PUERTO;
+
+    strncpy(_cluster_mc_grupo, grupo, sizeof(_cluster_mc_grupo) - 1);
+    _cluster_mc_grupo[sizeof(_cluster_mc_grupo) - 1] = '\0';
+    _cluster_mc_puerto = puerto;
+
+    if (_cluster_mc_sock >= 0) {
+        return _cluster_mc_sock;
+    }
+
+    _syn_iniciar_red();
+
+    int fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) return -1;
+
+    int opt = 1;
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
+
+#ifdef SO_REUSEPORT
+    setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt, sizeof(opt));
+#endif
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons((unsigned short)puerto);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+#ifdef _WIN32
+        closesocket(fd);
+#else
+        close(fd);
+#endif
+        return -2;
+    }
+
+    struct ip_mreq mreq;
+    memset(&mreq, 0, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr(grupo);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                   (const char*)&mreq, sizeof(mreq)) < 0) {
+#ifdef _WIN32
+        closesocket(fd);
+#else
+        close(fd);
+#endif
+        return -3;
+    }
+
+#ifdef _WIN32
+    u_long mode = 1;
+    ioctlsocket(fd, FIONBIO, &mode);
+#else
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+#endif
+
+    _cluster_mc_sock = fd;
+    return fd;
+}
+
+// --- Salir del grupo multicast y cerrar socket ---
+int cluster_multicast_detener(void) {
+    if (_cluster_mc_sock < 0) return 0;
+
+    struct ip_mreq mreq;
+    memset(&mreq, 0, sizeof(mreq));
+    mreq.imr_multiaddr.s_addr = inet_addr(_cluster_mc_grupo);
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    setsockopt(_cluster_mc_sock, IPPROTO_IP, IP_DROP_MEMBERSHIP,
+               (const char*)&mreq, sizeof(mreq));
+
+#ifdef _WIN32
+    closesocket(_cluster_mc_sock);
+#else
+    close(_cluster_mc_sock);
+#endif
+    _cluster_mc_sock = -1;
+    return 0;
+}
+
+// --- Enviar anuncio SYNCLUSTER al grupo multicast ---
+int cluster_anunciar_por_multicast(CadenaSegura id, CadenaSegura ip_host,
+                                    int puerto_host, CadenaSegura pubkey) {
+    if (_cluster_mc_sock < 0) return -1;
+    if (!id.datos || !ip_host.datos || puerto_host <= 0) return -2;
+
+    CadenaSegura anuncio = cluster_generar_anuncio(id, ip_host, puerto_host, pubkey);
+    if (!anuncio.datos || anuncio.longitud <= 0) return -3;
+
+    struct sockaddr_in dest;
+    memset(&dest, 0, sizeof(dest));
+    dest.sin_family = AF_INET;
+    dest.sin_port = htons((unsigned short)_cluster_mc_puerto);
+    dest.sin_addr.s_addr = inet_addr(_cluster_mc_grupo);
+
+    int n = (int)sendto(_cluster_mc_sock, anuncio.datos, (size_t)anuncio.longitud, 0,
+                        (struct sockaddr*)&dest, sizeof(dest));
+
+    return (n > 0) ? 0 : -4;
+}
+
+// --- Recibir y procesar un paquete multicast ---
+// timeout_ms: tiempo máximo de espera en ms (0 = no bloqueante)
+// Retorna: 0 si se procesó un anuncio, 1 si no hay datos, -1 si error
+int cluster_escuchar_multicast(int timeout_ms) {
+    if (_cluster_mc_sock < 0) return -1;
+
+    if (timeout_ms > 0) {
+#ifdef _WIN32
+        u_long mode = 0;
+        ioctlsocket(_cluster_mc_sock, FIONBIO, &mode);
+        struct timeval tv;
+        tv.tv_sec = timeout_ms / 1000;
+        tv.tv_usec = (timeout_ms % 1000) * 1000;
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(_cluster_mc_sock, &fds);
+        int sr = select(0, &fds, NULL, NULL, &tv);
+        if (sr <= 0) {
+            u_long nb = 1;
+            ioctlsocket(_cluster_mc_sock, FIONBIO, &nb);
+            return (sr == 0) ? 1 : -2;
+        }
+#else
+        struct timeval tv;
+        tv.tv_sec = timeout_ms / 1000;
+        tv.tv_usec = (timeout_ms % 1000) * 1000;
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(_cluster_mc_sock, &fds);
+        int sr = select(_cluster_mc_sock + 1, &fds, NULL, NULL, &tv);
+        if (sr <= 0) return (sr == 0) ? 1 : -2;
+#endif
+    }
+
+    char buf[65536];
+    struct sockaddr_in from;
+    socklen_t fromlen = sizeof(from);
+    int n = (int)recvfrom(_cluster_mc_sock, buf, sizeof(buf) - 1, 0,
+                          (struct sockaddr*)&from, &fromlen);
+
+    if (n <= 0) {
+#ifdef _WIN32
+        u_long mode = 1;
+        ioctlsocket(_cluster_mc_sock, FIONBIO, &mode);
+#endif
+        return 1;
+    }
+
+    buf[n] = '\0';
+    CadenaSegura paquete = { .longitud = n, .datos = buf };
+    int rc = cluster_procesar_anuncio(paquete);
+
+#ifdef _WIN32
+    u_long mode = 1;
+    ioctlsocket(_cluster_mc_sock, FIONBIO, &mode);
+#endif
+
+    return (rc == 0) ? 0 : -3;
+}
+
+// --- Argumentos para el hilo de descubrimiento ---
+typedef struct {
+    char id[MAX_ID_LEN];
+    char ip[MAX_IP_LEN];
+    int puerto;
+    char pubkey[MAX_PUBKEY_LEN];
+    int intervalo_s;
+} HiloDescubrimientoArgs;
+
+// --- Función del hilo de descubrimiento en segundo plano ---
+static void* _hilo_descubrimiento_func(void* arg) {
+    HiloDescubrimientoArgs* args = (HiloDescubrimientoArgs*)arg;
+
+    CadenaSegura id = { .longitud = (int)strlen(args->id), .datos = args->id };
+    CadenaSegura ip = { .longitud = (int)strlen(args->ip), .datos = args->ip };
+    CadenaSegura pk = { .longitud = (int)strlen(args->pubkey), .datos = args->pubkey };
+
+    while (_hilo_descubrimiento_activo) {
+        cluster_anunciar_por_multicast(id, ip, args->puerto, pk);
+
+        for (int i = 0; i < 5; i++) {
+            int rc = cluster_escuchar_multicast(200);
+            if (rc != 0 && rc != -3) break;
+        }
+
+        for (int s = 0; s < args->intervalo_s && _hilo_descubrimiento_activo; s++) {
+#ifdef _WIN32
+            Sleep(1000);
+#else
+            sleep(1);
+#endif
+        }
+    }
+
+    free(args);
+    return NULL;
+}
+
+// --- Iniciar hilo de descubrimiento activo en segundo plano ---
+int cluster_iniciar_hilo_descubrimiento(CadenaSegura id, CadenaSegura ip_host,
+                                         int puerto_host, CadenaSegura pubkey,
+                                         int intervalo_s) {
+    if (_hilo_descubrimiento_activo) return -1;
+    if (!id.datos || !ip_host.datos || puerto_host <= 0) return -2;
+    if (intervalo_s < 1) intervalo_s = 5;
+
+    _hilo_descubrimiento_activo = 1;
+
+    HiloDescubrimientoArgs* args = (HiloDescubrimientoArgs*)malloc(sizeof(HiloDescubrimientoArgs));
+    if (!args) { _hilo_descubrimiento_activo = 0; return -3; }
+
+    strncpy(args->id, id.datos, MAX_ID_LEN - 1);
+    args->id[MAX_ID_LEN - 1] = '\0';
+    strncpy(args->ip, ip_host.datos, MAX_IP_LEN - 1);
+    args->ip[MAX_IP_LEN - 1] = '\0';
+    args->puerto = puerto_host;
+    if (pubkey.datos) {
+        strncpy(args->pubkey, pubkey.datos, MAX_PUBKEY_LEN - 1);
+        args->pubkey[MAX_PUBKEY_LEN - 1] = '\0';
+    } else {
+        args->pubkey[0] = '\0';
+    }
+    args->intervalo_s = intervalo_s;
+
+    pthread_create(&_hilo_descubrimiento_tid, NULL,
+                   _hilo_descubrimiento_func, args);
+    pthread_detach(_hilo_descubrimiento_tid);
+
+    return 0;
+}
+
+// --- Detener hilo de descubrimiento activo ---
+int cluster_detener_hilo_descubrimiento(void) {
+    _hilo_descubrimiento_activo = 0;
+    return 0;
+}
+
+// --- Verificar si el hilo de descubrimiento está activo ---
+int cluster_hilo_descubrimiento_activo(void) {
+    return _hilo_descubrimiento_activo ? 1 : 0;
+}
+
+// --- Consultar grupo multicast configurado ---
+CadenaSegura cluster_multicast_info(void) {
+    char buf[128];
+    int len = snprintf(buf, sizeof(buf), "%s:%d:%d",
+                       _cluster_mc_grupo, _cluster_mc_puerto, _cluster_mc_sock);
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}

@@ -271,3 +271,42 @@ externo funcion cluster_ultimo_tick_heartbeat() -> entero
 // info_heartbeat — Retorna configuración de heartbeat
 //   "intervalo:timeout"
 externo funcion cluster_info_heartbeat() -> texto
+
+// ============================================================
+// Funciones Externas — M8.6 (Multicast UDP Real)
+// ============================================================
+
+// multicast_iniciar — Inicializa socket UDP y se une al grupo multicast
+//   grupo: dirección multicast ("239.255.0.1" por defecto)
+//   puerto: puerto multicast (9700 por defecto)
+//   Retorna fd del socket, o -1 si error
+externo funcion cluster_multicast_iniciar(grupo: texto, puerto: entero) -> entero
+
+// multicast_detener — Sale del grupo multicast y cierra el socket
+externo funcion cluster_multicast_detener() -> entero
+
+// anunciar_por_multicast — Envía anuncio SYNCLUSTER al grupo multicast
+//   Genera el anuncio via cluster_generar_anuncio y lo transmite por UDP real
+//   Retorna 0 si ok, negativo si error
+externo funcion cluster_anunciar_por_multicast(id: texto, ip_host: texto, puerto_host: entero, pubkey: texto) -> entero
+
+// escuchar_multicast — Recibe y procesa un paquete multicast
+//   timeout_ms: tiempo máximo de espera en ms (0 = no bloqueante)
+//   Retorna: 0=anuncio procesado, 1=sin datos, -1=error
+externo funcion cluster_escuchar_multicast(timeout_ms: entero) -> entero
+
+// iniciar_hilo_descubrimiento — Inicia hilo de fondo para anuncios periódicos
+//   Envía SYNCLUSTER cada intervalo_s segundos y escucha pasivamente
+//   Retorna 0 si ok, negativo si error
+externo funcion cluster_iniciar_hilo_descubrimiento(id: texto, ip_host: texto, puerto_host: entero, pubkey: texto, intervalo_s: entero) -> entero
+
+// detener_hilo_descubrimiento — Detiene el hilo de descubrimiento activo
+externo funcion cluster_detener_hilo_descubrimiento() -> entero
+
+// hilo_descubrimiento_activo — Verifica si el hilo de descubrimiento está activo
+//   Retorna 1 si activo, 0 si inactivo
+externo funcion cluster_hilo_descubrimiento_activo() -> entero
+
+// multicast_info — Retorna información del grupo multicast configurado
+//   Formato: "grupo:puerto:fd"
+externo funcion cluster_multicast_info() -> texto

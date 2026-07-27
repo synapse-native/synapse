@@ -375,7 +375,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 **Próximos hitos v5.1 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| M8.5 | Cluster auto-discovery y membership service | 🔄 **En Progreso** |
+| M8.5 | Cluster auto-discovery y membership service | ✅ **Completado** |
+| **M8.6** | **UDP Multicast Real para Auto-Descubrimiento** | 🔄 **En Progreso** |
 | M9.4 | Debugging distribuido multi-nodo | Media |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
@@ -393,14 +394,20 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ WS scheduler pre-integrado (M8.2)
 - ✅ Commit consolidado en historial
 
-### Certificación parcial M8.5:
-- ✅ `tests/test_cluster_discovery.c` — 10 secciones de test C (52/52 PASS: inicialización, registro, consulta, eliminación, heartbeat timeout, heartbeat revive, anuncio SYNCLUSTER, info membresía, nodo duplicado, detener/reinicializar)
-- ✅ `tests/integration/test_cluster_discovery.py` — Suite de integración Python (16/18 PASS: compilación, ejecución, escenarios específicos, casos borde, rendimiento)
-- ✅ `librerias/std/cluster.syn` — 16 nuevas declaraciones `externo funcion` para descubrimiento (cluster_descubrimiento*, cluster_registrar*, cluster_heartbeat*, cluster_generar_anuncio*, cluster_procesar_anuncio*, cluster_info_membresia*, cluster_verificar_salud*)
-- ✅ `synapse_rt.c` — Implementación completa (~400 líneas): NodoClusterMembresia struct, tabla thread-safe con mutex, registro/actualización/eliminación de nodos, heartbeat tick con timeout y purga automática, revival de nodos, anuncios SYNCLUSTER con parseo, info membresía como texto, verificación de salud
-- ✅ Compilación y ejecución de todos los tests (synapse_rt.o recompilado)
-- ⬜ Integración real UDP multicast (vs anuncios en memoria)
-- ⬜ CI/CD pipeline integration
+### Certificación M8.5:
+- ✅ `tests/test_cluster_discovery.c` — 10 secciones de test C (52/52 PASS)
+- ✅ `tests/integration/test_cluster_discovery.py` — Suite de integración Python (16/18 PASS)
+- ✅ `librerias/std/cluster.syn` — 16 nuevas declaraciones `externo funcion` para descubrimiento
+- ✅ `synapse_rt.c` — ~400 líneas: tabla thread-safe, heartbeats, SYNCLUSTER
+- ✅ Compilación y ejecución de todos los tests
+- ✅ Commit consolidado en historial (6f9222c)
+
+### Certificación parcial M8.6 (en progreso):
+- ⬜ `tests/test_cluster_multicast.c` — 8 secciones de test C (multicast init, envío/recepción loopback, discovery 2 nodos, hilo descubrimiento, reinicio hilo, multicast reentrante, cleanup)
+- ⬜ `tests/integration/test_cluster_multicast.py` — Suite de integración Python (compilación, escenarios, casos borde, rendimiento)
+- ⬜ `librerias/std/cluster.syn` — 8 nuevas declaraciones `externo funcion` para multicast (cluster_multicast_iniciar/detener, cluster_anunciar/escuchar_multicast, cluster_iniciar/detener_hilo, cluster_hilo_activo, cluster_multicast_info)
+- ⬜ `synapse_rt.c` — ~400 líneas: socket multicast con IP_ADD_MEMBERSHIP, SO_REUSEADDR, sendto/recvfrom multicast, hilo pthread periódico, conexión con M8.5 API
+- ⬜ Compilación y ejecución de todos los tests
 
 ---
 
