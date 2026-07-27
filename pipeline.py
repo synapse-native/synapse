@@ -380,6 +380,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         generar_sbom: bool = False,
                         firmar_binario: bool = False,
                         clave_sbom: str = '') -> int:
+    global _module_asts
+    _module_asts.clear()
+    _imports_usados.clear()
     diag = DiagnosticManager()
 
     # Flags de compilación para la clave de caché
@@ -488,7 +491,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             platform_flags = "-fno-ident -Wl,--gc-sections"
             thread_flag = "-lpthread"
             if sys.platform == "win32":
-                platform_flags += " -Wl,--no-insert-timestamp -Wl,--stack,8388608"
+                platform_flags += " -static -Wl,--no-insert-timestamp -Wl,--stack,8388608"
             else:
                 platform_flags += " -Wl,--stack,8388608"
 
@@ -514,19 +517,23 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         print(f"[MODULAR] Header compartido: {header_path}")
 
         # Paso 2: Generar .c por módulo desde _module_asts
+        # Se usa el AST aplanado (con todos los tipos) para cada módulo,
+        # filtrando por scope_names para emitir solo las funciones del módulo.
         modulos_c = []
         for ruta_mod_abs, ast_modulo in _module_asts.items():
             nombre_mod = os.path.splitext(os.path.basename(ruta_mod_abs))[0]
             ruta_mod_c = os.path.join(dir_base, f"_{nombre_mod}.c")
-            gen_mod = GeneradorC(copy.deepcopy(ast_modulo))
-            # Saltar módulos sin declaraciones útiles
-            tiene_decls = any(
-                isinstance(s, (DefinicionFuncion, DefinicionEstructura, DeclaracionExterna, StmtConstante))
-                for s in ast_modulo.sentencias
-            )
-            if not tiene_decls:
+            # Construir conjunto de nombres de funciones definidas en este módulo
+            mod_func_names: set[str] = {
+                s.nombre for s in ast_modulo.sentencias
+                if isinstance(s, DefinicionFuncion)
+            }
+            # Saltar módulos sin funciones útiles
+            if not mod_func_names:
                 continue
-            codigo_mod = gen_mod.generar(modo='modulo', include_header='_synapse_shared.h')
+            gen_mod = GeneradorC(copy.deepcopy(ast))  # AST aplanado para info de tipos
+            codigo_mod = gen_mod.generar(modo='modulo', include_header='_synapse_shared.h',
+                                         scope_names=mod_func_names)
             with open(ruta_mod_c, 'w', encoding='utf-8') as f:
                 f.write(codigo_mod)
             print(f"[MODULAR] Módulo C: {ruta_mod_c}")

@@ -491,10 +491,13 @@ class GeneradorC:
         ):
             ctx.write_line("")
 
-    def _emit_main(self, ctx):
-        """Helper: emite main() SOLO si existe función 'principal' en este módulo"""
+    def _emit_main(self, ctx, scope_names: set[str] | None = None):
+        """Helper: emite main() SOLO si existe función 'principal' en este módulo
+        y está dentro del alcance (scope_names)."""
         principal = ctx.encontrar_principal()
         if principal is None:
+            return
+        if scope_names is not None and principal not in scope_names:
             return
         if ctx.is_no_std():
             ctx.write_line("int main(void) {")
@@ -520,9 +523,13 @@ class GeneradorC:
             ctx.dec_indent()
             ctx.write_line("}")
 
-    def _emit_cuerpos(self, ctx):
-        """Helper: emite cuerpos de funciones + listenres + wrappers"""
+    def _emit_cuerpos(self, ctx, scope_names: set[str] | None = None):
+        """Helper: emite cuerpos de funciones + listenres + wrappers.
+        Si scope_names no es None, solo emite funciones cuyos nombres estén en el conjunto."""
         for s in ctx.programa.sentencias:
+            if scope_names is not None and isinstance(s, DefinicionFuncion):
+                if s.nombre not in scope_names:
+                    continue
             visitar(ctx, s)
         for func in ctx._listener_funciones:
             name = _extract_listener_name(func)
@@ -539,12 +546,15 @@ class GeneradorC:
 
     # ---- Modos de emisión ----
 
-    def generar(self, modo='completo', include_header='') -> str:
+    def generar(self, modo='completo', include_header='',
+                scope_names: set[str] | None = None) -> str:
         """
         Genera código C en tres modos:
         - 'completo': archivo completo (comportamiento original)
         - 'header':   solo cabecera + tipos + prototipos (sin cuerpos, sin main)
         - 'modulo':   #include header + cuerpos de funciones (sin repetir cabecera)
+        Si scope_names se proporciona, solo se emiten cuerpos de funciones cuyos
+        nombres estén en el conjunto (módulos independientes).
         """
         ctx = self.ctx
         ctx._variables = {}
@@ -615,6 +625,8 @@ class GeneradorC:
             ctx.write_line("")
             # Si este módulo es el principal, emitir definiciones de vars globales y runtime helpers
             tiene_principal = ctx.encontrar_principal() is not None
+            if scope_names is not None:
+                tiene_principal = tiene_principal and 'principal' in scope_names
             if tiene_principal and not ctx.is_no_std():
                 ctx.write_line("char _gen_tmp_buf[4096];")
                 ctx.write_line("")
@@ -656,15 +668,7 @@ class GeneradorC:
                 ctx.dec_indent()
                 ctx.write_line("}")
                 ctx.write_line("")
-            # Estructuras propias del módulo
-            for s in ctx.programa.sentencias:
-                if isinstance(s, DefinicionEstructura):
-                    ctx.write_line(f"struct {s.nombre};")
-            if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
-                ctx.write_line("")
-            for s in ctx.programa.sentencias:
-                if isinstance(s, DefinicionEstructura):
-                    visitar_estructura(ctx, s)
+            # NO emitir structs — ya están definidos en el header compartido
             # Pre-pass lanzar y typedefs
             _preprocess_lanzar(ctx)
             ctx._contador_thread = 0
@@ -674,10 +678,10 @@ class GeneradorC:
                 ctx.write_line(decl)
             if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
                 ctx.write_line("")
-            # Cuerpos de funciones
-            self._emit_cuerpos(ctx)
+            # Cuerpos de funciones — solo las del alcance del módulo
+            self._emit_cuerpos(ctx, scope_names)
             # Emitir main solo si este módulo tiene 'principal'
-            self._emit_main(ctx)
+            self._emit_main(ctx, scope_names)
             return ctx.generar()
 
         # modo == 'completo' (comportamiento original)
