@@ -1,0 +1,93 @@
+#lang: es
+// std.federated — Runtime de Aprendizaje Federado (FedAvg)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Arquitectura:
+//   - FedAvg: promediado ponderado de gradientes sobre red de nodos (M8.x)
+//   - Ed25519: firmas criptográficas para integridad de gradientes
+//   - Fault tolerance: manejo de timeouts y nodos caídos
+//   - Integración con std.modelo (fine-tuning + destilación)
+//
+// Zero-telemetry: comunicación cifrada y firmada, sin exposición de datos.
+//
+// Uso desde Synapse:
+//   importar std.federated
+//   sesion = fed_iniciar(pesos_iniciales, 1000, 0.001, 10)
+//   fed_registrar_worker(sesion, "worker_1", "192.168.1.10", 9000, "pubkey_hex", 1.0)
+//   fed_registrar_worker(sesion, "worker_2", "192.168.1.11", 9000, "pubkey_hex", 2.0)
+//   perdida = fed_entrenar(sesion)
+//   fed_guardar(sesion, "rondas_federadas.bin")
+//   fed_cerrar(sesion)
+
+// ============================================================
+// Declaraciones externas (implementadas en federated.c)
+// ============================================================
+
+// --- Ciclo de vida ---
+externo funcion _syn_fed_iniciar(pesos: puntero, n: entero,
+    lr: decimal, rounds: entero) -> puntero
+externo funcion _syn_fed_cerrar(sesion: puntero) -> nulo
+
+// --- Gestión de workers ---
+externo funcion _syn_fed_registrar_worker(sesion: puntero,
+    id: texto, ip: texto, puerto: entero,
+    pubkey: texto, peso: decimal) -> entero
+externo funcion _syn_fed_eliminar_worker(sesion: puntero,
+    id: texto) -> entero
+
+// --- Entrenamiento federado ---
+externo funcion _syn_fed_ronda_fedavg(sesion: puntero) -> decimal
+externo funcion _syn_fed_entrenar(sesion: puntero) -> decimal
+
+// --- Persistencia ---
+externo funcion _syn_fed_guardar(sesion: puntero, ruta: texto) -> entero
+externo funcion _syn_fed_cargar(sesion: puntero, ruta: texto) -> entero
+
+// --- Verificación de firmas ---
+externo funcion _syn_fed_verificar_firma(grad: puntero, n: entero,
+    firma: texto, pubkey: texto, worker_id: texto) -> entero
+
+// ============================================================
+// Wrappers públicos (Synapse idiomático)
+// ============================================================
+
+// Inicia una sesión de aprendizaje federado
+funcion fed_iniciar(pesos: puntero, n: entero,
+    lr: decimal, rounds: entero) -> puntero:
+    retornar _syn_fed_iniciar(pesos, n, lr, rounds)
+
+// Cierra la sesión y libera recursos
+funcion fed_cerrar(sesion: puntero) -> nulo:
+    _syn_fed_cerrar(sesion)
+    retornar
+
+// Registra un worker en el clúster federado
+funcion fed_registrar_worker(sesion: puntero,
+    id: texto, ip: texto, puerto: entero,
+    pubkey: texto, peso: decimal) -> entero:
+    retornar _syn_fed_registrar_worker(sesion, id, ip, puerto, pubkey, peso)
+
+// Elimina un worker del clúster
+funcion fed_eliminar_worker(sesion: puntero, id: texto) -> entero:
+    retornar _syn_fed_eliminar_worker(sesion, id)
+
+// Ejecuta una ronda de FedAvg
+funcion fed_ronda_fedavg(sesion: puntero) -> decimal:
+    retornar _syn_fed_ronda_fedavg(sesion)
+
+// Ejecuta entrenamiento federado completo
+funcion fed_entrenar(sesion: puntero) -> decimal:
+    retornar _syn_fed_entrenar(sesion)
+
+// Guarda el estado federado a archivo
+funcion fed_guardar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_fed_guardar(sesion, ruta)
+
+// Carga el estado federado desde archivo
+funcion fed_cargar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_fed_cargar(sesion, ruta)
+
+// Verifica firma Ed25519 de gradientes
+funcion fed_verificar_firma(grad: puntero, n: entero,
+    firma: texto, pubkey: texto, worker_id: texto) -> entero:
+    retornar _syn_fed_verificar_firma(grad, n, firma, pubkey, worker_id)

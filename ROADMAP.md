@@ -403,23 +403,24 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M13.3** | **OpenSyn Code Generation + LSP** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.4** | **Fine-Tuning Pipeline (LoRA local)** | **✅ COMPLETADO Y VERIFICADO** |
 | **M13.5** | **Quantization & Deployment Pipeline** | **✅ COMPLETADO Y VERIFICADO** |
-| **M13.6** | **Model Distillation (Teacher→Student via KL)** | **🔄 EN PROGRESO** |
+| **M13.6** | **Model Distillation (Teacher→Student via KL)** | **✅ COMPLETADO Y VERIFICADO** |
+| **M14.1** | **Federated Learning Runtime (FedAvg + Ed25519)** | **🔄 EN PROGRESO** |
 
 ---
 
 ## 9. ROADMAP v5.2 — EN PROGRESO (Fase 14)
 
-### M13.6: Model Distillation Pipeline — EN PROGRESO
+### M14.1: Federated Learning Runtime — EN PROGRESO
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
-| **M13.6** | Destilación de conocimiento (Knowledge Distillation) teacher→student | 🔄 En Progreso | KL divergence sobre logits, pérdida combinada soft+hard, integración con LoRA + cuantización, persistencia de sesión, layer reduction por interpolación lineal |
+| **M13.6** | Destilación de conocimiento (Knowledge Distillation) teacher→student | ✅ Completado y Verificado | KL divergence sobre logits, pérdida combinada soft+hard, persistencia de sesión, layer reduction por interpolación lineal, ~100 tests passing, compilación -Werror 0 errores |
+| **M14.1** | Aprendizaje Federado (FedAvg + Ed25519) sobre red de nodos M8.x | 🔄 En Progreso | FedAvg estándar y ponderado, firmas Ed25519 para integridad, fault tolerance con timeouts, persistencia binaria, integración con fine-tuning LoRA + destilación, ~100 tests passing |
 
 **Próximos hitos v5.2 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| **M13.6** | **Model Distillation Pipeline** | **🔄 EN PROGRESO** |
-| M14.1 | Federated Learning Runtime | ⬜ Pendiente |
+| **M14.1** | **Federated Learning Runtime** | **🔄 EN PROGRESO** |
 | M14.2 | Distributed Training Orchestrator | ⬜ Pendiente |
 | M15.1 | Formal Proof Assistant (Coq/Lean bridge) | ⬜ Pendiente |
 
