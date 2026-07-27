@@ -153,7 +153,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 ---
 
-## 4. FASE 9: DEPURACIÓN TIME-TRAVEL — EN PROGRESO / VALIDACIÓN EN CURSO
+## 4. ✅ FASE 9: DEPURACIÓN TIME-TRAVEL — COMPLETADA Y CERTIFICADA
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
@@ -379,6 +379,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M8.6** | **UDP Multicast Real para Auto-Descubrimiento** | ✅ **Completado** |
 | **M9.1** | **Grabación de Ejecución Determinista (rr-style) — heredado de v5.0** | ✅ **Completado** |
 | **M9.2** | **Breakpoints Reversibles (rp_*) — heredado de v5.0** | ✅ **Completado** |
+| **M9.3** | **Snapshots de Memoria y Diff Histórico (ms_*) — heredado de v5.0** | ✅ **Completado** |
 | M9.4 | Debugging distribuido multi-nodo | Media |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
@@ -420,11 +421,27 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ `tests/test_time_travel.c` — Renombrada constante en comentario
 
 ### Certificación M9.2 (Breakpoints Reversibles — verificación):
-- ✅ `tests/test_reversible_debug.c` — 70/70 asserts PASS, 0 FAIL. 11 funciones rp_* verificadas: `rp_inicializar`, `rp_establecer_breakpoint` (3 tipos: línea/variable/tag), `rp_eliminar_breakpoint`, `rp_limpiar_breakpoints`, `rp_buscar_breakpoint`, `rp_retroceder`, `rp_posicion_actual`, `rp_ir_a_pre_error`, `rp_inspeccionar_variable`, `rp_pila_llamadas`, `rp_buscar_cambio_variable`
-- ✅ `tests/integration/test_reversible_debug.py` — 9/9 PASS (compilación, ejecución, secciones, imports, múltiples ejecuciones)
+- ✅ `tests/test_reversible_debug.c` — 70/70 asserts PASS, 0 FAIL. 11 funciones rp_* verificadas
+- ✅ `tests/integration/test_reversible_debug.py` — 9/9 PASS
 - ✅ `librerias/std/debug.syn` — 11 bindings `externo funcion` para API rp_*
 - ✅ `synapse_rt.c` — Implementación completa de motor de replay reversible en C
 - ✅ Compilación exitosa con toolchain GCC 12.4.0
+
+### Certificación M9.3 (Snapshots de Memoria — verificación):
+- ✅ `tests/test_time_travel.c` — 79/79 asserts PASS (snapshots de variables, diff estructural, consulta histórica)
+- ✅ `tests/integration/test_reversible_debug.py` — 9/9 PASS (cubre también el ciclo completo de snapshots)
+- ✅ `librerias/std/debug.syn` — 6 bindings `externo funcion` para API ms_*: `ms_tomar_en`, `ms_diferenciar`, `ms_diff_entre`, `ms_snapshot_contar_vars`, `ms_snapshot_tamano`, `ms_snapshot_contiene`
+- ✅ `synapse_rt.c` — Implementación completa de snapshot engine con diff estructural y consulta de valores históricos
+- ✅ Compilación exitosa con toolchain GCC 12.4.0
+
+### Certificación M9.0 (Módulo std.debug base):
+- ✅ `librerias/std/debug.syn` — 219 líneas: tipos `TraceEvent`, `TraceSession`, 9 constantes `EVENT_*`, API pública completa
+- ✅ `synapse_rt.c` — Búfer circular 50K eventos, persistencia a `~/.synapse/traces/{id}.trace`, cabecera `TRACE v1`
+- ✅ `compilador/generator/context.py` — Builtins `debug_*` registrados en `_BUILTINS` y `_RUNTIME_BUILTINS`
+- ✅ `tests/unit/test_debug.py` — 6/6 PASS
+
+---
+*Fase 9 ratificada: 2026-07-26. Todos los micro-entregables (M9.0–M9.3) verificados y certificados.*
 
 ---
 

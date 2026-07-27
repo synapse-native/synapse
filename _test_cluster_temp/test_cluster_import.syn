@@ -1,5 +1,0 @@
-#lang: es
-importar std.cluster
-
-funcion principal() -> nulo:
-    retornar
