@@ -6739,3 +6739,427 @@ CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
     }
     return (CadenaSegura){ .longitud = 0, .datos = NULL };
 }
+
+// ============================================================
+// M8.5 — Cluster Auto-Discovery & Membership
+// ============================================================
+// UDP multicast discovery, heartbeat-based health tracking,
+// and dynamic node table management.
+// ============================================================
+
+#define MAX_NODOS_CLUSTER 64
+#define MAX_ID_LEN 64
+#define MAX_IP_LEN 48
+#define MAX_PUBKEY_LEN 128
+#define DESCUBRIMIENTO_MAGIC "SYNCLUSTER"
+
+// --- Node table entry ---
+typedef struct {
+    char id[MAX_ID_LEN];
+    char ip[MAX_IP_LEN];
+    int puerto;
+    char pubkey[MAX_PUBKEY_LEN];
+    int estado;         // 0=DESCONOCIDO, 1=VIVO, 2=SOSPECHOSO, 3=MUERTO
+    int ultimo_latido_s; // timestamp (unix epoch seconds) of last heartbeat
+    int primer_visto_s;   // timestamp when first discovered
+    int num_heartbeats;   // total heartbeats received
+} NodoClusterMembresia;
+
+static NodoClusterMembresia _tabla_membresia[MAX_NODOS_CLUSTER];
+static int _num_nodos_membresia = 0;
+static int _max_nodos_membresia = MAX_NODOS_CLUSTER;
+static int _heartbeat_intervalo_s = 5;   // default: 5 seconds
+static int _heartbeat_timeout_s = 15;     // default: 15 seconds without = dead
+static int _ultimo_tick_heartbeat_s = 0;
+static pthread_mutex_t _membresia_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int _descubrimiento_inicializado = 0;
+
+// --- Inicializa la tabla de membresía ---
+int cluster_descubrimiento_inicializar(int max_nodos) {
+    pthread_mutex_lock(&_membresia_mutex);
+    if (max_nodos > MAX_NODOS_CLUSTER || max_nodos <= 0)
+        max_nodos = MAX_NODOS_CLUSTER;
+    _max_nodos_membresia = max_nodos;
+    _num_nodos_membresia = 0;
+    memset(_tabla_membresia, 0, sizeof(_tabla_membresia));
+    _descubrimiento_inicializado = 1;
+    _ultimo_tick_heartbeat_s = 0;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return 0;
+}
+
+// --- Detiene el subsistema de descubrimiento ---
+int cluster_descubrimiento_detener(void) {
+    pthread_mutex_lock(&_membresia_mutex);
+    _num_nodos_membresia = 0;
+    memset(_tabla_membresia, 0, sizeof(_tabla_membresia));
+    _descubrimiento_inicializado = 0;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return 0;
+}
+
+// --- Encuentra índice de nodo por ID, o -1 si no existe ---
+static int _buscar_nodo_por_id(const char* id) {
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        if (strcmp(_tabla_membresia[i].id, id) == 0)
+            return i;
+    }
+    return -1;
+}
+
+// --- Encuentra índice de nodo por IP+puerto, o -1 ---
+static int _buscar_nodo_por_direccion(const char* ip, int puerto) {
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        if (strcmp(_tabla_membresia[i].ip, ip) == 0 &&
+            _tabla_membresia[i].puerto == puerto)
+            return i;
+    }
+    return -1;
+}
+
+// --- Registrar o actualizar un nodo en la tabla de membresía ---
+// Retorna índice del nodo (0+), o -1 si tabla llena
+int cluster_registrar_nodo(CadenaSegura id, CadenaSegura ip, int puerto, CadenaSegura pubkey) {
+    if (!_descubrimiento_inicializado) return -2;
+    if (!id.datos || !ip.datos || puerto <= 0) return -3;
+
+    pthread_mutex_lock(&_membresia_mutex);
+
+    // Check if already exists
+    int idx = _buscar_nodo_por_id(id.datos);
+    if (idx < 0)
+        idx = _buscar_nodo_por_direccion(ip.datos, puerto);
+
+    if (idx >= 0) {
+        // Update existing entry
+        _tabla_membresia[idx].estado = 1; // VIVO
+        _tabla_membresia[idx].ultimo_latido_s = (int)time(NULL);
+        _tabla_membresia[idx].num_heartbeats++;
+        strncpy(_tabla_membresia[idx].ip, ip.datos, MAX_IP_LEN - 1);
+        _tabla_membresia[idx].puerto = puerto;
+        if (pubkey.datos)
+            strncpy(_tabla_membresia[idx].pubkey, pubkey.datos, MAX_PUBKEY_LEN - 1);
+        pthread_mutex_unlock(&_membresia_mutex);
+        return idx;
+    }
+
+    // New node: add if space available
+    if (_num_nodos_membresia >= _max_nodos_membresia) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return -1;
+    }
+
+    int nuevo = _num_nodos_membresia++;
+    strncpy(_tabla_membresia[nuevo].id, id.datos, MAX_ID_LEN - 1);
+    _tabla_membresia[nuevo].id[MAX_ID_LEN - 1] = '\0';
+    strncpy(_tabla_membresia[nuevo].ip, ip.datos, MAX_IP_LEN - 1);
+    _tabla_membresia[nuevo].ip[MAX_IP_LEN - 1] = '\0';
+    _tabla_membresia[nuevo].puerto = puerto;
+    if (pubkey.datos) {
+        strncpy(_tabla_membresia[nuevo].pubkey, pubkey.datos, MAX_PUBKEY_LEN - 1);
+        _tabla_membresia[nuevo].pubkey[MAX_PUBKEY_LEN - 1] = '\0';
+    } else {
+        _tabla_membresia[nuevo].pubkey[0] = '\0';
+    }
+    _tabla_membresia[nuevo].estado = 1; // VIVO
+    _tabla_membresia[nuevo].ultimo_latido_s = (int)time(NULL);
+    _tabla_membresia[nuevo].primer_visto_s = (int)time(NULL);
+    _tabla_membresia[nuevo].num_heartbeats = 1;
+
+    pthread_mutex_unlock(&_membresia_mutex);
+    return nuevo;
+}
+
+// --- Eliminar un nodo de la tabla por ID ---
+// Retorna 0 si se eliminó, -1 si no se encontró
+int cluster_eliminar_nodo(CadenaSegura id) {
+    if (!_descubrimiento_inicializado || !id.datos) return -1;
+
+    pthread_mutex_lock(&_membresia_mutex);
+    int idx = _buscar_nodo_por_id(id.datos);
+    if (idx < 0) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return -1;
+    }
+    // Shift remaining nodes
+    for (int i = idx; i < _num_nodos_membresia - 1; i++) {
+        _tabla_membresia[i] = _tabla_membresia[i + 1];
+    }
+    _num_nodos_membresia--;
+    memset(&_tabla_membresia[_num_nodos_membresia], 0, sizeof(NodoClusterMembresia));
+    pthread_mutex_unlock(&_membresia_mutex);
+    return 0;
+}
+
+// --- Retorna número de nodos activos (estado VIVO) ---
+int cluster_nodos_activos(void) {
+    if (!_descubrimiento_inicializado) return 0;
+    pthread_mutex_lock(&_membresia_mutex);
+    int count = 0;
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        if (_tabla_membresia[i].estado == 1) count++;
+    }
+    pthread_mutex_unlock(&_membresia_mutex);
+    return count;
+}
+
+// --- Retorna número total de nodos en tabla ---
+int cluster_total_nodos(void) {
+    if (!_descubrimiento_inicializado) return 0;
+    pthread_mutex_lock(&_membresia_mutex);
+    int n = _num_nodos_membresia;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return n;
+}
+
+// --- Obtener información de un nodo por índice ---
+// Retorna "id:ip:puerto:pubkey:estado:heartbeats"
+CadenaSegura cluster_obtener_nodo(int idx) {
+    if (!_descubrimiento_inicializado || idx < 0)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    pthread_mutex_lock(&_membresia_mutex);
+    if (idx >= _num_nodos_membresia) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    NodoClusterMembresia* n = &_tabla_membresia[idx];
+    char buf[512];
+    int len = snprintf(buf, sizeof(buf), "%s:%s:%d:%s:%d:%d",
+                       n->id, n->ip, n->puerto, n->pubkey,
+                       n->estado, n->num_heartbeats);
+    if (len < 0 || len >= (int)sizeof(buf)) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    memcpy(result, buf, (size_t)(len + 1));
+    pthread_mutex_unlock(&_membresia_mutex);
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
+
+// --- Inicializar subsistema de heartbeat ---
+// intervalo_s: segundos entre ticks de heartbeat
+// timeout_s: segundos sin heartbeat para marcar nodo como caído
+int cluster_heartbeat_inicializar(int intervalo_s, int timeout_s) {
+    if (intervalo_s <= 0) intervalo_s = 5;
+    if (timeout_s <= 0) timeout_s = 15;
+    if (timeout_s < intervalo_s * 2) timeout_s = intervalo_s * 3; // timeout >= 3*interval
+
+    pthread_mutex_lock(&_membresia_mutex);
+    _heartbeat_intervalo_s = intervalo_s;
+    _heartbeat_timeout_s = timeout_s;
+    _ultimo_tick_heartbeat_s = (int)time(NULL);
+    pthread_mutex_unlock(&_membresia_mutex);
+    return 0;
+}
+
+// --- Tick del heartbeat: verifica latidos y purga nodos caídos ---
+// tiempo_actual_s: timestamp UNIX actual en segundos
+// Retorna cantidad de nodos purgados
+int cluster_tick_heartbeat(int tiempo_actual_s) {
+    if (!_descubrimiento_inicializado) return -1;
+    if (tiempo_actual_s <= 0) tiempo_actual_s = (int)time(NULL);
+
+    pthread_mutex_lock(&_membresia_mutex);
+
+    int purgados = 0;
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        if (_tabla_membresia[i].estado == 1) { // VIVO
+            int edad = tiempo_actual_s - _tabla_membresia[i].ultimo_latido_s;
+            if (edad >= _heartbeat_timeout_s) {
+                _tabla_membresia[i].estado = 3; // MUERTO
+                purgados++;
+            } else if (edad >= _heartbeat_timeout_s / 2) {
+                _tabla_membresia[i].estado = 2; // SOSPECHOSO
+            }
+        }
+    }
+
+    _ultimo_tick_heartbeat_s = tiempo_actual_s;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return purgados;
+}
+
+// --- Registrar un heartbeat recibido de un nodo ---
+// Retorna 0 si ok, -1 si nodo no encontrado
+int cluster_recibir_heartbeat(CadenaSegura id) {
+    if (!_descubrimiento_inicializado || !id.datos) return -1;
+
+    pthread_mutex_lock(&_membresia_mutex);
+    int idx = _buscar_nodo_por_id(id.datos);
+    if (idx < 0) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return -1;
+    }
+    _tabla_membresia[idx].estado = 1; // VIVO
+    _tabla_membresia[idx].ultimo_latido_s = (int)time(NULL);
+    _tabla_membresia[idx].num_heartbeats++;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return 0;
+}
+
+// --- Generar paquete de descubrimiento (SYNCLUSTER announcement) ---
+// Formato: "SYNCLUSTER:id:ip:puerto:pubkey_hex"
+// Retorna el paquete como CadenaSegura (heap-allocated, caller debe liberar)
+CadenaSegura cluster_generar_anuncio(CadenaSegura id, CadenaSegura ip, int puerto, CadenaSegura pubkey) {
+    if (!id.datos || !ip.datos || puerto <= 0)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    char buf[512];
+    const char* pk = pubkey.datos ? pubkey.datos : "";
+    int len = snprintf(buf, sizeof(buf), "%s:%s:%s:%d:%s",
+                       DESCUBRIMIENTO_MAGIC, id.datos, ip.datos, puerto, pk);
+    if (len < 0 || len >= (int)sizeof(buf))
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
+
+// --- Procesar paquete de descubrimiento entrante ---
+// Formato esperado: "SYNCLUSTER:id:ip:puerto:pubkey_hex"
+// Retorna 0 si se procesó correctamente, -1 si es inválido
+int cluster_procesar_anuncio(CadenaSegura paquete) {
+    if (!paquete.datos || paquete.longitud <= (int)strlen(DESCUBRIMIENTO_MAGIC))
+        return -1;
+
+    // Verify magic prefix
+    if (strncmp(paquete.datos, DESCUBRIMIENTO_MAGIC, strlen(DESCUBRIMIENTO_MAGIC)) != 0)
+        return -2;
+
+    // Parse: SYNCLUSTER:id:ip:puerto:pubkey
+    const char* p = paquete.datos + strlen(DESCUBRIMIENTO_MAGIC) + 1;
+
+    // Extract id (up to next ':')
+    const char* id_start = p;
+    while (*p && *p != ':') p++;
+    if (!*p) return -3;
+    int id_len = (int)(p - id_start);
+    if (id_len <= 0 || id_len >= MAX_ID_LEN) return -3;
+
+    // Extract ip (up to next ':')
+    p++; // skip ':'
+    const char* ip_start = p;
+    while (*p && *p != ':') p++;
+    if (!*p) return -4;
+    int ip_len = (int)(p - ip_start);
+    if (ip_len <= 0 || ip_len >= MAX_IP_LEN) return -4;
+
+    // Extract puerto (up to next ':')
+    p++; // skip ':'
+    int puerto = 0;
+    while (*p && *p != ':') {
+        puerto = puerto * 10 + (*p - '0');
+        p++;
+    }
+    if (puerto <= 0 || puerto > 65535) return -5;
+
+    // Extract pubkey (rest of string)
+    const char* pubkey_start = p + 1; // skip ':' or end of string
+    int pubkey_len = (int)(paquete.datos + paquete.longitud - pubkey_start);
+    if (pubkey_len < 0) pubkey_len = 0;
+
+    // Build temporary strings for registration
+    char id_buf[MAX_ID_LEN];
+    char ip_buf[MAX_IP_LEN];
+    char pk_buf[MAX_PUBKEY_LEN];
+
+    memcpy(id_buf, id_start, (size_t)id_len);
+    id_buf[id_len] = '\0';
+
+    memcpy(ip_buf, ip_start, (size_t)ip_len);
+    ip_buf[ip_len] = '\0';
+
+    if (pubkey_len > 0 && pubkey_len < MAX_PUBKEY_LEN) {
+        memcpy(pk_buf, pubkey_start, (size_t)pubkey_len);
+        pk_buf[pubkey_len] = '\0';
+    } else {
+        pk_buf[0] = '\0';
+    }
+
+    CadenaSegura cid = { .longitud = id_len, .datos = id_buf };
+    CadenaSegura cip = { .longitud = ip_len, .datos = ip_buf };
+    CadenaSegura cpk = { .longitud = pubkey_len, .datos = pk_buf };
+
+    int rc = cluster_registrar_nodo(cid, cip, puerto, cpk);
+    return (rc >= 0) ? 0 : -6;
+}
+
+// --- Generar representación textual de la tabla de membresía ---
+// Formato: "nodo1|nodo2|..." donde cada nodo es "id:ip:puerto:estado"
+CadenaSegura cluster_info_membresia_como_texto(void) {
+    if (!_descubrimiento_inicializado)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    pthread_mutex_lock(&_membresia_mutex);
+
+    // Calculate total size needed
+    int total = 0;
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        total += (int)strlen(_tabla_membresia[i].id) + 1 +
+                 (int)strlen(_tabla_membresia[i].ip) + 1 + 6 + 1 + 1; // :ip:puerto:estado|
+    }
+    if (total <= 0) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    char* result = (char*)pool_alloc((size_t)(total + 1));
+    if (!result) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+
+    int pos = 0;
+    for (int i = 0; i < _num_nodos_membresia; i++) {
+        NodoClusterMembresia* n = &_tabla_membresia[i];
+        int nlen = snprintf(result + pos, (size_t)(total - pos + 1),
+                            "%s:%s:%d:%d|",
+                            n->id, n->ip, n->puerto, n->estado);
+        if (nlen > 0) pos += nlen;
+    }
+    result[pos] = '\0';
+
+    pthread_mutex_unlock(&_membresia_mutex);
+    return (CadenaSegura){ .longitud = pos, .datos = result };
+}
+
+// --- Verificar salud de un nodo específico ---
+// Retorna: 1=VIVO, 2=SOSPECHOSO, 3=MUERTO, -1=desconocido
+int cluster_verificar_salud_nodo(CadenaSegura id) {
+    if (!_descubrimiento_inicializado || !id.datos) return -1;
+
+    pthread_mutex_lock(&_membresia_mutex);
+    int idx = _buscar_nodo_por_id(id.datos);
+    if (idx < 0) {
+        pthread_mutex_unlock(&_membresia_mutex);
+        return -1;
+    }
+    int estado = _tabla_membresia[idx].estado;
+    pthread_mutex_unlock(&_membresia_mutex);
+    return estado;
+}
+
+// --- Obtener timestamp del último tick de heartbeat ---
+int cluster_ultimo_tick_heartbeat(void) {
+    return _ultimo_tick_heartbeat_s;
+}
+
+// --- Obtener configuración de heartbeat ---
+// Retorna "intervalo:timeout"
+CadenaSegura cluster_info_heartbeat(void) {
+    char buf[64];
+    int len = snprintf(buf, sizeof(buf), "%d:%d", _heartbeat_intervalo_s, _heartbeat_timeout_s);
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}

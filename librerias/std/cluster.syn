@@ -204,3 +204,70 @@ externo funcion cm_migraciones_completadas() -> entero
 
 // cm_migraciones_fallidas — Retorna número de migraciones fallidas
 externo funcion cm_migraciones_fallidas() -> entero
+
+// ============================================================
+// Funciones Externas — M8.5 (Auto-Discovery & Membership)
+// ============================================================
+
+// descubrimiento_inicializar — Inicializa la tabla de membresía
+//   max_nodos: capacidad máxima de la tabla (máx 64)
+//   Retorna 0 si ok
+externo funcion cluster_descubrimiento_inicializar(max_nodos: entero) -> entero
+
+// descubrimiento_detener — Detiene el subsistema y limpia la tabla
+externo funcion cluster_descubrimiento_detener() -> entero
+
+// registrar_nodo — Registra o actualiza un nodo en la tabla de membresía
+//   Retorna índice del nodo (0+) o -1 si tabla llena
+externo funcion cluster_registrar_nodo(id: texto, ip: texto, puerto: entero, pubkey: texto) -> entero
+
+// eliminar_nodo — Elimina un nodo de la tabla por ID
+//   Retorna 0 si ok, -1 si no se encontró
+externo funcion cluster_eliminar_nodo(id: texto) -> entero
+
+// nodos_activos — Retorna número de nodos con estado VIVO
+externo funcion cluster_nodos_activos() -> entero
+
+// total_nodos — Retorna número total de nodos en la tabla
+externo funcion cluster_total_nodos() -> entero
+
+// obtener_nodo — Obtiene info de un nodo por índice
+//   Retorna "id:ip:puerto:pubkey:estado:heartbeats" o vacío
+externo funcion cluster_obtener_nodo(indice: entero) -> texto
+
+// heartbeat_inicializar — Configura el subsistema de heartbeats
+//   intervalo_s: segundos entre ticks de heartbeat
+//   timeout_s: segundos sin heartbeat para marcar caída
+externo funcion cluster_heartbeat_inicializar(intervalo_s: entero, timeout_s: entero) -> entero
+
+// tick_heartbeat — Procesa heartbeats y purga nodos caídos
+//   tiempo_actual_s: timestamp UNIX actual en segundos
+//   Retorna cantidad de nodos purgados
+externo funcion cluster_tick_heartbeat(tiempo_actual_s: entero) -> entero
+
+// recibir_heartbeat — Registra heartbeat de un nodo (actualiza estado a VIVO)
+//   Retorna 0 si ok, -1 si nodo no encontrado
+externo funcion cluster_recibir_heartbeat(id: texto) -> entero
+
+// generar_anuncio — Genera paquete de descubrimiento SYNCLUSTER
+//   Formato: "SYNCLUSTER:id:ip:puerto:pubkey"
+externo funcion cluster_generar_anuncio(id: texto, ip: texto, puerto: entero, pubkey: texto) -> texto
+
+// procesar_anuncio — Procesa paquete SYNCLUSTER entrante
+//   Retorna 0 si se registró correctamente, -1 si inválido
+externo funcion cluster_procesar_anuncio(paquete: texto) -> entero
+
+// info_membresia_como_texto — Retorna tabla de membresía como texto
+//   Formato: "id:ip:puerto:estado|..."
+externo funcion cluster_info_membresia_como_texto() -> texto
+
+// verificar_salud_nodo — Verifica salud de un nodo por ID
+//   Retorna: 1=VIVO, 2=SOSPECHOSO, 3=MUERTO, -1=desconocido
+externo funcion cluster_verificar_salud_nodo(id: texto) -> entero
+
+// ultimo_tick_heartbeat — Retorna timestamp del último tick
+externo funcion cluster_ultimo_tick_heartbeat() -> entero
+
+// info_heartbeat — Retorna configuración de heartbeat
+//   "intervalo:timeout"
+externo funcion cluster_info_heartbeat() -> texto

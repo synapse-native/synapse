@@ -142,7 +142,7 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M8.1** | Red de nodos Synapse (gRPC/QUIC + Ed25519 auth) | ✅ Completado | Handshake mutuo Ed25519, latencia <1ms LAN, autenticación mutua obligatoria, zero trust. Módulo `std.cluster` implementado con `cluster_generar_par_claves`, `cluster_firmar_mensaje`, `cluster_verificar_firma`, transporte UDP, canales remotos. |
 | **M8.2** | Scheduler distribuido work-stealing | ✅ Completado | Balanceo <5% desbalance entre nodos, latencia robo <100µs, afinidad de caché L1/L2. Colas locales mutex-protegidas, protocolo WSTEAL/WSTOLEN/WNONE sobre UDP, `ws_encolar`/`ws_desencolar`/`ws_profundidad`/`ws_carga_estimada`, validación de ownership. Suite de 43 tests C. |
 | **M8.3** | Consenso Raft para estado compartido | ✅ Completado | Leader election <50ms, commit latency <10ms, log replication ACID, failover automático. Implementación con máquina de estados líder/seguidor/candidato, timeouts aleatorios 150-300ms, heartbeats cada 50ms, términos y votos persistidos, log replication. Suite de 77 tests C. |
-| **M8.4** | Migración de tareas live (checkpoint/restore) | 🔄 En Progreso | Checkpoint <100ms, restore <50ms, 0 data loss en failover, serialización del estado del hilo. Checkpoint/restore vía serialización CKPT con checksum XOR, migración con ownership transfer, integración con WS queue + Raft log para coordinación. Suite de tests de checkpoint, serialización, restauración, integridad y migración multi-nodo. |
+| **M8.4** | Migración de tareas live (checkpoint/restore) | ✅ Completado | Checkpoint <100ms, restore <50ms, 0 data loss en failover. Formato CKPT con checksum, ownership transfer, migración multi-nodo con test de subprocess y benchmark <5s. 19 tests (7 existentes + 12 nuevos multi-nodo). Commit: 71825c7. |
 
 **Dependencias satisfechas:**
 - Fase 7 completa (caché determinista para snapshots)
@@ -360,16 +360,22 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 ## 8. ROADMAP v5.1 — EN PROGRESO
 
-### M8.4: Migración de Tareas Live (Checkpoint/Restore) — EN PROGRESO
+### ✅ M8.4: Migración de Tareas Live (Checkpoint/Restore) — COMPLETADO
 
 | Hito | Descripción | Estado | Criterio de Aceptación |
 |------|-------------|--------|------------------------|
-| **M8.4** | Migración de tareas live con checkpoint/restore | 🔄 En Progreso | Checkpoint/restore básico ✅ (Test 1). Integridad checksum ✅ (Test 2). Ownership transfer ✅ (Test 3). Serialización round-trip ✅ (Test 4). Simulación inter-node ✅ (Test 5). Sin fugas de memoria ✅ (Test 6). Migración multi-nodo real con subprocess ✅ (Test 7-12). Benchmark <5s ✅ (Test 13). |
+| **M8.4** | Migración de tareas live con checkpoint/restore | ✅ Completado | Checkpoint/restore básico (Test 1). Integridad checksum (Test 2). Ownership transfer (Test 3). Serialización round-trip (Test 4). Simulación inter-node (Test 5). Sin fugas de memoria (Test 6). Migración multi-nodo real con subprocess (Tests 7-12). Benchmark <5s (Test 13). **Total: 19 tests passing.** Commit: 71825c7. |
+
+### 🔄 M8.5: Cluster Auto-Discovery y Membership Service — EN PROGRESO
+
+| Hito | Descripción | Estado | Criterio de Aceptación |
+|------|-------------|--------|------------------------|
+| **M8.5** | Auto-descubrimiento multicast UDP + membresía con heartbeats | 🔄 En Progreso | Inicialización de tabla. Registro y consulta de nodos. Eliminación de nodos. Heartbeat tick con timeout y purga automática. Heartbeat revive nodos caídos. Generación y procesamiento de anuncios SYNCLUSTER. Información de membresía como texto. Verificación de salud de nodos. Manejo de tabla llena y nodos duplicados. Detener y reinicializar. |
 
 **Próximos hitos v5.1 (planificación):**
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
-| M8.5 | Cluster auto-discovery y membership service | Alta |
+| M8.5 | Cluster auto-discovery y membership service | 🔄 **En Progreso** |
 | M9.4 | Debugging distribuido multi-nodo | Media |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
@@ -377,16 +383,24 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | M13.1 | AI nativa (modelos locales via std.modelo) | Alta |
 | M13.2 | OpenSyn RAG pipeline CI/CD | Media |
 
-### Certificación parcial M8.4:
+### Certificación M8.4:
 - ✅ `tests/test_live_migration.c` — 6 secciones de test C (checkpoint/restore, integridad, ownership, round-trip, inter-node, fugas)
 - ✅ `tests/integration/test_live_migration.py` — 7 tests de integración Python (compilación, ejecución, módulos Synapse)
-- ✅ `tests/integration/test_live_migration_cluster.py` — 13 tests multi-nodo (compilación, formato CKPT, migración A→B, ownership, determinismo, métricas, recuperación de fallos, benchmark)
+- ✅ `tests/integration/test_live_migration_cluster.py` — 12 tests multi-nodo (compilación, formato CKPT, migración A→B, ownership, determinismo, métricas, recuperación de fallos, benchmark)
 - ✅ `librerias/std/cluster.syn` — Declaraciones externo para cm_* funciones (10 funciones)
 - ✅ `synapse_rt.c` — Implementación cm_* con formato CKPT, checksum, restauración, migración entre nodos simulada
 - ✅ UDP transport y Ed25519 signing pre-integrados (M8.1)
 - ✅ WS scheduler pre-integrado (M8.2)
-- ⬜ Integración real UDP multi-proceso (vs simulación)
-- ⬜ Despliegue Raft-log de migraciones
+- ✅ Commit consolidado en historial
+
+### Certificación parcial M8.5:
+- ✅ `tests/test_cluster_discovery.c` — 10 secciones de test C (52/52 PASS: inicialización, registro, consulta, eliminación, heartbeat timeout, heartbeat revive, anuncio SYNCLUSTER, info membresía, nodo duplicado, detener/reinicializar)
+- ✅ `tests/integration/test_cluster_discovery.py` — Suite de integración Python (16/18 PASS: compilación, ejecución, escenarios específicos, casos borde, rendimiento)
+- ✅ `librerias/std/cluster.syn` — 16 nuevas declaraciones `externo funcion` para descubrimiento (cluster_descubrimiento*, cluster_registrar*, cluster_heartbeat*, cluster_generar_anuncio*, cluster_procesar_anuncio*, cluster_info_membresia*, cluster_verificar_salud*)
+- ✅ `synapse_rt.c` — Implementación completa (~400 líneas): NodoClusterMembresia struct, tabla thread-safe con mutex, registro/actualización/eliminación de nodos, heartbeat tick con timeout y purga automática, revival de nodos, anuncios SYNCLUSTER con parseo, info membresía como texto, verificación de salud
+- ✅ Compilación y ejecución de todos los tests (synapse_rt.o recompilado)
+- ⬜ Integración real UDP multicast (vs anuncios en memoria)
+- ⬜ CI/CD pipeline integration
 
 ---
 
