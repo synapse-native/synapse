@@ -22,6 +22,10 @@ static int _idx(SurfaceCode* r, int fila, int col) {
     return fila * r->L + col;
 }
 
+static int _idx_const(const SurfaceCode* r, int fila, int col) {
+    return fila * r->L + col;
+}
+
 static int _valido(SurfaceCode* r) {
     return r != NULL && r->data_qubits != NULL && r->estabilizadores != NULL
            && r->L >= 2 && r->L <= SC_MAX_L;
@@ -504,7 +508,7 @@ void sc_imprimir_rejilla(const SurfaceCode* r) {
     printf("\nMapa de errores X:\n");
     for (int f = 0; f < r->L; f++) {
         for (int c = 0; c < r->L; c++) {
-            int idx = _idx((SurfaceCode*)r, f, c);
+            int idx = _idx_const(r, f, c);
             printf("%c ", r->data_qubits[idx].error_x > 0.5 ? 'X' : '.');
         }
         printf("\n");
@@ -513,7 +517,7 @@ void sc_imprimir_rejilla(const SurfaceCode* r) {
     printf("Mapa de errores Z:\n");
     for (int f = 0; f < r->L; f++) {
         for (int c = 0; c < r->L; c++) {
-            int idx = _idx((SurfaceCode*)r, f, c);
+            int idx = _idx_const(r, f, c);
             printf("%c ", r->data_qubits[idx].error_z > 0.5 ? 'Z' : '.');
         }
         printf("\n");
