@@ -354,3 +354,88 @@ funcion muestra_logits(logits: tensor, n: entero) -> nulo:
 funcion generar_texto_simple(ctx: puntero, prompt: texto,
     max_tokens: entero) -> texto:
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, 0.7, 40, 0.9)
+
+// ============================================================
+// Declaraciones externas de Destilación (implementadas en distillation.c)
+// ============================================================
+
+// --- Ciclo de vida ---
+externo funcion _syn_kd_iniciar(temperatura: decimal, alpha: decimal,
+    vocab_size: entero) -> puntero
+externo funcion _syn_kd_cerrar(sesion: puntero) -> nulo
+
+// --- Gestión de dataset ---
+externo funcion _syn_kd_agregar_par(sesion: puntero,
+    logits_t: puntero, logits_s: puntero,
+    target_id: entero, peso: decimal) -> entero
+
+// --- Cómputo de pérdida ---
+externo funcion _syn_kd_divergencia_kl(logits_p: puntero, logits_q: puntero,
+    n: entero, temperatura: decimal) -> decimal
+externo funcion _syn_kd_perdida_combinada(logits_t: puntero, logits_s: puntero,
+    target_id: entero, vocab_size: entero,
+    temperatura: decimal, alpha: decimal) -> decimal
+
+// --- Destilación ---
+externo funcion _syn_kd_paso_destilacion(sesion: puntero) -> decimal
+externo funcion _syn_kd_destilar(sesion: puntero) -> decimal
+
+// --- Persistencia ---
+externo funcion _syn_kd_guardar(sesion: puntero, ruta: texto) -> entero
+externo funcion _syn_kd_cargar(sesion: puntero, ruta: texto) -> entero
+
+// --- Integración ---
+externo funcion _syn_kd_estimar_reduccion(teacher_m: entero, student_m: entero,
+    fmt: entero) -> decimal
+
+// ============================================================
+// Wrappers públicos de Destilación (Synapse idiomático)
+// ============================================================
+
+// Inicia una sesión de destilación
+funcion kd_iniciar(temperatura: decimal, alpha: decimal,
+    vocab_size: entero) -> puntero:
+    retornar _syn_kd_iniciar(temperatura, alpha, vocab_size)
+
+// Cierra la sesión y libera recursos
+funcion kd_cerrar(sesion: puntero) -> nulo:
+    _syn_kd_cerrar(sesion)
+    retornar
+
+// Agrega un par de logits (teacher + student) para destilación
+funcion kd_agregar_par(sesion: puntero, logits_t: puntero,
+    logits_s: puntero, target_id: entero, peso: decimal) -> entero:
+    retornar _syn_kd_agregar_par(sesion, logits_t, logits_s, target_id, peso)
+
+// Computa la divergencia KL entre dos distribuciones
+funcion kd_divergencia_kl(logits_p: puntero, logits_q: puntero,
+    n: entero, temperatura: decimal) -> decimal:
+    retornar _syn_kd_divergencia_kl(logits_p, logits_q, n, temperatura)
+
+// Computa la pérdida combinada (soft + hard) para destilación
+funcion kd_perdida_combinada(logits_t: puntero, logits_s: puntero,
+    target_id: entero, vocab_size: entero,
+    temperatura: decimal, alpha: decimal) -> decimal:
+    retornar _syn_kd_perdida_combinada(logits_t, logits_s, target_id,
+        vocab_size, temperatura, alpha)
+
+// Ejecuta un paso de destilación sobre el dataset
+funcion kd_paso_destilacion(sesion: puntero) -> decimal:
+    retornar _syn_kd_paso_destilacion(sesion)
+
+// Ejecuta destilación completa
+funcion kd_destilar(sesion: puntero) -> decimal:
+    retornar _syn_kd_destilar(sesion)
+
+// Guarda el estado de destilación a archivo
+funcion kd_guardar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_kd_guardar(sesion, ruta)
+
+// Carga el estado de destilación desde archivo
+funcion kd_cargar(sesion: puntero, ruta: texto) -> entero:
+    retornar _syn_kd_cargar(sesion, ruta)
+
+// Estima la reducción teacher → student con cuantización
+funcion kd_estimar_reduccion(teacher_m: entero, student_m: entero,
+    fmt: entero) -> decimal:
+    retornar _syn_kd_estimar_reduccion(teacher_m, student_m, fmt)
