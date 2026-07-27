@@ -294,11 +294,11 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define _GEN_TMP_SIZE (4096)")
     ctx.write_line("#include \"librerias/embedded_libs.h\"")
     ctx.write_line("")
-    ctx.write_line("char _gen_tmp_buf[4096];")
+    ctx.write_line("extern char _gen_tmp_buf[4096];")
     ctx.write_line("")
-    ctx.write_line("char _G_emit_buf[1048576];")
-    ctx.write_line("int _G_emit_pos = 0;")
-    ctx.write_line("FILE* _G_fp = NULL;")
+    ctx.write_line("extern char _G_emit_buf[1048576];")
+    ctx.write_line("extern int _G_emit_pos;")
+    ctx.write_line("extern FILE* _G_fp;")
     ctx.write_line("")
     ctx.write_line("extern int _G_indent;")
     ctx.write_line("")
@@ -414,22 +414,19 @@ class GeneradorC:
     def _destructor_map(self):
         return self.ctx._destructor_map
 
-    def generar(self) -> str:
-        ctx = self.ctx
-        ctx._variables = {}
-        ctx._func_return_types = {}
-        ctx._func_param_types = {}
+    # ---- Módulos de emisión auxiliares ----
 
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionFuncion):
-                ctx._func_return_types[s.nombre] = s.tipo_retorno
-                ctx._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
-            elif isinstance(s, DeclaracionExterna):
-                ctx._func_return_types[s.nombre] = s.tipo_retorno
-
+    def _emit_cabecera_comun(self, ctx):
+        """Helper: _emitir_encabezado + definiciones de vars globales + _g_argc/_argv/salir/concat"""
         _emitir_encabezado(ctx)
-
         if not ctx.is_no_std():
+            # Definiciones de variables globales (declaradas como extern en _emitir_encabezado)
+            ctx.write_line("char _gen_tmp_buf[4096];")
+            ctx.write_line("")
+            ctx.write_line("char _G_emit_buf[1048576];")
+            ctx.write_line("int _G_emit_pos;")
+            ctx.write_line("FILE* _G_fp;")
+            ctx.write_line("")
             ctx.write_line("int _g_argc;")
             ctx.write_line("char** _g_argv;")
             ctx.write_line("int _argc() { return _g_argc; }")
@@ -465,39 +462,8 @@ class GeneradorC:
             ctx.write_line("}")
             ctx.write_line("")
 
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionEstructura):
-                es_adt = any(
-                    c.nombre == 'tag' and c.tipo in ('entero', 'int')
-                    for c in s.campos
-                )
-                ctx._estructuras[s.nombre] = {
-                    'campos': [(c.nombre, c.tipo) for c in s.campos],
-                    'campos_pointer': set(),
-                    'es_adt': es_adt,
-                }
-        for nombre, info in ctx._estructuras.items():
-            for c_nombre, c_tipo in info['campos']:
-                if (
-                    c_tipo in ctx._estructuras
-                    or c_tipo.rstrip('*') in ctx._estructuras
-                    or c_tipo == nombre
-                ):
-                    info['campos_pointer'].add(c_nombre)
-
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionEstructura):
-                ctx.write_line(f"struct {s.nombre};")
-        if any(
-            isinstance(s, DefinicionEstructura)
-            for s in ctx.programa.sentencias
-        ):
-            ctx.write_line("")
-
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionEstructura):
-                visitar_estructura(ctx, s)
-
+    def _emit_prototipos_funciones(self, ctx):
+        """Helper: forward-declares de funciones (prototipos)"""
         _SPECIAL_SIGS = {
             'tokenizar': 'int tokenizar(CadenaSegura fuente)',
             'parsear': 'struct Programa parsear(CadenaSegura fuente)',
@@ -525,46 +491,15 @@ class GeneradorC:
         ):
             ctx.write_line("")
 
-        # Pre-pass: escanear SentenciaLanzar para pre-poblar _deferred_typedefs y _wrap_decls
-        # (necesario para que los typedefs/decls se emitan ANTES de los cuerpos de funcion)
-        _preprocess_lanzar(ctx)
-
-        # IMPORTANTE: resetear contador para que visitar_lanzar genere los MISMOS IDs
-        # (el pre-pass ya los consumio)
-        ctx._contador_thread = 0
-
-        # Emitir typedefs y forward declarations de wrappers ANTES de los cuerpos
-        for td in ctx._deferred_typedefs:
-            ctx.write_line(td)
-        for decl in ctx._deferred_wrap_decls:
-            ctx.write_line(decl)
-        if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
-            ctx.write_line("")
-
-        for s in ctx.programa.sentencias:
-            visitar(ctx, s)
-
-        for func in ctx._listener_funciones:
-            name = _extract_listener_name(func)
-            if name:
-                ctx.write_line(f"extern void* {name}(void* arg);")
-        if ctx._listener_funciones:
-            ctx.write_line("")
-
-        for func in ctx._listener_funciones:
-            ctx.lineas.append(func)
-            ctx.lineas.append("")
-
-        for wrap in ctx._deferred_wrappers:
-            ctx.write_line(wrap)
-            ctx.write_line("")
-
+    def _emit_main(self, ctx):
+        """Helper: emite main() SOLO si existe función 'principal' en este módulo"""
         principal = ctx.encontrar_principal()
+        if principal is None:
+            return
         if ctx.is_no_std():
             ctx.write_line("int main(void) {")
             ctx.inc_indent()
-            if principal:
-                ctx.write_line(f"{principal}();")
+            ctx.write_line(f"{principal}();")
             ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")
@@ -574,20 +509,212 @@ class GeneradorC:
             ctx.write_line("_g_argc = argc;")
             ctx.write_line("_g_argv = argv;")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
-            if principal:
-                ret_tipo = ctx._func_return_types.get(principal, 'int')
-                if ret_tipo in ('nulo', 'void'):
-                    ctx.write_line(f"{principal}();")
-                else:
-                    ctx.write_line(f"return {principal}();")
+            ret_tipo = ctx._func_return_types.get(principal, 'int')
+            if ret_tipo in ('nulo', 'void'):
+                ctx.write_line(f"{principal}();")
+            else:
+                ctx.write_line(f"return {principal}();")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("pool_destroy();")
             ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")
 
-        result = ctx.generar()
-        return result
+    def _emit_cuerpos(self, ctx):
+        """Helper: emite cuerpos de funciones + listenres + wrappers"""
+        for s in ctx.programa.sentencias:
+            visitar(ctx, s)
+        for func in ctx._listener_funciones:
+            name = _extract_listener_name(func)
+            if name:
+                ctx.write_line(f"extern void* {name}(void* arg);")
+        if ctx._listener_funciones:
+            ctx.write_line("")
+        for func in ctx._listener_funciones:
+            ctx.lineas.append(func)
+            ctx.lineas.append("")
+        for wrap in ctx._deferred_wrappers:
+            ctx.write_line(wrap)
+            ctx.write_line("")
+
+    # ---- Modos de emisión ----
+
+    def generar(self, modo='completo', include_header='') -> str:
+        """
+        Genera código C en tres modos:
+        - 'completo': archivo completo (comportamiento original)
+        - 'header':   solo cabecera + tipos + prototipos (sin cuerpos, sin main)
+        - 'modulo':   #include header + cuerpos de funciones (sin repetir cabecera)
+        """
+        ctx = self.ctx
+        ctx._variables = {}
+        ctx._func_return_types = {}
+        ctx._func_param_types = {}
+
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionFuncion):
+                ctx._func_return_types[s.nombre] = s.tipo_retorno
+                ctx._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
+            elif isinstance(s, DeclaracionExterna):
+                ctx._func_return_types[s.nombre] = s.tipo_retorno
+
+        # Construir mapa de _estructuras
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionEstructura):
+                es_adt = any(
+                    c.nombre == 'tag' and c.tipo in ('entero', 'int')
+                    for c in s.campos
+                )
+                ctx._estructuras[s.nombre] = {
+                    'campos': [(c.nombre, c.tipo) for c in s.campos],
+                    'campos_pointer': set(),
+                    'es_adt': es_adt,
+                }
+        for nombre, info in ctx._estructuras.items():
+            for c_nombre, c_tipo in info['campos']:
+                if (
+                    c_tipo in ctx._estructuras
+                    or c_tipo.rstrip('*') in ctx._estructuras
+                    or c_tipo == nombre
+                ):
+                    info['campos_pointer'].add(c_nombre)
+
+        if modo == 'header':
+            # Solo cabecera: #includes, tipos, prototipos + extern declarations
+            # IMPORTANTE: NO llamar _emit_cabecera_comun (emite DEFINICIONES _g_argc/_argc/salir/concat)
+            _emitir_encabezado(ctx)
+            # Extern declarations para runtime helpers (NO definiciones — son solo para link)
+            if not ctx.is_no_std():
+                ctx.write_line("extern int _g_argc;")
+                ctx.write_line("extern char** _g_argv;")
+                ctx.write_line("extern int _argc(void);")
+                ctx.write_line("extern CadenaSegura _argv(int i);")
+                ctx.write_line("extern void salir(int codigo);")
+                ctx.write_line("extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);")
+                ctx.write_line("")
+            # Estructuras: forward declarations + definiciones completas
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DefinicionEstructura):
+                    ctx.write_line(f"struct {s.nombre};")
+            if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
+                ctx.write_line("")
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DefinicionEstructura):
+                    visitar_estructura(ctx, s)
+            # Prototipos de funciones
+            self._emit_prototipos_funciones(ctx)
+            # NO emitir cuerpos de funciones, NO emitir main
+            return ctx.generar()
+
+        if modo == 'modulo':
+            # Módulo: #include header + solo cuerpos (sin repetir cabecera)
+            if include_header:
+                ctx.write_line(f'#include "{include_header}"')
+            else:
+                ctx.write_line("// -- modulo sin header --")
+            ctx.write_line("")
+            # Si este módulo es el principal, emitir definiciones de vars globales y runtime helpers
+            tiene_principal = ctx.encontrar_principal() is not None
+            if tiene_principal and not ctx.is_no_std():
+                ctx.write_line("char _gen_tmp_buf[4096];")
+                ctx.write_line("")
+                ctx.write_line("char _G_emit_buf[1048576];")
+                ctx.write_line("int _G_emit_pos;")
+                ctx.write_line("FILE* _G_fp;")
+                ctx.write_line("")
+                ctx.write_line("int _g_argc;")
+                ctx.write_line("char** _g_argv;")
+                ctx.write_line("int _argc() { return _g_argc; }")
+                ctx.write_line("")
+                ctx.write_line("CadenaSegura _argv(int i) {")
+                ctx.inc_indent()
+                ctx.write_line(
+                    'if (i < 0 || i >= _g_argc) '
+                    'return (CadenaSegura){0, ""};'
+                )
+                ctx.write_line(
+                    "return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]),"
+                    " .datos = _g_argv[i] };"
+                )
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("")
+                ctx.write_line("void salir(int codigo) { exit(codigo); }")
+                ctx.write_line("")
+                ctx.write_line("CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
+                ctx.inc_indent()
+                ctx.write_line("int _tl = a.longitud + b.longitud;")
+                ctx.write_line("char* _buf = (char*)malloc(_tl + 1);")
+                ctx.write_line(
+                    'if (!_buf) { fprintf(stderr,'
+                    '"Error: malloc fallo en concat()\\\\n"); exit(1); }'
+                )
+                ctx.write_line("memcpy(_buf, a.datos, a.longitud);")
+                ctx.write_line("memcpy(_buf + a.longitud, b.datos, b.longitud);")
+                ctx.write_line("_buf[_tl] = 0;")
+                ctx.write_line("return (CadenaSegura){_tl, _buf};")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("")
+            # Estructuras propias del módulo
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DefinicionEstructura):
+                    ctx.write_line(f"struct {s.nombre};")
+            if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
+                ctx.write_line("")
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DefinicionEstructura):
+                    visitar_estructura(ctx, s)
+            # Pre-pass lanzar y typedefs
+            _preprocess_lanzar(ctx)
+            ctx._contador_thread = 0
+            for td in ctx._deferred_typedefs:
+                ctx.write_line(td)
+            for decl in ctx._deferred_wrap_decls:
+                ctx.write_line(decl)
+            if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
+                ctx.write_line("")
+            # Cuerpos de funciones
+            self._emit_cuerpos(ctx)
+            # Emitir main solo si este módulo tiene 'principal'
+            self._emit_main(ctx)
+            return ctx.generar()
+
+        # modo == 'completo' (comportamiento original)
+        self._emit_cabecera_comun(ctx)
+
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionEstructura):
+                ctx.write_line(f"struct {s.nombre};")
+        if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
+            ctx.write_line("")
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionEstructura):
+                visitar_estructura(ctx, s)
+
+        self._emit_prototipos_funciones(ctx)
+
+        _preprocess_lanzar(ctx)
+        ctx._contador_thread = 0
+        for td in ctx._deferred_typedefs:
+            ctx.write_line(td)
+        for decl in ctx._deferred_wrap_decls:
+            ctx.write_line(decl)
+        if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
+            ctx.write_line("")
+
+        self._emit_cuerpos(ctx)
+        self._emit_main(ctx)
+
+        return ctx.generar()
+
+    @property
+    def linker_flags(self) -> str:
+        if self.ctx._linker_libs:
+            return " " + " ".join(
+                f"-l{lib}" for lib in self.ctx._linker_libs
+            )
+        return ""
 
     @property
     def linker_flags(self) -> str:

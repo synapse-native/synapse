@@ -5,6 +5,7 @@ import subprocess
 import hashlib
 import time
 import shutil
+import copy
 from typing import List, Optional, Dict, Tuple, Any, Set
 
 from compilador.ast_nodes import (
@@ -300,8 +301,9 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
     parser = Parser(tokens, diag_local, is_no_std=lexer.is_no_std)
     ast = parser.parsear()
 
-    # FASE A: save per-module AST before flattening imports
-    _module_asts[ruta_abs] = ast
+    # FASE A: save deepcopy of per-module AST before flattening imports
+    # (evita bug de referencia mutable: ast.sentencias se sobrescribe luego)
+    _module_asts[ruta_abs] = copy.deepcopy(ast)
 
     nuevas_sentencias: List[Nodo] = []
     for stmt in ast.sentencias:
@@ -449,8 +451,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             
             print(f"[CACHE MISS] {ruta_archivo} -> compilando...")
 
+        # === GENERACIÓN DE CÓDIGO C ===
         generador = GeneradorC(ast)
-        codigo_c = generador.generar()
+        codigo_c = generador.generar()  # modo='completo' por defecto
 
         ruta_base = ruta_archivo.rsplit('.', 1)[0]
         ruta_c = "synapse_unity.c" if ruta_base.endswith("principal") else ruta_base + ".c"
@@ -460,6 +463,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         else:
             ruta_exe = "synapse_bootstrap.exe" if ruta_base.endswith("principal") else ruta_base + ".exe"
 
+        dir_base = os.path.dirname(ruta_c) or '.'
+
+        # Guardar unity file como referencia
         with open(ruta_c, 'w', encoding='utf-8') as f:
             f.write(codigo_c)
         print(f"[OK] Codigo C generado: {ruta_c}")
@@ -478,7 +484,6 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             platform_flags = "-Wl,-dead_strip"
             thread_flag = "-lpthread"
         else:
-            # Windows/Linux: usar toolchain interno estricto (MinGW-w64 portable)
             compiler = _resolver_toolchain_gcc()
             platform_flags = "-fno-ident -Wl,--gc-sections"
             thread_flag = "-lpthread"
@@ -488,41 +493,85 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 platform_flags += " -Wl,--stack,8388608"
 
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
-
-        # SYNAPSE_GCC_FLAGS: flags adicionales inyectados por el entorno (ej. -O3 -mavx2)
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
-
-        # === COMPILACIÓN MODULAR (M17): compilar .c → .o por separado, luego link ===
-        # El .o se cachea para compilaciones incrementales (<5s por módulo después del primero)
+        no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
         if ast.is_no_std:
-            no_std_flags = "-ffreestanding -fno-builtin"
-            gcc_obj_cmd = f'{compiler} -O3 -c {platform_flags} {no_std_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{ruta_c}.o"'.strip()
-            gcc_link_cmd = f'{compiler} -O3 {platform_flags} {no_std_flags} {env_gcc_flags} "{ruta_c}.o" -o "{ruta_exe}" -lm {linker_extra}'.strip()
+            rt_objs = ""
         else:
             rt_objs = f'"{synapse_rt}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
-            gcc_obj_cmd = f'{compiler} -O3 -c {platform_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{ruta_c}.o"'.strip()
-            gcc_link_cmd = f'{compiler} -O3 {platform_flags} {env_gcc_flags} "{ruta_c}.o" {rt_objs} -o "{ruta_exe}" {thread_flag} -lm {linker_net} {linker_extra}'.strip()
-        
-        print(f"[OK] Compilando objeto: {gcc_obj_cmd}")
-        try:
-            obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
-        except FileNotFoundError:
-            raise ToolchainNotFoundError(
-                f"Ejecutable del toolchain no encontrado: {compiler}"
+        base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I.'.strip()
+        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
+
+        # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===
+        # Paso 1: Generar header compartido (tipos + prototipos + runtime externs)
+        header_path = os.path.join(dir_base, "_synapse_shared.h")
+        gen_header = GeneradorC(ast)
+        codigo_header = gen_header.generar(modo='header')
+        with open(header_path, 'w', encoding='utf-8') as f:
+            f.write(codigo_header)
+        print(f"[MODULAR] Header compartido: {header_path}")
+
+        # Paso 2: Generar .c por módulo desde _module_asts
+        modulos_c = []
+        for ruta_mod_abs, ast_modulo in _module_asts.items():
+            nombre_mod = os.path.splitext(os.path.basename(ruta_mod_abs))[0]
+            ruta_mod_c = os.path.join(dir_base, f"_{nombre_mod}.c")
+            gen_mod = GeneradorC(copy.deepcopy(ast_modulo))
+            # Saltar módulos sin declaraciones útiles
+            tiene_decls = any(
+                isinstance(s, (DefinicionFuncion, DefinicionEstructura, DeclaracionExterna, StmtConstante))
+                for s in ast_modulo.sentencias
             )
-        if obj_rc != 0:
-            print(f"[!] Compilacion a objeto fallo con codigo {obj_rc}", file=sys.stderr)
-        else:
-            print(f"[OK] Objeto generado: {ruta_c}.o")
-            # Linkear
-            print(f"[OK] Linkeando: {gcc_link_cmd}")
-            link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
-            if link_rc != 0:
-                print(f"[!] Link fallo con codigo {link_rc}", file=sys.stderr)
+            if not tiene_decls:
+                continue
+            codigo_mod = gen_mod.generar(modo='modulo', include_header='_synapse_shared.h')
+            with open(ruta_mod_c, 'w', encoding='utf-8') as f:
+                f.write(codigo_mod)
+            print(f"[MODULAR] Módulo C: {ruta_mod_c}")
+            modulos_c.append(ruta_mod_c)
+
+        # Paso 3: Compilar cada .c → .o con gcc -c -O2 (paralelo si hay múltiples)
+        objs_existentes = []
+        for ruta_mod_c in modulos_c:
+            ruta_obj = ruta_mod_c + ".o"
+            gcc_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_mod_c}" -o "{ruta_obj}"'
+            print(f"[MODULAR] gcc -c: {ruta_mod_c}")
+            rc = subprocess.run(gcc_cmd, shell=True).returncode
+            if rc == 0:
+                objs_existentes.append(ruta_obj)
             else:
-                print(f"[OK] Ejecutable generado: {ruta_exe}")
+                print(f"[!] Error compilando módulo {ruta_mod_c} (rc={rc})", file=sys.stderr)
+
+        # Paso 4: Linkear todos los .o al ejecutable final
+        if objs_existentes:
+            objs_str = ' '.join(f'"{o}"' for o in objs_existentes)
+            if rt_objs:
+                objs_str += f' {rt_objs}'
+            gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_str} -o "{ruta_exe}" {link_flags}'.strip()
+            print(f"[MODULAR] Link: {gcc_link_cmd}")
+            link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
+            if link_rc == 0:
+                print(f"[OK] Ejecutable modular generado: {ruta_exe}")
+            else:
+                print(f"[!] Link modular fallo (rc={link_rc})", file=sys.stderr)
+        else:
+            print("[!] No se generaron objetos modulares — usando unity fallback", file=sys.stderr)
+            # Fallback: compilar unity file a objeto y linkear
+            gcc_obj_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'
+            print(f"[FALLBACK] {gcc_obj_cmd}")
+            try:
+                obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
+            except FileNotFoundError:
+                raise ToolchainNotFoundError(f"Ejecutable del toolchain no encontrado: {compiler}")
+            if obj_rc == 0:
+                objs_fb = f'"{ruta_c}.o"'
+                if rt_objs:
+                    objs_fb += f' {rt_objs}'
+                gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
+                print(f"[FALLBACK] Link: {gcc_link_cmd}")
+                subprocess.run(gcc_link_cmd, shell=True)
 
         # === ALMACENAR EN CACHE ===
         if incremental:
