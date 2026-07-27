@@ -153,8 +153,7 @@ funcion detectar_codigo_muerto(analisis: &mut AnalisisAST,
 // Genera una sugerencia de contrato lógico (requiere/garantiza)
 // basada en el análisis de tipos y condiciones en la función
 funcion sugerir_contrato(analisis: &mut AnalisisAST,
-    nombre_fn: texto, param_nombres: Array<texto>,
-    param_tipos: Array<texto>, tiene_requiere: entero,
+    nombre_fn: texto, tiene_requiere: entero,
     tiene_garantiza: entero, linea: entero) -> nulo:
     si tiene_requiere == 0:
         mensaje = "La funcion '" + nombre_fn
@@ -234,6 +233,27 @@ funcion analizar_codigo(ctx: puntero, codigo_fuente: texto) -> AnalisisAST:
             0, 0, respuesta, 0.70)
 
     retornar resultado
+
+// ============================================================
+// Función de sugerencia de refactorización (con modelo IA)
+// ============================================================
+
+// Genera sugerencias de refactorización usando el modelo local
+funcion sugerir_refactorizacion(ctx: puntero, codigo_fn: texto,
+    nombre_fn: texto, resultado: &mut AnalisisAST) -> nulo:
+    si ctx == nulo:
+        retornar
+
+    prompt = "Sugiere mejoras de refactorizacion para la funcion '"
+    prompt = prompt + nombre_fn + "' en Synapse:\n"
+    prompt = prompt + codigo_fn
+
+    respuesta = _syn_modelo_generar_texto(ctx, prompt, 150, 0.6, 40, 0.9)
+
+    si respuesta != "":
+        agregar_sugerencia(resultado, SUGERENCIA_REFACTOR,
+            0, 0, respuesta, 0.65)
+    retornar
 
 // ============================================================
 // Función de inyección automática de contratos
