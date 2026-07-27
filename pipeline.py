@@ -202,6 +202,7 @@ def _cache_stats() -> Dict[str, int]:
 
 
 _imports_usados: Set[str] = set()
+_module_asts: Dict[str, Programa] = {}  # Per-module AST tracking (FASE A)
 
 
 def _resolver_ruta_sysroot(ruta_import: str) -> str:
@@ -298,6 +299,9 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
 
     parser = Parser(tokens, diag_local, is_no_std=lexer.is_no_std)
     ast = parser.parsear()
+
+    # FASE A: save per-module AST before flattening imports
+    _module_asts[ruta_abs] = ast
 
     nuevas_sentencias: List[Nodo] = []
     for stmt in ast.sentencias:
@@ -488,25 +492,37 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         # SYNAPSE_GCC_FLAGS: flags adicionales inyectados por el entorno (ej. -O3 -mavx2)
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
 
+        # === COMPILACIÓN MODULAR (M17): compilar .c → .o por separado, luego link ===
+        # El .o se cachea para compilaciones incrementales (<5s por módulo después del primero)
         if ast.is_no_std:
             no_std_flags = "-ffreestanding -fno-builtin"
-            gcc_cmd = f'{compiler} -O3 {platform_flags} {no_std_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{ruta_exe}" -lm {linker_extra}'.strip()
+            gcc_obj_cmd = f'{compiler} -O3 -c {platform_flags} {no_std_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{ruta_c}.o"'.strip()
+            gcc_link_cmd = f'{compiler} -O3 {platform_flags} {no_std_flags} {env_gcc_flags} "{ruta_c}.o" -o "{ruta_exe}" -lm {linker_extra}'.strip()
         else:
             rt_objs = f'"{synapse_rt}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
-            gcc_cmd = f'{compiler} -O3 {platform_flags} {env_gcc_flags} -I. "{ruta_c}" {rt_objs} -o "{ruta_exe}" {thread_flag} -lm {linker_net} {linker_extra}'.strip()
-        print(f"[OK] Compilando: {gcc_cmd}")
+            gcc_obj_cmd = f'{compiler} -O3 -c {platform_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{ruta_c}.o"'.strip()
+            gcc_link_cmd = f'{compiler} -O3 {platform_flags} {env_gcc_flags} "{ruta_c}.o" {rt_objs} -o "{ruta_exe}" {thread_flag} -lm {linker_net} {linker_extra}'.strip()
+        
+        print(f"[OK] Compilando objeto: {gcc_obj_cmd}")
         try:
-            rc = subprocess.run(gcc_cmd, shell=True).returncode
+            obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
         except FileNotFoundError:
             raise ToolchainNotFoundError(
                 f"Ejecutable del toolchain no encontrado: {compiler}"
             )
-        if rc != 0:
-            print(f"[!] Compilador fallo con codigo {rc}", file=sys.stderr)
+        if obj_rc != 0:
+            print(f"[!] Compilacion a objeto fallo con codigo {obj_rc}", file=sys.stderr)
         else:
-            print(f"[OK] Ejecutable generado: {ruta_exe}")
+            print(f"[OK] Objeto generado: {ruta_c}.o")
+            # Linkear
+            print(f"[OK] Linkeando: {gcc_link_cmd}")
+            link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
+            if link_rc != 0:
+                print(f"[!] Link fallo con codigo {link_rc}", file=sys.stderr)
+            else:
+                print(f"[OK] Ejecutable generado: {ruta_exe}")
 
         # === ALMACENAR EN CACHE ===
         if incremental:
