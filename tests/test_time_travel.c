@@ -175,7 +175,7 @@ void test_function_call_recording(void) {
 
     CHECK_INT_EQ(tr_total_eventos(), 4, "4 eventos de llamada/retorno");
 
-    // Search for first function call (EVENT_FUNCTION_CALL = 1)
+    // Search for first function call (EVENT_FN_CALL = 1)
     int found = tr_buscar_evento(1, call2);
     CHECK(found >= 0, "busqueda inversa encuentra llamada");
     CHECK(found <= call2, "busqueda respeta limite de secuencia");

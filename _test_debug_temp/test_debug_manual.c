@@ -220,8 +220,8 @@ struct Resultado finalizar_sesion(void);
 void principal(void);
 
 #define EVENT_ASSIGNMENT (0)
-#define EVENT_FUNCTION_CALL (1)
-#define EVENT_FUNCTION_RETURN (2)
+#define EVENT_FN_CALL (1)
+#define EVENT_FN_RETURN (2)
 #define EVENT_ERROR (3)
 #define EVENT_BRANCH_TAKEN (4)
 #define EVENT_LOOP_ITERATION (5)

@@ -170,12 +170,12 @@ funcion principal() -> nulo:
     evt.valor_entero = 1
     registrar_evento(evt)
     evt2 = TraceEvent()
-    evt2.tipo_evento = EVENT_FUNCTION_CALL
+    evt2.tipo_evento = EVENT_FN_CALL
     evt2.variable = "foo"
     evt2.valor_entero = 0
     registrar_evento(evt2)
     evt3 = TraceEvent()
-    evt3.tipo_evento = EVENT_FUNCTION_RETURN
+    evt3.tipo_evento = EVENT_FN_RETURN
     evt3.variable = "foo"
     evt3.valor_entero = 42
     registrar_evento(evt3)

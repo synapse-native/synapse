@@ -22,8 +22,8 @@ estructura TraceEvent:
 
 // Tags de evento (definidos en C como enums)
 // EVENT_ASSIGNMENT      = 0  // Asignacion de variable
-// EVENT_FUNCTION_CALL   = 1  // Llamada a funcion
-// EVENT_FUNCTION_RETURN = 2  // Retorno de funcion
+// EVENT_FN_CALL   = 1  // Llamada a funcion
+// EVENT_FN_RETURN = 2  // Retorno de funcion
 // EVENT_ERROR           = 3  // Error detectado
 // EVENT_BRANCH_TAKEN    = 4  // Rama tomada (if/else)
 // EVENT_LOOP_ITERATION  = 5  // Iteracion de bucle
@@ -32,8 +32,8 @@ estructura TraceEvent:
 // EVENT_USER_TRACE      = 8  // Traza manual del usuario (trace)
 
 constante EVENT_ASSIGNMENT      = 0
-constante EVENT_FUNCTION_CALL   = 1
-constante EVENT_FUNCTION_RETURN = 2
+constante EVENT_FN_CALL   = 1
+constante EVENT_FN_RETURN = 2
 constante EVENT_ERROR           = 3
 constante EVENT_BRANCH_TAKEN    = 4
 constante EVENT_LOOP_ITERATION  = 5
@@ -83,17 +83,17 @@ externo funcion tr_inicializar_recording() -> entero
 // tr_grabar_bifurcacion — Graba una decisión de bifurcación (rama if/else)
 //   linea: línea fuente, rama: 0=false/else, 1=true/if
 //   Retorna número de secuencia del evento
-externo funcion tr_grabar_bifurcacion(linea: entero, rama: entero, id_funcion: texto) -> entero
+externo funcion tr_grabar_bifurcacion(linea: entero, rama: entero, fn_id: texto) -> entero
 
 // tr_grabar_snapshot — Captura el valor de una variable en un punto de ejecución
 //   Retorna número de secuencia del snapshot
 externo funcion tr_grabar_snapshot(nombre_variable: texto, valor_entero: entero, valor_texto: texto, linea: entero) -> entero
 
 // tr_grabar_llamada — Graba una entrada a función
-externo funcion tr_grabar_llamada(funcion: texto, linea: entero, num_args: entero) -> entero
+externo funcion tr_grabar_llamada(nombre_fn: texto, linea: entero, num_args: entero) -> entero
 
 // tr_grabar_retorno — Graba un retorno de función
-externo funcion tr_grabar_retorno(funcion: texto, linea: entero) -> entero
+externo funcion tr_grabar_retorno(nombre_fn: texto, linea: entero) -> entero
 
 // tr_grabar_error — Graba un evento de error (para inducción de fallos)
 externo funcion tr_grabar_error(mensaje: texto, linea: entero) -> entero

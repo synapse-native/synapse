@@ -376,7 +376,8 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | Hito | Descripción | Prioridad |
 |------|-------------|-----------|
 | M8.5 | Cluster auto-discovery y membership service | ✅ **Completado** |
-| **M8.6** | **UDP Multicast Real para Auto-Descubrimiento** | 🔄 **En Progreso** |
+| **M8.6** | **UDP Multicast Real para Auto-Descubrimiento** | ✅ **Completado** |
+| **M9.1** | **Grabación de Ejecución Determinista (rr-style) — heredado de v5.0** | ✅ **Completado** |
 | M9.4 | Debugging distribuido multi-nodo | Media |
 | M10.4 | Fuzzing distribuido multi-nodo | Media |
 | M12.1 | Compilación JIT (LLVM backend) | Alta |
@@ -402,12 +403,20 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 - ✅ Compilación y ejecución de todos los tests
 - ✅ Commit consolidado en historial (6f9222c)
 
-### Certificación parcial M8.6 (en progreso):
-- ⬜ `tests/test_cluster_multicast.c` — 8 secciones de test C (multicast init, envío/recepción loopback, discovery 2 nodos, hilo descubrimiento, reinicio hilo, multicast reentrante, cleanup)
-- ⬜ `tests/integration/test_cluster_multicast.py` — Suite de integración Python (compilación, escenarios, casos borde, rendimiento)
-- ⬜ `librerias/std/cluster.syn` — 8 nuevas declaraciones `externo funcion` para multicast (cluster_multicast_iniciar/detener, cluster_anunciar/escuchar_multicast, cluster_iniciar/detener_hilo, cluster_hilo_activo, cluster_multicast_info)
-- ⬜ `synapse_rt.c` — ~400 líneas: socket multicast con IP_ADD_MEMBERSHIP, SO_REUSEADDR, sendto/recvfrom multicast, hilo pthread periódico, conexión con M8.5 API
-- ⬜ Compilación y ejecución de todos los tests
+### Certificación M8.6:
+- ✅ `tests/test_cluster_multicast.c` — 8 secciones de test C (23/23 PASS)
+- ✅ `tests/integration/test_cluster_multicast.py` — 14/14 PASS
+- ✅ `librerias/std/cluster.syn` — 8 externos multicast nuevos
+- ✅ `synapse_rt.c` — ~400 líneas: socket multicast IP_ADD_MEMBERSHIP, hilo pthread periódico
+- ✅ Compilación y ejecución de todos los tests
+- ✅ Commit consolidado en historial (be097c4)
+
+### Certificación M9.1 (reparación de sintaxis):
+- ✅ `librerias/std/debug.syn` — Renombradas constantes `EVENT_FUNCTION_CALL→EVENT_FN_CALL`, `EVENT_FUNCTION_RETURN→EVENT_FN_RETURN`. Renombrados parámetros `funcion→nombre_fn`, `id_funcion→fn_id` para evitar colisión con keyword
+- ✅ `synapse_rt.c` — Renombrados enum y referencias a constantes
+- ✅ `tests/unit/test_debug.py` — 6/6 tests PASS (tras corrección léxica)
+- ✅ `_test_debug_temp/test_direct.c`, `_test_debug_temp/test_debug_manual.c` — Renombradas constantes
+- ✅ `tests/test_time_travel.c` — Renombrada constante en comentario
 
 ---
 

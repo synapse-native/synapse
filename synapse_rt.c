@@ -4656,8 +4656,8 @@ int _syn_axon_escribir_lock(const char* paquete, const char* version, const char
 
 typedef enum {
     EVENT_ASSIGNMENT = 0,
-    EVENT_FUNCTION_CALL = 1,
-    EVENT_FUNCTION_RETURN = 2,
+    EVENT_FN_CALL = 1,
+    EVENT_FN_RETURN = 2,
     EVENT_ERROR = 3,
     EVENT_BRANCH_TAKEN = 4,
     EVENT_LOOP_ITERATION = 5,
@@ -6008,7 +6008,7 @@ int tr_grabar_llamada(CadenaSegura funcion, int linea, int num_args) {
     if (!_tr_initialized) return -1;
     int seq = _tr_next_seq();
     int rc = _syn_debug_registrar_evento(
-        EVENT_FUNCTION_CALL,
+        EVENT_FN_CALL,
         funcion.datos ? funcion.datos : "",
         "", linea,
         "args",
@@ -6026,7 +6026,7 @@ int tr_grabar_retorno(CadenaSegura funcion, int linea) {
     if (!_tr_initialized) return -1;
     int seq = _tr_next_seq();
     int rc = _syn_debug_registrar_evento(
-        EVENT_FUNCTION_RETURN,
+        EVENT_FN_RETURN,
         funcion.datos ? funcion.datos : "",
         "", linea,
         "return",
@@ -6400,9 +6400,9 @@ CadenaSegura rp_pila_llamadas(int indice_evento) {
         TraceEvent* e = _rp_get_event(i);
         if (!e) break;
 
-        if (e->tag == EVENT_FUNCTION_RETURN) {
+        if (e->tag == EVENT_FN_RETURN) {
             depth++;
-        } else if (e->tag == EVENT_FUNCTION_CALL) {
+        } else if (e->tag == EVENT_FN_CALL) {
             if (depth > 0) {
                 depth--;  // matched a return
             } else {
