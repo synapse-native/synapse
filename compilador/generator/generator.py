@@ -731,11 +731,3 @@ class GeneradorC:
                 f"-l{lib}" for lib in self.ctx._linker_libs
             )
         return ""
-
-    @property
-    def linker_flags(self) -> str:
-        if self.ctx._linker_libs:
-            return " " + " ".join(
-                f"-l{lib}" for lib in self.ctx._linker_libs
-            )
-        return ""
