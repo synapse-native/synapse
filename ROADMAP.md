@@ -394,10 +394,25 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 | **M9.3** | **Snapshots de Memoria y Diff Histórico (ms_*) — heredado de v5.0** | ✅ **Completado** |
 | **M9.4** | **Debugging distribuido multi-nodo** | ✅ **Completado** |
 | **M10.4** | **Fuzzing distribuido multi-nodo** | ✅ **Completado y Verificado** |
-| M12.1 | Compilación JIT (LLVM backend) | Alta |
+| **M12.1.1** | **Contexto e IR Base (LLVM IR text emitter)** | **🔄 En Progreso** |
+| M12.1.2 | Control de Flujo y Funciones (LLVM IR) | Alta |
+| M12.1.3 | Motor de Ejecución JIT y Encriptación de Memoria | Alta |
 | M12.2 | WebAssembly backend | Alta |
 | M13.1 | AI nativa (modelos locales via std.modelo) | Alta |
 | M13.2 | OpenSyn RAG pipeline CI/CD | Media |
+
+### Certificación M12.1.1 (Contexto e IR Base LLVM):
+- ✅ `synapse_llvm.c` — Nuevo backend LLVM IR text emitter (~430 líneas). Arquitectura: LLVMContext (estado y errores), LLVMModule (cabecera + declaraciones runtime + IR buffer), LLVMBuilder (emisión de instrucciones IR)
+- ✅ LLVMContext: creación, disposición, contador de errores, generación de nombres SSA únicos
+- ✅ LLVMModule: creación con nombre, buffer IR dinámico (realloc), emisión de cabecera (ModuleID + target triple + datalayout), emisión de declaraciones runtime (putchar, printf)
+- ✅ LLVMBuilder: creación, vinculación a módulo, indentación, función `define @main() { entry: ret i32 N }`
+- ✅ Operaciones aritméticas: `add i32`, `sub i32`, `mul i32`, `sdiv i32` con generación de SSA temporals
+- ✅ API de alto nivel: `BuildMinimalProgram(ctx, name, retval)` y `BuildArithmeticProgram(ctx, name, op, lhs, rhs)`
+- ✅ `LLVMBuilderConstInt`: emisión segura de constantes en buffer caller-owned (sin static buffer)
+- ✅ `validate_llvm_backend.c` — Test aislado (fuera de `tests/`): 40/40 PASS (8 secciones: Context, Module, Builder, Arithmetic, High-Level API, Alloca/Store/Load, Boolean, MinimalProgram)
+- ✅ Portátil: sin dependencia de bibliotecas LLVM — emite IR texto `.ll` compilable con `llc`/`opt`
+- ✅ Sin modificación de archivos bajo `tests/` (candado de solo lectura preservado)
+- ✅ Commit consolidado en historial de git
 
 ### Certificación M8.4:
 - ✅ `tests/test_live_migration.c` — 6 secciones de test C (checkpoint/restore, integridad, ownership, round-trip, inter-node, fugas)
