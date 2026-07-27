@@ -239,8 +239,8 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG,
         asm("    }")
         asm("}")
 
-    // 5. Generar respuesta con el modelo local
-    texto_generado = _syn_modelo_generar_texto(ctx, prompt,
+    // 5. Generar respuesta con el modelo local (via wrapper público)
+    texto_generado = generar_texto(ctx, prompt,
         cfg.max_tokens, cfg.temperatura, 40, 0.9)
 
     respuesta.texto_respuesta = texto_generado
