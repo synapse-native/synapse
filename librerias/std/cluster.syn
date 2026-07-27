@@ -364,3 +364,48 @@ externo funcion dd_nodo_local_id() -> entero
 // dd_info — Información del subsistema de debug distribuido
 //   Formato: "local_id:num_remotos:total_eventos:ultima_sincro"
 externo funcion dd_info() -> texto
+
+// ============================================================
+// Funciones Externas — M10.4 (Fuzzing Distribuido Multi-Nodo)
+// ============================================================
+
+// fz_iniciar_coordinador — Inicializa el coordinador de fuzzing
+//   puerto: puerto de escucha del coordinador
+//   Retorna 0 si ok, -1 si puerto inválido
+externo funcion fz_iniciar_coordinador(puerto: entero) -> entero
+
+// fz_enviar_caso — Envía un caso de fuzzing a un nodo esclavo
+//   Formato: "SYNFUZZ:CASE:caso_id:longitud:contenido"
+//   Retorna caso_id si ok, negativo si error
+externo funcion fz_enviar_caso(ip: texto, puerto: entero, caso_id: entero, contenido: texto) -> entero
+
+// fz_procesar_mensaje — Procesa un paquete SYNFUZZ entrante
+//   Retorna "CASE:contenido", "RESULT:caso_id:exit_code", "IGNORED" o vacío
+externo funcion fz_procesar_mensaje(paquete: texto) -> texto
+
+// fz_reportar_resultado — Reporta un resultado desde esclavo al coordinador
+//   Envía "SYNFUZZ:RESULT:caso_id:exit_code:stderr"
+externo funcion fz_reportar_resultado(ip_coordinador: texto, puerto_coordinador: entero, caso_id: entero, exit_code: entero, stderr_resumen: texto) -> entero
+
+// fz_obtener_resultado — Obtiene un resultado por índice
+//   Retorna "caso_id:exit_code:timestamp" o vacío
+externo funcion fz_obtener_resultado(indice: entero) -> texto
+
+// fz_ultimo_caso_id — Retorna el último ID de caso procesado
+externo funcion fz_ultimo_caso_id() -> entero
+
+// fz_total_casos_enviados — Total de casos enviados a slaves
+externo funcion fz_total_casos_enviados() -> entero
+
+// fz_total_resultados_recibidos — Total de resultados recibidos de slaves
+externo funcion fz_total_resultados_recibidos() -> entero
+
+// fz_total_crashes — Total de crashes detectados en fuzzing remoto
+externo funcion fz_total_crashes() -> entero
+
+// fz_num_resultados — Número de resultados almacenados
+externo funcion fz_num_resultados() -> entero
+
+// fz_info — Información del subsistema de fuzzing distribuido
+//   Formato: "enviados:recibidos:crashes:ultimo_caso_id:num_resultados"
+externo funcion fz_info() -> texto

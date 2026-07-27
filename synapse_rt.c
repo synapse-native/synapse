@@ -7443,3 +7443,509 @@ CadenaSegura cluster_multicast_info(void) {
     memcpy(result, buf, (size_t)(len + 1));
     return (CadenaSegura){ .longitud = len, .datos = result };
 }
+
+// ============================================================
+// M9.4 — Distributed Multi-Node Debugging
+// ============================================================
+// Extiende tr_* / rp_* / ms_* para operación en clúster.
+// Permite agregación remota de trazas, breakpoints distribuidos
+// y correlación cronológica entre nodos del clúster M8.x.
+// ============================================================
+
+#define DD_MAX_REMOTE_NODES 16
+#define DD_MAX_REMOTE_EVENTS 2048
+#define DD_PROTO_MAGIC "SYNDBG"
+
+typedef struct {
+    int nodo_id;
+    char ip[48];
+    int puerto;
+    int num_eventos;
+    int ultima_sincro_s;
+    char eventos[DD_MAX_REMOTE_EVENTS][256]; // serialized event strings
+    int activo;
+} NodoRemotoDebug;
+
+static int _dd_local_nodo_id = -1;
+static int _dd_inicializado = 0;
+static int _dd_total_remotos = 0;
+static int _dd_ultima_sincro = 0;
+static NodoRemotoDebug _dd_nodos_remotos[DD_MAX_REMOTE_NODES];
+static pthread_mutex_t _dd_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// --- Inicializar subsistema de debug distribuido ---
+// nodo_id: identificador único de este nodo en el clúster
+int dd_inicializar(int nodo_id) {
+    pthread_mutex_lock(&_dd_mutex);
+    _dd_local_nodo_id = nodo_id;
+    _dd_inicializado = 1;
+    _dd_total_remotos = 0;
+    _dd_ultima_sincro = (int)time(NULL);
+    memset(_dd_nodos_remotos, 0, sizeof(_dd_nodos_remotos));
+    pthread_mutex_unlock(&_dd_mutex);
+    return 0;
+}
+
+// --- Registrar un nodo remoto para debug distribuido ---
+int dd_registrar_nodo_remoto(int nodo_id, CadenaSegura ip, int puerto) {
+    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
+
+    pthread_mutex_lock(&_dd_mutex);
+
+    // Check if already registered
+    for (int i = 0; i < _dd_total_remotos; i++) {
+        if (_dd_nodos_remotos[i].nodo_id == nodo_id) {
+            // Update IP/port
+            strncpy(_dd_nodos_remotos[i].ip, ip.datos, sizeof(_dd_nodos_remotos[i].ip) - 1);
+            _dd_nodos_remotos[i].puerto = puerto;
+            _dd_nodos_remotos[i].activo = 1;
+            _dd_nodos_remotos[i].ultima_sincro_s = (int)time(NULL);
+            pthread_mutex_unlock(&_dd_mutex);
+            return i;
+        }
+    }
+
+    if (_dd_total_remotos >= DD_MAX_REMOTE_NODES) {
+        pthread_mutex_unlock(&_dd_mutex);
+        return -2;
+    }
+
+    int idx = _dd_total_remotos++;
+    _dd_nodos_remotos[idx].nodo_id = nodo_id;
+    strncpy(_dd_nodos_remotos[idx].ip, ip.datos, sizeof(_dd_nodos_remotos[idx].ip) - 1);
+    _dd_nodos_remotos[idx].ip[sizeof(_dd_nodos_remotos[idx].ip) - 1] = '\0';
+    _dd_nodos_remotos[idx].puerto = puerto;
+    _dd_nodos_remotos[idx].num_eventos = 0;
+    _dd_nodos_remotos[idx].activo = 1;
+    _dd_nodos_remotos[idx].ultima_sincro_s = (int)time(NULL);
+
+    pthread_mutex_unlock(&_dd_mutex);
+    return idx;
+}
+
+// --- Serializar y enviar traza local a nodo remoto ---
+// Envía los últimos num_eventos eventos de la traza local al nodo remoto
+// Formato: "SYNDBG:TRACE:origen_id:num_eventos:evt1|evt2|..."
+int dd_enviar_traza_remota(CadenaSegura ip, int puerto, int num_eventos) {
+    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
+    if (num_eventos <= 0) num_eventos = tr_total_eventos();
+    if (num_eventos > 100) num_eventos = 100; // limit payload size
+
+    // Build trace payload from local tr_* events
+    char buf[4096];
+    int pos = snprintf(buf, sizeof(buf), "%s:TRACE:%d:%d:",
+                       DD_PROTO_MAGIC, _dd_local_nodo_id, num_eventos);
+
+    for (int i = 0; i < num_eventos && pos < (int)sizeof(buf) - 100; i++) {
+        int idx = tr_total_eventos() - num_eventos + i;
+        if (idx < 0) continue;
+        CadenaSegura evt = tr_obtener_evento(idx);
+        if (evt.datos && evt.longitud > 0) {
+            int n = snprintf(buf + pos, (size_t)(sizeof(buf) - pos),
+                             "%s|", evt.datos);
+            if (n > 0) pos += n;
+        }
+    }
+
+    // Send via cluster remote channel
+    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, pos, 0);
+    return (rc >= 0) ? 0 : -2;
+}
+
+// --- Recibir y procesar traza remota ---
+// Procesa un paquete SYNDBG:TRACE entrante y lo almacena en el buffer
+// de eventos remotos del nodo correspondiente.
+// Retorna 0 si se procesó, -1 si no es un paquete debug válido
+int dd_recibir_traza_remota(CadenaSegura paquete) {
+    if (!_dd_inicializado || !paquete.datos || paquete.longitud <= 0) return -1;
+
+    // Verify magic prefix
+    if (strncmp(paquete.datos, DD_PROTO_MAGIC, strlen(DD_PROTO_MAGIC)) != 0)
+        return -2;
+
+    // Parse: SYNDBG:TRACE:origen_id:num_eventos:evt1|evt2|...
+    const char* p = paquete.datos + strlen(DD_PROTO_MAGIC) + 1;
+
+    // Expect TRACE command
+    if (strncmp(p, "TRACE", 5) != 0) return -3;
+    p += 6; // skip "TRACE:"
+
+    // Parse origin node ID
+    int origen_id = 0;
+    while (*p && *p != ':') { origen_id = origen_id * 10 + (*p - '0'); p++; }
+    if (!*p) return -4;
+    p++; // skip ':'
+
+    // Parse num events
+    int num_evt = 0;
+    while (*p && *p != ':') { num_evt = num_evt * 10 + (*p - '0'); p++; }
+    if (!*p) return -5;
+    p++; // skip ':'
+
+    // Find remote node entry or create it
+    pthread_mutex_lock(&_dd_mutex);
+    int idx = -1;
+    for (int i = 0; i < _dd_total_remotos; i++) {
+        if (_dd_nodos_remotos[i].nodo_id == origen_id) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0 && _dd_total_remotos < DD_MAX_REMOTE_NODES) {
+        idx = _dd_total_remotos++;
+        _dd_nodos_remotos[idx].nodo_id = origen_id;
+        strncpy(_dd_nodos_remotos[idx].ip, "", 1);
+        _dd_nodos_remotos[idx].puerto = 0;
+        _dd_nodos_remotos[idx].num_eventos = 0;
+        _dd_nodos_remotos[idx].activo = 1;
+    }
+
+    if (idx < 0) {
+        pthread_mutex_unlock(&_dd_mutex);
+        return -6;
+    }
+
+    // Parse event strings into buffer
+    int evt_idx = 0;
+    const char* evt_start = p;
+    while (*p && evt_idx < DD_MAX_REMOTE_EVENTS && evt_idx < num_evt) {
+        const char* end = p;
+        while (*end && *end != '|') end++;
+        int len = (int)(end - p);
+        if (len > 0 && len < 255 && evt_idx < DD_MAX_REMOTE_EVENTS) {
+            memcpy(_dd_nodos_remotos[idx].eventos[evt_idx], p, (size_t)len);
+            _dd_nodos_remotos[idx].eventos[evt_idx][len] = '\0';
+            evt_idx++;
+        }
+        p = (*end == '|') ? end + 1 : end;
+    }
+    _dd_nodos_remotos[idx].num_eventos = evt_idx;
+    _dd_nodos_remotos[idx].ultima_sincro_s = (int)time(NULL);
+    _dd_ultima_sincro = (int)time(NULL);
+
+    pthread_mutex_unlock(&_dd_mutex);
+    return 0;
+}
+
+// --- Sincronizar trazas con todos los nodos remotos registrados ---
+// Envía la traza local a cada nodo remoto
+int dd_sincronizar_trazas(int num_eventos) {
+    if (!_dd_inicializado) return -1;
+
+    pthread_mutex_lock(&_dd_mutex);
+    int count = 0;
+    for (int i = 0; i < _dd_total_remotos; i++) {
+        if (_dd_nodos_remotos[i].activo) {
+            CadenaSegura ip = {
+                .longitud = (int)strlen(_dd_nodos_remotos[i].ip),
+                .datos = _dd_nodos_remotos[i].ip
+            };
+            pthread_mutex_unlock(&_dd_mutex);
+            int rc = dd_enviar_traza_remota(ip, _dd_nodos_remotos[i].puerto, num_eventos);
+            pthread_mutex_lock(&_dd_mutex);
+            if (rc == 0) count++;
+        }
+    }
+    _dd_ultima_sincro = (int)time(NULL);
+    pthread_mutex_unlock(&_dd_mutex);
+    return count;
+}
+
+// --- Buscar evento en trazas remotas por tag ---
+// Busca en todos los buffers remotos el último evento con el tag especificado
+// Retorna "nodo_id:evento" o vacío si no se encuentra
+CadenaSegura dd_buscar_evento_remoto(int tag, int desde_secuencia) {
+    if (!_dd_inicializado)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    pthread_mutex_lock(&_dd_mutex);
+
+    for (int n = _dd_total_remotos - 1; n >= 0; n--) {
+        if (!_dd_nodos_remotos[n].activo) continue;
+        for (int e = _dd_nodos_remotos[n].num_eventos - 1; e >= 0; e--) {
+            const char* evt = _dd_nodos_remotos[n].eventos[e];
+            if (!evt || !*evt) continue;
+            // Event format: "tag|seq|funcion|linea|variable|valor"
+            int evt_tag = 0;
+            const char* p = evt;
+            while (*p && *p != '|') { evt_tag = evt_tag * 10 + (*p - '0'); p++; }
+            if (evt_tag == tag) {
+                char result[512];
+                int len = snprintf(result, sizeof(result), "%d:%s",
+                                   _dd_nodos_remotos[n].nodo_id, evt);
+                char* r = (char*)pool_alloc((size_t)(len + 1));
+                if (!r) { pthread_mutex_unlock(&_dd_mutex); return (CadenaSegura){0, NULL}; }
+                memcpy(r, result, (size_t)(len + 1));
+                pthread_mutex_unlock(&_dd_mutex);
+                return (CadenaSegura){ .longitud = len, .datos = r };
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&_dd_mutex);
+    return (CadenaSegura){ .longitud = 0, .datos = NULL };
+}
+
+// --- RPC: Establecer breakpoint remoto ---
+// Envía comando SYNDBG:BP a nodo remoto
+int dd_breakpoint_remoto(CadenaSegura ip, int puerto, int tipo, CadenaSegura patron, int valor_int) {
+    if (!_dd_inicializado || !ip.datos || puerto <= 0) return -1;
+
+    char buf[1024];
+    const char* pt = patron.datos ? patron.datos : "";
+    int len = snprintf(buf, sizeof(buf), "%s:BP:%d:%s:%d",
+                       DD_PROTO_MAGIC, tipo, pt, valor_int);
+
+    return cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
+}
+
+// --- RPC: Inspeccionar variable en nodo remoto ---
+// Envía comando SYNDBG:INSPECT y retorna el resultado (simulado)
+CadenaSegura dd_inspeccionar_remoto(CadenaSegura ip, int puerto, CadenaSegura nombre_variable) {
+    if (!_dd_inicializado || !ip.datos || puerto <= 0 || !nombre_variable.datos)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    // Build remote inspection request
+    char buf[1024];
+    int len = snprintf(buf, sizeof(buf), "%s:INSPECT:%.*s",
+                       DD_PROTO_MAGIC, (int)nombre_variable.longitud, nombre_variable.datos);
+    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
+    if (rc < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    // For simulation: look up in local remote buffer
+    // In real scenario, response comes via dd_recibir_traza_remota
+    char result[128];
+    int rlen = snprintf(result, sizeof(result), "remote_inspect:%d:%.*s",
+                        _dd_local_nodo_id, (int)nombre_variable.longitud, nombre_variable.datos);
+    char* r = (char*)pool_alloc((size_t)(rlen + 1));
+    if (!r) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(r, result, (size_t)(rlen + 1));
+    return (CadenaSegura){ .longitud = rlen, .datos = r };
+}
+
+// --- RPC: Obtener pila de llamadas remota ---
+CadenaSegura dd_pila_remota(CadenaSegura ip, int puerto) {
+    if (!_dd_inicializado || !ip.datos || puerto <= 0)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    char buf[256];
+    int len = snprintf(buf, sizeof(buf), "%s:STACK:", DD_PROTO_MAGIC);
+    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
+    if (rc < 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    char result[256];
+    int rlen = snprintf(result, sizeof(result), "remote_stack:%d", _dd_local_nodo_id);
+    char* r = (char*)pool_alloc((size_t)(rlen + 1));
+    if (!r) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(r, result, (size_t)(rlen + 1));
+    return (CadenaSegura){ .longitud = rlen, .datos = r };
+}
+
+// --- Total de eventos remotos recibidos ---
+int dd_total_eventos_remotos(void) {
+    if (!_dd_inicializado) return 0;
+
+    pthread_mutex_lock(&_dd_mutex);
+    int total = 0;
+    for (int i = 0; i < _dd_total_remotos; i++) {
+        total += _dd_nodos_remotos[i].num_eventos;
+    }
+    pthread_mutex_unlock(&_dd_mutex);
+    return total;
+}
+
+// --- Número de nodos remotos registrados ---
+int dd_nodos_remotos_registrados(void) {
+    if (!_dd_inicializado) return 0;
+    pthread_mutex_lock(&_dd_mutex);
+    int n = _dd_total_remotos;
+    pthread_mutex_unlock(&_dd_mutex);
+    return n;
+}
+
+// --- Identificador del nodo local ---
+int dd_nodo_local_id(void) {
+    return _dd_local_nodo_id;
+}
+
+// --- Información del subsistema de debug distribuido ---
+// Retorna "local_id:num_remotos:total_eventos_remotos:ultima_sincro"
+CadenaSegura dd_info(void) {
+    if (!_dd_inicializado)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+
+    char buf[256];
+    int total_evt = 0;
+    pthread_mutex_lock(&_dd_mutex);
+    for (int i = 0; i < _dd_total_remotos; i++) {
+        total_evt += _dd_nodos_remotos[i].num_eventos;
+    }
+    int len = snprintf(buf, sizeof(buf), "%d:%d:%d:%d",
+                       _dd_local_nodo_id, _dd_total_remotos,
+                       total_evt, _dd_ultima_sincro);
+    pthread_mutex_unlock(&_dd_mutex);
+
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
+// ============================================================
+// FZ — Fuzzing Distribuido Multi-Nodo (M10.4)
+// ============================================================
+#define FZ_PROTO_MAGIC "SYNFUZZ"
+#define FZ_MAX_RESULTS 512
+#define FZ_MAX_STDERR 256
+#define FZ_MAX_CONTENT 2048
+
+typedef struct {
+    int caso_id;
+    int exit_code;
+    int timestamp;
+    char stderr_resumen[FZ_MAX_STDERR];
+} ResultadoFuzz;
+
+static int _fz_inicializado = 0;
+static int _fz_puerto_coordinador = -1;
+static int _fz_total_enviados = 0;
+static int _fz_total_recibidos = 0;
+static int _fz_total_crashes = 0;
+static int _fz_ultimo_caso_id = 0;
+static ResultadoFuzz _fz_resultados[FZ_MAX_RESULTS];
+static int _fz_num_resultados = 0;
+static pthread_mutex_t _fz_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int fz_iniciar_coordinador(int puerto) {
+    if (puerto <= 0) return -1;
+    pthread_mutex_lock(&_fz_mutex);
+    _fz_inicializado = 1;
+    _fz_puerto_coordinador = puerto;
+    _fz_total_enviados = 0;
+    _fz_total_recibidos = 0;
+    _fz_total_crashes = 0;
+    _fz_ultimo_caso_id = 0;
+    _fz_num_resultados = 0;
+    memset(_fz_resultados, 0, sizeof(_fz_resultados));
+    pthread_mutex_unlock(&_fz_mutex);
+    return 0;
+}
+
+int fz_enviar_caso(CadenaSegura ip, int puerto, int caso_id, CadenaSegura contenido) {
+    if (!_fz_inicializado || !ip.datos || puerto <= 0 || !contenido.datos) return -1;
+    char buf[FZ_MAX_CONTENT + 128];
+    int use_len = contenido.longitud;
+    if (use_len > FZ_MAX_CONTENT) use_len = FZ_MAX_CONTENT;
+    int len = snprintf(buf, sizeof(buf), "%s:CASE:%d:%d:%.*s",
+                       FZ_PROTO_MAGIC, caso_id, use_len,
+                       use_len, contenido.datos);
+    if (len <= 0 || len >= (int)sizeof(buf)) return -2;
+    int rc = cluster_canal_remoto_enviar(ip.datos, puerto, buf, len, 0);
+    if (rc < 0) return -3;
+    pthread_mutex_lock(&_fz_mutex);
+    _fz_total_enviados++;
+    _fz_ultimo_caso_id = caso_id;
+    pthread_mutex_unlock(&_fz_mutex);
+    return caso_id;
+}
+
+CadenaSegura fz_procesar_mensaje(CadenaSegura paquete) {
+    if (!_fz_inicializado || !paquete.datos || paquete.longitud <= 0)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    if (strncmp(paquete.datos, FZ_PROTO_MAGIC, strlen(FZ_PROTO_MAGIC)) != 0)
+        return (CadenaSegura){ .longitud = 7, .datos = "IGNORED" };
+    const char* p = paquete.datos + strlen(FZ_PROTO_MAGIC) + 1;
+    if (strncmp(p, "CASE", 4) == 0) {
+        p += 5;
+        const char* sep1 = strchr(p, ':');
+        if (!sep1) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        const char* sep2 = strchr(sep1 + 1, ':');
+        if (!sep2) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        const char* content = sep2 + 1;
+        int content_len = (int)(paquete.datos + paquete.longitud - content);
+        if (content_len <= 0) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        char* result = (char*)pool_alloc((size_t)(content_len + 16));
+        if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        int rlen = snprintf(result, (size_t)(content_len + 16), "CASE:%.*s", content_len, content);
+        return (CadenaSegura){ .longitud = rlen, .datos = result };
+    } else if (strncmp(p, "RESULT", 6) == 0) {
+        p += 7;
+        int caso_id = 0;
+        while (*p && *p != ':') { caso_id = caso_id * 10 + (*p - '0'); p++; }
+        if (!*p) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        p++;
+        int exit_code = 0, sign = 1;
+        if (*p == '-') { sign = -1; p++; }
+        while (*p && *p != ':') { exit_code = exit_code * 10 + (*p - '0'); p++; }
+        exit_code *= sign;
+        if (!*p) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        p++;
+        pthread_mutex_lock(&_fz_mutex);
+        if (_fz_num_resultados < FZ_MAX_RESULTS) {
+            _fz_resultados[_fz_num_resultados].caso_id = caso_id;
+            _fz_resultados[_fz_num_resultados].exit_code = exit_code;
+            _fz_resultados[_fz_num_resultados].timestamp = (int)time(NULL);
+            strncpy(_fz_resultados[_fz_num_resultados].stderr_resumen, p, FZ_MAX_STDERR - 1);
+            _fz_resultados[_fz_num_resultados].stderr_resumen[FZ_MAX_STDERR - 1] = '\0';
+            _fz_num_resultados++;
+        }
+        _fz_total_recibidos++;
+        if (exit_code < 0 || exit_code > 1) _fz_total_crashes++;
+        pthread_mutex_unlock(&_fz_mutex);
+        char* result = (char*)pool_alloc(64);
+        if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+        int rlen = snprintf(result, 64, "RESULT:%d:%d", caso_id, exit_code);
+        return (CadenaSegura){ .longitud = rlen, .datos = result };
+    }
+    return (CadenaSegura){ .longitud = 7, .datos = "IGNORED" };
+}
+
+int fz_reportar_resultado(CadenaSegura ip_coord, int puerto_coord,
+                          int caso_id, int exit_code, CadenaSegura stderr_resumen) {
+    if (!ip_coord.datos || puerto_coord <= 0) return -1;
+    char buf[1024];
+    const char* stderr_str = stderr_resumen.datos ? stderr_resumen.datos : "";
+    int len = snprintf(buf, sizeof(buf), "%s:RESULT:%d:%d:%s",
+                       FZ_PROTO_MAGIC, caso_id, exit_code, stderr_str);
+    if (len <= 0) return -2;
+    return cluster_canal_remoto_enviar(ip_coord.datos, puerto_coord, buf, len, 0);
+}
+
+CadenaSegura fz_obtener_resultado(int indice) {
+    pthread_mutex_lock(&_fz_mutex);
+    if (indice < 0 || indice >= _fz_num_resultados) {
+        pthread_mutex_unlock(&_fz_mutex);
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    }
+    char buf[256];
+    int len = snprintf(buf, sizeof(buf), "%d:%d:%d",
+                       _fz_resultados[indice].caso_id,
+                       _fz_resultados[indice].exit_code,
+                       _fz_resultados[indice].timestamp);
+    pthread_mutex_unlock(&_fz_mutex);
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
+
+int fz_ultimo_caso_id(void) { return _fz_ultimo_caso_id; }
+int fz_total_casos_enviados(void) { return _fz_total_enviados; }
+int fz_total_resultados_recibidos(void) { return _fz_total_recibidos; }
+int fz_total_crashes(void) { return _fz_total_crashes; }
+int fz_num_resultados(void) { return _fz_num_resultados; }
+
+CadenaSegura fz_info(void) {
+    if (!_fz_inicializado)
+        return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    char buf[256];
+    pthread_mutex_lock(&_fz_mutex);
+    int len = snprintf(buf, sizeof(buf), "%d:%d:%d:%d:%d",
+                       _fz_total_enviados, _fz_total_recibidos,
+                       _fz_total_crashes, _fz_ultimo_caso_id,
+                       _fz_num_resultados);
+    pthread_mutex_unlock(&_fz_mutex);
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = len, .datos = result };
+}
