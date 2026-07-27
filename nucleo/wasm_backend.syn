@@ -1,0 +1,366 @@
+#lang: es
+
+# =============================================================================
+# nucleo/wasm_backend.syn — WebAssembly WAT Code Generator (M12.2)
+#
+# Propósito: Traducir el AST canónico de Synapse a formato de texto
+# WebAssembly (.wat), mapeando operaciones aritméticas, declaraciones de
+# funciones y llamadas a instrucciones WASM estandarizadas.
+#
+# Arquitectura:
+#   - Sigue el mismo patrón que generador/emision_c.syn
+#   - Usa gen_emitir_linea() para emitir código WAT línea por línea
+#   - No requiere dependencias externas (emite texto plano .wat)
+#
+# Formato WAT emitido:
+#   (module
+#     (func $nombre (param i32) (result i32)
+#       i32.const <val>
+#       return
+#     )
+#   )
+#
+# Tipos WASM soportados: i32 (entero de 32 bits)
+# =============================================================================
+
+# -------------------------------------------------------------------
+# Constantes de tipos de nodo WASM
+# -------------------------------------------------------------------
+constante WASM_MODULE = 0
+constante WASM_FUNC = 1
+constante WASM_CONST_I32 = 2
+constante WASM_ADD = 3
+constante WASM_SUB = 4
+constante WASM_MUL = 5
+constante WASM_DIV_S = 6
+constante WASM_CALL = 7
+constante WASM_RETURN = 8
+constante WASM_LOCAL_GET = 9
+constante WASM_LOCAL_SET = 10
+constante WASM_IF = 11
+constante WASM_ELSE = 12
+constante WASM_END = 13
+constante WASM_BLOCK = 14
+constante WASM_BR_IF = 15
+constante WASM_BR = 16
+constante WASM_I32_EQ = 17
+constante WASM_I32_NE = 18
+constante WASM_I32_LT_S = 19
+constante WASM_I32_GT_S = 20
+constante WASM_I32_LE_S = 21
+constante WASM_I32_GE_S = 22
+constante WASM_DROP = 23
+
+# -------------------------------------------------------------------
+# Estado del generador WASM
+# -------------------------------------------------------------------
+estructura EstadoWasm:
+    nivel_indentacion: entero  # nivel de indentación actual (0, 1, 2, ...)
+    etiqueta_contador: entero  # contador para generar etiquetas únicas
+    buffer_salida: texto       # texto WAT acumulado
+
+# -------------------------------------------------------------------
+# Inicializar estado del generador WASM
+# -------------------------------------------------------------------
+funcion wasm_inicializar() -> EstadoWasm:
+    r = EstadoWasm()
+    r.nivel_indentacion = 0
+    r.etiqueta_contador = 0
+    r.buffer_salida = ""
+    retornar r
+
+# -------------------------------------------------------------------
+# Emitir una línea de código WAT con indentación
+# -------------------------------------------------------------------
+funcion wasm_emitir(est: EstadoWasm, linea: texto) -> nulo:
+    inseguro:
+        asm("")
+        asm("extern CadenaSegura _wasm_emit(EstadoWasm* _e, const char* _linea) {")
+        asm("    char _buf[16384]; int _pos = 0;")
+        asm("    int _i; for (_i = 0; _i < _e->nivel_indentacion; _i++) { _buf[_pos++] = 32; _buf[_pos++] = 32; }")
+        asm("    int _j; for (_j = 0; _linea[_j] && _pos < 16380; _j++) _buf[_pos++] = _linea[_j];")
+        asm("    _buf[_pos++] = 10; _buf[_pos] = 0;")
+        asm("    CadenaSegura _cs = {_pos, _buf}; return _cs;")
+        asm("}")
+        asm("CadenaSegura _cs_emit = _wasm_emit(&est, linea.datos);")
+        asm("gen_emitir_linea(est, _cs_emit);")
+        asm("if (_cs_emit.longitud > 0) {")
+        asm("    size_t _old_len = strlen(est.buffer_salida.datos);")
+        asm("    size_t _new_cap = _old_len + _cs_emit.longitud + 64;")
+        asm("    char* _new_buf = (char*)malloc(_new_cap);")
+        asm("    if (_new_buf) {")
+        asm("        memcpy(_new_buf, est.buffer_salida.datos, _old_len);")
+        asm("        memcpy(_new_buf + _old_len, _cs_emit.datos, _cs_emit.longitud);")
+        asm("        _new_buf[_old_len + _cs_emit.longitud] = 0;")
+        asm("        free((void*)est.buffer_salida.datos);")
+        asm("        est.buffer_salida.datos = _new_buf;")
+        asm("        est.buffer_salida.longitud = (int)(_old_len + _cs_emit.longitud);")
+        asm("    }")
+        asm("}")
+
+# -------------------------------------------------------------------
+# Emitir una línea sin buffer acumulador (solo para test directo)
+# -------------------------------------------------------------------
+funcion wasm_emitir_directo(est: EstadoWasm, linea: texto) -> nulo:
+    inseguro:
+        asm("")
+        asm("extern void _wasm_emit_direct(EstadoWasm* _e, const char* _linea) {")
+        asm("    char _buf[16384]; int _pos = 0;")
+        asm("    int _i; for (_i = 0; _i < _e->nivel_indentacion; _i++) { _buf[_pos++] = 32; _buf[_pos++] = 32; }")
+        asm("    int _j; for (_j = 0; _linea[_j] && _pos < 16380; _j++) _buf[_pos++] = _linea[_j];")
+        asm("    _buf[_pos++] = 10; _buf[_pos] = 0;")
+        asm("    fwrite(_buf, 1, _pos, stderr);")
+        asm("}")
+        asm("_wasm_emit_direct(&est, linea.datos);")
+        asm("fflush(stderr);")
+
+# -------------------------------------------------------------------
+# Obtener el buffer de salida como texto
+# -------------------------------------------------------------------
+funcion wasm_obtener_salida(est: EstadoWasm) -> texto:
+    retornar est.buffer_salida
+
+# -------------------------------------------------------------------
+# Incrementar indentación
+# -------------------------------------------------------------------
+funcion wasm_indentar(est: EstadoWasm) -> nulo:
+    est.nivel_indentacion = est.nivel_indentacion + 1
+
+# -------------------------------------------------------------------
+# Decrementar indentación
+# -------------------------------------------------------------------
+funcion wasm_desindentar(est: EstadoWasm) -> nulo:
+    si est.nivel_indentacion > 0:
+        est.nivel_indentacion = est.nivel_indentacion - 1
+
+# -------------------------------------------------------------------
+# Emitir cabecera de módulo
+# -------------------------------------------------------------------
+funcion wasm_iniciar_modulo(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "(module")
+    wasm_indentar(est)
+
+funcion wasm_finalizar_modulo(est: EstadoWasm) -> nulo:
+    wasm_desindentar(est)
+    wasm_emitir(est, ")")
+
+# -------------------------------------------------------------------
+# Emitir declaración de función
+#
+#   (func $nombre (param i32) (param i32) (result i32)
+#     ... cuerpo ...
+#   )
+# -------------------------------------------------------------------
+funcion wasm_declarar_funcion(est: EstadoWasm, nombre: texto,
+    num_params: entero, num_results: entero) -> nulo:
+
+    linea = "(func $" + nombre
+    si num_params > 0:
+        i = 0
+        mientras i < num_params:
+            linea = linea + " (param i32)"
+            i = i + 1
+    si num_results > 0:
+        linea = linea + " (result i32)"
+    linea = linea + ""
+    wasm_emitir(est, linea)
+    wasm_indentar(est)
+
+funcion wasm_finalizar_funcion(est: EstadoWasm) -> nulo:
+    wasm_desindentar(est)
+    wasm_emitir(est, ")")
+
+# -------------------------------------------------------------------
+# Emitir instrucciones aritméticas básicas
+# -------------------------------------------------------------------
+
+# i32.const <valor>
+funcion wasm_const_i32(est: EstadoWasm, valor: entero) -> nulo:
+    linea = "i32.const " + texto(valor)
+    wasm_emitir(est, linea)
+
+# i32.add
+funcion wasm_add(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.add")
+
+# i32.sub
+funcion wasm_sub(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.sub")
+
+# i32.mul
+funcion wasm_mul(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.mul")
+
+# i32.div_s
+funcion wasm_div_s(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.div_s")
+
+# -------------------------------------------------------------------
+# Emitir llamada a función
+# -------------------------------------------------------------------
+funcion wasm_llamar(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "call $" + nombre
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Emitir return (devuelve el valor en la cima de la pila)
+# -------------------------------------------------------------------
+funcion wasm_retorno(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "return")
+
+# -------------------------------------------------------------------
+# Emitir variables locales
+# -------------------------------------------------------------------
+funcion wasm_declarar_local(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "(local $" + nombre + " i32)"
+    wasm_emitir(est, linea)
+
+funcion wasm_local_get(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "local.get $" + nombre
+    wasm_emitir(est, linea)
+
+funcion wasm_local_set(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "local.set $" + nombre
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Emitir control de flujo básico
+# -------------------------------------------------------------------
+funcion wasm_if(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "if")
+    wasm_indentar(est)
+
+funcion wasm_else(est: EstadoWasm) -> nulo:
+    wasm_desindentar(est)
+    wasm_emitir(est, "else")
+    wasm_indentar(est)
+
+funcion wasm_end(est: EstadoWasm) -> nulo:
+    wasm_desindentar(est)
+    wasm_emitir(est, "end")
+
+funcion wasm_block(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "block $" + nombre
+    wasm_emitir(est, linea)
+    wasm_indentar(est)
+
+funcion wasm_br_if(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "br_if $" + nombre
+    wasm_emitir(est, linea)
+
+funcion wasm_br(est: EstadoWasm, nombre: texto) -> nulo:
+    linea = "br $" + nombre
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Emitir drop (descarta valor de la cima de la pila)
+# -------------------------------------------------------------------
+funcion wasm_drop(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "drop")
+
+# -------------------------------------------------------------------
+# Emitir comparaciones (dejan i32 en la pila: 0=falso, 1=verdadero)
+# -------------------------------------------------------------------
+funcion wasm_i32_eq(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.eq")
+
+funcion wasm_i32_ne(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.ne")
+
+funcion wasm_i32_lt_s(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.lt_s")
+
+funcion wasm_i32_gt_s(est: EstadoWasm) -> nulo:
+    wasm_emitir(est, "i32.gt_s")
+
+# -------------------------------------------------------------------
+# Constructores de alto nivel
+# -------------------------------------------------------------------
+
+# Generar un programa WASM mínimo: retorna una constante entera
+#   (module
+#     (func $main (result i32)
+#       i32.const <valor>
+#       return
+#     )
+#   )
+funcion wasm_programa_minimo(est: EstadoWasm, valor_retorno: entero) -> nulo:
+    wasm_iniciar_modulo(est)
+    wasm_declarar_funcion(est, "main", 0, 1)
+    wasm_const_i32(est, valor_retorno)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# Generar un programa WASM aritmético: retorna lhs <op> rhs
+#   op: 0=suma, 1=resta, 2=multiplicacion, 3=division
+funcion wasm_programa_aritmetico(est: EstadoWasm, op: entero,
+    lhs: entero, rhs: entero) -> nulo:
+
+    wasm_iniciar_modulo(est)
+    wasm_declarar_funcion(est, "main", 0, 1)
+    wasm_const_i32(est, lhs)
+    wasm_const_i32(est, rhs)
+    si op == 0:
+        wasm_add(est)
+    sino si op == 1:
+        wasm_sub(est)
+    sino si op == 2:
+        wasm_mul(est)
+    sino:
+        wasm_div_s(est)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# Generar un programa WASM con llamada a función
+#   (module
+#     (func $suma (param i32 i32) (result i32)
+#       local.get $p0
+#       local.get $p1
+#       i32.add
+#       return
+#     )
+#     (func $main (result i32)
+#       i32.const 10
+#       i32.const 20
+#       call $suma
+#       return
+#     )
+#   )
+funcion wasm_programa_con_llamada(est: EstadoWasm, a: entero, b: entero) -> nulo:
+    wasm_iniciar_modulo(est)
+
+    # (func $suma (param i32 i32) (result i32)
+    wasm_declarar_funcion(est, "suma", 2, 1)
+    wasm_emitir(est, "local.get $p0")
+    wasm_emitir(est, "local.get $p1")
+    wasm_add(est)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+
+    # (func $main (result i32)
+    wasm_declarar_funcion(est, "main", 0, 1)
+    wasm_const_i32(est, a)
+    wasm_const_i32(est, b)
+    wasm_llamar(est, "suma")
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+
+    wasm_finalizar_modulo(est)
+
+# Generar un programa WASM if-else: retorna 1 si a < b, sino 0
+funcion wasm_programa_if_else(est: EstadoWasm, a: entero, b: entero) -> nulo:
+    wasm_iniciar_modulo(est)
+    wasm_declarar_funcion(est, "main", 0, 1)
+    wasm_const_i32(est, a)
+    wasm_const_i32(est, b)
+    wasm_i32_lt_s(est)
+    wasm_if(est)
+    wasm_const_i32(est, 1)
+    wasm_else(est)
+    wasm_const_i32(est, 0)
+    wasm_end(est)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
