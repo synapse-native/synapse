@@ -19,8 +19,8 @@ extern "C" {
 // ============================================================
 // Constantes
 // ============================================================
-#define QC_MAX_QUBITS           8
-#define QC_MAX_AMPLITUDES       (1 << QC_MAX_QUBITS)  // 256
+#define QC_MAX_QUBITS           9
+#define QC_MAX_AMPLITUDES       (1 << QC_MAX_QUBITS)  // 512 — suficiente para Shor code 9-qubits
 #define QC_MAGIC_HEADER         0x514E5452  // "QNTR"
 #define QC_VERSION              1
 #define QC_SQRT2_INV            0.7071067811865475244  // 1/sqrt(2)
