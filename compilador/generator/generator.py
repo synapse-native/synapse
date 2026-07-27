@@ -232,6 +232,11 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("// salida_metal.c - Generado por Synapse Compilador")
     ctx.write_line("// Lenguaje: Synapse v1.0 (#lang: es)")
 
+    # Suppress known-safe warnings from generated code
+    ctx.write_line("#pragma GCC diagnostic ignored \"-Wint-to-pointer-cast\"")
+    ctx.write_line("#pragma GCC diagnostic ignored \"-Wdiscarded-qualifiers\"")
+    ctx.write_line("")
+
     if not ctx.is_no_std():
         ctx.write_line("#include <stdio.h>")
         ctx.write_line("#include <stdlib.h>")
