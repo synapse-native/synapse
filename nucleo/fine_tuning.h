@@ -163,12 +163,6 @@ typedef struct {
     char tipo_nodo[64];
 } FTResultadoRAG;
 
-// Busca chunks usando el índice RAG y aplica re-ranking con el modelo fine-tuned
-// Retorna: número de resultados, -1 en error
-int ft_buscar_con_fine_tuning(FTSession* sesion, void* rag_index,
-                               const char* consulta, FTResultadoRAG* resultados,
-                               int max_resultados, float* out_confianza);
-
 // Obtiene la pérdida actual de la sesión
 float ft_perdida_actual(FTSession* sesion);
 

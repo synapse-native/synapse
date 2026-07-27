@@ -507,24 +507,6 @@ void ft_cerrar(FTSession* sesion) {
     free(sesion);
 }
 
-// ============================================================
-// Integración RAG (re-ranking con fine-tuning)
-// ============================================================
-
-int ft_buscar_con_fine_tuning(FTSession* sesion, void* rag_index,
-                               const char* consulta, FTResultadoRAG* resultados,
-                               int max_resultados, float* out_confianza) {
-    (void)rag_index;  // En producción, usaría synapse_rag_buscar_similares
-    (void)consulta;
-    (void)out_confianza;
-
-    if (!sesion || !resultados || max_resultados <= 0) return -1;
-
-    // Placeholder: el re-ranking real requeriría el índice RAG completo
-    // Por ahora retorna 0 resultados (la integración se valida en el test)
-    return 0;
-}
-
 float ft_perdida_actual(FTSession* sesion) {
     return sesion ? sesion->perdida_actual : -1.0f;
 }
@@ -544,4 +526,77 @@ FTEstadisticas ft_obtener_estadisticas(FTSession* sesion) {
     stats.learning_rate = sesion->config.learning_rate;
     stats.rank_loRA = sesion->config.rank;
     return stats;
+}
+
+// ============================================================
+// Wrappers _syn_* para enlace con std.modelo (Synapse externo funcion)
+// ============================================================
+
+void* _syn_ft_iniciar(void* ctx, float lr, int rank, float alpha) {
+    (void)ctx;
+    FTConfig cfg;
+    cfg.learning_rate = lr;
+    cfg.rank = (rank > 0) ? rank : FT_RANK_DEFAULT;
+    cfg.alpha = (alpha > 0.0f) ? alpha : FT_ALPHA_DEFAULT;
+    cfg.num_epochs = 1;
+    cfg.batch_size = 1;
+    cfg.weight_decay = 0.0f;
+    cfg.grad_clip_norm = 1.0f;
+    return ft_iniciar(NULL, &cfg);
+}
+
+void _syn_ft_cerrar(void* sesion) {
+    ft_cerrar((FTSession*)sesion);
+}
+
+int _syn_ft_agregar_adaptador(void* sesion, int capa_idx, int tipo_capa,
+                               int rank, float alpha, int dim_in, int dim_out) {
+    return ft_agregar_adaptador((FTSession*)sesion, capa_idx, tipo_capa,
+                                rank, alpha, dim_in, dim_out);
+}
+
+int _syn_ft_agregar_ejemplo(void* sesion, void* tokens_in, int len_in,
+                             void* tokens_out, int len_out, float peso) {
+    return ft_agregar_ejemplo((FTSession*)sesion, (const int*)tokens_in, len_in,
+                              (const int*)tokens_out, len_out, peso);
+}
+
+float _syn_ft_paso_entrenamiento(void* sesion) {
+    return ft_paso_entrenamiento((FTSession*)sesion);
+}
+
+float _syn_ft_entrenar(void* sesion) {
+    return ft_entrenar((FTSession*)sesion);
+}
+
+float _syn_ft_evaluar_perdida(void* sesion, int len_salida, int target_id) {
+    (void)len_salida;
+    // Version simplificada para binding Synapse: evalua perdida en un token
+    FTSession* s = (FTSession*)sesion;
+    if (!s || s->dataset.num_ejemplos <= 0) return -1.0f;
+    return ft_evaluar_perdida(s, &s->dataset.ejemplos[0]);
+}
+
+int _syn_ft_guardar_pesos(void* sesion, const char* ruta) {
+    return ft_guardar_pesos((const FTSession*)sesion, ruta);
+}
+
+int _syn_ft_cargar_pesos(void* sesion, const char* ruta) {
+    return ft_cargar_pesos((FTSession*)sesion, ruta);
+}
+
+int _syn_ft_aplicar_adaptadores(void* sesion) {
+    return ft_aplicar_adaptadores((FTSession*)sesion);
+}
+
+void _syn_ft_remover_adaptadores(void* sesion) {
+    ft_remover_adaptadores((FTSession*)sesion);
+}
+
+float _syn_ft_obtener_perdida(void* sesion) {
+    return ft_perdida_actual((FTSession*)sesion);
+}
+
+int _syn_ft_obtener_paso(void* sesion) {
+    return ft_paso_actual((FTSession*)sesion);
 }
