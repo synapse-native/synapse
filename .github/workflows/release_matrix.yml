@@ -237,48 +237,14 @@ jobs:
             echo "Using stored signing key"
           else
             echo "No signing key found, generating ephemeral key pair"
-            KEY_OUTPUT=$(python -c "
-import sys; sys.path.insert(0, '.')
-from nucleo.ed25519_signer import generar_par_claves
-priv, pub = generar_par_claves()
-print(f'PRIV={priv}')
-print(f'PUB={pub}')
-")
+            KEY_OUTPUT=$(python scripts/ci_sign.py generate-key)
             PRIV_KEY=$(echo "$KEY_OUTPUT" | grep '^PRIV=' | cut -d= -f2)
             PUB_KEY=$(echo "$KEY_OUTPUT" | grep '^PUB=' | cut -d= -f2)
           fi
 
           # Firmar el binario
           echo "Signing binary: ${ARTIFACT}"
-          SIGN_OUTPUT=$(python -c "
-import sys; sys.path.insert(0, '.')
-from nucleo.ed25519_signer import firmar_archivo, verificar_archivo, _calc_public_key
-import hashlib
-
-priv_key = '$PRIV_KEY'
-artifact = '${ARTIFACT}'
-
-# Firmar binario
-sig = firmar_archivo(artifact, priv_key, artifact + '.sig')
-
-# Calcular clave publica
-pub = _calc_public_key(bytes.fromhex(priv_key)).hex()
-
-# Autoverificar
-valid = verificar_archivo(artifact, sig, pub)
-
-# SHA-256 del binario
-h = hashlib.sha256()
-with open(artifact, 'rb') as f:
-    for chunk in iter(lambda: f.read(8192), b''):
-        h.update(chunk)
-sha256 = h.hexdigest()
-
-print(f'SIG={sig}')
-print(f'PUB={pub}')
-print(f'VALID={\"OK\" if valid else \"FAIL\"}')
-print(f'SHA256={sha256}')
-")
+          SIGN_OUTPUT=$(python scripts/ci_sign.py sign "${ARTIFACT}" "$PRIV_KEY")
 
           SIG_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SIG=' | cut -d= -f2)
           PUB_VALUE=$(echo "$SIGN_OUTPUT" | grep '^PUB=' | cut -d= -f2)
@@ -299,55 +265,11 @@ print(f'SHA256={sha256}')
 
           # Firmar tambien el checksum SHA-256
           if [ -f "${ARTIFACT}.sha256" ]; then
-            python -c "
-import os, sys; sys.path.insert(0, '.')
-from nucleo.ed25519_signer import firmar
-priv_key = '${PRIV_KEY}'
-with open('${ARTIFACT}.sha256', 'rb') as f:
-    content = f.read()
-sig_checksum = firmar(content, priv_key)
-with open('${ARTIFACT}.sha256.sig', 'w') as f:
-    f.write(sig_checksum)
-print('Checksum signed: ' + sig_checksum[:32] + '...')
-" 2>&1 || echo "Checksum signing skipped (non-critical)"
+            python scripts/ci_sign.py checksum-sign "${ARTIFACT}.sha256" "${PRIV_KEY}" 2>&1 || echo "Checksum signing skipped (non-critical)"
           fi
 
           # Generar attestacion SLSA
-          python -c "
-import json, os
-
-att = {
-    'version': '1.0.0',
-    'buildType': 'https://synapse-lang.org/build',
-    'subject': [{
-        'name': '${ARTIFACT}',
-        'digest': {'sha256': '${SHA256_VALUE}'},
-    }],
-    'predicateType': 'https://slsa.dev/provenance/v1',
-    'predicate': {
-        'builder': {'id': 'https://synapse-lang.org/builder'},
-        'buildType': 'synapse-build',
-        'recipe': {
-            'type': 'synapse-compiler',
-            'version': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev'),
-        },
-        'metadata': {
-            'completeness': {'parameters': True, 'environment': False, 'materials': False},
-            'reproducible': False,
-        },
-        'materials': [{
-            'uri': 'git+https://github.com/synapse/nucleo/principal.syn',
-            'digest': {'sha256': '${SHA256_VALUE}'},
-        }],
-    },
-    'signature': '${SIG_VALUE}',
-    'publicKey': '${PUB_VALUE}',
-}
-
-with open('${ARTIFACT}.attestation.json', 'w') as f:
-    json.dump(att, f, indent=2)
-print('SLSA attestation generated')
-"
+          python scripts/ci_sign.py sbom "${ARTIFACT}" "${SHA256_VALUE}" "${SIG_VALUE}" "${PUB_VALUE}"
 
           echo "public_key=${PUB_VALUE}" >> $GITHUB_OUTPUT
           echo "signature=${SIG_VALUE:0:32}..." >> $GITHUB_OUTPUT
@@ -357,59 +279,7 @@ print('SLSA attestation generated')
       # -----------------------------------------------------------------------
       - name: Generate SBOM
         run: |
-          python -c "
-import hashlib, os, json, time
-from pathlib import Path
-
-def generar_sbom_standalone(project_root: str, artifact_name: str):
-    files = []
-    packages = []
-    
-    # Root package
-    root_hash = hashlib.sha256()
-    for f in sorted(Path(project_root).rglob('*')):
-        if f.is_file() and not any(p in str(f) for p in ['.git', '__pycache__', 'toolchain_gcc12']):
-            try:
-                root_hash.update(f.read_bytes())
-                files.append({
-                    'fileName': str(f.relative_to(project_root)),
-                    'checksums': [{'algorithm': 'SHA256', 'value': hashlib.sha256(f.read_bytes()).hexdigest()}]
-                })
-            except Exception:
-                pass
-    
-    sbom = {
-        'spdxVersion': 'SPDX-2.3',
-        'dataLicense': 'CC0-1.0',
-        'SPDXID': 'SPDXRef-DOCUMENT',
-        'name': f'Synapse-{artifact_name}',
-        'creationInfo': {
-            'created': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            'creators': ['Tool: synapse-release-matrix'],
-        },
-        'packages': [{
-            'SPDXID': 'SPDXRef-RootPackage',
-            'name': artifact_name,
-            'versionInfo': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev'),
-            'supplier': 'Organization: Synapse Lang',
-            'downloadLocation': 'NOASSERTION',
-            'filesAnalyzed': True,
-            'checksums': [{'algorithm': 'SHA256', 'value': root_hash.hexdigest()}],
-        }],
-        'files': files,
-        'relationships': [{
-            'spdxElementId': 'SPDXRef-DOCUMENT',
-            'relatedSpdxElement': 'SPDXRef-RootPackage',
-            'relationshipType': 'DESCRIBES',
-        }],
-    }
-    return json.dumps(sbom, indent=2)
-
-sbom = json.loads(generar_sbom_standalone('.', '${{ steps.build.outputs.artifact_name }}'))
-with open('${{ steps.build.outputs.artifact_name }}.spdx.json', 'w') as f:
-    json.dump(sbom, f, indent=2)
-print('SBOM SPDX 2.3 generado')
-"
+          python scripts/ci_sbom.py "${{ steps.build.outputs.artifact_name }}"
 
       # -----------------------------------------------------------------------
       # 9. Upload artifacts
@@ -513,18 +383,7 @@ print('SBOM SPDX 2.3 generado')
           if [ -f "${ARTIFACT}.sig" ]; then
             echo "[OK] Ed25519 signature: ${ARTIFACT}.sig"
             # Verificar firma localmente
-            VERIFY_OUTPUT=$(python -c "
-import sys; sys.path.insert(0, '.')
-from nucleo.ed25519_signer import verificar_archivo
-pub_key_path = '${ARTIFACT}.pub'
-if os.path.exists(pub_key_path):
-    with open(pub_key_path) as f:
-        pub_key = f.read().strip()
-    with open('${ARTIFACT}.sig') as f:
-        sig = f.read().strip()
-    valid = verificar_archivo('${ARTIFACT}', sig, pub_key)
-    print('SIGNATURE_VALID=YES' if valid else 'SIGNATURE_VALID=NO')
-" 2>&1)
+            VERIFY_OUTPUT=$(python scripts/ci_sign.py verify "${ARTIFACT}" "${ARTIFACT}.sig" "${ARTIFACT}.pub" 2>&1)
             if echo "$VERIFY_OUTPUT" | grep -q "SIGNATURE_VALID=YES"; then
               echo "[OK] Ed25519 signature verification: VALID"
             else

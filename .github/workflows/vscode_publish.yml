@@ -67,13 +67,7 @@ jobs:
         run: |
           echo "=== Validating package.json privacy metadata ==="
           # Check __metadata.privacy.telemetry == "NONE"
-          TELEMETRY=$(python3 -c "
-import json
-with open('vscode-synapse/package.json') as f:
-    pkg = json.load(f)
-meta = pkg.get('__metadata', {}).get('privacy', {})
-print(meta.get('telemetry', 'MISSING'))
-")
+          TELEMETRY=$(python3 -c "import json; f=open('vscode-synapse/package.json'); pkg=json.load(f); f.close(); meta=pkg.get('__metadata', {}).get('privacy', {}); print(meta.get('telemetry', 'MISSING'))")
           echo "Telemetry field: $TELEMETRY"
           if [ "$TELEMETRY" != "NONE" ]; then
             echo "❌ FAIL: Telemetry field must be 'NONE', got '$TELEMETRY'"
@@ -140,17 +134,7 @@ print(meta.get('telemetry', 'MISSING'))
       - name: Validate activationEvents scope
         run: |
           echo "=== Validating activationEvents ==="
-          ACTIVATION_SCRIPTS=$(python3 -c "
-import json
-with open('vscode-synapse/package.json') as f:
-    pkg = json.load(f)
-events = pkg.get('activationEvents', [])
-# Must NOT be * (global activation — privacy risk)
-if '*' in events:
-    print('GLOBAL * — PRIVACY RISK')
-else:
-    print('SCOPED: ' + ', '.join(events))
-")
+          ACTIVATION_SCRIPTS=$(python3 -c "import json; f=open('vscode-synapse/package.json'); pkg=json.load(f); f.close(); events=pkg.get('activationEvents', []); print('GLOBAL * — PRIVACY RISK' if '*' in events else 'SCOPED: ' + ', '.join(events))")
           echo "$ACTIVATION_SCRIPTS"
           if echo "$ACTIVATION_SCRIPTS" | grep -q 'PRIVACY RISK'; then
             echo "❌ FAIL: activationEvents must not be '*'"
@@ -246,32 +230,12 @@ else:
               echo "✅ Ed25519 signature: $(xxd -p -c 64 "$SIG_FILE" | head -c 128)..."
             else
               # Fallback: use Ed25519 via Python (compatible with nucleo/ed25519_signer)
-              python3 -c "
-import sys, binascii
-sys.path.insert(0, '.')
-from nucleo.ed25519_signer import firmar_archivo
-# Read the private key hex from the binary
-with open('signing_key.bin', 'rb') as f:
-    priv_bytes = f.read()
-priv_hex = priv_bytes.hex()
-firmar_archivo('${VSIX}', '${VSIX}.sig', priv_hex)
-print('✅ Ed25519 signature generated via Python')
-"
+              python3 -c "import sys; sys.path.insert(0, '.'); from nucleo.ed25519_signer import firmar_archivo; f=open('signing_key.bin','rb'); priv_bytes=f.read(); f.close(); priv_hex=priv_bytes.hex(); firmar_archivo('${VSIX}', '${VSIX}.sig', priv_hex); print('Ed25519 signature generated via Python')"
             fi
             rm -f signing_key.bin
             
             # Self-verify the signature
-            python3 -c "
-import sys
-sys.path.insert(0, '.')
-from nucleo.ed25519_signer import verificar_archivo
-# Derive public key from the signature file (stored alongside)
-result = verificar_archivo('${VSIX}', '${VSIX}.sig', None)
-if 'válida' in result.lower() or 'ok' in result.lower() or result == True:
-    print('✅ Signature self-verification PASSED')
-else:
-    print(f'⚠️  Self-verification: {result}')
-"
+            python3 -c "import sys; sys.path.insert(0, '.'); from nucleo.ed25519_signer import verificar_archivo; result=verificar_archivo('${VSIX}', '${VSIX}.sig', None); print('Signature self-verification PASSED' if ('valida' in str(result).lower() or 'ok' in str(result).lower() or result==True) else f'Self-verification: {result}')"
           else:
             echo "⚠️  VSIX_SIGNING_KEY not set. Generating placeholder signature."
             cp "${{ steps.version.outputs.VSIX_FILE }}.sha256" "$SIG_FILE"
