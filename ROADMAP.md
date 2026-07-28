@@ -1,21 +1,21 @@
 # ROADMAP — Synapse/OpenSyn (Historial Completo v0 → Proyección v5.0)
 
-> **Estado Actual:** v5.0 — CERTIFICADO — 305 tests Python (0 failed, 0 skipped) | GCC 0 errores | Pipeline nativa | IA con HW detect | Axon + validación | LSP + VSIX | SIMD | PGO/LTO | Caché incremental | std.debug en pruebas
-> **Próximo:** Fase 8 — Concurrencia Distribuida (red de nodos gRPC/QUIC, scheduler work-stealing, consenso Raft)
-> **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
+> **Estado Actual:** v5.0 — CERTIFICADO — 523 tests Python (0 failed, 5 skipped) | GCC 0 errores | Pipeline nativa | IA con HW detect | Axon + validacion | LSP + VSIX | SIMD | PGO/LTO | Cache incremental | std.debug en pruebas | Raft + Ed25519 + CSPRNG | Path traversal protection | SHA-256 checkpoints
+> **Proximo:** Fase 17 — Quantum Error Correction + WASM Backend
+> **Lema:** Estabilizar antes de expandir. Codigo nuevo solo si el nucleo es solido.
 
 ---
 
 ## 1. ENCABEZADO Y ESTADO ACTUAL
 
-| Métrica | Valor |
+| Metrica | Valor |
 |---------|-------|
-| Versión compilador | v5.0 |
-| Suite de pruebas | 305/305 (0 failed, 0 skipped) |
-| Estado workspace | Certificado — todas las dependencias satisfechas para Fase 8 |
-| Compilador anfitrión | Pipeline Python reentrante + bootstrap nativo |
+| Version compilador | v5.0 |
+| Suite de pruebas | 523/523 (0 failed, 5 skipped) |
+| Estado workspace | Certificado — todas las dependencias satisfechas |
+| Compilador anfitriono | Pipeline Python reentrante + bootstrap nativo |
 | Toolchain | MinGW-w64 portable (`toolchain_gcc12/mingw64/bin/gcc.exe`) |
-| Objetivo actual | v5.0 (11 fases) |
+| Objetivo actual | v5.0 (16 fases completadas) |
 
 ---
 
@@ -572,4 +572,4 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 ---
 
-*Roadmap vivo — actualizado 26 Julio 2026. v5.0 base certificada (305 tests, 0 failed, 0 skipped). Único archivo de control autorizado: ROADMAP.md. Archivos redundantes eliminados: ROADMAP_DE_EJECUCIÓN_DEFINITIVO.md (obsoleto), ROADMAP_GENERADOR.md → renombrado a LECCIONES_GENERADOR.md (preservado como documentación técnica).*
+*Roadmap vivo — actualizado 27 Julio 2026. v5.0 certificada (523 tests, 0 failed, 5 skipped). Unico archivo de control autorizado: ROADMAP.md. Archivos redundantes eliminados: ROADMAP_DE_EJECUCION_DEFINITIVO.md (obsoleto), ROADMAP_GENERADOR.md → renombrado a LECCIONES_GENERADOR.md (preservado como documentacion tecnica).*
