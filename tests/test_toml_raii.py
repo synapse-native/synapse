@@ -18,7 +18,9 @@ from compilador.generator import GeneradorC
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 SYNAPSE_RT_C = os.path.join(PROJECT_ROOT, 'synapse_rt.c')
-TWEETNACL_O = os.path.join(PROJECT_ROOT, 'tweetnacl.o')
+SYNAPSE_RT_MEMORY_C = os.path.join(PROJECT_ROOT, 'synapse_rt_memory.c')
+SYNAPSE_RT_CONCURRENCY_C = os.path.join(PROJECT_ROOT, 'synapse_rt_concurrency.c')
+TWEETNACL_C = os.path.join(PROJECT_ROOT, 'tweetnacl.c')
 
 
 def build_toml_ast() -> Programa:
@@ -231,7 +233,7 @@ def test_toml_compile_and_run():
         # Compilar
         compile_cmd = [
             'gcc', '-Wall', '-Wextra', '-O0',
-            tmp_c, SYNAPSE_RT_C, TWEETNACL_O,
+            tmp_c, SYNAPSE_RT_C, SYNAPSE_RT_MEMORY_C, SYNAPSE_RT_CONCURRENCY_C,
             '-o', exe_path,
             '-lpthread', '-lws2_32'
         ]
