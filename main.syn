@@ -5,14 +5,6 @@
 
 importar compiler.ast_nodes
 
-
-
-funcion volcar_ast(nodo: Nodo, nivel: entero) -> nulo:
-    retornar
-
-funcion ejecutar_dump(ruta: texto) -> nulo:
-    retornar
-
 funcion principal() -> nulo:
     si _argc() < 2:
         log("Uso: main <archivo.syn> [--dump-ast]")
@@ -20,7 +12,7 @@ funcion principal() -> nulo:
     ruta = _argv(1)
     modo_dump = _argc() >= 3
     si modo_dump:
-        ejecutar_dump(ruta)
+        // AST dump would go here
         salir(0)
     log("Compilando:", ruta)
     canal = abrir("librerias/compiler/ast_nodes.syn", "r")

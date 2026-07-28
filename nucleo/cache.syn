@@ -78,8 +78,41 @@ funcion _calcular_hash_archivo(ruta: texto) -> texto:
     retornar sha256_texto(contenido)
 
 funcion _obtener_hashes_dependencias(archivo: texto) -> texto:
-    // Por ahora retorna array vacío - en el futuro expandir para rastrear imports
-    retornar "[]"
+    // Rastrea imports del archivo para invalidación de caché correcta
+    contenido = leer_archivo(archivo)
+    hashes = []
+    i = 0
+    longitud = len(contenido)
+    mientras i < longitud:
+        // Buscar "importar " 
+        si i + 9 <= longitud y subcadena(contenido, i, 9) == "importar ":
+            j = i + 9
+            // Saltar espacios
+            mientras j < longitud y (contenido[j] == " " o contenido[j] == "\t"):
+                j = j + 1
+            inicio_mod = j
+            // Leer nombre del módulo hasta fin de línea
+            mientras j < longitud y contenido[j] != "\n" y contenido[j] != "\r":
+                j = j + 1
+            mod_nombre = subcadena(contenido, inicio_mod, j - inicio_mod)
+            // Resolver ruta del módulo
+            mod_ruta = _resolver_ruta_import(mod_nombre)
+            si existe_archivo(mod_ruta):
+                hash_dep = _calcular_hash_archivo(mod_ruta)
+                hashes = concat(hashes, hash_dep)
+            i = j
+        sino:
+            i = i + 1
+    // Serializar array a JSON simple
+    resultado = "["
+    k = 0
+    mientras k < len(hashes):
+        si k > 0:
+            resultado = concat(resultado, ",")
+        resultado = concat(concat(resultado, "\""), concat(hashes[k], "\""))
+        k = k + 1
+    resultado = concat(resultado, "]")
+    retornar resultado
 
 funcion _leer_flags_compilacion() -> texto:
     // Retorna flags estándar del compilador
@@ -194,4 +227,18 @@ funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
     // Persistir
     doc = toml_desde_stats(stats)
     escribir_archivo(concat(_cache_dir(), "stats.toml"), a_texto(doc))
+}
+
+// Resolver ruta de importación (std. o ruta relativa)
+funcion _resolver_ruta_import(mod_nombre: texto) -> texto:
+    // std.* modules
+    si empieza_con(mod_nombre, "std."):
+        sub = subcadena(mod_nombre, 4, len(mod_nombre) - 4)
+        retornar concat(concat("librerias/std/", sub), ".syn")
+    // compiler modules
+    si empieza_con(mod_nombre, "compiler."):
+        sub = subcadena(mod_nombre, 9, len(mod_nombre) - 9)
+        retornar concat(concat("librerias/compiler/", sub), ".syn")
+    // relative path
+    retornar concat(mod_nombre, ".syn")
 

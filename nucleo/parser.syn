@@ -144,6 +144,19 @@ estructura ParserEst:
     // Parallel array for high 32 bits of string pointers (64-bit safety)
     ptr_hi: entero
     max_nodos: entero
+    // Contract parsing state
+    contr_linea: entero
+    contr_col: entero
+    contr_primera_requiere: entero
+    contr_ultima_requiere: entero
+    contr_cuenta_requiere: entero
+    contr_primera_garantiza: entero
+    contr_ultima_garantiza: entero
+    contr_cuenta_garantiza: entero
+    // Contract block parsing temp state
+    contr_primera_temp: entero
+    contr_ultima_temp: entero
+    contr_cuenta_temp: entero
 
 // ---- Node allocation via asm ----
 funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
@@ -569,27 +582,10 @@ funcion parsear_primario(est: ParserEst) -> entero:
     retornar 0
 
 // ---- Statement parsing ----
-funcion parsear_sentencia(est: ParserEst) -> entero:
+// Helper: Parse simple statements (break, continue, indent, etc.)
+funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
     linea = 0
     col = 0
-    nodo = 0
-    t = token_mirar(est)
-    si t == T_FUNCION:
-        retornar parsear_funcion(est)
-    si t == T_ESTRUCTURA:
-        retornar parsear_estructura_def(est)
-    si t == T_IF:
-        retornar parsear_si(est)
-    si t == T_MIENTRAS:
-        retornar parsear_mientras(est)
-    si t == T_PARA:
-        retornar parsear_para(est)
-    si t == T_RETORNAR:
-        retornar parsear_retornar(est)
-    si t == T_LANZAR:
-        retornar parsear_lanzar(est)
-    si t == T_ESCUCHAR:
-        retornar parsear_escuchar(est)
     si t == T_ROMPER:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
@@ -600,14 +596,26 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
         col = token_columna(est, est.posicion)
         token_avanzar(est)
         retornar parser_nuevo_nodo(est, NODO_SIGUIENTE, linea, col)
+    si t == T_INDENTAR:
+        retornar 0
+    si t == T_DESINDENTAR:
+        retornar 0
+    si t == T_NUEVALINEA:
+        retornar 0
+    si t == T_FIN:
+        retornar 0
+    retornar -1  // Not a simple statement
+
+// Helper: Parse declaration-like statements (struct, import, const, etc.)
+funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
+    si t == T_ESTRUCTURA:
+        retornar parsear_estructura_def(est)
     si t == T_IMPORTAR:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_IMPORTAR, linea, col)
         retornar nodo
-    si t == T_ESTRUCTURA:
-        retornar parsear_estructura_def(est)
     si t == T_CONSTANTE:
         retornar parsear_constante(est)
     si t == T_ASM:
@@ -620,14 +628,32 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
         retornar parsear_externo(est)
     si t == T_COINCIDIR:
         retornar parsear_coincidir(est)
-    si t == T_INDENTAR:
-        retornar 0
-    si t == T_DESINDENTAR:
-        retornar 0
-    si t == T_NUEVALINEA:
-        retornar 0
-    si t == T_FIN:
-        retornar 0
+    retornar -1  // Not a declaration statement
+
+// Helper: Parse control flow statements (if, while, for, etc.)
+funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
+    si t == T_IF:
+        retornar parsear_si(est)
+    si t == T_MIENTRAS:
+        retornar parsear_mientras(est)
+    si t == T_PARA:
+        retornar parsear_para(est)
+    si t == T_RETORNAR:
+        retornar parsear_retornar(est)
+    si t == T_LANZAR:
+        retornar parsear_lanzar(est)
+    si t == T_ESCUCHAR:
+        retornar parsear_escuchar(est)
+    si t == T_COINCIDIR:
+        retornar parsear_coincidir(est)
+    retornar -1  // Not a control flow statement
+
+// Helper: Parse channel-related statements
+funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
+    linea = 0
+    col = 0
+    expr = 0
+    nodo = 0
     si t == T_CANAL:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
@@ -658,27 +684,82 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
         inseguro:
             asm("est.nodos[nodo].hijo_izq = expr")
         retornar nodo
+    retornar -1  // Not a channel statement
+
+// Main statement parser - refactored
+funcion parsear_sentencia(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    nodo = 0
+    t = token_mirar(est)
+    // Control flow
+    nodo = parsear_sentencia_control(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Function/struct declarations
+    si t == T_FUNCION:
+        retornar parsear_funcion(est)
+    // Declarations
+    nodo = parsear_sentencia_decl(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Simple statements
+    nodo = parsear_sentencia_simple(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Channel-related
+    nodo = parsear_sentencia_canal(est, t)
+    si nodo != -1:
+        retornar nodo
     retornar 0
 
 // ---- Function parsing (with requiere/garantiza) ----
-funcion parsear_funcion(est: ParserEst) -> entero:
-    r2 = 0
+// Contract parsing state (stored in parser for helper access)
+estructura EstadoContrato:
+    primera: entero
+    ultima: entero
+    cuenta: entero
+
+// Helper: Parse a contract block (requiere or garantiza)
+// Uses temporary fields: contr_primera_temp, contr_ultima_temp, contr_cuenta_temp
+// Results stored in these temp fields for caller to save
+funcion parsear_bloque_contrato(est: ParserEst) -> entero:
+    r2 = 1
     expr = 0
+    mientras r2 == 1:
+        t = token_mirar(est)
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        si t == T_INDENTAR:
+            token_avanzar(est)
+            mientras r2 == 1:
+                t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r2 = 0
+                    romper
+                expr = parsear_expresion(est)
+                si expr != 0:
+                    si est.contr_primera_temp == 0:
+                        est.contr_primera_temp = expr
+                        est.contr_ultima_temp = expr
+                    sino:
+                        inseguro:
+                            asm("est.nodos[est.contr_ultima_temp].hermano = expr")
+                        est.contr_ultima_temp = expr
+                    est.contr_cuenta_temp = est.contr_cuenta_temp + 1
+                siguiente
+        sino:
+            r2 = 0
+    retornar 1
+
+// Helper: Parse function parameters
+funcion parsear_parametros(est: ParserEst) -> entero:
     r = 0
-    si token_esperar(est, T_FUNCION) == 0:
-        retornar 0
-    t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
-        parser_error(est, "Se esperaba nombre de funcion", token_linea(est, est.posicion), token_columna(est, est.posicion))
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
-    nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
-    si token_esperar(est, T_PAREN_IZQ) == 0:
-        retornar 0
-    // parametros
-    ultimo_param = 0
     si token_mirar(est) != T_PAREN_DER:
         r = 1
         mientras r == 1:
@@ -700,22 +781,20 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                     r = 0
             sino:
                 r = 0
-    si token_esperar(est, T_PAREN_DER) == 0:
-        retornar 0
-    si token_esperar(est, T_FLECHA) == 0:
-        retornar 0
-    // tipo retorno
+        sino:
+            r = 0
+    retornar 1
+
+// Helper: Parse return type
+funcion parsear_tipo_retorno(est: ParserEst) -> entero:
     si token_mirar(est) == T_IDENTIFICADOR:
         token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
-    // requiere: / garantiza: blocks -- link expressions via hermano
-    primera_requiere = 0
-    ultima_requiere = 0
-    cuenta_requiere = 0
-    primera_garantiza = 0
-    ultima_garantiza = 0
-    cuenta_garantiza = 0
+    retornar 1
+
+// Helper: Parse requiere/garantiza contracts
+funcion parsear_contratos(est: ParserEst) -> entero:
     r = 1
     mientras r == 1:
         t = token_mirar(est)
@@ -730,72 +809,28 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                     token_avanzar(est)
                     si token_esperar(est, T_DOSPUNTOS) == 0:
                         retornar 0
-                    r2 = 1
-                    mientras r2 == 1:
-                        t = token_mirar(est)
-                        si t == T_NUEVALINEA:
-                            token_avanzar(est)
-                            siguiente
-                        si t == T_INDENTAR:
-                            token_avanzar(est)
-                            mientras r2 == 1:
-                                t = token_mirar(est)
-                                si t == T_NUEVALINEA:
-                                    token_avanzar(est)
-                                    siguiente
-                                si t == T_DESINDENTAR:
-                                    token_avanzar(est)
-                                    r2 = 0
-                                    romper
-                                expr = parsear_expresion(est)
-                                si expr != 0:
-                                    si primera_requiere == 0:
-                                        primera_requiere = expr
-                                        ultima_requiere = expr
-                                    sino:
-                                        inseguro:
-                                            asm("est.nodos[ultima_requiere].hermano = expr")
-                                        ultima_requiere = expr
-                                    cuenta_requiere = cuenta_requiere + 1
-                                siguiente
-                        sino:
-                            r2 = 0
-                    siguiente
+                    // Initialize state for requiere
+                    est.contr_primera_temp = 0
+                    est.contr_ultima_temp = 0
+                    est.contr_cuenta_temp = 0
+                    parsear_bloque_contrato(est)
+                    // Save requiere results
+                    est.contr_primera_requiere = est.contr_primera_temp
+                    est.contr_ultima_requiere = est.contr_ultima_temp
+                    est.contr_cuenta_requiere = est.contr_cuenta_temp
                 si t == T_GARANTIZA:
                     token_avanzar(est)
                     si token_esperar(est, T_DOSPUNTOS) == 0:
                         retornar 0
-                    r2 = 1
-                    mientras r2 == 1:
-                        t = token_mirar(est)
-                        si t == T_NUEVALINEA:
-                            token_avanzar(est)
-                            siguiente
-                        si t == T_INDENTAR:
-                            token_avanzar(est)
-                            mientras r2 == 1:
-                                t = token_mirar(est)
-                                si t == T_NUEVALINEA:
-                                    token_avanzar(est)
-                                    siguiente
-                                si t == T_DESINDENTAR:
-                                    token_avanzar(est)
-                                    r2 = 0
-                                    romper
-                                expr = parsear_expresion(est)
-                                si expr != 0:
-                                    si primera_garantiza == 0:
-                                        primera_garantiza = expr
-                                        ultima_garantiza = expr
-                                    sino:
-                                        inseguro:
-                                            asm("est.nodos[ultima_garantiza].hermano = expr")
-                                        ultima_garantiza = expr
-                                    cuenta_garantiza = cuenta_garantiza + 1
-                                siguiente
-                        sino:
-                            r2 = 0
-                    siguiente
+                    // Initialize state for garantiza
+                    est.contr_primera_temp = 0
+                    est.contr_ultima_temp = 0
+                    est.contr_cuenta_temp = 0
+                    parsear_bloque_contrato(est)
+                    // Save garantiza results
+                    est.contr_primera_garantiza = est.contr_primera_temp
+                    est.contr_ultima_garantiza = est.contr_ultima_temp
+                    est.contr_cuenta_garantiza = est.contr_cuenta_temp
                 si t == T_DESINDENTAR:
                     token_avanzar(est)
                     r = 0
@@ -804,14 +839,27 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         sino:
             r = 0
     // Store contract descriptor node if any contracts
-    si primera_requiere != 0 o primera_garantiza != 0:
-        contrato = parser_nuevo_nodo(est, NODO_CONTRATO, linea, col)
+    si est.contr_primera_requiere != 0 o est.contr_primera_garantiza != 0:
+        contrato = parser_nuevo_nodo(est, NODO_CONTRATO, est.contr_linea, est.contr_col)
         inseguro:
-            asm("est.nodos[contrato].hijo_izq = primera_requiere")
-            asm("est.nodos[contrato].hijo_der = primera_garantiza")
-            asm("est.nodos[contrato].valor_int = cuenta_requiere")
+            asm("est.nodos[contrato].hijo_izq = est.contr_primera_requiere")
+            asm("est.nodos[contrato].hijo_der = est.contr_primera_garantiza")
+            asm("est.nodos[contrato].valor_int = est.contr_cuenta_requiere")
             asm("est.nodos[nodo_func].ptr_extra = contrato")
-    // cuerpo
+    retornar 1
+
+// Helper: Parse return type
+funcion parsear_tipo_retorno(est: ParserEst) -> entero:
+    si token_mirar(est) == T_IDENTIFICADOR:
+        token_avanzar(est)
+    si token_esperar(est, T_DOSPUNTOS) == 0:
+        retornar 0
+    retornar 1
+
+// Helper: Parse function body
+funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
+    r = 1
+    stmt = 0
     si token_mirar(est) == T_INDENTAR:
         token_avanzar(est)
         mientras r == 1:
@@ -828,6 +876,36 @@ funcion parsear_funcion(est: ParserEst) -> entero:
                 romper
             stmt = parsear_sentencia(est)
             siguiente
+    retornar 1
+
+// Main function parser - refactored
+funcion parsear_funcion(est: ParserEst) -> entero:
+    r = 0
+    expr = 0
+    si token_esperar(est, T_FUNCION) == 0:
+        retornar 0
+    t = token_mirar(est)
+    si t != T_IDENTIFICADOR:
+        parser_error(est, "Se esperaba nombre de funcion", token_linea(est, est.posicion), token_columna(est, est.posicion))
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    // parametros
+    parsear_parametros(est)
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
+    // tipo retorno
+    parsear_tipo_retorno(est)
+    // requiere: / garantiza: blocks
+    parsear_contratos(est)
+    // cuerpo
+    parsear_cuerpo_funcion(est, nodo_func)
     retornar nodo_func
 
 // ---- Other statement parsers ----

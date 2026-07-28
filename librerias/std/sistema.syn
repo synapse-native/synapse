@@ -3,10 +3,19 @@
 // Integrante de la Biblioteca Estandar de Synapse.
 //
 // Uso:
-//   importar std.sistema
-//   codigo = ejecutar_comando("python main.py programa.syn")
-//   ok = escribir_archivo("salida.txt", "contenido")
-//   txt = leer_archivo("salida.txt")
+importar std.io
+importar std.cripto
+
+// Helper: Valida y normaliza ruta para prevenir path traversal
+// Retorna ruta normalizada si es segura, "" si es insegura
+funcion _validar_ruta_segura(ruta: texto) -> texto:
+    // Normalizar ruta: resolver . y ..
+    normalizada = _syn_normalizar_ruta(ruta)
+    // Verificar que no escape del directorio de trabajo
+    cwd = _syn_obtener_cwd()
+    si no _syn_ruta_en_directorio(normalizada, cwd):
+        retornar ""
+    retornar normalizada
 
 externo funcion _syn_ejecutar_comando(cmd: texto) -> entero
 externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> entero
@@ -14,21 +23,36 @@ externo funcion _syn_leer_archivo(ruta: texto) -> texto
 externo funcion _syn_obtener_env(nombre: texto) -> texto
 externo funcion _syn_existe_archivo(ruta: texto) -> entero
 externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
+externo funcion _syn_normalizar_ruta(ruta: texto) -> texto
+externo funcion _syn_obtener_cwd() -> texto
+externo funcion _syn_ruta_en_directorio(ruta: texto, dir: texto) -> entero
 
 funcion ejecutar_comando(cmd: texto) -> entero:
     retornar _syn_ejecutar_comando(cmd)
 
 funcion escribir_archivo(ruta: texto, contenido: texto) -> entero:
-    retornar _syn_escribir_archivo(ruta, contenido)
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar -1
+    retornar _syn_escribir_archivo(ruta_segura, contenido)
 
 funcion leer_archivo(ruta: texto) -> texto:
-    retornar _syn_leer_archivo(ruta)
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar ""
+    retornar _syn_leer_archivo(ruta_segura)
 
 funcion obtener_env(nombre: texto) -> texto:
     retornar _syn_obtener_env(nombre)
 
 funcion existe_archivo(ruta: texto) -> booleano:
-    retornar _syn_existe_archivo(ruta) == 1
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar falso
+    retornar _syn_existe_archivo(ruta_segura) == 1
 
 funcion eliminar_archivo(ruta: texto) -> entero:
-    retornar _syn_eliminar_archivo(ruta)
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar -1
+    retornar _syn_eliminar_archivo(ruta_segura)
