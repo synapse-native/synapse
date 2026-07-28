@@ -259,7 +259,7 @@ jobs:
           echo "## ✅ Bootstrap verification completado" >> $GITHUB_STEP_SUMMARY
 
   benchmark:
-    needs: [test, fuzz]
+    needs: lint-and-check
     runs-on: ubuntu-latest
 
     steps:
