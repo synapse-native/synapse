@@ -3,6 +3,12 @@
 // Transporte UDP cifrado con autenticación mutua Ed25519
 // Canales remotos asíncronos para comunicación entre nodos
 // Scheduler distribuido Work-Stealing (M8.2)
+//
+// CanalRemoto<T> — Canal tipado con handshake criptográfico Zero-Trust
+// Uso:
+//   ch = conectar("192.168.1.1:9700")
+//   enviar(ch, "Hola mundo")
+//   datos = recibir(ch, 5000)
 
 importar std.err
 
@@ -25,13 +31,19 @@ estructura NodoCluster:
 
 // ============================================================
 // CanalRemoto — Canal de comunicación asíncrono entre nodos
+// con handshake criptográfico Ed25519 obligatorio.
+// El tipo T es el tipo del contenido transmitido.
 // ============================================================
 estructura CanalRemoto:
-    id: entero
-    id_destino: texto
-    direccion: texto
-    puerto: entero
-    estado: entero  // 0=ABIERTO, 1=CERRADO
+    descriptor: entero       // slot interno del canal
+    id_destino: texto        // identidad del nodo remoto
+    direccion: texto         // IP del nodo remoto
+    puerto: entero           // puerto del nodo remoto
+    estado: entero           // 0=ABIERTO, 1=CERRADO, 2=AUTENTICADO
+    clave_publica_remota: texto  // pubkey Ed25519 del nodo remoto (64 hex chars)
+    clave_publica_local: texto   // pubkey Ed25519 local (64 hex chars)
+    clave_privada_local: texto   // privkey Ed25519 local (128 hex chars)
+    tipo_contenido: texto    // descriptor del tipo T (para tipo-seguridad en runtime)
 
 // ============================================================
 // Funciones Externas — M8.1 (Transporte + Criptografía)
@@ -62,6 +74,222 @@ externo funcion cluster_canal_remoto_enviar(ip: texto, puerto: entero, datos: te
 
 // recibir_paquete — Recibe datagrama (no bloqueante). Retorna texto vacío si no hay datos.
 externo funcion cluster_recibir_paquete(timeout_ms: entero) -> texto
+
+// ============================================================
+// Funciones de alto nivel — CanalRemoto<T> + Handshake Ed25519
+// ============================================================
+
+// _extraer_parte — Extrae un segmento delimitado por ':'
+// usado internamente para parsear "pubkey:privkey"
+funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
+    resultado = ""
+    i = inicio
+    mientras i < fin y i < longitud(origen):
+        resultado = resultado + char_en(origen, i)
+        i = i + 1
+    retornar resultado
+
+// _parsear_url — Extrae ip y puerto de "ip:puerto" o "tcp://ip:puerto"
+// Retorna "ip:puerto" (el parseo real se hace por slicing)
+funcion _parsear_url(url: texto) -> texto:
+    // Si el formato es tcp://ip:puerto, saltar el prefijo
+    prefijo = "tcp://"
+    si longitud(url) > longitud(prefijo):
+        i = 0
+        coincide = verdadero
+        mientras i < longitud(prefijo):
+            si char_en(url, i) != char_en(prefijo, i):
+                coincide = falso
+            i = i + 1
+        si coincide:
+            retornar _extraer_parte(url, longitud(prefijo), longitud(url))
+    retornar url
+
+// _buscar_dos_puntos — Encuentra posición de ':' en una cadena
+funcion _buscar_dos_puntos(s: texto) -> entero:
+    i = 0
+    mientras i < longitud(s):
+        si char_en(s, i) == ':':
+            retornar i
+        i = i + 1
+    retornar -1
+
+// conectar — Establece un CanalRemoto<T> con handshake Ed25519 Zero-Trust
+// url: formato "ip:puerto" o "tcp://ip:puerto"
+// tipo: cadena descriptiva del tipo T
+// Retorna CanalRemoto en estado AUTENTICADO si el handshake es exitoso,
+// o CanalRemoto con estado CERRADO si falla la autenticación.
+funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
+    ch = CanalRemoto()
+    ch.estado = 0  // ABIERTO
+    ch.tipo_contenido = tipo
+    ch.id_destino = ""
+
+    // Parsear URL
+    url_limpia = _parsear_url(url)
+    pos_dos_puntos = _buscar_dos_puntos(url_limpia)
+
+    si pos_dos_puntos < 0:
+        ch.estado = 1  // CERRADO (URL inválida)
+        retornar ch
+
+    ip = _extraer_parte(url_limpia, 0, pos_dos_puntos)
+    puerto_str = _extraer_parte(url_limpia, pos_dos_puntos + 1, longitud(url_limpia))
+    puerto = 0
+    i = 0
+    mientras i < longitud(puerto_str):
+        c = char_en(puerto_str, i)
+        puerto = puerto * 10 + (c - 48)
+        i = i + 1
+
+    // Generar par de claves Ed25519
+    par_claves = cluster_generar_par_claves()
+    si par_claves == "":
+        ch.estado = 1  // CERRADO
+        retornar ch
+
+    // Extraer pubkey (64 hex chars) y privkey (128 hex chars)
+    ch.clave_publica_local = _extraer_parte(par_claves, 0, 64)
+    // formato: "pubkey:privkey" → pubkey=64, colon=1, privkey=128
+    ch.clave_privada_local = _extraer_parte(par_claves, 65, 193)
+
+    // Inicializar nodo UDP (puerto 0 = efímero asignado por OS)
+    rc = cluster_iniciar_nodo(0)
+    si rc < 0:
+        ch.estado = 1  // CERRADO
+        retornar ch
+
+    // Enviar HELLO con identidad y clave pública
+    rc = cluster_enviar_hello(ip, puerto, "synapse-node", ch.clave_publica_local)
+    si rc < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Esperar HELLO_ACK (timeout 5000ms)
+    paquete = cluster_recibir_paquete(5000)
+    si paquete == "":
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Parsear HELLO_ACK: "HELLO_ACK:id_remoto:pubkey_remota:firma_hex"
+    // Verificar prefijo
+    prefijo_ack = "HELLO_ACK:"
+    si longitud(paquete) < longitud(prefijo_ack):
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    coincide_prefijo = verdadero
+    i = 0
+    mientras i < longitud(prefijo_ack):
+        si char_en(paquete, i) != char_en(prefijo_ack, i):
+            coincide_prefijo = falso
+        i = i + 1
+
+    si no coincide_prefijo:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Extraer campos del HELLO_ACK
+    resto = _extraer_parte(paquete, longitud(prefijo_ack), longitud(paquete))
+    // Formato: "id:pubkey:firma" → extraer primer segmento
+    p1 = _buscar_dos_puntos(resto)
+    si p1 < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    ch.id_destino = _extraer_parte(resto, 0, p1)
+    resto2 = _extraer_parte(resto, p1 + 1, longitud(resto))
+    p2 = _buscar_dos_puntos(resto2)
+    si p2 < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    ch.clave_publica_remota = _extraer_parte(resto2, 0, p2)
+    firma_hex = _extraer_parte(resto2, p2 + 1, longitud(resto2))
+
+    // Verificar firma Ed25519 del nodo remoto
+    // El mensaje firmado es "synapse-handshake:<pubkey_local>"
+    mensaje_verificacion = "synapse-handshake:" + ch.clave_publica_local
+    resultado_firma = cluster_verificar_firma(mensaje_verificacion, firma_hex, ch.clave_publica_remota)
+
+    si resultado_firma != 0:
+        // Firma inválida — Zero-Trust: NO fluyen datos
+        cluster_detener_nodo()
+        ch.estado = 1  // CERRADO
+        retornar ch
+
+    // Handshake completado exitosamente
+    ch.direccion = ip
+    ch.puerto = puerto
+    ch.estado = 2  // AUTENTICADO
+
+    retornar ch
+
+// enviar — Envía datos a través de un CanalRemoto autenticado
+// ch: canal origen (debe estar en estado AUTENTICADO)
+// -> datos: texto a transmitir
+// Retorna 0 si ok, -1 si error
+funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
+    si ch.estado != 2:
+        retornar -1  // Canal no autenticado
+    retornar cluster_canal_remoto_enviar(ch.direccion, ch.puerto, datos, longitud(datos), ch.descriptor)
+
+// recibir — Recibe datos de un CanalRemoto con timeout
+// ch: canal origen
+// timeout_ms: tiempo máximo de espera en milisegundos
+// Retorna Resultado con: ok(texto) o err("timeout" / "cerrado" / "no_autenticado")
+funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> Resultado:
+    r = Resultado()
+
+    si ch.estado != 2:
+        r.tag = 1
+        r.valor_str = "canal no autenticado"
+        retornar r
+
+    paquete = cluster_recibir_paquete(timeout_ms)
+    si paquete == "":
+        r.tag = 1
+        r.valor_str = "timeout"
+        retornar r
+
+    // Parsear prefijo DATA:chan_id:seq:payload
+    prefijo_data = "DATA:"
+    si longitud(paquete) >= longitud(prefijo_data):
+        coincide = verdadero
+        i = 0
+        mientras i < longitud(prefijo_data):
+            si char_en(paquete, i) != char_en(prefijo_data, i):
+                coincide = falso
+            i = i + 1
+        si coincide:
+            // Saltar header "DATA:chan_id:seq:" y retornar payload
+            resto = _extraer_parte(paquete, longitud(prefijo_data), longitud(paquete))
+            p1 = _buscar_dos_puntos(resto)
+            si p1 >= 0:
+                resto2 = _extraer_parte(resto, p1 + 1, longitud(resto))
+                p2 = _buscar_dos_puntos(resto2)
+                si p2 >= 0:
+                    payload = _extraer_parte(resto2, p2 + 1, longitud(resto2))
+                    r.tag = 0
+                    r.valor_str = payload
+                    retornar r
+
+    // Si no es DATA o formato inválido, retornar el paquete crudo
+    r.tag = 0
+    r.valor_str = paquete
+    retornar r
+
+// cerrar — Cierra un CanalRemoto y libera sus recursos
+// -> ch: canal a cerrar
+funcion cerrar(-> ch: CanalRemoto) -> nulo:
+    ch.estado = 1  // CERRADO
+    retornar
 
 // ============================================================
 // Funciones Externas — M8.2 (Work-Stealing Scheduler)

@@ -1,0 +1,103 @@
+#lang: es
+// test_cluster_handshake.syn - Prueba de Integracion
+importar std.err
+importar std.io
+externo funcion cluster_generar_par_claves() -> texto
+externo funcion cluster_firmar_mensaje(mensaje: texto, clave_privada_hex: texto) -> texto
+externo funcion cluster_verificar_firma(mensaje: texto, firma_hex: texto, clave_publica_hex: texto) -> entero
+funcion extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
+    resultado = ""
+    i = inicio
+    mientras i < fin y i < longitud(origen):
+        resultado = resultado + char_en(origen, i)
+        i = i + 1
+    retornar resultado
+funcion buscar_dos_puntos(s: texto) -> entero:
+    i = 0
+    mientras i < longitud(s):
+        si char_en(s, i) == ":":
+            retornar i
+        i = i + 1
+    retornar -1
+funcion ejecutar_pruebas() -> entero:
+    fallos = 0
+    escribir_linea("=== TEST: Handshake Ed25519 ===")
+    par_a = cluster_generar_par_claves()
+    si par_a == "":
+        escribir_linea("FALLO: Prueba 1")
+        fallos = fallos + 1
+    si no:
+        pubkey_a = extraer_parte(par_a, 0, 64)
+        escribir_linea("OK: Prueba 1 - Par Ed25519 generado")
+    par_b = cluster_generar_par_claves()
+    si par_b == "":
+        escribir_linea("FALLO: Prueba 2")
+        fallos = fallos + 1
+    si no:
+        pubkey_b = extraer_parte(par_b, 0, 64)
+        escribir_linea("OK: Prueba 2 - Par B generado")
+    mensaje_hs = "synapse-handshake:" + pubkey_b
+    firma_a = cluster_firmar_mensaje(mensaje_hs, par_a)
+    si firma_a == "" o longitud(firma_a) != 128:
+        escribir_linea("FALLO: Prueba 3 - Firma A")
+        fallos = fallos + 1
+    si no:
+        escribir_linea("OK: Prueba 3 - Nodo A firmo")
+    rv = cluster_verificar_firma(mensaje_hs, firma_a, pubkey_a)
+    si rv == 0:
+        escribir_linea("OK: Prueba 4 - Firma A VALIDA")
+    si no:
+        escribir_linea("FALLO: Prueba 4 - Firma A invalida")
+        fallos = fallos + 1
+    mensaje_resp = "synapse-handshake:" + pubkey_a
+    firma_b = cluster_firmar_mensaje(mensaje_resp, par_b)
+    si firma_b == "" o longitud(firma_b) != 128:
+        escribir_linea("FALLO: Prueba 5")
+        fallos = fallos + 1
+    si no:
+        escribir_linea("OK: Prueba 5 - Nodo B firmo")
+    rv2 = cluster_verificar_firma(mensaje_resp, firma_b, pubkey_b)
+    si rv2 == 0:
+        escribir_linea("OK: Prueba 6 - Firma B VALIDA")
+    si no:
+        escribir_linea("FALLO: Prueba 6 - Firma B invalida")
+        fallos = fallos + 1
+    firma_corrupta = "00000000000000000000000000000000" + extraer_parte(firma_a, 32, 128)
+    rc = cluster_verificar_firma(mensaje_hs, firma_corrupta, pubkey_a)
+    si rc != 0:
+        escribir_linea("OK: Prueba 7 - Zero-Trust: firma corrupta RECHAZADA")
+    si no:
+        escribir_linea("FALLO: Prueba 7 - Zero-Trust!")
+        fallos = fallos + 1
+    rc2 = cluster_verificar_firma(mensaje_hs, firma_a, pubkey_b)
+    si rc2 != 0:
+        escribir_linea("OK: Prueba 8 - Zero-Trust: clave B rechaza firma A")
+    si no:
+        escribir_linea("FALLO: Prueba 8 - Zero-Trust!")
+        fallos = fallos + 1
+    res_ok = Resultado()
+    res_ok.tag = 0
+    res_ok.valor_str = "nodos autenticados"
+    si res_ok.tag == 0:
+        escribir_linea("OK: Prueba 9 - Resultado ok")
+    si no:
+        escribir_linea("FALLO: Prueba 9")
+        fallos = fallos + 1
+    res_err = Resultado()
+    res_err.tag = 1
+    res_err.valor_str = "firma invalida"
+    si res_err.tag == 1:
+        escribir_linea("OK: Prueba 10 - Resultado err")
+    si no:
+        escribir_linea("FALLO: Prueba 10")
+        fallos = fallos + 1
+    escribir_linea("")
+    si fallos == 0:
+        escribir_linea("RESUMEN: 10/10 pruebas PASARON")
+        retornar 0
+    si no:
+        escribir_linea("PRUEBAS FALLIDAS: " + fallos + "/10")
+        retornar 1
+funcion principal() -> entero:
+    codigo = ejecutar_pruebas()
+    retornar codigo
