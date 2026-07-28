@@ -111,8 +111,13 @@ static const uint32_t SLAB_SIZES[SLAB_COUNT] = {32, 64, 128, 256};
  */
 #define LOCAL_CACHE_BATCH 8
 
-/* Cache local por hilo (TLS): una cola LIFO por clase slab */
-typedef struct { void* ptr; int slab_idx; } CacheSlot;
+/* Cache local por hilo (TLS): una cola LIFO por clase slab
+ * 'base' almacena el slab_base original del bloque donde se alojo
+ * este slot. Permite al flush computar el offset correcto aun
+ * cuando _slab_alloc_block haya reasignado g_slab_bases[] a un
+ * nuevo bloque (evita SEGV por offset invalido).
+ */
+typedef struct { void* ptr; int slab_idx; uint8_t* base; } CacheSlot;
 
 typedef struct {
     CacheSlot slots[LOCAL_CACHE_BATCH];
@@ -236,6 +241,7 @@ void* pool_alloc(size_t size) {
                 } else {
                     tls_cache[i].slots[cached].ptr = blk;
                     tls_cache[i].slots[cached].slab_idx = i;
+                    tls_cache[i].slots[cached].base = (uint8_t*)_g_pool.slab_base[i];
                     cached++;
                 }
             }
@@ -282,6 +288,7 @@ void pool_free(void* ptr) {
             if (tls_cache[i].count < LOCAL_CACHE_BATCH) {
                 tls_cache[i].slots[tls_cache[i].count].ptr = ptr;
                 tls_cache[i].slots[tls_cache[i].count].slab_idx = i;
+                tls_cache[i].slots[tls_cache[i].count].base = base;
                 tls_cache[i].count++;
                 return;
             }
@@ -297,7 +304,8 @@ void pool_free(void* ptr) {
                 void* cp = tls_cache[i].slots[c].ptr;
                 int ci  = tls_cache[i].slots[c].slab_idx;
                 if (ci >= 0 && ci < SLAB_COUNT) {
-                    uint32_t coff = (uint32_t)((uint8_t*)cp - __atomic_load_n(&g_slab_bases[ci], __ATOMIC_RELAXED));
+                    uint8_t* cbase = tls_cache[i].slots[c].base;
+                    uint32_t coff = (uint32_t)((uint8_t*)cp - cbase);
                     uint32_t cs = coff / SLAB_SIZES[ci];
                     uint32_t cw = cs / 32;
                     uint32_t cb = cs % 32;
