@@ -102,7 +102,7 @@ void watchdog_report(void) {
 
 static const uint32_t SLAB_SIZES[SLAB_COUNT] = {32, 64, 128, 256};
 
-static MemoryPool _g_pool;
+static volatile MemoryPool _g_pool;
 static pthread_mutex_t _g_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void pool_init(uint32_t total_blocks, uint32_t block_size) {
