@@ -49,7 +49,7 @@ jobs:
           fi
           echo "✅ No hay artefactos .exe.c"
 
-      - name: Bloquear except: pass en Python
+      - name: "Bloquear except: pass en Python"
         run: |
           FOUND=0
           for f in $(find . -name '*.py' -not -path './.git/*' 2>/dev/null); do

@@ -42,8 +42,9 @@ else
     echo "[*] Fallback: enlazando con GCC directamente..."
     gcc -o "$OPENEXE" "$ROOT_DIR/opensyn/principal.c" \
         "$ROOT_DIR/synapse_rt.c" \
-        -std=c99 -Wall -Wextra \
+        -std=c99 -Wall -Wextra -fno-ident \
         -Wno-unused-parameter -Wno-unused-function \
+        -Wl,--no-insert-timestamp \
         -I"$ROOT_DIR" -lws2_32 2>&1
     echo "[OK] $OPENEXE (fallback)"
 fi
