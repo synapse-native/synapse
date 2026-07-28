@@ -8192,3 +8192,71 @@ CadenaSegura fz_info(void) {
     memcpy(result, buf, (size_t)(len + 1));
     return (CadenaSegura){ .longitud = len, .datos = result };
 }
+
+// ============================================================
+// PATH TRAVERSAL PROTECTION — std.sistema helpers
+// ============================================================
+
+int str_eq(CadenaSegura a, CadenaSegura b) {
+    if (a.longitud != b.longitud) return 0;
+    return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
+}
+
+CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta) {
+    char buf[4096];
+    int len = ruta.longitud < 4095 ? ruta.longitud : 4095;
+    memcpy(buf, ruta.datos, (size_t)len);
+    buf[len] = '\0';
+    // Resolve . and ..
+    char normalized[4096];
+    int nlen = 0;
+    int i = 0;
+    while (i < len) {
+        if (buf[i] == '/' || buf[i] == '\\') {
+            // Skip double separators
+            while (i < len && (buf[i] == '/' || buf[i] == '\\')) i++;
+            continue;
+        }
+        // Check for ..
+        if (buf[i] == '.' && i + 1 < len && buf[i+1] == '.') {
+            if (i + 2 >= len || buf[i+2] == '/' || buf[i+2] == '\\') {
+                // Go back one component
+                while (nlen > 0 && normalized[nlen-1] != '/' && normalized[nlen-1] != '\\') nlen--;
+                if (nlen > 0) nlen--; // remove separator
+                i += 2;
+                if (i < len && (buf[i] == '/' || buf[i] == '\\')) i++;
+                continue;
+            }
+        }
+        // Copy component
+        while (i < len && buf[i] != '/' && buf[i] != '\\') {
+            if (nlen < 4095) normalized[nlen++] = buf[i];
+            i++;
+        }
+        if (i < len && nlen < 4095) normalized[nlen++] = '/';
+    }
+    if (nlen > 0 && normalized[nlen-1] == '/') nlen--;
+    if (nlen == 0) { normalized[nlen++] = '.'; }
+    normalized[nlen] = '\0';
+    char* result = (char*)pool_alloc((size_t)(nlen + 1));
+    if (!result) return ruta;
+    memcpy(result, normalized, (size_t)(nlen + 1));
+    return (CadenaSegura){ .longitud = nlen, .datos = result };
+}
+
+CadenaSegura _syn_obtener_cwd(void) {
+    char buf[4096];
+    DWORD len = GetCurrentDirectoryA(4096, buf);
+    if (len == 0 || len >= 4096) {
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    char* result = (char*)pool_alloc((size_t)(len + 1));
+    if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(result, buf, (size_t)(len + 1));
+    return (CadenaSegura){ .longitud = (int)len, .datos = result };
+}
+
+int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
+    if (ruta.longitud < dir.longitud) return 0;
+    return memcmp(ruta.datos, dir.datos, (size_t)dir.longitud) == 0;
+}

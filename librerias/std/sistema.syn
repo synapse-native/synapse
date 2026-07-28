@@ -6,6 +6,11 @@
 importar std.io
 importar std.cripto
 
+// Externos de bajo nivel para path traversal protection
+externo funcion _syn_normalizar_ruta(ruta: texto) -> texto
+externo funcion _syn_obtener_cwd() -> texto
+externo funcion _syn_ruta_en_directorio(ruta: texto, dir: texto) -> entero
+
 // Helper: Valida y normaliza ruta para prevenir path traversal
 // Retorna ruta normalizada si es segura, "" si es insegura
 funcion _validar_ruta_segura(ruta: texto) -> texto:
@@ -23,9 +28,6 @@ externo funcion _syn_leer_archivo(ruta: texto) -> texto
 externo funcion _syn_obtener_env(nombre: texto) -> texto
 externo funcion _syn_existe_archivo(ruta: texto) -> entero
 externo funcion _syn_eliminar_archivo(ruta: texto) -> entero
-externo funcion _syn_normalizar_ruta(ruta: texto) -> texto
-externo funcion _syn_obtener_cwd() -> texto
-externo funcion _syn_ruta_en_directorio(ruta: texto, dir: texto) -> entero
 
 funcion ejecutar_comando(cmd: texto) -> entero:
     retornar _syn_ejecutar_comando(cmd)
