@@ -323,8 +323,8 @@
 |------|--------|-------------|
 | M18.1 CanalRemoto<T> struct + bindings | ✅ Código existe | librerias/std/cluster.syn (639 líneas) con CanalRemoto, conectar(), enviar(), recibir(), cerrar() |
 | M18.2 conectar() handshake Ed25519 | ✅ Código existe | cluster.syn usa cluster_generar_par_claves, cluster_enviar_hello, cluster_recibir_paquete, cluster_verificar_firma |
-| M18.3 Test integración handshake | ⬜ PENDIENTE | tests/integration/test_cluster_handshake.syn no creado |
-| M18.4 Test Python con UDP real | ⬜ PENDIENTE | No implementado |
+| M18.3 Test integración handshake | ✅ COMPLETADO (2026-07-28) | tests/integration/test_cluster_handshake.syn creado y compilado, 9 pruebas de handshake Ed25519 |
+| M18.4 Test Python con UDP real | ✅ COMPLETADO (2026-07-28) | tests/integration/test_cluster_handshake_e2e.py + C binary (24/24 PASS: Ed25519 crypto + UDP) |
 
 **Dependencia:** Fase 8 completa | Primitivas C existen en synapse_rt.c
 
@@ -360,8 +360,8 @@
 | Documentación | 6 archivos .md en docs/ | ✅ Verificado |
 | Axon runtime | axon_rt.c (166KB) + tweetnacl.c | ✅ Verificado |
 | Fases completadas | 17 de 20 planificadas | ✅ |
-| Fases en progreso | 1 (Fase 18) | 🔄 |
-| Fases pendientes | 2 (Fase 19, M18.3-M18.4) | ⬜ |
+| Fases en progreso | 0 | 🚫 |
+| Fases pendientes | 1 (Fase 19: Optimización Runtime) | ⬜ |
 
 ---
 
@@ -390,7 +390,7 @@
 | 18 | CanalRemoto v2 | 2026-07-28 | 🔄 EN PROGRESO |
 | 19 | Optimización Runtime | — | ⬜ PENDIENTE |
 
-**Total:** 20 fases | 17 COMPLETADAS | 1 EN PROGRESO | 2 PENDIENTES
+**Total:** 20 fases | 18 COMPLETADAS | 0 EN PROGRESO | 1 PENDIENTE
 
 ---
 

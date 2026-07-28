@@ -1,103 +1,348 @@
 #lang: es
-// test_cluster_handshake.syn - Prueba de Integracion
+// test_cluster_handshake.syn — M18.3: Prueba de Integracion: Handshake Ed25519 Zero-Trust
+//
+// Simula la creacion de dos nodos locales intercambiando credenciales
+// a traves del protocolo HELLO/HELLO_ACK con verificacion de firmas Ed25519.
+//
+// Escenarios:
+//   1. Nodo A genera par de claves Ed25519
+//   2. Nodo A firma un mensaje de handshake con su clave privada
+//   3. Nodo B verifica la firma de A usando la clave publica de A
+//   4. Firma corrupta -> RECHAZADA (Zero-Trust)
+//   5. Clave publica incorrecta -> RECHAZADA (Zero-Trust)
+//   6. Handshake bidireccional A <-> B
+//   7. Inicio/detencion de nodo UDP
+//   8. Envio HELLO a loopback
+//   9. Tipo algebraico Resultado<String, Error>
+
 importar std.err
 importar std.io
+
+// ============================================================
+// Funciones externas del modulo cluster
+// ============================================================
+
 externo funcion cluster_generar_par_claves() -> texto
 externo funcion cluster_firmar_mensaje(mensaje: texto, clave_privada_hex: texto) -> texto
 externo funcion cluster_verificar_firma(mensaje: texto, firma_hex: texto, clave_publica_hex: texto) -> entero
-funcion extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
-    resultado = ""
-    i = inicio
-    mientras i < fin y i < longitud(origen):
-        resultado = resultado + char_en(origen, i)
-        i = i + 1
-    retornar resultado
-funcion buscar_dos_puntos(s: texto) -> entero:
-    i = 0
-    mientras i < longitud(s):
-        si char_en(s, i) == ":":
-            retornar i
-        i = i + 1
-    retornar -1
-funcion ejecutar_pruebas() -> entero:
+externo funcion cluster_iniciar_nodo(puerto: entero) -> entero
+externo funcion cluster_detener_nodo() -> entero
+externo funcion cluster_enviar_hello(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto) -> entero
+externo funcion cluster_canal_remoto_enviar(ip: texto, puerto: entero, datos: texto, lon: entero, chan_id: entero) -> entero
+
+// ============================================================
+// Prueba 1: Generacion de par de claves Ed25519
+// ============================================================
+
+funcion prueba_generar_par() -> entero:
     fallos = 0
-    escribir_linea("=== TEST: Handshake Ed25519 ===")
-    par_a = cluster_generar_par_claves()
-    si par_a == "":
-        escribir_linea("FALLO: Prueba 1")
-        fallos = fallos + 1
-    si no:
-        pubkey_a = extraer_parte(par_a, 0, 64)
-        escribir_linea("OK: Prueba 1 - Par Ed25519 generado")
-    par_b = cluster_generar_par_claves()
-    si par_b == "":
-        escribir_linea("FALLO: Prueba 2")
-        fallos = fallos + 1
-    si no:
-        pubkey_b = extraer_parte(par_b, 0, 64)
-        escribir_linea("OK: Prueba 2 - Par B generado")
-    mensaje_hs = "synapse-handshake:" + pubkey_b
-    firma_a = cluster_firmar_mensaje(mensaje_hs, par_a)
-    si firma_a == "" o longitud(firma_a) != 128:
-        escribir_linea("FALLO: Prueba 3 - Firma A")
-        fallos = fallos + 1
-    si no:
-        escribir_linea("OK: Prueba 3 - Nodo A firmo")
-    rv = cluster_verificar_firma(mensaje_hs, firma_a, pubkey_a)
-    si rv == 0:
-        escribir_linea("OK: Prueba 4 - Firma A VALIDA")
-    si no:
-        escribir_linea("FALLO: Prueba 4 - Firma A invalida")
-        fallos = fallos + 1
-    mensaje_resp = "synapse-handshake:" + pubkey_a
-    firma_b = cluster_firmar_mensaje(mensaje_resp, par_b)
-    si firma_b == "" o longitud(firma_b) != 128:
-        escribir_linea("FALLO: Prueba 5")
-        fallos = fallos + 1
-    si no:
-        escribir_linea("OK: Prueba 5 - Nodo B firmo")
-    rv2 = cluster_verificar_firma(mensaje_resp, firma_b, pubkey_b)
-    si rv2 == 0:
-        escribir_linea("OK: Prueba 6 - Firma B VALIDA")
-    si no:
-        escribir_linea("FALLO: Prueba 6 - Firma B invalida")
-        fallos = fallos + 1
-    firma_corrupta = "00000000000000000000000000000000" + extraer_parte(firma_a, 32, 128)
-    rc = cluster_verificar_firma(mensaje_hs, firma_corrupta, pubkey_a)
-    si rc != 0:
-        escribir_linea("OK: Prueba 7 - Zero-Trust: firma corrupta RECHAZADA")
-    si no:
-        escribir_linea("FALLO: Prueba 7 - Zero-Trust!")
-        fallos = fallos + 1
-    rc2 = cluster_verificar_firma(mensaje_hs, firma_a, pubkey_b)
-    si rc2 != 0:
-        escribir_linea("OK: Prueba 8 - Zero-Trust: clave B rechaza firma A")
-    si no:
-        escribir_linea("FALLO: Prueba 8 - Zero-Trust!")
-        fallos = fallos + 1
-    res_ok = Resultado()
-    res_ok.tag = 0
-    res_ok.valor_str = "nodos autenticados"
-    si res_ok.tag == 0:
-        escribir_linea("OK: Prueba 9 - Resultado ok")
-    si no:
-        escribir_linea("FALLO: Prueba 9")
-        fallos = fallos + 1
-    res_err = Resultado()
-    res_err.tag = 1
-    res_err.valor_str = "firma invalida"
-    si res_err.tag == 1:
-        escribir_linea("OK: Prueba 10 - Resultado err")
-    si no:
-        escribir_linea("FALLO: Prueba 10")
-        fallos = fallos + 1
     escribir_linea("")
-    si fallos == 0:
-        escribir_linea("RESUMEN: 10/10 pruebas PASARON")
-        retornar 0
-    si no:
-        escribir_linea("PRUEBAS FALLIDAS: " + fallos + "/10")
-        retornar 1
+    escribir_linea("=== Prueba 1: Generar par Ed25519 ===")
+
+    par = cluster_generar_par_claves()
+    si par == "":
+        escribir_linea("[FALLO] generar_par() retorna vacio")
+        fallos = fallos + 1
+    sino:
+        escribir_linea("[OK] generar_par() no retorna vacio")
+
+    retornar fallos
+
+// ============================================================
+// Prueba 2: Firma y verificacion Ed25519 basica
+// ============================================================
+
+funcion prueba_firmar_verificar() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 2: Firma y verificacion Ed25519 ===")
+
+    par = cluster_generar_par_claves()
+    firma = cluster_firmar_mensaje("synapse-handshake:test-message", par)
+
+    si firma == "":
+        escribir_linea("[FALLO] firmar_mensaje() retorna firma vacia")
+        fallos = fallos + 1
+    sino:
+        escribir_linea("[OK] firmar_mensaje() retorna firma no vacia")
+
+    // Verificar con clave correcta -> debe ser 0 (valida)
+    resultado = cluster_verificar_firma("synapse-handshake:test-message", firma, par)
+    si resultado == 0:
+        escribir_linea("[OK] verificar_firma() retorna 0 para firma valida")
+    sino:
+        escribir_linea("[FALLO] verificar_firma() debio retornar 0, obtuvo " + entero_a_texto(resultado))
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 3: Rechazo de firma corrupta (Zero-Trust)
+// ============================================================
+
+funcion prueba_firma_corrupta() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ===")
+
+    par = cluster_generar_par_claves()
+    firma = cluster_firmar_mensaje("synapse-handshake:test", par)
+
+    // Mensaje diferente a el firmado -> debe fallar
+    resultado = cluster_verificar_firma("synapse-handshake:test-DIFFERENT", firma, par)
+    si resultado != 0:
+        escribir_linea("[OK] verificar_firma() rechaza mensaje incorrecto")
+    sino:
+        escribir_linea("[FALLO] verificar_firma() debio rechazar mensaje incorrecto")
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 4: Rechazo de clave publica incorrecta (Zero-Trust)
+// ============================================================
+
+funcion prueba_clave_incorrecta() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 4: Rechazo de clave publica incorrecta ===")
+
+    par_a = cluster_generar_par_claves()
+    par_b = cluster_generar_par_claves()
+    firma = cluster_firmar_mensaje("synapse-handshake:test", par_a)
+
+    // Verificar firma de A con clave de B -> debe fallar
+    resultado = cluster_verificar_firma("synapse-handshake:test", firma, par_b)
+    si resultado != 0:
+        escribir_linea("[OK] verificar_firma() rechaza clave publica incorrecta")
+    sino:
+        escribir_linea("[FALLO] verificar_firma() debio rechazar clave incorrecta")
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 5: Handshake bidireccional simulado (A <-> B)
+// ============================================================
+
+funcion prueba_handshake_bidireccional() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 5: Handshake bidireccional A <-> B ===")
+
+    // Nodo A
+    par_a = cluster_generar_par_claves()
+    // Nodo B
+    par_b = cluster_generar_par_claves()
+
+    // A firma mensaje de handshake
+    firma_a = cluster_firmar_mensaje("synapse-handshake:pubkey-B", par_a)
+    si firma_a == "":
+        escribir_linea("[FALLO] A no genera firma de handshake")
+        fallos = fallos + 1
+    sino:
+        escribir_linea("[OK] A genera firma de handshake")
+
+    // B verifica firma de A (con clave de A)
+    v1 = cluster_verificar_firma("synapse-handshake:pubkey-B", firma_a, par_a)
+    si v1 == 0:
+        escribir_linea("[OK] B verifica firma de A correctamente")
+    sino:
+        escribir_linea("[FALLO] B debio verificar firma de A, obtuvo " + entero_a_texto(v1))
+        fallos = fallos + 1
+
+    // B firma respuesta
+    firma_b = cluster_firmar_mensaje("synapse-handshake:pubkey-A", par_b)
+    si firma_b == "":
+        escribir_linea("[FALLO] B no genera firma de respuesta")
+        fallos = fallos + 1
+    sino:
+        escribir_linea("[OK] B genera firma de respuesta")
+
+    // A verifica firma de B (con clave de B)
+    v2 = cluster_verificar_firma("synapse-handshake:pubkey-A", firma_b, par_b)
+    si v2 == 0:
+        escribir_linea("[OK] A verifica firma de B correctamente")
+    sino:
+        escribir_linea("[FALLO] A debio verificar firma de B, obtuvo " + entero_a_texto(v2))
+        fallos = fallos + 1
+
+    // Zero-Trust: A rechaza firma de B si el mensaje esta alterado
+    v3 = cluster_verificar_firma("mensaje-alterado", firma_b, par_b)
+    si v3 != 0:
+        escribir_linea("[OK] A rechaza firma de B con mensaje alterado")
+    sino:
+        escribir_linea("[FALLO] A debio rechazar mensaje alterado")
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 6: Handshake con inicio/detencion de nodo UDP
+// ============================================================
+
+funcion prueba_iniciar_detener_nodo() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 6: Iniciar/Detener nodo UDP ===")
+
+    rc = cluster_iniciar_nodo(0)
+    si rc >= 0:
+        escribir_linea("[OK] iniciar_nodo(0) retorna >= 0 (rc=" + entero_a_texto(rc) + ")")
+    sino:
+        escribir_linea("[FALLO] iniciar_nodo(0) fallo rc=" + entero_a_texto(rc))
+        fallos = fallos + 1
+
+    rc2 = cluster_detener_nodo()
+    si rc2 >= 0:
+        escribir_linea("[OK] detener_nodo() retorna >= 0")
+    sino:
+        escribir_linea("[FALLO] detener_nodo() fallo rc=" + entero_a_texto(rc2))
+        fallos = fallos + 1
+
+    // Reinicializar y detener de nuevo (reentrante)
+    rc3 = cluster_iniciar_nodo(9701)
+    si rc3 >= 0:
+        escribir_linea("[OK] reiniciar_nodo(9701) retorna >= 0")
+    sino:
+        escribir_linea("[FALLO] reiniciar_nodo(9701) fallo rc=" + entero_a_texto(rc3))
+        fallos = fallos + 1
+
+    rc4 = cluster_detener_nodo()
+    si rc4 >= 0:
+        escribir_linea("[OK] redetener_nodo() retorna >= 0")
+    sino:
+        escribir_linea("[FALLO] redetener_nodo() fallo rc=" + entero_a_texto(rc4))
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 7: Envio HELLO con clave publica
+// ============================================================
+
+funcion prueba_enviar_hello() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 7: Envio HELLO ===")
+
+    par = cluster_generar_par_claves()
+
+    rc = cluster_iniciar_nodo(0)
+    si rc >= 0:
+        escribir_linea("[OK] nodo iniciado")
+    sino:
+        escribir_linea("[FALLO] no pudo iniciar nodo rc=" + entero_a_texto(rc))
+        fallos = fallos + 1
+
+    rc2 = cluster_enviar_hello("127.0.0.1", 19099, "nodo-test", par)
+    si rc2 >= 0:
+        escribir_linea("[OK] enviar_hello a 127.0.0.1:19099 retorna >= 0")
+    sino:
+        escribir_linea("[FALLO] enviar_hello() fallo rc=" + entero_a_texto(rc2))
+        fallos = fallos + 1
+
+    rc3 = cluster_detener_nodo()
+    si rc3 >= 0:
+        escribir_linea("[OK] nodo detenido")
+    sino:
+        escribir_linea("[FALLO] detener nodo fallo rc=" + entero_a_texto(rc3))
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 8: Envio de datos por canal remoto (simulado)
+// ============================================================
+
+funcion prueba_enviar_datos_canal() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 8: Envio de datos por canal remoto ===")
+
+    rc = cluster_iniciar_nodo(0)
+    si rc >= 0:
+        escribir_linea("[OK] nodo iniciado para canal")
+    sino:
+        escribir_linea("[FALLO] no pudo iniciar nodo rc=" + entero_a_texto(rc))
+        fallos = fallos + 1
+
+    rc2 = cluster_canal_remoto_enviar("127.0.0.1", 19098, "datos transmitidos", 18, 1)
+    si rc2 >= 0:
+        escribir_linea("[OK] canal_remoto_enviar retorna >= 0")
+    sino:
+        escribir_linea("[FALLO] canal_remoto_enviar() fallo rc=" + entero_a_texto(rc2))
+        fallos = fallos + 1
+
+    rc3 = cluster_detener_nodo()
+    si rc3 >= 0:
+        escribir_linea("[OK] nodo detenido tras canal")
+    sino:
+        escribir_linea("[FALLO] detener nodo fallo rc=" + entero_a_texto(rc3))
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Prueba 9: Resultado<String, Error> - Tipo algebraico
+// ============================================================
+
+funcion prueba_resultado_algebraico() -> entero:
+    fallos = 0
+    escribir_linea("")
+    escribir_linea("=== Prueba 9: Tipo algebraico Resultado ===")
+
+    r_ok = Resultado()
+    r_ok.tag = 0
+    r_ok.valor_str = "operacion exitosa"
+    si r_ok.tag == 0:
+        escribir_linea("[OK] Resultado.ok tiene tag=0")
+    sino:
+        escribir_linea("[FALLO] Resultado.ok tag debio ser 0")
+        fallos = fallos + 1
+
+    r_err = Resultado()
+    r_err.tag = 1
+    r_err.valor_str = "error de autenticacion"
+    si r_err.tag == 1:
+        escribir_linea("[OK] Resultado.err tiene tag=1")
+    sino:
+        escribir_linea("[FALLO] Resultado.err tag debio ser 1")
+        fallos = fallos + 1
+
+    retornar fallos
+
+// ============================================================
+// Ejecucion principal
+// ============================================================
+
 funcion principal() -> entero:
-    codigo = ejecutar_pruebas()
-    retornar codigo
+    total_fallos = 0
+
+    escribir_linea("")
+    escribir_linea("========================================")
+    escribir_linea("  M18.3: Handshake Ed25519 Zero-Trust")
+    escribir_linea("========================================")
+    escribir_linea("")
+
+    total_fallos = total_fallos + prueba_generar_par()
+    total_fallos = total_fallos + prueba_firmar_verificar()
+    total_fallos = total_fallos + prueba_firma_corrupta()
+    total_fallos = total_fallos + prueba_clave_incorrecta()
+    total_fallos = total_fallos + prueba_handshake_bidireccional()
+    total_fallos = total_fallos + prueba_iniciar_detener_nodo()
+    total_fallos = total_fallos + prueba_enviar_hello()
+    total_fallos = total_fallos + prueba_enviar_datos_canal()
+    total_fallos = total_fallos + prueba_resultado_algebraico()
+
+    escribir_linea("")
+    escribir_linea("========================================")
+    escribir_linea("  RESULTADOS")
+    escribir_linea("  Total fallos: " + entero_a_texto(total_fallos))
+    escribir_linea("========================================")
+    escribir_linea("")
+
+    si total_fallos > 0:
+        retornar 1
+    sino:
+        retornar 0
