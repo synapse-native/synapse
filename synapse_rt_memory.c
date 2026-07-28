@@ -153,9 +153,12 @@ static int _slab_alloc_block(int slab_idx) {
 }
 
 void* pool_alloc(size_t size) {
+    void* _r = NULL;
+    /* Lock unico al inicio: TSan data race fix — elimina cualquier ventana */
+    /* de precarga especulativa de _g_pool fuera de la seccion critica.   */
+    pthread_mutex_lock(&_g_pool_mutex);
     for (int i = 0; i < SLAB_COUNT; i++) {
         if (size <= SLAB_SIZES[i]) {
-            pthread_mutex_lock(&_g_pool_mutex);
             if (_g_pool.slab_block_idx[i] == (uint32_t)-1) {
                 if (!_slab_alloc_block(i)) {
                     pthread_mutex_unlock(&_g_pool_mutex);
@@ -174,8 +177,9 @@ void* pool_alloc(size_t size) {
                     uint32_t _slot = _w * 32 + _b;
                     if (_slot < slots) {
                         _g_pool.slab_bitmap[i][_w] |= (1u << _b);
+                        _r = _g_pool.slab_base[i] + _slot * SLAB_SIZES[i];
                         pthread_mutex_unlock(&_g_pool_mutex);
-                        return _g_pool.slab_base[i] + _slot * SLAB_SIZES[i];
+                        return _r;
                     }
                 }
             }
@@ -186,12 +190,12 @@ void* pool_alloc(size_t size) {
                 return _p;
             }
             _g_pool.slab_bitmap[i][0] |= 1u;
+            _r = _g_pool.slab_base[i];
             pthread_mutex_unlock(&_g_pool_mutex);
-            return _g_pool.slab_base[i];
+            return _r;
         }
     }
-    /* Fallback: lock mutex antes de acceder a _g_pool (TSan data race fix) */
-    pthread_mutex_lock(&_g_pool_mutex);
+    /* Fallback: bloque grande desde el pool */
     if (size <= _g_pool.block_size) {
         uint32_t _words = (_g_pool.total_blocks + 31) / 32;
         for (uint32_t _w = 0; _w < _words; _w++) {
@@ -202,8 +206,9 @@ void* pool_alloc(size_t size) {
                 uint32_t _index = _w * 32 + _b;
                 if (_index >= _g_pool.total_blocks) break;
                 _g_pool.bitmap[_w] |= (1u << _b);
+                _r = _g_pool.pool_base + _index * _g_pool.block_size;
                 pthread_mutex_unlock(&_g_pool_mutex);
-                return _g_pool.pool_base + _index * _g_pool.block_size;
+                return _r;
             }
         }
     }
