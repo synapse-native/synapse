@@ -68,11 +68,13 @@ static uint64_t g_total_ops[SLAB_CLASSES];
 static uint64_t g_overflow[SLAB_CLASSES];
 
 /* ============================================================
- * Thread-Local Storage — CADA HILO TIENE SU PROPIA COPIA
+ * Thread-Local Storage — PUNTEROS a arrays en ThreadData (heap)
+ * Los arrays REALES viven en ThreadData (heap), sobreviven al join.
+ * __thread son solo atajos de direccionamiento sin costo.
  * ============================================================ */
-static __thread uint64_t tls_hist[SLAB_CLASSES][HISTOGRAM_BUCKETS] = {{0}};
-static __thread uint64_t tls_total_ops[SLAB_CLASSES] = {0};
-static __thread uint64_t tls_overflow[SLAB_CLASSES] = {0};
+static __thread uint64_t (*tls_hist)[HISTOGRAM_BUCKETS] = NULL;
+static __thread uint64_t* tls_total_ops = NULL;
+static __thread uint64_t* tls_overflow = NULL;
 
 /* ============================================================
  * Temporizador de alta precision — POSIX clock_gettime
@@ -113,10 +115,10 @@ typedef struct {
     uint64_t     thread_ns_total;
     uint64_t     thread_ns_min;
     uint64_t     thread_ns_max;
-    /* Snapshot de punteros TLS para merge post-join */
-    uint64_t     (*tls_hist_snapshot)[HISTOGRAM_BUCKETS];
-    uint64_t*    tls_total_ops_snapshot;
-    uint64_t*    tls_overflow_snapshot;
+    /* Arrays REALES del histograma (heap, sobreviven al join) */
+    uint64_t     hist[SLAB_CLASSES][HISTOGRAM_BUCKETS];
+    uint64_t     hist_total_ops[SLAB_CLASSES];
+    uint64_t     hist_overflow[SLAB_CLASSES];
 } ThreadData;
 
 /* ============================================================
@@ -126,16 +128,15 @@ typedef struct {
 static void* bench_thread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
 
-    /* Guardar snapshot de punteros TLS para que el main thread
-     * pueda leerlos tras el join */
-    td->tls_hist_snapshot = tls_hist;
-    td->tls_total_ops_snapshot = tls_total_ops;
-    td->tls_overflow_snapshot = tls_overflow;
+    /* Inicializar arrays locales en ThreadData (heap) */
+    memset(td->hist, 0, sizeof(td->hist));
+    memset(td->hist_total_ops, 0, sizeof(td->hist_total_ops));
+    memset(td->hist_overflow, 0, sizeof(td->hist_overflow));
 
-    /* Inicializar TLS */
-    memset(tls_hist, 0, sizeof(tls_hist));
-    memset(tls_total_ops, 0, sizeof(tls_total_ops));
-    memset(tls_overflow, 0, sizeof(tls_overflow));
+    /* Apuntar TLS a los arrays en ThreadData (heap, seguros post-join) */
+    tls_hist = td->hist;
+    tls_total_ops = td->hist_total_ops;
+    tls_overflow = td->hist_overflow;
 
     /* Calentamiento (descartado) */
     for (uint32_t i = 0; i < td->warmup_ops; i++) {
@@ -176,14 +177,16 @@ static void* bench_thread(void* arg) {
             }
         }
 
-        /* Escribir en TLS — sin sincronizacion (cada hilo tiene su copia) */
+        /* Escribir via puntero TLS — sin sincronizacion
+         * (cada hilo tiene su propia copia del puntero, que apunta
+         *  a td->hist en heap; seguro post-join) */
         if (si >= 0 && si < SLAB_CLASSES) {
             uint64_t bucket = elapsed / NS_PER_BUCKET;
             if (bucket < HISTOGRAM_BUCKETS)
-                tls_hist[si][bucket]++;          /* ← TLS, sin lock */
+                tls_hist[si][bucket]++;          /* → escribe en td->hist */
             else
-                tls_overflow[si]++;               /* ← TLS, sin lock */
-            tls_total_ops[si]++;                  /* ← TLS, sin lock */
+                tls_overflow[si]++;               /* → escribe en td->hist_overflow */
+            tls_total_ops[si]++;                  /* → escribe en td->hist_total_ops */
         }
     }
 
@@ -191,18 +194,16 @@ static void* bench_thread(void* arg) {
 }
 
 /* ============================================================
- * Merge de histogramas TLS -> global (post-join, seguro)
+ * Merge de histogramas -> global (post-join, seguro)
+ * Lee directamente de ThreadData.hist (heap). Sin TLS involucrado.
  * ============================================================ */
 static void merge_histograms(ThreadData* tds, int nthreads) {
     for (int t = 0; t < nthreads; t++) {
-        uint64_t (*th)[HISTOGRAM_BUCKETS] = tds[t].tls_hist_snapshot;
-        uint64_t* tto = tds[t].tls_total_ops_snapshot;
-        uint64_t* tov = tds[t].tls_overflow_snapshot;
         for (int si = 0; si < SLAB_CLASSES; si++) {
-            g_total_ops[si] += tto[si];
-            g_overflow[si]  += tov[si];
+            g_total_ops[si] += tds[t].hist_total_ops[si];
+            g_overflow[si]  += tds[t].hist_overflow[si];
             for (uint32_t b = 0; b < HISTOGRAM_BUCKETS; b++)
-                g_histogram[si][b] += th[si][b];
+                g_histogram[si][b] += tds[t].hist[si][b];
         }
     }
 }
