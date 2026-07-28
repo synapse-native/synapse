@@ -385,7 +385,6 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         generar_sbom: bool = False,
                         firmar_binario: bool = False,
                         clave_sbom: str = '') -> int:
-    global _module_asts
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
