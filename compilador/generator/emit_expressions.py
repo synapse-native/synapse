@@ -366,16 +366,6 @@ def visitar_log(ctx: GeneratorContext, nodo: LogLlamada):
         ctx.write_line(f'printf("{fmt_str}\\\n");')
 
 
-def formato_espec(ctx: GeneratorContext, tipo: str) -> str:
-    """Retorna el especificador de formato printf para un tipo C."""
-    if tipo == 'CadenaSegura':
-        return "%.*s"
-    if tipo == 'float':
-        return "%f"
-    if tipo == 'int':
-        return "%d"
-    return "%p"
-
 
 # ================================================================
 # Builtin function C code emitters

@@ -15,7 +15,7 @@ from compilador.ast_nodes import (
 )
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
-    expr_a_c, tipo_de_expr, formato_espec,
+    expr_a_c, tipo_de_expr,
     emitir_tokenizar, emitir_token_defs,
 )
 from .emit_selfhost import (

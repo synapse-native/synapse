@@ -43,9 +43,7 @@ funcion corregir_errores(sistema: Puntero) -> Entero:
 funcion verificar_estado_logico(sistema: Puntero, valor_esperado: Entero) -> Entero:
     retornar _syn_qec_verificar_estado_logico(sistema, valor_esperado)
 
-funcion proteger_y_verificar(sistema: Puntero, valor: Entero,
-                              inyectar_error: Logico, tipo_error: Entero,
-                              qubit_error: Entero) -> Entero:
+funcion proteger_y_verificar(sistema: Puntero, valor: Entero, inyectar_error: Logico, tipo_error: Entero, qubit_error: Entero) -> Entero:
     rc = inicializar_estado_logico(sistema, valor)
     si rc != 0:
         retornar QEC_FALLO

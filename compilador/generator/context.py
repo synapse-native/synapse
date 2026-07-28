@@ -17,15 +17,15 @@ from compilador.ast_nodes import (
 # ================================================================
 
 MAPA_TIPOS_C: Dict[str, str] = {
-    'entero': 'int', 'int': 'int',
-    'vacio': 'void', 'nulo': 'void',
-    'decimal': 'float', 'real': 'float', 'flotante': 'float',
+    'entero': 'int', 'int': 'int', 'Entero': 'int',
+    'vacio': 'void', 'nulo': 'void', 'Nulo': 'void',
+    'decimal': 'float', 'real': 'float', 'flotante': 'float', 'Flotante': 'float', 'Decimal': 'float',
     'Tensor': 'Tensor', 'tensor': 'Tensor',
     'Canal': 'Canal', 'canal': 'Canal',
-    'texto': 'CadenaSegura', 'cadena': 'CadenaSegura',
-    'booleano': 'int', 'logico': 'int',
+    'texto': 'CadenaSegura', 'cadena': 'CadenaSegura', 'Texto': 'CadenaSegura',
+    'booleano': 'int', 'logico': 'int', 'Booleano': 'int', 'Logico': 'int',
     'void': 'void', 'char': 'char',
-    'double': 'double', 'puntero': 'void*', 'void*': 'void*',
+    'double': 'double', 'puntero': 'void*', 'Puntero': 'void*', 'void*': 'void*',
 }
 
 
