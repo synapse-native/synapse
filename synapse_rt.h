@@ -1,16 +1,8 @@
-// synapse_rt.h — Public API del runtime Synapse
+// synapse_rt.h — Public API del runtime Synapse (modular)
 #ifndef SYNAPSE_RT_H
 #define SYNAPSE_RT_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <pthread.h>
-
-typedef struct { int longitud; const char* datos; } CadenaSegura;
-typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;
-typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
+#include "synapse_rt_types.h"
 
 void escribir(CadenaSegura contenido);
 void escribir_linea(CadenaSegura contenido);
@@ -35,15 +27,6 @@ CadenaSegura decimal_a_texto(float n);
 CadenaSegura entero_a_texto(int n);
 
 // --- CanalConcurrencia API (Zero-Copy, Thread-Safe) ---
-typedef struct {
-    int es_ok;
-    union {
-        void* ok_valor;
-        const char* err_mensaje;
-    } datos;
-} Resultado_T;
-
-typedef struct CanalConcurrencia CanalConcurrencia;
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
 void* canal_recibir(CanalConcurrencia* canal);

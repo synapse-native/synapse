@@ -30,6 +30,8 @@ exit /b 0
 :clean
 echo [*] Cleaning build artifacts...
 if exist "%ROOT_DIR%synapse_rt.o" del "%ROOT_DIR%synapse_rt.o"
+if exist "%ROOT_DIR%synapse_rt_memory.o" del "%ROOT_DIR%synapse_rt_memory.o"
+if exist "%ROOT_DIR%synapse_rt_concurrency.o" del "%ROOT_DIR%synapse_rt_concurrency.o"
 if exist "%NUCLEO%\generator.o" del "%NUCLEO%\generator.o"
 echo [OK] Clean
 exit /b 0
@@ -47,13 +49,36 @@ python -m pytest tests/ -v
 exit /b %ERRORLEVEL%
 
 :bootstrap
-echo [BOOTSTRAP] Compiling synapse_rt.o...
-gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o"
+echo [BOOTSTRAP] Compiling modular runtime objects...
+gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o" -lpthread
 if errorlevel 1 (
     echo [FAIL] synapse_rt.o compilation failed
     exit /b 1
 )
 echo [OK] synapse_rt.o compiled
+
+gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt_memory.c" -o "%ROOT_DIR%synapse_rt_memory.o" -lpthread
+if errorlevel 1 (
+    echo [FAIL] synapse_rt_memory.o compilation failed
+    exit /b 1
+)
+echo [OK] synapse_rt_memory.o compiled
+
+gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt_concurrency.c" -o "%ROOT_DIR%synapse_rt_concurrency.o" -lpthread
+if errorlevel 1 (
+    echo [FAIL] synapse_rt_concurrency.o compilation failed
+    exit /b 1
+)
+echo [OK] synapse_rt_concurrency.o compiled
+
+:: Link modular objects for integration test binary
+gcc -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.o" "%ROOT_DIR%synapse_rt_memory.o" "%ROOT_DIR%synapse_rt_concurrency.o" -o "%ROOT_DIR%synapse_rt_modular_test.exe" -lpthread -lm -lws2_32 2>&1
+if errorlevel 1 (
+    echo [WARN] Modular linked binary not used in Stage 1; pure Python path unaffected
+    goto :skip_modular_link
+)
+echo [OK] synapse_rt_modular_test.exe linked (modular objects)
+:skip_modular_link
 
 echo [BOOTSTRAP] Stage 1: Python -^> synapse_stage2.exe (modular objects)
 python "%ROOT_DIR%main.py" "%ROOT_DIR%src\main.syn" -o "%ROOT_DIR%synapse_stage2.exe"

@@ -1,5 +1,8 @@
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -67,11 +70,14 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #define _GEN_TMP_SIZE (4096)
 #include "librerias/embedded_libs.h"
 
-char _gen_tmp_buf[4096];
+extern char _gen_tmp_buf[4096];
 
-char _G_emit_buf[1048576];
-int _G_emit_pos = 0;
-FILE* _G_fp = NULL;
+extern char _G_emit_buf[1048576];
+extern int _G_emit_pos;
+extern FILE* _G_fp;
+
+// PGO variables (defined in self-hosted parser module)
+extern int _P_ntks, _P_tpos, _P_p_err;
 
 extern int _G_indent;
 
@@ -84,15 +90,15 @@ void _G_vest(struct DefinicionEstructura* n);
 #define TAG_NINGUNO 1
 
 // --- Helpers de serialización primitiva ---
-inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
-inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
-inline void* _synapse_box_float(float v) {
+static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
+static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
+static inline void* _synapse_box_float(float v) {
     float* _p = (float*)malloc(sizeof(float));
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\\n"); exit(1); }
     *_p = v;
     return (void*)_p;
 }
-inline float _synapse_unbox_float(void* p) {
+static inline float _synapse_unbox_float(void* p) {
     float _v = *(float*)p;
     free(p);
     return _v;
@@ -100,6 +106,8 @@ inline float _synapse_unbox_float(void* p) {
 
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void pool_free(void* ptr);
+extern void* pool_alloc(size_t size);
+extern void pool_destroy(void);
 extern void escribir(CadenaSegura contenido);
 extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
@@ -131,6 +139,9 @@ extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
+// --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
+extern void _simd_detectar(void);
+
 // --- Contratos (requiere/garantiza) ---
 #ifdef SYNAPSE_RELEASE
 #define assert_contrato(expr, msg) ((void)0)
@@ -141,6 +152,12 @@ extern void cerrar_canal(CanalConcurrencia* canal);
                 msg, __FILE__, __LINE__); \
         exit(1); }} while(0)
 #endif
+
+char _gen_tmp_buf[4096];
+
+char _G_emit_buf[1048576];
+int _G_emit_pos;
+FILE* _G_fp;
 
 int _g_argc;
 char** _g_argv;
@@ -194,12 +211,22 @@ typedef struct ParToml {
 typedef struct NodoToml {
     int tipo;
     CadenaSegura valor_str;
+    int valor_ent;
     struct ParToml* pares;
     int longitud;
 } NodoToml;
 
 struct NodoToml desde_texto(CadenaSegura entrada);
 struct NodoToml obtener_campo(struct NodoToml nodo, CadenaSegura clave);
+CadenaSegura sha256_texto(CadenaSegura datos);
+int ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
+int ejecutar_comando(CadenaSegura cmd);
+int escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+CadenaSegura leer_archivo(CadenaSegura ruta);
+CadenaSegura obtener_env(CadenaSegura nombre);
+int existe_archivo(CadenaSegura ruta);
+int eliminar_archivo(CadenaSegura ruta);
 CadenaSegura _leer_archivo(CadenaSegura ruta);
 CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave);
 void principal(void);
@@ -209,15 +236,108 @@ extern struct NodoToml _toml_nodo_new(void);
 extern void _toml_nodo_liberar(struct NodoToml n);
 extern struct NodoToml _toml_object_get(struct NodoToml nodo, CadenaSegura clave);
 struct NodoToml desde_texto(CadenaSegura entrada) {
-    struct NodoToml _ret_29 = _toml_parse(entrada);
-    return _ret_29;
+    struct NodoToml _ret_30 = _toml_parse(entrada);
+    return _ret_30;
 }
 
 struct NodoToml obtener_campo(struct NodoToml nodo, CadenaSegura clave) {
-    struct NodoToml _ret_32 = _toml_object_get(nodo, clave);
-    return _ret_32;
+    struct NodoToml _ret_33 = _toml_object_get(nodo, clave);
+    return _ret_33;
 }
 
+extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
+extern int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+CadenaSegura sha256_texto(CadenaSegura datos) {
+    CadenaSegura _ret_20 = _syn_sha256_texto(datos);
+    return _ret_20;
+}
+
+int ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
+    int _ret_23 = _syn_ed25519_verificar(mensaje, firma, clave_publica);
+    return _ret_23;
+}
+
+extern CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
+extern CadenaSegura _syn_obtener_cwd(void);
+extern int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
+CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
+    CadenaSegura normalizada = _syn_normalizar_ruta(ruta);
+    CadenaSegura cwd = _syn_obtener_cwd();
+    if ((!_syn_ruta_en_directorio(normalizada, cwd))) {
+        CadenaSegura _ret_22 = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        _syn_texto_liberar(cwd);
+        _syn_texto_liberar(normalizada);
+        return _ret_22;
+    }
+    CadenaSegura _ret_23 = normalizada;
+    return _ret_23;
+}
+
+extern int _syn_ejecutar_comando(CadenaSegura cmd);
+extern int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_obtener_env(CadenaSegura nombre);
+extern int _syn_existe_archivo(CadenaSegura ruta);
+extern int _syn_eliminar_archivo(CadenaSegura ruta);
+int ejecutar_comando(CadenaSegura cmd) {
+    int _ret_33 = _syn_ejecutar_comando(cmd);
+    return _ret_33;
+}
+
+int escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
+    CadenaSegura ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        int _ret_38 = (-1);
+        _syn_texto_liberar(ruta_segura);
+        return _ret_38;
+    }
+    int _ret_39 = _syn_escribir_archivo(ruta_segura, contenido);
+    return _ret_39;
+}
+
+CadenaSegura leer_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        CadenaSegura _ret_44 = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        _syn_texto_liberar(ruta_segura);
+        return _ret_44;
+    }
+    CadenaSegura _ret_45 = _syn_leer_archivo(ruta_segura);
+    return _ret_45;
+}
+
+CadenaSegura obtener_env(CadenaSegura nombre) {
+    CadenaSegura _ret_48 = _syn_obtener_env(nombre);
+    return _ret_48;
+}
+
+int existe_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        int _ret_53 = 0;
+        _syn_texto_liberar(ruta_segura);
+        return _ret_53;
+    }
+    int _ret_54 = (_syn_existe_archivo(ruta_segura) == 1);
+    return _ret_54;
+}
+
+int eliminar_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        int _ret_59 = (-1);
+        _syn_texto_liberar(ruta_segura);
+        return _ret_59;
+    }
+    int _ret_60 = _syn_eliminar_archivo(ruta_segura);
+    return _ret_60;
+}
+
+extern Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo);
+extern CadenaSegura _syn_leer(Canal c);
+extern void _syn_escribir(CadenaSegura texto);
+extern void _syn_escribir_linea(CadenaSegura texto);
+extern CadenaSegura _syn_leer_linea(void);
 CadenaSegura _leer_archivo(CadenaSegura ruta) {
     Canal f;
     f = abrir(ruta, (CadenaSegura){ .longitud = (int)strlen("r"), .datos = "r" });
@@ -239,6 +359,7 @@ CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave) {
 }
 
 void principal(void) {
+    _simd_detectar();
     escribir_linea((CadenaSegura){ .longitud = (int)strlen("Synapse v2.0 — Auto-hospedado"), .datos = "Synapse v2.0 — Auto-hospedado" });
     escribir_linea((CadenaSegura){ .longitud = (int)strlen("Cargando manifiesto axon.toml..."), .datos = "Cargando manifiesto axon.toml..." });
     CadenaSegura toml_str = _leer_archivo((CadenaSegura){ .longitud = (int)strlen("axon.toml"), .datos = "axon.toml" });
@@ -264,5 +385,6 @@ int main(int argc, char** argv) {
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     principal();
     synapse_esperar_hilos();
+    pool_destroy();
     return 0;
 }

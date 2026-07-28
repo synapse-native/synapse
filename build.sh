@@ -16,17 +16,31 @@ if [ "${1:-}" = "clean" ]; then
     rm -f "$ROOT_DIR/opensyn/principal.c" "$ROOT_DIR/opensyn/principal.exe"
     rm -f "$ROOT_DIR/opensyn/principal.syn.json"
     rm -f "$ROOT_DIR/synapse_rt.o"
+    rm -f "$ROOT_DIR/synapse_rt_memory.o"
+    rm -f "$ROOT_DIR/synapse_rt_concurrency.o"
     echo "[OK] Clean"
     exit 0
 fi
 
-# Step 1: Build runtime object
-echo "[1/4] Compilando runtime (synapse_rt.c)..."
+# Step 1: Build modular runtime objects
+echo "[1/4] Compilando runtime (modular)..."
 gcc -c "$ROOT_DIR/synapse_rt.c" -o "$ROOT_DIR/synapse_rt.o" \
     -std=c99 -Wall -Wextra \
     -Wno-unused-parameter -Wno-unused-function \
-    -lpthread -lm -lws2_32 2>&1
+    -lpthread 2>&1
 echo "[OK] synapse_rt.o"
+
+gcc -c "$ROOT_DIR/synapse_rt_memory.c" -o "$ROOT_DIR/synapse_rt_memory.o" \
+    -std=c99 -Wall -Wextra \
+    -Wno-unused-parameter -Wno-unused-function \
+    -lpthread 2>&1
+echo "[OK] synapse_rt_memory.o"
+
+gcc -c "$ROOT_DIR/synapse_rt_concurrency.c" -o "$ROOT_DIR/synapse_rt_concurrency.o" \
+    -std=c99 -Wall -Wextra \
+    -Wno-unused-parameter -Wno-unused-function \
+    -lpthread 2>&1
+echo "[OK] synapse_rt_concurrency.o"
 
 # Step 2: Compile the orchestrator from Synapse source (via Python compiler)
 echo "[2/4] Compilando opensyn/principal.syn..."

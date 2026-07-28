@@ -479,14 +479,25 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         print(f"[OK] Codigo C generado: {ruta_c}")
 
         linker_extra = generador.linker_flags
-        synapse_rt = os.path.join(SYNAPSE_BIN, "synapse_rt.o")
-        if not os.path.exists(synapse_rt):
-            synapse_rt = os.path.join(SYNAPSE_BIN, "dist", "lib", "synapse_rt.o")
-        tweetnacl_obj = os.path.join(SYNAPSE_BIN, "tweetnacl.o")
+        
+        # Modular runtime objects
+        def _resolve_rt_obj(name: str) -> str:
+            """Resuelve la ruta a un objeto del runtime, probando varias ubicaciones."""
+            candidates = [
+                os.path.join(SYNAPSE_BIN, f"{name}.o"),
+                os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    return c
+            return candidates[0]  # return first regardless (linker dará error si no existe)
+        
+        synapse_rt = _resolve_rt_obj("synapse_rt")
+        synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
+        synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
+        tweetnacl_obj = _resolve_rt_obj("tweetnacl")
         if not os.path.exists(tweetnacl_obj):
-            tweetnacl_obj = os.path.join(SYNAPSE_BIN, "dist", "lib", "tweetnacl.o")
-            if not os.path.exists(tweetnacl_obj):
-                tweetnacl_obj = ""
+            tweetnacl_obj = ""
 
         # Quantum runtime modules (M16.1-M16.4) in nucleo/ directory
         quantum_objs = []
@@ -519,6 +530,10 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             rt_objs = ""
         else:
             rt_objs = f'"{synapse_rt}"'
+            if os.path.exists(synapse_rt_memory):
+                rt_objs += f' "{synapse_rt_memory}"'
+            if os.path.exists(synapse_rt_concurrency):
+                rt_objs += f' "{synapse_rt_concurrency}"'
             if tweetnacl_obj:
                 rt_objs += f' "{tweetnacl_obj}"'
             for qo in quantum_objs:
@@ -731,16 +746,28 @@ def _link_object(obj_path: str, output_exe: str) -> int:
         platform_flags += " -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
     
-    synapse_rt = os.path.join(SYNAPSE_BIN, "synapse_rt.o")
-    if not os.path.exists(synapse_rt):
-        synapse_rt = os.path.join(SYNAPSE_BIN, "dist", "lib", "synapse_rt.o")
-    tweetnacl_obj = os.path.join(SYNAPSE_BIN, "tweetnacl.o")
+    def _resolve_rt_obj(name: str) -> str:
+        candidates = [
+            os.path.join(SYNAPSE_BIN, f"{name}.o"),
+            os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                return c
+        return candidates[0]
+
+    synapse_rt = _resolve_rt_obj("synapse_rt")
+    synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
+    synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
+    tweetnacl_obj = _resolve_rt_obj("tweetnacl")
     if not os.path.exists(tweetnacl_obj):
-        tweetnacl_obj = os.path.join(SYNAPSE_BIN, "dist", "lib", "tweetnacl.o")
-        if not os.path.exists(tweetnacl_obj):
-            tweetnacl_obj = ""
+        tweetnacl_obj = ""
     
     rt_objs = f'"{synapse_rt}"'
+    if os.path.exists(synapse_rt_memory):
+        rt_objs += f' "{synapse_rt_memory}"'
+    if os.path.exists(synapse_rt_concurrency):
+        rt_objs += f' "{synapse_rt_concurrency}"'
     if tweetnacl_obj:
         rt_objs += f' "{tweetnacl_obj}"'
     
