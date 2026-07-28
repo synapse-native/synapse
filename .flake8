@@ -23,5 +23,6 @@ exclude =
     *.sh,
     *.exe,
     *.o,
+    toolchain_gcc12,
     compilador/generator/emit_selfhost.py,
     compilador/generator_old.py,
