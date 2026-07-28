@@ -141,6 +141,10 @@ static int _slab_alloc_block(int slab_idx) {
             _g_pool.slab_next_free[slab_idx] = 0;
             uint32_t slots = _g_pool.slab_slots_per_block[slab_idx];
             uint32_t bm_words = (slots + 31) / 32;
+            /* Liberar bitmap anterior antes de asignar uno nuevo */
+            if (_g_pool.slab_bitmap[slab_idx]) {
+                free(_g_pool.slab_bitmap[slab_idx]);
+            }
             _g_pool.slab_bitmap[slab_idx] = (uint32_t*)calloc(bm_words, sizeof(uint32_t));
             return 1;
         }
