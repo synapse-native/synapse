@@ -17,6 +17,7 @@
   #include <ws2tcpip.h>
   #include <windows.h>
   #include <direct.h>
+  #include <wincrypt.h>
 #else
   #include <sys/socket.h>
   #include <netinet/in.h>
@@ -1736,11 +1737,36 @@ typedef struct CampoToml {
 // Retorna: 0 si la firma es valida, -1 si es invalida
 
 // randombytes stub for TweetNaCl (only needed if crypto_sign_keypair is linked)
+// Uses OS-provided CSPRNG instead of rand() for cryptographic security.
 void randombytes(unsigned char* x, unsigned long long xlen) ;
 void randombytes(unsigned char* x, unsigned long long xlen) {
-    for (unsigned long long i = 0; i < xlen; i++) {
-        x[i] = (unsigned char)(rand() & 0xFF);
+    if (xlen == 0) return;
+#ifdef _WIN32
+    HCRYPTPROV hProv = 0;
+    if (CryptAcquireContextA(&hProv, NULL, NULL, PROV_RSA_FULL,
+                             CRYPT_VERIFYCONTEXT)) {
+        CryptGenRandom(hProv, (DWORD)xlen, x);
+        CryptReleaseContext(hProv, 0);
+    } else {
+        for (unsigned long long i = 0; i < xlen; i++) x[i] = 0;
     }
+#else
+    FILE* f = fopen("/dev/urandom", "rb");
+    if (f) {
+        size_t n = fread(x, 1, (size_t)xlen, f);
+        fclose(f);
+        for (unsigned long long i = n; i < xlen; i++) x[i] = 0;
+    } else {
+        #ifdef __linux__
+        ssize_t ret = getrandom(x, (size_t)xlen, 0);
+        if (ret < 0) {
+            for (unsigned long long i = 0; i < xlen; i++) x[i] = 0;
+        }
+        #else
+        for (unsigned long long i = 0; i < xlen; i++) x[i] = 0;
+        #endif
+    }
+#endif
 }
 
 int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
@@ -5464,11 +5490,16 @@ typedef struct {
     long long next_heartbeat_ns;
     int leader_id;
     int log_count;
+    int last_log_index;   // Raft: index of last log entry
+    int last_log_term;    // Raft: term of last log entry
     int commit_index;
     int last_applied;
     int votes_granted;
     int votes_needed;
     unsigned int seed;
+    // Ed25519 signing keypair for Raft RPC authentication
+    char clave_publica_hex[65];   // 32 bytes -> 64 hex chars + null
+    char clave_privada_hex[65];   // 32 bytes -> 64 hex chars + null
 } RaftNode;
 
 static RaftNode _raft_nodes[MAX_RAFT_NODES];
@@ -5502,11 +5533,24 @@ int raft_inicializar(int node_id, int num_nodes, int seed) {
     n->next_heartbeat_ns = 0;
     n->leader_id = -1;
     n->log_count = 0;
+    n->last_log_index = 0;
+    n->last_log_term = 0;
     n->commit_index = 0;
     n->last_applied = 0;
     n->votes_granted = 0;
     n->votes_needed = num_nodes / 2 + 1;
     n->seed = (unsigned int)(seed ^ node_id);
+    // Generate Ed25519 keypair for Raft RPC authentication
+    {
+        unsigned char pk[32], sk[64];
+        crypto_sign_keypair(pk, sk);
+        for (int i = 0; i < 32; i++) {
+            snprintf(n->clave_publica_hex + i * 2, 3, "%02x", pk[i]);
+            snprintf(n->clave_privada_hex + i * 2, 3, "%02x", sk[i]);
+        }
+        n->clave_publica_hex[64] = '\0';
+        n->clave_privada_hex[64] = '\0';
+    }
     _raft_inicializado = 1;
     return 0;
 }
@@ -5564,11 +5608,86 @@ static void _raft_iniciar_eleccion(RaftNode* n, long long now_ns) {
     // (handled by the test harness calling raft_procesar_solicitud_voto)
 }
 
+// --- Ed25519 signing for Raft RPC messages ---
+// Signs a Raft message with the node's Ed25519 private key.
+// msg: the raw message bytes (e.g., "RVOTE:<term>:<id>:<log_idx>:<log_term>")
+// firma_out: output buffer for 64-byte hex signature (128 chars + null)
+// Returns: 0 on success, -1 on error
+int raft_firmar_mensaje(int node_id, const char* msg, int msg_len,
+                         char* firma_out) {
+    RaftNode* n = _raft_get(node_id);
+    if (!n || !msg || !firma_out || msg_len <= 0) return -1;
+
+    // Decode private key from hex
+    unsigned char sk[64];
+    for (int i = 0; i < 64; i++) {
+        unsigned int byte;
+        sscanf(n->clave_privada_hex + i * 2, "%02x", &byte);
+        sk[i] = (unsigned char)byte;
+    }
+
+    // Sign: crypto_sign returns signature || message
+    unsigned long long smlen = 0;
+    unsigned char* sm = (unsigned char*)malloc((size_t)(msg_len + 64));
+    if (!sm) return -1;
+    crypto_sign(sm, &smlen, (const unsigned char*)msg,
+                (unsigned long long)msg_len, sk);
+
+    // Extract first 64 bytes (signature) and encode to hex
+    for (int i = 0; i < 64; i++) {
+        snprintf(firma_out + i * 2, 3, "%02x", sm[i]);
+    }
+    firma_out[128] = '\0';
+    free(sm);
+    return 0;
+}
+
+// Verifies an Ed25519 signature on a Raft message.
+// msg: the raw message bytes
+// firma_hex: 128-char hex signature
+// pk_hex: 64-char hex public key
+// Returns: 0 if valid, -1 if invalid
+int raft_verificar_firma_rpc(const char* msg, int msg_len,
+                              const char* firma_hex, const char* pk_hex) {
+    if (!msg || !firma_hex || !pk_hex || msg_len <= 0) return -1;
+    if (strlen(firma_hex) < 128 || strlen(pk_hex) < 64) return -1;
+
+    // Decode signature and public key
+    unsigned char sig[64], pk[32];
+    for (int i = 0; i < 64; i++) {
+        unsigned int byte;
+        sscanf(firma_hex + i * 2, "%02x", &byte);
+        sig[i] = (unsigned char)byte;
+    }
+    for (int i = 0; i < 32; i++) {
+        unsigned int byte;
+        sscanf(pk_hex + i * 2, "%02x", &byte);
+        pk[i] = (unsigned char)byte;
+    }
+
+    // Build signed message: signature || original message
+    unsigned long long smlen = (unsigned long long)(msg_len + 64);
+    unsigned char* sm = (unsigned char*)malloc(smlen);
+    if (!sm) return -1;
+    memcpy(sm, sig, 64);
+    memcpy(sm + 64, msg, (size_t)msg_len);
+
+    // Verify
+    unsigned char* mout = (unsigned char*)malloc(smlen);
+    if (!mout) { free(sm); return -1; }
+    unsigned long long mlen = 0;
+    int rc = crypto_sign_open(mout, &mlen, sm, smlen, pk);
+    free(sm);
+    free(mout);
+    return rc;  // 0 = valid, -1 = invalid
+}
+
 // --- Process a RequestVote message ---
 // msg format: "RVOTE:<term>:<candidate_id>:<last_log_idx>:<last_log_term>"
 // Returns: 1=voted, 0=denied, -1=error
 int raft_procesar_solicitud_voto(int voter_id, int candidate_term,
-                                  int candidate_id, int candidate_last_log) {
+                                  int candidate_id, int candidate_last_log,
+                                  int candidate_last_log_term) {
     RaftNode* n = _raft_get(voter_id);
     if (!n) return -1;
 
@@ -5586,7 +5705,14 @@ int raft_procesar_solicitud_voto(int voter_id, int candidate_term,
     // If already voted in this term, deny
     if (n->voted_for != -1 && n->voted_for != candidate_id) return 0;
 
-    // Grant vote (simplified: skip log comparison for now)
+    // Raft safety: Log Comparison
+    // A candidate must have a log at least as up-to-date as the voter's log.
+    // Compare last_log_term first; if equal, compare last_log_index.
+    if (candidate_last_log_term < n->last_log_term) return 0;
+    if (candidate_last_log_term == n->last_log_term &&
+        candidate_last_log < n->last_log_index) return 0;
+
+    // Grant vote
     n->voted_for = candidate_id;
     long long now = _raft_now_ns();
     int timeout = _raft_rand_range(n, RAFT_ELECTION_MIN_MS, RAFT_ELECTION_MAX_MS);
@@ -5704,6 +5830,8 @@ int raft_agregar_entrada(int node_id) {
     RaftNode* n = _raft_get(node_id);
     if (!n || n->state != RAFT_LEADER) return -1;
     n->log_count++;
+    n->last_log_index = n->log_count;
+    n->last_log_term = n->current_term;
     return n->log_count;
 }
 
@@ -5734,8 +5862,8 @@ CadenaSegura raft_info(int node_id) {
 // M8.4 — Checkpoint/Restore (Migración de Tareas Live)
 // =========================================================================
 // Serialización de estado de tareas para migración en caliente entre nodos.
-// Formato checkpoint: CKPT:<task_id>:<seq>:<checksum_hex>:<data_len>:<data>
-// Checksum: XOR rolling hash (detección de corrupción de transporte)
+// Formato checkpoint: CKPT:<task_id>:<seq>:<sha256_hex>:<data_len>:<data>
+// Checksum: SHA-256 (64-char hex) for cryptographic integrity verification
 // =========================================================================
 
 static int _cm_seq = 0;
@@ -5745,14 +5873,32 @@ static char _cm_ultimo_resultado[256];
 
 static pthread_mutex_t _cm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// --- Compute XOR rolling checksum ---
+// --- Compute SHA-256 checksum for checkpoint integrity ---
+// Uses the SHA-256 implementation already present in this file.
+// Returns first 4 bytes of SHA-256 digest as a 32-bit truncated hash.
 static unsigned int _cm_checksum(const char* data, int len) {
-    unsigned int h = 0x811C9DC5u;
-    for (int i = 0; i < len; i++) {
-        h ^= (unsigned char)data[i];
-        h *= 0x01000193u;
+    SHA256_CTX ctx;
+    uint8_t digest[32];
+    sha256_init(&ctx);
+    sha256_update(&ctx, (const uint8_t*)data, (size_t)len);
+    sha256_final(&ctx, digest);
+    // Truncate to 32 bits for checkpoint format compatibility
+    return ((unsigned int)digest[0] << 24) | ((unsigned int)digest[1] << 16) |
+           ((unsigned int)digest[2] << 8)  | ((unsigned int)digest[3]);
+}
+
+// --- Compute full SHA-256 hex hash for checkpoint integrity ---
+// Returns 64-char hex string (caller must free if pool_alloc'd).
+static void _cm_sha256_hex(const char* data, int len, char* hex_out) {
+    SHA256_CTX ctx;
+    uint8_t digest[32];
+    sha256_init(&ctx);
+    sha256_update(&ctx, (const uint8_t*)data, (size_t)len);
+    sha256_final(&ctx, digest);
+    for (int i = 0; i < 32; i++) {
+        snprintf(hex_out + i * 2, 3, "%02x", digest[i]);
     }
-    return h;
+    hex_out[64] = '\0';
 }
 
 // --- Initialize checkpoint subsystem ---
@@ -5767,7 +5913,7 @@ int cm_inicializar(void) {
 }
 
 // --- Serialize a task into a CKPT checkpoint string ---
-// Returns: "CKPT:<id>:<seq>:<checksum_hex>:<data_len>:<data>"
+// Returns: "CKPT:<id>:<seq>:<sha256_hex>:<data_len>:<data>"
 CadenaSegura cm_serializar_checkpoint(int task_id, CadenaSegura datos) {
     if (datos.longitud <= 0 || !datos.datos)
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
@@ -5776,11 +5922,13 @@ CadenaSegura cm_serializar_checkpoint(int task_id, CadenaSegura datos) {
     int seq = _cm_seq++;
     pthread_mutex_unlock(&_cm_mutex);
 
-    unsigned int cksum = _cm_checksum(datos.datos, datos.longitud);
+    // Full SHA-256 hash for cryptographic integrity
+    char sha256_hex[65];
+    _cm_sha256_hex(datos.datos, datos.longitud, sha256_hex);
 
-    char header[64];
-    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%08X:%d:",
-                           task_id, seq, cksum, datos.longitud);
+    char header[128];
+    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%s:%d:",
+                           task_id, seq, sha256_hex, datos.longitud);
 
     int total_len = hdr_len + datos.longitud;
     char* buf = (char*)pool_alloc((size_t)(total_len + 1));
@@ -5794,7 +5942,7 @@ CadenaSegura cm_serializar_checkpoint(int task_id, CadenaSegura datos) {
 }
 
 // --- Deserialize a CKPT checkpoint string ---
-// Parses "CKPT:<id>:<seq>:<cksum>:<len>:<data>"
+// Parses "CKPT:<id>:<seq>:<sha256_hex>:<len>:<data>"
 // Returns: { task_id via out pointer, datos as CadenaSegura }
 // On error returns CadenaSegura with longitud=0 and datos=NULL
 CadenaSegura cm_deserializar_checkpoint(CadenaSegura checkpoint_str,
@@ -5819,13 +5967,12 @@ CadenaSegura cm_deserializar_checkpoint(CadenaSegura checkpoint_str,
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
     p = endp + 1;
 
-    // Parse checksum hex
-    char cksum_str[9];
-    if (end - p < 8) return (CadenaSegura){ .longitud = 0, .datos = NULL };
-    memcpy(cksum_str, p, 8);
-    cksum_str[8] = '\0';
-    unsigned int stored_cksum = (unsigned int)strtoul(cksum_str, NULL, 16);
-    p += 8;
+    // Parse SHA-256 hex checksum (64 chars)
+    char cksum_str[65];
+    if (end - p < 64) return (CadenaSegura){ .longitud = 0, .datos = NULL };
+    memcpy(cksum_str, p, 64);
+    cksum_str[64] = '\0';
+    p += 64;
 
     if (*p != ':') return (CadenaSegura){ .longitud = 0, .datos = NULL };
     p++;
@@ -5841,9 +5988,10 @@ CadenaSegura cm_deserializar_checkpoint(CadenaSegura checkpoint_str,
     if (remaining != (int)data_len)
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
-    // Verify checksum
-    unsigned int computed = _cm_checksum(p, (int)data_len);
-    if (computed != stored_cksum)
+    // Verify SHA-256 checksum
+    char computed_hex[65];
+    _cm_sha256_hex(p, (int)data_len, computed_hex);
+    if (memcmp(computed_hex, cksum_str, 64) != 0)
         return (CadenaSegura){ .longitud = 0, .datos = NULL };
 
     // Copy data into pool-allocated buffer
@@ -5930,13 +6078,14 @@ CadenaSegura cm_migrar_tarea(CadenaSegura datos_debug) {
     CadenaSegura payload = { .longitud = data_len,
                              .datos = tarea.datos + data_offset };
 
-    // Create checkpoint
+    // Create checkpoint with SHA-256 integrity
     int seq = _cm_seq++;
-    unsigned int cksum = _cm_checksum(payload.datos, payload.longitud);
+    char sha256_hex[65];
+    _cm_sha256_hex(payload.datos, payload.longitud, sha256_hex);
 
-    char header[64];
-    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%08X:%d:",
-                           task_id, seq, cksum, payload.longitud);
+    char header[128];
+    int hdr_len = snprintf(header, sizeof(header), "CKPT:%d:%d:%s:%d:",
+                           task_id, seq, sha256_hex, payload.longitud);
 
     int ckpt_total = hdr_len + payload.longitud;
     char* ckpt_buf = (char*)pool_alloc((size_t)(ckpt_total + 1));

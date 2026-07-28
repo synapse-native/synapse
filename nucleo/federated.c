@@ -20,6 +20,12 @@
 #include <math.h>
 #include <time.h>
 
+// Extern declarations for real Ed25519 functions from synapse_rt.c
+extern int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex,
+                                    CadenaSegura clave_publica_hex);
+extern CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje,
+                                            CadenaSegura clave_privada_hex);
+
 // ============================================================
 // Helpers internos
 // ============================================================
@@ -28,28 +34,47 @@ static float frand(float min, float max) {
     return min + (max - min) * ((float)rand() / (float)RAND_MAX);
 }
 
-// Genera una firma Ed25519 simulada para un payload de gradientes
-// En producción, esto llamaría a cluster_firmar_mensaje(synapse_rt.c)
-static void _generar_firma_simulada(const float* grad, int n,
-                                     const char* sk_hex, char* firma_out) {
-    (void)grad; (void)n; (void)sk_hex;
-    // Firma simulada: 128 caracteres hex basados en hash simple
-    unsigned long h = 0xDEADBEEF;
-    h ^= (unsigned long)(uintptr_t)grad;
-    h ^= (unsigned long)n;
-    snprintf(firma_out, FED_HEX_SIG_LEN,
-             "%016lx%016lx%016lx%016lx%016lx%016lx%016lx%016lx",
-             h, h ^ 1, h ^ 2, h ^ 3, h ^ 4, h ^ 5, h ^ 6, h ^ 7);
+// Genera una firma Ed25519 real para un payload de gradientes
+// Utiliza cluster_firmar_mensaje() de synapse_rt.c (TweetNaCl backend)
+static void _generar_firma_real(const float* grad, int n,
+                                 const char* sk_hex, char* firma_out) {
+    if (!grad || n <= 0 || !sk_hex || !firma_out) {
+        firma_out[0] = '\0';
+        return;
+    }
+    // Build message: raw gradient bytes
+    CadenaSegura msg = { .longitud = n * (int)sizeof(float),
+                         .datos = (const char*)grad };
+    CadenaSegura sk = { .longitud = (int)strlen(sk_hex),
+                         .datos = sk_hex };
+    CadenaSegura firma = cluster_firmar_mensaje(msg, sk);
+    if (firma.datos && firma.longitud > 0) {
+        int copy_len = firma.longitud < FED_HEX_SIG_LEN - 1
+                       ? firma.longitud : FED_HEX_SIG_LEN - 1;
+        memcpy(firma_out, firma.datos, (size_t)copy_len);
+        firma_out[copy_len] = '\0';
+        free((void*)firma.datos);
+    } else {
+        firma_out[0] = '\0';
+    }
 }
 
-// Verifica firma simulada (en producción llamaría a cluster_verificar_firma)
-static int _verificar_firma_simulada(const float* grad, int n,
-                                      const char* firma_hex,
-                                      const char* pubkey_hex) {
-    (void)grad; (void)n; (void)firma_hex; (void)pubkey_hex;
-    // Simulación: siempre retorna 0 (válida)
-    // En producción: llamar a cluster_verificar_firma()
-    return 0;
+// Verifica firma Ed25519 real usando cluster_verificar_firma() de synapse_rt.c
+// Retorna 0 si la firma es válida, -1 si es inválida
+static int _verificar_firma_real(const float* grad, int n,
+                                  const char* firma_hex,
+                                  const char* pubkey_hex) {
+    if (!grad || n <= 0 || !firma_hex || !pubkey_hex) return -1;
+    if (strlen(firma_hex) < 128 || strlen(pubkey_hex) < 64) return -1;
+
+    // Build message: raw gradient bytes
+    CadenaSegura msg = { .longitud = n * (int)sizeof(float),
+                         .datos = (const char*)grad };
+    CadenaSegura firma = { .longitud = (int)strlen(firma_hex),
+                            .datos = firma_hex };
+    CadenaSegura pk = { .longitud = (int)strlen(pubkey_hex),
+                         .datos = pubkey_hex };
+    return cluster_verificar_firma(msg, firma, pk);
 }
 
 // Busca un worker por ID
@@ -303,10 +328,10 @@ float fed_ronda_fedavg(FEDSession* sesion) {
         }
         perdida_local = sqrtf(perdida_local / (float)n);
 
-        // Firmar gradientes si está habilitado
+        // Firmar gradientes con Ed25519 real si está habilitado
         if (sesion->config.use_ed25519) {
             char firma[FED_HEX_SIG_LEN];
-            _generar_firma_simulada(grad, n, sesion->clave_privada_hex, firma);
+            _generar_firma_real(grad, n, sesion->clave_privada_hex, firma);
         }
 
         // Almacenar gradiente directamente en el worker (sin alocación duplicada)
@@ -384,10 +409,9 @@ int fed_verificar_firma_gradiente(const float* gradientes, int num_grad,
     if (!gradientes || !firma_hex || !pubkey_hex || !worker_id) return -1;
     if (num_grad <= 0) return -1;
 
-    // En producción: llamar a cluster_verificar_firma() de synapse_rt.c
-    // Aquí: verificación simulada
-    return _verificar_firma_simulada(gradientes, num_grad,
-                                      firma_hex, pubkey_hex);
+    // Verificación Ed25519 real via cluster_verificar_firma() (TweetNaCl)
+    return _verificar_firma_real(gradientes, num_grad,
+                                  firma_hex, pubkey_hex);
 }
 
 int fed_manejar_timeouts(FEDSession* sesion, int64_t tiempo_actual_ms) {

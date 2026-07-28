@@ -589,7 +589,7 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
         si tipo == NODO_ESTRUCTURA:
             nombre = ""
             inseguro:
-                asm("// Obtener nombre de estructura del nodo")
+                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
             registrar_estructura(est, nombre, stmt)
         inseguro:
             asm("stmt = est.nodos[stmt].hermano")
@@ -605,15 +605,17 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
             romper
         tipo = nodo_tipo(est, stmt)
         si tipo == NODO_FUNCION:
+            nombre = ""
             inseguro:
-                asm("// Obtener nombre de funcion del nodo")
+                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
             si es_builtin(nombre) == falso:
                 ok = tabla_declarar(est, nombre, "int", stmt, falso)
                 si ok == falso:
                     sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
         si tipo == NODO_EXTERNO:
+            nombre = ""
             inseguro:
-                asm("// Obtener nombre externo del nodo")
+                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
             ok = tabla_declarar(est, nombre, "int", stmt, falso)
             si ok == falso:
                 sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
@@ -632,7 +634,7 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
         si tipo == NODO_FUNCION:
             nombre = ""
             inseguro:
-                asm("// Obtener nombre de funcion y analizar cuerpo")
+                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
