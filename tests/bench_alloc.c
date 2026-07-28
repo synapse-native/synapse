@@ -4,15 +4,16 @@
  *
  * Especificacion Tecnica Definitiva Fase 19 — Aprobada 2026-07-28
  *
- * Diseno del histograma:
- *   - Cada hilo escribe en su propio array local (ThreadData.hist[])
- *   - Cero atomics, cero locks en el hot path de medicion
- *   - Merge seguro post-join en el hilo principal
+ * Diseno del histograma (TLS, cero contención):
+ *   - Declaracion __thread para cada variable de histograma
+ *   - Cada hilo escribe en su propia copia TLS (ningun lock, ningun atomic)
+ *   - bench_thread() guarda snapshot de punteros TLS en ThreadData.tls
+ *   - merge_histograms() lee via los punteros guardados (post-join, seguro)
  *
- * Compilacion (Clang + ASan):
- *   clang -O2 -std=c99 -Wall -fsanitize=address -g
+ * Compilacion (Linux, con sanitizadores):
+ *   gcc -O2 -std=c11 -Wall -fsanitize=address,thread -g
  *       tests/bench_alloc.c synapse_rt_memory.o -o tests/bench_alloc.exe
- *       -lm -lpthread -lws2_32 -lpsapi
+ *       -lm -lpthread
  *
  * Uso: tests/bench_alloc.exe [opciones]
  *   --threads N       Hilos (defecto: 1)
@@ -29,21 +30,9 @@
 #include <stdint.h>
 #include <math.h>
 #include <inttypes.h>
-
-#ifdef _WIN32
-  #include <winsock2.h>
-  #include <windows.h>
-  #include <psapi.h>
-  #ifdef _MSC_VER
-    #pragma comment(lib, "psapi")
-  #endif
-#else
-  #include <time.h>
-  #include <unistd.h>
-  #include <sched.h>
-  #include <sys/resource.h>
-  #include <sys/time.h>
-#endif
+#include <time.h>
+#include <unistd.h>
+#include <sched.h>
 
 #include <pthread.h>
 
@@ -72,47 +61,32 @@ static const char* SLAB_NAMES[SLAB_CLASSES] = {"32B", "64B", "128B", "256B"};
 
 /* ============================================================
  * Histograma global — se pobla via merge post-join desde los
- * arrays locales de cada hilo. Cero atomics en la medicion.
+ * arrays TLS de cada hilo. Cero atomics en la medicion.
  * ============================================================ */
 static uint64_t g_histogram[SLAB_CLASSES][HISTOGRAM_BUCKETS];
 static uint64_t g_total_ops[SLAB_CLASSES];
 static uint64_t g_overflow[SLAB_CLASSES];
 
 /* ============================================================
- * Temporizador de alta precision — portatil
+ * Thread-Local Storage — CADA HILO TIENE SU PROPIA COPIA
  * ============================================================ */
-#ifdef _WIN32
-static LARGE_INTEGER g_qpc_freq;
-static double g_ns_per_tick;
-static void timer_init(void) {
-    QueryPerformanceFrequency(&g_qpc_freq);
-    g_ns_per_tick = 1e9 / (double)g_qpc_freq.QuadPart;
-}
-static uint64_t timer_now_ns(void) {
-    LARGE_INTEGER pc;
-    QueryPerformanceCounter(&pc);
-    return (uint64_t)((double)pc.QuadPart * g_ns_per_tick);
-}
-#else
-static void timer_init(void) { }
+static __thread uint64_t tls_hist[SLAB_CLASSES][HISTOGRAM_BUCKETS] = {{0}};
+static __thread uint64_t tls_total_ops[SLAB_CLASSES] = {0};
+static __thread uint64_t tls_overflow[SLAB_CLASSES] = {0};
+
+/* ============================================================
+ * Temporizador de alta precision — POSIX clock_gettime
+ * ============================================================ */
 static uint64_t timer_now_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 }
-#endif
 
 /* ============================================================
- * Medicion de RSS (huella de memoria residente)
+ * Medicion de RSS (Linux: /proc/self/status VmRSS)
  * ============================================================ */
 static size_t get_rss_bytes(void) {
-#ifdef _WIN32
-    PROCESS_MEMORY_COUNTERS pmc;
-    pmc.cb = sizeof(pmc);
-    if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
-        return (size_t)pmc.WorkingSetSize;
-    return 0;
-#else
     long rss = 0;
     FILE* f = fopen("/proc/self/status", "r");
     if (!f) return 0;
@@ -125,11 +99,10 @@ static size_t get_rss_bytes(void) {
     }
     fclose(f);
     return 0;
-#endif
 }
 
 /* ============================================================
- * Datos por hilo — CADA HILO TIENE SU PROPIO HISTOGRAMA LOCAL
+ * Datos por hilo — almacena SNAPSHOT de punteros TLS para merge
  * ============================================================ */
 typedef struct {
     int          thread_id;
@@ -140,23 +113,29 @@ typedef struct {
     uint64_t     thread_ns_total;
     uint64_t     thread_ns_min;
     uint64_t     thread_ns_max;
-    /* Histograma LOCAL — escrito solo por este hilo */
-    uint64_t     hist[SLAB_CLASSES][HISTOGRAM_BUCKETS];
-    uint64_t     hist_total_ops[SLAB_CLASSES];
-    uint64_t     hist_overflow[SLAB_CLASSES];
+    /* Snapshot de punteros TLS para merge post-join */
+    uint64_t     (*tls_hist_snapshot)[HISTOGRAM_BUCKETS];
+    uint64_t*    tls_total_ops_snapshot;
+    uint64_t*    tls_overflow_snapshot;
 } ThreadData;
 
 /* ============================================================
  * Benchmark thread function
- * Escribe SOLO en su propio ThreadData. Sin locks, sin atomics.
+ * Escribe SOLO en TLS. Sin locks, sin atomics, sin contención.
  * ============================================================ */
 static void* bench_thread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
 
-    /* Inicializar histograma local */
-    memset(td->hist, 0, sizeof(td->hist));
-    memset(td->hist_total_ops, 0, sizeof(td->hist_total_ops));
-    memset(td->hist_overflow, 0, sizeof(td->hist_overflow));
+    /* Guardar snapshot de punteros TLS para que el main thread
+     * pueda leerlos tras el join */
+    td->tls_hist_snapshot = tls_hist;
+    td->tls_total_ops_snapshot = tls_total_ops;
+    td->tls_overflow_snapshot = tls_overflow;
+
+    /* Inicializar TLS */
+    memset(tls_hist, 0, sizeof(tls_hist));
+    memset(tls_total_ops, 0, sizeof(tls_total_ops));
+    memset(tls_overflow, 0, sizeof(tls_overflow));
 
     /* Calentamiento (descartado) */
     for (uint32_t i = 0; i < td->warmup_ops; i++) {
@@ -197,14 +176,14 @@ static void* bench_thread(void* arg) {
             }
         }
 
-        /* Escribir en histograma LOCAL — sin sincronizacion */
+        /* Escribir en TLS — sin sincronizacion (cada hilo tiene su copia) */
         if (si >= 0 && si < SLAB_CLASSES) {
             uint64_t bucket = elapsed / NS_PER_BUCKET;
             if (bucket < HISTOGRAM_BUCKETS)
-                td->hist[si][bucket]++;
+                tls_hist[si][bucket]++;          /* ← TLS, sin lock */
             else
-                td->hist_overflow[si]++;
-            td->hist_total_ops[si]++;
+                tls_overflow[si]++;               /* ← TLS, sin lock */
+            tls_total_ops[si]++;                  /* ← TLS, sin lock */
         }
     }
 
@@ -212,15 +191,18 @@ static void* bench_thread(void* arg) {
 }
 
 /* ============================================================
- * Merge de histogramas locales -> global (post-join, seguro)
+ * Merge de histogramas TLS -> global (post-join, seguro)
  * ============================================================ */
 static void merge_histograms(ThreadData* tds, int nthreads) {
     for (int t = 0; t < nthreads; t++) {
+        uint64_t (*th)[HISTOGRAM_BUCKETS] = tds[t].tls_hist_snapshot;
+        uint64_t* tto = tds[t].tls_total_ops_snapshot;
+        uint64_t* tov = tds[t].tls_overflow_snapshot;
         for (int si = 0; si < SLAB_CLASSES; si++) {
-            g_total_ops[si] += tds[t].hist_total_ops[si];
-            g_overflow[si]  += tds[t].hist_overflow[si];
+            g_total_ops[si] += tto[si];
+            g_overflow[si]  += tov[si];
             for (uint32_t b = 0; b < HISTOGRAM_BUCKETS; b++)
-                g_histogram[si][b] += tds[t].hist[si][b];
+                g_histogram[si][b] += th[si][b];
         }
     }
 }
@@ -359,7 +341,7 @@ static void print_report(int csv, int nthr, uint32_t wu, uint32_t meas,
  * Main
  * ============================================================ */
 int main(int argc, char** argv) {
-    int nthreads = 1;
+    int nthreads = 4;
     uint32_t warmup = 2000;
     uint32_t measure = 100000;
     int slab_idx = -1; /* all */
@@ -404,7 +386,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    timer_init();
+    /* Inicializar pool */
     pool_init(POOL_BLOCKS, POOL_BLOCK_SIZE);
     size_t rss_before = get_rss_bytes();
 
@@ -424,7 +406,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    /* Lanzar hilos — cada uno con su propio ThreadData */
+    /* Lanzar hilos — cada uno con su propio TLS */
     for (int t = 0; t < nthreads; t++) {
         tds[t].thread_id = t;
         tds[t].slab_idx = slab_idx;
@@ -441,11 +423,11 @@ int main(int argc, char** argv) {
         }
     }
 
-    /* Join — los hilos ya terminaron, es seguro leer sus datos */
+    /* Join — los hilos ya terminaron, es seguro leer su TLS via snapshots */
     for (int t = 0; t < nthreads; t++)
         pthread_join(threads[t], NULL);
 
-    /* Merge post-join: sumar histogramas locales al global */
+    /* Merge post-join: sumar histogramas TLS al global */
     merge_histograms(tds, nthreads);
 
     size_t rss_after = get_rss_bytes();

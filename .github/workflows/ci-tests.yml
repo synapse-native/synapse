@@ -257,3 +257,49 @@ jobs:
         if: always()
         run: |
           echo "## ✅ Bootstrap verification completado" >> $GITHUB_STEP_SUMMARY
+
+  benchmark:
+    needs: bootstrap
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar runtime objects con ASan+TSan
+        run: |
+          gcc --version
+          gcc -c -O2 -std=c11 -Wall -fsanitize=address,thread -g \
+            synapse_rt_memory.c -o synapse_rt_memory_asan.o -lpthread -lm
+          echo "=== runtime objects OK ==="
+
+      - name: Compilar benchmark con ASan+TSan
+        run: |
+          gcc -O2 -std=c11 -Wall -fsanitize=address,thread -g \
+            tests/bench_alloc.c synapse_rt_memory_asan.o \
+            -o tests/bench_alloc_asan.exe -lm -lpthread
+          echo "=== benchmark binary OK ==="
+
+      - name: Ejecutar benchmark (4 hilos, 10000 medidas)
+        run: |
+          echo "=== BENCHMARK ALLOC (ASan+TSan) ==="
+          tests/bench_alloc_asan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark.log
+          RC="${PIPESTATUS[0]}"
+          echo "RC=$RC"
+          if [ "$RC" -ne 0 ]; then
+            echo "❌ Benchmark fallo con codigo $RC — posible fuga o data race"
+            exit $RC
+          fi
+          echo "✅ Benchmark completado: 0 fugas, 0 data races"
+
+      - name: Notificar benchmark
+        if: always()
+        run: |
+          echo "## ✅ Benchmark M19.1 completado" >> $GITHUB_STEP_SUMMARY
