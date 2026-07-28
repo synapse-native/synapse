@@ -27,192 +27,8 @@
 #endif
 
 
-#ifdef SYNAPSE_DEBUG_MEM
-#define MAX_WATCHDOG_ENTRIES 100000
+#include "synapse_rt_memory.h"
 
-typedef struct {
-    void* ptr;
-    size_t size;
-    const char* file;
-    int line;
-} WatchdogEntry;
-
-static WatchdogEntry watchdog_entries[MAX_WATCHDOG_ENTRIES];
-static int watchdog_count = 0;
-static pthread_mutex_t watchdog_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void* watchdog_malloc(size_t size, const char* file, int line) {
-    void* ptr = malloc(size);
-    if (!ptr) return NULL;
-    pthread_mutex_lock(&watchdog_mutex);
-    if (watchdog_count < MAX_WATCHDOG_ENTRIES) {
-        watchdog_entries[watchdog_count].ptr = ptr;
-        watchdog_entries[watchdog_count].size = size;
-        watchdog_entries[watchdog_count].file = file;
-        watchdog_entries[watchdog_count].line = line;
-        watchdog_count++;
-    }
-    pthread_mutex_unlock(&watchdog_mutex);
-    return ptr;
-}
-
-void* watchdog_calloc(size_t n, size_t size, const char* file, int line) {
-    void* ptr = calloc(n, size);
-    if (!ptr) return NULL;
-    pthread_mutex_lock(&watchdog_mutex);
-    if (watchdog_count < MAX_WATCHDOG_ENTRIES) {
-        watchdog_entries[watchdog_count].ptr = ptr;
-        watchdog_entries[watchdog_count].size = n * size;
-        watchdog_entries[watchdog_count].file = file;
-        watchdog_entries[watchdog_count].line = line;
-        watchdog_count++;
-    }
-    pthread_mutex_unlock(&watchdog_mutex);
-    return ptr;
-}
-
-void watchdog_free(void* ptr, const char* file, int line) {
-    if (!ptr) return;
-    pthread_mutex_lock(&watchdog_mutex);
-    for (int i = 0; i < watchdog_count; i++) {
-        if (watchdog_entries[i].ptr == ptr) {
-            watchdog_entries[i] = watchdog_entries[watchdog_count - 1];
-            watchdog_count--;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&watchdog_mutex);
-    free(ptr);
-}
-
-void watchdog_report() {
-    pthread_mutex_lock(&watchdog_mutex);
-    if (watchdog_count == 0) {
-        fprintf(stderr, "0 bytes perdidos\n");
-    } else {
-        size_t total = 0;
-        for (int i = 0; i < watchdog_count; i++) {
-            fprintf(stderr, "Fuga detectada: %zu bytes en %s:%d\n", watchdog_entries[i].size, watchdog_entries[i].file, watchdog_entries[i].line);
-            total += watchdog_entries[i].size;
-        }
-        fprintf(stderr, "%zu bytes perdidos en total\n", total);
-    }
-    pthread_mutex_unlock(&watchdog_mutex);
-}
-
-#define malloc(size) watchdog_malloc(size, __FILE__, __LINE__)
-#define calloc(n, size) watchdog_calloc(n, size, __FILE__, __LINE__)
-#define free(ptr) watchdog_free(ptr, __FILE__, __LINE__)
-
-#else
-#define watchdog_report()
-#endif
-
-
-
-// --- Type definitions (deben coincidir exactamente con las emitidas por el generador) ---
-typedef struct { int longitud; const char* datos; } CadenaSegura;
-typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
-typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
-
-// --- Resultado<T, E> (Tagged Union para manejo de errores de canal) ---
-typedef struct {
-    int es_ok; // 1 = ok, 0 = error
-    union {
-        void* ok_valor;
-        const char* err_mensaje;
-    } datos;
-} Resultado_T;
-
-// --- CanalConcurrencia (Buffer circular thread-safe para canales) ---
-typedef struct {
-    void** buffer;
-    uint32_t capacidad;
-    uint32_t cabeza;  // índice de escritura
-    uint32_t cola;    // índice de lectura
-    uint32_t contador; // número de elementos en el buffer
-    pthread_mutex_t mutex;
-    pthread_cond_t no_vacio;  // señal para receptores
-    pthread_cond_t no_lleno;  // señal para emisores
-} CanalConcurrencia;
-
-// --- Memory pool ---
-#define POOL_BLOQUES 64
-#define TAMANO_BLOQUE 4096
-
-typedef struct {
-    uint8_t* pool_base;
-    uint32_t* bitmap;
-    uint32_t total_blocks;
-    uint32_t block_size;
-} MemoryPool;
-
-static MemoryPool _g_pool;
-static pthread_mutex_t _g_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void pool_init(uint32_t total_blocks, uint32_t block_size) {
-    pthread_mutex_lock(&_g_pool_mutex);
-    _g_pool.total_blocks = total_blocks;
-    _g_pool.block_size = block_size;
-    _g_pool.pool_base = (uint8_t*)malloc(total_blocks * block_size);
-    uint32_t _words = (total_blocks + 31) / 32;
-    _g_pool.bitmap = (uint32_t*)calloc(_words, sizeof(uint32_t));
-    if (!_g_pool.pool_base || !_g_pool.bitmap) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_init fallo\n");
-        pthread_mutex_unlock(&_g_pool_mutex);
-        exit(1);
-    }
-    pthread_mutex_unlock(&_g_pool_mutex);
-}
-
-void* pool_alloc() {
-    pthread_mutex_lock(&_g_pool_mutex);
-    uint32_t _words = (_g_pool.total_blocks + 31) / 32;
-    for (uint32_t _w = 0; _w < _words; _w++) {
-        if (_g_pool.bitmap[_w] != 0xFFFFFFFF) {
-            uint32_t _bits = ~_g_pool.bitmap[_w];
-            uint32_t _b = 0;
-            while (!(_bits & (1u << _b))) { _b++; }
-            uint32_t _index = _w * 32 + _b;
-            if (_index >= _g_pool.total_blocks) break;
-            _g_pool.bitmap[_w] |= (1u << _b);
-            pthread_mutex_unlock(&_g_pool_mutex);
-            return _g_pool.pool_base + _index * _g_pool.block_size;
-        }
-    }
-    pthread_mutex_unlock(&_g_pool_mutex);
-    return NULL;
-}
-
-void pool_free(void* ptr) {
-    pthread_mutex_lock(&_g_pool_mutex);
-    if (ptr >= (void*)_g_pool.pool_base
-        && ptr < (void*)(_g_pool.pool_base + _g_pool.total_blocks * _g_pool.block_size)) {
-        uint32_t _index = (uint32_t)((uint8_t*)ptr - _g_pool.pool_base) / _g_pool.block_size;
-        uint32_t _w = _index / 32;
-        uint32_t _b = _index % 32;
-        _g_pool.bitmap[_w] &= ~(1u << _b);
-    } else {
-        free(ptr);
-    }
-    pthread_mutex_unlock(&_g_pool_mutex);
-}
-
-static inline float* _pool_malloc(size_t tamano) {
-    if (tamano <= TAMANO_BLOQUE) {
-        float* _p = (float*)pool_alloc();
-        if (_p) return _p;
-        fprintf(stderr, "ADVERTENCIA: pool agotado, usando malloc\n");
-    }
-    float* _p = (float*)malloc(tamano);
-    if (!_p) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\n");
-        exit(1);
-    }
-    return _p;
-}
-
-// --- Thread-safe I/O ---
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void escribir(CadenaSegura contenido) {
@@ -977,10 +793,6 @@ static int hilos_activos = 0;
 static pthread_mutex_t hilo_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t hilo_cond = PTHREAD_COND_INITIALIZER;
 
-struct _HiloArgs {
-    void* (*fn)(void*);
-    void* arg;
-};
 
 static void* _synapse_hilo_wrapper(void* raw_args) {
     struct _HiloArgs* ha = (struct _HiloArgs*)raw_args;
@@ -1083,62 +895,15 @@ int _syn_cerrar_socket(int fd) {
 #endif
 }
 
-// --- Buffer helpers for std.net FFI (receive path) ---
-void* _syn_buffer_alloc(int tamano) {
-    return _pool_malloc((size_t)tamano);
-}
-
-void _syn_buffer_free(void* ptr) {
-    if (ptr) pool_free(ptr);
-}
-
-// Receive up to tamano bytes, return as CadenaSegura (heap-allocated datos).
-// On failure returns empty CadenaSegura (datos="") — caller checks via == "".
-// On success caller MUST call _syn_texto_liberar() when done.
-CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
-    char* buf = (char*)_pool_malloc((size_t)(tamano + 1));
-    int n = (int)recv(fd, buf, (size_t)tamano, 0);
-    if (n <= 0) {
-        pool_free(buf);
-        return (CadenaSegura){ .longitud = 0, .datos = "" };
-    }
-    buf[n] = '\0';
-    return (CadenaSegura){ .longitud = n, .datos = buf };
-}
-
-void _syn_texto_liberar(CadenaSegura s) {
-    if (s.datos) pool_free((void*)s.datos);
-}
-
 // ============================================================
 // std.json — JSON Parser (Deserializador Determinista)
 // ============================================================
 
-typedef struct ParJson ParJson;
-typedef struct NodoJson NodoJson;
 
-struct ParJson {
-    CadenaSegura clave;
-    NodoJson* valor;
-};
 
-struct NodoJson {
-    int tipo;                // -1=Error, 0=Nulo, 1=Booleano, 2=Numero, 3=Cadena, 4=Arreglo, 5=Objeto
-    int valor_bool;
-    float valor_num;
-    CadenaSegura valor_str;
-    NodoJson* arreglo_hijos;
-    ParJson* objeto_pares;
-    int longitud;
-};
 
 // --- Dynamic array helpers (internal) ---
 
-typedef struct {
-    NodoJson* items;
-    int count;
-    int cap;
-} NodoArr;
 
 static void nodo_arr_init(NodoArr* a) { a->items = NULL; a->count = 0; a->cap = 0; }
 
@@ -1160,11 +925,6 @@ static NodoJson* nodo_arr_detach(NodoArr* a) {
     return p;
 }
 
-typedef struct {
-    ParJson* items;
-    int count;
-    int cap;
-} ParArr;
 
 static void par_arr_init(ParArr* a) { a->items = NULL; a->count = 0; a->cap = 0; }
 
