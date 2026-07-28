@@ -218,9 +218,13 @@ void* pool_alloc(size_t size) {
                     return _p;
                 }
             }
-            /* Llenar cache local con un lote del slab */
+            /* Llenar cache local con (LOCAL_CACHE_BATCH-1) slots libres,
+             * dejando 1 slot disponible para el pool_free inmediato.
+             * Sin esto, la cache se llena (count=LOCAL_CACHE_BATCH) y
+             * el primer free fuerza flush+mutex: 0 hits en regimen estacionario.
+             */
             int cached = 0;
-            for (int b = 0; b <= LOCAL_CACHE_BATCH; b++) {
+            for (int b = 0; b < LOCAL_CACHE_BATCH; b++) {
                 void* blk = _slab_alloc_raw(i);
                 if (!blk) {
                     if (!_slab_alloc_block(i)) break;
