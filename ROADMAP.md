@@ -1,6 +1,6 @@
 # ROADMAP — Synapse/OpenSyn (Historial Completo v0 → Proyección v5.0)
 
-> **Estado Actual:** v2.2.3 — CERTIFICADO — 305 tests Python (0 failed, 0 skipped) | GCC 0 errores | Pipeline nativa | IA con HW detect | Axon + validación | LSP + VSIX | SIMD | PGO/LTO | Caché incremental | std.debug en pruebas
+> **Estado Actual:** v5.0 — CERTIFICADO — 305 tests Python (0 failed, 0 skipped) | GCC 0 errores | Pipeline nativa | IA con HW detect | Axon + validación | LSP + VSIX | SIMD | PGO/LTO | Caché incremental | std.debug en pruebas
 > **Próximo:** Fase 8 — Concurrencia Distribuida (red de nodos gRPC/QUIC, scheduler work-stealing, consenso Raft)
 > **Lema:** Estabilizar antes de expandir. Cero código nuevo hasta que el núcleo sea sólido.
 
@@ -10,7 +10,7 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Versión compilador | v2.2.3 |
+| Versión compilador | v5.0 |
 | Suite de pruebas | 305/305 (0 failed, 0 skipped) |
 | Estado workspace | Certificado — todas las dependencias satisfechas para Fase 8 |
 | Compilador anfitrión | Pipeline Python reentrante + bootstrap nativo |
@@ -572,4 +572,4 @@ Todas las fases listadas a continuación están certificadas con sus fechas de a
 
 ---
 
-*Roadmap vivo — actualizado 26 Julio 2026. v2.2.3 base certificada (305 tests, 0 failed, 0 skipped). Único archivo de control autorizado: ROADMAP.md. Archivos redundantes eliminados: ROADMAP_DE_EJECUCIÓN_DEFINITIVO.md (obsoleto), ROADMAP_GENERADOR.md → renombrado a LECCIONES_GENERADOR.md (preservado como documentación técnica).*
+*Roadmap vivo — actualizado 26 Julio 2026. v5.0 base certificada (305 tests, 0 failed, 0 skipped). Único archivo de control autorizado: ROADMAP.md. Archivos redundantes eliminados: ROADMAP_DE_EJECUCIÓN_DEFINITIVO.md (obsoleto), ROADMAP_GENERADOR.md → renombrado a LECCIONES_GENERADOR.md (preservado como documentación técnica).*

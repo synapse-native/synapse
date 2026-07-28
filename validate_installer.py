@@ -32,7 +32,7 @@ ISS_SOURCE_FILES = [
     "dist/include/*",
     "dist/axon.toml",
     "dist/synapse_rt.h",
-    "vscode-synapse/synapse-vscode-v2.2.2.vsix",
+    "vscode-synapse/synapse-vscode-v5.0.0.vsix",
     "synapse_rt.c",
     "tweetnacl.h",
     "tweetnacl.c",

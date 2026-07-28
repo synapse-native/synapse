@@ -18,7 +18,7 @@ def _print_cache_help():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Synapse Compiler v2.0 - Poliglota", add_help=False)
+    parser = argparse.ArgumentParser(description="Synapse Compiler v5.0 - Poliglota", add_help=False)
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
@@ -132,7 +132,7 @@ def main():
         sys.exit(0)
 
     if args.version:
-        print("Synapse Compiler v2.0.0")
+        print("Synapse Compiler v5.0.0")
         sys.exit(0)
 
     if args.detect_hardware:

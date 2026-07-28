@@ -1,7 +1,7 @@
-# Synapse: Manual del Lenguaje v2.2.2
+# Synapse: Manual del Lenguaje v5.0
 
 > **Documento:** `MANUAL_LENGUAJE.md`
-> **Versión:** 2.2.2 — RELEASE CANDIDATE
+> **Versión:** 5.0.0 — RELEASE CANDIDATE
 > **Última actualización:** 24 Julio 2026
 
 ---
@@ -355,9 +355,9 @@ Tipo            ::= "entero" | "decimal" | "booleano" | "texto" | "caracter"
 
 ---
 
-## 11. IA Local Nativa (llama.cpp) — v2.2.2
+## 11. IA Local Nativa (llama.cpp) — v5.0
 
-**Integración nativa sin dependencias externas:** Synapse v2.2.2 integra el motor de inferencia `llama.cpp` directamente en el servidor LSP nativo, eliminando la dependencia de Ollama y garantizando privacidad total (procesamiento 100% local).
+**Integración nativa sin dependencias externas:** Synapse v5.0 integra el motor de inferencia `llama.cpp` directamente en el servidor LSP nativo, eliminando la dependencia de Ollama y garantizando privacidad total (procesamiento 100% local).
 
 ### 11.1 Pipeline RAG Quirúrgico
 

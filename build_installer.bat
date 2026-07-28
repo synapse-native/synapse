@@ -1,7 +1,7 @@
 @echo off
 REM build_installer.bat — Automatización del Instalador Maestro (Fase 4.1)
 REM Invoca al compilador de Inno Setup: iscc instalador_synapse.iss
-REM Valida que el artefacto binario resultante se empaquete correctamente en dist/Synapse-2.2.2-Windows-x64.exe
+REM Valida que el artefacto binario resultante se empaquete correctamente en dist/Synapse-5.0.0-Windows-x64.exe
 
 setlocal enabledelayedexpansion
 
@@ -47,7 +47,7 @@ echo [OK] Compilacion Inno Setup exitosa (codigo %ISCC_EXIT%)
 echo.
 
 REM Validar artefacto de salida
-set OUTPUT_EXE=dist\Synapse-2.2.2-Windows-x64.exe
+set OUTPUT_EXE=dist\Synapse-5.0.0-Windows-x64.exe
 echo [VALIDACION] Verificando artefacto: %OUTPUT_EXE%
 
 if not exist "%OUTPUT_EXE%" (

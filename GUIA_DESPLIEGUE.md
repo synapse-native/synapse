@@ -1,14 +1,14 @@
-# Synapse v2.2.2 — Guía de Despliegue Nativo
+# Synapse v5.0 — Guía de Despliegue Nativo
 
 > **Documento:** `GUIA_DESPLIEGUE.md`
-> **Versión:** 2.2.2 — RELEASE CANDIDATE
+> **Versión:** 5.0.0 — RELEASE CANDIDATE
 > **Última actualización:** 24 Julio 2026
 
 ---
 
 ## 1. El Ejecutable Único
 
-Synapse v2.2.2 se distribuye como **un único binario autónomo** que integra:
+Synapse v5.0 se distribuye como **un único binario autónomo** que integra:
 
 | Componente | Función | Dependencias |
 |-----------|---------|-------------|
@@ -263,9 +263,9 @@ synapse programa.syn --dump-ast
 
 ---
 
-## 7.6 Integración LSP + IA Local Nativa (llama.cpp) — v2.2.2
+## 7.6 Integración LSP + IA Local Nativa (llama.cpp) — v5.0
 
-**Nuevo en v2.2.2:** El servidor LSP nativo integra ahora un motor de IA local totalmente autónomo
+**Nuevo en v5.0:** El servidor LSP nativo integra ahora un motor de IA local totalmente autónomo
 basado en **llama.cpp**, eliminando la dependencia de Ollama.
 
 ### 7.6.1 Componentes

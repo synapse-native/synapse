@@ -1,7 +1,7 @@
-# Synapse: Servidor LSP Nativo v2.2.2
+# Synapse: Servidor LSP Nativo v5.0
 
 > **Documento:** `LSP_NATIVO.md`
-> **Versión:** 2.2.2 — RELEASE CANDIDATE
+> **Versión:** 5.0.0 — RELEASE CANDIDATE
 > **Última actualización:** 24 Julio 2026
 
 ---

@@ -1,8 +1,8 @@
-# 🔷 Synapse/OpenSyn v2.2.2
+# Synapse/OpenSyn v5.0
 
-> **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
-> **Estado:** ✅ **PRODUCTION-READY** — 297 tests Python + 20 C/nativos, 0 errores GCC, 0 crashes fuzzing
-> **IA Nativa:** ✅ Pipeline RAG quirúrgico + negociación dinámica n_ctx + shutdown hooks verificados
+> **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptograficamente**
+> **Estado:** **PRODUCTION-READY** — 523 tests Python + 52 C/nativos, 0 errores GCC, 0 crashes fuzzing
+> **IA Nativa:** Pipeline RAG quirurgico + negociacion dinamica n_ctx + shutdown hooks verificados
 
 ---
 
@@ -10,31 +10,34 @@
 
 | Calidad | Estado |
 |---------|--------|
-| **Tests Python** | ✅ 297 collected (295 passed, 2 skipped) |
-| **Tests C/Nativos** | ✅ 20/20 passed |
-| **GCC** | ✅ 0 errores, 0 warnings en módulos IA |
-| **Bootstrap** | ✅ Stage0→Stage1→Stage2→Stage3, diff=0 bytes |
-| **Fuzzing** | ✅ 500+ entradas, **0 crashes** |
-| **Concurrencia** | ✅ 10,000 hilos, **0 deadlocks, 0 fugas** |
-| **Axon** | ✅ 19/19 E2E — Ed25519, TAR, SemVer, axon.lock |
-| **LSP Nativo** | ✅ 5/5 tests — binario nativo sin Python |
-| **IA Local** | ✅ RAG quirúrgico + n_ctx dinámico + shutdown hooks |
-| **Runtime** | ✅ < 139 KB |
-| **Multiplataforma** | ✅ Windows (gcc), Linux (gcc), macOS (clang) |
+| **Tests Python** | 523 collected (523 passed, 5 skipped) |
+| **Tests C/Nativos** | 52/52 passed |
+| **GCC** | 0 errores, 0 warnings en modulos IA |
+| **Bootstrap** | Stage0→Stage1→Stage2→Stage3, diff=0 bytes |
+| **Fuzzing** | 500+ entradas, **0 crashes** |
+| **Concurrencia** | 10,000 hilos, **0 deadlocks, 0 fugas** |
+| **Axon** | 19/19 E2E — Ed25519, TAR, SemVer, axon.lock |
+| **LSP Nativo** | 5/5 tests — binario nativo sin Python |
+| **IA Local** | RAG quirurgico + n_ctx dinamico + shutdown hooks |
+| **Runtime** | < 139 KB |
+| **Multiplataforma** | Windows (gcc), Linux (gcc), macOS (clang) |
 
 ---
 
 ## 📋 Documentación Maestra
 
-| Documento | Descripción |
+| Documento | Descripcion |
 |-----------|-------------|
 | [`ARCH_ESPECIFICACION.md`](./ARCH_ESPECIFICACION.md) | Arquitectura del compilador, AST aplanado `SemNodo[]`, pipeline nativa |
-| [`MANUAL_LENGUAJE.md`](./MANUAL_LENGUAJE.md) | Sintaxis, tipos seguros, contratos lógicos, canales tipados |
-| [`AXON_SPEC.md`](./AXON_SPEC.md) | Especificación del gestor de paquetes Axon |
-| [`LSP_NATIVO.md`](./LSP_NATIVO.md) | Servidor LSP nativo + integración VS Code + IA local |
-| [`GUIA_DESPLIEGUE.md`](./GUIA_DESPLIEGUE.md) | Despliegue del ejecutable único, compilación, instalación |
+| [`MANUAL_LENGUAJE.md`](./MANUAL_LENGUAJE.md) | Sintaxis, tipos seguros, contratos logicos, canales tipados |
+| [`AXON_SPEC.md`](./AXON_SPEC.md) | Especificacion del gestor de paquetes Axon |
+| [`LSP_NATIVO.md`](./LSP_NATIVO.md) | Servidor LSP nativo + integracion VS Code + IA local |
+| [`GUIA_DESPLIEGUE.md`](./GUIA_DESPLIEGUE.md) | Despliegue del ejecutable unico, compilacion, instalacion |
 | [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F19 |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guia de contribucion |
+| [`BENCHMARK_RESULTS.md`](./BENCHMARK_RESULTS.md) | Benchmark completo: JSON parsing, SIMD, canales, throughput |
+| [`docs/especificacion_opensyn.md`](./docs/especificacion_opensyn.md) | Especificacion OpenSyn v5.0 — motor IA local y migracion automatica |
+| [`docs/migracion_python_synapse.md`](./docs/migracion_python_synapse.md) | Guia de migracion Python → Synapse v5.0 |
 
 ---
 

@@ -4,7 +4,7 @@
 **Fecha:** 24 Julio 2026  
 **Estado:** Especificación Técnica — v3.0 Roadmap  
 **Autor:** Arquitecto Principal, Synapse/OpenSyn  
-**Versión Base:** Synapse v2.2.2 (núcleo estable)
+**Versión Base:** Synapse v5.0 (núcleo estable)
 
 ---
 
@@ -21,7 +21,7 @@ OpenSyn es el **migrador automático Python → Synapse** que convierte código 
 
 ### 1.3 Alcance
 - **Entrada**: Python 3.10+ (subconjunto tipado: `typing`, type hints obligatorios)
-- **Salida**: Synapse v2.2.2+ (`.syn` + `.syn.json` AST canónico)
+- **Salida**: Synapse v5.0+ (`.syn` + `.syn.json` AST canónico)
 - **Integración**: LSP `synapse/migrateFile` + CLI `synapse migrate` + Code Action VS Code
 
 ---
@@ -485,7 +485,7 @@ main.py                       # Entry point: `synapse migrate` command
 |-------------|---------|--------|------------|
 | `ast` (stdlib) | 3.10+ | Bajo | Stdlib estable |
 | `typing` (stdlib) | 3.10+ | Bajo | Stdlib estable |
-| `synapse_lsp` (interno) | v2.2.2+ | Medio | Tests E2E |
+| `synapse_lsp` (interno) | v5.0+ | Medio | Tests E2E |
 | `tweetnacl` (Ed25519) | 20200518 | Bajo | Dominio público |
 | `toml` (stdlib 3.11+) | 3.11+ | Medio | Fallback `tomli` |
 
@@ -494,10 +494,10 @@ main.py                       # Entry point: `synapse migrate` command
 ## 15. Referencias
 
 - [Documento Maestro de Ingeniería](./DOCUMENTO_MAESTRO_DE_INGENIERIA.md)
-- [Especificación Arquitectónica v2.2.2](./ARCH_ESPECIFICACION.md)
-- [LSP Nativo v2.2.2](./LSP_NATIVO.md)
-- [Especificación Axon v2.2.2](./AXON_SPEC.md)
-- [Manual Lenguaje v2.2.2](./MANUAL_LENGUAJE.md)
+- [Especificación Arquitectónica v5.0](./ARCH_ESPECIFICACION.md)
+- [LSP Nativo v5.0](./LSP_NATIVO.md)
+- [Especificación Axon v5.0](./AXON_SPEC.md)
+- [Manual Lenguaje v5.0](./MANUAL_LENGUAJE.md)
 - [AST Canónico `.syn.json`](../tests/fixtures/valid/*.syn.json)
 - [Python `ast` module docs](https://docs.python.org/3/library/ast.html)
 
