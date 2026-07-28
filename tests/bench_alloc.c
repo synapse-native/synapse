@@ -1,26 +1,27 @@
 /*
- * bench_alloc.c � M19.1: Benchmark de latencia, throughput y fragmentacion
+ * bench_alloc.c — M19.1: Benchmark de latencia, throughput y fragmentacion
  *                 del slab allocator del runtime Synapse (pool_alloc/pool_free).
  *
- * Especificacion Tecnica Definitiva Fase 19 � Aprobada 2026-07-28
+ * Especificacion Tecnica Definitiva Fase 19 — Aprobada 2026-07-28
  *
- * Compilacion (asan):
- *   gcc -O2 -std=c99 -Wall -fsanitize=address -g
- *       tests/bench_alloc.c synapse_rt_memory.o -o tests/bench_alloc_asan.exe
- *       -lm -lpthread -lws2_32 -lpsapi
+ * Diseno del histograma:
+ *   - Cada hilo escribe en su propio array local (ThreadData.hist[])
+ *   - Cero atomics, cero locks en el hot path de medicion
+ *   - Merge seguro post-join en el hilo principal
  *
- * Compilacion (tsan):
- *   gcc -O2 -std=c99 -Wall -fsanitize=thread -g
- *       tests/bench_alloc.c synapse_rt_memory.o -o tests/bench_alloc_tsan.exe
+ * Compilacion (Clang + ASan):
+ *   clang -O2 -std=c99 -Wall -fsanitize=address -g
+ *       tests/bench_alloc.c synapse_rt_memory.o -o tests/bench_alloc.exe
  *       -lm -lpthread -lws2_32 -lpsapi
  *
  * Uso: tests/bench_alloc.exe [opciones]
  *   --threads N       Hilos (defecto: 1)
  *   --warmup N        Warmup descartado (defecto: 2000)
  *   --measure N       Iteraciones medidas (defecto: 100000)
- *   --slab size|all   Slab class (defecto: all)
- *   --csv             Salida CSV
+ *   --slab size|all   Slab class (32|64|128|256|all, defecto: all)
+ *   --csv             Salida CSV para post-procesamiento
  */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,12 +47,17 @@
 
 #include <pthread.h>
 
-/* Slab allocator externs */
+/* ============================================================
+ * Slab allocator externs (runtime modular)
+ * ============================================================ */
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void* pool_alloc(size_t size);
 extern void pool_free(void* ptr);
 extern void pool_destroy(void);
 
+/* ============================================================
+ * Constantes de benchmark
+ * ============================================================ */
 #define SLAB_CLASSES        4
 #define HISTOGRAM_BUCKETS   256
 #define POOL_BLOCKS         65536
@@ -59,15 +65,22 @@ extern void pool_destroy(void);
 
 static const uint32_t SLAB_SIZES[SLAB_CLASSES] = {32, 64, 128, 256};
 static const char* SLAB_NAMES[SLAB_CLASSES] = {"32B", "64B", "128B", "256B"};
+
+/* Cada bucket cubre 100 ns; el histograma completo cubre hasta 25.6 us. */
 #define NS_PER_BUCKET       100
 #define HISTO_MAX_NS        ((uint64_t)HISTOGRAM_BUCKETS * NS_PER_BUCKET)
 
-/* Histograma estatico � SIN alloc dinamica durante medicion */
+/* ============================================================
+ * Histograma global — se pobla via merge post-join desde los
+ * arrays locales de cada hilo. Cero atomics en la medicion.
+ * ============================================================ */
 static uint64_t g_histogram[SLAB_CLASSES][HISTOGRAM_BUCKETS];
 static uint64_t g_total_ops[SLAB_CLASSES];
 static uint64_t g_overflow[SLAB_CLASSES];
 
-/* Temporizador QPC (Windows) / clock_gettime (POSIX) */
+/* ============================================================
+ * Temporizador de alta precision — portatil
+ * ============================================================ */
 #ifdef _WIN32
 static LARGE_INTEGER g_qpc_freq;
 static double g_ns_per_tick;
@@ -89,7 +102,9 @@ static uint64_t timer_now_ns(void) {
 }
 #endif
 
-/* RSS measurement */
+/* ============================================================
+ * Medicion de RSS (huella de memoria residente)
+ * ============================================================ */
 static size_t get_rss_bytes(void) {
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS pmc;
@@ -113,21 +128,37 @@ static size_t get_rss_bytes(void) {
 #endif
 }
 
+/* ============================================================
+ * Datos por hilo — CADA HILO TIENE SU PROPIO HISTOGRAMA LOCAL
+ * ============================================================ */
 typedef struct {
-    int thread_id;
-    int slab_idx;
-    uint32_t warmup_ops;
-    uint32_t measure_ops;
-    uint64_t thread_ops;
-    uint64_t thread_ns_total;
-    uint64_t thread_ns_min;
-    uint64_t thread_ns_max;
+    int          thread_id;
+    int          slab_idx;        /* -1 = round-robin */
+    uint32_t     warmup_ops;
+    uint32_t     measure_ops;
+    uint64_t     thread_ops;
+    uint64_t     thread_ns_total;
+    uint64_t     thread_ns_min;
+    uint64_t     thread_ns_max;
+    /* Histograma LOCAL — escrito solo por este hilo */
+    uint64_t     hist[SLAB_CLASSES][HISTOGRAM_BUCKETS];
+    uint64_t     hist_total_ops[SLAB_CLASSES];
+    uint64_t     hist_overflow[SLAB_CLASSES];
 } ThreadData;
 
-/* Benchmark thread function */
+/* ============================================================
+ * Benchmark thread function
+ * Escribe SOLO en su propio ThreadData. Sin locks, sin atomics.
+ * ============================================================ */
 static void* bench_thread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
-    /* Warmup (descartado) */
+
+    /* Inicializar histograma local */
+    memset(td->hist, 0, sizeof(td->hist));
+    memset(td->hist_total_ops, 0, sizeof(td->hist_total_ops));
+    memset(td->hist_overflow, 0, sizeof(td->hist_overflow));
+
+    /* Calentamiento (descartado) */
     for (uint32_t i = 0; i < td->warmup_ops; i++) {
         size_t sz = (td->slab_idx >= 0)
                     ? (size_t)SLAB_SIZES[td->slab_idx]
@@ -135,42 +166,68 @@ static void* bench_thread(void* arg) {
         void* p = pool_alloc(sz);
         if (p) { pool_free(p); }
     }
+
     /* Medicion */
     td->thread_ns_min = UINT64_MAX;
     td->thread_ns_max = 0;
     td->thread_ns_total = 0;
     td->thread_ops = 0;
+
     for (uint32_t i = 0; i < td->measure_ops; i++) {
         size_t sz = (td->slab_idx >= 0)
                     ? (size_t)SLAB_SIZES[td->slab_idx]
                     : (size_t)SLAB_SIZES[i % SLAB_CLASSES];
+
         uint64_t t0 = timer_now_ns();
         void* p = pool_alloc(sz);
         uint64_t t1 = timer_now_ns();
         pool_free(p);
+
         uint64_t elapsed = t1 - t0;
         td->thread_ns_total += elapsed;
         if (elapsed < td->thread_ns_min) td->thread_ns_min = elapsed;
         if (elapsed > td->thread_ns_max) td->thread_ns_max = elapsed;
         td->thread_ops++;
+
+        /* Determinar slab class */
         int si = td->slab_idx;
         if (si < 0) {
             for (int k = 0; k < SLAB_CLASSES; k++) {
                 if (sz <= SLAB_SIZES[k]) { si = k; break; }
             }
         }
+
+        /* Escribir en histograma LOCAL — sin sincronizacion */
         if (si >= 0 && si < SLAB_CLASSES) {
             uint64_t bucket = elapsed / NS_PER_BUCKET;
             if (bucket < HISTOGRAM_BUCKETS)
-                __sync_fetch_and_add(&g_histogram[si][bucket], 1);
+                td->hist[si][bucket]++;
             else
-                __sync_fetch_and_add(&g_overflow[si], 1);
-            __sync_fetch_and_add(&g_total_ops[si], 1);
+                td->hist_overflow[si]++;
+            td->hist_total_ops[si]++;
         }
     }
+
     return NULL;
 }
 
+/* ============================================================
+ * Merge de histogramas locales -> global (post-join, seguro)
+ * ============================================================ */
+static void merge_histograms(ThreadData* tds, int nthreads) {
+    for (int t = 0; t < nthreads; t++) {
+        for (int si = 0; si < SLAB_CLASSES; si++) {
+            g_total_ops[si] += tds[t].hist_total_ops[si];
+            g_overflow[si]  += tds[t].hist_overflow[si];
+            for (uint32_t b = 0; b < HISTOGRAM_BUCKETS; b++)
+                g_histogram[si][b] += tds[t].hist[si][b];
+        }
+    }
+}
+
+/* ============================================================
+ * Calculo de percentiles desde el histograma global (post-merge)
+ * ============================================================ */
 typedef struct {
     uint64_t p50_ns;
     uint64_t p90_ns;
@@ -182,6 +239,7 @@ typedef struct {
 static Percentiles compute_percentiles(int slab_idx, uint64_t total) {
     Percentiles p = {0, 0, 0, 0, 0};
     if (total == 0) return p;
+
     uint64_t cum = 0;
     uint64_t targets[] = {
         total / 2,
@@ -191,6 +249,7 @@ static Percentiles compute_percentiles(int slab_idx, uint64_t total) {
         total - 1
     };
     int ti = 0;
+
     for (uint32_t b = 0; b < HISTOGRAM_BUCKETS && ti < 5; b++) {
         cum += g_histogram[slab_idx][b];
         while (ti < 5 && cum > targets[ti]) {
@@ -205,6 +264,8 @@ static Percentiles compute_percentiles(int slab_idx, uint64_t total) {
             ti++;
         }
     }
+
+    /* Los targets no alcanzados se asignan al maximo del histograma */
     while (ti < 5) {
         uint64_t ns = HISTO_MAX_NS;
         switch (ti) {
@@ -219,6 +280,9 @@ static Percentiles compute_percentiles(int slab_idx, uint64_t total) {
     return p;
 }
 
+/* ============================================================
+ * Reporte de resultados
+ * ============================================================ */
 static void print_report(int csv, int nthr, uint32_t wu, uint32_t meas,
                          ThreadData* tds, size_t rss_b, size_t rss_a) {
     if (csv) {
@@ -238,6 +302,7 @@ static void print_report(int csv, int nthr, uint32_t wu, uint32_t meas,
         }
         return;
     }
+
     printf("\n");
     printf("========================================\n");
     printf(" BENCHMARK ALLOC - RESULTADOS\n");
@@ -290,6 +355,9 @@ static void print_report(int csv, int nthr, uint32_t wu, uint32_t meas,
     printf("========================================\n");
 }
 
+/* ============================================================
+ * Main
+ * ============================================================ */
 int main(int argc, char** argv) {
     int nthreads = 1;
     uint32_t warmup = 2000;
@@ -332,7 +400,7 @@ int main(int argc, char** argv) {
     }
 
     if (nthreads < 1 || nthreads > 128) {
-        fprintf(stderr, "ERROR: --threads entre 1 y 128\n");
+        fprintf(stderr, "ERROR: --threads debe estar entre 1 y 128\n");
         return 1;
     }
 
@@ -340,6 +408,7 @@ int main(int argc, char** argv) {
     pool_init(POOL_BLOCKS, POOL_BLOCK_SIZE);
     size_t rss_before = get_rss_bytes();
 
+    /* Limpiar histograma global */
     memset(g_histogram, 0, sizeof(g_histogram));
     memset(g_total_ops, 0, sizeof(g_total_ops));
     memset(g_overflow, 0, sizeof(g_overflow));
@@ -349,12 +418,13 @@ int main(int argc, char** argv) {
     ThreadData* tds = (ThreadData*)malloc(
         (size_t)nthreads * sizeof(ThreadData));
     if (!threads || !tds) {
-        fprintf(stderr, "malloc fallo\n");
+        fprintf(stderr, "ERROR: malloc fallo\n");
         free(threads); free(tds);
         pool_destroy();
         return 1;
     }
 
+    /* Lanzar hilos — cada uno con su propio ThreadData */
     for (int t = 0; t < nthreads; t++) {
         tds[t].thread_id = t;
         tds[t].slab_idx = slab_idx;
@@ -364,15 +434,19 @@ int main(int argc, char** argv) {
         tds[t].thread_ns_total = 0;
         if (pthread_create(&threads[t], NULL, bench_thread,
                            &tds[t]) != 0) {
-            fprintf(stderr, "pthread_create fallo hilo %d\n", t);
+            fprintf(stderr, "ERROR: pthread_create fallo hilo %d\n", t);
             free(threads); free(tds);
             pool_destroy();
             return 1;
         }
     }
 
+    /* Join — los hilos ya terminaron, es seguro leer sus datos */
     for (int t = 0; t < nthreads; t++)
         pthread_join(threads[t], NULL);
+
+    /* Merge post-join: sumar histogramas locales al global */
+    merge_histograms(tds, nthreads);
 
     size_t rss_after = get_rss_bytes();
     print_report(csv, nthreads, warmup, measure, tds,

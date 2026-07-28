@@ -1,0 +1,3943 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Resultado",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Opcion",
+        "campos": [
+          {
+            "nombre": "tag",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "valor_str",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "valor_float",
+            "tipo": "decimal"
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_sha256_texto",
+        "parametros": [
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ed25519_verificar",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "sha256_texto",
+        "parametros": [
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_sha256_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "datos"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ed25519_verificar",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ed25519_verificar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "mensaje"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "clave_publica"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_normalizar_ruta",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_cwd",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ruta_en_directorio",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "dir",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "_validar_ruta_segura",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "normalizada",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_normalizar_ruta",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "cwd",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_cwd",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpUnaria",
+              "operador": "!",
+              "expr": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_syn_ruta_en_directorio",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "normalizada"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "cwd"
+                  }
+                ]
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "normalizada"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_env",
+        "parametros": [
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_existe_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_eliminar_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ejecutar_comando",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "cmd"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "OpUnaria",
+                  "operador": "-",
+                  "expr": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "contenido"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_env",
+        "parametros": [
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_env",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nombre"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "existe_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralBooleano",
+                  "valor": false
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_syn_existe_archivo",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "ruta_segura"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "eliminar_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "OpUnaria",
+                  "operador": "-",
+                  "expr": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_eliminar_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_abrir",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "modo"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "c"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "cerrar",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer_linea",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_generar_par_claves",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_firmar_mensaje",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_privada_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_verificar_firma",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma_hex",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_iniciar_nodo",
+        "parametros": [
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_detener_nodo",
+        "parametros": [],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_enviar_hello",
+        "parametros": [
+          {
+            "nombre": "ip",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "id_origen",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "pubkey_hex",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cluster_canal_remoto_enviar",
+        "parametros": [
+          {
+            "nombre": "ip",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "puerto",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "lon",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "chan_id",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_generar_par",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 1: Generar par Ed25519 ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "par"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] generar_par() retorna vacio"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] generar_par() no retorna vacio"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_firmar_verificar",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 2: Firma y verificacion Ed25519 ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test-message"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "firma"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] firmar_mensaje() retorna firma vacia"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] firmar_mensaje() retorna firma no vacia"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test-message"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] verificar_firma() retorna 0 para firma valida"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] verificar_firma() debio retornar 0, obtuvo "
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "resultado"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_firma_corrupta",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test-DIFFERENT"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] verificar_firma() rechaza mensaje incorrecto"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] verificar_firma() debio rechazar mensaje incorrecto"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_clave_incorrecta",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 4: Rechazo de clave publica incorrecta ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par_a",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par_b",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_a"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "resultado",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:test"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_b"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] verificar_firma() rechaza clave publica incorrecta"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] verificar_firma() debio rechazar clave incorrecta"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_handshake_bidireccional",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 5: Handshake bidireccional A <-> B ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par_a",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par_b",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma_a",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:pubkey-B"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_a"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "firma_a"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] A no genera firma de handshake"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] A genera firma de handshake"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "v1",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:pubkey-B"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma_a"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_a"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "v1"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] B verifica firma de A correctamente"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] B debio verificar firma de A, obtuvo "
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "v1"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "firma_b",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_firmar_mensaje",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:pubkey-A"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_b"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "firma_b"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] B no genera firma de respuesta"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] B genera firma de respuesta"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "v2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "synapse-handshake:pubkey-A"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma_b"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_b"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "v2"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] A verifica firma de B correctamente"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] A debio verificar firma de B, obtuvo "
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "v2"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "v3",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_verificar_firma",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "mensaje-alterado"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma_b"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par_b"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "v3"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] A rechaza firma de B con mensaje alterado"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] A debio rechazar mensaje alterado"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_iniciar_detener_nodo",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 6: Iniciar/Detener nodo UDP ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_iniciar_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "LiteralCadena",
+                          "valor": "[OK] iniciar_nodo(0) retorna >= 0 (rc="
+                        },
+                        "operador": "+",
+                        "derecho": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "entero_a_texto",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "rc"
+                            }
+                          ]
+                        }
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LiteralCadena",
+                        "valor": ")"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] iniciar_nodo(0) fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_detener_nodo",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc2"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] detener_nodo() retorna >= 0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] detener_nodo() fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc2"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc3",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_iniciar_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 9701
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc3"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] reiniciar_nodo(9701) retorna >= 0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] reiniciar_nodo(9701) fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc3"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc4",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_detener_nodo",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc4"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] redetener_nodo() retorna >= 0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] redetener_nodo() fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc4"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_enviar_hello",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 7: Envio HELLO ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "par",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_generar_par_claves",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_iniciar_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] nodo iniciado"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] no pudo iniciar nodo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_enviar_hello",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "127.0.0.1"
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 19099
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "nodo-test"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "par"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc2"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] enviar_hello a 127.0.0.1:19099 retorna >= 0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] enviar_hello() fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc2"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc3",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_detener_nodo",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc3"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] nodo detenido"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] detener nodo fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc3"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_enviar_datos_canal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 8: Envio de datos por canal remoto ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_iniciar_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] nodo iniciado para canal"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] no pudo iniciar nodo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc2",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_canal_remoto_enviar",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "127.0.0.1"
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 19098
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "datos transmitidos"
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 18
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc2"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] canal_remoto_enviar retorna >= 0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] canal_remoto_enviar() fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc2"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rc3",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cluster_detener_nodo",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "rc3"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] nodo detenido tras canal"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LiteralCadena",
+                        "valor": "[FALLO] detener nodo fallo rc="
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "entero_a_texto",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "rc3"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "prueba_resultado_algebraico",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "=== Prueba 9: Tipo algebraico Resultado ==="
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r_ok",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "Resultado",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "r_ok"
+            },
+            "nombre_campo": "tag",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "r_ok"
+            },
+            "nombre_campo": "valor_str",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "operacion exitosa"
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "r_ok"
+                },
+                "nombre_campo": "tag"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] Resultado.ok tiene tag=0"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] Resultado.ok tag debio ser 0"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r_err",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "Resultado",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "r_err"
+            },
+            "nombre_campo": "tag",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "r_err"
+            },
+            "nombre_campo": "valor_str",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "error de autenticacion"
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "r_err"
+                },
+                "nombre_campo": "tag"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[OK] Resultado.err tiene tag=1"
+                    }
+                  ]
+                }
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "[FALLO] Resultado.err tag debio ser 1"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "fallos",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "fallos"
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "fallos"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "========================================"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "  M18.3: Handshake Ed25519 Zero-Trust"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "========================================"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_generar_par",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_firmar_verificar",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_firma_corrupta",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_clave_incorrecta",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_handshake_bidireccional",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_iniciar_detener_nodo",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_enviar_hello",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_enviar_datos_canal",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "total_fallos",
+            "expresion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": "+",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "prueba_resultado_algebraico",
+                "argumentos": []
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "========================================"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "  RESULTADOS"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LiteralCadena",
+                    "valor": "  Total fallos: "
+                  },
+                  "operador": "+",
+                  "derecho": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "entero_a_texto",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "total_fallos"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "========================================"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "total_fallos"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}
