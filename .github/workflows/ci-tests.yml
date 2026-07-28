@@ -273,31 +273,54 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Compilar runtime objects con ASan+TSan
+      - name: Compilar runtime objects con ASan
         run: |
           gcc --version
-          gcc -c -O2 -std=c11 -Wall -fsanitize=address,thread -g \
+          gcc -c -O2 -std=c11 -Wall -fsanitize=address -g \
             synapse_rt_memory.c -o synapse_rt_memory_asan.o -lpthread -lm
-          echo "=== runtime objects OK ==="
+          echo "=== runtime (asan) OK ==="
 
-      - name: Compilar benchmark con ASan+TSan
+      - name: Compilar benchmark con ASan
         run: |
-          gcc -O2 -std=c11 -Wall -fsanitize=address,thread -g \
+          gcc -O2 -std=c11 -Wall -fsanitize=address -g \
             tests/bench_alloc.c synapse_rt_memory_asan.o \
             -o tests/bench_alloc_asan.exe -lm -lpthread
-          echo "=== benchmark binary OK ==="
+          echo "=== benchmark (asan) OK ==="
 
-      - name: Ejecutar benchmark (4 hilos, 10000 medidas)
+      - name: Ejecutar benchmark con ASan
         run: |
-          echo "=== BENCHMARK ALLOC (ASan+TSan) ==="
-          tests/bench_alloc_asan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark.log
+          echo "=== BENCHMARK ALLOC (ASan) ==="
+          tests/bench_alloc_asan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark_asan.log
           RC="${PIPESTATUS[0]}"
-          echo "RC=$RC"
           if [ "$RC" -ne 0 ]; then
-            echo "❌ Benchmark fallo con codigo $RC — posible fuga o data race"
+            echo "❌ ASan: benchmark fallo con codigo $RC — posible fuga"
             exit $RC
           fi
-          echo "✅ Benchmark completado: 0 fugas, 0 data races"
+          echo "✅ ASan: 0 fugas de memoria"
+
+      - name: Compilar runtime objects con TSan
+        run: |
+          gcc -c -O2 -std=c11 -Wall -fsanitize=thread -g \
+            synapse_rt_memory.c -o synapse_rt_memory_tsan.o -lpthread -lm
+          echo "=== runtime (tsan) OK ==="
+
+      - name: Compilar benchmark con TSan
+        run: |
+          gcc -O2 -std=c11 -Wall -fsanitize=thread -g \
+            tests/bench_alloc.c synapse_rt_memory_tsan.o \
+            -o tests/bench_alloc_tsan.exe -lm -lpthread
+          echo "=== benchmark (tsan) OK ==="
+
+      - name: Ejecutar benchmark con TSan
+        run: |
+          echo "=== BENCHMARK ALLOC (TSan) ==="
+          tests/bench_alloc_tsan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark_tsan.log
+          RC="${PIPESTATUS[0]}"
+          if [ "$RC" -ne 0 ]; then
+            echo "❌ TSan: benchmark fallo con codigo $RC — posible data race"
+            exit $RC
+          fi
+          echo "✅ TSan: 0 data races"
 
       - name: Notificar benchmark
         if: always()
