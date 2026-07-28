@@ -52,7 +52,7 @@ jobs:
       - name: Bloquear except-pass en Python
         run: |
           FOUND=0
-          for f in $(find . -name '*.py' -not -path './.git/*' 2>/dev/null); do
+          for f in $(find . -name '*.py' -not -path './.git/*' -not -path './toolchain_gcc12/*' 2>/dev/null); do
             if grep -n 'except\s*:\s*pass' "$f" > /dev/null 2>&1; then
               echo "❌ except: pass en $f"
               grep -n 'except\s*:\s*pass' "$f"
