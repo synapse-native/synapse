@@ -190,8 +190,9 @@ void* pool_alloc(size_t size) {
             return _g_pool.slab_base[i];
         }
     }
+    /* Fallback: lock mutex antes de acceder a _g_pool (TSan data race fix) */
+    pthread_mutex_lock(&_g_pool_mutex);
     if (size <= _g_pool.block_size) {
-        pthread_mutex_lock(&_g_pool_mutex);
         uint32_t _words = (_g_pool.total_blocks + 31) / 32;
         for (uint32_t _w = 0; _w < _words; _w++) {
             if (_g_pool.bitmap[_w] != 0xFFFFFFFF) {
@@ -205,8 +206,8 @@ void* pool_alloc(size_t size) {
                 return _g_pool.pool_base + _index * _g_pool.block_size;
             }
         }
-        pthread_mutex_unlock(&_g_pool_mutex);
     }
+    pthread_mutex_unlock(&_g_pool_mutex);
     void* _p = malloc(size);
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc malloc fallo\n"); exit(1); }
     return _p;
