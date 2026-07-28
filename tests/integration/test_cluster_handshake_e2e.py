@@ -190,19 +190,22 @@ class TestM184_HandshakeCompleto:
         assert "Handshake completado" in r['out_svr'], f"Servidor debe completar handshake"
 
     def test_zero_trust_clave_invalida(self):
-        """Clave invalida: servidor rechaza con ZERO-TRUST (rc=2)."""
+        """Clave invalida: servidor rc=2 + cliente rc=2 (acoplamiento determinista)."""
         r = self._do_handshake(19502, "clave_invalida")
         print(f"\n[SVR] rc={r['rc_svr']}: {r['out_svr'][-150:]}")
         print(f"[CLI] rc={r['rc_cli']}: {r['out_cli'][:100]}")
         assert r['rc_svr'] == 2, f"Server debe retornar 2 (ZERO-TRUST). rc={r['rc_svr']}"
+        assert r['rc_cli'] == 2, f"Cliente debe retornar 2 (ZERO-TRUST). rc={r['rc_cli']}"
         assert "ZERO-TRUST" in r['out_svr'], "Server debe detectar ZERO-TRUST"
         assert "INVALIDA" in r['out_svr'], "Server debe reportar firma invalida"
 
     def test_zero_trust_firma_corrupta(self):
-        """Firma corrupta: servidor rechaza con ZERO-TRUST (rc=2)."""
+        """Firma corrupta: servidor rc=2 + cliente rc=2 (acoplamiento determinista)."""
         r = self._do_handshake(19504, "firma_corrupta")
         print(f"\n[SVR] rc={r['rc_svr']}: {r['out_svr'][-150:]}")
+        print(f"[CLI] rc={r['rc_cli']}: {r['out_cli'][:100]}")
         assert r['rc_svr'] == 2, f"Server debe retornar 2 (ZERO-TRUST). rc={r['rc_svr']}"
+        assert r['rc_cli'] == 2, f"Cliente debe retornar 2 (ZERO-TRUST). rc={r['rc_cli']}"
         assert "ZERO-TRUST" in r['out_svr'], "Server debe detectar ZERO-TRUST"
 
 
@@ -271,6 +274,38 @@ def run_direct():
     print(f"  Client: rc={rc_cli}, {out_cli[-80:]}")
     if svr.returncode != 0 or rc_cli != 0:
         print("[FAIL] Handshake valido: se esperaba rc_svr=0, rc_cli=0")
+        fallos += 1
+
+    # Test Zero-Trust clave_invalida (rc_svr=2, rc_cli=2)
+    print("\n--- Test Zero-Trust clave_invalida ---")
+    puerto = 19602
+    svr2 = subprocess.Popen(
+        [BIN_PATH, "server", str(puerto)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    time.sleep(1.5)
+    rc_cli2, out_cli2, err_cli2 = _run_bin(f"client 127.0.0.1 {puerto} clave_invalida", timeout=15)
+    out_svr2, err_svr2 = svr2.communicate(timeout=15)
+    print(f"  Server: rc={svr2.returncode}")
+    print(f"  Client: rc={rc_cli2}")
+    if svr2.returncode != 2 or rc_cli2 != 2:
+        print(f"[FAIL] Zero-Trust: se esperaba rc_svr=2, rc_cli=2 (svr={svr2.returncode}, cli={rc_cli2})")
+        fallos += 1
+
+    # Test Zero-Trust firma_corrupta (rc_svr=2, rc_cli=2)
+    print("\n--- Test Zero-Trust firma_corrupta ---")
+    puerto = 19604
+    svr3 = subprocess.Popen(
+        [BIN_PATH, "server", str(puerto)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    time.sleep(1.5)
+    rc_cli3, out_cli3, err_cli3 = _run_bin(f"client 127.0.0.1 {puerto} firma_corrupta", timeout=15)
+    out_svr3, err_svr3 = svr3.communicate(timeout=15)
+    print(f"  Server: rc={svr3.returncode}")
+    print(f"  Client: rc={rc_cli3}")
+    if svr3.returncode != 2 or rc_cli3 != 2:
+        print(f"[FAIL] Zero-Trust: se esperaba rc_svr=2, rc_cli=2 (svr={svr3.returncode}, cli={rc_cli3})")
         fallos += 1
 
     print("\n=== Resumen ===")

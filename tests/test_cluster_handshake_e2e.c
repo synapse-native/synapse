@@ -450,8 +450,8 @@ static int run_client(const char* ip, int puerto, const char* modo_fallo) {
     if (r <= 0) {
         printf("[CLIENT] ZERO-TRUST: No se recibio HELLO_ACK (timeout)\n");
         closesocket(s);
-        /* Si esperabamos fallo (clave_invalida), el timeout es aceptable */
-        return clave_invalida ? 0 : 3;
+        /* Timeout = servidor rechazo la conexion (rc_svr=2 en servidor) */
+        return 2; /* ZERO-TRUST: acoplado con rc_svr=2 */
     }
     printf("[CLIENT] Recibido: '%s' (%d bytes desde %s:%d)\n", ack_buf, r, svr_ip, svr_port);
 
@@ -459,7 +459,7 @@ static int run_client(const char* ip, int puerto, const char* modo_fallo) {
     if (strncmp(ack_buf, "HELLO_ACK:", 10) != 0) {
         printf("[CLIENT] ZERO-TRUST: Respuesta no es HELLO_ACK\n");
         closesocket(s);
-        return clave_invalida ? 0 : 3;
+        return 2; /* ZERO-TRUST */
     }
 
     /* Extraer pub_server:firma */
@@ -491,16 +491,16 @@ static int run_client(const char* ip, int puerto, const char* modo_fallo) {
                                       make_cs(firma_ack),
                                       make_cs(pub_server));
 
-    if (clave_invalida) {
-        /* Con clave invalida, la verificacion debe fallar */
+    if (clave_invalida || firma_corrupta) {
+        /* Modo Zero-Trust: la verificacion DEBE fallar */
         if (vrc == 0) {
             printf("[CLIENT] ZERO-TRUST FALLO: Se esperaba rechazo pero firma valida\n");
             closesocket(s);
-            return 4;
+            return 4; /* Error grave: se esperaba rechazo */
         }
-        printf("[CLIENT] ZERO-TRUST OK: Firma rechazada correctamente\n");
+        printf("[CLIENT] ZERO-TRUST OK: Servidor rechazado (rc_svr=2 acoplado)\n");
         closesocket(s);
-        return 0;
+        return 2; /* ZERO-TRUST: acoplado con rc_svr=2, NO confundir con 0 */
     }
 
     if (vrc != 0) {
