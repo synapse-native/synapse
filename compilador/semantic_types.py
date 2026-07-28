@@ -195,10 +195,10 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             for i, (arg, esperado) in enumerate(zip(nodo.argumentos, tipos_esperados)):
                 tipo_arg = self._inferir_tipo(arg)
                 if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(esperado):
-                    if tipo_arg == 'decimal' and esperado == 'texto':
+                    # Allow int/decimal -> texto only for concat (string interpolation)
+                    if esperado == 'texto' and tipo_arg in ('int', 'decimal') and nodo.nombre == 'concat':
                         continue
-                    if tipo_arg == 'int' and esperado == 'texto':
-                        continue
+                    # Allow void* to accept numeric types (pointer arithmetic)
                     if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
                         continue
                     self.diag.reportar(

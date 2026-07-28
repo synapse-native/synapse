@@ -86,7 +86,20 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 return
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
-                self.tabla.declarar(nodo.nombre, tipo_expr, nodo)
+                if sim_existente:
+                    # Variable already declared: validate type compatibility
+                    norm_existente = _tipo_normalizado(sim_existente.tipo)
+                    norm_expr = _tipo_normalizado(tipo_expr)
+                    if norm_existente != norm_expr:
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                            self._token(nodo.linea, nodo.columna),
+                            tipo1=tipo_expr, tipo2=sim_existente.tipo,
+                            operacion="asignacion"
+                        )
+                else:
+                    # First declaration in this scope
+                    self.tabla.declarar(nodo.nombre, tipo_expr, nodo)
         elif isinstance(nodo, DeclaracionVariable):
             sim_existente = self.tabla.buscar(nodo.nombre)
             if sim_existente and sim_existente.es_constante:

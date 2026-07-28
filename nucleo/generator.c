@@ -1801,7 +1801,7 @@ struct Nodo* _P_sentencia() {
     if (t->tipo == T_FUNC) {
         _P_avanzar();
         if (_P_mirar()->tipo != T_IDENT) { _P_sinc_skip(); return NULL; }
-        char _nm[256]; strcpy(_nm, _P_mirar()->val);
+        char _nm[256]; strncpy(_nm, _P_mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = \'\0\';
         _P_avanzar();
         _P_esperar(T_LPAREN);
         struct ListaNodo* params = NULL;
@@ -1811,13 +1811,13 @@ struct Nodo* _P_sentencia() {
                 int is_transfer = 0;
                 if (_P_mirar()->tipo == T_ARROW) { is_transfer=1; _P_avanzar(); }
                 if (_P_mirar()->tipo != T_IDENT) break;
-                char _pn[256]; strcpy(_pn, _P_mirar()->val);
+                char _pn[256]; strncpy(_pn, _P_mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = \'\0\';
                 _P_avanzar();
                 _P_esperar(T_COLON);
                 if (_P_mirar()->tipo != T_IDENT) break;
-                char _pt[256]; strcpy(_pt, _P_mirar()->val);
+                char _pt[256]; strncpy(_pt, _P_mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = \'\0\';
                 _P_avanzar();
-                while (_P_mirar()->tipo == T_MUL) { strcat(_pt,"*"); _P_avanzar(); }
+                while (_P_mirar()->tipo == T_MUL) { if ((int)strlen(_pt) < 255) { int _pl = (int)strlen(_pt); _pt[_pl] = '*'; _pt[_pl+1] = '\0'; } _P_avanzar(); }
                 struct Parametro* pp = (struct Parametro*)calloc(1,sizeof(struct Parametro));
                 pp->tipo=_P_cs("Parametro");
                 pp->nombre=_P_cs(_pn); pp->tipo_param=_P_cs(_pt);
@@ -1853,11 +1853,11 @@ struct Nodo* _P_sentencia() {
         while (_P_mirar()->tipo != T_DEDENT && _P_mirar()->tipo != T_EOF) {
             if (_P_mirar()->tipo == T_NL) { _P_avanzar(); continue; }
             if (_P_mirar()->tipo != T_IDENT) { _P_sinc_skip(); break; }
-            char _pn[256]; strcpy(_pn, _P_mirar()->val);
+            char _pn[256]; strncpy(_pn, _P_mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = \'\0\';
             _P_avanzar();
             _P_esperar(T_COLON);
             if (_P_mirar()->tipo != T_IDENT) { _P_sinc_skip(); break; }
-            char _pt[256]; strcpy(_pt, _P_mirar()->val);
+            char _pt[256]; strncpy(_pt, _P_mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = \'\0\';
             _P_avanzar();
             struct Parametro* pp=(struct Parametro*)calloc(1,sizeof(struct Parametro));
             pp->tipo=_P_cs("Parametro"); pp->nombre=_P_cs(_pn); pp->tipo_param=_P_cs(_pt); pp->es_transferencia=0;
@@ -1930,9 +1930,9 @@ struct Nodo* _P_sentencia() {
     }
     if (t->tipo == T_IMPORT) { _P_avanzar();
         if (_P_mirar()->tipo != T_IDENT) { _P_sinc_skip(); return NULL; }
-        char _imp[256]; strcpy(_imp, _P_mirar()->val); int _iml = (int)strlen(_imp);
+        char _imp[256]; strncpy(_imp, _P_mirar()->val, sizeof(_imp)-1); _imp[sizeof(_imp)-1] = \'\0\'; int _iml = (int)strlen(_imp);
         _P_avanzar();
-        while (_P_mirar()->tipo == T_DOT) { _P_avanzar(); if (_P_mirar()->tipo != T_IDENT) break; strcat(_imp,"."); strcat(_imp,_P_mirar()->val); _P_avanzar(); }
+        while (_P_mirar()->tipo == T_DOT) { _P_avanzar(); if (_P_mirar()->tipo != T_IDENT) break; { int _il = (int)strlen(_imp); if (_il < 254) { _imp[_il] = '.'; _imp[_il+1] = '\0'; } if ((int)strlen(_imp) + (int)strlen(_P_mirar()->val) < 255) { strncat(_imp, _P_mirar()->val, 255 - (int)strlen(_imp) - 1); } } _P_avanzar(); }
         struct SentenciaImportar* n = (struct SentenciaImportar*)calloc(1,sizeof(struct SentenciaImportar));
         n->tipo=_P_cs("SentenciaImportar"); n->ruta=_P_cs(_imp);
         return (struct Nodo*)n;
@@ -2144,7 +2144,7 @@ struct Nodo* _P_prim() {
         return (struct Nodo*)n;
     }
     if (t->tipo==T_IDENT) {
-        char _nm[256]; strcpy(_nm, t->val);
+        char _nm[256]; strncpy(_nm, t->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = \'\0\';
         _P_avanzar();
         if (_P_mirar()->tipo==T_LPAREN) {
             _P_avanzar();
@@ -2183,7 +2183,7 @@ struct Nodo* _P_prim() {
                     obj->tipo=_P_cs("Identificador"); obj->nombre=_P_cs(_nm);
                     prev=(struct Nodo*)obj;
                 }
-                strcpy(_nm, _P_mirar()->val); _P_avanzar();
+                strncpy(_nm, _P_mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = \'\0\'; _P_avanzar();
                 if (_P_mirar()->tipo==T_LPAREN && _P_tpos + 1 < _P_ntks && _P_tks[_P_tpos + 1].tipo!=T_DOT) {
                     /* method call on last segment */
                     if(prev) free(prev);
