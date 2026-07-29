@@ -1,0 +1,15 @@
+#lang: es
+// tests/validate_borrow_abort.syn
+// M22.6: Violacion intencional de lifetime para validar el borrow checker.
+// Usa &tmp para inferir tipo puntero (int*), luego NULL y dereferencia.
+// Al compilar con --safe y ejecutar, debe ABORTAR en assert((ptr) != 0).
+// NOTA: retorna x en lugar de 0 para evitar que -O2 elimine el assert.
+
+funcion principal() -> entero:
+    x = 0
+    inseguro:
+        tmp = 42
+        ptr = &tmp       // int*
+        ptr = 0          // NULL
+        x = *ptr          // Dereference NULL -> assert() en --safe mode
+    retornar x

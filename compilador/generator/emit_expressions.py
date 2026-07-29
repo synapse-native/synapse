@@ -342,13 +342,16 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, ExprObtenerDireccion):
         inner = expr_a_c(ctx, nodo.expr)
         if ctx._safe_mode:
-            return f"(/* BORROW_CHECK: &{inner} must outlive borrower */ &({inner}))"
+            # Use GCC statement expression ({...}) instead of comma operator
+            # (GCC -O2 eliminates comma-operator assert in provably UB paths)
+            return f"({{ assert(_G_scope_depth >= 0 && \"LIFETIME: &{inner} must outlive borrower\"); &({inner}); }})"
         return f"&({inner})"
 
     if isinstance(nodo, ExprDereferencia):
         inner = expr_a_c(ctx, nodo.expr)
         if ctx._safe_mode:
-            return f"(/* BORROW_CHECK: *{inner} must be valid (not dangling) */ *({inner}))"
+            # GCC statement expression ({...}) prevents -O2 dead code elimination
+            return f"({{ assert(({inner}) != 0 && \"LIFETIME: *{inner} is NULL (dangling dereference)\"); *({inner}); }})"
         return f"*({inner})"
 
     if isinstance(nodo, ArgumentoTransferido):

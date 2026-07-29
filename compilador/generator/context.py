@@ -372,6 +372,11 @@ class GeneratorContext:
             return 'CanalConcurrencia*'
         if tipo_synapse.startswith('Resultado<'):
             return 'Resultado_T'
+        # M22.6: Handle pointer types (e.g. int* -> int*, not struct int*)
+        if tipo_synapse.endswith('*') and not tipo_synapse.startswith('struct '):
+            base = tipo_synapse[:-1].rstrip()  # Strip trailing * and whitespace
+            base_c = self.traducir_tipo_c(base)
+            return f"{base_c}*"
         tipo_c = MAPA_TIPOS_C.get(tipo_synapse)
         if tipo_c is not None:
             return tipo_c
