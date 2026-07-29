@@ -283,12 +283,15 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
 
     # Register parameters (store Synapse type for consistency with tipo_de_expr)
     for p in nodo.parametros:
-        ctx._variables[p.nombre] = p.tipo
+        if p.tipo in ctx._POINTER_TYPES:
+            ctx._variables[p.nombre] = p.tipo + '*'
+        else:
+            ctx._variables[p.nombre] = p.tipo
 
     ctx._current_func_return_type = nodo.tipo_retorno
     tipo = ctx.traducir_tipo_c(nodo.tipo_retorno)
     params = ", ".join(
-        f"{ctx.traducir_tipo_c(p.tipo)} {p.nombre}"
+        f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
         for p in nodo.parametros
     ) if nodo.parametros else "void"
     ctx.write_line(f"{tipo} {nodo.nombre}({params}) {{")

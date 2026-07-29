@@ -93,6 +93,7 @@ class GeneratorContext:
             'ms_tomar_en': 'texto', 'ms_diferenciar': 'texto',
             'ms_diff_entre': 'texto', 'ms_snapshot_contar_vars': 'int',
             'ms_snapshot_tamano': 'int', 'ms_snapshot_contiene': 'texto',
+            'len': 'int', 'subcadena': 'texto', 'empieza_con': 'int',
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
@@ -218,6 +219,10 @@ class GeneratorContext:
         self._garantizas_actuales: List[Nodo] = []
         self._current_func_return_type: str = 'int'
 
+        # Scope depth tracking for lifetime boundary markers (M22.1)
+        self._scope_depth = 0
+        self._safe_mode = False  # --safe flag for borrow checking
+
         # Emit flags
         self._gen_tok_emitido = False
         self._gen_parse_emitido = False
@@ -234,6 +239,9 @@ class GeneratorContext:
         }
 
 
+
+        # Types that MUST be passed by pointer (not by value) per Manual 3 §3.3
+        self._POINTER_TYPES: frozenset = frozenset({'AnalizadorSemanticoEst'})
 
         # Destructor map for RAII types
         # NOTE: Use Synapse type names (texto not CadenaSegura) for consistency
@@ -273,8 +281,13 @@ class GeneratorContext:
 
     def push_scope(self):
         self._scope_stack.append({})
+        self._scope_depth += 1
 
     def pop_scope(self):
+        self._scope_depth -= 1
+        # M22.1: Emitir marcador de salida de scope ANTES de destructores
+        if self._scope_depth >= 0:
+            self.write_line(f"  /* [Lifetime Scope: exit depth={self._scope_depth}] */")
         scope = self._scope_stack.pop() if self._scope_stack else {}
         for var_name in reversed(list(scope.keys())):
             # Move semantics: skip vars already explicitly consumed/destroyed
@@ -284,6 +297,10 @@ class GeneratorContext:
             dtor = self._destructor_map.get(scope[var_name])
             if dtor:
                 self.write_line(f"{dtor}({var_name});")
+
+    def enable_safe_mode(self):
+        """M22.1: Activa modo --safe, que emite /* BORROW_CHECK */ en &T y *ptr."""
+        self._safe_mode = True
 
     def emit_all_destructors(self, exclude_var: str = ''):
         for scope in reversed(self._scope_stack):

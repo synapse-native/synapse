@@ -460,6 +460,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
         # === GENERACIÓN DE CÓDIGO C ===
         generador = GeneradorC(ast)
+        # M22.1: Activar borrow checker en modo --safe
+        if modo_safe:
+            generador.ctx.enable_safe_mode()
         codigo_c = generador.generar()  # modo='completo' por defecto
 
         ruta_base = ruta_archivo.rsplit('.', 1)[0]

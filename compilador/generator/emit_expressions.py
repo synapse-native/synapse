@@ -220,6 +220,19 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
 
+        # Añadir & para parámetros que deben pasarse por puntero (Manual 3 §3.3)
+        # Solo si el argumento NO es ya un puntero (evita &est cuando est es AnalizadorSemanticoEst*)
+        if nombre in ctx._func_param_types:
+            param_types = ctx._func_param_types[nombre]
+            for i in range(len(args)):
+                if i < len(param_types) and param_types[i] in ctx._POINTER_TYPES:
+                    # Verificar que el argumento no sea ya un puntero
+                    arg_tipo = ''
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                    if not arg_tipo.endswith('*'):
+                        args[i] = f"&({args[i]})"
+
         args_str = ", ".join(args)
 
         # Move semantics via transfer (->): si un argumento es ArgumentoTransferido,
@@ -242,6 +255,22 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                         dtor = ctx._destructor_map.get(var_tipo, '')
                         if dtor and dtor == nombre:
                             ctx._consumed_vars.add(var_name)
+
+        # len, subcadena, empieza_con builtins
+        if nombre == 'len':
+            if args:
+                return f"({args[0]}).longitud"
+            return "0"
+        if nombre == 'subcadena':
+            if len(args) >= 3:
+                s, inicio, largo = args[0], args[1], args[2]
+                return f"((CadenaSegura){{.longitud={largo}, .datos=((char*)memcpy(malloc({largo}+1),({s}).datos+{inicio},{largo}))}})"
+            return "(CadenaSegura){0,(char*)\"\"}"
+        if nombre == 'empieza_con':
+            if len(args) >= 2:
+                s, pref = args[0], args[1]
+                return f"((({s}).longitud>=({pref}).longitud&&strncmp(({s}).datos,({pref}).datos,({pref}).longitud)==0)?1:0)"
+            return "0"
 
         # Struct constructor: use C compound literal instead of function call
         if nombre in ctx._estructuras:
@@ -311,10 +340,16 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return f"{obj}[{idx}]"
 
     if isinstance(nodo, ExprObtenerDireccion):
-        return f"&({expr_a_c(ctx, nodo.expr)})"
+        inner = expr_a_c(ctx, nodo.expr)
+        if ctx._safe_mode:
+            return f"(/* BORROW_CHECK: &{inner} must outlive borrower */ &({inner}))"
+        return f"&({inner})"
 
     if isinstance(nodo, ExprDereferencia):
-        return f"*({expr_a_c(ctx, nodo.expr)})"
+        inner = expr_a_c(ctx, nodo.expr)
+        if ctx._safe_mode:
+            return f"(/* BORROW_CHECK: *{inner} must be valid (not dangling) */ *({inner}))"
+        return f"*({inner})"
 
     if isinstance(nodo, ArgumentoTransferido):
         return expr_a_c(ctx, nodo.expr)
