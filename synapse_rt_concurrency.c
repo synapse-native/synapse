@@ -212,6 +212,13 @@ void* canal_recibir(CanalConcurrencia* canal) {
 void canal_destruir(CanalConcurrencia* canal) {
     if (!canal) return;
 
+    // Manual 5 §5.3: senalizar cierre para despertar hilos bloqueados
+    pthread_mutex_lock(&canal->mutex);
+    canal->cerrado = 1;
+    pthread_cond_broadcast(&canal->no_vacio);
+    pthread_cond_broadcast(&canal->no_lleno);
+    pthread_mutex_unlock(&canal->mutex);
+
     pthread_mutex_destroy(&canal->mutex);
     pthread_cond_destroy(&canal->no_vacio);
     pthread_cond_destroy(&canal->no_lleno);
