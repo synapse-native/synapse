@@ -25,6 +25,7 @@ import sys
 SUB_MODULOS = [
     "contexto.syn",
     "emision_c.syn",
+    "expr_eval.syn",       # _oo_expr_a_c (extraido de nodos_flujo.syn para < 1000 lineas)
     "nodos_flujo.syn",
     "orquestador.syn",
 ]

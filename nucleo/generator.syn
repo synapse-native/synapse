@@ -433,30 +433,27 @@ funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
         asm("if (!ptr_tipo_nodo || !esperado) return 0;")
 
         asm("return strncmp((const char*)ptr_tipo_nodo, (const char*)esperado, 64) == 0;")
-// ===== From: nodos_flujo.syn =====
+// ===== From: expr_eval.syn =====
 
 #lang: es
 
 // ============================================================
-// nodos_flujo.syn  —  Visitantes de control de flujo (OO style)
+// expr_eval.syn  —  Evaluador de expresiones OO para el generador C
 // ============================================================
-// Visitantes para nodos del AST usando formato OO (struct Nodo*).
+// Visitante de expresiones del AST usando formato OO (struct Nodo*).
 //
 // DISENO:
-//   - Cada visitante emite gen_emitir_traza() antes de emitir
-//     codigo, para trazabilidad en el archivo C generado.
-//   - Los bloques ( ) se emiten exclusivamente mediante
-//     gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
-//     Prohibida la emision manual de llaves con strings crudos.
-//   - El dispatcher (gen_visitar_stmt_generico) tiene una rama
-//     de fail-fast para tipos de nodo no reconocidos.
+//   - _oo_expr_a_c es el evaluador de expresiones recursivo que traduce
+//     cualquier sub-arbol de expresion a una cadena C.
+//   - Soporta: literales, identificadores, operaciones binarias/unarias,
+//     llamadas a funcion, obtencion de direccion (&T) y desreferencia (*ptr).
 // ============================================================
 
 // ----------------------------------------------------------
-// gen_visitar_si
-// Visita un struct SentenciaSi* y emite: if (cond) ( ... ) else ( ... )
-// ----------------------------------------------------------
 // _oo_expr_a_c -- OO expression evaluator
+// Traduce un nodo de expresion del AST a una representacion
+// en cadena C, escribiendo el resultado en 'buf'.
+// ----------------------------------------------------------
 funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: entero) -> nulo:
     inseguro:
         asm("struct Nodo* _n = (struct Nodo*)nodo;")
@@ -590,6 +587,27 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("}")
         asm("// Fallback")
         asm("strcpy(_b, \"0\");")
+
+// ===== From: nodos_flujo.syn =====
+
+#lang: es
+
+// ============================================================
+// nodos_flujo.syn  —  Visitantes de control de flujo (OO style)
+// ============================================================
+// Visitantes para nodos del AST usando formato OO (struct Nodo*).
+//
+// DISENO:
+//   - Cada visitante emite gen_emitir_traza() antes de emitir
+//     codigo, para trazabilidad en el archivo C generado.
+//   - Los bloques ( ) se emiten exclusivamente mediante
+//     gen_abrir_bloque_c() y gen_cerrar_bloque_c() de emision_c.
+//     Prohibida la emision manual de llaves con strings crudos.
+//   - El dispatcher (gen_visitar_stmt_generico) tiene una rama
+//     de fail-fast para tipos de nodo no reconocidos.
+// ============================================================
+
+// NOTA: _oo_expr_a_c se encuentra en expr_eval.syn (submodulo separado)
 
 // ----------------------------------------------------------
 // gen_visitar_si  (INSTRUMENTADO con PGO via asm())
