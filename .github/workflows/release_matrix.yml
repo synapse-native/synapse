@@ -223,8 +223,20 @@ jobs:
           echo "SHA-256: $(cat ${ARTIFACT}.sha256)"
 
       # -----------------------------------------------------------------------
-      # 8. Sign binary with Ed25519 (M11.2 — SLSA Level 3)
+      # 8. Sign binary with Ed25519 (M11.2 — SLSA Level 3, Manual 9)
+      # Uses nucleo.ed25519_signer via scripts/ci_sign.py
       # -----------------------------------------------------------------------
+      - name: Verify signing module (nucleo.ed25519_signer)
+        run: |
+          python -c "
+import sys; sys.path.insert(0, '.')
+from nucleo.ed25519_signer import generar_par_claves, firmar, verificar
+priv, pub = generar_par_claves()
+sig = firmar(b'test', priv)
+assert verificar(b'test', sig, pub), 'ed25519_signer self-test FAILED'
+print('[OK] nucleo.ed25519_signer module verified')
+"
+
       - name: Sign binary with Ed25519
         id: sign
         shell: bash
