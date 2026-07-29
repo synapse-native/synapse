@@ -23,13 +23,16 @@ typedef struct {
     } datos;
 } Resultado_T;
 
-// --- CanalConcurrencia (Buffer circular thread-safe para canales) ---
+// --- CanalConcurrencia (Buffer circular thread-safe + sync handoff) ---
 typedef struct CanalConcurrencia {
     void** buffer;
     uint32_t capacidad;
     uint32_t cabeza;  // índice de escritura
     uint32_t cola;    // índice de lectura
     uint32_t contador; // número de elementos en el buffer
+    int es_sync;       // 1 = canal síncrono (handoff directo, capacidad=0)
+    void* sync_item;   // elemento en tránsito (solo para sync)
+    int cerrado;       // 1 = canal cerrado (Manual 5 §5.3)
     pthread_mutex_t mutex;
     pthread_cond_t no_vacio;  // señal para receptores
     pthread_cond_t no_lleno;  // señal para emisores

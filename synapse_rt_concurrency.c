@@ -94,22 +94,28 @@ void synapse_esperar_hilos(void) {
 // ============================================================
 
 CanalConcurrencia* canal_crear(uint32_t capacidad) {
-    if (capacidad == 0) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: capacidad del canal debe ser > 0\n");
-        return NULL;
-    }
-
     CanalConcurrencia* canal = (CanalConcurrencia*)malloc(sizeof(CanalConcurrencia));
     if (!canal) {
         fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_crear\n");
         return NULL;
     }
 
-    canal->buffer = (void**)malloc(capacidad * sizeof(void*));
-    if (!canal->buffer) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_crear (buffer)\n");
-        free(canal);
-        return NULL;
+    if (capacidad == 0) {
+        // Canal síncrono: handoff directo sin buffer (Manual 5 §5.3)
+        canal->buffer = NULL;
+        canal->es_sync = 1;
+        canal->sync_item = NULL;
+        canal->cerrado = 0;
+    } else {
+        canal->buffer = (void**)malloc(capacidad * sizeof(void*));
+        if (!canal->buffer) {
+            fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_crear (buffer)\n");
+            free(canal);
+            return NULL;
+        }
+        canal->es_sync = 0;
+        canal->sync_item = NULL;
+        canal->cerrado = 0;
     }
 
     canal->capacidad = capacidad;
@@ -132,6 +138,27 @@ void canal_enviar(CanalConcurrencia* canal, void* paquete) {
 
     pthread_mutex_lock(&canal->mutex);
 
+    if (canal->es_sync) {
+        // Canal síncrono: handoff directo (Manual 5 §5.3)
+        // Esperar hasta que un receptor esté listo (contador==0 significa sin receptor)
+        while (canal->contador != 0 && !canal->cerrado) {
+            pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+        }
+        if (canal->cerrado) { pthread_mutex_unlock(&canal->mutex); return; }
+        // Marcar que hay un emisor con datos
+        canal->sync_item = paquete;
+        canal->contador = 1;
+        // Despertar al receptor
+        pthread_cond_signal(&canal->no_vacio);
+        // Esperar a que el receptor confirme recepción
+        while (canal->contador != 0 && !canal->cerrado) {
+            pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+        }
+        pthread_mutex_unlock(&canal->mutex);
+        return;
+    }
+
+    // Canal con buffer (capacidad > 0)
     while (canal->contador == canal->capacidad) {
         pthread_cond_wait(&canal->no_lleno, &canal->mutex);
     }
@@ -152,6 +179,22 @@ void* canal_recibir(CanalConcurrencia* canal) {
 
     pthread_mutex_lock(&canal->mutex);
 
+    if (canal->es_sync) {
+        // Canal síncrono: esperar a que un emisor entregue datos (Manual 5 §5.3)
+        while (canal->contador == 0 && !canal->cerrado) {
+            pthread_cond_wait(&canal->no_vacio, &canal->mutex);
+        }
+        if (canal->cerrado) { pthread_mutex_unlock(&canal->mutex); return NULL; }
+        void* paquete = canal->sync_item;
+        canal->sync_item = NULL;
+        // Marcar que el receptor recibió (contador=0) y despertar al emisor
+        canal->contador = 0;
+        pthread_cond_signal(&canal->no_lleno);
+        pthread_mutex_unlock(&canal->mutex);
+        return paquete;
+    }
+
+    // Canal con buffer (capacidad > 0)
     while (canal->contador == 0) {
         pthread_cond_wait(&canal->no_vacio, &canal->mutex);
     }
@@ -173,7 +216,7 @@ void canal_destruir(CanalConcurrencia* canal) {
     pthread_cond_destroy(&canal->no_vacio);
     pthread_cond_destroy(&canal->no_lleno);
 
-    if (canal->buffer) {
+    if (canal->buffer && !canal->es_sync) {
         free(canal->buffer);
     }
     free(canal);
