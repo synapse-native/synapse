@@ -10,6 +10,33 @@ from compilador.ast_nodes import (
 from compilador.diagnostics import ErrorCodes
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
 
+# M21.3: Lifetime constants for constraint generation (Manual 4.3)
+LT_ESTATICO = 0
+LT_LOCAL = 1
+LT_PARAMETRICO = 2
+LT_ELIDIDO = 3
+REGION_OUTLIVES = 0
+REGION_EQUALS = 1
+REGION_SUBSCOPE = 2
+
+
+class Lifetime:
+    """Representa un lifetime en el sistema de regiones (Manual 4.3)."""
+    def __init__(self, kind: int, ambito: int = -1, indice: int = -1, padre: int = -1):
+        self.kind = kind
+        self.ambito = ambito
+        self.indice = indice
+        self.padre = padre
+
+
+class RegionConstraint:
+    """Restriccion entre dos lifetimes."""
+    def __init__(self, tipo: int, origen: Lifetime, destino: Lifetime, linea: int = 0):
+        self.tipo = tipo
+        self.origen = origen
+        self.destino = destino
+        self.linea = linea
+
 
 class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
     def _inferir_tipo(self, nodo: Nodo) -> Optional[str]:
@@ -132,6 +159,12 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             return 'nulo'
         elif isinstance(nodo, ExprObtenerDireccion):
             tipo_base = self._inferir_tipo(nodo.expr)
+            # M21.3: Generar constraint de borrow si lifetime tracking esta activo
+            if tipo_base and hasattr(self, '_region_graph'):
+                lt_borrow = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+                lt_original = Lifetime(LT_LOCAL, 0, 0, -1)
+                self._region_graph.agregar_restriccion(REGION_OUTLIVES, lt_original, lt_borrow, nodo.linea)
+                self._proximo_lifetime += 1
             if tipo_base:
                 return f"{tipo_base}*"
             return None

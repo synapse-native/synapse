@@ -117,6 +117,9 @@ estructura AnalizadorSemanticoEst:
     asignaciones_campos_campo: cadena
     asignaciones_campos_tipo: cadena
     total_asignaciones: entero
+    // M21.3: Lifetime tracking state (Manual 4.3)
+    // region_graph y uf_lifetimes usan estaticos globales via asm
+    proximo_lifetime: entero
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
@@ -463,7 +466,10 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
         inseguro:
-            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0); } } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0);")
+            asm("    // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)")
+            asm("    est->proximo_lifetime = est->proximo_lifetime + 1;")
+            asm("} } }")
         retornar
 
     // SentenciaSi
@@ -658,6 +664,9 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
+                // M21.3: Initialize lifetime tracking for this function scope
+                inseguro:
+                    asm("est->proximo_lifetime = 0")
                 // Analyze function body
                 cuerpo = nodo_hijo_izq(est, stmt)
                 stmt_cuerpo = cuerpo
@@ -669,6 +678,11 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
                     analizar_sentencia(est, stmt_cuerpo)
                     inseguro:
                         asm("stmt_cuerpo = est->nodos[stmt_cuerpo].hermano")
+                // M21.3: Lifetime resolution placeholder — full integration deferred to M21.4
+                inseguro:
+                    asm("// [M21.3 placeholder] region_resolver requires struct definitions from lifetimes.syn")
+                    asm("// which are not yet visible in the generated C headers. The Python-side")
+                    asm("// semantic_checker.py has the full implementation.")
                 tabla_salir_scope(est)
                 est.func_actual = ""
         inseguro:

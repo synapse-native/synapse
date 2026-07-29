@@ -205,19 +205,58 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if isinstance(s, DefinicionFuncion) and s.nombre not in _FUNCIONES_BUILTIN:
                 self._analizar_funcion(s)
 
+    # M21.3: Report error from lifetime resolver
+    def _reportar_error(self, code: str, linea: int, mensaje: str):
+        """Report an error discovered during lifetime constraint resolution."""
+        if hasattr(self, 'diag') and self.diag:
+            token = self._token(linea, 0)
+            self.diag.reportar(
+                code,
+                token,
+                mensaje=mensaje
+            )
+
+    # M21.3: Initialize lifetime tracking for a function scope
+    def _inicializar_lifetimes_funcion(self):
+        self._region_graph = RegionGraph()
+        self._uf = UnionFind(256)
+        self._proximo_lifetime = 0
+        # Assign LT_PARAMETRICO lifetimes to function parameters
+        for p in self._func_params if hasattr(self, '_func_params') else []:
+            lt = Lifetime(LT_PARAMETRICO, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+            self._proximo_lifetime += 1
+    
+    # M21.3: Resolve lifetime constraints after function body analysis
+    def _resolver_lifetimes_funcion(self):
+        if self._region_graph.constraints and self._uf.n > 0:
+            has_cycle = self._region_graph.resolver(self._uf, self._reportar_error)
+            if has_cycle:
+                self._hay_error = True
+
     def _analizar_funcion(self, nodo: DefinicionFuncion):
         self.tabla.entrar_scope()
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre
         self._asignaciones_campos: Dict[str, Dict[str, str]] = {}
+        
+        # M21.3: Initialize lifetime tracking for this function
+        self._func_params = nodo.parametros
+        self._inicializar_lifetimes_funcion()
+        
         for p in nodo.parametros:
             self.tabla.declarar(p.nombre, p.tipo, nodo)
         for s in nodo.cuerpo:
             self._analizar_sentencia(s)
+        
+        # M21.3: Resolve lifetime constraints
+        self._resolver_lifetimes_funcion()
+        
         self.tabla.salir_scope()
         self._func_retorno = None
         self._func_actual = None
         self._asignaciones_campos = {}
+        self._region_graph = None
+        self._uf = None
 
     def _analizar_sentencia(self, nodo: Nodo):
         if isinstance(nodo, AsignacionVariable):
@@ -245,6 +284,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 else:
                     # First declaration in this scope
                     self.tabla.declarar(nodo.nombre, tipo_expr, nodo)
+                    # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
+                    if hasattr(self, '_region_graph'):
+                        lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+                        scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
+                        self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                        self._proximo_lifetime += 1
         elif isinstance(nodo, DeclaracionVariable):
             sim_existente = self.tabla.buscar(nodo.nombre)
             if sim_existente and sim_existente.es_constante:
@@ -266,6 +311,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     )
                 else:
                     self.tabla.declarar(nodo.nombre, nodo.tipo, nodo)
+                    # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
+                    if hasattr(self, '_region_graph'):
+                        lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+                        scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
+                        self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                        self._proximo_lifetime += 1
         elif isinstance(nodo, StmtConstante):
             tipo_const = self._inferir_tipo(nodo.valor)
             if tipo_const:
