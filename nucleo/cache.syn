@@ -79,12 +79,14 @@ funcion _calcular_hash_archivo(ruta: texto) -> texto:
 
 funcion _obtener_hashes_dependencias(archivo: texto) -> texto:
     // Rastrea imports del archivo para invalidación de caché correcta
+    // Retorna JSON array de hashes
     contenido = leer_archivo(archivo)
-    hashes = []
+    resultado = "["
+    primero = 1
     i = 0
     longitud = len(contenido)
     mientras i < longitud:
-        // Buscar "importar " 
+        // Buscar "importar "
         si i + 9 <= longitud y subcadena(contenido, i, 9) == "importar ":
             j = i + 9
             // Saltar espacios
@@ -99,18 +101,13 @@ funcion _obtener_hashes_dependencias(archivo: texto) -> texto:
             mod_ruta = _resolver_ruta_import(mod_nombre)
             si existe_archivo(mod_ruta):
                 hash_dep = _calcular_hash_archivo(mod_ruta)
-                hashes = concat(hashes, hash_dep)
+                si primero == 0:
+                    resultado = concat(resultado, ",")
+                resultado = concat(concat(resultado, "\""), concat(hash_dep, "\""))
+                primero = 0
             i = j
         sino:
             i = i + 1
-    // Serializar array a JSON simple
-    resultado = "["
-    k = 0
-    mientras k < len(hashes):
-        si k > 0:
-            resultado = concat(resultado, ",")
-        resultado = concat(concat(resultado, "\""), concat(hashes[k], "\""))
-        k = k + 1
     resultado = concat(resultado, "]")
     retornar resultado
 
@@ -227,7 +224,6 @@ funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
     // Persistir
     doc = toml_desde_stats(stats)
     escribir_archivo(concat(_cache_dir(), "stats.toml"), a_texto(doc))
-}
 
 // Resolver ruta de importación (std. o ruta relativa)
 funcion _resolver_ruta_import(mod_nombre: texto) -> texto:

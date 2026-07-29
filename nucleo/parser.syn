@@ -781,9 +781,7 @@ funcion parsear_parametros(est: ParserEst) -> entero:
                     r = 0
             sino:
                 r = 0
-        sino:
-            r = 0
-    retornar 1
+        retornar 1
 
 // Helper: Parse return type
 funcion parsear_tipo_retorno(est: ParserEst) -> entero:
