@@ -3943,10 +3943,35 @@ int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir) {
         typeflag = block[156];
         memcpy(prefix, block + 345, 155); prefix[155] = 0;
 
-        // --- Path traversal protection ---
-        // Reject absolute paths (starting with /) and directory escapes (..)
-        if (name[0] == '/' || strstr(name, "..") != NULL ||
-            prefix[0] == '/' || strstr(prefix, "..") != NULL) {
+        // --- Path traversal protection (Manual 6 §6.1) ---
+        // Reject absolute paths and directory escapes ("../" or "/.." components)
+        int _pt_traversal = 0;
+        if (name[0] == '/' || prefix[0] == '/') { _pt_traversal = 1; }
+        // Check for ".." as a PATH COMPONENT (not substring - avoids foo..bar false positives)
+        if (!_pt_traversal) {
+            const char* _checks[] = {name, prefix, NULL};
+            for (int _ci = 0; _checks[_ci] && !_pt_traversal; _ci++) {
+                const char* _p = _checks[_ci];
+                int _len = (int)strlen(_p);
+                // Check start: "../"
+                if (_len >= 3 && _p[0] == '.' && _p[1] == '.' && _p[2] == '/') { _pt_traversal = 1; }
+                // Check middle: "/../"
+                if (!_pt_traversal) {
+                    for (int _si = 1; _si < _len - 3; _si++) {
+                        if (_p[_si] == '/' && _p[_si+1] == '.' && _p[_si+2] == '.' && _p[_si+3] == '/') {
+                            _pt_traversal = 1; break;
+                        }
+                    }
+                }
+                // Check end: "/.."
+                if (!_pt_traversal && _len >= 3 && _p[_len-3] == '/' && _p[_len-2] == '.' && _p[_len-1] == '.') {
+                    _pt_traversal = 1;
+                }
+                // Check exact: ".."
+                if (!_pt_traversal && _len == 2 && _p[0] == '.' && _p[1] == '.') { _pt_traversal = 1; }
+            }
+        }
+        if (_pt_traversal) {
             fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: path traversal detectado en TAR: %s/%s\n", prefix, name);
             fclose(f);
             return -1;
