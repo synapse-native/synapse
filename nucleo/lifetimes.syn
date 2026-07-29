@@ -1,12 +1,11 @@
 #lang: es
 
 // --- M21.1: Lifetime / Region type system (Manual 4.3) ---
+// --- M21.2: Region unification engine & cycle detection ---
 //
-// Este modulo define la taxonomia base del sistema de lifetimes
-// y el grafo de restricciones de regiones para el analizador semantico.
-//
-// LifetimeKind: enumerado de categorias de lifetime
-// Lifetime: estructura que asocia un kind con un ambito e indice
+// Este modulo define la taxonomia base del sistema de lifetimes,
+// el grafo de restricciones de regiones, y el algoritmo de
+// union-find para unificacion de regiones con deteccion de ciclos.
 
 // --- LifetimeKind constants ---
 constante LT_ESTATICO = 0       // 'static: toda la ejecucion del programa
@@ -20,8 +19,6 @@ constante REGION_EQUALS = 1     // 'a == 'b -> 'a y 'b deben ser iguales
 constante REGION_SUBSCOPE = 2   // 'a <: 'b -> 'a es subambito de 'b
 
 // --- Lifetime structure ---
-// Cada variable/expresion en el AST puede tener un Lifetime asociado
-// que describe su alcance de validez en el grafo de regiones.
 estructura Lifetime:
     kind: entero          // LT_ESTATICO, LT_LOCAL, LT_PARAMETRICO, LT_ELIDIDO
     ambito: entero        // Indice del ambito (nivel_actual de la tabla de simbolos)
@@ -36,12 +33,122 @@ estructura RegionConstraint:
     linea: entero         // Linea del codigo fuente donde se origino la restriccion
 
 // --- Region constraint graph ---
-// Almacena todas las restricciones entre lifetimes para
-// su posterior resolucion mediante el algoritmo de unificacion.
 estructura RegionGraph:
     constraints: RegionConstraint
     total_constraints: entero
     max_constraints: entero
+
+// --- Union-Find data structures (M21.2) ---
+estructura UnionFind:
+    parent: entero
+    rank: entero
+    total: entero
+    max: entero
+
+funcion uf_init(uf: UnionFind, n: entero) -> nulo:
+    uf.total = n
+    uf.max = n
+    i = 0
+    mientras i < n:
+        inseguro:
+            asm("uf.parent[i] = -1")
+            asm("uf.rank[i] = 0")
+            asm("i = i + 1")
+
+funcion uf_find(uf: UnionFind, x: entero) -> entero:
+    raiz = 0
+    inseguro:
+        asm("// Path compression: buscar raiz, luego comprimir")
+        asm("int _r = x;")
+        asm("while (_r >= 0 && uf.parent[_r] >= 0) { _r = uf.parent[_r]; }")
+        asm("if (_r < 0) { _r = x; }")
+        asm("// Path compression: aplanar el arbol")
+        asm("while (x >= 0 && uf.parent[x] >= 0) {")
+        asm("    int _next = uf.parent[x];")
+        asm("    uf.parent[x] = _r;")
+        asm("    x = _next;")
+        asm("}")
+        asm("raiz = _r;")
+    retornar raiz
+
+funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
+    ra = uf_find(uf, a)
+    rb = uf_find(uf, b)
+    si ra == rb:
+        retornar
+    inseguro:
+        asm("// Union by rank")
+        asm("if (uf.rank[ra] < uf.rank[rb]) {")
+        asm("    uf.parent[ra] = rb;")
+        asm("} else if (uf.rank[ra] > uf.rank[rb]) {")
+        asm("    uf.parent[rb] = ra;")
+        asm("} else {")
+        asm("    uf.parent[rb] = ra;")
+        asm("    uf.rank[ra] = uf.rank[ra] + 1;")
+        asm("}")
+
+funcion uf_mismo_set(uf: UnionFind, a: entero, b: entero) -> booleano:
+    retornar uf_find(uf, a) == uf_find(uf, b)
+
+// --- Cycle detection via DFS (M21.2) ---
+// Returns constraint index if cycle found, -1 otherwise.
+funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
+    n = uf.total
+    idx_encontrado = -1
+
+    inseguro:
+        asm("char* _estado = (char*)calloc(n > 0 ? n : 1, 1);")
+        asm("int _ciclo = 0;")
+        asm("int _ciclo_idx = -1;")
+        asm("for (int _v = 0; _v < n && !_ciclo; _v++) {")
+        asm("    if (_estado[_v] != 0) continue;")
+        asm("    int _stack[256]; int _sp = 0;")
+        asm("    _stack[_sp++] = _v; _estado[_v] = 1;")
+        asm("    while (_sp > 0 && !_ciclo) {")
+        asm("        int _cur = _stack[_sp - 1];")
+        asm("        int _has_child = 0;")
+        asm("        for (int _ci = 0; _ci < g.total_constraints; _ci++) {")
+        asm("            if (g.constraints[_ci].tipo != 0) continue;")
+        asm("            int _src = uf_find(uf, g.constraints[_ci].origen);")
+        asm("            if (_src != _cur) continue;")
+        asm("            int _dst_root = uf_find(uf, g.constraints[_ci].destino);")
+        asm("            if (_estado[_dst_root] == 1) { _ciclo = 1; _ciclo_idx = _ci; break; }")
+        asm("            if (_estado[_dst_root] == 0) {")
+        asm("                _stack[_sp++] = _dst_root;")
+        asm("                _estado[_dst_root] = 1;")
+        asm("                _has_child = 1;")
+        asm("                break;")
+        asm("            }")
+        asm("        }")
+        asm("        if (!_has_child && !_ciclo) { _estado[_cur] = 2; _sp--; }")
+        asm("    }")
+        asm("}")
+        asm("idx_encontrado = _ciclo_idx;")
+        asm("free(_estado);")
+
+    retornar idx_encontrado
+
+// --- Main resolver: unify lifetimes, detect cycles (M21.2) ---
+funcion region_resolver(g: RegionGraph, uf: UnionFind, est: entero) -> entero:
+    // Paso 1: Unificar EQUALS constraints via union-find
+    i = 0
+    mientras i < g.total_constraints:
+        inseguro:
+            asm("if (g.constraints[i].tipo == 1) {")
+            asm("    uf_union(uf, g.constraints[i].origen, g.constraints[i].destino);")
+            asm("}")
+            asm("i = i + 1")
+
+    // Paso 2: Detectar ciclos en el grafo de OUTLIVES
+    ciclo_idx = detectar_ciclo_outlives(g, uf)
+
+    si ciclo_idx >= 0:
+        inseguro:
+            asm("{ CadenaSegura _msg = { .longitud = 40, .datos = \"Ciclo de dependencia de lifetimes\" };")
+            asm("   sem_error(est, ERR_MEM_LIFETIME_CYCLE, ciclo_idx, _msg); }")
+        retornar 1
+
+    retornar 0
 
 // --- Initialization ---
 funcion region_graph_nuevo(max: entero) -> RegionGraph:
@@ -50,7 +157,6 @@ funcion region_graph_nuevo(max: entero) -> RegionGraph:
     g.max_constraints = max
     retornar g
 
-// --- Add a constraint to the graph ---
 funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero, destino: entero, linea: entero) -> nulo:
     si g.total_constraints >= g.max_constraints:
         retornar

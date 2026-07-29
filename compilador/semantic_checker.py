@@ -60,6 +60,35 @@ class RegionConstraint:
         self.linea = linea
 
 
+class UnionFind:
+    """Union-Find con path compression y union by rank (M21.2)."""
+    def __init__(self, n: int):
+        self.parent = [-1] * n
+        self.rank = [0] * n
+        self.n = n
+
+    def find(self, x: int) -> int:
+        if self.parent[x] < 0:
+            return x
+        self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, a: int, b: int):
+        ra, rb = self.find(a), self.find(b)
+        if ra == rb:
+            return
+        if self.rank[ra] < self.rank[rb]:
+            self.parent[ra] = rb
+        elif self.rank[ra] > self.rank[rb]:
+            self.parent[rb] = ra
+        else:
+            self.parent[rb] = ra
+            self.rank[ra] += 1
+
+    def mismo_set(self, a: int, b: int) -> bool:
+        return self.find(a) == self.find(b)
+
+
 class RegionGraph:
     """Grafo de restricciones de regiones (Manual 4.3).
     
@@ -72,9 +101,64 @@ class RegionGraph:
     def agregar_restriccion(self, tipo: int, origen: Lifetime, destino: Lifetime, linea: int = 0):
         self.constraints.append(RegionConstraint(tipo, origen, destino, linea))
 
-    def resolver(self) -> list[RegionConstraint]:
-        """Resuelve el grafo de restricciones (placeholder para M21.2)."""
-        return self.constraints
+    def _dfs_cycle_detection(self, uf: UnionFind) -> tuple[bool, int]:
+        """DFS 3-state para detectar ciclos en OUTLIVES (M21.2)."""
+        n = uf.n
+        estado = [0] * n  # 0=white, 1=grey, 2=black
+        
+        def _dfs(v: int) -> tuple[bool, int]:
+            estado[v] = 1  # grey
+            for ci, c in enumerate(self.constraints):
+                if c.tipo != REGION_OUTLIVES:
+                    continue
+                src = uf.find(c.origen.indice if hasattr(c.origen, 'indice') else c.origen)
+                dst = uf.find(c.destino.indice if hasattr(c.destino, 'indice') else c.destino)
+                if src != v:
+                    continue
+                dst_root = uf.find(dst)
+                if estado[dst_root] == 1:
+                    return True, ci  # back-edge = cycle
+                if estado[dst_root] == 0:
+                    has_cycle, ci_cycle = _dfs(dst_root)
+                    if has_cycle:
+                        return True, ci_cycle
+            estado[v] = 2  # black
+            return False, -1
+        
+        for v in range(n):
+            if estado[v] == 0:
+                has_cycle, ci = _dfs(v)
+                if has_cycle:
+                    return True, ci
+        return False, -1
+
+    def resolver(self, uf: UnionFind, report_error=None) -> bool:
+        """M21.2: Resolver grafo de restricciones.
+        
+        1. Unificar EQUALS mediante union-find
+        2. Detectar ciclos en OUTLIVES mediante DFS
+        3. Emitir ERR_MEM_LIFETIME_CYCLE si se encuentra ciclo
+        
+        Returns: True si hay ciclo, False si OK
+        """
+        # Paso 1: Unificar EQUALS
+        for c in self.constraints:
+            if c.tipo == REGION_EQUALS:
+                origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
+                destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
+                uf.union(origen_idx, destino_idx)
+        
+        # Paso 2: Detectar ciclos
+        has_cycle, ciclo_idx = self._dfs_cycle_detection(uf)
+        if has_cycle and report_error:
+            ci = self.constraints[ciclo_idx]
+            report_error(
+                'ERR_MEM_LIFETIME_CYCLE',
+                ci.linea,
+                f"Ciclo de dependencia de lifetimes detectado"
+            )
+            return True
+        return has_cycle
 
 
 class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
