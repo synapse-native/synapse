@@ -27,7 +27,7 @@ extern void _syn_llenar_tensor_constante(Tensor t, float valor);
 extern Tensor _syn_multiplicar_matrices(Tensor a, Tensor b);
 extern Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b);
 extern int _syn_simd_disponible(void);
-extern const char* _syn_simd_tipo(void);
+extern CadenaSegura _syn_simd_tipo(void);
 extern CadenaSegura entero_a_texto(int n);
 extern CadenaSegura decimal_a_texto(float n);
 
@@ -73,7 +73,8 @@ static int validar_resultado(Tensor esperado, Tensor obtenido, const char* nombr
 int main(void) {
     printf("=== Benchmark Tensorial: Escalar vs SIMD ===\n");
     printf("Dimension: %dx%d | Iteraciones: %d\n", DIM, DIM, ITERACIONES);
-    printf("SIMD disponible: %d (%s)\n", _syn_simd_disponible(), _syn_simd_tipo());
+    CadenaSegura tipo = _syn_simd_tipo();
+    printf("SIMD disponible: %d (%s)\n", _syn_simd_disponible(), tipo.datos);
     printf("\n");
 
     // --- Benchmark Escalar ---
