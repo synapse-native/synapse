@@ -200,10 +200,14 @@ estructura GeneradorCEst:
     strings_heap: cadena
     strings_heap_total: entero
 
+    // --- M22.2: Scope tracking (native RAII, est pasada por valor) ---
+    // scope_depth se maneja via global _G_scope_depth (no persiste en est)
+
 // ----------------------------------------------------------
 // Tamaño del buffer temporal global
 // ----------------------------------------------------------
 constante _GEN_TMP_SIZE = 4096
+constante _G_SCOPE_MAX_VARS = 256
 
 // ===== From: emision_c.syn =====
 
@@ -329,28 +333,60 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // ----------------------------------------------------------
 // gen_abrir_bloque_c
 // Emite "(" + newline al buffer de salida.
-// M22.1: Incluye marcador de entrada de scope para trazabilidad.
+// M22.2: Incrementa scope_depth global y emite marcador de entrada.
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '{';")
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
+        asm("_G_scope_depth++;")
 
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
-// Emite ")" + newline al buffer de salida.
-// M22.1: Emite marcador de salida de scope (pool_free se maneja
-// via visitantes, no aqui, para mantener compatibilidad Unity Build).
+// Emite ")" + newline + pool_free para RAII en este ambito.
+// M22.2: Antes de cerrar, decrementa scope_depth y emite
+// pool_free para variables CadenaSegura rastreadas.
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
+        asm("extern int _G_scope_vars_total;")
+        asm("// M22.2: Emitir pool_free para vars RAII en este ambito")
+        asm("int _sd = _G_scope_depth;")
+        asm("for (int _vi = 0; _vi < _G_scope_vars_total; _vi++) {")
+        asm("    if (_G_scope_vars_depth[_vi] == _sd) {")
+        asm("        char _free_line[128];")
+        asm("        snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_vi], _sd);")
+        asm("        int _fl = (int)strlen(_free_line);")
+        asm("        if (_G_emit_pos + _fl + 2 <= 1048576) {")
+        asm("            memcpy(_G_emit_buf + _G_emit_pos, _free_line, _fl);")
+        asm("            _G_emit_pos += _fl;")
+        asm("            _G_emit_buf[_G_emit_pos] = 10;")
+        asm("            _G_emit_pos++;")
+        asm("        }")
+        asm("        // Mark as removed (sentinel depth = -1) en vez de swap-with-last")
+        asm("        _G_scope_vars_depth[_vi] = -1;")
+        asm("        _G_scope_vars_names[_vi][0] = 0;")
+        asm("    }")
+        asm("}")
+        asm("// Compact: rebuild array skipping removed entries")
+        asm("int _wi = 0;")
+        asm("for (int _ri = 0; _ri < _G_scope_vars_total; _ri++) {")
+        asm("    if (_G_scope_vars_depth[_ri] >= 0) {")
+        asm("        _G_scope_vars_depth[_wi] = _G_scope_vars_depth[_ri];")
+        asm("        strcpy(_G_scope_vars_names[_wi], _G_scope_vars_names[_ri]);")
+        asm("        _wi++;")
+        asm("    }")
+        asm("}")
+        asm("_G_scope_vars_total = _wi;")
+        asm("_G_scope_depth--;")
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '}';")
         asm("_G_emit_pos++;")
@@ -650,6 +686,18 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
+        // M22.2: Track string vars for RAII pool_free at scope exit
+        asm("extern int _G_scope_depth;")
+        asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
+        asm("extern int _G_scope_vars_total;")
+        asm("if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
+        asm("    if (_G_scope_vars_total < 256) {")
+        asm("        int _idx = _G_scope_vars_total++;")
+        asm("        _G_scope_vars_depth[_idx] = _G_scope_depth;")
+        asm("        strncpy(_G_scope_vars_names[_idx], _dv->nombre.datos, 63);")
+        asm("        _G_scope_vars_names[_idx][63] = 0;")
+        asm("    }")
+        asm("}")
 
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:

@@ -192,7 +192,11 @@ estructura GeneradorCEst:
     strings_heap: cadena
     strings_heap_total: entero
 
+    // --- M22.2: Scope tracking (native RAII, est pasada por valor) ---
+    // scope_depth se maneja via global _G_scope_depth (no persiste en est)
+
 // ----------------------------------------------------------
 // Tamaño del buffer temporal global
 // ----------------------------------------------------------
 constante _GEN_TMP_SIZE = 4096
+constante _G_SCOPE_MAX_VARS = 256

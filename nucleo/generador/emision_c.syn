@@ -120,25 +120,60 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // ----------------------------------------------------------
 // gen_abrir_bloque_c
 // Emite "(" + newline al buffer de salida.
+// M22.2: Incrementa scope_depth global y emite marcador de entrada.
 // ----------------------------------------------------------
 funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '{';")
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 10;")   // '\n'
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
+        asm("_G_scope_depth++;")
 
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
-// Emite ")" + newline al buffer de salida.
+// Emite ")" + newline + pool_free para RAII en este ambito.
+// M22.2: Antes de cerrar, decrementa scope_depth y emite
+// pool_free para variables CadenaSegura rastreadas.
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
-        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
+        asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
+        asm("extern int _G_scope_vars_total;")
+        asm("// M22.2: Emitir pool_free para vars RAII en este ambito")
+        asm("int _sd = _G_scope_depth;")
+        asm("for (int _vi = 0; _vi < _G_scope_vars_total; _vi++) {")
+        asm("    if (_G_scope_vars_depth[_vi] == _sd) {")
+        asm("        char _free_line[128];")
+        asm("        snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_vi], _sd);")
+        asm("        int _fl = (int)strlen(_free_line);")
+        asm("        if (_G_emit_pos + _fl + 2 <= 1048576) {")
+        asm("            memcpy(_G_emit_buf + _G_emit_pos, _free_line, _fl);")
+        asm("            _G_emit_pos += _fl;")
+        asm("            _G_emit_buf[_G_emit_pos] = 10;")
+        asm("            _G_emit_pos++;")
+        asm("        }")
+        asm("        // Mark as removed (sentinel depth = -1) en vez de swap-with-last")
+        asm("        _G_scope_vars_depth[_vi] = -1;")
+        asm("        _G_scope_vars_names[_vi][0] = 0;")
+        asm("    }")
+        asm("}")
+        asm("// Compact: rebuild array skipping removed entries")
+        asm("int _wi = 0;")
+        asm("for (int _ri = 0; _ri < _G_scope_vars_total; _ri++) {")
+        asm("    if (_G_scope_vars_depth[_ri] >= 0) {")
+        asm("        _G_scope_vars_depth[_wi] = _G_scope_vars_depth[_ri];")
+        asm("        strcpy(_G_scope_vars_names[_wi], _G_scope_vars_names[_ri]);")
+        asm("        _wi++;")
+        asm("    }")
+        asm("}")
+        asm("_G_scope_vars_total = _wi;")
+        asm("_G_scope_depth--;")
         asm("if (_G_emit_pos + 2 > 1048576) return;")
         asm("_G_emit_buf[_G_emit_pos] = '}';")
         asm("_G_emit_pos++;")

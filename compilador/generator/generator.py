@@ -438,6 +438,10 @@ class GeneradorC:
             ctx.write_line("char _G_emit_buf[1048576];")
             ctx.write_line("int _G_emit_pos;")
             ctx.write_line("FILE* _G_fp;")
+            ctx.write_line("int _G_scope_depth;")
+            ctx.write_line("int _G_scope_vars_depth[256];")
+            ctx.write_line("char _G_scope_vars_names[256][64];")
+            ctx.write_line("int _G_scope_vars_total;")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
             ctx.write_line("char** _g_argv;")
@@ -492,7 +496,7 @@ class GeneradorC:
                 else:
                     tipo_ret = ctx.traducir_tipo_c(s.tipo_retorno)
                     params = ", ".join(
-                        f"{ctx.traducir_tipo_c(p.tipo)} {p.nombre}"
+                        f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
                         for p in s.parametros
                     ) if s.parametros else "void"
                     ctx.write_line(f"{tipo_ret} {s.nombre}({params});")
@@ -604,6 +608,12 @@ class GeneradorC:
         if modo == 'header':
             # Solo cabecera: #includes, tipos, prototipos + extern declarations
             # IMPORTANTE: NO llamar _emit_cabecera_comun (emite DEFINICIONES _g_argc/_argc/salir/concat)
+            # M22.2: Declarar extern de variables de scope RAII
+            ctx.write_line("extern int _G_scope_depth;")
+            ctx.write_line("extern int _G_scope_vars_depth[256];")
+            ctx.write_line("extern char _G_scope_vars_names[256][64];")
+            ctx.write_line("extern int _G_scope_vars_total;")
+            ctx.write_line("")
             _emitir_encabezado(ctx)
             # Extern declarations para runtime helpers (NO definiciones — son solo para link)
             if not ctx.is_no_std():
@@ -645,6 +655,11 @@ class GeneradorC:
                 ctx.write_line("char _G_emit_buf[1048576];")
                 ctx.write_line("int _G_emit_pos;")
                 ctx.write_line("FILE* _G_fp;")
+                # M22.2: Scope tracking globals (definiciones)
+                ctx.write_line("int _G_scope_depth;")
+                ctx.write_line("int _G_scope_vars_depth[256];")
+                ctx.write_line("char _G_scope_vars_names[256][64];")
+                ctx.write_line("int _G_scope_vars_total;")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")
                 ctx.write_line("char** _g_argv;")
