@@ -132,7 +132,15 @@ def main():
         sys.exit(0)
 
     if args.version:
-        print("Synapse Compiler v5.0.0")
+        version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+        version = "5.1.0-industrial"
+        if os.path.exists(version_file):
+            try:
+                with open(version_file, "r") as f:
+                    version = f.read().strip()
+            except Exception:
+                pass
+        print(f"Synapse Compiler v{version}")
         sys.exit(0)
 
     if args.detect_hardware:
