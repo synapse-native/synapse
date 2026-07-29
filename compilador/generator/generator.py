@@ -324,7 +324,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("")
 
     if not ctx.is_no_std():
-        ctx.write_line("// --- Helpers de serialización primitiva ---")
+        ctx.write_line("// --- Helpers de serializaci\u00f3n primitiva ---")
         ctx.write_line("static inline void* _synapse_box_int(int v) "
             "{ return (void*)(intptr_t)v; }"
         )
@@ -426,7 +426,7 @@ class GeneradorC:
     def _destructor_map(self):
         return self.ctx._destructor_map
 
-    # ---- Módulos de emisión auxiliares ----
+    # ---- M\u00f3dulos de emisi\u00f3n auxiliares ----
 
     def _emit_cabecera_comun(self, ctx):
         """Helper: _emitir_encabezado + definiciones de vars globales + _g_argc/_argv/salir/concat"""
@@ -442,6 +442,7 @@ class GeneradorC:
             ctx.write_line("int _G_scope_vars_depth[256];")
             ctx.write_line("char _G_scope_vars_names[256][64];")
             ctx.write_line("int _G_scope_vars_total;")
+            ctx.write_line("int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
             ctx.write_line("char** _g_argv;")
@@ -508,8 +509,8 @@ class GeneradorC:
             ctx.write_line("")
 
     def _emit_main(self, ctx, scope_names: set[str] | None = None):
-        """Helper: emite main() SOLO si existe función 'principal' en este módulo
-        y está dentro del alcance (scope_names)."""
+        """Helper: emite main() SOLO si existe funci\u00f3n 'principal' en este m\u00f3dulo
+        y est\u00e1 dentro del alcance (scope_names)."""
         principal = ctx.encontrar_principal()
         if principal is None:
             return
@@ -527,6 +528,8 @@ class GeneradorC:
             ctx.inc_indent()
             ctx.write_line("_g_argc = argc;")
             ctx.write_line("_g_argv = argv;")
+            if ctx._safe_mode:
+                ctx.write_line("_G_safe_mode = 1;  // --safe activo: aserciones de lifetimes")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             ret_tipo = ctx._func_return_types.get(principal, 'int')
             if ret_tipo in ('nulo', 'void'):
@@ -541,7 +544,7 @@ class GeneradorC:
 
     def _emit_cuerpos(self, ctx, scope_names: set[str] | None = None):
         """Helper: emite cuerpos de funciones + listenres + wrappers.
-        Si scope_names no es None, solo emite funciones cuyos nombres estén en el conjunto."""
+        Si scope_names no es None, solo emite funciones cuyos nombres est\u00e9n en el conjunto."""
         for s in ctx.programa.sentencias:
             if scope_names is not None and isinstance(s, DefinicionFuncion):
                 if s.nombre not in scope_names:
@@ -560,17 +563,17 @@ class GeneradorC:
             ctx.write_line(wrap)
             ctx.write_line("")
 
-    # ---- Modos de emisión ----
+    # ---- Modos de emisi\u00f3n ----
 
     def generar(self, modo='completo', include_header='',
                 scope_names: set[str] | None = None) -> str:
         """
-        Genera código C en tres modos:
+        Genera c\u00f3digo C en tres modos:
         - 'completo': archivo completo (comportamiento original)
         - 'header':   solo cabecera + tipos + prototipos (sin cuerpos, sin main)
         - 'modulo':   #include header + cuerpos de funciones (sin repetir cabecera)
         Si scope_names se proporciona, solo se emiten cuerpos de funciones cuyos
-        nombres estén en el conjunto (módulos independientes).
+        nombres est\u00e9n en el conjunto (m\u00f3dulos independientes).
         """
         ctx = self.ctx
         ctx._variables = {}
@@ -613,9 +616,10 @@ class GeneradorC:
             ctx.write_line("extern int _G_scope_vars_depth[256];")
             ctx.write_line("extern char _G_scope_vars_names[256][64];")
             ctx.write_line("extern int _G_scope_vars_total;")
+            ctx.write_line("extern int _G_safe_mode;  // M22.5: --safe flag")
             ctx.write_line("")
             _emitir_encabezado(ctx)
-            # Extern declarations para runtime helpers (NO definiciones — son solo para link)
+            # Extern declarations para runtime helpers (NO definiciones \u2014 son solo para link)
             if not ctx.is_no_std():
                 ctx.write_line("extern int _g_argc;")
                 ctx.write_line("extern char** _g_argv;")
@@ -639,13 +643,13 @@ class GeneradorC:
             return ctx.generar()
 
         if modo == 'modulo':
-            # Módulo: #include header + solo cuerpos (sin repetir cabecera)
+            # M\u00f3dulo: #include header + solo cuerpos (sin repetir cabecera)
             if include_header:
                 ctx.write_line(f'#include "{include_header}"')
             else:
                 ctx.write_line("// -- modulo sin header --")
             ctx.write_line("")
-            # Si este módulo es el principal, emitir definiciones de vars globales y runtime helpers
+            # Si este m\u00f3dulo es el principal, emitir definiciones de vars globales y runtime helpers
             tiene_principal = ctx.encontrar_principal() is not None
             if scope_names is not None:
                 tiene_principal = tiene_principal and 'principal' in scope_names
@@ -660,6 +664,7 @@ class GeneradorC:
                 ctx.write_line("int _G_scope_vars_depth[256];")
                 ctx.write_line("char _G_scope_vars_names[256][64];")
                 ctx.write_line("int _G_scope_vars_total;")
+                ctx.write_line("int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")
                 ctx.write_line("char** _g_argv;")
@@ -695,7 +700,7 @@ class GeneradorC:
                 ctx.dec_indent()
                 ctx.write_line("}")
                 ctx.write_line("")
-            # NO emitir structs — ya están definidos en el header compartido
+            # NO emitir structs \u2014 ya est\u00e1n definidos en el header compartido
             # Pre-pass lanzar y typedefs
             _preprocess_lanzar(ctx)
             ctx._contador_thread = 0
@@ -705,9 +710,9 @@ class GeneradorC:
                 ctx.write_line(decl)
             if ctx._deferred_typedefs or ctx._deferred_wrap_decls:
                 ctx.write_line("")
-            # Cuerpos de funciones — solo las del alcance del módulo
+            # Cuerpos de funciones \u2014 solo las del alcance del m\u00f3dulo
             self._emit_cuerpos(ctx, scope_names)
-            # Emitir main solo si este módulo tiene 'principal'
+            # Emitir main solo si este m\u00f3dulo tiene 'principal'
             self._emit_main(ctx, scope_names)
             return ctx.generar()
 

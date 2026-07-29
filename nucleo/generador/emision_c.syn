@@ -118,6 +118,23 @@ funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: punte
 // ============================================================
 
 // ----------------------------------------------------------
+// gen_emitir_lifetime_assert
+// M22.5: Emite una asercion de lifetime en el codigo C generado
+// (solo si _G_safe_mode esta activo).
+// Formato: assert(condition && "mensaje");
+// ----------------------------------------------------------
+funcion gen_emitir_lifetime_assert(est: GeneradorCEst, condicion: puntero, mensaje: puntero) -> nulo:
+    inseguro:
+        asm("extern int _G_safe_mode;")
+        asm("if (!_G_safe_mode) return;")
+        asm("const char* _cond = (const char*)condicion;")
+        asm("const char* _msg = (const char*)mensaje;")
+        asm("if (!_cond || !_msg) return;")
+        asm("char _buf[512];")
+        asm("snprintf(_buf, 512, \"    assert(%s && \\\"%s\\\"); /* LIFETIME */\", _cond, _msg);")
+        asm("gen_emitir_str(est, _buf);")
+
+// ----------------------------------------------------------
 // gen_abrir_bloque_c
 // Emite "(" + newline al buffer de salida.
 // M22.2: Incrementa scope_depth global y emite marcador de entrada.
@@ -132,6 +149,13 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
         asm("_G_emit_pos++;")
         asm("_G_emit_buf[_G_emit_pos] = 0;")
         asm("_G_scope_depth++;")
+        // M22.5: Emitir ASSERT activo de LIFETIME en modo --safe (no comentario pasivo)
+        asm("extern int _G_safe_mode;")
+        asm("if (_G_safe_mode) {")
+        asm("    char _safe_buf[256];")
+        asm("    snprintf(_safe_buf, 256, \"    assert(_G_scope_depth >= 0 && _G_scope_depth < 256 && \\\"LIFETIME: scope_depth overflow at block %d\\\"); /* LIFETIME */\", _G_scope_depth);")
+        asm("    gen_emitir_str(est, _safe_buf);")
+        asm("}")
 
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c

@@ -195,6 +195,10 @@ estructura GeneradorCEst:
     // --- M22.2: Scope tracking (native RAII, est pasada por valor) ---
     // scope_depth se maneja via global _G_scope_depth (no persiste en est)
 
+    // --- M22.5: --safe mode (lifetime assertions in generated C) ---
+    safe_mode: booleano
+    // NOTA: safe_mode se propaga via global _G_safe_mode porque est se pasa por valor
+
 // ----------------------------------------------------------
 // Tamaño del buffer temporal global
 // ----------------------------------------------------------
