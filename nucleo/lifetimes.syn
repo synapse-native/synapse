@@ -128,7 +128,28 @@ funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
 
     retornar idx_encontrado
 
-// --- Main resolver: unify lifetimes, detect cycles (M21.2) ---
+// --- M21.4: Verify OUTLIVES post-unification ---
+// Returns index of violated constraint, -1 if all OK.
+funcion verificar_outlives(g: RegionGraph, uf: UnionFind) -> entero:
+    i = 0
+    idx_violacion = -1
+    mientras i < g.total_constraints:
+        inseguro:
+            asm("if (g.constraints[i].tipo == 0) { // REGION_OUTLIVES\n")
+            asm("    int _o = uf_find(uf, g.constraints[i].origen);\n")
+            asm("    int _d = uf_find(uf, g.constraints[i].destino);\n")
+            asm("    if (_o != _d) { // Diferentes lifetime roots\n")
+            asm("        // Por ahora, asumimos que roots diferentes implican violacion\n")
+            asm("        // (la validacion semantica completa requiere metadatos de tipo)\n")
+            asm("        idx_violacion = i;\n")
+            asm("    }\n")
+            asm("}")
+            asm("i = i + 1")
+        si idx_violacion >= 0:
+            romper
+    retornar idx_violacion
+
+// --- Main resolver: unify lifetimes, detect cycles, verify constraints (M21.4) ---
 funcion region_resolver(g: RegionGraph, uf: UnionFind, est: entero) -> entero:
     // Paso 1: Unificar EQUALS constraints via union-find
     i = 0
@@ -147,6 +168,14 @@ funcion region_resolver(g: RegionGraph, uf: UnionFind, est: entero) -> entero:
             asm("{ CadenaSegura _msg = { .longitud = 40, .datos = \"Ciclo de dependencia de lifetimes\" };")
             asm("   sem_error(est, ERR_MEM_LIFETIME_CYCLE, ciclo_idx, _msg); }")
         retornar 1
+
+    // Paso 3: Verificar OUTLIVES post-unificacion (M21.4 - Manual 4.3)
+    violacion_idx = verificar_outlives(g, uf)
+    si violacion_idx >= 0:
+        inseguro:
+            asm("{ CadenaSegura _msg = { .longitud = 44, .datos = \"Violacion de lifetime: referencia no vive suficiente\" };")
+            asm("   sem_error(est, ERR_MEM_LIFETIME_MISMATCH, violacion_idx, _msg); }")
+        retornar 2
 
     retornar 0
 

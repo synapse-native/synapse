@@ -101,6 +101,86 @@ class RegionGraph:
     def agregar_restriccion(self, tipo: int, origen: Lifetime, destino: Lifetime, linea: int = 0):
         self.constraints.append(RegionConstraint(tipo, origen, destino, linea))
 
+    @staticmethod
+    def _check_outlives(origen: Lifetime, destino: Lifetime) -> bool:
+        """M21.4: Verificar que el lifetime origen >= destino (Manual 4.3).
+        
+        Static outlives todo, parametric outlives local,
+        local: ambito menor = exterior = vive mas.
+        """
+        if origen.kind == LT_ESTATICO:
+            return True
+        if origen.kind == LT_PARAMETRICO:
+            return destino.kind in (LT_LOCAL, LT_ELIDIDO, LT_PARAMETRICO)
+        if origen.kind == LT_LOCAL and destino.kind == LT_LOCAL:
+            return origen.ambito <= destino.ambito
+        if origen.kind == destino.kind:
+            return True
+        if origen.kind == LT_ELIDIDO:
+            return True  # Elided = asumimos compatible
+        return False
+
+    def _verificar_outlives_constraint(self, c: RegionConstraint, uf: UnionFind) -> bool:
+        """M21.4: Verificar si una restriccion OUTLIVES se cumple post-unificacion."""
+        if c.tipo != REGION_OUTLIVES:
+            return True
+        origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
+        destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
+        origen_root = uf.find(origen_idx)
+        destino_root = uf.find(destino_idx)
+        
+        # Misma raiz en union-find = mismo lifetime unificado = OK
+        if origen_root == destino_root:
+            return True
+        
+        # Verificar compatibilidad de metadatos de lifetime
+        if not hasattr(c.origen, 'kind') or not hasattr(c.destino, 'kind'):
+            return True  # No se puede determinar, asumir OK
+        return self._check_outlives(c.origen, c.destino)
+
+    def resolver(self, uf: UnionFind, report_error=None) -> bool:
+        """M21.4: Resolver grafo de restricciones con validacion completa.
+        
+        1. Unificar EQUALS mediante union-find
+        2. Detectar ciclos en OUTLIVES mediante DFS (ERR_MEM_LIFETIME_CYCLE)
+        3. Verificar OUTLIVES contra violaciones (ERR_MEM_LIFETIME_MISMATCH)
+        
+        Returns: True si hay ciclo o violacion, False si OK
+        """
+        # Paso 1: Unificar EQUALS
+        for c in self.constraints:
+            if c.tipo == REGION_EQUALS:
+                origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
+                destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
+                uf.union(origen_idx, destino_idx)
+        
+        # Paso 2: Detectar ciclos
+        has_cycle, ciclo_idx = self._dfs_cycle_detection(uf)
+        if has_cycle and report_error:
+            ci = self.constraints[ciclo_idx]
+            report_error(
+                'ERR_MEM_LIFETIME_CYCLE',
+                ci.linea,
+                f"Ciclo de dependencia de lifetimes detectado"
+            )
+            return True
+        
+        # Paso 3: Verificar OUTLIVES (M21.4 - Manual 4.3)
+        for c in self.constraints:
+            if c.tipo != REGION_OUTLIVES:
+                continue
+            if not self._verificar_outlives_constraint(c, uf):
+                if report_error:
+                    report_error(
+                        'ERR_MEM_LIFETIME_MISMATCH',
+                        c.linea,
+                        f"Violacion de lifetime: la referencia '{repr(c.origen)}' "
+                        f"no vive lo suficiente para el prestamo '{repr(c.destino)}'"
+                    )
+                return True
+        
+        return False
+
     def _dfs_cycle_detection(self, uf: UnionFind) -> tuple[bool, int]:
         """DFS 3-state para detectar ciclos en OUTLIVES (M21.2)."""
         n = uf.n
@@ -131,34 +211,6 @@ class RegionGraph:
                 if has_cycle:
                     return True, ci
         return False, -1
-
-    def resolver(self, uf: UnionFind, report_error=None) -> bool:
-        """M21.2: Resolver grafo de restricciones.
-        
-        1. Unificar EQUALS mediante union-find
-        2. Detectar ciclos en OUTLIVES mediante DFS
-        3. Emitir ERR_MEM_LIFETIME_CYCLE si se encuentra ciclo
-        
-        Returns: True si hay ciclo, False si OK
-        """
-        # Paso 1: Unificar EQUALS
-        for c in self.constraints:
-            if c.tipo == REGION_EQUALS:
-                origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
-                destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
-                uf.union(origen_idx, destino_idx)
-        
-        # Paso 2: Detectar ciclos
-        has_cycle, ciclo_idx = self._dfs_cycle_detection(uf)
-        if has_cycle and report_error:
-            ci = self.constraints[ciclo_idx]
-            report_error(
-                'ERR_MEM_LIFETIME_CYCLE',
-                ci.linea,
-                f"Ciclo de dependencia de lifetimes detectado"
-            )
-            return True
-        return has_cycle
 
 
 class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
