@@ -32,3 +32,7 @@ constante ERR_LOCK_HASH_MISMATCH = 29
 constante ERR_GIT_FAILURE = 30
 constante ERR_SEM_ASM_FUERA_INSEGURO = 31
 constante ERR_SEM_CONSTANTE_INMUTABLE = 32
+
+// --- Lifetime / Memory safety error codes (Manual 4.3) ---
+constante ERR_MEM_LIFETIME_MISMATCH = 34
+constante ERR_MEM_LIFETIME_CYCLE = 35

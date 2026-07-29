@@ -61,6 +61,8 @@ constante ERR_SEM_VAR_MOVIDA = 22
 constante ERR_SEM_ASM_FUERA_INSEGURO = 31
 constante ERR_SEM_CONSTANTE_INMUTABLE = 32
 constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
+constante ERR_MEM_LIFETIME_MISMATCH = 34
+constante ERR_MEM_LIFETIME_CYCLE = 35
 
 // --- Property constants ---
 constante PROPIEDAD_VIVO = 1

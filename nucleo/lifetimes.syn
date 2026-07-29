@@ -1,0 +1,87 @@
+#lang: es
+
+// --- M21.1: Lifetime / Region type system (Manual 4.3) ---
+//
+// Este modulo define la taxonomia base del sistema de lifetimes
+// y el grafo de restricciones de regiones para el analizador semantico.
+//
+// LifetimeKind: enumerado de categorias de lifetime
+// Lifetime: estructura que asocia un kind con un ambito e indice
+
+// --- LifetimeKind constants ---
+constante LT_ESTATICO = 0       // 'static: toda la ejecucion del programa
+constante LT_LOCAL = 1          // Variable local: vive hasta que el ambito termina
+constante LT_PARAMETRICO = 2    // Parametro de funcion: vive hasta que la llamada retorna
+constante LT_ELIDIDO = 3        // Elided: sera inferido por el algoritmo de unificacion
+
+// --- Region constraint types for the constraint graph ---
+constante REGION_OUTLIVES = 0   // 'a: 'b  -> 'a debe vivir al menos tanto como 'b
+constante REGION_EQUALS = 1     // 'a == 'b -> 'a y 'b deben ser iguales
+constante REGION_SUBSCOPE = 2   // 'a <: 'b -> 'a es subambito de 'b
+
+// --- Lifetime structure ---
+// Cada variable/expresion en el AST puede tener un Lifetime asociado
+// que describe su alcance de validez en el grafo de regiones.
+estructura Lifetime:
+    kind: entero          // LT_ESTATICO, LT_LOCAL, LT_PARAMETRICO, LT_ELIDIDO
+    ambito: entero        // Indice del ambito (nivel_actual de la tabla de simbolos)
+    indice: entero        // Indice unico dentro del ambito (0, 1, 2, ...)
+    padre: entero         // Indice del Lifetime padre (-1 si es raiz)
+
+// --- Region constraint in the constraint graph ---
+estructura RegionConstraint:
+    tipo: entero          // REGION_OUTLIVES, REGION_EQUALS, REGION_SUBSCOPE
+    origen: entero        // Indice del Lifetime origen
+    destino: entero       // Indice del Lifetime destino
+    linea: entero         // Linea del codigo fuente donde se origino la restriccion
+
+// --- Region constraint graph ---
+// Almacena todas las restricciones entre lifetimes para
+// su posterior resolucion mediante el algoritmo de unificacion.
+estructura RegionGraph:
+    constraints: RegionConstraint
+    total_constraints: entero
+    max_constraints: entero
+
+// --- Initialization ---
+funcion region_graph_nuevo(max: entero) -> RegionGraph:
+    g = RegionGraph()
+    g.total_constraints = 0
+    g.max_constraints = max
+    retornar g
+
+// --- Add a constraint to the graph ---
+funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero, destino: entero, linea: entero) -> nulo:
+    si g.total_constraints >= g.max_constraints:
+        retornar
+    inseguro:
+        asm("g.constraints[g.total_constraints].tipo = tipo")
+        asm("g.constraints[g.total_constraints].origen = origen")
+        asm("g.constraints[g.total_constraints].destino = destino")
+        asm("g.constraints[g.total_constraints].linea = linea")
+        asm("g.total_constraints = g.total_constraints + 1")
+
+// --- Lifetime helpers ---
+funcion lifetime_es_valido(lt: Lifetime) -> booleano:
+    retornar lt.kind >= 0 y lt.kind <= 3
+
+funcion lifetime_es_estatico(lt: Lifetime) -> booleano:
+    retornar lt.kind == LT_ESTATICO
+
+funcion lifetime_es_elidido(lt: Lifetime) -> booleano:
+    retornar lt.kind == LT_ELIDIDO
+
+funcion lifetime_a_texto(lt: Lifetime) -> cadena:
+    si lt.kind == LT_ESTATICO:
+        retornar "'static"
+    si lt.kind == LT_LOCAL:
+        r = ""
+        inseguro:
+            asm("{ char _b[64]; snprintf(_b,64,\"'local(%d)\",lt.ambito); r=(CadenaSegura){.longitud=(int)strlen(_b),.datos=strdup(_b)}; }")
+        retornar r
+    si lt.kind == LT_PARAMETRICO:
+        r = ""
+        inseguro:
+            asm("{ char _b[64]; snprintf(_b,64,\"'param(%d)\",lt.indice); r=(CadenaSegura){.longitud=(int)strlen(_b),.datos=strdup(_b)}; }")
+        retornar r
+    retornar "'elided"

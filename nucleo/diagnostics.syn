@@ -35,6 +35,10 @@ constante ERR_SEM_ASM_FUERA_INSEGURO = 31
 constante ERR_SEM_CONSTANTE_INMUTABLE = 32
 constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 
+// --- Lifetime / Memory safety error codes (Manual 4.3) ---
+constante ERR_MEM_LIFETIME_MISMATCH = 34
+constante ERR_MEM_LIFETIME_CYCLE = 35
+
 // --- Structs ---
 estructura ReporteError:
     codigo: entero
@@ -156,6 +160,10 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
             retornar "No se puede reasignar la constante '{nombre}'"
         si codigo == ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED:
             retornar "Sentencia 'coincidir' no exhaustiva: faltan {faltan} variante(s). Use '_' como comodin o anada los casos faltantes"
+        si codigo == ERR_MEM_LIFETIME_MISMATCH:
+            retornar "Violacion de lifetime: la referencia '{nombre}' no vive lo suficiente (alcance {alcance}) vs. requerido {requerido}"
+        si codigo == ERR_MEM_LIFETIME_CYCLE:
+            retornar "Ciclo de lifetime detectado: las referencias '{a}' y '{b}' forman un ciclo de dependencia"
         retornar "Error desconocido"
     // English fallback
     si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
@@ -224,6 +232,10 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
         retornar "Cannot reassign constant '{nombre}'"
     si codigo == ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED:
         retornar "Non-exhaustive 'match' pattern: missing {faltan} variant(s). Add remaining cases or use '_' wildcard"
+    si codigo == ERR_MEM_LIFETIME_MISMATCH:
+        retornar "Lifetime violation: reference '{nombre}' does not live long enough (scope {alcance}) vs required {requerido}"
+    si codigo == ERR_MEM_LIFETIME_CYCLE:
+        retornar "Lifetime cycle detected: references '{a}' and '{b}' form a dependency cycle"
     retornar "Unknown error"
 
 // --- Source line context helper ---

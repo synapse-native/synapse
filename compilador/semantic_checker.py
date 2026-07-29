@@ -16,6 +16,67 @@ from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN
 from compilador.semantic_types import AnalizadorSemanticoTypes
 
 
+# --- Lifetime/Region type constants (Manual 4.3) ---
+LT_ESTATICO = 0       # 'static
+LT_LOCAL = 1          # Variable local
+LT_PARAMETRICO = 2    # Parametro de funcion
+LT_ELIDIDO = 3        # Elided (sera inferido)
+
+REGION_OUTLIVES = 0   # 'a: 'b
+REGION_EQUALS = 1     # 'a == 'b
+REGION_SUBSCOPE = 2   # 'a <: 'b
+
+
+class Lifetime:
+    """Representa un lifetime en el sistema de regiones (Manual 4.3)."""
+    def __init__(self, kind: int, ambito: int = -1, indice: int = -1, padre: int = -1):
+        self.kind = kind
+        self.ambito = ambito
+        self.indice = indice
+        self.padre = padre
+
+    def es_valido(self) -> bool:
+        return 0 <= self.kind <= 3
+
+    def es_estatico(self) -> bool:
+        return self.kind == LT_ESTATICO
+
+    def es_elidido(self) -> bool:
+        return self.kind == LT_ELIDIDO
+
+    def __repr__(self) -> str:
+        if self.kind == LT_ESTATICO: return "'static"
+        if self.kind == LT_LOCAL: return f"'local({self.ambito})"
+        if self.kind == LT_PARAMETRICO: return f"'param({self.indice})"
+        return "'elided"
+
+
+class RegionConstraint:
+    """Restriccion en el grafo de regiones entre dos lifetimes."""
+    def __init__(self, tipo: int, origen: Lifetime, destino: Lifetime, linea: int = 0):
+        self.tipo = tipo
+        self.origen = origen
+        self.destino = destino
+        self.linea = linea
+
+
+class RegionGraph:
+    """Grafo de restricciones de regiones (Manual 4.3).
+    
+    Almacena todas las restricciones entre lifetimes para su
+    posterior resolucion mediante el algoritmo de unificacion.
+    """
+    def __init__(self):
+        self.constraints: list[RegionConstraint] = []
+
+    def agregar_restriccion(self, tipo: int, origen: Lifetime, destino: Lifetime, linea: int = 0):
+        self.constraints.append(RegionConstraint(tipo, origen, destino, linea))
+
+    def resolver(self) -> list[RegionConstraint]:
+        """Resuelve el grafo de restricciones (placeholder para M21.2)."""
+        return self.constraints
+
+
 class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
     def analizar(self):
         for s in self.programa.sentencias:
