@@ -60,6 +60,7 @@ constante ERR_SEM_CAMPO_NO_EXISTE = 21
 constante ERR_SEM_VAR_MOVIDA = 22
 constante ERR_SEM_ASM_FUERA_INSEGURO = 31
 constante ERR_SEM_CONSTANTE_INMUTABLE = 32
+constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 
 // --- Property constants ---
 constante PROPIEDAD_VIVO = 1
@@ -519,6 +520,12 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
         est.en_coincidir = verdadero
         casos = nodo_hijo_izq(est, idx_nodo)
         idx_caso = casos
+        // Inicializar flags de variantes para validacion exhaustiva (Manual 2 S2.4)
+        tiene_wildcard = falso
+        tiene_ok = falso
+        tiene_err = falso
+        tiene_algun = falso
+        tiene_ninguno = falso
         r = 1
         mientras r == 1:
             si idx_caso <= 0:
@@ -531,7 +538,10 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             inseguro:
                 asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
                 asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
+                asm("// Manual 2 S2.4: marcar variantes para validacion de exhaustividad")
+                asm("if(res==1){ if(tag_nombre.datos){ if(strcmp(tag_nombre.datos,\"ok\")==0) tiene_ok=1; if(strcmp(tag_nombre.datos,\"err\")==0) tiene_err=1; if(strcmp(tag_nombre.datos,\"algun\")==0) tiene_algun=1; if(strcmp(tag_nombre.datos,\"ninguno\")==0) tiene_ninguno=1; } }")
             si res == 0:
+                tiene_wildcard = verdadero
                 // wildcard _
                 tabla_entrar_scope(est)
                 cuerpo_caso = nodo_hijo_izq(est, idx_caso)
@@ -562,24 +572,12 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                 tabla_salir_scope(est)
             inseguro:
                 asm("idx_caso = est->nodos[idx_caso].hermano")
-        // Manual 2 S2.4: Verificar exhaustividad de patrones
-        // Contar casos y detectar si hay comodin _
-        cuenta_casos = 0
-        tiene_wildcard = falso
-        idx_caso = casos
-        mientras idx_caso > 0:
-            cuenta_casos = cuenta_casos + 1
-            res_tmp = 0
-            inseguro:
-                asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _ps={.longitud=255,.datos=(const char*)_bp};")
-                asm("if(_ps.datos&&_ps.datos[0]=='_'&&(_ps.datos[1]=='\0'||_ps.datos[1]=='(')){ res_tmp=2; }")
-            si res_tmp == 2:
-                tiene_wildcard = verdadero
-            inseguro:
-                asm("idx_caso = est->nodos[idx_caso].hermano")
-        // Si no hay comodin y hay exactamente 1 caso para Resultado/Opcion (2 variantes), emitir error
-        si tiene_wildcard == falso y cuenta_casos == 1:
-            sem_error(est, 33, idx_nodo, "coincidir no exhaustivo: faltan variantes")
+        // Validacion de exhaustividad post-bucle (Manual 2 S2.4)
+        si tiene_wildcard == falso:
+            si (tiene_ok == verdadero y tiene_err == falso) o (tiene_ok == falso y tiene_err == verdadero):
+                sem_error(est, ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED, idx_nodo, "coincidir no exhaustivo: faltan variantes ok/err")
+            si (tiene_algun == verdadero y tiene_ninguno == falso) o (tiene_algun == falso y tiene_ninguno == verdadero):
+                sem_error(est, ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED, idx_nodo, "coincidir no exhaustivo: faltan variantes algun/ninguno")
         est.en_coincidir = falso
         retornar
 
