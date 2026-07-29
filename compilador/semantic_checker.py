@@ -266,8 +266,11 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, NodoCoincidir):
             self._en_coincidir = True
             tipo_expr = self._inferir_tipo(nodo.expresion)
+            variantes_cubiertas = set()
+            tiene_comodin = False
             for caso in nodo.casos:
                 if caso.patron == '_':
+                    tiene_comodin = True
                     self.tabla.entrar_scope()
                     for stmt in caso.cuerpo:
                         self._analizar_sentencia(stmt)
@@ -276,6 +279,8 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 match = re.match(r'(\w+)\((\w+)\)', caso.patron)
                 if match:
                     var_nombre = match.group(2)
+                    tag_nombre = match.group(1)
+                    variantes_cubiertas.add(tag_nombre)
                     tipo_extraido = 'int'
                     if tipo_expr:
                         nombre_struct = tipo_expr
@@ -299,4 +304,23 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     for stmt in caso.cuerpo:
                         self._analizar_sentencia(stmt)
                     self.tabla.salir_scope()
+            # Manual 2 S2.4: Verificar exhaustividad de patrones
+            if not tiene_comodin:
+                variantes_esperadas = set()
+                if tipo_expr:
+                    tipo_base = tipo_expr.replace('struct ', '')
+                    # Resultado<T,E> tiene variantes: ok, err
+                    # Opcion<T> tiene variantes: algun, ninguno
+                    if tipo_base == 'Resultado' or tipo_base == 'Resultado_T':
+                        variantes_esperadas = {'ok', 'err'}
+                    elif tipo_base == 'Opcion' or tipo_base == 'Opcion_T':
+                        variantes_esperadas = {'algun', 'ninguno'}
+                if variantes_esperadas:
+                    faltantes = variantes_esperadas - variantes_cubiertas
+                    if faltantes:
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED,
+                            self._token(nodo.linea, nodo.columna),
+                            faltan=', '.join(sorted(faltantes))
+                        )
             self._en_coincidir = False

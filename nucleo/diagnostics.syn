@@ -33,6 +33,7 @@ constante ERR_LOCK_HASH_MISMATCH = 29
 constante ERR_GIT_FAILURE = 30
 constante ERR_SEM_ASM_FUERA_INSEGURO = 31
 constante ERR_SEM_CONSTANTE_INMUTABLE = 32
+constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 
 // --- Structs ---
 estructura ReporteError:
@@ -153,6 +154,8 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
             retornar "asm() solo puede usarse dentro de un bloque 'inseguro:'"
         si codigo == ERR_SEM_CONSTANTE_INMUTABLE:
             retornar "No se puede reasignar la constante '{nombre}'"
+        si codigo == ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED:
+            retornar "Sentencia 'coincidir' no exhaustiva: faltan {faltan} variante(s). Use '_' como comodin o anada los casos faltantes"
         retornar "Error desconocido"
     // English fallback
     si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
@@ -219,6 +222,8 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
         retornar "asm() can only be used inside an 'unsafe:' block"
     si codigo == ERR_SEM_CONSTANTE_INMUTABLE:
         retornar "Cannot reassign constant '{nombre}'"
+    si codigo == ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED:
+        retornar "Non-exhaustive 'match' pattern: missing {faltan} variant(s). Add remaining cases or use '_' wildcard"
     retornar "Unknown error"
 
 // --- Source line context helper ---

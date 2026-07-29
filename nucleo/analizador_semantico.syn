@@ -120,8 +120,8 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
     linea = 0
     columna = 0
     inseguro:
-        asm("linea = (idx_nodo >= 0 && idx_nodo < est.total_nodos) ? est.nodos[idx_nodo].linea : 0")
-        asm("columna = (idx_nodo >= 0 && idx_nodo < est.total_nodos) ? est.nodos[idx_nodo].columna : 0")
+        asm("linea = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].linea : 0")
+        asm("columna = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].columna : 0")
     est.hay_error = verdadero
     inseguro:
         asm("// sem_error: reportado")
@@ -132,20 +132,20 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     linea = 0
     columna = 0
     inseguro:
-        asm("linea = (idx_nodo >= 0) ? est.nodos[idx_nodo].linea : 0")
-        asm("columna = (idx_nodo >= 0) ? est.nodos[idx_nodo].columna : 0")
+        asm("linea = (idx_nodo >= 0) ? est->nodos[idx_nodo].linea : 0")
+        asm("columna = (idx_nodo >= 0) ? est->nodos[idx_nodo].columna : 0")
     // Search for existing symbol with same name in current scope
     i = 0
     encontrado = falso
     r = 1
     mientras r == 1:
         inseguro:
-            asm("r = (i < est.tabla->total_entradas) ? 1 : 0")
+            asm("r = (i < est->tabla->total_entradas) ? 1 : 0")
             si r == 0:
                 romper
-            asm("if (est.tabla->entradas[i].nivel_ambito == est.tabla->nivel_actual) {")
+            asm("if (est->tabla->entradas[i].nivel_ambito == est->tabla->nivel_actual) {")
             asm("    int _eq = 1;")
-            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre.datos)[_si] != ((const char*)est.tabla->entradas[i].nombre.datos)[_si]) { _eq = 0; break; } if (((const char*)nombre.datos)[_si] == 0) break; }")
+            asm("    for (int _si = 0; _si < 256; _si++) { if (((const char*)nombre.datos)[_si] != ((const char*)est->tabla->entradas[i].nombre.datos)[_si]) { _eq = 0; break; } if (((const char*)nombre.datos)[_si] == 0) break; }")
             asm("    if (_eq) { encontrado = verdadero; }")
             asm("}")
             asm("i = i + 1")
@@ -153,14 +153,14 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
         retornar falso
     // Add new symbol
     inseguro:
-        asm("est.tabla->entradas[est.tabla->total_entradas].nombre = nombre")
-        asm("est.tabla->entradas[est.tabla->total_entradas].tipo = tipo")
-        asm("est.tabla->entradas[est.tabla->total_entradas].nivel_ambito = est.tabla->nivel_actual")
-        asm("est.tabla->entradas[est.tabla->total_entradas].propiedad = 1")
-        asm("est.tabla->entradas[est.tabla->total_entradas].es_constante = es_constante")
-        asm("est.tabla->entradas[est.tabla->total_entradas].linea = linea")
-        asm("est.tabla->entradas[est.tabla->total_entradas].columna = columna")
-        asm("est.tabla->total_entradas = est.tabla->total_entradas + 1")
+        asm("est->tabla->entradas[est->tabla->total_entradas].nombre = nombre")
+        asm("est->tabla->entradas[est->tabla->total_entradas].tipo = tipo")
+        asm("est->tabla->entradas[est->tabla->total_entradas].nivel_ambito = est->tabla->nivel_actual")
+        asm("est->tabla->entradas[est->tabla->total_entradas].propiedad = 1")
+        asm("est->tabla->entradas[est->tabla->total_entradas].es_constante = es_constante")
+        asm("est->tabla->entradas[est->tabla->total_entradas].linea = linea")
+        asm("est->tabla->entradas[est->tabla->total_entradas].columna = columna")
+        asm("est->tabla->total_entradas = est->tabla->total_entradas + 1")
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
@@ -168,13 +168,13 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
     r = 1
     mientras r == 1:
         inseguro:
-            asm("r = (i < est.tabla->total_entradas) ? 1 : 0")
+            asm("r = (i < est->tabla->total_entradas) ? 1 : 0")
             si r == 0:
                 romper
             asm("int _eq = 1;")
             asm("for (int _si = 0; _si < 256; _si++) {")
             asm("    char _a = nombre.datos[_si];")
-            asm("    char _b = est.tabla->entradas[i].nombre.datos[_si];")
+            asm("    char _b = est->tabla->entradas[i].nombre.datos[_si];")
             asm("    if (_a != _b) { _eq = 0; break; }")
             asm("    if (_a == 0) break;")
             asm("}")
@@ -184,28 +184,28 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
 
 funcion tabla_entrar_scope(est: AnalizadorSemanticoEst) -> nulo:
     inseguro:
-        asm("est.tabla->nivel_actual = est.tabla->nivel_actual + 1")
+        asm("est->tabla->nivel_actual = est->tabla->nivel_actual + 1")
 
 funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
     inseguro:
-        asm("while (est.tabla->total_entradas > 0) {")
-        asm("    if (est.tabla->entradas[est.tabla->total_entradas - 1].nivel_ambito < est.tabla->nivel_actual) break;")
-        asm("    est.tabla->total_entradas = est.tabla->total_entradas - 1;")
+        asm("while (est->tabla->total_entradas > 0) {")
+        asm("    if (est->tabla->entradas[est->tabla->total_entradas - 1].nivel_ambito < est->tabla->nivel_actual) break;")
+        asm("    est->tabla->total_entradas = est->tabla->total_entradas - 1;")
         asm("}")
-        asm("est.tabla->nivel_actual = est.tabla->nivel_actual - 1")
+        asm("est->tabla->nivel_actual = est->tabla->nivel_actual - 1")
 
 funcion tabla_marcar_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> nulo:
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         inseguro:
-            asm("est.tabla->entradas[idx].propiedad = 2")
+            asm("est->tabla->entradas[idx].propiedad = 2")
 
 funcion tabla_esta_movido(est: AnalizadorSemanticoEst, nombre: cadena) -> booleano:
     idx = tabla_buscar(est, nombre)
     si idx >= 0:
         r = 0
         inseguro:
-            asm("r = (est.tabla->entradas[idx].propiedad == 2) ? 1 : 0")
+            asm("r = (est->tabla->entradas[idx].propiedad == 2) ? 1 : 0")
         si r == 1:
             retornar verdadero
     retornar falso
@@ -370,31 +370,31 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
 funcion nodo_tipo(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     r = 0
     inseguro:
-        asm("r = (idx >= 0 && idx < est.total_nodos) ? est.nodos[idx].tipo_nodo : 0")
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].tipo_nodo : 0")
     retornar r
 
 funcion nodo_linea(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     r = 0
     inseguro:
-        asm("r = (idx >= 0 && idx < est.total_nodos) ? est.nodos[idx].linea : 0")
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].linea : 0")
     retornar r
 
 funcion nodo_hijo_izq(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     r = 0
     inseguro:
-        asm("r = (idx >= 0 && idx < est.total_nodos) ? est.nodos[idx].hijo_izq : 0")
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hijo_izq : 0")
     retornar r
 
 funcion nodo_hijo_der(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     r = 0
     inseguro:
-        asm("r = (idx >= 0 && idx < est.total_nodos) ? est.nodos[idx].hijo_der : 0")
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hijo_der : 0")
     retornar r
 
 funcion nodo_hermano(est: AnalizadorSemanticoEst, idx: entero) -> entero:
     r = 0
     inseguro:
-        asm("r = (idx >= 0 && idx < est.total_nodos) ? est.nodos[idx].hermano : 0")
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hermano : 0")
     retornar r
 
 // --- Struct info management ---
@@ -404,11 +404,11 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
     r = 1
     mientras r == 1:
         inseguro:
-            asm("r = (i < est.total_estructuras) ? 1 : 0")
+            asm("r = (i < est->total_estructuras) ? 1 : 0")
             si r == 0:
                 romper
             asm("int _eq = 1;")
-            asm("for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est.info_estructuras[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }")
+            asm("for (int _si = 0; _si < 256; _si++) { if (nombre.datos[_si] != est->info_estructuras[i].nombre.datos[_si]) { _eq = 0; break; } if (nombre.datos[_si] == 0) break; }")
             asm("if (_eq) {")
             asm("    sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, nombre);")
             asm("    return;")
@@ -416,9 +416,9 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
             asm("i = i + 1")
     // Store struct info
     inseguro:
-        asm("est.info_estructuras[est.total_estructuras].nombre = nombre")
-        asm("est.info_estructuras[est.total_estructuras].total_campos = 0")
-        asm("est.total_estructuras = est.total_estructuras + 1")
+        asm("est->info_estructuras[est->total_estructuras].nombre = nombre")
+        asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
+        asm("est->total_estructuras = est->total_estructuras + 1")
 
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
@@ -454,13 +454,13 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
         inseguro:
-            asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
         retornar
 
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
         inseguro:
-            asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0); } } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0); } } }")
         retornar
 
     // SentenciaSi
@@ -475,7 +475,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                 romper
             analizar_sentencia(est, stmt)
             inseguro:
-                asm("stmt = est.nodos[stmt].hermano")
+                asm("stmt = est->nodos[stmt].hermano")
         tabla_salir_scope(est)
         retornar
 
@@ -491,7 +491,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                 romper
             analizar_sentencia(est, stmt)
             inseguro:
-                asm("stmt = est.nodos[stmt].hermano")
+                asm("stmt = est->nodos[stmt].hermano")
         tabla_salir_scope(est)
         retornar
 
@@ -509,7 +509,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                 romper
             analizar_sentencia(est, stmt)
             inseguro:
-                asm("stmt = est.nodos[stmt].hermano")
+                asm("stmt = est->nodos[stmt].hermano")
         est.dentro_de_inseguro = prev
         tabla_salir_scope(est)
         retornar
@@ -529,7 +529,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             var_nombre = ""
             res = 0
             inseguro:
-                asm("int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
+                asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
                 asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
             si res == 0:
                 // wildcard _
@@ -543,7 +543,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                         romper
                     analizar_sentencia(est, stmt_c)
                     inseguro:
-                        asm("stmt_c = est.nodos[stmt_c].hermano")
+                        asm("stmt_c = est->nodos[stmt_c].hermano")
                 tabla_salir_scope(est)
             si res == 1:
                 // tag(var) pattern
@@ -558,10 +558,28 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                         romper
                     analizar_sentencia(est, stmt_c)
                     inseguro:
-                        asm("stmt_c = est.nodos[stmt_c].hermano")
+                        asm("stmt_c = est->nodos[stmt_c].hermano")
                 tabla_salir_scope(est)
             inseguro:
-                asm("idx_caso = est.nodos[idx_caso].hermano")
+                asm("idx_caso = est->nodos[idx_caso].hermano")
+        // Manual 2 S2.4: Verificar exhaustividad de patrones
+        // Contar casos y detectar si hay comodin _
+        cuenta_casos = 0
+        tiene_wildcard = falso
+        idx_caso = casos
+        mientras idx_caso > 0:
+            cuenta_casos = cuenta_casos + 1
+            res_tmp = 0
+            inseguro:
+                asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _ps={.longitud=255,.datos=(const char*)_bp};")
+                asm("if(_ps.datos&&_ps.datos[0]=='_'&&(_ps.datos[1]=='\0'||_ps.datos[1]=='(')){ res_tmp=2; }")
+            si res_tmp == 2:
+                tiene_wildcard = verdadero
+            inseguro:
+                asm("idx_caso = est->nodos[idx_caso].hermano")
+        // Si no hay comodin y hay exactamente 1 caso para Resultado/Opcion (2 variantes), emitir error
+        si tiene_wildcard == falso y cuenta_casos == 1:
+            sem_error(est, 33, idx_nodo, "coincidir no exhaustivo: faltan variantes")
         est.en_coincidir = falso
         retornar
 
@@ -589,14 +607,16 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
         si tipo == NODO_ESTRUCTURA:
             nombre = ""
             inseguro:
-                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             registrar_estructura(est, nombre, stmt)
         inseguro:
-            asm("stmt = est.nodos[stmt].hermano")
+            asm("stmt = est->nodos[stmt].hermano")
 
 // --- Second pass: register functions and extern declarations ---
 funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
     nombre = ""
+    inseguro:
+        asm("nombre.datos = NULL;")
     stmt = nodo_hijo_izq(est, idx_programa)
     r = 1
     mientras r == 1:
@@ -607,7 +627,7 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
         si tipo == NODO_FUNCION:
             nombre = ""
             inseguro:
-                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             si es_builtin(nombre) == falso:
                 ok = tabla_declarar(est, nombre, "int", stmt, falso)
                 si ok == falso:
@@ -615,12 +635,12 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
         si tipo == NODO_EXTERNO:
             nombre = ""
             inseguro:
-                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             ok = tabla_declarar(est, nombre, "int", stmt, falso)
             si ok == falso:
                 sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
         inseguro:
-            asm("stmt = est.nodos[stmt].hermano")
+            asm("stmt = est->nodos[stmt].hermano")
 
 // --- Third pass: analyze function bodies ---
 funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero) -> nulo:
@@ -634,7 +654,7 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
         si tipo == NODO_FUNCION:
             nombre = ""
             inseguro:
-                asm("{ int* _phi=(int*)est.asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est.nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
@@ -648,11 +668,11 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
                         romper
                     analizar_sentencia(est, stmt_cuerpo)
                     inseguro:
-                        asm("stmt_cuerpo = est.nodos[stmt_cuerpo].hermano")
+                        asm("stmt_cuerpo = est->nodos[stmt_cuerpo].hermano")
                 tabla_salir_scope(est)
                 est.func_actual = ""
         inseguro:
-            asm("stmt = est.nodos[stmt].hermano")
+            asm("stmt = est->nodos[stmt].hermano")
 
 // --- Main entry point ---
 funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
@@ -660,8 +680,8 @@ funcion analizar(est: AnalizadorSemanticoEst) -> nulo:
     inseguro:
         asm("idx_programa = 0")
         asm("// Buscar el nodo raiz NODO_PROGRAMA")
-        asm("for (int _i = 0; _i < est.total_nodos; _i++) {")
-        asm("    if (est.nodos[_i].tipo_nodo == 1) { idx_programa = _i; break; }")
+        asm("for (int _i = 0; _i < est->total_nodos; _i++) {")
+        asm("    if (est->nodos[_i].tipo_nodo == 1) { idx_programa = _i; break; }")
         asm("}")
     si idx_programa < 0:
         retornar
