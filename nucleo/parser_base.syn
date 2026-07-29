@@ -1,0 +1,125 @@
+#lang: es
+
+// ---- Struct for parser token (external representation) ----
+estructura TokenExt:
+    tipo: entero
+    linea: entero
+    columna: entero
+    ptr_valor: entero
+    len_valor: entero
+
+// ---- AST node (generic flat struct) ----
+estructura NodoAST:
+    tipo_nodo: entero
+    linea: entero
+    columna: entero
+    valor_int: entero
+    valor_dec: decimal
+    ptr_str: entero
+    len_str: entero
+    hijo_izq: entero
+    hijo_der: entero
+    hermano: entero
+    ptr_extra: entero
+
+// ---- Parser state ----
+estructura ParserEst:
+    tokens: TokenExt
+    total_tokens: entero
+    posicion: entero
+    nodos: NodoAST
+    total_nodos: entero
+    hay_error: booleano
+    error_mensaje: cadena
+    error_linea: entero
+    error_columna: entero
+    es_sin_std: booleano
+    // Parallel array for high 32 bits of string pointers (64-bit safety)
+    ptr_hi: entero
+    max_nodos: entero
+    // Contract parsing state
+    contr_linea: entero
+    contr_col: entero
+    contr_primera_requiere: entero
+    contr_ultima_requiere: entero
+    contr_cuenta_requiere: entero
+    contr_primera_garantiza: entero
+    contr_ultima_garantiza: entero
+    contr_cuenta_garantiza: entero
+    // Contract block parsing temp state
+    contr_primera_temp: entero
+    contr_ultima_temp: entero
+    contr_cuenta_temp: entero
+
+// ---- Node allocation via asm ----
+funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
+    inseguro:
+        idx = 0
+        asm("idx = est.total_nodos")
+        asm("est.nodos[idx].tipo_nodo = tipo")
+        asm("est.nodos[idx].linea = linea")
+        asm("est.nodos[idx].columna = columna")
+        asm("est.nodos[idx].valor_int = 0")
+        asm("est.nodos[idx].hijo_izq = 0")
+        asm("est.nodos[idx].hijo_der = 0")
+        asm("est.nodos[idx].hermano = 0")
+        asm("est.total_nodos = idx + 1")
+        retornar idx
+
+// ---- Error reporting ----
+funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    est.hay_error = verdadero
+    est.error_mensaje = mensaje
+    est.error_linea = linea
+    est.error_columna = columna
+
+// ---- Token access helpers ----
+funcion token_tipo(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].tipo : 57")
+        retornar r
+
+funcion token_linea(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].linea : 0")
+        retornar r
+
+funcion token_columna(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].columna : 0")
+        retornar r
+
+funcion token_avanzar(est: ParserEst) -> nulo:
+    inseguro:
+        asm("est.posicion = est.posicion + 1")
+
+funcion token_mirar(est: ParserEst) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (est.posicion < est.total_tokens) ? est.tokens[est.posicion].tipo : 57")
+        retornar r
+
+funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
+    t = token_mirar(est)
+    si t == esperado:
+        inseguro:
+            asm("est.posicion = est.posicion + 1")
+        retornar 1
+    est.hay_error = verdadero
+    retornar 0
+
+funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
+    t = token_mirar(est)
+    si t == esperado:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        inseguro:
+            asm("est.posicion = est.posicion + 1")
+        retornar parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+    est.hay_error = verdadero
+    retornar 0
+
+// ---- Expression parsing ----

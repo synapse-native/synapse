@@ -1,0 +1,355 @@
+#lang: es
+
+funcion parsear_expresion(est: ParserEst) -> entero:
+    retornar parsear_logica(est)
+
+funcion parsear_logica(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
+    izq = parsear_comparacion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_Y:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_comparacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 100")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_O:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_comparacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 101")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_comparacion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
+    izq = parsear_adicion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_MAYOR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 200")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 201")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 202")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_DISTINTO:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 203")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOR_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 204")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MAYOR_IGUAL:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_adicion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 205")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_adicion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
+    izq = parsear_multiplicacion(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_MAS:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_multiplicacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 300")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MENOS:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_multiplicacion(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 301")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_multiplicacion(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    der = 0
+    nodo = 0
+    izq = parsear_unario(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_POR:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 400")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_DIV:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 401")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        si t == T_MOD:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parsear_unario(est)
+            nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
+            inseguro:
+                asm("est.nodos[nodo].valor_int = 402")
+                asm("est.nodos[nodo].hijo_izq = izq")
+                asm("est.nodos[nodo].hijo_der = der")
+            izq = nodo
+            siguiente
+        r = 0
+    retornar izq
+
+funcion parsear_unario(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    expr = 0
+    nodo = 0
+    t = token_mirar(est)
+    si t == T_MENOS:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 500")
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_NO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 501")
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_AMPERSAND:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_PUNTERO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_POR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_unario(est)
+        nodo = parser_nuevo_nodo(est, NODO_DEREF, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    retornar parsear_primario(est)
+
+funcion parsear_primario(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    nodo = 0
+    t = token_mirar(est)
+    si t == T_NUMERO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_NUMERO, linea, col)
+        retornar nodo
+    si t == T_FLOTANTE:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_DECIMAL, linea, col)
+        retornar nodo
+    si t == T_CADENA:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_CADENA_LIT, linea, col)
+        retornar nodo
+    si t == T_VERDADERO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 1")
+        retornar nodo
+    si t == T_FALSO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].valor_int = 0")
+        retornar nodo
+    si t == T_IDENTIFICADOR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+        t2 = token_mirar(est)
+        si t2 == T_PAREN_IZQ:
+            inseguro:
+                asm("est.nodos[nodo].tipo_nodo = 14")
+            token_esperar(est, T_PAREN_IZQ)
+            r = 1
+            mientras r == 1:
+                si token_mirar(est) == T_PAREN_DER:
+                    romper
+                arg = parsear_expresion(est)
+                si token_mirar(est) == T_COMA:
+                    token_avanzar(est)
+                    siguiente
+                r = 1
+            token_esperar(est, T_PAREN_DER)
+        si t2 == T_PUNTO:
+            si token_mirar(est) == T_PUNTO:
+                token_avanzar(est)
+                tok_campo = token_mirar(est)
+                linea2 = token_linea(est, est.posicion)
+                col2 = token_columna(est, est.posicion)
+                si tok_campo == T_IDENTIFICADOR:
+                    token_avanzar(est)
+                    nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
+                    inseguro:
+                        asm("est.nodos[nodo2].hijo_izq = nodo")
+                    nodo = nodo2
+        retornar nodo
+    si t == T_CANAL:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        si token_mirar(est) == T_PAREN_IZQ:
+            nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
+            token_esperar(est, T_PAREN_IZQ)
+            si token_mirar(est) == T_IDENTIFICADOR:
+                token_avanzar(est)
+            si token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                expr = parsear_expresion(est)
+                inseguro:
+                    asm("est.nodos[nodo].hijo_izq = expr")
+            token_esperar(est, T_PAREN_DER)
+            retornar nodo
+        parser_error(est, "Se esperaba ( despues de canal", linea, col)
+        retornar 0
+    si t == T_PAREN_IZQ:
+        token_avanzar(est)
+        expr = parsear_expresion(est)
+        token_esperar(est, T_PAREN_DER)
+        retornar expr
+    parser_error(est, "Expresion inesperada", token_linea(est, est.posicion), token_columna(est, est.posicion))
+    retornar 0
+
+// ---- Statement parsing ----
+// Helper: Parse simple statements (break, continue, indent, etc.)

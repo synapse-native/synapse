@@ -1,0 +1,141 @@
+#lang: es
+
+funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
+    linea = 0
+    col = 0
+    si t == T_ROMPER:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        retornar parser_nuevo_nodo(est, NODO_ROMPER, linea, col)
+    si t == T_SIGUIENTE:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        retornar parser_nuevo_nodo(est, NODO_SIGUIENTE, linea, col)
+    si t == T_INDENTAR:
+        retornar 0
+    si t == T_DESINDENTAR:
+        retornar 0
+    si t == T_NUEVALINEA:
+        retornar 0
+    si t == T_FIN:
+        retornar 0
+    retornar -1  // Not a simple statement
+
+// Helper: Parse declaration-like statements (struct, import, const, etc.)
+funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
+    si t == T_ESTRUCTURA:
+        retornar parsear_estructura_def(est)
+    si t == T_IMPORTAR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_IMPORTAR, linea, col)
+        retornar nodo
+    si t == T_CONSTANTE:
+        retornar parsear_constante(est)
+    si t == T_ASM:
+        retornar parsear_asm(est)
+    si t == T_INSEGURO:
+        retornar parsear_inseguro(est)
+    si t == T_IMPORTAR_C:
+        retornar parsear_importar_c(est)
+    si t == T_EXTERNO:
+        retornar parsear_externo(est)
+    si t == T_COINCIDIR:
+        retornar parsear_coincidir(est)
+    retornar -1  // Not a declaration statement
+
+// Helper: Parse control flow statements (if, while, for, etc.)
+funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
+    si t == T_IF:
+        retornar parsear_si(est)
+    si t == T_MIENTRAS:
+        retornar parsear_mientras(est)
+    si t == T_PARA:
+        retornar parsear_para(est)
+    si t == T_RETORNAR:
+        retornar parsear_retornar(est)
+    si t == T_LANZAR:
+        retornar parsear_lanzar(est)
+    si t == T_ESCUCHAR:
+        retornar parsear_escuchar(est)
+    si t == T_COINCIDIR:
+        retornar parsear_coincidir(est)
+    retornar -1  // Not a control flow statement
+
+// Helper: Parse channel-related statements
+funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
+    linea = 0
+    col = 0
+    expr = 0
+    nodo = 0
+    si t == T_CANAL:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        expr = parsear_expresion(est)
+        nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    si t == T_IDENTIFICADOR:
+        t2 = token_tipo(est, est.posicion + 1)
+        si t2 == T_ASIGNAR:
+            retornar parsear_asignacion(est)
+        si t2 == T_FLECHA_IZQ:
+            retornar parsear_enviar_canal(est)
+        si t2 == T_FLECHA:
+            retornar parsear_recibir_canal(est)
+        // detectar declaracion tipada: ident : ident =
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        expr = parsear_expresion(est)
+        t3 = token_mirar(est)
+        si t3 == T_RECUPERAR:
+            token_avanzar(est)
+            token_esperar(est, T_DOSPUNTOS)
+            plan_b = parsear_expresion(est)
+            retornar expr
+        nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    retornar -1  // Not a channel statement
+
+// Main statement parser - refactored
+funcion parsear_sentencia(est: ParserEst) -> entero:
+    linea = 0
+    col = 0
+    nodo = 0
+    t = token_mirar(est)
+    // Control flow
+    nodo = parsear_sentencia_control(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Function/struct declarations
+    si t == T_FUNCION:
+        retornar parsear_funcion(est)
+    // Declarations
+    nodo = parsear_sentencia_decl(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Simple statements
+    nodo = parsear_sentencia_simple(est, t)
+    si nodo != -1:
+        retornar nodo
+    // Channel-related
+    nodo = parsear_sentencia_canal(est, t)
+    si nodo != -1:
+        retornar nodo
+    retornar 0
+
+// ---- Function parsing (with requiere/garantiza) ----
+// Contract parsing state (stored in parser for helper access)
+estructura EstadoContrato:
+    primera: entero
+    ultima: entero
+    cuenta: entero
+
+// Helper: Parse a contract block (requiere or garantiza)
+// Uses temporary fields: contr_primera_temp, contr_ultima_temp, contr_cuenta_temp
