@@ -1,4 +1,4 @@
-﻿# Synapse v5.1.1-industrial — .gitignore oficial
+# Synapse v5.1.1-industrial — .gitignore oficial
 # =====================================================
 # CLASE A: Secretos — NUNCA trackear
 *.pem
@@ -52,6 +52,41 @@ toolchain_gcc12/
 
 # CLASE J: Directorios de distribución
 distbin/
+
+# CLASE K: Bootstrap binaries (generados por pipeline)
+synapse_v*.exe
+synapse_v*.exe.sig
+synapse_v*.exe.pub
+
+# CLASE L: Artefactos de fuzzing
+tests/fuzz/tmp*
+tests/fuzz/crashes/
+tests/fuzz/corpus/
+
+# CLASE M: Stubs y archivos de prueba en raíz
+programa.c
+runtime_stubs.c
+test_toolchain.c
+tests/dummy_main.c
+
+# CLASE N: Paquetes locales Axon
+paquetes_oficiales/
+
+# CLASE O: Directorios residuales de pruebas
+_test_*_cluster/
+_test_migration_*/
+
+# CLASE P: Archivos varios residuales
+nul
+
+# CLASE Q: Archivos binarios LSP
+test_lsp_bin.oculto
+test_lsp_bin
+
+# CLASE R: Firmas y attestaciones
+*.sig
+*.pub
+*.attestation.json
 
 # Estándar Python
 *.egg-info/
