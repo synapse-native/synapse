@@ -110,6 +110,8 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         obj_tipo = tipo_de_expr(ctx, nodo.expr)
         if obj_tipo == 'Tensor':
             return 'float'
+        if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return 'texto'
         return 'int'
 
     if isinstance(nodo, ExprObtenerDireccion):
@@ -336,7 +338,8 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         idx = expr_a_c(ctx, nodo.indice)
         obj_tipo = tipo_de_expr(ctx, nodo.expr)
         if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
-            return f"{obj}.datos[{idx}]"
+            # String indexing returns single-char CadenaSegura (Manual 4 §4.5)
+            return f"((CadenaSegura){{1, &({obj}.datos[{idx}])}})"
         return f"{obj}[{idx}]"
 
     if isinstance(nodo, ExprObtenerDireccion):
