@@ -30,7 +30,7 @@ def _resolver_gcc() -> str:
                 ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
                 if ret.returncode == 0:
                     return c
-            except: pass
+            except Exception: pass
     return 'gcc'
 
 
@@ -106,7 +106,7 @@ def _auditar_memoria():
             print('TIMEOUT')
         finally:
             try: os.remove(exe)
-            except: pass
+            except OSError: pass
     
     if all_ok:
         print('\n[ASan/LSan] RESULTADO: 0 fugas de memoria detectadas — CERTIFICADO')
@@ -164,7 +164,7 @@ def _auditar_hilos():
         print('[TSan] TIMEOUT (60s) — test de larga duracion, ignorando')
     finally:
         try: os.remove(stress_exe)
-        except: pass
+        except OSError: pass
     
     print('\n[TSan] RESULTADO: 0 data races detectadas — CERTIFICADO')
     return 0

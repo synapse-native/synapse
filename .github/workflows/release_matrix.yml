@@ -139,9 +139,10 @@ jobs:
         # Se usa bash para todos los targets (incluyendo win_x64, donde bash está disponible via Git-for-Windows)
         shell: bash
         run: |
+          RT_LDFLAGS="${{ matrix.target.ldflags }}"
+
           if [ "${{ matrix.target.name }}" = "linux_arm64" ]; then
-            ${{ matrix.target.cross_prefix }}gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
-            ${{ matrix.target.cross_prefix }}gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
+            CC="${{ matrix.target.cross_prefix }}gcc"
           elif [ "${{ matrix.target.name }}" = "win_x64" ]; then
             # En windows-latest, gcc puede no estar en PATH; instalar MinGW si es necesario
             if ! command -v gcc &> /dev/null; then
@@ -149,12 +150,23 @@ jobs:
               choco install mingw --version=12.2.0 -y 2>&1 || true
             fi
             gcc --version
-            gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
-            gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
+            CC="gcc"
           else
-            ${{ matrix.target.cc }} -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
-            ${{ matrix.target.cc }} -c tweetnacl.c -o tweetnacl.o -lm -O2
+            CC="${{ matrix.target.cc }}"
           fi
+
+          # Runtime base
+          ${CC} -c synapse_rt.c -o synapse_rt.o ${RT_LDFLAGS} -O2
+          ${CC} -c tweetnacl.c -o tweetnacl.o -lm -O2
+
+          # Runtime modular (Manual 3 §3.1 — runtime/core/*.c)
+          for f in runtime/core/*.c; do
+            MODULE="$(basename "$f" .c)"
+            echo "Compilando runtime/core/${MODULE}.c..."
+            ${CC} -c "$f" -o "runtime_${MODULE}.o" -I. -O2
+          done
+
+          ls -la *.o 2>&1 || true
           echo "Runtime objects compiled"
 
       # -----------------------------------------------------------------------
@@ -195,8 +207,15 @@ jobs:
           # Verificar runtime objects
           echo "Runtime objects: rt.o=$(test -f synapse_rt.o && echo OK || echo MISSING) tn.o=$(test -f tweetnacl.o && echo OK || echo MISSING)"
 
-          # Compilar binary
-          ${CC} -O3 -fno-ident -I. synapse_unity.c synapse_rt.o tweetnacl.o \
+          # Compilar binary con runtime modular
+          RUNTIME_OBJS="synapse_rt.o tweetnacl.o"
+          for f in runtime_*.o; do
+            if [ -f "$f" ]; then
+              RUNTIME_OBJS="${RUNTIME_OBJS} $f"
+            fi
+          done
+
+          ${CC} -O3 -fno-ident -I. synapse_unity.c ${RUNTIME_OBJS} \
             -o "${ARTIFACT}" ${LDFLAGS} -lm -Wl,--gc-sections 2>&1
 
           if [ -f "${ARTIFACT}" ]; then
