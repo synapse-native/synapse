@@ -19,7 +19,7 @@ funcion _campo_str(nodo: NodoToml, clave: texto) -> texto:
     retornar ""
 
 funcion principal() -> nulo:
-    escribir_linea("Synapse v2.0 — Auto-hospedado")
+    escribir_linea("Synapse v5.1.1-industrial — Auto-hospedado")
     escribir_linea("Cargando manifiesto axon.toml...")
 
     toml_str = _leer_archivo("axon.toml")

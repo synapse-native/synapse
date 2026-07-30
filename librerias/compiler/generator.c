@@ -1694,7 +1694,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     
-    printf("Synapse v2.0 — Self-Hosted Compiler\n");
+    printf("Synapse v5.1.1-industrial — Self-Hosted Compiler\n");
     printf("Uso: synapse_v2.exe construir [directorio]\n");
     printf("     synapse_v2.exe <archivo.syn>\n");
     

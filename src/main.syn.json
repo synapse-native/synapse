@@ -1,5 +1,5 @@
 {
-  "synapse": "2.0",
+  "synapse": "5.1.1-industrial",
   "ast": {
     "_tipo": "Programa",
     "sentencias": [
@@ -1251,7 +1251,7 @@
               "argumentos": [
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "Synapse v2.0 — Auto-hospedado"
+                  "valor": "Synapse v5.1.1-industrial — Auto-hospedado"
                 }
               ]
             }
