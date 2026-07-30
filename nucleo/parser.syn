@@ -35,31 +35,43 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
             r2 = 0
     retornar 1
 
-// Helper: Parse function parameters
+// Helper: Parse function parameters (Manual 2 §2.2)
 funcion parsear_parametros(est: ParserEst) -> entero:
-    r = 0
+    primero = 0
+    ultimo = 0
     si token_mirar(est) != T_PAREN_DER:
         r = 1
         mientras r == 1:
+            si token_mirar(est) != T_IDENTIFICADOR:
+                r = 0
+                romper
             linea_p = token_linea(est, est.posicion)
             col_p = token_columna(est, est.posicion)
-            si token_mirar(est) == T_IDENTIFICADOR:
+            ptr_n = token_ptr_valor(est, est.posicion)
+            len_n = token_len_valor(est, est.posicion)
+            token_avanzar(est)
+            si token_esperar(est, T_DOSPUNTOS) == 0:
+                retornar -1
+            si token_mirar(est) != T_IDENTIFICADOR:
+                r = 0
+                romper
+            token_avanzar(est)
+            nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
+            inseguro:
+                asm("est.nodos[nodo_p].ptr_str = ptr_n")
+                asm("est.nodos[nodo_p].len_str = len_n")
+            si primero == 0:
+                primero = nodo_p
+            sino:
+                inseguro:
+                    asm("est.nodos[ultimo].hermano = nodo_p")
+            ultimo = nodo_p
+            si token_mirar(est) == T_COMA:
                 token_avanzar(est)
-                si token_esperar(est, T_DOSPUNTOS) == 0:
-                    retornar 0
-                si token_mirar(est) == T_IDENTIFICADOR:
-                    token_avanzar(est)
-                    nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
-                    si token_mirar(est) == T_COMA:
-                        token_avanzar(est)
-                        siguiente
-                    sino:
-                        r = 0
-                sino:
-                    r = 0
+                siguiente
             sino:
                 r = 0
-        retornar 1
+    retornar primero
 
 // Helper: Parse return type
 funcion parsear_tipo_retorno(est: ParserEst) -> entero:
@@ -132,10 +144,11 @@ funcion parsear_tipo_retorno(est: ParserEst) -> entero:
         retornar 0
     retornar 1
 
-// Helper: Parse function body
+// Helper: Parse function body (returns first stmt index, 0 if none)
 funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
+    primero = 0
+    ultimo = 0
     r = 1
-    stmt = 0
     si token_mirar(est) == T_INDENTAR:
         token_avanzar(est)
         mientras r == 1:
@@ -151,8 +164,15 @@ funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
                 r = 0
                 romper
             stmt = parsear_sentencia(est)
+            si stmt != 0:
+                si primero == 0:
+                    primero = stmt
+                sino:
+                    inseguro:
+                        asm("est.nodos[ultimo].hermano = stmt")
+                ultimo = stmt
             siguiente
-    retornar 1
+    retornar primero
 
 // Main function parser - refactored
 funcion parsear_funcion(est: ParserEst) -> entero:
@@ -170,23 +190,30 @@ funcion parsear_funcion(est: ParserEst) -> entero:
     nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
     si token_esperar(est, T_PAREN_IZQ) == 0:
         retornar 0
-    // parametros
-    parsear_parametros(est)
+    // parametros (Manual 2 §2.2)
+    primer_param = parsear_parametros(est)
+    si primer_param < 0:
+        retornar 0
+    si primer_param > 0:
+        inseguro:
+            asm("est.nodos[nodo_func].hijo_der = primer_param")
     si token_esperar(est, T_PAREN_DER) == 0:
         retornar 0
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0
     // tipo retorno
     parsear_tipo_retorno(est)
-    // requiere: / garantiza: blocks
+    // requiere: / garantiza: blocks (Manual 2 §2.5)
     parsear_contratos(est, nodo_func)
-    // cuerpo
-    parsear_cuerpo_funcion(est, nodo_func)
+    // cuerpo (Manual 2 §2.2 Bloque)
+    primer_cuerpo = parsear_cuerpo_funcion(est, nodo_func)
+    si primer_cuerpo > 0:
+        inseguro:
+            asm("est.nodos[nodo_func].hijo_izq = primer_cuerpo")
     retornar nodo_func
 
 // ---- Other statement parsers ----
 funcion parsear_si(est: ParserEst) -> entero:
-    t = 0
     stmt = 0
     r = 1
     si token_esperar(est, T_IF) == 0:
@@ -199,6 +226,8 @@ funcion parsear_si(est: ParserEst) -> entero:
         asm("est.nodos[nodo].hijo_izq = cond")
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
+    primero_si = 0
+    ultimo_si = 0
     si token_mirar(est) == T_NUEVALINEA:
         token_avanzar(est)
         si token_mirar(est) == T_INDENTAR:
@@ -216,7 +245,17 @@ funcion parsear_si(est: ParserEst) -> entero:
                     r = 0
                     romper
                 stmt = parsear_sentencia(est)
+                si stmt != 0:
+                    si primero_si == 0:
+                        primero_si = stmt
+                    sino:
+                        inseguro:
+                            asm("est.nodos[ultimo_si].hermano = stmt")
+                    ultimo_si = stmt
                 siguiente
+    si primero_si > 0:
+        inseguro:
+            asm("est.nodos[nodo].hijo_der = primero_si")
     r = 1
     si token_mirar(est) == T_ELSE:
         token_avanzar(est)
@@ -239,6 +278,10 @@ funcion parsear_si(est: ParserEst) -> entero:
                         r = 0
                         romper
                     stmt = parsear_sentencia(est)
+                    si stmt != 0:
+                        inseguro:
+                            asm("est.nodos[ultimo_si].hermano = stmt")
+                        ultimo_si = stmt
                     siguiente
     retornar nodo
 
@@ -253,6 +296,8 @@ funcion parsear_mientras(est: ParserEst) -> entero:
         asm("est.nodos[nodo].hijo_izq = cond")
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
+    primero = 0
+    ultimo = 0
     si token_mirar(est) == T_NUEVALINEA:
         token_avanzar(est)
         si token_mirar(est) == T_INDENTAR:
@@ -271,24 +316,49 @@ funcion parsear_mientras(est: ParserEst) -> entero:
                     r = 0
                     romper
                 stmt = parsear_sentencia(est)
+                si stmt != 0:
+                    si primero == 0:
+                        primero = stmt
+                    sino:
+                        inseguro:
+                            asm("est.nodos[ultimo].hermano = stmt")
+                    ultimo = stmt
                 siguiente
+    si primero > 0:
+        inseguro:
+            asm("est.nodos[nodo].hijo_der = primero")
     retornar nodo
 
 funcion parsear_para(est: ParserEst) -> entero:
+    // Synapse-style: para Identificador = Expresion mientras Expresion: (Manual 2 §2.2)
+    // Ej: para i = 0 mientras i < 10:
     si token_esperar(est, T_PARA) == 0:
+        retornar 0
+    si token_mirar(est) != T_IDENTIFICADOR:
+        parser_error(est, "Se esperaba variable de bucle para", token_linea(est, est.posicion), token_columna(est, est.posicion))
         retornar 0
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_VACIO, linea, col)
-    parsear_asignacion(est)
-    si token_esperar(est, T_PUNTOCOMA) == 0:
+    nodo = parser_nuevo_nodo(est, NODO_PARA, linea, col)
+    ptr_var = token_ptr_valor(est, est.posicion)
+    len_var = token_len_valor(est, est.posicion)
+    token_avanzar(est)
+    si token_esperar(est, T_ASIGNAR) == 0:
         retornar 0
-    parsear_expresion(est)
-    si token_esperar(est, T_PUNTOCOMA) == 0:
+    inicializacion = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = inicializacion")
+        asm("est.nodos[nodo].ptr_str = ptr_var")
+        asm("est.nodos[nodo].len_str = len_var")
+    si token_esperar(est, T_MIENTRAS) == 0:
         retornar 0
-    parsear_asignacion(est)
+    condicion = parsear_expresion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_der = condicion")
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
+    primero = 0
+    ultimo = 0
     si token_mirar(est) == T_NUEVALINEA:
         token_avanzar(est)
         si token_mirar(est) == T_INDENTAR:
@@ -307,7 +377,17 @@ funcion parsear_para(est: ParserEst) -> entero:
                     r = 0
                     romper
                 stmt = parsear_sentencia(est)
+                si stmt != 0:
+                    si primero == 0:
+                        primero = stmt
+                    sino:
+                        inseguro:
+                            asm("est.nodos[ultimo].hermano = stmt")
+                    ultimo = stmt
                 siguiente
+    si primero > 0:
+        inseguro:
+            asm("est.nodos[nodo].ptr_extra = primero")
     retornar nodo
 
 funcion parsear_retornar(est: ParserEst) -> entero:

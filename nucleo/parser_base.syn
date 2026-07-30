@@ -92,6 +92,18 @@ funcion token_columna(est: ParserEst, pos: entero) -> entero:
         asm("r = (pos < est.total_tokens) ? est.tokens[pos].columna : 0")
         retornar r
 
+funcion token_ptr_valor(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].ptr_valor : 0")
+        retornar r
+
+funcion token_len_valor(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (pos < est.total_tokens) ? est.tokens[pos].len_valor : 0")
+        retornar r
+
 funcion token_avanzar(est: ParserEst) -> nulo:
     inseguro:
         asm("est.posicion = est.posicion + 1")
