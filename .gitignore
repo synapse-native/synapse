@@ -1,2 +1,59 @@
-Binary file .gitignore matches
-tests/.axon_cache/
+﻿# Synapse v5.1.1-industrial — .gitignore oficial
+# =====================================================
+# CLASE A: Secretos — NUNCA trackear
+*.pem
+*.hex
+*.key
+
+# CLASE B: Binarios
+*.exe
+*.dll
+*.so
+*.dylib
+*.wasm
+
+# CLASE C: Objetos compilados
+*.o
+*.obj
+*.lib
+*.a
+
+# CLASE D: C generado intermedio (no fuente)
+synapse_unity.c
+synapse_llvm.c
+_*.c
+_*.c.o
+
+# CLASE E: Directorios temporales de tests
+_test_*/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# CLASE F: Logs y artefactos de ejecución
+*.log
+stage2_*.txt
+stdout.log
+stderr.log
+--output
+--output.exe
+-o
+-o.exe
+
+# CLASE G: Cachés
+.synapse/
+.axon_cache/
+
+# CLASE H: DLLs/Dynamic
+runtime_linked.dll
+
+# CLASE I: Directorios de build/toolchain (no fuente)
+toolchain_gcc12/
+
+# CLASE J: Directorios de distribución
+distbin/
+
+# Estándar Python
+*.egg-info/
+.venv/
+venv/
