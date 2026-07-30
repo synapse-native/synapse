@@ -632,16 +632,6 @@ void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala) {
 #else
 // Non-x86 architecture stubs (SIMD not available — _simd_habilitado=0 ensures these are never called)
 #include <unistd.h>
-
-void _simd_detectar(void) {
-    if (_simd_habilitado >= 0) return;
-    _simd_habilitado = 0;
-    _simd_tipo_str = "NONE";
-}
-
-int _syn_simd_disponible(void) { return 0; }
-CadenaSegura _syn_simd_tipo(void) { return (CadenaSegura){ .longitud = 4, .datos = "NONE" }; }
-
 void _syn_simd_llenar_tensor_constante(Tensor t, float valor) {
     _simd_detectar();
     for (uint32_t _i = 0; _i < t.filas * t.columnas; _i++) t.datos[_i] = valor;
