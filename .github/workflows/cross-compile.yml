@@ -245,8 +245,7 @@ jobs:
           if [ -f build_installer.bat ]; then
             :
           fi
-          test -f test_llama_client_smoke.c || { echo "FALTA test_llama_client_smoke.c"; exit 1; }
-          test -f test_synapse_shutdown_hook.c || { echo "FALTA test_synapse_shutdown_hook.c"; exit 1; }
+          # test_llama_client_smoke.c y test_synapse_shutdown_hook.c son Windows-only
           echo "Estructura fuente válida ✓"
       
       - name: Verify .iss syntax (basic)

@@ -233,10 +233,8 @@ jobs:
           test -f nucleo/llama_client.c || { echo "FALTA nucleo/llama_client.c"; exit 1; }
           test -f nucleo/ai_orchestrator.h || { echo "FALTA nucleo/ai_orchestrator.h"; exit 1; }
           test -f nucleo/llama_client.h || { echo "FALTA nucleo/llama_client.h"; exit 1; }
+          # test_llama_client_smoke.c y test_synapse_shutdown_hook.c son Windows-only
           # build_installer.bat solo aplica en Windows; en Linux/macOS se salta
-          if [ -f build_installer.bat ]; then
-            :
-          fi
           echo "Estructura fuente válida ✓"
       
       - name: Verify .iss syntax (basic)
