@@ -276,8 +276,9 @@ jobs:
       - name: Compilar runtime objects con ASan
         run: |
           gcc --version
+          # runtime/core/memory.c (pool_alloc, pool_free) fue modularizado desde M0.2
           gcc -c -O2 -std=c11 -Wall -fsanitize=address -g \
-            synapse_rt_memory.c -o synapse_rt_memory_asan.o -lpthread -lm
+            runtime/core/memory.c -o synapse_rt_memory_asan.o -lpthread -lm
           echo "=== runtime (asan) OK ==="
 
       - name: Compilar benchmark con ASan
@@ -301,7 +302,7 @@ jobs:
       - name: Compilar runtime objects con TSan
         run: |
           gcc -c -O2 -std=c11 -Wall -fsanitize=thread -g \
-            synapse_rt_memory.c -o synapse_rt_memory_tsan.o -lpthread -lm
+            runtime/core/memory.c -o synapse_rt_memory_tsan.o -lpthread -lm
           echo "=== runtime (tsan) OK ==="
 
       - name: Compilar benchmark con TSan

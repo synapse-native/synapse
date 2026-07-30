@@ -271,19 +271,32 @@ jobs:
           ARTIFACT="${{ steps.build.outputs.artifact_name }}"
 
           # Usar clave de release del secreto o generar una para CI dev
+          PRIV_KEY=""
           if [ -n "${{ secrets.ED25519_PRIVATE_KEY }}" ]; then
             PRIV_KEY="${{ secrets.ED25519_PRIVATE_KEY }}"
             echo "Using stored signing key"
           else
             echo "No signing key found, generating ephemeral key pair"
-            KEY_OUTPUT=$(python scripts/ci_sign.py generate-key)
+            KEY_OUTPUT=$(python scripts/ci_sign.py generate-key 2>&1)
             PRIV_KEY=$(echo "$KEY_OUTPUT" | grep '^PRIV=' | cut -d= -f2)
             PUB_KEY=$(echo "$KEY_OUTPUT" | grep '^PUB=' | cut -d= -f2)
+            if [ -z "${PRIV_KEY}" ]; then
+              echo "::warning::Ephemeral key generation failed, skipping signature"
+              echo "Skipping signing"
+            else
+              echo "Ephemeral key pair generated"
+            fi
+          fi
+
+          if [ -z "${PRIV_KEY}" ]; then
+            echo "::warning::No signing key available — skipping Ed25519 signature (non-fatal in CI dev)"
+            echo "artifact_name=${ARTIFACT}" >> $GITHUB_OUTPUT
+            exit 0
           fi
 
           # Firmar el binario
           echo "Signing binary: ${ARTIFACT}"
-          SIGN_OUTPUT=$(python scripts/ci_sign.py sign "${ARTIFACT}" "$PRIV_KEY")
+          SIGN_OUTPUT=$(python scripts/ci_sign.py sign "${ARTIFACT}" "$PRIV_KEY" 2>&1)
 
           SIG_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SIG=' | cut -d= -f2)
           PUB_VALUE=$(echo "$SIGN_OUTPUT" | grep '^PUB=' | cut -d= -f2)
