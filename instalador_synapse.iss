@@ -3,7 +3,7 @@
 ; Compilar con: iscc instalador_synapse.iss
 
 #define MyAppName "Synapse Language"
-#define MyAppVersion "5.0.0"
+#define MyAppVersion "5.1.1-industrial"
 #define MyAppPublisher "Synapse Language Team"
 #define MyAppURL "https://github.com/synapse-lang/synapse"
 #define MyAppExeName "synapse.exe"
@@ -57,7 +57,7 @@ Source: "dist\lib\*"; DestDir: "{app}\lib"; Components: core; Flags: ignoreversi
 Source: "dist\include\*"; DestDir: "{app}\include"; Components: core; Flags: ignoreversion recursesubdirs
 Source: "dist\axon.toml"; DestDir: "{app}"; Components: core; Flags: ignoreversion
 Source: "dist\synapse_rt.h"; DestDir: "{app}"; Components: core; Flags: ignoreversion
-Source: "vscode-synapse\synapse-vscode-v5.0.0.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
+Source: "vscode-synapse\synapse-vscode-v5.1.1-industrial.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
 Source: "synapse_rt.c"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion
 Source: "tweetnacl.h"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion
 Source: "tweetnacl.c"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion

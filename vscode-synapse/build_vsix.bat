@@ -18,7 +18,7 @@
 setlocal enabledelayedexpansion
 set VSIX_DIR=%~dp0
 set PROJECT_ROOT=%VSIX_DIR%..
-set VERSION=5.0.0
+set VERSION=5.1.1-industrial
 
 if not "%1"=="" set VERSION=%1
 
