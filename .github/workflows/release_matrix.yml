@@ -234,15 +234,16 @@ jobs:
       # Uses nucleo.ed25519_signer via scripts/ci_sign.py
       # -----------------------------------------------------------------------
       - name: Verify signing module (nucleo.ed25519_signer)
+        shell: bash
         run: |
-          python -c "
-import sys; sys.path.insert(0, '.')
-from nucleo.ed25519_signer import generar_par_claves, firmar, verificar
-priv, pub = generar_par_claves()
-sig = firmar(b'test', priv)
-assert verificar(b'test', sig, pub), 'ed25519_signer self-test FAILED'
-print('[OK] nucleo.ed25519_signer module verified')
-"
+          python << 'PYEOF'
+          import sys; sys.path.insert(0, '.')
+          from nucleo.ed25519_signer import generar_par_claves, firmar, verificar
+          priv, pub = generar_par_claves()
+          sig = firmar(b'test', priv)
+          assert verificar(b'test', sig, pub), 'ed25519_signer self-test FAILED'
+          print('[OK] nucleo.ed25519_signer module verified')
+          PYEOF
 
       - name: Sign binary with Ed25519
         id: sign
