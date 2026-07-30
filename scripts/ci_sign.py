@@ -63,7 +63,7 @@ def sbom(artifact, sha256, sig, pub):
         'predicate': {
             'builder': {'id': 'https://synapse-lang.org/builder'},
             'buildType': 'synapse-build',
-            'recipe': {'type': 'synapse-compiler', 'version': os.environ.get('SYNAPSE_VERSION', '5.0.0-dev')},
+            'recipe': {'type': 'synapse-compiler', 'version': os.environ.get('SYNAPSE_VERSION', '5.1.1-industrial')},
             'metadata': {'completeness': {'parameters': True, 'environment': False, 'materials': False}, 'reproducible': False},
             'materials': [{'uri': 'git+https://github.com/synapse/nucleo/principal.syn', 'digest': {'sha256': sha256}}],
         },

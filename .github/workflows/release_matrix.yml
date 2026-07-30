@@ -136,12 +136,19 @@ jobs:
       # 4. Build runtime objects
       # -----------------------------------------------------------------------
       - name: Compile runtime objects
-        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        # Se usa bash para todos los targets (incluyendo win_x64, donde bash está disponible via Git-for-Windows)
+        shell: bash
         run: |
           if [ "${{ matrix.target.name }}" = "linux_arm64" ]; then
             ${{ matrix.target.cross_prefix }}gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
             ${{ matrix.target.cross_prefix }}gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
           elif [ "${{ matrix.target.name }}" = "win_x64" ]; then
+            # En windows-latest, gcc puede no estar en PATH; instalar MinGW si es necesario
+            if ! command -v gcc &> /dev/null; then
+              echo "gcc no encontrado en PATH, instalando MinGW-w64..."
+              choco install mingw --version=12.2.0 -y 2>&1 || true
+            fi
+            gcc --version
             gcc -c synapse_rt.c -o synapse_rt.o ${{ matrix.target.ldflags }} -O2
             gcc -c tweetnacl.c -o tweetnacl.o -lm -O2
           else
@@ -206,13 +213,13 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Generate SHA-256 checksum
         id: checksum
-        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        shell: bash
         run: |
           ARTIFACT="${{ steps.build.outputs.artifact_name }}"
           if [ "${{ matrix.target.name }}" = "win_x64" ]; then
-            # Windows: use certutil or Get-FileHash
+            # Windows: fallback a Python si certutil no está disponible
             if command -v certutil &> /dev/null; then
-              certutil -hashfile "${ARTIFACT}" SHA256 | findstr /v "hash" > "${ARTIFACT}.sha256"
+              certutil -hashfile "${ARTIFACT}" SHA256 2>&1 | grep -iv "hash" > "${ARTIFACT}.sha256"
             else
               python -c "import hashlib; h=hashlib.sha256(open('${ARTIFACT}','rb').read()).hexdigest(); open('${ARTIFACT}.sha256','w').write(h+'  ${ARTIFACT}')"
             fi
@@ -267,10 +274,12 @@ print('[OK] nucleo.ed25519_signer module verified')
           echo "Public key: ${PUB_VALUE}"
           echo "Self-verify: ${VALID_STATUS}"
 
-          if [ "${VALID_STATUS}" != "OK" ]; then
-            echo "::error::Signature self-verification failed"
+          # VALID_STATUS es 'True'/'False' (booleano Python). Se acepta True o OK.
+          if [ "${VALID_STATUS}" != "True" ] && [ "${VALID_STATUS}" != "OK" ]; then
+            echo "::error::Signature self-verification failed (VALID_STATUS=${VALID_STATUS})"
             exit 1
           fi
+          echo "[OK] Ed25519 signature verification: VALID"
 
           # Guardar clave publica para verificacion offline
           echo "${PUB_VALUE}" > "${ARTIFACT}.pub"
@@ -351,7 +360,7 @@ print('[OK] nucleo.ed25519_signer module verified')
       # 12. Validate artifacts with signing checks
       # -----------------------------------------------------------------------
       - name: Validate artifacts
-        shell: ${{ matrix.target.name == 'win_x64' && 'pwsh' || 'bash' }}
+        shell: bash
         run: |
           ARTIFACT="${{ steps.build.outputs.artifact_name }}"
           ERRORS=0
@@ -442,10 +451,12 @@ print('[OK] nucleo.ed25519_signer module verified')
           echo "| Target | Binary | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|--------|--------|" >> $GITHUB_STEP_SUMMARY
           for PLATFORM in linux_x64 linux_arm64 darwin_arm64 win_x64; do
-            if [ -d "synapse-${PLATFORM}" ]; then
+            if [ -f "synapse-${PLATFORM}" ]; then
               echo "| ${PLATFORM} | synapse-${PLATFORM} | ✅ Built |" >> $GITHUB_STEP_SUMMARY
-            elif [ -d "synapse-${PLATFORM}.exe" ]; then
+            elif [ -f "synapse-${PLATFORM}.exe" ]; then
               echo "| ${PLATFORM} | synapse-${PLATFORM}.exe | ✅ Built |" >> $GITHUB_STEP_SUMMARY
+            elif [ -d "synapse-${PLATFORM}" ]; then
+              echo "| ${PLATFORM} | synapse-${PLATFORM} (directory) | ✅ Built |" >> $GITHUB_STEP_SUMMARY
             else
               echo "| ${PLATFORM} | - | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
             fi
