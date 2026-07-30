@@ -351,14 +351,19 @@ void _simd_detectar(void) {
     if (_simd_habilitado >= 0) return;  // ya detectado
     unsigned int eax, ebx, ecx, edx;
     eax = 1;
-#if defined(__GNUC__) || defined(__clang__)
-    __asm__ volatile(
-        "cpuid"
-        : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-        : "a"(eax)
-    );
+#if defined(__x86_64__) || defined(__i386__)
+    #if defined(__GNUC__) || defined(__clang__)
+        __asm__ volatile(
+            "cpuid"
+            : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+            : "a"(eax)
+        );
+    #else
+        _simd_habilitado = 0;
+        _simd_tipo_str = "NONE";
+        return;
+    #endif
 #else
-    // Fallback: asumir no SIMD en compiladores desconocidos
     _simd_habilitado = 0;
     _simd_tipo_str = "NONE";
     return;
@@ -376,12 +381,14 @@ void _simd_detectar(void) {
     // AVX2: CPUID leaf 7, EBX bit 5
     if (ecx & (1 << 28)) {
         eax = 7; ebx = 0; ecx = 0; edx = 0;
-#if defined(__GNUC__) || defined(__clang__)
-        __asm__ volatile(
-            "cpuid"
-            : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-            : "a"(eax), "c"(ecx)
-        );
+#if defined(__x86_64__) || defined(__i386__)
+        #if defined(__GNUC__) || defined(__clang__)
+            __asm__ volatile(
+                "cpuid"
+                : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+                : "a"(eax), "c"(ecx)
+            );
+        #endif
 #endif
         if (ebx & (1 << 5)) {
             _simd_tipo_str = "AVX2";
@@ -399,6 +406,7 @@ CadenaSegura _syn_simd_tipo(void) {
     return (CadenaSegura){ .longitud = (int)strlen(_simd_tipo_str), .datos = _simd_tipo_str };
 }
 
+#if defined(__x86_64__) || defined(__i386__)
 // --- SIMD: llenar_tensor_constante (vectorizado con SSE) ---
 void _syn_simd_llenar_tensor_constante(Tensor t, float valor) {
     _simd_detectar();
@@ -620,6 +628,64 @@ void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala) {
     }
 }
 
+
+#else
+// Non-x86 architecture stubs (SIMD not available — _simd_habilitado=0 ensures these are never called)
+#include <unistd.h>
+
+void _simd_detectar(void) {
+    if (_simd_habilitado >= 0) return;
+    _simd_habilitado = 0;
+    _simd_tipo_str = "NONE";
+}
+
+int _syn_simd_disponible(void) { return 0; }
+CadenaSegura _syn_simd_tipo(void) { return (CadenaSegura){ .longitud = 4, .datos = "NONE" }; }
+
+void _syn_simd_llenar_tensor_constante(Tensor t, float valor) {
+    _simd_detectar();
+    for (uint32_t _i = 0; _i < t.filas * t.columnas; _i++) t.datos[_i] = valor;
+}
+
+Tensor _syn_simd_multiplicar_matrices(Tensor a, Tensor b) {
+    Tensor r = {0}; return r;  // never called on non-x86
+}
+
+void _syn_simd_multiplicar_matrices_transpuesta_b(Tensor a, Tensor b, Tensor salida) {
+    (void)a; (void)b; (void)salida;
+}
+
+void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion, float epsilon) {
+    _simd_detectar();
+    uint32_t n = entrada.columnas;
+    float suma_cuadrados = 0.0f;
+    for (uint32_t _i = 0; _i < n; _i++) { float v = entrada.datos[_i]; suma_cuadrados += v * v; }
+    float rms = sqrtf(suma_cuadrados / (float)n + epsilon);
+    for (uint32_t _i = 0; _i < n; _i++) salida.datos[_i] = (entrada.datos[_i] / rms) * peso_normalizacion.datos[_i];
+}
+
+void _syn_simd_silu(Tensor salida, Tensor entrada) {
+    uint32_t n = entrada.columnas;
+    for (uint32_t _i = 0; _i < n; _i++) {
+        float x = entrada.datos[_i];
+        salida.datos[_i] = x / (1.0f + expf(-x));
+    }
+}
+
+void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala) {
+    _simd_detectar();
+    uint32_t filas = tensor.filas;
+    uint32_t cols = tensor.columnas;
+    for (uint32_t _f = 0; _f < filas; _f++) {
+        float* fila = tensor.datos + _f * cols;
+        float max_val = -1e30f;
+        for (uint32_t _c = 0; _c < cols; _c++) { float v = fila[_c] * factor_escala; if (v > max_val) max_val = v; }
+        float suma = 0.0f;
+        for (uint32_t _c = 0; _c < cols; _c++) { float e = expf(fila[_c] * factor_escala - max_val); fila[_c] = e; suma += e; }
+        if (suma > 0.0f) { for (uint32_t _c = 0; _c < cols; _c++) fila[_c] /= suma; }
+    }
+}
+#endif
 // --- std.math (alias) ---
 Tensor suma(Tensor a, Tensor b) {
     return suma_tensor(a, b);
@@ -7720,7 +7786,12 @@ CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta) {
 
 CadenaSegura _syn_obtener_cwd(void) {
     char buf[4096];
+#ifdef _WIN32
     DWORD len = GetCurrentDirectoryA(4096, buf);
+#else
+    char* _cwd = getcwd(buf, 4096);
+    int len = _cwd ? (int)strlen(buf) : 0;
+#endif
     if (len == 0 || len >= 4096) {
         return (CadenaSegura){ .longitud = 0, .datos = "" };
     }
