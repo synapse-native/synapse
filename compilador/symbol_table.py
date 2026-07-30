@@ -41,6 +41,16 @@ class SymbolTable:
     def scope_nivel(self) -> int:
         return self._scope_level
 
+    def simbolos_ordenados(self) -> List[Simbolo]:
+        """Retorna todos los símbolos del ámbito actual ordenados lexicográficamente por nombre.
+        Cumple Manual 1 §1.2 y Manual 3 §3.3: toda iteración sobre mapas/diccionarios
+        debe realizarse en orden lexicográfico de claves."""
+        return sorted(self._scopes[-1].values(), key=lambda s: s.nombre)
+
+    def entradas_ordenadas(self) -> List[tuple[str, Simbolo]]:
+        """Retorna las entradas (nombre, símbolo) del ámbito actual ordenadas lexicográficamente."""
+        return sorted(self._scopes[-1].items(), key=lambda item: item[0])
+
     def declarar(self, nombre: str, tipo: str, nodo: Optional[Nodo] = None, uri: str = '', linea: int = 0, columna: int = 0) -> bool:
         cur = self._scopes[-1]
         if nombre in cur:

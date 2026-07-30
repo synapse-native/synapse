@@ -66,7 +66,8 @@ def _obtener_simbolos_desde_tabla(uri: str) -> list:
 
     simbolos = []
     try:
-        for nombre, sim in analizador.tabla._scopes[-1].items():
+        # Manual 1 §1.2: iteración lexicográfica sobre mapas/diccionarios
+        for nombre, sim in analizador.tabla.entradas_ordenadas():
             simbolos.append({
                 "label": nombre,
                 "kind": 6,

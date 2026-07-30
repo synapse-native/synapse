@@ -289,7 +289,8 @@ class GeneratorContext:
         if self._scope_depth >= 0:
             self.write_line(f"  /* [Lifetime Scope: exit depth={self._scope_depth}] */")
         scope = self._scope_stack.pop() if self._scope_stack else {}
-        for var_name in reversed(list(scope.keys())):
+        # Manual 3 §3.3: iteración lexicográfica sobre claves de diccionarios
+        for var_name in reversed(sorted(scope.keys())):
             # Move semantics: skip vars already explicitly consumed/destroyed
             if var_name in self._consumed_vars:
                 self._consumed_vars.discard(var_name)
@@ -304,7 +305,8 @@ class GeneratorContext:
 
     def emit_all_destructors(self, exclude_var: str = ''):
         for scope in reversed(self._scope_stack):
-            for var_name in reversed(list(scope.keys())):
+            # Manual 3 §3.3: iteración lexicográfica sobre claves de diccionarios
+            for var_name in reversed(sorted(scope.keys())):
                 if var_name == exclude_var:
                     continue
                 # Move semantics: skip vars already explicitly consumed/destroyed
