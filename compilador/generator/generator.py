@@ -147,7 +147,32 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         )
 
     if isinstance(nodo, DefinicionFuncion):
-        visitar_funcion(ctx, nodo)
+        if ctx._in_function_scope:
+            # Hoist nested function to file scope (clang no soporta nested functions)
+            _saved = {
+                'vars': ctx._variables,
+                'tensor': ctx._tensor_vars,
+                'canal': ctx._canal_vars,
+                'canal_cerradas': ctx._canal_vars_cerradas,
+                'canal_conc': ctx._canal_vars_concurrencia,
+                'strings': ctx._strings_heap,
+                'consumed': ctx._consumed_vars,
+                'in_scope': ctx._in_function_scope,
+                'ret_type': ctx._current_func_return_type,
+            }
+            ctx._in_function_scope = False
+            visitar_funcion(ctx, nodo)
+            ctx._variables = _saved['vars']
+            ctx._tensor_vars = _saved['tensor']
+            ctx._canal_vars = _saved['canal']
+            ctx._canal_vars_cerradas = _saved['canal_cerradas']
+            ctx._canal_vars_concurrencia = _saved['canal_conc']
+            ctx._strings_heap = _saved['strings']
+            ctx._consumed_vars = _saved['consumed']
+            ctx._in_function_scope = _saved['in_scope']
+            ctx._current_func_return_type = _saved['ret_type']
+        else:
+            visitar_funcion(ctx, nodo)
     elif isinstance(nodo, SentenciaSi):
         visitar_si(ctx, nodo)
     elif isinstance(nodo, SentenciaLanzar):
@@ -256,7 +281,10 @@ def _emitir_token_defines(ctx: GeneratorContext):
     for name in TokenID._member_names_:
         cname = _T_MAP.get(name, f'T_{name}')
         val = TokenID[name].value
+        # Usar #ifndef guard para evitar redefinicion en unity file
+        ctx.write_line(f"#ifndef {cname}")
         ctx.write_line(f"#define {cname} ({val})")
+        ctx.write_line(f"#endif")
     ctx.write_line("")
 
 
@@ -282,7 +310,10 @@ def _emitir_nodo_defines(ctx: GeneratorContext):
     ]
     ctx.write_line("// --- Nodo type constants (AST node types) ---")
     for name, val in NODOS:
+        # Usar #ifndef guard para evitar redefinicion
+        ctx.write_line(f"#ifndef {name}")
         ctx.write_line(f"#define {name} ({val})")
+        ctx.write_line(f"#endif")
     ctx.write_line("")
 
 
@@ -292,11 +323,19 @@ def _emitir_error_defines(ctx: GeneratorContext):
     ctx.write_line("// --- Error code constants (Manual 3 §3.5) ---")
     for name in ErrorCodes._member_names_:
         val = ErrorCodes[name].value
+        # Usar #ifndef guard para evitar redefinicion
+        ctx.write_line(f"#ifndef {name}")
         ctx.write_line(f"#define {name} ({val})")
+        ctx.write_line(f"#endif")
     # Extras from self-hosted diagnostics.syn (not in Python ErrorCodes)
-    ctx.write_line("#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)")
-    ctx.write_line("#define ERR_MEM_LIFETIME_MISMATCH (34)")
-    ctx.write_line("#define ERR_MEM_LIFETIME_CYCLE (35)")
+    for extra_name, extra_val in [
+        ("ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED", 33),
+        ("ERR_MEM_LIFETIME_MISMATCH", 34),
+        ("ERR_MEM_LIFETIME_CYCLE", 35),
+    ]:
+        ctx.write_line(f"#ifndef {extra_name}")
+        ctx.write_line(f"#define {extra_name} ({extra_val})")
+        ctx.write_line(f"#endif")
     ctx.write_line("")
 
 
