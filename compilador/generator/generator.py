@@ -228,6 +228,78 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         visitar_coincidir(ctx, nodo)
 
 
+def _emitir_token_defines(ctx: GeneratorContext):
+    """Emite #define T_* desde TokenID enum (Manual 2 §2.3)."""
+    from compilador.ast_nodes import TokenID
+    _T_MAP = {
+        'IF':'T_IF','ELSE':'T_ELSE','FUNCTION':'T_FUNCION','RETURN':'T_RETORNAR',
+        'SPAWN':'T_LANZAR','RECOVER':'T_RECUPERAR','LISTEN':'T_ESCUCHAR',
+        'WHILE':'T_MIENTRAS','IMPORT':'T_IMPORTAR','STRUCT':'T_ESTRUCTURA',
+        'BREAK':'T_ROMPER','CONTINUE':'T_SIGUIENTE','AND':'T_Y','OR':'T_O',
+        'NOT':'T_NO','TRUE':'T_VERDADERO','FALSE':'T_FALSO',
+        'IDENTIFIER':'T_IDENTIFICADOR','NUMBER':'T_NUMERO','FLOAT':'T_FLOTANTE',
+        'STRING':'T_CADENA','GREATER':'T_MAYOR','LESS':'T_MENOR',
+        'EQUALS':'T_IGUAL','NOT_EQUALS':'T_DISTINTO','LESS_EQUALS':'T_MENOR_IGUAL',
+        'GREATER_EQUALS':'T_MAYOR_IGUAL','ASSIGN':'T_ASIGNAR','PLUS':'T_MAS',
+        'MINUS':'T_MENOS','STAR':'T_POR','SLASH':'T_DIV','MODULO':'T_MOD',
+        'ARROW':'T_FLECHA','MATCH':'T_COINCIDIR','ARROW_RIGHT':'T_FLECHA_DER',
+        'LPAREN':'T_PAREN_IZQ','RPAREN':'T_PAREN_DER','COLON':'T_DOSPUNTOS',
+        'COMMA':'T_COMA','NEWLINE':'T_NUEVALINEA','INDENT':'T_INDENTAR',
+        'DEDENT':'T_DESINDENTAR','AMPERSAND':'T_AMPERSAND','INSEGURO':'T_INSEGURO',
+        'IMPORTAR_C':'T_IMPORTAR_C','EXTERNO':'T_EXTERNO','ARROW_LEFT':'T_FLECHA_IZQ',
+        'REQUIERE':'T_REQUIERE','GARANTIZA':'T_GARANTIZA','CANAL':'T_CANAL',
+        'ASM':'T_ASM','CONSTANTE':'T_CONSTANTE','SEMICOLON':'T_PUNTOCOMA',
+        'PARA':'T_PARA','LBRACKET':'T_CORCH_IZQ','RBRACKET':'T_CORCH_DER',
+        'EOF':'T_FIN','DOT':'T_PUNTO',
+    }
+    ctx.write_line("// --- Token ID constants (Manual 2 §2.3) ---")
+    for name in TokenID._member_names_:
+        cname = _T_MAP.get(name, f'T_{name}')
+        val = TokenID[name].value
+        ctx.write_line(f"#define {cname} ({val})")
+    ctx.write_line("")
+
+
+def _emitir_nodo_defines(ctx: GeneratorContext):
+    """Emite #define NODO_* constantes para tipos de nodo AST."""
+    NODOS = [
+        ("NODO_PROGRAMA",1),("NODO_FUNCION",2),("NODO_SI",3),
+        ("NODO_MIENTRAS",4),("NODO_RETORNAR",5),("NODO_EXPR",6),
+        ("NODO_ASIGNACION",7),("NODO_IDENTIFICADOR",8),("NODO_NUMERO",9),
+        ("NODO_DECIMAL",10),("NODO_CADENA_LIT",11),("NODO_BINARIA",12),
+        ("NODO_UNARIA",13),("NODO_LLAMADA",14),("NODO_PARAMETRO",15),
+        ("NODO_ESTRUCTURA",16),("NODO_IMPORTAR",17),("NODO_LANZAR",18),
+        ("NODO_ESCUCHAR",19),("NODO_ROMPER",20),("NODO_SIGUIENTE",21),
+        ("NODO_BOOLEANO",22),("NODO_CONSTANTE",23),("NODO_INSEGURO",24),
+        ("NODO_IMPORTAR_C",25),("NODO_EXTERNO",26),("NODO_RECUPERAR",27),
+        ("NODO_TENSOR",28),("NODO_INDICE",29),("NODO_TRANSFERIDO",30),
+        ("NODO_ACCESO_CAMPO",31),("NODO_ASIGNACION_CAMPO",32),("NODO_PARRAFO",33),
+        ("NODO_DECLARACION",34),("NODO_LOG",35),("NODO_PUNTERO",36),
+        ("NODO_DEREF",37),("NODO_COINCIDIR",38),("NODO_CASO",39),
+        ("NODO_ASM",40),("NODO_CANAL_CREAR",41),("NODO_ENVIAR_CANAL",42),
+        ("NODO_RECIBIR_CANAL",43),("NODO_VACIO",44),("NODO_PARA",45),
+        ("NODO_CONTRATO",46),
+    ]
+    ctx.write_line("// --- Nodo type constants (AST node types) ---")
+    for name, val in NODOS:
+        ctx.write_line(f"#define {name} ({val})")
+    ctx.write_line("")
+
+
+def _emitir_error_defines(ctx: GeneratorContext):
+    """Emite #define ERR_* desde ErrorCodes enum + extras de nucleo/diagnostics.syn."""
+    from compilador.diagnostics import ErrorCodes
+    ctx.write_line("// --- Error code constants (Manual 3 §3.5) ---")
+    for name in ErrorCodes._member_names_:
+        val = ErrorCodes[name].value
+        ctx.write_line(f"#define {name} ({val})")
+    # Extras from self-hosted diagnostics.syn (not in Python ErrorCodes)
+    ctx.write_line("#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)")
+    ctx.write_line("#define ERR_MEM_LIFETIME_MISMATCH (34)")
+    ctx.write_line("#define ERR_MEM_LIFETIME_CYCLE (35)")
+    ctx.write_line("")
+
+
 def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("// salida_metal.c - Generado por Synapse Compilador")
     ctx.write_line("// Lenguaje: Synapse v1.0 (#lang: es)")
@@ -303,6 +375,11 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define _GEN_TMP_SIZE (4096)")
     ctx.write_line("#include \"librerias/embedded_libs.h\"")
     ctx.write_line("")
+    # Emit T_*, NODO_*, ERR_* constants for modular compilation
+    _emitir_token_defines(ctx)
+    _emitir_nodo_defines(ctx)
+    _emitir_error_defines(ctx)
+    # NOTA: _syn_* y _toml_* externs ya estan en #include "librerias/embedded_libs.h"
     ctx.write_line("extern char _gen_tmp_buf[4096];")
     ctx.write_line("")
     ctx.write_line("extern char _G_emit_buf[1048576];")
