@@ -203,8 +203,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             self._inferir_tipo(nodo.canal)
             return 'void*'
         elif isinstance(nodo, ExprIndice):
-            self._inferir_tipo(nodo.expr)
+            tipo_base = self._inferir_tipo(nodo.expr)
             self._inferir_tipo(nodo.indice)
+            # Si el tipo base es texto/CadenaSegura, indexar devuelve un caracter (texto)
+            if tipo_base:
+                norm = _tipo_normalizado(tipo_base)
+                if norm == 'CadenaSegura':
+                    return 'texto'
             return 'int'
         return None
 

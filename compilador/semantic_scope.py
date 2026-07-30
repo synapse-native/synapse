@@ -9,6 +9,10 @@ from compilador.generator import MAPA_TIPOS_C
 
 
 _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
+    # Funciones runtime de manipulación de cadenas (Manual 2 §2.3)
+    'len': (['texto'], 'int'),
+    'subcadena': (['texto', 'int', 'int'], 'texto'),
+    'empieza_con': (['texto', 'texto'], 'int'),
     'reserva': (['int'], 'tensor'),
     'libera': (['tensor'], 'nulo'),
     'crear_tensor': (['int', 'int'], 'tensor'),
