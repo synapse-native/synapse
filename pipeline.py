@@ -42,27 +42,43 @@ class ToolchainNotFoundError(Exception):
 def _resolver_toolchain_gcc() -> str:
     """
     Resuelve la ruta absoluta al GCC del toolchain interno.
-    Prefiere MinGW-w64 >= 12 (toolchain_gcc12) sobre el toolchain legacy.
+    Prioridad: SYNAPSE_GCC_PATH -> MinGW-w64 (Windows) -> clang (macOS) -> gcc/cc (PATH).
     Lanza ToolchainNotFoundError si no existe ningun ejecutable.
     """
-    # Prioridad 1: toolchain_gcc12 (GCC 12.4.0 WinLibs standalone)
-    rutas_candidatas = [
-        os.path.normpath(os.path.join(SYNAPSE_BIN, 'toolchain_gcc12', 'mingw64', 'bin', 'gcc.exe')),
-        os.path.normpath(os.path.join(SYNAPSE_BIN, 'toolchain', 'bin', 'gcc.exe')),
-    ]
-    # Prioridad 2: variable de entorno SYNAPSE_GCC_PATH
+    import shutil
+
+    candidatos = []
+
+    # Prioridad 1: variable de entorno SYNAPSE_GCC_PATH
     env_path = os.environ.get('SYNAPSE_GCC_PATH')
     if env_path:
-        rutas_candidatas.insert(0, os.path.normpath(env_path))
+        candidatos.append(env_path)
+        ruta_norm = os.path.normpath(env_path)
+        if os.path.isfile(ruta_norm):
+            return ruta_norm
+        path_found = shutil.which(env_path)
+        if path_found:
+            return path_found
 
-    for ruta in rutas_candidatas:
+    # Prioridad 2: toolchain MinGW-w64 (toolchain_gcc12)
+    candidatos.append(os.path.normpath(
+        os.path.join(SYNAPSE_BIN, 'toolchain_gcc12', 'mingw64', 'bin', 'gcc.exe')))
+    candidatos.append(os.path.normpath(
+        os.path.join(SYNAPSE_BIN, 'toolchain', 'bin', 'gcc.exe')))
+    for ruta in candidatos:
         if os.path.isfile(ruta):
             return ruta
+
+    # Prioridad 3: compilador del sistema (Linux: gcc, macOS: clang, default: cc)
+    for cmd in ('clang', 'gcc', 'cc'):
+        path_found = shutil.which(cmd)
+        if path_found:
+            return path_found
 
     raise ToolchainNotFoundError(
         f"Toolchain C interno no encontrado. "
         "Buscado en:\n" +
-        "\n".join(f"  - {r}" for r in rutas_candidatas) + "\n"
+        "\n".join(f"  - {r}" for r in candidatos) + "\n"
         "Ejecute el instalador (install.ps1) o descargue MinGW-w64 >= 12 desde https://winlibs.com/"
     )
 
