@@ -735,6 +735,13 @@ class GeneradorC:
                 visitar_estructura(ctx, s)
             # Prototipos de funciones
             self._emit_prototipos_funciones(ctx)
+            # Declaraciones externas (DeclaracionExterna): emitir como extern
+            # Necesario para que modulos que importan _syn_*, _toml_* tengan
+            # las declaraciones visibles (Manual 8 §8.1: extern antes de uso)
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DeclaracionExterna):
+                    from .emit_declarations import visitar_externa
+                    visitar_externa(ctx, s)
             # NO emitir cuerpos de funciones, NO emitir main
             return ctx.generar()
 
