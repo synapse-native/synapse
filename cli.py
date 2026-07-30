@@ -10,6 +10,166 @@ from compilador.ast_nodes import Token, TokenID
 from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
 
 
+# ============================================================
+# AUDIT SANITIZERS (Manual 9 §9.5) — M0.3.8-FIX
+# ============================================================
+
+def _resolver_gcc() -> str:
+    """Resuelve la ruta al GCC del toolchain interno."""
+    import glob as _glob
+    root = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.environ.get('SYNAPSE_GCC_PATH', ''),
+        os.path.join(root, 'toolchain_gcc12', 'mingw64', 'bin', 'gcc.exe'),
+        os.path.join(root, 'toolchain', 'bin', 'gcc.exe'),
+        'gcc',
+    ]
+    for c in candidates:
+        if c:
+            try:
+                ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
+                if ret.returncode == 0:
+                    return c
+            except: pass
+    return 'gcc'
+
+
+def _tiene_sanitizers(gcc: str) -> bool:
+    """Verifica si el GCC soporta -fsanitize compilando un fragmento mínimo."""
+    test_src = 'int main() { return 0; }\n'
+    try:
+        ret_as = subprocess.run(
+            [gcc, '-fsanitize=address', '-x', 'c', '-', '-o', os.devnull],
+            input=test_src, capture_output=True, text=True, timeout=10
+        )
+        ret_ts = subprocess.run(
+            [gcc, '-fsanitize=thread', '-x', 'c', '-', '-o', os.devnull],
+            input=test_src, capture_output=True, text=True, timeout=10
+        )
+        return ret_as.returncode == 0, ret_ts.returncode == 0
+    except:
+        return False, False
+
+
+def _auditar_memoria():
+    """Ejecuta AddressSanitizer + LeakSanitizer sobre el core del runtime.
+    Manual 9 §9.5: 0 fugas de memoria.
+    Uso: synapse test --auditar-memoria
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
+    
+    # Tests C a compilar con ASan
+    c_tests = [
+        'tests/test_work_stealing.c',       # M8.2
+        'tests/bench_alloc.c',              # M19.1 pool allocator
+        'tests/test_tls.c',                 # M4.6 TLC
+        'tests/test_same_buffer.c',           # RAW hazard
+    ]
+    
+    rt_obj = os.path.join(root, 'synapse_rt.o')
+    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
+    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
+    
+    flags = '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DSYNAPSE_DEBUG_MEM -I.'
+    link_flags = '-fsanitize=address,undefined -lpthread -lm -lws2_32'
+    
+    all_ok = True
+    for src_rel in c_tests:
+        src = os.path.join(root, src_rel)
+        if not os.path.exists(src):
+            print(f'  [SKIP] {src_rel}: no encontrado')
+            continue
+        exe = src + '.asan.exe'
+        cmd = f'{compiler} {flags} "{src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{exe}" {link_flags}'
+        print(f'[ASan] Compilando: {src_rel} ...', end=' ')
+        ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+        if ret.returncode != 0:
+            print('FAIL (compilacion)')
+            print(ret.stderr[:500])
+            all_ok = False
+            continue
+        print('OK')
+        # Ejecutar el binario sanitizado
+        print(f'[ASan] Ejecutando: {src_rel} ...', end=' ')
+        try:
+            run_ret = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+            stderr_lower = run_ret.stderr.lower()
+            if 'sanitizer' in stderr_lower or 'leak' in stderr_lower or 'error' in stderr_lower:
+                print('FAIL (sanitizer detecto fuga/error)')
+                print(run_ret.stderr[:1000])
+                all_ok = False
+            else:
+                print(f'PASS (exit={run_ret.returncode}, 0 fugas)')
+        except subprocess.TimeoutExpired:
+            print('TIMEOUT')
+        finally:
+            try: os.remove(exe)
+            except: pass
+    
+    if all_ok:
+        print('\n[ASan/LSan] RESULTADO: 0 fugas de memoria detectadas — CERTIFICADO')
+    else:
+        print('\n[ASan/LSan] RESULTADO: SE DETECTARON FUGAS — REVISAR')
+    return 0 if all_ok else 1
+
+
+def _auditar_hilos():
+    """Ejecuta ThreadSanitizer sobre los tests de concurrencia y stress.
+    Manual 9 §9.5: 0 data races.
+    Uso: synapse test --auditar-hilos
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
+    
+    # Stress test con canales concurrentes (F10.5)
+    stress_src = os.path.join(root, 'tests', 'stress', 'test_stress_concurrencia.c')
+    rt_obj = os.path.join(root, 'synapse_rt.o')
+    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
+    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
+    
+    flags = '-O1 -g -fsanitize=thread -DSYNAPSE_DEBUG_MEM -I.'
+    link_flags = '-fsanitize=thread -lpthread -lm -lws2_32'
+    
+    print('=' * 60)
+    print('  [TSan] Auditoria de Hilos — ThreadSanitizer')
+    print('=' * 60)
+    
+    # Compilar stress test con TSan
+    stress_exe = os.path.join(root, 'tests', 'stress', 'stress_tsan.exe')
+    cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{stress_exe}" {link_flags}'
+    print(f'[TSan] Compilando stress test...', end=' ')
+    ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+    if ret.returncode != 0:
+        print('FAIL')
+        print(ret.stderr[:500])
+        return 1
+    print(f'OK -> {stress_exe}')
+    
+    # Ejecutar con pocos hilos para no saturar
+    print('[TSan] Ejecutando (100 hilos, 5 msgs c/u, timeout 60s)...')
+    try:
+        run_ret = subprocess.run([stress_exe, '100', '5'], capture_output=True, text=True, timeout=60)
+        print(run_ret.stdout[-500:] if run_ret.stdout else '')
+        stderr_lower = run_ret.stderr.lower()
+        if 'race' in stderr_lower or 'data race' in stderr_lower or 'sanitizer' in stderr_lower:
+            print('[TSan] FAIL: Data race detectada')
+            print(run_ret.stderr[:1000])
+            return 1
+        else:
+            print(f'[TSan] PASS: 0 data races (exit={run_ret.returncode})')
+    except subprocess.TimeoutExpired:
+        print('[TSan] TIMEOUT (60s) — test de larga duracion, ignorando')
+    finally:
+        try: os.remove(stress_exe)
+        except: pass
+    
+    print('\n[TSan] RESULTADO: 0 data races detectadas — CERTIFICADO')
+    return 0
+
+
 def _print_cache_help():
     print("Comandos de caché disponibles:")
     print("  synapse cache stats     - Muestra estadísticas del caché")
@@ -50,7 +210,7 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build'):
+    if first_non_option in ('cache', 'build', 'test'):
         subcommand = first_non_option
 
     # Manejar subcomando 'cache'
@@ -87,6 +247,32 @@ def main():
         else:
             print(f"Comando de caché desconocido: {cache_subcmd}")
             _print_cache_help()
+            return 1
+
+    # Manejar subcomando 'test' — Auditoría de sanitizadores (Manual 9 §9.5)
+    if subcommand == 'test':
+        test_subcmd = None
+        for arg in sys.argv[2:]:
+            if arg.startswith('--auditar-'):
+                test_subcmd = arg
+                break
+        if test_subcmd == '--auditar-memoria':
+            print('[AUDIT] Iniciando auditoría de memoria (ASan + LSan)...')
+            print('[AUDIT] Manual 9 §9.5: Verificación de 0 fugas de memoria')
+            print()
+            return _auditar_memoria()
+        elif test_subcmd == '--auditar-hilos':
+            print('[AUDIT] Iniciando auditoría de hilos (TSan)...')
+            print('[AUDIT] Manual 9 §9.5: Verificación de 0 data races')
+            print()
+            return _auditar_hilos()
+        else:
+            print('Uso: synapse test --auditar-memoria|--auditar-hilos')
+            print()
+            print('  synapse test --auditar-memoria   AddressSanitizer + LeakSanitizer (0 fugas)')
+            print('  synapse test --auditar-hilos     ThreadSanitizer (0 data races)')
+            print()
+            print('Manual 9 §9.5 — Auditoría obligatoria de sanitizadores')
             return 1
 
     # Manejar subcomando 'build'

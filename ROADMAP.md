@@ -357,7 +357,7 @@
 | **M0.3.4–M0.3.7FIX Pipeline Bootstrap Auditado** | Orden lexicográfico tabla símbolos (M0.3.5FIX), orden alfabético generador (M0.3.6), flags deterministas GCC diff 0 bytes (M0.3.7FIX), sanitizadores funcionales | ✅✅ VERIFICADO |
 | M20.2 Validación cruzada release matrix | Ejecución de 184/184 tests + 34 nativos C + fuzzing en los 4 targets de CI/CD | ⬜ PENDIENTE |
 | M20.3 Sellado criptográfico definitivo | Firma Ed25519 de todos los artefactos + attestación SLSA Level 3 + SBOM SPDX 2.3 | ⬜ PENDIENTE |
-| M20.4 Certificación de producción | Verificación completa del checklist Manual 9 Sección 9.7 (bootstrap, tests, fuzzing, memoria, concurrencia, LSP, Axon, documentación) | 🔄 EN PROGRESO (verificado: pipeline bootstrap, sanitizadores funcionales) |
+| M20.4 Certificación de producción | Verificación completa del checklist Manual 9 Sección 9.7 (bootstrap, tests, fuzzing, memoria, concurrencia, LSP, Axon, documentación) | ⬜ PENDIENTE |
 
 ---
 
