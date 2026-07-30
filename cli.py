@@ -133,7 +133,7 @@ def main():
 
     if args.version:
         version_file = os.path.join(os.path.dirname(__file__), "VERSION")
-        version = "5.1.0-industrial"
+        version = "5.1.1-industrial"
         if os.path.exists(version_file):
             try:
                 with open(version_file, "r") as f:

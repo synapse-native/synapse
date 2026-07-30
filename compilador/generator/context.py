@@ -97,7 +97,7 @@ class GeneratorContext:
         }
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
-            'escribir', 'escribir_linea', 'leer_linea', 'abrir', 'leer', 'cerrar',
+            'escribir', 'escribir_linea', 'leer_linea', 'str_eq', 'abrir', 'leer', 'cerrar',
             'math_crear_tensor', 'math_suma_tensor', 'math_producto_punto', 'math_relu',
             'mem_reserva', 'mem_libera', 'math_suma', 'math_producto',
             'crear_tensor', 'suma_tensor', 'producto_punto', 'relu',

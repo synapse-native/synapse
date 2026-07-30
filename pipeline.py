@@ -94,7 +94,7 @@ def _cache_file_hash(ruta: str) -> str:
 
 def _cache_key(archivo: str, deps_hash: str, flags: str) -> str:
     """Genera clave de caché combinando hash del archivo, deps, flags y versión."""
-    version = os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial')
+    version = os.environ.get('SYNAPSE_VERSION', '5.1.1-industrial')
     contenido = _cache_file_hash(archivo)
     combinado = f"{contenido}:{deps_hash}:{flags}:{version}"
     return hashlib.sha256(combinado.encode()).hexdigest()
