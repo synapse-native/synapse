@@ -19,7 +19,7 @@ def test_clave_publica_64_hex():
 
 def test_clave_privada_64_hex():
     """La clave privada Ed25519 debe ser una cadena hex de 64 caracteres (32 bytes)."""
-    clave_valida = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b"
+    clave_valida = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1bc"
     assert len(clave_valida) == 64
 
 

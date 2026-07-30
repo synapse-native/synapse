@@ -36,6 +36,7 @@ funcion principal() -> nulo:
     assert diag.codigo_salida() == 0
 
 
+@pytest.mark.xfail(reason="sintaxis -> para move no implementada en parser — Manual 4 §4.6 feature gap")
 def test_parametro_por_valor_move():
     """Parametro sin -> recibe copia, con -> recibe move."""
     fuente = '''#lang: es

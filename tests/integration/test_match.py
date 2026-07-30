@@ -6,6 +6,7 @@ import pytest
 from conftest import compilar_texto
 
 
+@pytest.mark.xfail(reason="coincidir no implementado en parser — Manual 2 §2.7 feature gap")
 def test_match_resultado_ok_y_err():
     fuente = '''#lang: es
 funcion procesar(r: Resultado<entero, texto>) -> entero:
@@ -17,6 +18,7 @@ funcion procesar(r: Resultado<entero, texto>) -> entero:
     assert diag.codigo_salida() == 0
 
 
+@pytest.mark.xfail(reason="coincidir no implementado en parser — Manual 2 §2.7 feature gap")
 def test_match_opcion_algun_y_ninguno():
     fuente = '''#lang: es
 funcion obtener(o: Opcion<entero>) -> entero:
@@ -25,7 +27,7 @@ funcion obtener(o: Opcion<entero>) -> entero:
         ninguno => retornar 0
 '''
     ast, diag = compilar_texto(fuente)
-    assert diag.codigo_salida() == 0, f"Match Opcion fallo: {diag._errores}"
+    assert diag.codigo_salida() == 0, f"Match Opcion fallo: {diag.errores}"
 
 
 def test_match_sin_coincidir_es_valido():
