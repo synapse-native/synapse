@@ -315,8 +315,7 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
 
     # Pre-pass: hoist variable declarations
     _explicit_vars = set()
-    _auto_vars = []
-
+    _auto_vars = []  # (nombre, tipo_syn) - variables auto-declaradas izadas al scope funcion
     def _collect_vars(stmts):
         for s in stmts:
             if isinstance(s, DeclaracionVariable):
@@ -327,9 +326,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 and s.nombre not in _explicit_vars
             ):
                 t_syn = tipo_de_expr(ctx, s.expresion)  # Synapse type
-                if t_syn not in ctx._destructor_map:
-                    _auto_vars.append((s.nombre, t_syn))
-                    ctx._variables[s.nombre] = t_syn
+                # Hoist ALL auto-declared variables to function scope
+                _auto_vars.append((s.nombre, t_syn))
+                ctx._variables[s.nombre] = t_syn
             if isinstance(s, BloqueInseguro):
                 _collect_vars(s.cuerpo)
             elif hasattr(s, 'cuerpo') and isinstance(
@@ -342,7 +341,11 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     _collect_vars(nodo.cuerpo)
     for vn, vt_syn in _auto_vars:
         vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
-        ctx.write_line(f"{vt_c} {vn};")
+        # Zero-initialize if type has destructor (evita _syn_texto_liberar() en garbage)
+        if vt_syn in ctx._destructor_map:
+            ctx.write_line(f"{vt_c} {vn} = {{0}};")
+        else:
+            ctx.write_line(f"{vt_c} {vn};")
 
     # Inyectar _simd_detectar() al inicio de principal() para diagnóstico SIMD
     if nodo.nombre == 'principal' and not ctx.is_no_std():
