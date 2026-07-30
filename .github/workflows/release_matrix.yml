@@ -192,15 +192,8 @@ jobs:
 
           LDFLAGS="${{ matrix.target.ldflags }}"
 
-          # Verificar runtime objects (heredoc para evitar errores de shell escaping)
-          python << 'PYEOF'
-import os
-rt = os.path.exists('synapse_rt.o')
-tn = os.path.exists('tweetnacl.o')
-rt_status = 'OK' if rt else 'MISSING'
-tn_status = 'OK' if tn else 'MISSING'
-print(f'Runtime objects: rt.o={rt_status} tn.o={tn_status}')
-PYEOF
+          # Verificar runtime objects
+          echo "Runtime objects: rt.o=$(test -f synapse_rt.o && echo OK || echo MISSING) tn.o=$(test -f tweetnacl.o && echo OK || echo MISSING)"
 
           # Compilar binary
           ${CC} -O3 -fno-ident -I. synapse_unity.c synapse_rt.o tweetnacl.o \
