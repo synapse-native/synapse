@@ -25,6 +25,7 @@
   #include <arpa/inet.h>
   #include <unistd.h>
   #include <sys/mman.h>
+  #include <sys/stat.h>
   #include <fcntl.h>
 #endif
 
@@ -3716,11 +3717,14 @@ int _syn_compilar_codigo(CadenaSegura fuente) {
     fclose(f);
 
     // Build command: python _compilar_helper.py oraculo_temp.syn
-    // Use _popen on Windows, popen on Unix
     char cmd[512];
     snprintf(cmd, sizeof(cmd), "py -3 _compilar_helper.py \"%s\" 2>nul", temp_syn);
 
+#ifdef _WIN32
     FILE* pipe = _popen(cmd, "r");
+#else
+    FILE* pipe = popen(cmd, "r");
+#endif
     if (!pipe) {
         _cached_error_comp = strdup("No se pudo ejecutar compilador");
         remove(temp_syn);
@@ -3739,7 +3743,11 @@ int _syn_compilar_codigo(CadenaSegura fuente) {
         }
     }
     json_buf[json_len] = '\0';
+#ifdef _WIN32
     _pclose(pipe);
+#else
+    pclose(pipe);
+#endif
     remove(temp_syn);
 
     if (json_len == 0) {
