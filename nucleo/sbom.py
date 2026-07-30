@@ -290,6 +290,16 @@ def generar_sbom_simplificado(ruta_proyecto: str) -> Dict:
 
 if __name__ == '__main__':
     import sys
-    ruta = sys.argv[1] if len(sys.argv) > 1 else '.'
-    sbom = generar_sbom(ruta)
-    print(sbom)
+    import argparse
+    parser_arg = argparse.ArgumentParser(description='Generar SBOM SPDX 2.3')
+    parser_arg.add_argument('ruta', nargs='?', default='.', help='Ruta del proyecto')
+    parser_arg.add_argument('--output', '-o', type=str, default=None,
+                            help='Archivo de salida (si no se da, imprime a stdout)')
+    args_sbom = parser_arg.parse_args()
+    sbom = generar_sbom(args_sbom.ruta)
+    if args_sbom.output:
+        with open(args_sbom.output, 'w', encoding='utf-8') as f:
+            f.write(sbom)
+        print(f'[SBOM] Escrito: {args_sbom.output}', file=sys.stderr)
+    else:
+        print(sbom)
