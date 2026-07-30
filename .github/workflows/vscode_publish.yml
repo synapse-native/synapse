@@ -70,10 +70,10 @@ jobs:
           TELEMETRY=$(python3 -c "import json; f=open('vscode-synapse/package.json'); pkg=json.load(f); f.close(); meta=pkg.get('__metadata', {}).get('privacy', {}); print(meta.get('telemetry', 'MISSING'))")
           echo "Telemetry field: $TELEMETRY"
           if [ "$TELEMETRY" != "NONE" ]; then
-            echo "❌ FAIL: Telemetry field must be 'NONE', got '$TELEMETRY'"
+            echo "[FAIL] FAIL: Telemetry field must be 'NONE', got '$TELEMETRY'"
             exit 1
           fi
-          echo "✅ package.json telemetry = NONE"
+          echo "[OK] package.json telemetry = NONE"
 
       - name: Validate extension.js has no telemetry calls
         run: |
@@ -97,7 +97,7 @@ jobs:
           FAILED=0
           for pattern in "${FORBIDDEN[@]}"; do
             if grep -qi "$pattern" vscode-synapse/extension.js 2>/dev/null; then
-              echo "❌ FAIL: Found '$pattern' in extension.js"
+              echo "[FAIL] FAIL: Found '$pattern' in extension.js"
               grep -in "$pattern" vscode-synapse/extension.js
               FAILED=1
             fi
@@ -105,7 +105,7 @@ jobs:
           if [ "$FAILED" -eq 1 ]; then
             exit 1
           fi
-          echo "✅ No telemetry/analitycs calls found in extension.js"
+          echo "[OK] No telemetry/analitycs calls found in extension.js"
 
       - name: Validate .vscodeignore excludes telemetry paths
         run: |
@@ -120,16 +120,16 @@ jobs:
           FAILED=0
           for pattern in "${REQUIRED_PATTERNS[@]}"; do
             if grep -qF "$pattern" "$IGNORE_FILE" 2>/dev/null; then
-              echo "✅ Found exclusion: $pattern"
+              echo "[OK] Found exclusion: $pattern"
             else
-              echo "❌ MISSING exclusion: $pattern"
+              echo "[FAIL] MISSING exclusion: $pattern"
               FAILED=1
             fi
           done
           if [ "$FAILED" -eq 1 ]; then
             exit 1
           fi
-          echo "✅ .vscodeignore telemetry exclusions complete"
+          echo "[OK] .vscodeignore telemetry exclusions complete"
 
       - name: Validate activationEvents scope
         run: |
@@ -137,10 +137,10 @@ jobs:
           ACTIVATION_SCRIPTS=$(python3 -c "import json; f=open('vscode-synapse/package.json'); pkg=json.load(f); f.close(); events=pkg.get('activationEvents', []); print('GLOBAL * — PRIVACY RISK' if '*' in events else 'SCOPED: ' + ', '.join(events))")
           echo "$ACTIVATION_SCRIPTS"
           if echo "$ACTIVATION_SCRIPTS" | grep -q 'PRIVACY RISK'; then
-            echo "❌ FAIL: activationEvents must not be '*'"
+            echo "[FAIL] FAIL: activationEvents must not be '*'"
             exit 1
           fi
-          echo "✅ activationEvents properly scoped"
+          echo "[OK] activationEvents properly scoped"
 
   # -------------------------------------------------------------------------
   # JOB 2: Build, Sign & Publish VSIX
@@ -194,13 +194,13 @@ jobs:
         run: |
           VSIX_PATH="${{ env.EXTENSION_DIR }}/${{ steps.version.outputs.VSIX_FILE }}"
           if [ ! -f "$VSIX_PATH" ]; then
-            echo "❌ FAIL: VSIX not found at $VSIX_PATH"
+            echo "[FAIL] FAIL: VSIX not found at $VSIX_PATH"
             exit 1
           fi
           SIZE=$(stat --format=%s "$VSIX_PATH")
-          echo "✅ VSIX size: $SIZE bytes"
+          echo "[OK] VSIX size: $SIZE bytes"
           if [ "$SIZE" -lt 1000 ]; then
-            echo "❌ FAIL: VSIX suspiciously small ($SIZE bytes)"
+            echo "[FAIL] FAIL: VSIX suspiciously small ($SIZE bytes)"
             exit 1
           fi
 
@@ -209,7 +209,7 @@ jobs:
         run: |
           openssl dgst -sha256 "${{ steps.version.outputs.VSIX_FILE }}" \
             | sed 's/.*= //' > "${{ steps.version.outputs.VSIX_FILE }}.sha256"
-          echo "✅ SHA-256: $(cat ${{ steps.version.outputs.VSIX_FILE }}.sha256)"
+          echo "[OK] SHA-256: $(cat ${{ steps.version.outputs.VSIX_FILE }}.sha256)"
 
       - name: Sign VSIX with Ed25519
         env:
@@ -227,7 +227,7 @@ jobs:
             if openssl version | grep -qE '3\.[2-9]|3\.1[0-9]'; then
               openssl pkeyutl -sign -inkey signing_key.bin -rawin \
                 -in "$VSIX" -out "$SIG_FILE"
-              echo "✅ Ed25519 signature: $(xxd -p -c 64 "$SIG_FILE" | head -c 128)..."
+              echo "[OK] Ed25519 signature: $(xxd -p -c 64 "$SIG_FILE" | head -c 128)..."
             else
               # Fallback: use Ed25519 via Python (compatible with nucleo/ed25519_signer)
               python3 -c "import sys; sys.path.insert(0, '.'); from nucleo.ed25519_signer import firmar_archivo; f=open('signing_key.bin','rb'); priv_bytes=f.read(); f.close(); priv_hex=priv_bytes.hex(); firmar_archivo('${VSIX}', '${VSIX}.sig', priv_hex); print('Ed25519 signature generated via Python')"
@@ -258,7 +258,7 @@ jobs:
         working-directory: ${{ env.EXTENSION_DIR }}
         run: |
           if [ -z "$VSCE_PAT" ]; then
-            echo "❌ FAIL: VSCODE_MARKETPLACE_TOKEN secret is not set"
+            echo "[FAIL] FAIL: VSCODE_MARKETPLACE_TOKEN secret is not set"
             exit 1
           fi
           echo "Publishing to VS Code Marketplace..."
@@ -266,7 +266,7 @@ jobs:
             --pat "$VSCE_PAT" \
             --packagePath "${{ steps.version.outputs.VSIX_FILE }}" \
             --target "${{ steps.version.outputs.VSIX_VERSION }}"
-          echo "✅ Published Synapse v${{ steps.version.outputs.VSIX_VERSION }} to VS Code Marketplace"
+          echo "[OK] Published Synapse v${{ steps.version.outputs.VSIX_VERSION }} to VS Code Marketplace"
 
       - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -284,10 +284,10 @@ jobs:
             ### 🔒 Zero Telemetry — Certified
             This extension collects **zero telemetry, zero analytics, zero usage data**.
             All processing is 100% local on your machine.
-            - ✅ `package.json` privacy metadata: `telemetry = "NONE"`
-            - ✅ `extension.js` audited: zero telemetry calls
-            - ✅ `.vscodeignore` excludes all telemetry/analytics/metrics paths
-            - ✅ `activationEvents` scoped (no global `*` activation)
+            - [OK] `package.json` privacy metadata: `telemetry = "NONE"`
+            - [OK] `extension.js` audited: zero telemetry calls
+            - [OK] `.vscodeignore` excludes all telemetry/analytics/metrics paths
+            - [OK] `activationEvents` scoped (no global `*` activation)
 
             ### 🔐 Integrity
             - SHA-256: `$(cat ${{ env.EXTENSION_DIR }}/${{ steps.version.outputs.VSIX_FILE }}.sha256)`
@@ -345,4 +345,4 @@ jobs:
             npx vsce ls --pat "$VSCE_PAT" 2>&1 | head -20 || true
           fi
           
-          echo "✅ Extension published successfully"
+          echo "[OK] Extension published successfully"

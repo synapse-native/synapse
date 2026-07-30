@@ -415,13 +415,14 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
-        temp = f"_ret_{nodo.linea or 0}"
-        ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
-        ctx.emit_all_destructors(exclude_var=excl)
         if nodo.es_transferencia:
+            temp = f"_ret_{nodo.linea or 0}"
+            ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
+            ctx.emit_all_destructors(exclude_var=excl)
             ctx.write_line(f"return ->{temp};")
         else:
-            ctx.write_line(f"return {temp};")
+            ctx.emit_all_destructors(exclude_var=excl)
+            ctx.write_line(f"return {ret_expr};")
     else:
         ctx.emit_all_destructors(exclude_var=excl)
         ctx.write_line("return;")

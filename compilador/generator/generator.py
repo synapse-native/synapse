@@ -254,7 +254,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("")
     ctx.write_line(
         "typedef struct { uint32_t filas; uint32_t columnas; "
-        "float* datos; int es_mapeado; } Tensor;"
+        "float* datos; } Tensor;"
     )
     ctx.write_line("")
     if not ctx.is_no_std():

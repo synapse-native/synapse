@@ -1,6 +1,6 @@
 import pytest
-from ast_nodes import Programa
-from generator import GeneradorC
+from compilador.ast_nodes import Programa
+from compilador.generator import GeneradorC
 
 
 class TestGeneradorCUnit:

@@ -416,7 +416,7 @@ class TestPublishWorkflow:
         """El workflow debe ser YAML válido."""
         try:
             import yaml
-            with open(PUBLISH_WORKFLOW, "r") as f:
+            with open(PUBLISH_WORKFLOW, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             assert data is not None, "YAML vacío"
             assert "jobs" in data, "Falta sección jobs"

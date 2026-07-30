@@ -1160,7 +1160,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     fprintf({_PH}out,"// Generado por Synapse (auto-hospedado)\\n");
     fprintf({_PH}out,"#include <stdio.h>\\n#include <stdlib.h>\\n#include <stdint.h>\\n#include <string.h>\\n#include <pthread.h>\\n");
     fprintf({_PH}out,"typedef struct {{int longitud;const char* datos;}} CadenaSegura;\\n");
-    fprintf({_PH}out,"typedef struct {{uint32_t filas;uint32_t columnas;float* datos;int es_mapeado;}} Tensor;\\n");
+    fprintf({_PH}out,"typedef struct {{uint32_t filas;uint32_t columnas;float* datos;}} Tensor;\\n");
     fprintf({_PH}out,"typedef struct {{FILE* stream;int es_valido;int es_virtual;const char* virtual_data;int virtual_len;}} Canal;\\n");
     fprintf({_PH}out,"#define POOL_BLOQUES 64\\n#define TAMANO_BLOQUE 4096\\n");
     fprintf({_PH}out,"#define nulo ((void*)0)\\n");

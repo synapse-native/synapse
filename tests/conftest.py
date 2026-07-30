@@ -3,15 +3,14 @@ from typing import Tuple
 
 _project_root = os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, _project_root)
-sys.path.insert(0, os.path.join(_project_root, 'compilador'))
 
-from ast_nodes import TokenID, Token, Programa
-from lexer import Lexer
-from parser import Parser
-from diagnostics import DiagnosticManager, ErrorCodes
+from compilador.ast_nodes import TokenID, Token, Programa
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
 # Reuse the canonical encoder from main.py
-from canonical import _nodo_a_dict
+from compilador.canonical import _nodo_a_dict
 
 
 DIR_FIXTURES = os.path.join(os.path.dirname(__file__), 'fixtures')
@@ -29,13 +28,13 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
         mensaje = str(e)
         token = Token(TokenID.EOF, linea=1, columna=0)
         if 'indentaci' in mensaje:
-            if 'm??ltiplo' in mensaje:
+            if 'múltiplo' in mensaje:
                 diag.reportar(ErrorCodes.ERR_INDENT_INVALID, token)
             else:
                 diag.reportar(ErrorCodes.ERR_INDENT_INCONSISTENT, token)
         elif 'Cadena sin cerrar' in mensaje:
             diag.reportar(ErrorCodes.ERR_STRING_UNCLOSED, token)
-        elif 'Car??cter inesperado' in mensaje or 'caracter inesperado' in mensaje:
+        elif 'Carácter inesperado' in mensaje or 'caracter inesperado' in mensaje:
             match = re.search(r"'([^']+)'", mensaje)
             diag.reportar(ErrorCodes.ERR_LEX_CHAR_UNEXPECTED, token, char=match.group(1) if match else '?')
         elif 'Idioma' in mensaje or 'idioma' in mensaje or '#lang' in mensaje:
@@ -45,7 +44,7 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
         return Programa(), diag
     parser = Parser(tokens, diag)
     ast = parser.parsear()
-    from analizador_semantico import AnalizadorSemantico
+    from compilador.analizador_semantico import AnalizadorSemantico
     analizador = AnalizadorSemantico(ast, diag)
     analizador.analizar()
     return ast, diag

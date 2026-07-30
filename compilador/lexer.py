@@ -240,20 +240,20 @@ class Lexer:
 
     def _detectar_idioma(self):
         if not self.lineas:
-            raise SynapseError("Archivo vacío", 1, 0)
+            raise SynapseError("Error Crítico: Archivo vacío", 1, 0)
         primera = self.lineas[0].strip()
         if not primera.startswith('#lang:'):
             raise SynapseError(
-                "Falta declaración de idioma '#lang: <codigo>' en la línea 1", 1, 0
+                "Error Crítico: Falta declaración de idioma '#lang: <codigo>' en la línea 1", 1, 0
             )
         codigo = primera[len('#lang:'):].strip()
         if not codigo:
-            raise SynapseError("Código de idioma vacío en #lang:", 1, 0)
+            raise SynapseError("Error Crítico: Código de idioma vacío en #lang:", 1, 0)
         self.idioma = codigo
         if self.diccionario is None:
             if codigo not in DICCIONARIOS:
                 raise SynapseError(
-                    f"Idioma '{codigo}' no soportado. Soporte: {', '.join(DICCIONARIOS)}", 1, 0
+                    f"Error Crítico: Idioma '{codigo}' no soportado. Soporte: {', '.join(DICCIONARIOS)}", 1, 0
                 )
             self.diccionario = DICCIONARIOS[codigo]
         
@@ -277,7 +277,7 @@ class Lexer:
         espacios_ini = len(linea) - len(linea.lstrip(' '))
         if espacios_ini % 4 != 0:
             raise SynapseError(
-                "La indentación debe ser múltiplo de 4 espacios", self.linea_actual, 0
+                "Error Léxico: La indentación debe ser múltiplo de 4 espacios", self.linea_actual, 0
             )
         nivel = espacios_ini // 4
 
@@ -338,7 +338,7 @@ class Lexer:
                     i += 1
                 else:
                     raise SynapseError(
-                        "Cadena sin cerrar", self.linea_actual, inicio
+                        "Error Léxico: Cadena sin cerrar", self.linea_actual, inicio
                     )
                 valor = ''.join(valor_chars)
                 self.tokens.append(
@@ -399,5 +399,5 @@ class Lexer:
                 continue
 
             raise SynapseError(
-                f"Carácter inesperado '{texto[i]}'", self.linea_actual, i
+                f"Error Léxico: Carácter inesperado '{texto[i]}'", self.linea_actual, i
             )

@@ -181,7 +181,7 @@ class TestCompilacionConFlags:
             return False
         src = os.path.join(TESTS_DIR, "test_cluster_discovery.c")
         out = BIN_PATH + ".tmp"
-        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, "-o", out, "-lm", "-lpthread"]
+        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, os.path.join(PROJECT_ROOT, "tweetnacl.o"), "-o", out, "-lm", "-lpthread", "-lws2_32"]
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         # Limpiar
         if os.path.exists(out):

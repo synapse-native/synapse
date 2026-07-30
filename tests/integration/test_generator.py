@@ -1,10 +1,10 @@
 ﻿import pytest
-from lexer import Lexer
-from parser import Parser
-from analizador_semantico import AnalizadorSemantico
-from generator import GeneradorC
-from diagnostics import DiagnosticManager
-from ast_nodes import Programa
+from compilador.lexer import Lexer
+from compilador.parser import Parser
+from compilador.analizador_semantico import AnalizadorSemantico
+from compilador.generator import GeneradorC
+from compilador.diagnostics import DiagnosticManager
+from compilador.ast_nodes import Programa
 
 
 class TestGeneradorCFunciones:
