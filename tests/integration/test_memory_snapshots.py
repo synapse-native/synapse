@@ -11,8 +11,10 @@ import shutil
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 TEST_C_SRC = os.path.join(PROJECT_ROOT, "tests", "test_memory_snapshots.c")
-RUNTIME_C = os.path.join(PROJECT_ROOT, "synapse_rt.c")
-TWEETNACL_C = os.path.join(PROJECT_ROOT, "tweetnacl.c")
+RUNTIME_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
+RUNTIME_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
+RUNTIME_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
+TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 COMPILADOR_DIR = os.path.join(PROJECT_ROOT, "compilador")
 DEBUG_SYN = os.path.join(PROJECT_ROOT, "librerias", "std", "debug.syn")
 BIN = "test_memory_snapshots.exe"
@@ -36,7 +38,7 @@ def test_compila_y_pasa_todos():
     """Compila el test C y verifica que compile."""
     gcc = _find_gcc()
     rc = subprocess.run(
-        [gcc, "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_C, TWEETNACL_C,
+        [gcc, "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TWEETNACL_O,
          "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)
     )

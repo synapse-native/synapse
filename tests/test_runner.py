@@ -7,6 +7,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 E2E_DIR = os.path.join(PROJECT_ROOT, "tests", "e2e")
 SYNAPSE_EXE = os.path.join(PROJECT_ROOT, "synapse.exe")
 SYNAPSE_RT = os.path.join(PROJECT_ROOT, "synapse_rt.o")
+SYNAPSE_RT_MEM = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
+SYNAPSE_RT_CONC = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 
 VERDE = "\033[92m"
 ROJO = "\033[91m"
@@ -47,7 +49,7 @@ def probar_archivo(syn_path):
 
     c_file = base + ".c"
     exe_file = base + ".exe"
-    cmd_link = ["gcc", "-O2", c_file, SYNAPSE_RT, "-o", exe_file, "-lpthread"]
+    cmd_link = ["gcc", "-O2", c_file, SYNAPSE_RT, SYNAPSE_RT_MEM, SYNAPSE_RT_CONC, "-o", exe_file, "-lpthread"]
     stdout = run_cmd(cmd_link)
     if stdout is None:
         print(f"  [{ROJO}FAIL{RESET}] {nombre}  (linkeo gcc fallo)")

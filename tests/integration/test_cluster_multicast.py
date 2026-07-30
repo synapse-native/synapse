@@ -20,6 +20,8 @@ TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 BIN_NAME = "test_cluster_multicast.exe" if sys.platform == "win32" else "test_cluster_multicast"
 BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
 SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
+SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
+SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 
 # Toolchain
@@ -39,7 +41,7 @@ def _compilar():
         return False
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        src, SYNAPSE_RT_O,
+        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O,
         TWEETNACL_O if os.path.exists(TWEETNACL_O) else "",
         "-o", BIN_PATH,
         "-lm", "-lpthread", "-lws2_32"

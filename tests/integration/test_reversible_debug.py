@@ -11,8 +11,10 @@ import tempfile
 import shutil
 
 TEST_C_SRC = os.path.join(os.path.dirname(__file__), "..", "test_reversible_debug.c")
-RUNTIME_C = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt.c")
-TWEETNACL_C = os.path.join(os.path.dirname(__file__), "..", "..", "tweetnacl.c")
+RUNTIME_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt.o")
+RUNTIME_MEM_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_memory.o")
+RUNTIME_CONC_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_concurrency.o")
+TWEETNACL_O = os.path.join(os.path.dirname(__file__), "..", "..", "tweetnacl.o")
 COMPILADOR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "compilador")
 ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "librerias", "std", "err.syn")
 BIN = "test_reversible_debug.exe"
@@ -22,7 +24,7 @@ BIN_ABS = os.path.abspath(BIN)
 def test_compila_y_pasa_todos():
     """Compila el test C y ejecuta la suite completa. Verifica 0 fallos."""
     rc = subprocess.run(
-        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_C, TWEETNACL_C, "-lm", "-lws2_32", "-static"],
+        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TWEETNACL_O, "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)
     )
     assert rc.returncode == 0, f"Compilación falló:\n{rc.stderr}"

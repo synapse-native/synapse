@@ -16,6 +16,8 @@ import pytest
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
 SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
+SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
+SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 TEST_C_SRC = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.exe")
@@ -193,7 +195,7 @@ def compiled_test():
 
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_C_SRC, SYNAPSE_RT_O, TWEETNACL_O,
+        TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -225,7 +227,7 @@ class TestCompilacion:
             f.write(TEST_C_CODE)
         cmd = [
             TOOLCHAIN_GCC, "-O2", "-std=c99",
-            TEST_C_SRC, SYNAPSE_RT_O, TWEETNACL_O,
+            TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
             "-o", TEST_BIN,
             "-lm", "-lpthread", "-lws2_32"
         ]

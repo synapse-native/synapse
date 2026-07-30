@@ -428,12 +428,18 @@ class FuzzEngine:
 
             # Buscar objetos runtime
             rt_obj = os.path.join(PROJECT_ROOT, 'synapse_rt.o')
+            rt_mem_obj = os.path.join(PROJECT_ROOT, 'synapse_rt_memory.o')
+            rt_conc_obj = os.path.join(PROJECT_ROOT, 'synapse_rt_concurrency.o')
             tn_obj = os.path.join(PROJECT_ROOT, 'tweetnacl.o')
 
             # Build command components list to avoid f-string quote escaping issues
             cmd_parts = [compiler, flags, '-I.', f'"{ruta_c}"']
             if os.path.exists(rt_obj):
                 cmd_parts.append(f'"{rt_obj}"')
+            if os.path.exists(rt_mem_obj):
+                cmd_parts.append(f'"{rt_mem_obj}"')
+            if os.path.exists(rt_conc_obj):
+                cmd_parts.append(f'"{rt_conc_obj}"')
             if os.path.exists(tn_obj):
                 cmd_parts.append(f'"{tn_obj}"')
             cmd_parts.extend([f'-o "{ruta_exe}"', thread_flag, '-lm', net_flag, link_flags])
