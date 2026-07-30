@@ -168,9 +168,19 @@ def _generar_relationships(archivos: List[Dict]) -> List[Dict]:
     return relationships
 
 
+def _leer_version(ruta_proyecto: str) -> str:
+    """Lee la versión desde el archivo VERSION en la raíz del proyecto."""
+    version_path = os.path.join(ruta_proyecto, 'VERSION')
+    try:
+        with open(version_path, 'r') as f:
+            return f.read().strip()
+    except (OSError, IOError):
+        return '5.1.1-industrial'
+
+
 def generar_sbom(ruta_proyecto: str,
                  nombre: str = "synapse",
-                 version: str = "2.2.3",
+                 version: str = "",
                  creator: str = "Synapse Project",
                  namespace: str = "https://synapse-lang.org/spdx") -> str:
     """Genera un SBOM en formato SPDX 2.3 JSON.
@@ -185,6 +195,9 @@ def generar_sbom(ruta_proyecto: str,
     Returns:
         String con el SBOM en formato JSON
     """
+    # Resolver version ANTES de construir cualquier estructura
+    if not version:
+        version = _leer_version(ruta_proyecto)
     # Escanear archivos
     archivos = _escanear_archivos(ruta_proyecto)
 
@@ -229,7 +242,7 @@ def generar_sbom_simplificado(ruta_proyecto: str) -> Dict:
     axon_toml_path = os.path.join(ruta_proyecto, 'axon.toml')
     metadatos = {
         "nombre": "synapse",
-        "version": "2.2.3",
+        "version": _leer_version(ruta_proyecto),
         "dependencias": [],
         "hash_proyecto": "",
     }
