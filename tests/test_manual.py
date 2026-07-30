@@ -1,6 +1,10 @@
 import os
-os.chdir('D:\\proyecto_synapse')
 import sys
+import tempfile
+
+# Usar directorio del script + tempdir para compatibilidad cross-platform
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(os.path.join(_base_dir, '..'))
 sys.path.insert(0, '.')
 from pipeline import ejecutar_compilador
 
@@ -18,8 +22,9 @@ funcion principal() -> nulo:
     registrar_evento(evt)
     retornar"""
 
-temp_syn = 'D:\\proyecto_synapse\\_test_debug_temp\\test_debug_manual.syn'
-os.makedirs(os.path.dirname(temp_syn), exist_ok=True)
+temp_dir = os.path.join(tempfile.gettempdir(), '_synapse_test_debug')
+temp_syn = os.path.join(temp_dir, 'test_debug_manual.syn')
+os.makedirs(temp_dir, exist_ok=True)
 
 with open(temp_syn, 'w') as f:
     f.write(codigo)
