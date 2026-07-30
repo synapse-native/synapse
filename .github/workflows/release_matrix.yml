@@ -175,6 +175,8 @@ jobs:
       - name: Bootstrap compiler
         shell: bash
         run: |
+          # Forzar CC=gcc para evitar clang que rechaza nested functions (GCC extension)
+          export CC=gcc
           python main.py nucleo/principal.syn 2>&1
           if [ -f synapse_unity.c ]; then
             SIZE=$(stat -c%s synapse_unity.c 2>/dev/null || wc -c < synapse_unity.c 2>/dev/null || python -c "import os; print(os.path.getsize('synapse_unity.c'))")
