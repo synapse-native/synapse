@@ -481,18 +481,19 @@ class GeneradorC:
             ctx.write_line("")
 
     def _emit_prototipos_funciones(self, ctx):
-        """Helper: forward-declares de funciones (prototipos)"""
+        """Helper: forward-declares de funciones (prototipos) en orden alfabético (Manual 8 §8.2)."""
         _SPECIAL_SIGS = {
             'tokenizar': 'int tokenizar(CadenaSegura fuente)',
             'parsear': 'struct Programa parsear(CadenaSegura fuente)',
             'volcar_ast': 'void volcar_ast(struct Nodo* nodo, int nivel)',
             'generar': 'int generar(struct Programa programa, CadenaSegura ruta)',
         }
-        for s in ctx.programa.sentencias:
-            if (
-                isinstance(s, DefinicionFuncion)
-                and s.nombre not in ctx._RUNTIME_BUILTINS
-            ):
+        # Manual 8 §8.2: orden alfabético estricto por nombre
+        funciones = sorted(
+            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS],
+            key=lambda f: f.nombre
+        )
+        for s in funciones:
                 if s.nombre in _SPECIAL_SIGS:
                     ctx.write_line(f"{_SPECIAL_SIGS[s.nombre]};")
                 else:
@@ -544,12 +545,27 @@ class GeneradorC:
             ctx.write_line("}")
 
     def _emit_cuerpos(self, ctx, scope_names: set[str] | None = None):
-        """Helper: emite cuerpos de funciones + listenres + wrappers.
-        Si scope_names no es None, solo emite funciones cuyos nombres est\u00e9n en el conjunto."""
+        """Helper: emite cuerpos de funciones + listeners + wrappers.
+        Manual 8 §8.2: orden alfabético estricto por nombre para funciones.
+        Si scope_names no es None, solo emite funciones cuyos nombres estén en el conjunto."""
+        # Manual 8 §8.2: orden alfabético estricto para funciones
+        # Primero emitir sentencias no-función (extern, import, constantes) en parse order,
+        # luego funciones en orden alfabético — requisito de C: extern/const antes de cuerpos
+        funciones = sorted(
+            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)],
+            key=lambda f: f.nombre
+        )
+        if scope_names is not None:
+            funciones = [f for f in funciones if f.nombre in scope_names]
+        # Non-function sentencias FIRST (externs, imports, constants before function bodies)
         for s in ctx.programa.sentencias:
-            if scope_names is not None and isinstance(s, DefinicionFuncion):
-                if s.nombre not in scope_names:
-                    continue
+            if isinstance(s, DefinicionFuncion):
+                continue
+            if scope_names is not None and hasattr(s, 'nombre') and getattr(s, 'nombre', None) not in scope_names:
+                continue
+            visitar(ctx, s)
+        # Functions en orden alfabético
+        for s in funciones:
             visitar(ctx, s)
         for func in ctx._listener_funciones:
             name = _extract_listener_name(func)
@@ -629,15 +645,17 @@ class GeneradorC:
                 ctx.write_line("extern void salir(int codigo);")
                 ctx.write_line("extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);")
                 ctx.write_line("")
-            # Estructuras: forward declarations + definiciones completas
-            for s in ctx.programa.sentencias:
-                if isinstance(s, DefinicionEstructura):
-                    ctx.write_line(f"struct {s.nombre};")
-            if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
+            # Estructuras: forward declarations + definiciones completas (Manual 8 §8.2: orden alfabético)
+            estructuras = sorted(
+                [s for s in ctx.programa.sentencias if isinstance(s, DefinicionEstructura)],
+                key=lambda e: e.nombre
+            )
+            for s in estructuras:
+                ctx.write_line(f"struct {s.nombre};")
+            if estructuras:
                 ctx.write_line("")
-            for s in ctx.programa.sentencias:
-                if isinstance(s, DefinicionEstructura):
-                    visitar_estructura(ctx, s)
+            for s in estructuras:
+                visitar_estructura(ctx, s)
             # Prototipos de funciones
             self._emit_prototipos_funciones(ctx)
             # NO emitir cuerpos de funciones, NO emitir main
@@ -720,14 +738,17 @@ class GeneradorC:
         # modo == 'completo' (comportamiento original)
         self._emit_cabecera_comun(ctx)
 
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionEstructura):
-                ctx.write_line(f"struct {s.nombre};")
-        if any(isinstance(s, DefinicionEstructura) for s in ctx.programa.sentencias):
+        # Manual 8 §8.2: orden alfabético estricto para estructuras
+        estructuras = sorted(
+            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionEstructura)],
+            key=lambda e: e.nombre
+        )
+        for s in estructuras:
+            ctx.write_line(f"struct {s.nombre};")
+        if estructuras:
             ctx.write_line("")
-        for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionEstructura):
-                visitar_estructura(ctx, s)
+        for s in estructuras:
+            visitar_estructura(ctx, s)
 
         self._emit_prototipos_funciones(ctx)
 
