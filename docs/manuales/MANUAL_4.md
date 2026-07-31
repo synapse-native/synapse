@@ -1,6 +1,6 @@
 MANUAL 4: GESTIÓN DE MEMORIA Y OWNERSHIP
 Archivo: 04_MEMORIA_Y_OWNERSHIP.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Especificar el modelo de ownership, borrowing, lifetimes, la implementación del runtime (pool allocator, watchdog) y las reglas ABI.
 
 4.1 Modelo de Ownership (Posesión Única)

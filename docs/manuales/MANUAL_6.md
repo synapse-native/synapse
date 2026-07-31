@@ -1,6 +1,6 @@
 MANUAL 6: GESTOR DE PAQUETES AXON
 Archivo: 06_GESTOR_PAQUETES_AXON.md
-Versión: 5.0.0 (v2.0 runtime)
+Versión: 5.1.1-industrial (v2.0 runtime)
 Propósito: Especificar el gestor de paquetes descentralizado y criptográficamente verificado.
 
 6.1 Principios de Seguridad (Zero Trust)

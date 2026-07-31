@@ -1,6 +1,6 @@
 MANUAL 3: ARQUITECTURA DEL COMPILADOR (PIPELINE)
 Archivo: 03_COMPILADOR_PIPELINE.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Describir las 5 etapas del compilador, el AST, la tabla de símbolos, el sistema de errores y la compilación incremental.
 
 3.1 Las 5 Etapas del Pipeline

@@ -1,6 +1,6 @@
 MANUAL 7: HERRAMIENTAS DE DESARROLLO (LSP Y VS CODE)
 Archivo: 07_LSP_Y_HERRAMIENTAS.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Especificar el servidor LSP nativo, la extensión VS Code, la integración con IA local (llama.cpp) y el pipeline RAG.
 
 7.1 Arquitectura del Servidor LSP Nativo

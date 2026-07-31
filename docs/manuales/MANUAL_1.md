@@ -1,6 +1,6 @@
 MANUAL 1: ARQUITECTURA DEL LENGUAJE Y FILOSOFÍA DE DISEÑO
 Archivo: 01_ARQUITECTURA_Y_FILOSOFIA.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Definir los principios rectores, la visión de negocio/ingeniería y la hoja de ruta evolutiva del lenguaje.
 
 1.1 Visión General

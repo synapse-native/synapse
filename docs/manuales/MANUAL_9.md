@@ -1,6 +1,6 @@
 MANUAL 9: BOOTSTRAP, PRUEBAS Y ASEGURAMIENTO DE CALIDAD
 Archivo: 09_BOOTSTRAP_Y_CALIDAD.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Especificar el proceso de bootstrap (self-hosting), las suites de pruebas, fuzzing, sanitizadores y el protocolo de seguridad.
 
 9.1 Proceso de Bootstrap (3 Etapas + Verificación)

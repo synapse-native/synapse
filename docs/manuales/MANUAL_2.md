@@ -1,6 +1,6 @@
 MANUAL 2: ESPECIFICACIÓN SINTÁCTICA Y SEMÁNTICA
 Archivo: 02_SINTAXIS_Y_SEMANTICA.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Definir la gramática formal del lenguaje, las palabras reservadas, los tipos, los operadores y las reglas semánticas fundamentales (contratos, patrones, importaciones).
 
 2.1 Directiva de Archivo y Codificación

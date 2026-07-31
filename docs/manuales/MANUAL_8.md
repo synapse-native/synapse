@@ -1,6 +1,6 @@
 MANUAL 8: BACKEND Y GENERACIÓN DE CÓDIGO
 Archivo: 08_BACKEND_Y_GENERACION.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Especificar la generación de código C, WASM, las optimizaciones (PGO/LTO), la FFI y los bindings.
 
 8.1 Modos de Generación y Flags

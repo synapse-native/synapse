@@ -1,6 +1,6 @@
 MANUAL 5: CONCURRENCIA Y COMUNICACIÓN ENTRE HILOS
 Archivo: 05_CONCURRENCIA_Y_CANALES.md
-Versión: 5.0.0
+Versión: 5.1.1-industrial
 Propósito: Especificar el modelo de concurrencia basado en canales, la instrucción lanzar, el manejo de errores y la concurrencia distribuida.
 
 5.1 Filosofía: "Share Memory by Communicating"
