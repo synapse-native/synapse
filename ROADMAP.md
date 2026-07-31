@@ -361,7 +361,7 @@
 | M20.5 Saneamiento crítico pre-despliegue | Excisión toolchain (10,569 archivos, repo de ~112MB a ~2MB), LICENSE MIT, README.md v5.1.1-industrial, CI workflows actualizados, .gitignore ampliado, ~650 fuzz artifacts limpiados. Push + tag v5.1.1-industrial desplegado en GitHub. | ✅✅ COMPLETADO |
 
 
-### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — COMPLETADOS (implementados en el repositorio)
+### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — REGISTRADOS (M21 parcial, M22 completo)
 
 *Hitos avanzados ya presentes en el código base y registrados formalmente en la línea de tiempo oficial.*
 
@@ -394,7 +394,7 @@
 
 ---
 
-## 4. FASES — TABLA RESUMEN
+## 5. FASES — TABLA RESUMEN
 
 | # | Fase | Fecha | Estado |
 |---|------|-------|--------|
