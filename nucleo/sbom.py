@@ -18,7 +18,7 @@ import os
 import json
 import hashlib
 import datetime
-from datetime import UTC
+from datetime import timezone
 from typing import List, Dict, Optional, Set
 from pathlib import Path
 
@@ -213,7 +213,7 @@ def generar_sbom(ruta_proyecto: str,
                 f"Tool: synapse-sbom-2.0",
                 f"Organization: {creator}",
             ],
-            "created": datetime.datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "created": datetime.datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         },
         "packages": _generar_packages(archivos, nombre, version),
         "files": [
