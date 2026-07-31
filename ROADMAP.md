@@ -343,7 +343,7 @@
 
 ---
 
-## 3. FASES EN PROGRESO
+## 3. FASES COMPLETADAS (Continuacion): FASE 20 Y HITOS AVANZADOS M21-M22
 
 ---
 
@@ -359,6 +359,17 @@
 | M20.3 Sellado criptográfico definitivo | Firma Ed25519 verificada + detección de manipulación + attestación SLSA Level 3 + SBOM SPDX 2.3 (3,023 files, SHA-256) | ✅✅ COMPLETADO |
 | M20.4 Certificación de producción | Checklist Manual 9 §9.7: 11/15 items cumplidos, 3 parciales (LSP/Axon requieren toolchain nativo), 1 N/A (ASan en MinGW) | ✅✅ COMPLETADO |
 | M20.5 Saneamiento crítico pre-despliegue | Excisión toolchain (10,569 archivos, repo de ~112MB a ~2MB), LICENSE MIT, README.md v5.1.1-industrial, CI workflows actualizados, .gitignore ampliado, ~650 fuzz artifacts limpiados. Push + tag v5.1.1-industrial desplegado en GitHub. | ✅✅ COMPLETADO |
+
+
+### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — COMPLETADOS (implementados en el repositorio)
+
+*Hitos avanzados ya presentes en el código base y registrados formalmente en la línea de tiempo oficial.*
+
+| Hito | Descripción | Evidencia en código | Estado |
+|------|-------------|---------------------|--------|
+| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2), tracking y resolución de regiones (M21.3-M21.4) según Manual 4 §4.3 | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn (L120-121, L470, L667-683) | ✅✅ COMPLETADO |
+| M22 Refactorización RAII y Scopes | Scope stack RAII (M22.2), destructor map y modo --safe con aserciones de lifetime en C generado (M22.5) | nucleo/generator.syn (L141, L173, L203-208, L339-345); tests/validate_raii_m22_4.c; tests/validate_raii_scopes.c | ✅✅ COMPLETADO |
+
 
 ---
 
@@ -378,8 +389,8 @@
 | Extensión VS Code | Completa (package.json, extension.js, snippets, syntaxes) | ✅✅ Verificado|
 | Documentación | 6 archivos .md en docs/ | ✅✅ Verificado|
 | Axon runtime | axon_rt.c (166KB) + tweetnacl.c | ✅✅ Verificado|
-| Fases completadas | 20 de 21 planificadas | ✅ |
-| Fases en progreso | 1 | 🔄 |
+| Fases completadas | 22 de 22 planificadas | ✅✅ |
+| Fases en progreso | 0 | — |
 
 ---
 
@@ -408,8 +419,9 @@
 | 18 | CanalRemoto v2 | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 19 | Optimización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 20 | Certificación de Producción y Hardening Final | 2026-07-30 | ✅✅ COMPLETADO |
+| 21 | Hitos Avanzados M21-M22 | 2026-07-31 | ✅✅ COMPLETADO |
 
-**Total:** 21 fases | **21 COMPLETADAS (✅✅ auditadas)** | **0 EN PROGRESO** | **0 PENDIENTES**
+**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **0 EN PROGRESO** | **0 PENDIENTES**
 
 ---
 
