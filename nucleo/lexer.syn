@@ -60,6 +60,12 @@ constante T_PARA = 56
 constante T_FIN = 57
 constante T_ERROR = 58
 
+// --- Language IDs (Manual 2 S2.3) ---
+constante IDIOMA_ES = 0
+constante IDIOMA_EN = 1
+constante IDIOMA_FR = 2
+constante IDIOMA_PT = 3
+
 // --- Token struct ---
 estructura TokenLex:
     tipo: entero
@@ -98,8 +104,8 @@ funcion str_len_ptr(ptr: entero) -> entero:
         asm("r = (int)strlen((const char*)ptr)")
         retornar r
 
-// --- Keyword dictionary lookup (Spanish) ---
-funcion keyword_token(palabra: cadena) -> entero:
+// --- Keyword dictionary lookup (multi-idioma, Manual 2 S2.3) ---
+funcion keyword_token_es(palabra: cadena) -> entero:
     si str_eq(palabra, "si") == 1:
         retornar T_IF
     si str_eq(palabra, "sino") == 1:
@@ -156,6 +162,182 @@ funcion keyword_token(palabra: cadena) -> entero:
         retornar T_PARA
     retornar 0
 
+funcion keyword_token_en(palabra: cadena) -> entero:
+    si str_eq(palabra, "if") == 1:
+        retornar T_IF
+    si str_eq(palabra, "else") == 1:
+        retornar T_ELSE
+    si str_eq(palabra, "function") == 1:
+        retornar T_FUNCION
+    si str_eq(palabra, "return") == 1:
+        retornar T_RETORNAR
+    si str_eq(palabra, "spawn") == 1:
+        retornar T_LANZAR
+    si str_eq(palabra, "recover") == 1:
+        retornar T_RECUPERAR
+    si str_eq(palabra, "listen") == 1:
+        retornar T_ESCUCHAR
+    si str_eq(palabra, "while") == 1:
+        retornar T_MIENTRAS
+    si str_eq(palabra, "break") == 1:
+        retornar T_ROMPER
+    si str_eq(palabra, "continue") == 1:
+        retornar T_SIGUIENTE
+    si str_eq(palabra, "import") == 1:
+        retornar T_IMPORTAR
+    si str_eq(palabra, "struct") == 1:
+        retornar T_ESTRUCTURA
+    si str_eq(palabra, "and") == 1:
+        retornar T_Y
+    si str_eq(palabra, "or") == 1:
+        retornar T_O
+    si str_eq(palabra, "not") == 1:
+        retornar T_NO
+    si str_eq(palabra, "true") == 1:
+        retornar T_VERDADERO
+    si str_eq(palabra, "false") == 1:
+        retornar T_FALSO
+    si str_eq(palabra, "unsafe") == 1:
+        retornar T_INSEGURO
+    si str_eq(palabra, "import_c") == 1:
+        retornar T_IMPORTAR_C
+    si str_eq(palabra, "extern") == 1:
+        retornar T_EXTERNO
+    si str_eq(palabra, "match") == 1:
+        retornar T_COINCIDIR
+    si str_eq(palabra, "requires") == 1:
+        retornar T_REQUIERE
+    si str_eq(palabra, "ensures") == 1:
+        retornar T_GARANTIZA
+    si str_eq(palabra, "asm") == 1:
+        retornar T_ASM
+    si str_eq(palabra, "constant") == 1:
+        retornar T_CONSTANTE
+    si str_eq(palabra, "const") == 1:
+        retornar T_CONSTANTE
+    si str_eq(palabra, "for") == 1:
+        retornar T_PARA
+    retornar 0
+
+funcion keyword_token_fr(palabra: cadena) -> entero:
+    si str_eq(palabra, "si") == 1:
+        retornar T_IF
+    si str_eq(palabra, "sinon") == 1:
+        retornar T_ELSE
+    si str_eq(palabra, "fonction") == 1:
+        retornar T_FUNCION
+    si str_eq(palabra, "retourner") == 1:
+        retornar T_RETORNAR
+    si str_eq(palabra, "lancer") == 1:
+        retornar T_LANZAR
+    si str_eq(palabra, "recuperer") == 1:
+        retornar T_RECUPERAR
+    si str_eq(palabra, "ecouter") == 1:
+        retornar T_ESCUCHAR
+    si str_eq(palabra, "tantque") == 1:
+        retornar T_MIENTRAS
+    si str_eq(palabra, "rompre") == 1:
+        retornar T_ROMPER
+    si str_eq(palabra, "continuer") == 1:
+        retornar T_SIGUIENTE
+    si str_eq(palabra, "importer") == 1:
+        retornar T_IMPORTAR
+    si str_eq(palabra, "structure") == 1:
+        retornar T_ESTRUCTURA
+    si str_eq(palabra, "et") == 1:
+        retornar T_Y
+    si str_eq(palabra, "ou") == 1:
+        retornar T_O
+    si str_eq(palabra, "non") == 1:
+        retornar T_NO
+    si str_eq(palabra, "vrai") == 1:
+        retornar T_VERDADERO
+    si str_eq(palabra, "faux") == 1:
+        retornar T_FALSO
+    si str_eq(palabra, "dangereux") == 1:
+        retornar T_INSEGURO
+    si str_eq(palabra, "importer_c") == 1:
+        retornar T_IMPORTAR_C
+    si str_eq(palabra, "externe") == 1:
+        retornar T_EXTERNO
+    si str_eq(palabra, "correspondre") == 1:
+        retornar T_COINCIDIR
+    si str_eq(palabra, "exige") == 1:
+        retornar T_REQUIERE
+    si str_eq(palabra, "garantit") == 1:
+        retornar T_GARANTIZA
+    si str_eq(palabra, "asm") == 1:
+        retornar T_ASM
+    si str_eq(palabra, "constante") == 1:
+        retornar T_CONSTANTE
+    si str_eq(palabra, "pour") == 1:
+        retornar T_PARA
+    retornar 0
+
+funcion keyword_token_pt(palabra: cadena) -> entero:
+    si str_eq(palabra, "se") == 1:
+        retornar T_IF
+    si str_eq(palabra, "senao") == 1:
+        retornar T_ELSE
+    si str_eq(palabra, "funcao") == 1:
+        retornar T_FUNCION
+    si str_eq(palabra, "retornar") == 1:
+        retornar T_RETORNAR
+    si str_eq(palabra, "lancar") == 1:
+        retornar T_LANZAR
+    si str_eq(palabra, "recuperar") == 1:
+        retornar T_RECUPERAR
+    si str_eq(palabra, "escutar") == 1:
+        retornar T_ESCUCHAR
+    si str_eq(palabra, "enquanto") == 1:
+        retornar T_MIENTRAS
+    si str_eq(palabra, "parar") == 1:
+        retornar T_ROMPER
+    si str_eq(palabra, "continuar") == 1:
+        retornar T_SIGUIENTE
+    si str_eq(palabra, "importar") == 1:
+        retornar T_IMPORTAR
+    si str_eq(palabra, "estrutura") == 1:
+        retornar T_ESTRUCTURA
+    si str_eq(palabra, "e") == 1:
+        retornar T_Y
+    si str_eq(palabra, "ou") == 1:
+        retornar T_O
+    si str_eq(palabra, "nao") == 1:
+        retornar T_NO
+    si str_eq(palabra, "verdadeiro") == 1:
+        retornar T_VERDADERO
+    si str_eq(palabra, "falso") == 1:
+        retornar T_FALSO
+    si str_eq(palabra, "inseguro") == 1:
+        retornar T_INSEGURO
+    si str_eq(palabra, "importar_c") == 1:
+        retornar T_IMPORTAR_C
+    si str_eq(palabra, "externo") == 1:
+        retornar T_EXTERNO
+    si str_eq(palabra, "coincidir") == 1:
+        retornar T_COINCIDIR
+    si str_eq(palabra, "requer") == 1:
+        retornar T_REQUIERE
+    si str_eq(palabra, "garante") == 1:
+        retornar T_GARANTIZA
+    si str_eq(palabra, "asm") == 1:
+        retornar T_ASM
+    si str_eq(palabra, "constante") == 1:
+        retornar T_CONSTANTE
+    si str_eq(palabra, "para") == 1:
+        retornar T_PARA
+    retornar 0
+
+funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
+    si idioma == IDIOMA_EN:
+        retornar keyword_token_en(palabra)
+    si idioma == IDIOMA_FR:
+        retornar keyword_token_fr(palabra)
+    si idioma == IDIOMA_PT:
+        retornar keyword_token_pt(palabra)
+    retornar keyword_token_es(palabra)
+
 // --- Character predicates ---
 funcion es_digito(c: entero) -> entero:
     si c >= 48:
@@ -195,6 +377,7 @@ estructura LexerEstado:
     total_tokens: entero
     pila_indent: entero
     nivel_pila: entero
+    idioma: entero
     hay_error: booleano
     error_mensaje: cadena
     error_linea: entero
@@ -216,14 +399,31 @@ funcion lexer_error(lex: LexerEstado, mensaje: cadena, linea: entero, columna: e
     lex.error_linea = linea
     lex.error_columna = columna
 
-// --- Detect language from first line ---
-funcion lexer_detectar_idioma(lex: LexerEstado) -> nulo:
+// --- Detect language from first line (Manual 2 S2.3: es|en|fr|pt) ---
+funcion lexer_detectar_idioma(lex: LexerEstado) -> entero:
     // Read first line characters to detect #lang: prefix
     inseguro:
         r = 0
         asm("r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0")
         si r == 0:
-            lexer_error(lex, "Falta declaracion de idioma #lang: en la linea 1", 1, 0)
+            retornar -1
+        // Extract the 2-letter language code after '#lang:'
+        ini = 6
+        fin = 6
+        asm("while (ini < lex.len_fuente && ((const char*)lex.ptr_fuente)[ini] == ' ') { ini = ini + 1; }")
+        fin = ini
+        asm("while (fin < lex.len_fuente && ((const char*)lex.ptr_fuente)[fin] != ' ' && ((const char*)lex.ptr_fuente)[fin] != 10 && ((const char*)lex.ptr_fuente)[fin] != 13) { fin = fin + 1; }")
+        lang = ""
+        asm("lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)lex.ptr_fuente + ini}")
+        si str_eq(lang, "es") == 1:
+            retornar IDIOMA_ES
+        si str_eq(lang, "en") == 1:
+            retornar IDIOMA_EN
+        si str_eq(lang, "fr") == 1:
+            retornar IDIOMA_FR
+        si str_eq(lang, "pt") == 1:
+            retornar IDIOMA_PT
+        retornar -2
 
 // --- Process indentation for a line ---
 funcion lexer_procesar_indentacion(lex: LexerEstado, ptr_linea: entero, len_linea: entero) -> nulo:
@@ -306,12 +506,20 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                         asm("i = i + 1")
                     siguiente
             si es_letra(c) == 1:
+                inicio = i
                 mientras i < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i]")
                     si es_alnum(c) == 0:
                         si c != 95:
                             romper
                     asm("i = i + 1")
+                palabra = ""
+                inseguro:
+                    asm("palabra = (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}")
+                tok = keyword_token(palabra, lex.idioma)
+                si tok == 0:
+                    tok = T_IDENTIFICADOR
+                lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
                 siguiente
             si c == 43:
                 lexer_push_token(lex, T_MAS, lex.linea_actual, i + 1)
@@ -431,9 +639,14 @@ funcion tokenizar(fuente: cadena) -> entero:
     lex.nivel_pila = 0
     lex.hay_error = falso
     lex.error_mensaje = ""
+    lex.idioma = -1
 
-    lexer_detectar_idioma(lex)
-    si lex.hay_error == verdadero:
+    lex.idioma = lexer_detectar_idioma(lex)
+    si lex.idioma == -1:
+        lexer_error(lex, "Falta declaracion de idioma #lang: en la linea 1", 1, 0)
+        retornar -1
+    si lex.idioma == -2:
+        lexer_error(lex, "Idioma no soportado: use es, en, fr, pt", 1, 0)
         retornar -1
 
     i = 0
