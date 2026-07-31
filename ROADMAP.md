@@ -367,13 +367,13 @@
 
 | Hito | Descripción | Evidencia en código | Estado |
 |------|-------------|---------------------|--------|
-| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2), tracking y resolución de regiones (M21.3-M21.4) según Manual 4 §4.3 | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn (L120-121, L470, L667-683) | ✅✅ COMPLETADO |
+| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2) y tracking (M21.3) según Manual 4 §4.3. M21.4 (resolución de regiones) diferido: placeholder en analizador_semantico.syn L681 | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn (L120-121, L470, L667-683) | ⚠️ PARCIAL (M21.1-M21.3 implementados; M21.4 pendiente) |
 | M22 Refactorización RAII y Scopes | Scope stack RAII (M22.2), destructor map y modo --safe con aserciones de lifetime en C generado (M22.5) | nucleo/generator.syn (L141, L173, L203-208, L339-345); tests/validate_raii_m22_4.c; tests/validate_raii_scopes.c | ✅✅ COMPLETADO |
 
 
 ---
 
-## 4. MÉTRICAS DEL PROYECTO (Verificadas al 2026-07-28)
+## 4. MÉTRICAS DEL PROYECTO (Verificadas al 2026-07-31)
 
 | Métrica | Valor | Estado |
 |---------|-------|--------|
