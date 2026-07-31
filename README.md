@@ -30,15 +30,15 @@
 
 | Documento | Descripción |
 |-----------|-------------|
-| [`MANUAL 1 ARQUITECTURA DEL LENGUAJE.md`](./MANUAL%201%20ARQUITECTURA%20DEL%20LENGUAJE.md) | Arquitectura del lenguaje, filosofía de diseño, hoja de ruta |
-| [`MANUAL 2 ESPECIFICACIÓN SINTÁCTICA.md`](./MANUAL%202%20ESPECIFICACI%C3%93N%20SINT%C3%81CTICA.md) | Gramática EBNF, tipos, operadores, contratos |
-| [`MANUAL 3 ARQUITECTURA DEL COMPILADO.md`](./MANUAL%203%20ARQUITECTURA%20DEL%20COMPILADO.md) | Pipeline 5 etapas, AST, tabla de símbolos, motor ATP |
-| [`MANUAL 4 GESTIÓN DE MEMORIA Y OWNER.md`](./MANUAL%204%20GESTI%C3%93N%20DE%20MEMORIA%20Y%20OWNER.md) | Ownership, borrowing, lifetimes, pool allocator |
-| [`MANUAL 5 CONCURRENCIA Y COMUNICACIÓN.md`](./MANUAL%205%20CONCURRENCIA%20Y%20COMUNICACI%C3%93N.md) | Canales, hilos, sincronización, federated learning |
-| [`MANUAL 6 GESTOR DE PAQUETES AXON.md`](./MANUAL%206%20GESTOR%20DE%20PAQUETES%20AXON.md) | Axon, Ed25519, axon.lock, TAR |
-| [`MANUAL 7 HERRAMIENTAS DE DESARROLLO.md`](./MANUAL%207%20HERRAMIENTAS%20DE%20DESARROLLO.md) | LSP nativo, VS Code extension, CLI |
-| [`MANUAL 8 BACKEND Y GENERACIÓN DE CÓDIGO.md`](./MANUAL%208%20BACKEND%20Y%20GENERACI%C3%93N%20DE%20C%C3%93DIGO.md) | Generación C/LLVM/WASM, orden alfabético, PGO |
-| [`MANUAL 9 BOOTSTRAP, PRUEBAS Y ASEGURAMIENTO.md`](./MANUAL%209%20BOOTSTRAP,%20PRUEBAS%20Y%20ASEGU.md) | Bootstrap 3 etapas, CI/CD, sanitizadores, SBOM |
+| [`MANUAL_1.md` — Arquitectura del Lenguaje](./docs/manuales/MANUAL_1.md) | Arquitectura del lenguaje, filosofía de diseño, hoja de ruta |
+| [`MANUAL_2.md` — Especificación Sintáctica](./docs/manuales/MANUAL_2.md) | Gramática EBNF, tipos, operadores, contratos |
+| [`MANUAL_3.md` — Arquitectura del Compilador](./docs/manuales/MANUAL_3.md) | Pipeline 5 etapas, AST, tabla de símbolos, motor ATP |
+| [`MANUAL_4.md` — Gestión de Memoria y Ownership](./docs/manuales/MANUAL_4.md) | Ownership, borrowing, lifetimes, pool allocator |
+| [`MANUAL_5.md` — Concurrencia y Comunicación](./docs/manuales/MANUAL_5.md) | Canales, hilos, sincronización, federated learning |
+| [`MANUAL_6.md` — Gestor de Paquetes Axon](./docs/manuales/MANUAL_6.md) | Axon, Ed25519, axon.lock, TAR |
+| [`MANUAL_7.md` — Herramientas de Desarrollo](./docs/manuales/MANUAL_7.md) | LSP nativo, VS Code extension, CLI |
+| [`MANUAL_8.md` — Backend y Generación de Código](./docs/manuales/MANUAL_8.md) | Generación C/LLVM/WASM, orden alfabético, PGO |
+| [`MANUAL_9.md` — Bootstrap, Pruebas y QA](./docs/manuales/MANUAL_9.md) | Bootstrap 3 etapas, CI/CD, sanitizadores, SBOM |
 | [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F20 |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
 | [`BENCHMARK_RESULTS.md`](./BENCHMARK_RESULTS.md) | Benchmark completo: JSON parsing, SIMD, canales, throughput |
@@ -182,6 +182,7 @@ proyecto_synapse/
 ├── opensyn/                 # Servicio IA local
 ├── scripts/                 # Scripts de build, test, release
 ├── .github/workflows/       # CI/CD: release matrix, cross-compile, instalador
+├── docs/manuales/          # Los 9 manuales de ingeniería (MANUAL_1.md..MANUAL_9.md)
 ├── vscode-synapse/          # Extensión VS Code
 │   ├── extension.js         # Cliente LSP nativo
 │   └── package.json         # Configuración

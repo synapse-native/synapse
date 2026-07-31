@@ -68,5 +68,5 @@ text
 │   └── router.syn
 ├── lsp/                    # Puente LSP (Python legacy, opcional)
 ├── tests/                  # Suites de prueba (Python + C)
-├── docs/manuales/          # NUEVO: Aquí van los 9 manuales
+├── docs/manuales/          # Los 9 manuales de ingeniería (MANUAL_1.md..MANUAL_9.md)
 └── vscode-synapse/         # Extensión VS Code
