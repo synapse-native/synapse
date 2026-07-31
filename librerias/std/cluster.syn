@@ -84,8 +84,8 @@ externo funcion cluster_recibir_paquete(timeout_ms: entero) -> texto
 funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
     resultado = ""
     i = inicio
-    mientras i < fin y i < longitud(origen):
-        resultado = resultado + char_en(origen, i)
+    mientras i < fin y i < len(origen):
+        resultado = resultado + subcadena(origen, i, 1)
         i = i + 1
     retornar resultado
 
@@ -94,22 +94,15 @@ funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
 funcion _parsear_url(url: texto) -> texto:
     // Si el formato es tcp://ip:puerto, saltar el prefijo
     prefijo = "tcp://"
-    si longitud(url) > longitud(prefijo):
-        i = 0
-        coincide = verdadero
-        mientras i < longitud(prefijo):
-            si char_en(url, i) != char_en(prefijo, i):
-                coincide = falso
-            i = i + 1
-        si coincide:
-            retornar _extraer_parte(url, longitud(prefijo), longitud(url))
+    si empieza_con(url, prefijo) == 1:
+        retornar _extraer_parte(url, len(prefijo), len(url))
     retornar url
 
 // _buscar_dos_puntos — Encuentra posición de ':' en una cadena
 funcion _buscar_dos_puntos(s: texto) -> entero:
     i = 0
-    mientras i < longitud(s):
-        si char_en(s, i) == ':':
+    mientras i < len(s):
+        si subcadena(s, i, 1) == ":":
             retornar i
         i = i + 1
     retornar -1
@@ -134,12 +127,11 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         retornar ch
 
     ip = _extraer_parte(url_limpia, 0, pos_dos_puntos)
-    puerto_str = _extraer_parte(url_limpia, pos_dos_puntos + 1, longitud(url_limpia))
+    puerto_str = _extraer_parte(url_limpia, pos_dos_puntos + 1, len(url_limpia))
     puerto = 0
     i = 0
-    mientras i < longitud(puerto_str):
-        c = char_en(puerto_str, i)
-        puerto = puerto * 10 + (c - 48)
+    mientras i < len(puerto_str):
+        puerto = puerto * 10 + texto_a_entero(subcadena(puerto_str, i, 1))
         i = i + 1
 
     // Generar par de claves Ed25519
@@ -176,17 +168,12 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
     // Parsear HELLO_ACK: "HELLO_ACK:id_remoto:pubkey_remota:firma_hex"
     // Verificar prefijo
     prefijo_ack = "HELLO_ACK:"
-    si longitud(paquete) < longitud(prefijo_ack):
+    si len(paquete) < len(prefijo_ack):
         cluster_detener_nodo()
         ch.estado = 1
         retornar ch
 
-    coincide_prefijo = verdadero
-    i = 0
-    mientras i < longitud(prefijo_ack):
-        si char_en(paquete, i) != char_en(prefijo_ack, i):
-            coincide_prefijo = falso
-        i = i + 1
+    coincide_prefijo = empieza_con(paquete, prefijo_ack) == 1
 
     si no coincide_prefijo:
         cluster_detener_nodo()
@@ -194,7 +181,7 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         retornar ch
 
     // Extraer campos del HELLO_ACK
-    resto = _extraer_parte(paquete, longitud(prefijo_ack), longitud(paquete))
+    resto = _extraer_parte(paquete, len(prefijo_ack), len(paquete))
     // Formato: "id:pubkey:firma" → extraer primer segmento
     p1 = _buscar_dos_puntos(resto)
     si p1 < 0:
@@ -203,7 +190,7 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         retornar ch
 
     ch.id_destino = _extraer_parte(resto, 0, p1)
-    resto2 = _extraer_parte(resto, p1 + 1, longitud(resto))
+    resto2 = _extraer_parte(resto, p1 + 1, len(resto))
     p2 = _buscar_dos_puntos(resto2)
     si p2 < 0:
         cluster_detener_nodo()
@@ -211,7 +198,7 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         retornar ch
 
     ch.clave_publica_remota = _extraer_parte(resto2, 0, p2)
-    firma_hex = _extraer_parte(resto2, p2 + 1, longitud(resto2))
+    firma_hex = _extraer_parte(resto2, p2 + 1, len(resto2))
 
     // Verificar firma Ed25519 del nodo remoto
     // El mensaje firmado es "synapse-handshake:<pubkey_local>"
@@ -238,7 +225,7 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
 funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
     si ch.estado != 2:
         retornar -1  // Canal no autenticado
-    retornar cluster_canal_remoto_enviar(ch.direccion, ch.puerto, datos, longitud(datos), ch.descriptor)
+    retornar cluster_canal_remoto_enviar(ch.direccion, ch.puerto, datos, len(datos), ch.descriptor)
 
 // recibir — Recibe datos de un CanalRemoto con timeout
 // ch: canal origen
@@ -260,25 +247,18 @@ funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> Resultado:
 
     // Parsear prefijo DATA:chan_id:seq:payload
     prefijo_data = "DATA:"
-    si longitud(paquete) >= longitud(prefijo_data):
-        coincide = verdadero
-        i = 0
-        mientras i < longitud(prefijo_data):
-            si char_en(paquete, i) != char_en(prefijo_data, i):
-                coincide = falso
-            i = i + 1
-        si coincide:
-            // Saltar header "DATA:chan_id:seq:" y retornar payload
-            resto = _extraer_parte(paquete, longitud(prefijo_data), longitud(paquete))
-            p1 = _buscar_dos_puntos(resto)
-            si p1 >= 0:
-                resto2 = _extraer_parte(resto, p1 + 1, longitud(resto))
-                p2 = _buscar_dos_puntos(resto2)
-                si p2 >= 0:
-                    payload = _extraer_parte(resto2, p2 + 1, longitud(resto2))
-                    r.tag = 0
-                    r.valor_str = payload
-                    retornar r
+    si len(paquete) >= len(prefijo_data) y empieza_con(paquete, prefijo_data) == 1:
+        // Saltar header "DATA:chan_id:seq:" y retornar payload
+        resto = _extraer_parte(paquete, len(prefijo_data), len(paquete))
+        p1 = _buscar_dos_puntos(resto)
+        si p1 >= 0:
+            resto2 = _extraer_parte(resto, p1 + 1, len(resto))
+            p2 = _buscar_dos_puntos(resto2)
+            si p2 >= 0:
+                payload = _extraer_parte(resto2, p2 + 1, len(resto2))
+                r.tag = 0
+                r.valor_str = payload
+                retornar r
 
     // Si no es DATA o formato inválido, retornar el paquete crudo
     r.tag = 0
