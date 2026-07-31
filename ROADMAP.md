@@ -425,7 +425,7 @@
 
 ---
 
-## 5. DEPENDENCIAS ENTRE FASES
+## 6. DEPENDENCIAS ENTRE FASES
 
 ```
 Fase 0 (Fundación)
@@ -447,7 +447,7 @@ Fase 19 (Optimización) ← COMPLETADA ✅
 
 ---
 
-## 6. REGISTRO DE CAMBIOS
+## 7. REGISTRO DE CAMBIOS
 
 | Fecha | Versión | Cambio | Autor |
 |-------|---------|--------|-------|
