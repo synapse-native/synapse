@@ -419,9 +419,9 @@
 | 18 | CanalRemoto v2 | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 19 | Optimización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 20 | Certificación de Producción y Hardening Final | 2026-07-30 | ✅✅ COMPLETADO |
-| 21 | Hitos Avanzados M21-M22 | 2026-07-31 | ✅✅ COMPLETADO |
+| 21 | Hitos Avanzados M21-M22 | 2026-07-31 | ✅ REGISTRADO (M21 parcial, M22 completo) |
 
-**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **0 EN PROGRESO** | **0 PENDIENTES**
+**Total:** 22 fases | **21 COMPLETADAS (✅✅ auditadas) + 1 REGISTRADA PARCIAL (FASE 21, M21 pendiente)** | **0 EN PROGRESO** | **0 PENDIENTES**
 
 ---
 
