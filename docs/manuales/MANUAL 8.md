@@ -67,15 +67,19 @@ decimal	double
 texto	const char*
 booleano	bool
 estructura	struct (pasado por valor o puntero)
-Generación de bindings (v5.0):
+Generación de bindings (v5.0) — ACOTACIÓN DE ALCANCE (Regla 6: Cero Deuda Técnica):
+
+El nivel bajo de la FFI (externo funcion + mapeo de tipos a C) está plenamente operativo y verificado en el release v5.1.1-industrial.
+
+La generación automatizada de bindings de alto nivel (@export(python), @export(java), @export(typescript)) se declara formalmente FUERA DE ALCANCE del release industrial v5.1.1 y queda diferida al roadmap de la versión v5.2. No se implementan stubs parciales en el generador, a fin de no introducir deuda técnica ni código muerto.
 
 synapse
 @export(python) fn procesar(datos: Lista<Entero>) -> Resultado<Flotante, Error>
-// Genera módulo Python con PyObject* wrapper.
+// (v5.2) Genera módulo Python con PyObject* wrapper.
 
-@export(java) class Procesador { ... } // Genera código JNI.
+@export(java) class Procesador { ... } // (v5.2) Genera código JNI.
 
-@export(typescript) fn validar(id: String) -> Booleano // Genera .d.ts.
+@export(typescript) fn validar(id: String) -> Booleano // (v5.2) Genera .d.ts.
 8.6 Backend LLVM (IR, JIT y Control Flow)
 El backend LLVM permite generar IR (Intermediate Representation) y compilarlo a código nativo con optimizaciones avanzadas o ejecutarlo vía JIT.
 
