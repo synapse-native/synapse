@@ -267,6 +267,9 @@ funcion es_builtin(nombre: cadena) -> booleano:
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"len\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return verdadero; }")
     retornar falso
 
 funcion builtin_cantidad_args(nombre: cadena) -> entero:
@@ -301,6 +304,9 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"len\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return 3; }")
+        asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return 2; }")
     retornar 0
 
 funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
@@ -334,6 +340,9 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     si nombre == "canal_enviar": retornar "nulo"
     si nombre == "canal_recibir": retornar "void*"
     si nombre == "cerrar_canal": retornar "nulo"
+    si nombre == "len": retornar "int"
+    si nombre == "subcadena": retornar "texto"
+    si nombre == "empieza_con": retornar "int"
     retornar ""
 
 funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
@@ -370,6 +379,13 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
         si idx == 1: retornar "void*"
     si nombre == "canal_recibir" o nombre == "cerrar_canal":
         si idx == 0: retornar "CanalConcurrencia*"
+    si nombre == "len" o nombre == "empieza_con":
+        si idx == 0: retornar "texto"
+    si nombre == "subcadena":
+        si idx == 0: retornar "texto"
+        si idx == 1 o idx == 2: retornar "int"
+    si nombre == "empieza_con":
+        si idx == 1: retornar "texto"
     retornar ""
 
 // --- Node information helpers ---
