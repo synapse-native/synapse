@@ -1,5 +1,8 @@
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,13 +12,15 @@
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
-typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
+typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;
 
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
 
 #define nulo ((void*)0)
+#define verdadero 1
+#define falso 0
 
-// --- OO AST node types (correct, from hola.c) ---
+// --- OO AST node types ---
 struct Token;
 struct Nodo;
 struct ListaNodo;
@@ -49,6 +54,7 @@ struct ArgumentoTransferido;
 struct SentenciaImportar;
 struct ImportarC;
 struct DeclaracionExterna;
+struct DeclaracionVariable;
 struct BloqueInseguro;
 struct ExprObtenerDireccion;
 struct ExprDereferencia;
@@ -57,55 +63,499 @@ typedef struct Token { int tipo; CadenaSegura lexema; int linea; int columna; } 
 typedef struct Nodo { CadenaSegura tipo; } Nodo;
 typedef struct ListaNodo { struct Nodo* cabeza; struct ListaNodo* cola; } ListaNodo;
 typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Programa;
-typedef struct Identificador { CadenaSegura tipo; CadenaSegura nombre; } Identificador;
-typedef struct LiteralNumero { CadenaSegura tipo; int valor; } LiteralNumero;
-typedef struct LiteralCadena { CadenaSegura tipo; CadenaSegura valor; } LiteralCadena;
-typedef struct OpBinaria { CadenaSegura tipo; struct Nodo* izquierdo; struct Token* operador; struct Nodo* derecho; } OpBinaria;
-typedef struct OpUnaria { CadenaSegura tipo; struct Token* operador; struct Nodo* expr; } OpUnaria;
-typedef struct LlamadaFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaNodo* argumentos; } LlamadaFuncion;
-typedef struct ExprAccesoCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; } ExprAccesoCampo;
-typedef struct AsignacionVariable { CadenaSegura tipo; CadenaSegura nombre; struct Nodo* expresion; } AsignacionVariable;
-typedef struct AsignacionCampo { CadenaSegura tipo; struct Nodo* objeto; CadenaSegura nombre_campo; struct Nodo* expresion; } AsignacionCampo;
-typedef struct SentenciaSi { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; struct ListaNodo* cuerpo_sino; } SentenciaSi;
-typedef struct SentenciaMientras { CadenaSegura tipo; struct Nodo* condicion; struct ListaNodo* cuerpo; } SentenciaMientras;
-typedef struct SentenciaRetornar { CadenaSegura tipo; struct Nodo* expr; } SentenciaRetornar;
-typedef struct SentenciaExpr { CadenaSegura tipo; struct Nodo* expr; } SentenciaExpr;
-typedef struct LogLlamada { CadenaSegura tipo; struct ListaNodo* argumentos; } LogLlamada;
-typedef struct Parametro { CadenaSegura tipo; CadenaSegura nombre; CadenaSegura tipo_param; int es_transferencia; } Parametro;
-typedef struct ListaParametro { struct Parametro* cabeza; struct ListaParametro* cola; } ListaParametro;
-typedef struct DefinicionFuncion { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* parametros; CadenaSegura tipo_retorno; struct ListaNodo* cuerpo; } DefinicionFuncion;
-typedef struct DefinicionEstructura { CadenaSegura tipo; CadenaSegura nombre; struct ListaParametro* campos; } DefinicionEstructura;
-typedef struct SentenciaRomper { CadenaSegura tipo; } SentenciaRomper;
-typedef struct SentenciaSiguiente { CadenaSegura tipo; } SentenciaSiguiente;
-typedef struct SentenciaLanzar { CadenaSegura tipo; struct Nodo* llamada; } SentenciaLanzar;
-typedef struct SentenciaRecuperar { CadenaSegura tipo; struct Nodo* accion_critica; struct Nodo* plan_b; } SentenciaRecuperar;
-typedef struct SentenciaEscuchar { CadenaSegura tipo; struct Nodo* canal; struct Nodo* respuesta; } SentenciaEscuchar;
-typedef struct ExprTensor { CadenaSegura tipo; struct Nodo* filas; struct Nodo* columnas; } ExprTensor;
-typedef struct ExprIndice { CadenaSegura tipo; struct Nodo* expr; struct Nodo* indice; } ExprIndice;
-typedef struct ArgumentoTransferido { CadenaSegura tipo; struct Nodo* expr; } ArgumentoTransferido;
-typedef struct SentenciaImportar { CadenaSegura tipo; CadenaSegura ruta; } SentenciaImportar;
-typedef struct ImportarC { CadenaSegura tipo; CadenaSegura ruta; int es_sistema; } ImportarC;
-typedef struct DeclaracionExterna { CadenaSegura tipo; CadenaSegura nombre; struct Parametro* parametros; CadenaSegura tipo_retorno; } DeclaracionExterna;
-typedef struct BloqueInseguro { CadenaSegura tipo; struct Nodo* cuerpo; } BloqueInseguro;
-typedef struct ExprObtenerDireccion { CadenaSegura tipo; struct Nodo* expr; } ExprObtenerDireccion;
-typedef struct ExprDereferencia { CadenaSegura tipo; struct Nodo* expr; } ExprDereferencia;
 
-// Constantes del pool de memoria (definidas en synapse_rt.c)
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
 
-// Constantes de tags para uniones etiquetadas (ADTs)
+#define _GEN_TMP_SIZE (4096)
+#include "librerias/embedded_libs.h"
+
+// --- Token ID constants (Manual 2 §2.3) ---
+#ifndef T_IF
+#define T_IF (1)
+#endif
+#ifndef T_ELSE
+#define T_ELSE (2)
+#endif
+#ifndef T_FUNCION
+#define T_FUNCION (3)
+#endif
+#ifndef T_RETORNAR
+#define T_RETORNAR (4)
+#endif
+#ifndef T_LANZAR
+#define T_LANZAR (5)
+#endif
+#ifndef T_RECUPERAR
+#define T_RECUPERAR (6)
+#endif
+#ifndef T_ESCUCHAR
+#define T_ESCUCHAR (7)
+#endif
+#ifndef T_MIENTRAS
+#define T_MIENTRAS (8)
+#endif
+#ifndef T_IMPORTAR
+#define T_IMPORTAR (9)
+#endif
+#ifndef T_ESTRUCTURA
+#define T_ESTRUCTURA (10)
+#endif
+#ifndef T_ROMPER
+#define T_ROMPER (11)
+#endif
+#ifndef T_SIGUIENTE
+#define T_SIGUIENTE (12)
+#endif
+#ifndef T_PUNTO
+#define T_PUNTO (13)
+#endif
+#ifndef T_Y
+#define T_Y (14)
+#endif
+#ifndef T_O
+#define T_O (15)
+#endif
+#ifndef T_NO
+#define T_NO (16)
+#endif
+#ifndef T_VERDADERO
+#define T_VERDADERO (17)
+#endif
+#ifndef T_FALSO
+#define T_FALSO (18)
+#endif
+#ifndef T_IDENTIFICADOR
+#define T_IDENTIFICADOR (19)
+#endif
+#ifndef T_NUMERO
+#define T_NUMERO (20)
+#endif
+#ifndef T_FLOTANTE
+#define T_FLOTANTE (21)
+#endif
+#ifndef T_CADENA
+#define T_CADENA (22)
+#endif
+#ifndef T_MAYOR
+#define T_MAYOR (23)
+#endif
+#ifndef T_MENOR
+#define T_MENOR (24)
+#endif
+#ifndef T_IGUAL
+#define T_IGUAL (25)
+#endif
+#ifndef T_DISTINTO
+#define T_DISTINTO (26)
+#endif
+#ifndef T_MENOR_IGUAL
+#define T_MENOR_IGUAL (27)
+#endif
+#ifndef T_MAYOR_IGUAL
+#define T_MAYOR_IGUAL (28)
+#endif
+#ifndef T_ASIGNAR
+#define T_ASIGNAR (29)
+#endif
+#ifndef T_MAS
+#define T_MAS (30)
+#endif
+#ifndef T_MENOS
+#define T_MENOS (31)
+#endif
+#ifndef T_POR
+#define T_POR (32)
+#endif
+#ifndef T_DIV
+#define T_DIV (33)
+#endif
+#ifndef T_MOD
+#define T_MOD (34)
+#endif
+#ifndef T_FLECHA
+#define T_FLECHA (35)
+#endif
+#ifndef T_COINCIDIR
+#define T_COINCIDIR (36)
+#endif
+#ifndef T_FLECHA_DER
+#define T_FLECHA_DER (37)
+#endif
+#ifndef T_PAREN_IZQ
+#define T_PAREN_IZQ (38)
+#endif
+#ifndef T_PAREN_DER
+#define T_PAREN_DER (39)
+#endif
+#ifndef T_DOSPUNTOS
+#define T_DOSPUNTOS (40)
+#endif
+#ifndef T_COMA
+#define T_COMA (41)
+#endif
+#ifndef T_NUEVALINEA
+#define T_NUEVALINEA (42)
+#endif
+#ifndef T_INDENTAR
+#define T_INDENTAR (43)
+#endif
+#ifndef T_DESINDENTAR
+#define T_DESINDENTAR (44)
+#endif
+#ifndef T_AMPERSAND
+#define T_AMPERSAND (45)
+#endif
+#ifndef T_INSEGURO
+#define T_INSEGURO (46)
+#endif
+#ifndef T_IMPORTAR_C
+#define T_IMPORTAR_C (47)
+#endif
+#ifndef T_EXTERNO
+#define T_EXTERNO (48)
+#endif
+#ifndef T_FLECHA_IZQ
+#define T_FLECHA_IZQ (49)
+#endif
+#ifndef T_REQUIERE
+#define T_REQUIERE (50)
+#endif
+#ifndef T_GARANTIZA
+#define T_GARANTIZA (51)
+#endif
+#ifndef T_CANAL
+#define T_CANAL (52)
+#endif
+#ifndef T_ASM
+#define T_ASM (53)
+#endif
+#ifndef T_CONSTANTE
+#define T_CONSTANTE (54)
+#endif
+#ifndef T_PUNTOCOMA
+#define T_PUNTOCOMA (55)
+#endif
+#ifndef T_PARA
+#define T_PARA (56)
+#endif
+#ifndef T_CORCH_IZQ
+#define T_CORCH_IZQ (57)
+#endif
+#ifndef T_CORCH_DER
+#define T_CORCH_DER (58)
+#endif
+#ifndef T_FIN
+#define T_FIN (57)
+#endif
+
+// --- Nodo type constants (AST node types) ---
+#ifndef NODO_PROGRAMA
+#define NODO_PROGRAMA (1)
+#endif
+#ifndef NODO_FUNCION
+#define NODO_FUNCION (2)
+#endif
+#ifndef NODO_SI
+#define NODO_SI (3)
+#endif
+#ifndef NODO_MIENTRAS
+#define NODO_MIENTRAS (4)
+#endif
+#ifndef NODO_RETORNAR
+#define NODO_RETORNAR (5)
+#endif
+#ifndef NODO_EXPR
+#define NODO_EXPR (6)
+#endif
+#ifndef NODO_ASIGNACION
+#define NODO_ASIGNACION (7)
+#endif
+#ifndef NODO_IDENTIFICADOR
+#define NODO_IDENTIFICADOR (8)
+#endif
+#ifndef NODO_NUMERO
+#define NODO_NUMERO (9)
+#endif
+#ifndef NODO_DECIMAL
+#define NODO_DECIMAL (10)
+#endif
+#ifndef NODO_CADENA_LIT
+#define NODO_CADENA_LIT (11)
+#endif
+#ifndef NODO_BINARIA
+#define NODO_BINARIA (12)
+#endif
+#ifndef NODO_UNARIA
+#define NODO_UNARIA (13)
+#endif
+#ifndef NODO_LLAMADA
+#define NODO_LLAMADA (14)
+#endif
+#ifndef NODO_PARAMETRO
+#define NODO_PARAMETRO (15)
+#endif
+#ifndef NODO_ESTRUCTURA
+#define NODO_ESTRUCTURA (16)
+#endif
+#ifndef NODO_IMPORTAR
+#define NODO_IMPORTAR (17)
+#endif
+#ifndef NODO_LANZAR
+#define NODO_LANZAR (18)
+#endif
+#ifndef NODO_ESCUCHAR
+#define NODO_ESCUCHAR (19)
+#endif
+#ifndef NODO_ROMPER
+#define NODO_ROMPER (20)
+#endif
+#ifndef NODO_SIGUIENTE
+#define NODO_SIGUIENTE (21)
+#endif
+#ifndef NODO_BOOLEANO
+#define NODO_BOOLEANO (22)
+#endif
+#ifndef NODO_CONSTANTE
+#define NODO_CONSTANTE (23)
+#endif
+#ifndef NODO_INSEGURO
+#define NODO_INSEGURO (24)
+#endif
+#ifndef NODO_IMPORTAR_C
+#define NODO_IMPORTAR_C (25)
+#endif
+#ifndef NODO_EXTERNO
+#define NODO_EXTERNO (26)
+#endif
+#ifndef NODO_RECUPERAR
+#define NODO_RECUPERAR (27)
+#endif
+#ifndef NODO_TENSOR
+#define NODO_TENSOR (28)
+#endif
+#ifndef NODO_INDICE
+#define NODO_INDICE (29)
+#endif
+#ifndef NODO_TRANSFERIDO
+#define NODO_TRANSFERIDO (30)
+#endif
+#ifndef NODO_ACCESO_CAMPO
+#define NODO_ACCESO_CAMPO (31)
+#endif
+#ifndef NODO_ASIGNACION_CAMPO
+#define NODO_ASIGNACION_CAMPO (32)
+#endif
+#ifndef NODO_PARRAFO
+#define NODO_PARRAFO (33)
+#endif
+#ifndef NODO_DECLARACION
+#define NODO_DECLARACION (34)
+#endif
+#ifndef NODO_LOG
+#define NODO_LOG (35)
+#endif
+#ifndef NODO_PUNTERO
+#define NODO_PUNTERO (36)
+#endif
+#ifndef NODO_DEREF
+#define NODO_DEREF (37)
+#endif
+#ifndef NODO_COINCIDIR
+#define NODO_COINCIDIR (38)
+#endif
+#ifndef NODO_CASO
+#define NODO_CASO (39)
+#endif
+#ifndef NODO_ASM
+#define NODO_ASM (40)
+#endif
+#ifndef NODO_CANAL_CREAR
+#define NODO_CANAL_CREAR (41)
+#endif
+#ifndef NODO_ENVIAR_CANAL
+#define NODO_ENVIAR_CANAL (42)
+#endif
+#ifndef NODO_RECIBIR_CANAL
+#define NODO_RECIBIR_CANAL (43)
+#endif
+#ifndef NODO_VACIO
+#define NODO_VACIO (44)
+#endif
+#ifndef NODO_PARA
+#define NODO_PARA (45)
+#endif
+#ifndef NODO_CONTRATO
+#define NODO_CONTRATO (46)
+#endif
+
+// --- Error code constants (Manual 3 §3.5) ---
+#ifndef ERR_SYNTAX_EXPECTED_TOKEN
+#define ERR_SYNTAX_EXPECTED_TOKEN (1)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_TOKEN
+#define ERR_SYNTAX_UNEXPECTED_TOKEN (2)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_EXPR
+#define ERR_SYNTAX_UNEXPECTED_EXPR (3)
+#endif
+#ifndef ERR_SYNTAX_EXPECTED_NEWLINE
+#define ERR_SYNTAX_EXPECTED_NEWLINE (4)
+#endif
+#ifndef ERR_LANG_MISSING
+#define ERR_LANG_MISSING (5)
+#endif
+#ifndef ERR_LANG_UNSUPPORTED
+#define ERR_LANG_UNSUPPORTED (6)
+#endif
+#ifndef ERR_INDENT_INVALID
+#define ERR_INDENT_INVALID (7)
+#endif
+#ifndef ERR_INDENT_INCONSISTENT
+#define ERR_INDENT_INCONSISTENT (8)
+#endif
+#ifndef ERR_STRING_UNCLOSED
+#define ERR_STRING_UNCLOSED (9)
+#endif
+#ifndef ERR_LEX_CHAR_UNEXPECTED
+#define ERR_LEX_CHAR_UNEXPECTED (10)
+#endif
+#ifndef ERR_LEX
+#define ERR_LEX (11)
+#endif
+#ifndef ERR_FILE_NOT_FOUND
+#define ERR_FILE_NOT_FOUND (12)
+#endif
+#ifndef ERR_CANONICAL_FORMAT
+#define ERR_CANONICAL_FORMAT (13)
+#endif
+#ifndef ERR_SEM_VAR_NO_DECLARADA
+#define ERR_SEM_VAR_NO_DECLARADA (14)
+#endif
+#ifndef ERR_SEM_TIPO_INCOMPATIBLE
+#define ERR_SEM_TIPO_INCOMPATIBLE (15)
+#endif
+#ifndef ERR_SEM_TIPO_RETORNO
+#define ERR_SEM_TIPO_RETORNO (16)
+#endif
+#ifndef ERR_SEM_FUNC_NO_DEFINIDA
+#define ERR_SEM_FUNC_NO_DEFINIDA (17)
+#endif
+#ifndef ERR_SEM_REDEFINICION
+#define ERR_SEM_REDEFINICION (18)
+#endif
+#ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
+#define ERR_SEM_ARGUMENTOS_INVALIDOS (19)
+#endif
+#ifndef ERR_SEM_ESTRUCTURA_NO_DEFINIDA
+#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20)
+#endif
+#ifndef ERR_SEM_CAMPO_NO_EXISTE
+#define ERR_SEM_CAMPO_NO_EXISTE (21)
+#endif
+#ifndef ERR_SEM_VAR_MOVIDA
+#define ERR_SEM_VAR_MOVIDA (22)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23)
+#endif
+#ifndef ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR
+#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24)
+#endif
+#ifndef ERR_MANIFEST_NOT_FOUND
+#define ERR_MANIFEST_NOT_FOUND (25)
+#endif
+#ifndef ERR_MODULE_STD_NOT_FOUND
+#define ERR_MODULE_STD_NOT_FOUND (26)
+#endif
+#ifndef ERR_MODULE_AXON_NOT_FOUND
+#define ERR_MODULE_AXON_NOT_FOUND (27)
+#endif
+#ifndef ERR_DEP_NOT_DECLARED
+#define ERR_DEP_NOT_DECLARED (28)
+#endif
+#ifndef ERR_LOCK_HASH_MISMATCH
+#define ERR_LOCK_HASH_MISMATCH (29)
+#endif
+#ifndef ERR_GIT_FAILURE
+#define ERR_GIT_FAILURE (30)
+#endif
+#ifndef ERR_SEM_ASM_FUERA_INSEGURO
+#define ERR_SEM_ASM_FUERA_INSEGURO (31)
+#endif
+#ifndef ERR_SEM_CONSTANTE_INMUTABLE
+#define ERR_SEM_CONSTANTE_INMUTABLE (32)
+#endif
+#ifndef ERR_MEM_USE_AFTER_MOVE
+#define ERR_MEM_USE_AFTER_MOVE (33)
+#endif
+#ifndef ERR_VER_WHILE_INACOTADO
+#define ERR_VER_WHILE_INACOTADO (34)
+#endif
+#ifndef ERR_VER_MUTACION_GLOBAL
+#define ERR_VER_MUTACION_GLOBAL (35)
+#endif
+#ifndef ERR_VER_RECURSION_NO_TERMINAL
+#define ERR_VER_RECURSION_NO_TERMINAL (36)
+#endif
+#ifndef ERR_VER_CONTRATO_INVALIDO
+#define ERR_VER_CONTRATO_INVALIDO (37)
+#endif
+#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
+#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
+#endif
+#ifndef ERR_MEM_LIFETIME_MISMATCH
+#define ERR_MEM_LIFETIME_MISMATCH (34)
+#endif
+#ifndef ERR_MEM_LIFETIME_CYCLE
+#define ERR_MEM_LIFETIME_CYCLE (35)
+#endif
+
+// --- Constantes del programa (fuente de verdad = codigo) ---
+#ifndef IDIOMA_ES
+#define IDIOMA_ES (0)
+#endif
+#ifndef IDIOMA_EN
+#define IDIOMA_EN (1)
+#endif
+#ifndef IDIOMA_FR
+#define IDIOMA_FR (2)
+#endif
+#ifndef IDIOMA_PT
+#define IDIOMA_PT (3)
+#endif
+#ifndef MAX_TOKENS
+#define MAX_TOKENS (16384)
+#endif
+#ifndef MAX_INDENT
+#define MAX_INDENT (64)
+#endif
+
+extern char _gen_tmp_buf[4096];
+
+extern char _G_emit_buf[1048576];
+extern int _G_emit_pos;
+extern FILE* _G_fp;
+
+// PGO variables (defined in self-hosted parser module)
+extern int _P_ntks, _P_tpos, _P_p_err;
+
+extern int _G_indent;
+
+const char* _G_mt(const char* st);
+void _G_vest(struct DefinicionEstructura* n);
+
 #define TAG_OK 0
 #define TAG_ERR 1
 #define TAG_ALGUNO 0
 #define TAG_NINGUNO 1
 
-// --- Helpers de serialización primitiva para canales (Zero-Copy) ---
+// --- Helpers de serialización primitiva ---
 static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
 static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
 static inline void* _synapse_box_float(float v) {
     float* _p = (float*)malloc(sizeof(float));
-    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en _synapse_box_float\n"); exit(1); }
+    if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\\n"); exit(1); }
     *_p = v;
     return (void*)_p;
 }
@@ -115,9 +565,10 @@ static inline float _synapse_unbox_float(void* p) {
     return _v;
 }
 
-// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---
 extern void pool_init(uint32_t total_blocks, uint32_t block_size);
 extern void pool_free(void* ptr);
+extern void* pool_alloc(size_t size);
+extern void pool_destroy(void);
 extern void escribir(CadenaSegura contenido);
 extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
@@ -136,20 +587,47 @@ extern int texto_a_entero(CadenaSegura str);
 extern float texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(float n);
 extern CadenaSegura entero_a_texto(int n);
+extern int str_eq(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
 extern void _syn_texto_liberar(CadenaSegura s);
 
-// --- Declaraciones extern de canales (CanalConcurrencia) ---
-typedef struct { int es_ok; union { void* ok_valor; const char* err_mensaje; } datos; } Resultado_T;
+typedef struct { int es_ok; union {
+void* ok_valor; const char* err_mensaje;
+} datos; } Resultado_T;
 typedef struct CanalConcurrencia CanalConcurrencia;
 extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
-static int _g_argc;
-static char** _g_argv;
+// --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
+extern void _simd_detectar(void);
+
+// --- Contratos (requiere/garantiza) ---
+#ifdef SYNAPSE_RELEASE
+#define assert_contrato(expr, msg) ((void)0)
+#else
+#define assert_contrato(expr, msg) \
+    do { if (!(expr)) { \
+        fprintf(stderr, "CONTRATO: %s en %%s:%%d\\n", \
+                msg, __FILE__, __LINE__); \
+        exit(1); }} while(0)
+#endif
+
+char _gen_tmp_buf[4096];
+
+char _G_emit_buf[1048576];
+int _G_emit_pos;
+FILE* _G_fp;
+int _G_scope_depth;
+int _G_scope_vars_depth[256];
+char _G_scope_vars_names[256][64];
+int _G_scope_vars_total;
+int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
+
+int _g_argc;
+char** _g_argv;
 int _argc() { return _g_argc; }
 
 CadenaSegura _argv(int i) {
@@ -162,31 +640,58 @@ void salir(int codigo) { exit(codigo); }
 CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     int _tl = a.longitud + b.longitud;
     char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\n"); exit(1); }
+    if (!_buf) { fprintf(stderr,"Error: malloc fallo en concat()\\n"); exit(1); }
     memcpy(_buf, a.datos, a.longitud);
     memcpy(_buf + a.longitud, b.datos, b.longitud);
     _buf[_tl] = 0;
-    CadenaSegura _r = { .longitud = _tl, .datos = _buf };
-    return _r;
+    return (CadenaSegura){_tl, _buf};
 }
 
-struct TokenLex;
 struct LexerEstado;
+struct TokenLex;
 
-int str_len(CadenaSegura s);
-int str_char(CadenaSegura s, int i);
-int str_char_at(int ptr, int i);
-int str_eq(CadenaSegura a, CadenaSegura b);
-int str_len_ptr(int ptr);
-int keyword_token(CadenaSegura palabra);
+typedef struct LexerEstado {
+    int ptr_fuente;
+    int len_fuente;
+    int posicion;
+    int linea_actual;
+    int columna_actual;
+    struct TokenLex* tokens;
+    int total_tokens;
+    int pila_indent[64];
+    int nivel_pila;
+    int idioma;
+    int hay_error;
+    CadenaSegura error_mensaje;
+    int error_linea;
+    int error_columna;
+} LexerEstado;
+
+typedef struct TokenLex {
+    int tipo;
+    int linea;
+    int columna;
+    CadenaSegura valor;
+} TokenLex;
+
+int es_alnum(int c);
 int es_digito(int c);
 int es_letra(int c);
-int es_alnum(int c);
-void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna);
+int keyword_token(CadenaSegura palabra, int idioma);
+int keyword_token_en(CadenaSegura palabra);
+int keyword_token_es(CadenaSegura palabra);
+int keyword_token_fr(CadenaSegura palabra);
+int keyword_token_pt(CadenaSegura palabra);
+int lexer_detectar_idioma(struct LexerEstado lex);
 void lexer_error(struct LexerEstado lex, CadenaSegura mensaje, int linea, int columna);
-void lexer_detectar_idioma(struct LexerEstado lex);
 void lexer_procesar_indentacion(struct LexerEstado lex, int ptr_linea, int len_linea);
+void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna);
+void lexer_push_token_valor(struct LexerEstado lex, int tipo, int linea, int columna, CadenaSegura valor);
 void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto);
+int str_char(CadenaSegura s, int i);
+int str_char_at(int ptr, int i);
+int str_len(CadenaSegura s);
+int str_len_ptr(int ptr);
 int tokenizar(CadenaSegura fuente);
 
 #define T_IF (1)
@@ -247,252 +752,561 @@ int tokenizar(CadenaSegura fuente);
 #define T_PARA (56)
 #define T_FIN (57)
 #define T_ERROR (58)
-typedef struct TokenLex {
-    int tipo;
-    int linea;
-    int columna;
-    CadenaSegura valor;
-} TokenLex;
-
-static inline struct TokenLex TokenLex_nuevo() {
-    struct TokenLex _r = {0};
-    return _r;
-}
-
-int str_len(CadenaSegura s) {
-    { /* unsafe */
-        int r = 0;
-        r = s.longitud;
-        int _ret_75 = r;
-        return _ret_75;
+#define IDIOMA_ES (0)
+#define IDIOMA_EN (1)
+#define IDIOMA_FR (2)
+#define IDIOMA_PT (3)
+#define MAX_TOKENS (16384)
+#define MAX_INDENT (64)
+int es_alnum(int c) {
+    if ((es_digito(c) == 1)) {
+        return 1;
+          /* [Lifetime Scope: exit depth=1] */
     }
-}
-
-int str_char(CadenaSegura s, int i) {
-    { /* unsafe */
-        int r = 0;
-        r = (i >= 0 && i < s.longitud) ? (unsigned char)s.datos[i] : 0;
-        int _ret_81 = r;
-        return _ret_81;
+    if ((es_letra(c) == 1)) {
+        return 1;
+          /* [Lifetime Scope: exit depth=1] */
     }
-}
-
-int str_char_at(int ptr, int i) {
-    { /* unsafe */
-        int r = 0;
-        r = (unsigned char)((const char*)ptr)[i];
-        int _ret_87 = r;
-        return _ret_87;
-    }
-}
-
-int str_eq(CadenaSegura a, CadenaSegura b) {
-    { /* unsafe */
-        int r = 0;
-        if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } };
-        int _ret_93 = r;
-        return _ret_93;
-    }
-}
-
-int str_len_ptr(int ptr) {
-    { /* unsafe */
-        int r = 0;
-        r = (int)strlen((const char*)ptr);
-        int _ret_99 = r;
-        return _ret_99;
-    }
-}
-
-int keyword_token(CadenaSegura palabra) {
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 2, .datos = "si" }) == 1)) {
-        int _ret_104 = T_IF;
-        return _ret_104;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 4, .datos = "sino" }) == 1)) {
-        int _ret_106 = T_ELSE;
-        return _ret_106;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 7, .datos = "funcion" }) == 1)) {
-        int _ret_108 = T_FUNCION;
-        return _ret_108;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "retornar" }) == 1)) {
-        int _ret_110 = T_RETORNAR;
-        return _ret_110;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 6, .datos = "lanzar" }) == 1)) {
-        int _ret_112 = T_LANZAR;
-        return _ret_112;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "recuperar" }) == 1)) {
-        int _ret_114 = T_RECUPERAR;
-        return _ret_114;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "escuchar" }) == 1)) {
-        int _ret_116 = T_ESCUCHAR;
-        return _ret_116;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "mientras" }) == 1)) {
-        int _ret_118 = T_MIENTRAS;
-        return _ret_118;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "importar" }) == 1)) {
-        int _ret_120 = T_IMPORTAR;
-        return _ret_120;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 6, .datos = "romper" }) == 1)) {
-        int _ret_122 = T_ROMPER;
-        return _ret_122;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "siguiente" }) == 1)) {
-        int _ret_124 = T_SIGUIENTE;
-        return _ret_124;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 10, .datos = "estructura" }) == 1)) {
-        int _ret_126 = T_ESTRUCTURA;
-        return _ret_126;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 1, .datos = "y" }) == 1)) {
-        int _ret_128 = T_Y;
-        return _ret_128;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 1, .datos = "o" }) == 1)) {
-        int _ret_130 = T_O;
-        return _ret_130;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 2, .datos = "no" }) == 1)) {
-        int _ret_132 = T_NO;
-        return _ret_132;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "verdadero" }) == 1)) {
-        int _ret_134 = T_VERDADERO;
-        return _ret_134;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 5, .datos = "falso" }) == 1)) {
-        int _ret_136 = T_FALSO;
-        return _ret_136;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "inseguro" }) == 1)) {
-        int _ret_138 = T_INSEGURO;
-        return _ret_138;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 10, .datos = "importar_c" }) == 1)) {
-        int _ret_140 = T_IMPORTAR_C;
-        return _ret_140;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 7, .datos = "externo" }) == 1)) {
-        int _ret_142 = T_EXTERNO;
-        return _ret_142;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "coincidir" }) == 1)) {
-        int _ret_144 = T_COINCIDIR;
-        return _ret_144;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 8, .datos = "requiere" }) == 1)) {
-        int _ret_146 = T_REQUIERE;
-        return _ret_146;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "garantiza" }) == 1)) {
-        int _ret_148 = T_GARANTIZA;
-        return _ret_148;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 5, .datos = "canal" }) == 1)) {
-        int _ret_150 = T_CANAL;
-        return _ret_150;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 3, .datos = "asm" }) == 1)) {
-        int _ret_152 = T_ASM;
-        return _ret_152;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 9, .datos = "constante" }) == 1)) {
-        int _ret_154 = T_CONSTANTE;
-        return _ret_154;
-    }
-    if ((str_eq(palabra, (CadenaSegura){ .longitud = 4, .datos = "para" }) == 1)) {
-        int _ret_156 = T_PARA;
-        return _ret_156;
-    }
-    int _ret_157 = 0;
-    return _ret_157;
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 int es_digito(int c) {
     if ((c >= 48)) {
         if ((c <= 57)) {
-            int _ret_163 = 1;
-            return _ret_163;
+            return 1;
+              /* [Lifetime Scope: exit depth=2] */
         }
+          /* [Lifetime Scope: exit depth=1] */
     }
-    int _ret_164 = 0;
-    return _ret_164;
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 int es_letra(int c) {
     if ((c >= 65)) {
         if ((c <= 90)) {
-            int _ret_169 = 1;
-            return _ret_169;
+            return 1;
+              /* [Lifetime Scope: exit depth=2] */
         }
+          /* [Lifetime Scope: exit depth=1] */
     }
     if ((c >= 97)) {
         if ((c <= 122)) {
-            int _ret_172 = 1;
-            return _ret_172;
+            return 1;
+              /* [Lifetime Scope: exit depth=2] */
         }
+          /* [Lifetime Scope: exit depth=1] */
     }
     if ((c == 95)) {
-        int _ret_174 = 1;
-        return _ret_174;
+        return 1;
+          /* [Lifetime Scope: exit depth=1] */
     }
-    int _ret_175 = 0;
-    return _ret_175;
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
 }
 
-int es_alnum(int c) {
-    if ((es_digito(c) == 1)) {
-        int _ret_179 = 1;
-        return _ret_179;
+int keyword_token(CadenaSegura palabra, int idioma) {
+    if ((idioma == IDIOMA_EN)) {
+        return keyword_token_en(palabra);
+          /* [Lifetime Scope: exit depth=1] */
     }
-    if ((es_letra(c) == 1)) {
-        int _ret_181 = 1;
-        return _ret_181;
+    if ((idioma == IDIOMA_FR)) {
+        return keyword_token_fr(palabra);
+          /* [Lifetime Scope: exit depth=1] */
     }
-    int _ret_182 = 0;
-    return _ret_182;
+    if ((idioma == IDIOMA_PT)) {
+        return keyword_token_pt(palabra);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return keyword_token_es(palabra);
+      /* [Lifetime Scope: exit depth=0] */
 }
 
-#define MAX_TOKENS (16384)
-#define MAX_INDENT (64)
-typedef struct LexerEstado {
-    int ptr_fuente;
-    int len_fuente;
-    int posicion;
-    int linea_actual;
-    int columna_actual;
-    struct TokenLex* tokens;
-    int total_tokens;
-    int pila_indent[64];
-    int nivel_pila;
-    int hay_error;
-    CadenaSegura error_mensaje;
-    int error_linea;
-    int error_columna;
-} LexerEstado;
-
-static inline struct LexerEstado LexerEstado_nuevo() {
-    struct LexerEstado _r = {0};
-    return _r;
+int keyword_token_en(CadenaSegura palabra) {
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("if"), .datos = "if" }) == 1)) {
+        return T_IF;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("else"), .datos = "else" }) == 1)) {
+        return T_ELSE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("function"), .datos = "function" }) == 1)) {
+        return T_FUNCION;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("return"), .datos = "return" }) == 1)) {
+        return T_RETORNAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("spawn"), .datos = "spawn" }) == 1)) {
+        return T_LANZAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("recover"), .datos = "recover" }) == 1)) {
+        return T_RECUPERAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("listen"), .datos = "listen" }) == 1)) {
+        return T_ESCUCHAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("while"), .datos = "while" }) == 1)) {
+        return T_MIENTRAS;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("break"), .datos = "break" }) == 1)) {
+        return T_ROMPER;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("continue"), .datos = "continue" }) == 1)) {
+        return T_SIGUIENTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("import"), .datos = "import" }) == 1)) {
+        return T_IMPORTAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("struct"), .datos = "struct" }) == 1)) {
+        return T_ESTRUCTURA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("and"), .datos = "and" }) == 1)) {
+        return T_Y;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("or"), .datos = "or" }) == 1)) {
+        return T_O;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("not"), .datos = "not" }) == 1)) {
+        return T_NO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("true"), .datos = "true" }) == 1)) {
+        return T_VERDADERO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("false"), .datos = "false" }) == 1)) {
+        return T_FALSO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("unsafe"), .datos = "unsafe" }) == 1)) {
+        return T_INSEGURO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("import_c"), .datos = "import_c" }) == 1)) {
+        return T_IMPORTAR_C;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("extern"), .datos = "extern" }) == 1)) {
+        return T_EXTERNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("match"), .datos = "match" }) == 1)) {
+        return T_COINCIDIR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("requires"), .datos = "requires" }) == 1)) {
+        return T_REQUIERE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ensures"), .datos = "ensures" }) == 1)) {
+        return T_GARANTIZA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("asm"), .datos = "asm" }) == 1)) {
+        return T_ASM;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("constant"), .datos = "constant" }) == 1)) {
+        return T_CONSTANTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("const"), .datos = "const" }) == 1)) {
+        return T_CONSTANTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("for"), .datos = "for" }) == 1)) {
+        return T_PARA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna) {
+int keyword_token_es(CadenaSegura palabra) {
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("si"), .datos = "si" }) == 1)) {
+        return T_IF;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("sino"), .datos = "sino" }) == 1)) {
+        return T_ELSE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("funcion"), .datos = "funcion" }) == 1)) {
+        return T_FUNCION;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("retornar"), .datos = "retornar" }) == 1)) {
+        return T_RETORNAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("lanzar"), .datos = "lanzar" }) == 1)) {
+        return T_LANZAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("recuperar"), .datos = "recuperar" }) == 1)) {
+        return T_RECUPERAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("escuchar"), .datos = "escuchar" }) == 1)) {
+        return T_ESCUCHAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("mientras"), .datos = "mientras" }) == 1)) {
+        return T_MIENTRAS;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importar"), .datos = "importar" }) == 1)) {
+        return T_IMPORTAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("romper"), .datos = "romper" }) == 1)) {
+        return T_ROMPER;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("siguiente"), .datos = "siguiente" }) == 1)) {
+        return T_SIGUIENTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("estructura"), .datos = "estructura" }) == 1)) {
+        return T_ESTRUCTURA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("y"), .datos = "y" }) == 1)) {
+        return T_Y;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("o"), .datos = "o" }) == 1)) {
+        return T_O;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("no"), .datos = "no" }) == 1)) {
+        return T_NO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("verdadero"), .datos = "verdadero" }) == 1)) {
+        return T_VERDADERO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("falso"), .datos = "falso" }) == 1)) {
+        return T_FALSO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("inseguro"), .datos = "inseguro" }) == 1)) {
+        return T_INSEGURO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importar_c"), .datos = "importar_c" }) == 1)) {
+        return T_IMPORTAR_C;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("externo"), .datos = "externo" }) == 1)) {
+        return T_EXTERNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("coincidir"), .datos = "coincidir" }) == 1)) {
+        return T_COINCIDIR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("requiere"), .datos = "requiere" }) == 1)) {
+        return T_REQUIERE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("garantiza"), .datos = "garantiza" }) == 1)) {
+        return T_GARANTIZA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("canal"), .datos = "canal" }) == 1)) {
+        return T_CANAL;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("asm"), .datos = "asm" }) == 1)) {
+        return T_ASM;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("constante"), .datos = "constante" }) == 1)) {
+        return T_CONSTANTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("para"), .datos = "para" }) == 1)) {
+        return T_PARA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int keyword_token_fr(CadenaSegura palabra) {
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("si"), .datos = "si" }) == 1)) {
+        return T_IF;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("sinon"), .datos = "sinon" }) == 1)) {
+        return T_ELSE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("fonction"), .datos = "fonction" }) == 1)) {
+        return T_FUNCION;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("retourner"), .datos = "retourner" }) == 1)) {
+        return T_RETORNAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("lancer"), .datos = "lancer" }) == 1)) {
+        return T_LANZAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("recuperer"), .datos = "recuperer" }) == 1)) {
+        return T_RECUPERAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ecouter"), .datos = "ecouter" }) == 1)) {
+        return T_ESCUCHAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tantque"), .datos = "tantque" }) == 1)) {
+        return T_MIENTRAS;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("rompre"), .datos = "rompre" }) == 1)) {
+        return T_ROMPER;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("continuer"), .datos = "continuer" }) == 1)) {
+        return T_SIGUIENTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importer"), .datos = "importer" }) == 1)) {
+        return T_IMPORTAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("structure"), .datos = "structure" }) == 1)) {
+        return T_ESTRUCTURA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("et"), .datos = "et" }) == 1)) {
+        return T_Y;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ou"), .datos = "ou" }) == 1)) {
+        return T_O;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("non"), .datos = "non" }) == 1)) {
+        return T_NO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("vrai"), .datos = "vrai" }) == 1)) {
+        return T_VERDADERO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("faux"), .datos = "faux" }) == 1)) {
+        return T_FALSO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("dangereux"), .datos = "dangereux" }) == 1)) {
+        return T_INSEGURO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importer_c"), .datos = "importer_c" }) == 1)) {
+        return T_IMPORTAR_C;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("externe"), .datos = "externe" }) == 1)) {
+        return T_EXTERNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("correspondre"), .datos = "correspondre" }) == 1)) {
+        return T_COINCIDIR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("exige"), .datos = "exige" }) == 1)) {
+        return T_REQUIERE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("garantit"), .datos = "garantit" }) == 1)) {
+        return T_GARANTIZA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("asm"), .datos = "asm" }) == 1)) {
+        return T_ASM;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("constante"), .datos = "constante" }) == 1)) {
+        return T_CONSTANTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("pour"), .datos = "pour" }) == 1)) {
+        return T_PARA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int keyword_token_pt(CadenaSegura palabra) {
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("se"), .datos = "se" }) == 1)) {
+        return T_IF;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("senao"), .datos = "senao" }) == 1)) {
+        return T_ELSE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("funcao"), .datos = "funcao" }) == 1)) {
+        return T_FUNCION;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("retornar"), .datos = "retornar" }) == 1)) {
+        return T_RETORNAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("lancar"), .datos = "lancar" }) == 1)) {
+        return T_LANZAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("recuperar"), .datos = "recuperar" }) == 1)) {
+        return T_RECUPERAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("escutar"), .datos = "escutar" }) == 1)) {
+        return T_ESCUCHAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("enquanto"), .datos = "enquanto" }) == 1)) {
+        return T_MIENTRAS;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("parar"), .datos = "parar" }) == 1)) {
+        return T_ROMPER;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("continuar"), .datos = "continuar" }) == 1)) {
+        return T_SIGUIENTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importar"), .datos = "importar" }) == 1)) {
+        return T_IMPORTAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("estrutura"), .datos = "estrutura" }) == 1)) {
+        return T_ESTRUCTURA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("e"), .datos = "e" }) == 1)) {
+        return T_Y;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ou"), .datos = "ou" }) == 1)) {
+        return T_O;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("nao"), .datos = "nao" }) == 1)) {
+        return T_NO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("verdadeiro"), .datos = "verdadeiro" }) == 1)) {
+        return T_VERDADERO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("falso"), .datos = "falso" }) == 1)) {
+        return T_FALSO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("inseguro"), .datos = "inseguro" }) == 1)) {
+        return T_INSEGURO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("importar_c"), .datos = "importar_c" }) == 1)) {
+        return T_IMPORTAR_C;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("externo"), .datos = "externo" }) == 1)) {
+        return T_EXTERNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("coincidir"), .datos = "coincidir" }) == 1)) {
+        return T_COINCIDIR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("requer"), .datos = "requer" }) == 1)) {
+        return T_REQUIERE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("garante"), .datos = "garante" }) == 1)) {
+        return T_GARANTIZA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("asm"), .datos = "asm" }) == 1)) {
+        return T_ASM;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("constante"), .datos = "constante" }) == 1)) {
+        return T_CONSTANTE;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("para"), .datos = "para" }) == 1)) {
+        return T_PARA;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return 0;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_detectar_idioma(struct LexerEstado lex) {
+    int r;
+    int ini;
+    int fin;
+    CadenaSegura lang = {0};
     { /* unsafe */
-        if (lex.total_tokens >= 16384) return;
-        lex.tokens[lex.total_tokens].tipo = tipo;
-        lex.tokens[lex.total_tokens].linea = linea;
-        lex.tokens[lex.total_tokens].columna = columna;
-        lex.total_tokens = lex.total_tokens + 1;
+        r = 0;
+        r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0;
+        if ((r == 0)) {
+            return (-1);
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        ini = 6;
+        fin = 6;
+        while (ini < lex.len_fuente && ((const char*)lex.ptr_fuente)[ini] == ' ') { ini = ini + 1; }
+        fin = ini;
+        while (fin < lex.len_fuente && ((const char*)lex.ptr_fuente)[fin] != ' ' && ((const char*)lex.ptr_fuente)[fin] != 10 && ((const char*)lex.ptr_fuente)[fin] != 13) { fin = fin + 1; }
+        _syn_texto_liberar(lang);
+        lang = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)lex.ptr_fuente + ini};
+        if ((str_eq(lang, (CadenaSegura){ .longitud = (int)strlen("es"), .datos = "es" }) == 1)) {
+            return IDIOMA_ES;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        if ((str_eq(lang, (CadenaSegura){ .longitud = (int)strlen("en"), .datos = "en" }) == 1)) {
+            return IDIOMA_EN;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        if ((str_eq(lang, (CadenaSegura){ .longitud = (int)strlen("fr"), .datos = "fr" }) == 1)) {
+            return IDIOMA_FR;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        if ((str_eq(lang, (CadenaSegura){ .longitud = (int)strlen("pt"), .datos = "pt" }) == 1)) {
+            return IDIOMA_PT;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        return (-2);
+          /* [Lifetime Scope: exit depth=1] */
     }
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 void lexer_error(struct LexerEstado lex, CadenaSegura mensaje, int linea, int columna) {
@@ -500,74 +1314,106 @@ void lexer_error(struct LexerEstado lex, CadenaSegura mensaje, int linea, int co
     lex.error_mensaje = mensaje;
     lex.error_linea = linea;
     lex.error_columna = columna;
-}
-
-void lexer_detectar_idioma(struct LexerEstado lex) {
-    { /* unsafe */
-        int r = 0;
-        r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0;
-        if ((r == 0)) {
-            lexer_error(lex, (CadenaSegura){ .longitud = 48, .datos = "Falta declaracion de idioma #lang: en la linea 1" }, 1, 0);
-        }
-    }
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 void lexer_procesar_indentacion(struct LexerEstado lex, int ptr_linea, int len_linea) {
+    int espacios;
+    int r;
+    int nivel;
+    int tope;
     { /* unsafe */
-        int espacios = 0;
-        while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; };
+        espacios = 0;
+        while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; }
         if ((espacios < len_linea)) {
-            int r = 0;
+            r = 0;
             r = (((const char*)ptr_linea)[espacios] == '	') ? 1 : 0;
             if ((r == 1)) {
-                lexer_error(lex, (CadenaSegura){ .longitud = 25, .datos = "Tabulador prohibido E-101" }, lex.linea_actual, (espacios + 1));
+                lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Tabulador prohibido E-101"), .datos = "Tabulador prohibido E-101" }, lex.linea_actual, (espacios + 1));
                 return;
+                  /* [Lifetime Scope: exit depth=3] */
             }
+              /* [Lifetime Scope: exit depth=2] */
         }
         if (((espacios % 4) != 0)) {
-            lexer_error(lex, (CadenaSegura){ .longitud = 43, .datos = "Indentacion debe ser multiplo de 4 espacios" }, lex.linea_actual, 0);
+            lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Indentacion debe ser multiplo de 4 espacios"), .datos = "Indentacion debe ser multiplo de 4 espacios" }, lex.linea_actual, 0);
             return;
+              /* [Lifetime Scope: exit depth=2] */
         }
-        int nivel = (espacios / 4);
-        int tope = 0;
+        nivel = (espacios / 4);
+        tope = 0;
         tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0;
         if ((nivel > tope)) {
             lex.pila_indent[lex.nivel_pila] = nivel;
             lex.nivel_pila = lex.nivel_pila + 1;
             lexer_push_token(lex, T_INDENTAR, lex.linea_actual, 0);
+              /* [Lifetime Scope: exit depth=2] */
         }
         if ((nivel < tope)) {
             while ((nivel < tope)) {
                 lex.nivel_pila = lex.nivel_pila - 1;
                 tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0;
                 lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0);
+                  /* [Lifetime Scope: exit depth=3] */
             }
+              /* [Lifetime Scope: exit depth=2] */
         }
+          /* [Lifetime Scope: exit depth=1] */
     }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna) {
+    lexer_push_token_valor(lex, tipo, linea, columna, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void lexer_push_token_valor(struct LexerEstado lex, int tipo, int linea, int columna, CadenaSegura valor) {
+    { /* unsafe */
+        if (lex.total_tokens >= 16384) return;
+        lex.tokens[lex.total_tokens].tipo = tipo;
+        lex.tokens[lex.total_tokens].linea = linea;
+        lex.tokens[lex.total_tokens].columna = columna;
+        lex.tokens[lex.total_tokens].valor = valor;
+        lex.total_tokens = lex.total_tokens + 1;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto) {
-    int i = 0;
-    int r = 1;
+    int i;
+    int r;
+    int c;
+    int inicio;
+    CadenaSegura palabra = {0};
+    int tok;
+    i = 0;
+    r = 1;
     while ((r == 1)) {
         { /* unsafe */
             r = (i < len_texto) ? 1 : 0;
             if ((r == 0)) {
                 break;
+                  /* [Lifetime Scope: exit depth=3] */
             }
-            int c = 0;
+            c = 0;
             c = (unsigned char)((const char*)ptr_texto)[i];
             if ((c == 32)) {
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 47)) {
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 47)) {
                         return;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 34)) {
                 i = i + 1;
@@ -575,15 +1421,21 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                     c = (unsigned char)((const char*)ptr_texto)[i];
                     if ((c == 92)) {
                         i = i + 1;
-                    } else {
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    else {
                         if ((c == 34)) {
                             break;
+                              /* [Lifetime Scope: exit depth=6] */
                         }
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     i = i + 1;
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 39)) {
                 i = i + 1;
@@ -591,15 +1443,21 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                     c = (unsigned char)((const char*)ptr_texto)[i];
                     if ((c == 92)) {
                         i = i + 1;
-                    } else {
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    else {
                         if ((c == 39)) {
                             break;
+                              /* [Lifetime Scope: exit depth=6] */
                         }
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     i = i + 1;
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c >= 48)) {
                 if ((c <= 57)) {
@@ -607,31 +1465,61 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         c = (unsigned char)((const char*)ptr_texto)[i];
                         if ((c < 48)) {
                             break;
+                              /* [Lifetime Scope: exit depth=6] */
                         }
                         if ((c > 57)) {
                             break;
+                              /* [Lifetime Scope: exit depth=6] */
                         }
                         i = i + 1;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     continue;
+                      /* [Lifetime Scope: exit depth=4] */
                 }
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((es_letra(c) == 1)) {
+                inicio = i;
                 while ((i < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i];
                     if ((es_alnum(c) == 0)) {
                         if ((c != 95)) {
                             break;
+                              /* [Lifetime Scope: exit depth=6] */
                         }
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     i = i + 1;
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                _syn_texto_liberar(palabra);
+                palabra = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+                { /* unsafe */
+                    palabra = (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio};
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                tok = keyword_token(palabra, lex.idioma);
+                if ((tok == 0)) {
+                    tok = T_IDENTIFICADOR;
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                if ((tok == T_IDENTIFICADOR)) {
+                    lexer_push_token_valor(lex, tok, lex.linea_actual, (inicio + 1), palabra);
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                else {
+                    lexer_push_token(lex, tok, lex.linea_actual, (inicio + 1));
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 43)) {
                 lexer_push_token(lex, T_MAS, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 45)) {
                 if (((i + 1) < len_texto)) {
@@ -640,16 +1528,20 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         lexer_push_token(lex, T_FLECHA, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     if ((c == 60)) {
                         lexer_push_token(lex, T_FLECHA_IZQ, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 lexer_push_token(lex, T_MENOS, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 61)) {
                 if (((i + 1) < len_texto)) {
@@ -658,16 +1550,20 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         lexer_push_token(lex, T_FLECHA_DER, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
                     if ((c == 61)) {
                         lexer_push_token(lex, T_IGUAL, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 lexer_push_token(lex, T_ASIGNAR, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 33)) {
                 if (((i + 1) < len_texto)) {
@@ -676,10 +1572,13 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         lexer_push_token(lex, T_DISTINTO, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 60)) {
                 if (((i + 1) < len_texto)) {
@@ -688,11 +1587,14 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         lexer_push_token(lex, T_MENOR_IGUAL, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 lexer_push_token(lex, T_MENOR, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 62)) {
                 if (((i + 1) < len_texto)) {
@@ -701,161 +1603,143 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         lexer_push_token(lex, T_MAYOR_IGUAL, lex.linea_actual, (i + 1));
                         i = i + 2;
                         continue;
+                          /* [Lifetime Scope: exit depth=5] */
                     }
+                      /* [Lifetime Scope: exit depth=4] */
                 }
                 lexer_push_token(lex, T_MAYOR, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 42)) {
                 lexer_push_token(lex, T_POR, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 47)) {
                 lexer_push_token(lex, T_DIV, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 37)) {
                 lexer_push_token(lex, T_MOD, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 40)) {
                 lexer_push_token(lex, T_PAREN_IZQ, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 41)) {
                 lexer_push_token(lex, T_PAREN_DER, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 58)) {
                 lexer_push_token(lex, T_DOSPUNTOS, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 44)) {
                 lexer_push_token(lex, T_COMA, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 46)) {
                 lexer_push_token(lex, T_PUNTO, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 38)) {
                 lexer_push_token(lex, T_AMPERSAND, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 59)) {
                 lexer_push_token(lex, T_PUNTOCOMA, lex.linea_actual, (i + 1));
                 i = i + 1;
                 continue;
+                  /* [Lifetime Scope: exit depth=3] */
             }
-            lexer_error(lex, (CadenaSegura){ .longitud = 19, .datos = "Caracter inesperado" }, lex.linea_actual, (i + 1));
+            lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Caracter inesperado"), .datos = "Caracter inesperado" }, lex.linea_actual, (i + 1));
             i = i + 1;
+              /* [Lifetime Scope: exit depth=2] */
         }
         continue;
+          /* [Lifetime Scope: exit depth=1] */
     }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int str_char(CadenaSegura s, int i) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = (i >= 0 && i < s.longitud) ? (unsigned char)s.datos[i] : 0;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int str_char_at(int ptr, int i) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = (unsigned char)((const char*)ptr)[i];
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int str_len(CadenaSegura s) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = s.longitud;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int str_len_ptr(int ptr) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = (int)strlen((const char*)ptr);
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
 }
 
 int tokenizar(CadenaSegura fuente) {
-    int _i = 0;
-    int _linea = 1;
-    int _columna = 1;
-    int _token_count = 0;
+    int _i=0, _linea=1, _columna=1, _token_count=0;
     while (_i < fuente.longitud) {
         char _c = fuente.datos[_i];
-        if (_c == ' ' || _c == '\t') { _i++; _columna++; continue; }
-        if (_c == '\r') { _i++; continue; }
-        if (_c == '\n') { _i++; _linea++; _columna = 1; continue; }
-        if (_c == '/' && _i + 1 < fuente.longitud && fuente.datos[_i + 1] == '/') {
-            while (_i < fuente.longitud && fuente.datos[_i] != '\n') { _i++; }
-            continue;
+        if (_c==' '||_c=='\t'){_i++;_columna++;continue;}
+        if (_c=='\r'){_i++;continue;}
+        if (_c=='\n'){_i++;_linea++;_columna=1;continue;}
+        if (_c=='/'&&_i+1<fuente.longitud&&fuente.datos[_i+1]=='/'){
+            while(_i<fuente.longitud&&fuente.datos[_i]!='\n')_i++;continue;
         }
-        if (_c == '"' || _c == '\'') {
-            char _q = _c; int _start = _i; _i++; _columna++;
-            while (_i < fuente.longitud && fuente.datos[_i] != _q) { _i++; _columna++; }
-            if (_i >= fuente.longitud) {
-                fprintf(stderr, "  TOKEN STRING_UNCLOSED L%d:%d\n", _linea, _columna);
-                break;
-            }
-            _i++; _columna++;
-            _token_count++;
-            fprintf(stderr, "  TOKEN STRING L%d:%d\n", _linea, _columna);
-        }
-        else if (_c >= '0' && _c <= '9') {
-            int _start = _i;
-            while (_i < fuente.longitud && fuente.datos[_i] >= '0' && fuente.datos[_i] <= '9') { _i++; }
-            _columna += _i - _start;
-            _token_count++;
-            fprintf(stderr, "  TOKEN NUMBER L%d:%d\n", _linea, _columna);
-        }
-        else if ((_c >= 'a' && _c <= 'z') || (_c >= 'A' && _c <= 'Z') || _c == '_') {
-            int _start = _i;
-            while (_i < fuente.longitud && (
-                (fuente.datos[_i] >= 'a' && fuente.datos[_i] <= 'z') ||
-                (fuente.datos[_i] >= 'A' && fuente.datos[_i] <= 'Z') ||
-                (fuente.datos[_i] >= '0' && fuente.datos[_i] <= '9') ||
-                fuente.datos[_i] == '_'
-            )) { _i++; }
-            int _len_id = _i - _start;
-            char _buf_id[256]; int _clip = _len_id < 255 ? _len_id : 255;
-            strncpy(_buf_id, fuente.datos + _start, _clip); _buf_id[_clip] = 0;
-            _columna += _len_id;
-            _token_count++;
-            typedef struct { const char* p; int t; } _KWE;
-            static const _KWE _kws[] = {
-                {"si",1},{"if",1},{"se",1},{"wenn",1},
-                {"sino",2},{"else",2},{"sinon",2},{"senao",2},{"sonst",2},{"altrimenti",2},
-                {"funcion",3},{"function",3},{"fonction",3},{"funcao",3},{"funktion",3},{"funzione",3},
-                {"retornar",4},{"return",4},{"retourner",4},{"rueckgabe",4},{"restituisci",4},
-                {"lanzar",5},{"spawn",5},{"lancer",5},{"lancar",5},{"starten",5},{"lancia",5},
-                {"recuperar",6},{"recover",6},{"recuperer",6},{"wiederherstellen",6},{"recupera",6},
-                {"escuchar",7},{"listen",7},{"ecouter",7},{"escutar",7},{"hoeren",7},{"ascolta",7},
-                {"mientras",8},{"while",8},{"tantque",8},{"enquanto",8},{"waehrend",8},{"mentre",8},
-                {"importar",9},{"import",9},{"importer",9},{"importieren",9},{"importa",9},
-                {"romper",10},{"break",10},{"rompre",10},{"parar",10},{"abbrechen",10},{"interrompi",10},
-                {"siguiente",11},{"continue",11},{"continuer",11},{"continuar",11},{"fortsetzen",11},{"continua",11},
-                {"estructura",37},{"struct",37},{"structure",37},{"estrutura",37},{"struktur",37},{"struttura",37},
-                {"y",38},{"and",38},{"et",38},{"e",38},{"und",38},
-                {"o",39},{"or",39},{"ou",39},{"oder",39},
-                {"no",40},{"not",40},{"non",40},{"nao",40},{"nicht",40},
-                {"verdadero",41},{"true",41},{"vrai",41},{"verdadeiro",41},{"wahr",41},{"vero",41},
-                {"falso",42},{"false",42},{"faux",42},{"falsch",42},
-                {"inseguro",43},{"unsafe",43},
-                {"importar_c",44},{"import_c",44},{"importer_c",44},{"importa_c",44},
-                {"externo",46},{"extern",46},{"externe",46},{"esterno",46},
-                {NULL,0}
-            };
-            int _kt = 0;
-            for (int _ki = 0; _kws[_ki].p; _ki++) {
-                if (strcmp(_buf_id, _kws[_ki].p) == 0) { _kt = _kws[_ki].t; break; }
-            }
-            if (_kt)
-                fprintf(stderr, "  TOKEN %d L%d:%d\n", _kt, _linea, _columna);
-            else
-                fprintf(stderr, "  TOKEN IDENTIFIER L%d:%d\n", _linea, _columna);
-        }
-        else {
-            _i++; _columna++;
-            _token_count++;
-            fprintf(stderr, "  TOKEN CHAR(%c) L%d:%d\n", _c, _linea, _columna);
-        }
+        if(_c=='\"'||_c=='\''){char _q=_c;int _st=_i;_i++;_columna++;while(_i<fuente.longitud&&fuente.datos[_i]!=_q){_i++;_columna++;}if(_i>=fuente.longitud){break;}_i++;_columna++;_token_count++;}
+        else if(_c>='0'&&_c<='9'){int _st=_i;while(_i<fuente.longitud&&fuente.datos[_i]>='0'&&fuente.datos[_i]<='9')_i++;_columna+=_i-_st;_token_count++;}
+        else if((_c>='a'&&_c<='z')||(_c>='A'&&_c<='Z')||_c=='_'){int _st=_i;while(_i<fuente.longitud&&((fuente.datos[_i]>='a'&&fuente.datos[_i]<='z')||(fuente.datos[_i]>='A'&&fuente.datos[_i]<='Z')||(fuente.datos[_i]>='0'&&fuente.datos[_i]<='9')||fuente.datos[_i]=='_'))_i++;_columna+=_i-_st;_token_count++;}
+        else{_i++;_columna++;_token_count++;}
     }
-    fprintf(stderr, "Total tokens: %d\n", _token_count);
     return _token_count;
-}
-
-int main(int argc, char** argv) {
-    _g_argc = argc;
-    _g_argv = argv;
-    pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    synapse_esperar_hilos();
-    return 0;
 }

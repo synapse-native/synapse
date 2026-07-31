@@ -254,8 +254,15 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
 
 
 def _emitir_token_defines(ctx: GeneratorContext):
-    """Emite #define T_* desde TokenID enum (Manual 2 §2.3)."""
-    from compilador.ast_nodes import TokenID
+    """Emite #define T_* desde TokenID enum (Manual 2 §2.3).
+
+    Fuente de verdad = el programa compilado: si el AST declara constantes
+    T_* propias (compilador auto-hospedado, p.ej. T_FIN = 57 en lexer.syn),
+    se usan ESOS valores; el enum Python (EOF=59) queda como fallback para
+    programas que no las declaran. Esto elimina de raiz la discrepancia
+    T_FIN (57 vs 59) en la compilacion modular.
+    """
+    from compilador.ast_nodes import TokenID, StmtConstante
     _T_MAP = {
         'IF':'T_IF','ELSE':'T_ELSE','FUNCTION':'T_FUNCION','RETURN':'T_RETORNAR',
         'SPAWN':'T_LANZAR','RECOVER':'T_RECUPERAR','LISTEN':'T_ESCUCHAR',
@@ -277,10 +284,17 @@ def _emitir_token_defines(ctx: GeneratorContext):
         'PARA':'T_PARA','LBRACKET':'T_CORCH_IZQ','RBRACKET':'T_CORCH_DER',
         'EOF':'T_FIN','DOT':'T_PUNTO',
     }
+    # Valores T_* declarados en el propio programa (fuente de verdad = codigo)
+    ast_vals = {}
+    for _s in ctx.programa.sentencias:
+        if isinstance(_s, StmtConstante) and _s.nombre.startswith('T_'):
+            _v = getattr(_s.valor, 'valor', None)
+            if isinstance(_v, int):
+                ast_vals[_s.nombre] = _v
     ctx.write_line("// --- Token ID constants (Manual 2 §2.3) ---")
     for name in TokenID._member_names_:
         cname = _T_MAP.get(name, f'T_{name}')
-        val = TokenID[name].value
+        val = ast_vals.get(cname, TokenID[name].value)
         # Usar #ifndef guard para evitar redefinicion en unity file
         ctx.write_line(f"#ifndef {cname}")
         ctx.write_line(f"#define {cname} ({val})")
@@ -335,6 +349,28 @@ def _emitir_error_defines(ctx: GeneratorContext):
     ]:
         ctx.write_line(f"#ifndef {extra_name}")
         ctx.write_line(f"#define {extra_name} ({extra_val})")
+        ctx.write_line(f"#endif")
+    ctx.write_line("")
+
+
+def _emitir_constantes_programa(ctx: GeneratorContext):
+    """Emite #define para constantes del programa (StmtConstante) que no sean
+    T_*/NODO_*/ERR_* (ya emitidas por sus emisores dedicados), p.ej.
+    IDIOMA_ES/EN/FR/PT del lexer nativo. Con guards #ifndef para que los
+    modulos modulares compartan las constantes sin redefinicion.
+    """
+    ctx.write_line("// --- Constantes del programa (fuente de verdad = codigo) ---")
+    for _s in ctx.programa.sentencias:
+        if not isinstance(_s, StmtConstante):
+            continue
+        _nombre = _s.nombre
+        if _nombre.startswith('T_') or _nombre.startswith('NODO_') or _nombre.startswith('ERR_'):
+            continue
+        _v = getattr(_s.valor, 'valor', None)
+        if not isinstance(_v, int):
+            continue
+        ctx.write_line(f"#ifndef {_nombre}")
+        ctx.write_line(f"#define {_nombre} ({_v})")
         ctx.write_line(f"#endif")
     ctx.write_line("")
 
@@ -414,10 +450,11 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define _GEN_TMP_SIZE (4096)")
     ctx.write_line("#include \"librerias/embedded_libs.h\"")
     ctx.write_line("")
-    # Emit T_*, NODO_*, ERR_* constants for modular compilation
+    # Emit T_*, NODO_*, ERR_*, y constantes del programa para compilacion modular
     _emitir_token_defines(ctx)
     _emitir_nodo_defines(ctx)
     _emitir_error_defines(ctx)
+    _emitir_constantes_programa(ctx)
     # NOTA: _syn_* y _toml_* externs ya estan en #include "librerias/embedded_libs.h"
     ctx.write_line("extern char _gen_tmp_buf[4096];")
     ctx.write_line("")

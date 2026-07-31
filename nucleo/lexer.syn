@@ -384,13 +384,17 @@ estructura LexerEstado:
     error_columna: entero
 
 // --- Add token to list ---
-funcion lexer_push_token(lex: LexerEstado, tipo: entero, linea: entero, columna: entero) -> nulo:
+funcion lexer_push_token_valor(lex: LexerEstado, tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
     inseguro:
         asm("if (lex.total_tokens >= 16384) return")
         asm("lex.tokens[lex.total_tokens].tipo = tipo")
         asm("lex.tokens[lex.total_tokens].linea = linea")
         asm("lex.tokens[lex.total_tokens].columna = columna")
+        asm("lex.tokens[lex.total_tokens].valor = valor")
         asm("lex.total_tokens = lex.total_tokens + 1")
+
+funcion lexer_push_token(lex: LexerEstado, tipo: entero, linea: entero, columna: entero) -> nulo:
+    lexer_push_token_valor(lex, tipo, linea, columna, "")
 
 // --- Report lexer error ---
 funcion lexer_error(lex: LexerEstado, mensaje: cadena, linea: entero, columna: entero) -> nulo:
@@ -519,7 +523,10 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                 tok = keyword_token(palabra, lex.idioma)
                 si tok == 0:
                     tok = T_IDENTIFICADOR
-                lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
+                si tok == T_IDENTIFICADOR:
+                    lexer_push_token_valor(lex, tok, lex.linea_actual, inicio + 1, palabra)
+                sino:
+                    lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
                 siguiente
             si c == 43:
                 lexer_push_token(lex, T_MAS, lex.linea_actual, i + 1)
