@@ -10,7 +10,7 @@ synapse
 #lang: es
 Idiomas soportados: es (español), en (inglés), fr (francés), pt (portugués).
 Codificación: UTF-8 estricto.
-Comentarios: // línea y /* bloque */.
+Comentarios: // línea y /* */ bloque.
 
 2.2 Gramática Formal (EBNF) — Completa
 ebnf
@@ -115,7 +115,7 @@ Tipo Sintáctico	Semántica	Tamaño (ABI)	Notas
 entero	Entero con signo de 64 bits	8 bytes	Alias de int64_t
 decimal	Punto flotante doble precisión	8 bytes	Alias de double
 booleano	Booleano lógico	1 byte	verdadero / falso
-texto	Cadena UTF-8 segura (longitud + buffer)	16 bytes (estructura)	No termina en \0 internamente, pero se convierte para FFI
+texto	Cadena UTF-8 segura (longitud + buffer)	16 bytes	No termina en \0 internamente, pero se convierte para FFI
 caracter	Carácter UTF-8 (punto de código)	1-4 bytes	Alias de char (C)
 nulo	Ausencia de valor	0 bytes	Solo para funciones sin retorno
 puntero	Puntero opaco (void*)	8 bytes	Solo dentro de inseguro
@@ -159,3 +159,9 @@ Nivel	Operadores	Asociatividad
 7	y (AND lógico)	Izquierda
 8	o (OR lógico)	Izquierda
 9 (mínima)	= (asignación), <- (enviar canal)	Derecha
+2.7 Tests Obligatorios para esta Etapa
+Test	Comando	Criterio
+Lexer multi-idioma	pytest tests/unit/test_lexer.py -v	100% pass, >95% cobertura
+Parser EBNF	pytest tests/unit/test_parser.py -v	100% pass, >95% cobertura
+Contratos requiere/garantiza	pytest tests/integration/test_contracts.py -v	100% pass
+Tipos algebraicos (match exhaustivo)	pytest tests/integration/test_match.py -v	Detección de ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
