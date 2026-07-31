@@ -79,7 +79,7 @@ typedef struct Nodo {
         // ... más uniones para cada tipo de nodo
     };
 } Nodo;
-Constantes de tipo de nodo (extracto):
+Constantes de tipo de nodo (tabla completa — 46 tipos reales definidos en nucleo/parser_constantes.syn):
 
 Constante	Valor	Descripción
 NODO_PROGRAMA	1	Raíz del archivo
@@ -87,12 +87,47 @@ NODO_FUNCION	2	Definición de función
 NODO_SI	3	Condicional si
 NODO_MIENTRAS	4	Bucle mientras
 NODO_RETORNAR	5	Sentencia retornar
-NODO_ASIGNACION	6	Asignación =
-NODO_LLAMADA	8	Llamada a función
-NODO_ESTRUCTURA	13	Definición de estructura
-NODO_CANAL	22	Creación de canal
-NODO_CONTRATO	46	Bloque requiere/garantiza
+NODO_EXPR	6	Sentencia de expresión
+NODO_ASIGNACION	7	Asignación =
+NODO_IDENTIFICADOR	8	Referencia a identificador
+NODO_NUMERO	9	Literal numérico (entero)
+NODO_DECIMAL	10	Literal numérico (decimal)
+NODO_CADENA_LIT	11	Literal de cadena
+NODO_BINARIA	12	Operación binaria (+, -, *, /, ...)
+NODO_UNARIA	13	Operación unaria (-, !, ...)
+NODO_LLAMADA	14	Llamada a función
+NODO_PARAMETRO	15	Parámetro de función
+NODO_ESTRUCTURA	16	Definición de estructura
+NODO_IMPORTAR	17	Sentencia importar
+NODO_LANZAR	18	Sentencia lanzar (spawn)
+NODO_ESCUCHAR	19	Sentencia escuchar (listen)
+NODO_ROMPER	20	Sentencia romper (break)
+NODO_SIGUIENTE	21	Sentencia siguiente (continue)
+NODO_BOOLEANO	22	Literal booleano (verdadero/falso)
+NODO_CONSTANTE	23	Declaración de constante
+NODO_INSEGURO	24	Bloque inseguro
+NODO_IMPORTAR_C	25	Importar código C
+NODO_EXTERNO	26	Declaración externa
+NODO_RECUPERAR	27	Sentencia recuperar (recover)
+NODO_TENSOR	28	Expresión tensor
+NODO_INDICE	29	Acceso por índice []
+NODO_TRANSFERIDO	30	Argumento transferido (ownership move)
+NODO_ACCESO_CAMPO	31	Acceso a campo (objeto.campo)
+NODO_ASIGNACION_CAMPO	32	Asignación a campo
+NODO_PARRAFO	33	Párrafo (bloque de sentencias)
+NODO_DECLARACION	34	Declaración de variable
+NODO_LOG	35	Llamada de log
+NODO_PUNTERO	36	Tipo puntero
+NODO_DEREF	37	Desreferencia de puntero
+NODO_COINCIDIR	38	Sentencia coincidir (match)
+NODO_CASO	39	Caso de coincidir
+NODO_ASM	40	Bloque asm
+NODO_CANAL_CREAR	41	Creación de canal
+NODO_ENVIAR_CANAL	42	Envío a canal
+NODO_RECIBIR_CANAL	43	Recepción de canal
+NODO_VACIO	44	Nodo vacío
 NODO_PARA	45	Bucle para
+NODO_CONTRATO	46	Bloque requiere/garantiza
 AST Aplanado (SemNodo[]):
 
 Para el análisis semántico, la linked-list se aplana a un array contiguo:
