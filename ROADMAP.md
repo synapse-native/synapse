@@ -361,13 +361,13 @@
 | M20.5 Saneamiento crítico pre-despliegue | Excisión toolchain (10,569 archivos, repo de ~112MB a ~2MB), LICENSE MIT, README.md v5.1.1-industrial, CI workflows actualizados, .gitignore ampliado, ~650 fuzz artifacts limpiados. Push + tag v5.1.1-industrial desplegado en GitHub. | ✅✅ COMPLETADO |
 
 
-### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — REGISTRADOS (M21 parcial, M22 completo)
+### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — COMPLETADA
 
 *Hitos avanzados ya presentes en el código base y registrados formalmente en la línea de tiempo oficial.*
 
 | Hito | Descripción | Evidencia en código | Estado |
 |------|-------------|---------------------|--------|
-| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2) y tracking (M21.3) según Manual 4 §4.3. M21.4 (resolución de regiones) diferido: placeholder en analizador_semantico.syn L681 | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn (L120-121, L470, L667-683) | ⚠️ PARCIAL (M21.1-M21.3 implementados; M21.4 pendiente) |
+| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2), tracking (M21.3) y resolución de regiones (M21.4) según Manual 4 §4.3. M21.4: region graph + union-find cableados en el analizador auto-hospedado (region_resolver unifica EQUALS, detecta ciclos OUTLIVES y verifica violaciones kind/ámbito) | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn; nucleo/principal.syn; compilador/generator/context.py (POINTER_TYPES RegionGraph/UnionFind); Commit 3b3841c | ✅✅ COMPLETADO |
 | M22 Refactorización RAII y Scopes | Scope stack RAII (M22.2), destructor map y modo --safe con aserciones de lifetime en C generado (M22.5) | nucleo/generator.syn (L141, L173, L203-208, L339-345); tests/validate_raii_m22_4.c; tests/validate_raii_scopes.c | ✅✅ COMPLETADO |
 
 
@@ -419,9 +419,9 @@
 | 18 | CanalRemoto v2 | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 19 | Optimización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 20 | Certificación de Producción y Hardening Final | 2026-07-30 | ✅✅ COMPLETADO |
-| 21 | Hitos Avanzados M21-M22 | 2026-07-31 | ✅ REGISTRADO (M21 parcial, M22 completo) |
+| 21 | Hitos Avanzados M21-M22 | 2026-08-01 | ✅✅ COMPLETADO |
 
-**Total:** 22 fases | **21 COMPLETADAS (✅✅ auditadas) + 1 REGISTRADA PARCIAL (FASE 21, M21 pendiente)** | **0 EN PROGRESO** | **0 PENDIENTES**
+**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **0 EN PROGRESO** | **0 PENDIENTES**
 
 ---
 
@@ -456,6 +456,8 @@ Fase 19 (Optimización) ← COMPLETADA ✅
 | 2026-07-30 | 5.1.1-industrial | M0.3.8: Roadmap actualizado con ✅✅ doble check de Fase 0 a Fase 19 + pipeline bootstrap Fase 20. Sanitizadores (ASan/UBSan/TSan): infraestructura funcional (fuzz_engine.py/fuzz_engine.py --sanitize/run_stress.py --tsan), ejecución completa pendiente. 84/84 unit tests PASS. Auditación lexicográfico/alfabético/determinismo completada. | Buffy (Freebuff AI) |
 
 | 2026-07-30 | 5.1.1-industrial | M20.1–M20.5: Certificación de producción completa. Empaquetado multi-target, SBOM SPDX 2.3, validación cruzada (337/337 tests), sellado criptográfico Ed25519 + SLSA L3, checklist Manual 9 §9.7, saneamiento pre-despliegue. Excisión toolchain (10,569 archivos), LICENSE MIT, README.md v5.1.1-industrial. Push a GitHub + tag v5.1.1-industrial creado. **Fase 20 certificada. Proyecto completo.** | Buffy (Freebuff AI) |
+
+| 2026-08-01 | 5.1.1-industrial | M21.4: Resolución de regiones/lifetimes completada en el analizador auto-hospedado (region graph + union-find, paridad Manual 4 §4.3). Commit 3b3841c. Validado: bootstrap stage-2/stage-3 byte-idénticos (S2==S3), suite completa 667 passed / 9 skipped / 1 xfailed. **Fase 21 marcada COMPLETADA (22/22 fases).** | Synapse dev (opencode) |
 ---
 
 *Roadmap vivo — toda fase marcada COMPLETADA ha sido verificada contra archivos, commits y tests existentes en el repositorio.*
