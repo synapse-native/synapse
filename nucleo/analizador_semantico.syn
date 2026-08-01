@@ -129,6 +129,11 @@ estructura AnalizadorSemanticoEst:
     // M21.4: Borrow tracking (Manual 4 S4.2)
     prestamos: SemPrestamo
     total_prestamos: entero
+    // M21.4: Lifetime region graph (Manual 4.3) — wired desde principal.syn
+    region_graph: RegionGraph
+    uf: UnionFind
+    lt_kind: cadena
+    lt_ambito: cadena
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
@@ -490,6 +495,13 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
             si h_tipo == NODO_IDENTIFICADOR:
                 inseguro:
                     asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_cs); } } } }")
+                // M21.4: restriccion OUTLIVES (paridad _inferir_tipo Manual 4.3)
+                inseguro:
+                    asm("{ int _lt = est->proximo_lifetime;")
+                    asm("    ((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;")
+                    asm("    ((int*)est->lt_kind.datos)[_lt] = LT_LOCAL; ((int*)est->lt_ambito.datos)[_lt] = est->tabla->nivel_actual;")
+                    asm("    region_agregar_restriccion(est->region_graph, REGION_OUTLIVES, 0, _lt, idx);")
+                    asm("    est->proximo_lifetime = _lt + 1; }")
         retornar
     // NODO_BINARIA (12): recursar en operadores
     si tipo == NODO_BINARIA:
@@ -793,9 +805,12 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
-                // M21.3: Initialize lifetime tracking for this function scope
+                // M21.4: Initialize lifetime tracking for this function scope (Manual 4.3)
                 inseguro:
-                    asm("est->proximo_lifetime = 0")
+                    asm("est->proximo_lifetime = 0;")
+                    asm("est->region_graph->total_constraints = 0;")
+                    asm("for (int _ui = 0; _ui < est->uf->max; _ui++) { ((int*)est->uf->parent.datos)[_ui] = -1; ((int*)est->uf->rank.datos)[_ui] = 0; }")
+                    asm("((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;")
                 // Analyze function body
                 cuerpo = nodo_hijo_izq(est, stmt)
                 stmt_cuerpo = cuerpo
@@ -807,11 +822,11 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
                     analizar_sentencia(est, stmt_cuerpo)
                     inseguro:
                         asm("stmt_cuerpo = est->nodos[stmt_cuerpo].hermano")
-                // M21.3: Lifetime resolution placeholder — full integration deferred to M21.4
+                // M21.4: Resolver grafo de regiones (Manual 4.3) — paridad M21.3
                 inseguro:
-                    asm("// [M21.3 placeholder] region_resolver requires struct definitions from lifetimes.syn")
-                    asm("// which are not yet visible in the generated C headers. The Python-side")
-                    asm("// semantic_checker.py has the full implementation.")
+                    asm("if (est->region_graph->total_constraints > 0) {")
+                    asm("    region_resolver(est->region_graph, est->uf, est);")
+                    asm("}")
                 tabla_salir_scope(est)
                 est.func_actual = ""
         inseguro:

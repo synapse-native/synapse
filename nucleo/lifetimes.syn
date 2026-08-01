@@ -40,8 +40,8 @@ estructura RegionGraph:
 
 // --- Union-Find data structures (M21.2) ---
 estructura UnionFind:
-    parent: entero
-    rank: entero
+    parent: cadena          // Array de padres (CadenaSegura.datos -> int*)
+    rank: cadena            // Array de rangos (CadenaSegura.datos -> int*)
     total: entero
     max: entero
 
@@ -51,8 +51,8 @@ funcion uf_init(uf: UnionFind, n: entero) -> nulo:
     i = 0
     mientras i < n:
         inseguro:
-            asm("uf.parent[i] = -1")
-            asm("uf.rank[i] = 0")
+            asm("((int*)uf->parent.datos)[i] = -1")
+            asm("((int*)uf->rank.datos)[i] = 0")
             asm("i = i + 1")
 
 funcion uf_find(uf: UnionFind, x: entero) -> entero:
@@ -60,12 +60,12 @@ funcion uf_find(uf: UnionFind, x: entero) -> entero:
     inseguro:
         asm("// Path compression: buscar raiz, luego comprimir")
         asm("int _r = x;")
-        asm("while (_r >= 0 && uf.parent[_r] >= 0) { _r = uf.parent[_r]; }")
+        asm("while (_r >= 0 && ((int*)uf->parent.datos)[_r] >= 0) { _r = ((int*)uf->parent.datos)[_r]; }")
         asm("if (_r < 0) { _r = x; }")
         asm("// Path compression: aplanar el arbol")
-        asm("while (x >= 0 && uf.parent[x] >= 0) {")
-        asm("    int _next = uf.parent[x];")
-        asm("    uf.parent[x] = _r;")
+        asm("while (x >= 0 && ((int*)uf->parent.datos)[x] >= 0) {")
+        asm("    int _next = ((int*)uf->parent.datos)[x];")
+        asm("    ((int*)uf->parent.datos)[x] = _r;")
         asm("    x = _next;")
         asm("}")
         asm("raiz = _r;")
@@ -78,13 +78,13 @@ funcion uf_union(uf: UnionFind, a: entero, b: entero) -> nulo:
         retornar
     inseguro:
         asm("// Union by rank")
-        asm("if (uf.rank[ra] < uf.rank[rb]) {")
-        asm("    uf.parent[ra] = rb;")
-        asm("} else if (uf.rank[ra] > uf.rank[rb]) {")
-        asm("    uf.parent[rb] = ra;")
+        asm("if (((int*)uf->rank.datos)[ra] < ((int*)uf->rank.datos)[rb]) {")
+        asm("    ((int*)uf->parent.datos)[ra] = rb;")
+        asm("} else if (((int*)uf->rank.datos)[ra] > ((int*)uf->rank.datos)[rb]) {")
+        asm("    ((int*)uf->parent.datos)[rb] = ra;")
         asm("} else {")
-        asm("    uf.parent[rb] = ra;")
-        asm("    uf.rank[ra] = uf.rank[ra] + 1;")
+        asm("    ((int*)uf->parent.datos)[rb] = ra;")
+        asm("    ((int*)uf->rank.datos)[ra] = ((int*)uf->rank.datos)[ra] + 1;")
         asm("}")
 
 funcion uf_mismo_set(uf: UnionFind, a: entero, b: entero) -> booleano:
@@ -107,11 +107,11 @@ funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
         asm("    while (_sp > 0 && !_ciclo) {")
         asm("        int _cur = _stack[_sp - 1];")
         asm("        int _has_child = 0;")
-        asm("        for (int _ci = 0; _ci < g.total_constraints; _ci++) {")
-        asm("            if (g.constraints[_ci].tipo != 0) continue;")
-        asm("            int _src = uf_find(uf, g.constraints[_ci].origen);")
+        asm("        for (int _ci = 0; _ci < g->total_constraints; _ci++) {")
+        asm("            if (g->constraints[_ci].tipo != 0) continue;")
+        asm("            int _src = uf_find(uf, g->constraints[_ci].origen);")
         asm("            if (_src != _cur) continue;")
-        asm("            int _dst_root = uf_find(uf, g.constraints[_ci].destino);")
+        asm("            int _dst_root = uf_find(uf, g->constraints[_ci].destino);")
         asm("            if (_estado[_dst_root] == 1) { _ciclo = 1; _ciclo_idx = _ci; break; }")
         asm("            if (_estado[_dst_root] == 0) {")
         asm("                _stack[_sp++] = _dst_root;")
@@ -130,33 +130,41 @@ funcion detectar_ciclo_outlives(g: RegionGraph, uf: UnionFind) -> entero:
 
 // --- M21.4: Verify OUTLIVES post-unification ---
 // Returns index of violated constraint, -1 if all OK.
-funcion verificar_outlives(g: RegionGraph, uf: UnionFind) -> entero:
+funcion verificar_outlives(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
     i = 0
     idx_violacion = -1
     mientras i < g.total_constraints:
         inseguro:
-            asm("if (g.constraints[i].tipo == 0) { // REGION_OUTLIVES\n")
-            asm("    int _o = uf_find(uf, g.constraints[i].origen);\n")
-            asm("    int _d = uf_find(uf, g.constraints[i].destino);\n")
-            asm("    if (_o != _d) { // Diferentes lifetime roots\n")
-            asm("        // Por ahora, asumimos que roots diferentes implican violacion\n")
-            asm("        // (la validacion semantica completa requiere metadatos de tipo)\n")
-            asm("        idx_violacion = i;\n")
-            asm("    }\n")
+            asm("if (g->constraints[i].tipo == 0) { // REGION_OUTLIVES")
+            asm("    int _o = uf_find(uf, g->constraints[i].origen);")
+            asm("    int _d = uf_find(uf, g->constraints[i].destino);")
+            asm("    if (_o != _d) { // Diferentes roots: chequeo semantico kind/ambito")
+            asm("        int _ko = ((int*)est->lt_kind.datos)[g->constraints[i].origen];")
+            asm("        int _ao = ((int*)est->lt_ambito.datos)[g->constraints[i].origen];")
+            asm("        int _kd = ((int*)est->lt_kind.datos)[g->constraints[i].destino];")
+            asm("        int _ad = ((int*)est->lt_ambito.datos)[g->constraints[i].destino];")
+            asm("        int _ok = 1;")
+            asm("        if (_ko == LT_ESTATICO) { _ok = 1; }")
+            asm("        else if (_ko == LT_PARAMETRICO) { _ok = (_kd == LT_LOCAL || _kd == LT_ELIDIDO || _kd == LT_PARAMETRICO); }")
+            asm("        else if (_ko == LT_LOCAL && _kd == LT_LOCAL) { _ok = (_ao <= _ad); }")
+            asm("        else if (_ko == _kd) { _ok = 1; }")
+            asm("        else if (_ko == LT_ELIDIDO) { _ok = 1; }")
+            asm("        else { _ok = 0; }")
+            asm("        if (!_ok) { idx_violacion = i; }")
+            asm("    }")
             asm("}")
             asm("i = i + 1")
         si idx_violacion >= 0:
             romper
     retornar idx_violacion
 
-// --- Main resolver: unify lifetimes, detect cycles, verify constraints (M21.4) ---
-funcion region_resolver(g: RegionGraph, uf: UnionFind, est: entero) -> entero:
+funcion region_resolver(g: RegionGraph, uf: UnionFind, est: AnalizadorSemanticoEst) -> entero:
     // Paso 1: Unificar EQUALS constraints via union-find
     i = 0
     mientras i < g.total_constraints:
         inseguro:
-            asm("if (g.constraints[i].tipo == 1) {")
-            asm("    uf_union(uf, g.constraints[i].origen, g.constraints[i].destino);")
+            asm("if (g->constraints[i].tipo == 1) {")
+            asm("    uf_union(uf, g->constraints[i].origen, g->constraints[i].destino);")
             asm("}")
             asm("i = i + 1")
 
@@ -166,20 +174,19 @@ funcion region_resolver(g: RegionGraph, uf: UnionFind, est: entero) -> entero:
     si ciclo_idx >= 0:
         inseguro:
             asm("{ CadenaSegura _msg = { .longitud = 40, .datos = \"Ciclo de dependencia de lifetimes\" };")
-            asm("   sem_error(est, ERR_MEM_LIFETIME_CYCLE, ciclo_idx, _msg); }")
+            asm("   sem_error(est, ERR_MEM_LIFETIME_CYCLE, g->constraints[ciclo_idx].linea, _msg); }")
         retornar 1
 
     // Paso 3: Verificar OUTLIVES post-unificacion (M21.4 - Manual 4.3)
-    violacion_idx = verificar_outlives(g, uf)
+    violacion_idx = verificar_outlives(g, uf, est)
     si violacion_idx >= 0:
         inseguro:
             asm("{ CadenaSegura _msg = { .longitud = 44, .datos = \"Violacion de lifetime: referencia no vive suficiente\" };")
-            asm("   sem_error(est, ERR_MEM_LIFETIME_MISMATCH, violacion_idx, _msg); }")
+            asm("   sem_error(est, ERR_MEM_LIFETIME_MISMATCH, g->constraints[violacion_idx].linea, _msg); }")
         retornar 2
 
     retornar 0
 
-// --- Initialization ---
 funcion region_graph_nuevo(max: entero) -> RegionGraph:
     g = RegionGraph()
     g.total_constraints = 0
@@ -190,11 +197,11 @@ funcion region_agregar_restriccion(g: RegionGraph, tipo: entero, origen: entero,
     si g.total_constraints >= g.max_constraints:
         retornar
     inseguro:
-        asm("g.constraints[g.total_constraints].tipo = tipo")
-        asm("g.constraints[g.total_constraints].origen = origen")
-        asm("g.constraints[g.total_constraints].destino = destino")
-        asm("g.constraints[g.total_constraints].linea = linea")
-        asm("g.total_constraints = g.total_constraints + 1")
+        asm("g->constraints[g->total_constraints].tipo = tipo")
+        asm("g->constraints[g->total_constraints].origen = origen")
+        asm("g->constraints[g->total_constraints].destino = destino")
+        asm("g->constraints[g->total_constraints].linea = linea")
+        asm("g->total_constraints = g->total_constraints + 1")
 
 // --- Lifetime helpers ---
 funcion lifetime_es_valido(lt: Lifetime) -> booleano:

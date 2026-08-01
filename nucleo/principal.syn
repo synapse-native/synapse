@@ -13,6 +13,7 @@ importar parser_stmt
 importar parser
 importar tabla_simbolos
 importar analizador_semantico
+importar lifetimes
 importar memoria
 importar generator
 importar generator_pgo
@@ -85,6 +86,13 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("static struct SemTablaSimbolos _f8_tabla = { .entradas = _f8_syms, .total_entradas = 0, .nivel_actual = 0 };")
         asm("static struct SemEstructuraInfo _f8_structs[64];")
         asm("static struct SemPrestamo _f8_prestamos[F8_MAX_SYMS];")
+        asm("static struct RegionConstraint _f8_rg_constraints[F8_MAX_SYMS];")
+        asm("static struct RegionGraph _f8_rg;")
+        asm("static int _f8_uf_parent[F8_MAX_SYMS];")
+        asm("static int _f8_uf_rank[F8_MAX_SYMS];")
+        asm("static struct UnionFind _f8_uf;")
+        asm("static int _f8_lt_kind[F8_MAX_SYMS];")
+        asm("static int _f8_lt_ambito[F8_MAX_SYMS];")
         asm("/* Map string type tag to integer constant */")
         asm("int _f8_tipo(const char* t) {")
         asm("    if(strcmp(t,\"Programa\")==0) return 1;")
@@ -231,6 +239,12 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("_sem_est.func_actual=(CadenaSegura){0,\"\"};")
         asm("_sem_est.asignaciones_campos_campo=(CadenaSegura){.longitud=F8_MAX_NODOS,.datos=(char*)_f8_ptr_hi};")
         asm("_sem_est.prestamos=_f8_prestamos;")
+        asm("_f8_rg.constraints=_f8_rg_constraints; _f8_rg.total_constraints=0; _f8_rg.max_constraints=F8_MAX_SYMS;")
+        asm("_f8_uf.parent=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_uf_parent}; _f8_uf.rank=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_uf_rank}; _f8_uf.total=F8_MAX_SYMS; _f8_uf.max=F8_MAX_SYMS;")
+        asm("_sem_est.region_graph=&_f8_rg;")
+        asm("_sem_est.uf=&_f8_uf;")
+        asm("_sem_est.lt_kind=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_lt_kind};")
+        asm("_sem_est.lt_ambito=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_lt_ambito};")
         asm("analizar(&_sem_est);")
         asm("fprintf(stderr,\"[Synapse] F8: Analisis completado\\n\");")
         asm("// 4. Generar codigo C desde AST")

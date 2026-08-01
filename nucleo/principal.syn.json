@@ -30693,6 +30693,22 @@
           {
             "nombre": "total_prestamos",
             "tipo": "entero"
+          },
+          {
+            "nombre": "region_graph",
+            "tipo": "RegionGraph"
+          },
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "lt_kind",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "lt_ambito",
+            "tipo": "cadena"
           }
         ]
       },
@@ -35128,6 +35144,46 @@
                             }
                           }
                         ]
+                      },
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "{ int _lt = est->proximo_lifetime;"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "    ((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "    ((int*)est->lt_kind.datos)[_lt] = LT_LOCAL; ((int*)est->lt_ambito.datos)[_lt] = est->tabla->nivel_actual;"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "    region_agregar_restriccion(est->region_graph, REGION_OUTLIVES, 0, _lt, idx);"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "    est->proximo_lifetime = _lt + 1; }"
+                            }
+                          }
+                        ]
                       }
                     ]
                   }
@@ -38154,7 +38210,28 @@
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "est->proximo_lifetime = 0"
+                              "instruccion": "est->proximo_lifetime = 0;"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->region_graph->total_constraints = 0;"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "for (int _ui = 0; _ui < est->uf->max; _ui++) { ((int*)est->uf->parent.datos)[_ui] = -1; ((int*)est->uf->rank.datos)[_ui] = 0; }"
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;"
                             }
                           }
                         ]
@@ -38274,21 +38351,21 @@
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "// [M21.3 placeholder] region_resolver requires struct definitions from lifetimes.syn"
+                              "instruccion": "if (est->region_graph->total_constraints > 0) {"
                             }
                           },
                           {
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "// which are not yet visible in the generated C headers. The Python-side"
+                              "instruccion": "    region_resolver(est->region_graph, est->uf, est);"
                             }
                           },
                           {
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "// semantic_checker.py has the full implementation."
+                              "instruccion": "}"
                             }
                           }
                         ]
@@ -38621,6 +38698,1705 @@
             "expr": {
               "_tipo": "Identificador",
               "nombre": "est"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "LT_ESTATICO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 0
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "LT_LOCAL",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 1
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "LT_PARAMETRICO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 2
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "LT_ELIDIDO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 3
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "REGION_OUTLIVES",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 0
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "REGION_EQUALS",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 1
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "REGION_SUBSCOPE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 2
+        }
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "Lifetime",
+        "campos": [
+          {
+            "nombre": "kind",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "ambito",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "indice",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "padre",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "RegionConstraint",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "origen",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "destino",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "RegionGraph",
+        "campos": [
+          {
+            "nombre": "constraints",
+            "tipo": "RegionConstraint"
+          },
+          {
+            "nombre": "total_constraints",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "max_constraints",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "UnionFind",
+        "campos": [
+          {
+            "nombre": "parent",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "rank",
+            "tipo": "cadena"
+          },
+          {
+            "nombre": "total",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "max",
+            "tipo": "entero"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "uf_init",
+        "parametros": [
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "n",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "uf"
+            },
+            "nombre_campo": "total",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "n"
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "uf"
+            },
+            "nombre_campo": "max",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "n"
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "i",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "n"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "((int*)uf->parent.datos)[i] = -1"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "((int*)uf->rank.datos)[i] = 0"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "i = i + 1"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "uf_find",
+        "parametros": [
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "x",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "raiz",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Path compression: buscar raiz, luego comprimir"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _r = x;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "while (_r >= 0 && ((int*)uf->parent.datos)[_r] >= 0) { _r = ((int*)uf->parent.datos)[_r]; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_r < 0) { _r = x; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Path compression: aplanar el arbol"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "while (x >= 0 && ((int*)uf->parent.datos)[x] >= 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _next = ((int*)uf->parent.datos)[x];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    ((int*)uf->parent.datos)[x] = _r;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    x = _next;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "raiz = _r;"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "raiz"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "uf_union",
+        "parametros": [
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "a",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "b",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ra",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "uf_find",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "uf"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "a"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "rb",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "uf_find",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "uf"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "b"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ra"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "rb"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Union by rank"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (((int*)uf->rank.datos)[ra] < ((int*)uf->rank.datos)[rb]) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    ((int*)uf->parent.datos)[ra] = rb;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "} else if (((int*)uf->rank.datos)[ra] > ((int*)uf->rank.datos)[rb]) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    ((int*)uf->parent.datos)[rb] = ra;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "} else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    ((int*)uf->parent.datos)[rb] = ra;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    ((int*)uf->rank.datos)[ra] = ((int*)uf->rank.datos)[ra] + 1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "uf_mismo_set",
+        "parametros": [
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "a",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "b",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "uf_find",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "uf"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "a"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "uf_find",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "uf"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "b"
+                  }
+                ]
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "detectar_ciclo_outlives",
+        "parametros": [
+          {
+            "nombre": "g",
+            "tipo": "RegionGraph"
+          },
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "n",
+            "expresion": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "uf"
+              },
+              "nombre_campo": "total"
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "idx_encontrado",
+            "expresion": {
+              "_tipo": "OpUnaria",
+              "operador": "-",
+              "expr": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "char* _estado = (char*)calloc(n > 0 ? n : 1, 1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _ciclo = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _ciclo_idx = -1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _v = 0; _v < n && !_ciclo; _v++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_estado[_v] != 0) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _stack[256]; int _sp = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _stack[_sp++] = _v; _estado[_v] = 1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    while (_sp > 0 && !_ciclo) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _cur = _stack[_sp - 1];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _has_child = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        for (int _ci = 0; _ci < g->total_constraints; _ci++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (g->constraints[_ci].tipo != 0) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            int _src = uf_find(uf, g->constraints[_ci].origen);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_src != _cur) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            int _dst_root = uf_find(uf, g->constraints[_ci].destino);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_estado[_dst_root] == 1) { _ciclo = 1; _ciclo_idx = _ci; break; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_estado[_dst_root] == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _stack[_sp++] = _dst_root;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _estado[_dst_root] = 1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _has_child = 1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                break;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (!_has_child && !_ciclo) { _estado[_cur] = 2; _sp--; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "idx_encontrado = _ciclo_idx;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "free(_estado);"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "idx_encontrado"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "verificar_outlives",
+        "parametros": [
+          {
+            "nombre": "g",
+            "tipo": "RegionGraph"
+          },
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "est",
+            "tipo": "AnalizadorSemanticoEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "i",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "idx_violacion",
+            "expresion": {
+              "_tipo": "OpUnaria",
+              "operador": "-",
+              "expr": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                "nombre_campo": "total_constraints"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "if (g->constraints[i].tipo == 0) { // REGION_OUTLIVES"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    int _o = uf_find(uf, g->constraints[i].origen);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    int _d = uf_find(uf, g->constraints[i].destino);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    if (_o != _d) { // Diferentes roots: chequeo semantico kind/ambito"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _ko = ((int*)est->lt_kind.datos)[g->constraints[i].origen];"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _ao = ((int*)est->lt_ambito.datos)[g->constraints[i].origen];"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _kd = ((int*)est->lt_kind.datos)[g->constraints[i].destino];"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _ad = ((int*)est->lt_ambito.datos)[g->constraints[i].destino];"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _ok = 1;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        if (_ko == LT_ESTATICO) { _ok = 1; }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        else if (_ko == LT_PARAMETRICO) { _ok = (_kd == LT_LOCAL || _kd == LT_ELIDIDO || _kd == LT_PARAMETRICO); }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        else if (_ko == LT_LOCAL && _kd == LT_LOCAL) { _ok = (_ao <= _ad); }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        else if (_ko == _kd) { _ok = 1; }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        else if (_ko == LT_ELIDIDO) { _ok = 1; }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        else { _ok = 0; }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        if (!_ok) { idx_violacion = i; }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "}"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "i = i + 1"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "idx_violacion"
+                  },
+                  "operador": ">=",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRomper"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "idx_violacion"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "region_resolver",
+        "parametros": [
+          {
+            "nombre": "g",
+            "tipo": "RegionGraph"
+          },
+          {
+            "nombre": "uf",
+            "tipo": "UnionFind"
+          },
+          {
+            "nombre": "est",
+            "tipo": "AnalizadorSemanticoEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "i",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecho": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                "nombre_campo": "total_constraints"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "if (g->constraints[i].tipo == 1) {"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    uf_union(uf, g->constraints[i].origen, g->constraints[i].destino);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "}"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "i = i + 1"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ciclo_idx",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "detectar_ciclo_outlives",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "uf"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ciclo_idx"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ CadenaSegura _msg = { .longitud = 40, .datos = \"Ciclo de dependencia de lifetimes\" };"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "   sem_error(est, ERR_MEM_LIFETIME_CYCLE, g->constraints[ciclo_idx].linea, _msg); }"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "violacion_idx",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "verificar_outlives",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "uf"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "violacion_idx"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ CadenaSegura _msg = { .longitud = 44, .datos = \"Violacion de lifetime: referencia no vive suficiente\" };"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "   sem_error(est, ERR_MEM_LIFETIME_MISMATCH, g->constraints[violacion_idx].linea, _msg); }"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 2
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "region_graph_nuevo",
+        "parametros": [
+          {
+            "nombre": "max",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "RegionGraph",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "g",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "RegionGraph",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "total_constraints",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "nombre_campo": "max_constraints",
+            "expresion": {
+              "_tipo": "Identificador",
+              "nombre": "max"
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "g"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "region_agregar_restriccion",
+        "parametros": [
+          {
+            "nombre": "g",
+            "tipo": "RegionGraph"
+          },
+          {
+            "nombre": "tipo",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "origen",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "destino",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                "nombre_campo": "total_constraints"
+              },
+              "operador": ">=",
+              "derecho": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "g"
+                },
+                "nombre_campo": "max_constraints"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "g->constraints[g->total_constraints].tipo = tipo"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "g->constraints[g->total_constraints].origen = origen"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "g->constraints[g->total_constraints].destino = destino"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "g->constraints[g->total_constraints].linea = linea"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "g->total_constraints = g->total_constraints + 1"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "lifetime_es_valido",
+        "parametros": [
+          {
+            "nombre": "lt",
+            "tipo": "Lifetime"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "lt"
+                  },
+                  "nombre_campo": "kind"
+                },
+                "operador": ">=",
+                "derecho": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              },
+              "operador": "&&",
+              "derecho": {
+                "_tipo": "OpBinaria",
+                "izquierdo": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "lt"
+                  },
+                  "nombre_campo": "kind"
+                },
+                "operador": "<=",
+                "derecho": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 3
+                }
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "lifetime_es_estatico",
+        "parametros": [
+          {
+            "nombre": "lt",
+            "tipo": "Lifetime"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "lt"
+                },
+                "nombre_campo": "kind"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "LT_ESTATICO"
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "lifetime_es_elidido",
+        "parametros": [
+          {
+            "nombre": "lt",
+            "tipo": "Lifetime"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "lt"
+                },
+                "nombre_campo": "kind"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "LT_ELIDIDO"
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "lifetime_a_texto",
+        "parametros": [
+          {
+            "nombre": "lt",
+            "tipo": "Lifetime"
+          }
+        ],
+        "tipo_retorno": "cadena",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "lt"
+                },
+                "nombre_campo": "kind"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "LT_ESTATICO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": "'static"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "lt"
+                },
+                "nombre_campo": "kind"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "LT_LOCAL"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "r",
+                "expresion": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              },
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ char _b[64]; snprintf(_b,64,\"'local(%d)\",lt.ambito); r=(CadenaSegura){.longitud=(int)strlen(_b),.datos=strdup(_b)}; }"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "r"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "lt"
+                },
+                "nombre_campo": "kind"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "LT_PARAMETRICO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "r",
+                "expresion": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              },
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ char _b[64]; snprintf(_b,64,\"'param(%d)\",lt.indice); r=(CadenaSegura){.longitud=(int)strlen(_b),.datos=strdup(_b)}; }"
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "r"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralCadena",
+              "valor": "'elided"
             },
             "es_transferencia": false
           }
@@ -49501,6 +51277,55 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "static struct RegionConstraint _f8_rg_constraints[F8_MAX_SYMS];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static struct RegionGraph _f8_rg;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static int _f8_uf_parent[F8_MAX_SYMS];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static int _f8_uf_rank[F8_MAX_SYMS];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static struct UnionFind _f8_uf;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static int _f8_lt_kind[F8_MAX_SYMS];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static int _f8_lt_ambito[F8_MAX_SYMS];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "/* Map string type tag to integer constant */"
                 }
               },
@@ -50517,6 +52342,48 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "_sem_est.prestamos=_f8_prestamos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_f8_rg.constraints=_f8_rg_constraints; _f8_rg.total_constraints=0; _f8_rg.max_constraints=F8_MAX_SYMS;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_f8_uf.parent=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_uf_parent}; _f8_uf.rank=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_uf_rank}; _f8_uf.total=F8_MAX_SYMS; _f8_uf.max=F8_MAX_SYMS;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_sem_est.region_graph=&_f8_rg;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_sem_est.uf=&_f8_uf;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_sem_est.lt_kind=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_lt_kind};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_sem_est.lt_ambito=(CadenaSegura){.longitud=(long)F8_MAX_SYMS*4,.datos=(char*)_f8_lt_ambito};"
                 }
               },
               {

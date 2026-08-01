@@ -241,7 +241,12 @@ class GeneratorContext:
 
 
         # Types that MUST be passed by pointer (not by value) per Manual 3 §3.3
-        self._POINTER_TYPES: frozenset = frozenset({'AnalizadorSemanticoEst'})
+        # M21.4: RegionGraph y UnionFind (lifetimes.syn) se pasan por puntero
+        # para que region_agregar_restriccion/uf_union muten el grafo real
+        # (por valor, g.total_constraints++ se perdería en la copia).
+        self._POINTER_TYPES: frozenset = frozenset({
+            'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind',
+        })
 
         # Destructor map for RAII types
         # NOTE: Use Synapse type names (texto not CadenaSegura) for consistency
