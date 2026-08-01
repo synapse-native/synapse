@@ -201,26 +201,26 @@ class ParserControlMixin(ParserBase):
 
             nombre_patron = tok_patron.valor
 
-            if self._esperar(TokenID.LPAREN) is None:
-                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
-                                   esperado='(', encontrado=self._mirar().tipo.name)
-                self._sincronizar(_SYNC_BLOCK)
-                break
+            # Patron con payload: ok(valor) — Manual 2 §2.2
+            # Patron nulo (variante sin argumentos): ninguno — Manual 2 §2.4
+            var_patron = None
+            if self._mirar().tipo == TokenID.LPAREN:
+                self._avanzar()
+                tok_var = self._esperar(TokenID.IDENTIFIER)
+                if tok_var is None:
+                    self._sincronizar(_SYNC_BLOCK)
+                    break
+                var_patron = tok_var.valor
+                if self._esperar(TokenID.RPAREN) is None:
+                    self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
+                                       esperado=')', encontrado=self._mirar().tipo.name)
+                    self._sincronizar(_SYNC_BLOCK)
+                    break
 
-            tok_var = self._esperar(TokenID.IDENTIFIER)
-            if tok_var is None:
-                self._sincronizar(_SYNC_BLOCK)
-                break
-
-            var_patron = tok_var.valor
-
-            if self._esperar(TokenID.RPAREN) is None:
-                self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
-                                   esperado=')', encontrado=self._mirar().tipo.name)
-                self._sincronizar(_SYNC_BLOCK)
-                break
-
-            patron_completo = f"{nombre_patron}({var_patron})"
+            if var_patron is not None:
+                patron_completo = f"{nombre_patron}({var_patron})"
+            else:
+                patron_completo = nombre_patron
 
             if self._esperar(TokenID.ARROW_RIGHT) is None:
                 self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),

@@ -528,30 +528,31 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         self._analizar_sentencia(stmt)
                     self.tabla.salir_scope()
                     continue
-                match = re.match(r'(\w+)\((\w+)\)', caso.patron)
+                match = re.match(r'(\w+)(?:\((\w+)\))?\Z', caso.patron)
                 if match:
-                    var_nombre = match.group(2)
                     tag_nombre = match.group(1)
+                    var_nombre = match.group(2)
                     variantes_cubiertas.add(tag_nombre)
-                    tipo_extraido = 'int'
-                    if tipo_expr:
-                        nombre_struct = tipo_expr
-                        if nombre_struct.startswith('struct '):
-                            nombre_struct = nombre_struct[7:]
-                        if nombre_struct in self._estructuras:
-                            struct_def = self._estructuras[nombre_struct]
-                            for campo in struct_def.campos:
-                                if campo.tipo == 'texto':
-                                    tipo_extraido = 'texto'
-                                    break
-                                elif campo.tipo == 'decimal' and tipo_extraido == 'int':
-                                    tipo_extraido = 'decimal'
-                    elif tipo_expr == 'texto':
-                        tipo_extraido = 'texto'
-                    elif tipo_expr == 'decimal':
-                        tipo_extraido = 'decimal'
-                    caso.tipo_extraido = tipo_extraido
-                    self.tabla.declarar(var_nombre, tipo_extraido, nodo)
+                    if var_nombre:
+                        tipo_extraido = 'int'
+                        if tipo_expr:
+                            nombre_struct = tipo_expr
+                            if nombre_struct.startswith('struct '):
+                                nombre_struct = nombre_struct[7:]
+                            if nombre_struct in self._estructuras:
+                                struct_def = self._estructuras[nombre_struct]
+                                for campo in struct_def.campos:
+                                    if campo.tipo == 'texto':
+                                        tipo_extraido = 'texto'
+                                        break
+                                    elif campo.tipo == 'decimal' and tipo_extraido == 'int':
+                                        tipo_extraido = 'decimal'
+                        elif tipo_expr == 'texto':
+                            tipo_extraido = 'texto'
+                        elif tipo_expr == 'decimal':
+                            tipo_extraido = 'decimal'
+                        caso.tipo_extraido = tipo_extraido
+                        self.tabla.declarar(var_nombre, tipo_extraido, nodo)
                     self.tabla.entrar_scope()
                     for stmt in caso.cuerpo:
                         self._analizar_sentencia(stmt)
@@ -563,9 +564,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     tipo_base = tipo_expr.replace('struct ', '')
                     # Resultado<T,E> tiene variantes: ok, err
                     # Opcion<T> tiene variantes: algun, ninguno
-                    if tipo_base == 'Resultado' or tipo_base == 'Resultado_T':
+                    # Genericos: Opcion<entero> / Resultado<entero,texto> (convencion del generator)
+                    if (tipo_base == 'Resultado' or tipo_base == 'Resultado_T'
+                            or tipo_base.startswith('Resultado<')):
                         variantes_esperadas = {'ok', 'err'}
-                    elif tipo_base == 'Opcion' or tipo_base == 'Opcion_T':
+                    elif (tipo_base == 'Opcion' or tipo_base == 'Opcion_T'
+                          or tipo_base.startswith('Opcion<')):
                         variantes_esperadas = {'algun', 'ninguno'}
                 if variantes_esperadas:
                     faltantes = variantes_esperadas - variantes_cubiertas

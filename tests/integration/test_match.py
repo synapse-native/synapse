@@ -1,12 +1,12 @@
-"""tests/integration/test_match.py — Manual 2 §2.7
+"""tests/integration/test_match.py — Manual 2 §2.2/§2.4
 
 Valida coincidir de patrones (match exhaustivo) con Resultado<T,E> y Opcion<T>.
 """
 import pytest
 from conftest import compilar_texto
+from compilador.diagnostics import ErrorCodes
 
 
-@pytest.mark.xfail(reason="coincidir no implementado en parser — Manual 2 §2.7 feature gap")
 def test_match_resultado_ok_y_err():
     fuente = '''#lang: es
 funcion procesar(r: Resultado<entero, texto>) -> entero:
@@ -18,11 +18,10 @@ funcion procesar(r: Resultado<entero, texto>) -> entero:
     assert diag.codigo_salida() == 0
 
 
-@pytest.mark.xfail(reason="coincidir no implementado en parser — Manual 2 §2.7 feature gap")
 def test_match_opcion_algun_y_ninguno():
     fuente = '''#lang: es
-funcion obtener(o: Opcion<entero>) -> entero:
-    coincidir o:
+funcion obtener(opt: Opcion<entero>) -> entero:
+    coincidir opt:
         algun(v) => retornar v
         ninguno => retornar 0
 '''
@@ -37,3 +36,16 @@ funcion simple() -> entero:
 '''
     ast, diag = compilar_texto(fuente)
     assert diag.codigo_salida() == 0
+
+
+def test_match_exhaustivo_emite_error_si_falta_variante():
+    """Falta la variante 'ninguno' -> ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (Manual 2 §2.4)."""
+    fuente = '''#lang: es
+funcion obtener(opt: Opcion<entero>) -> entero:
+    coincidir opt:
+        algun(v) => retornar v
+'''
+    ast, diag = compilar_texto(fuente)
+    assert diag.codigo_salida() != 0
+    codigos = [e.get('codigo') for e in diag.errores]
+    assert ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED in codigos
