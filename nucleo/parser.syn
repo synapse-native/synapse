@@ -52,6 +52,14 @@ funcion parsear_parametros(est: ParserEst) -> entero:
             token_avanzar(est)
             si token_esperar(est, T_DOSPUNTOS) == 0:
                 retornar -1
+            // Manual 4 §4.2: tipos de referencia &T / &mut T
+            si token_mirar(est) == T_AMPERSAND:
+                token_avanzar(est)
+                si token_mirar(est) == T_IDENTIFICADOR:
+                    ptr_m = token_ptr_valor(est, est.posicion)
+                    len_m = token_len_valor(est, est.posicion)
+                    inseguro:
+                        asm("if (len_m == 3 && ((const char*)ptr_m)[0]=='m' && ((const char*)ptr_m)[1]=='u' && ((const char*)ptr_m)[2]=='t') est.posicion++;")
             si token_mirar(est) != T_IDENTIFICADOR:
                 r = 0
                 romper

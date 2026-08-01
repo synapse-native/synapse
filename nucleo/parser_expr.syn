@@ -237,6 +237,12 @@ funcion parsear_unario(est: ParserEst) -> entero:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         token_avanzar(est)
+        // Manual 4 §4.2: &mut x (préstamo mutable) — consumir la palabra 'mut'
+        si token_mirar(est) == T_IDENTIFICADOR:
+            ptr_m = token_ptr_valor(est, est.posicion)
+            len_m = token_len_valor(est, est.posicion)
+            inseguro:
+                asm("if (len_m == 3 && ((const char*)ptr_m)[0]=='m' && ((const char*)ptr_m)[1]=='u' && ((const char*)ptr_m)[2]=='t') est.posicion++;")
         expr = parsear_unario(est)
         nodo = parser_nuevo_nodo(est, NODO_PUNTERO, linea, col)
         inseguro:

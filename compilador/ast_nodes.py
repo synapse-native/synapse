@@ -242,6 +242,7 @@ class BloqueInseguro(Nodo):
 @dataclass
 class ExprObtenerDireccion(Nodo):
     expr: Optional[Nodo] = None
+    es_mutable: bool = False  # Manual 4 §4.2: &mut T (mutable) vs &T (inmutable)
 
 @dataclass
 class ExprDereferencia(Nodo):

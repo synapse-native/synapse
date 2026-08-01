@@ -65,6 +65,11 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre
                 )
+            # Manual 4 §4.2: auto-deref al leer una referencia (&T / &mut T)
+            if sim.tipo.startswith('&mut '):
+                return sim.tipo[5:]
+            if sim.tipo.startswith('&'):
+                return sim.tipo[1:]
             return sim.tipo
         elif isinstance(nodo, OpBinaria):
             tipo_izq = self._inferir_tipo(nodo.izquierdo)
@@ -219,6 +224,30 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 self._inferir_tipo(a)
             return 'nulo'
 
+        sim = self.tabla.buscar(nodo.nombre)
+        # Las funciones definidas por el usuario tienen precedencia sobre los builtins
+        if sim is not None and isinstance(sim.nodo, DefinicionFuncion):
+            def_func = sim.nodo
+            if len(nodo.argumentos) != len(def_func.parametros):
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
+                    self._token(nodo.linea, nodo.columna),
+                    nombre=nodo.nombre,
+                    esperados=len(def_func.parametros)
+                )
+                return def_func.tipo_retorno
+            for i, (arg, param) in enumerate(zip(nodo.argumentos, def_func.parametros)):
+                tipo_arg = self._inferir_tipo(arg)
+                if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(param.tipo):
+                    if _tipo_normalizado(param.tipo) == 'void*' and 'CadenaSegura' in (_tipo_normalizado(tipo_arg), tipo_arg):
+                        continue
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),
+                        tipo1=tipo_arg, tipo2=param.tipo, operacion=nodo.nombre
+                    )
+            return def_func.tipo_retorno
+
         if nodo.nombre in _FUNCIONES_BUILTIN:
             sig = _FUNCIONES_BUILTIN[nodo.nombre]
             tipos_esperados, tipo_retorno = sig
@@ -256,7 +285,6 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 )
             return nodo.nombre
 
-        sim = self.tabla.buscar(nodo.nombre)
         if sim is None:
             self.diag.reportar(
                 ErrorCodes.ERR_SEM_FUNC_NO_DEFINIDA,
@@ -265,24 +293,4 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             )
             return None
 
-        def_func = sim.nodo
-        if isinstance(def_func, DefinicionFuncion):
-            if len(nodo.argumentos) != len(def_func.parametros):
-                self.diag.reportar(
-                    ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
-                    self._token(nodo.linea, nodo.columna),
-                    nombre=nodo.nombre,
-                    esperados=len(def_func.parametros)
-                )
-                return def_func.tipo_retorno
-            for i, (arg, param) in enumerate(zip(nodo.argumentos, def_func.parametros)):
-                tipo_arg = self._inferir_tipo(arg)
-                if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(param.tipo):
-                    if _tipo_normalizado(param.tipo) == 'void*' and 'CadenaSegura' in (_tipo_normalizado(tipo_arg), tipo_arg):
-                        continue
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                        self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),
-                        tipo1=tipo_arg, tipo2=param.tipo, operacion=nodo.nombre
-                    )
         return sim.tipo

@@ -327,8 +327,11 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     norm_existente = _tipo_normalizado(sim_existente.tipo)
                     norm_expr = _tipo_normalizado(tipo_expr)
                     if norm_existente != norm_expr:
+                        # Manual 4 §4.2: &mut T permite escritura del tipo base (write-through)
+                        if sim_existente.tipo.startswith('&mut ') and norm_expr == _tipo_normalizado(sim_existente.tipo[5:]):
+                            pass
                         # M22.6: Allow int->pointer assignment inside inseguro blocks (NULL ptr)
-                        if self._dentro_de_inseguro and norm_expr == 'int' and norm_existente.endswith('*'):
+                        elif self._dentro_de_inseguro and norm_expr == 'int' and norm_existente.endswith('*'):
                             pass  # Allow NULL assignment to pointer in unsafe mode
                         else:
                             self.diag.reportar(

@@ -55,6 +55,11 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
 
 
 def _tipo_normalizado(tipo: str) -> str:
+    # Manual 4 §4.2: &T y &mut T son punteros al tipo base (compatibles con T*)
+    if tipo.startswith('&mut '):
+        return _tipo_normalizado(tipo[5:]) + '*'
+    if tipo.startswith('&'):
+        return _tipo_normalizado(tipo[1:]) + '*'
     return MAPA_TIPOS_C.get(tipo, tipo)
 
 

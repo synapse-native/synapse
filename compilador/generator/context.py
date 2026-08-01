@@ -370,6 +370,11 @@ class GeneratorContext:
         return None
 
     def traducir_tipo_c(self, tipo_synapse: str) -> str:
+        # Manual 4 §4.2: &T y &mut T son punteros en C
+        if tipo_synapse.startswith('&mut '):
+            return self.traducir_tipo_c(tipo_synapse[5:]) + '*'
+        if tipo_synapse.startswith('&'):
+            return self.traducir_tipo_c(tipo_synapse[1:]) + '*'
         if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
             return 'CanalConcurrencia*'
         if tipo_synapse.startswith('Resultado<'):

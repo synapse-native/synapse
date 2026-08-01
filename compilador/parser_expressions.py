@@ -100,9 +100,16 @@ class ParserExpressionsMixin(ParserBase):
             )
         if t.tipo == TokenID.AMPERSAND:
             self._avanzar()
+            # Manual 4 §4.2: &mut x (préstamo mutable) vs &x (inmutable)
+            es_mutable = False
+            if (self._mirar().tipo == TokenID.IDENTIFIER
+                    and (self._mirar().valor or '') == 'mut'):
+                self._avanzar()
+                es_mutable = True
             expr = self._parsear_unario()
             return ExprObtenerDireccion(
                 expr=expr,
+                es_mutable=es_mutable,
                 linea=t.linea,
                 columna=t.columna,
             )

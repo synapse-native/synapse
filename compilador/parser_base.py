@@ -102,10 +102,20 @@ class ParserBase:
             self._avanzar()
 
     def _parsear_tipo_parametro(self) -> str:
+        prefijo = ''
+        # Manual 4 §4.2: referencias &T y &mut T
+        if self._mirar().tipo == TokenID.AMPERSAND:
+            self._avanzar()
+            if (self._mirar().tipo == TokenID.IDENTIFIER
+                    and (self._mirar().valor or '') == 'mut'):
+                self._avanzar()
+                prefijo = '&mut '
+            else:
+                prefijo = '&'
         tok_tipo = self._esperar(TokenID.IDENTIFIER)
         if tok_tipo is None:
-            return 'int'
-        tipo = tok_tipo.valor
+            return prefijo + 'int'
+        tipo = prefijo + tok_tipo.valor
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo, '<']
