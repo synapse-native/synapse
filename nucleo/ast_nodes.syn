@@ -173,6 +173,7 @@ estructura BloqueInseguro:
 estructura ExprObtenerDireccion:
     tipo: texto
     expr: Nodo
+    es_mutable: booleano
 
 estructura ExprDereferencia:
     tipo: texto

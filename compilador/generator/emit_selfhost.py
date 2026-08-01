@@ -651,12 +651,13 @@ struct Nodo* """ + _P + """una() {
         n->operador=(struct Token*)calloc(1,sizeof(struct Token)); n->operador->tipo=tt; n->operador->linea=0; n->operador->columna=0;
         n->operador->lexema=""" + _P + """cs("!");
         return (struct Nodo*)n;
-    }
-    if (""" + _P + """mirar()->tipo==T_AMPERSAND) {
-        """ + _P + """avanzar();
-        struct Nodo* e=""" + _P + """una();
+    }    if ("""+_P+"""mirar()->tipo==T_AMPERSAND) {
+        """+_P+"""avanzar();
+        int _emut = 0;
+        if ("""+_P+"""mirar()->tipo==T_IDENT && strcmp("""+_P+"""mirar()->val,"mut")==0) { _emut = 1; """+_P+"""avanzar(); }
+        struct Nodo* e="""+_P+"""una();
         struct ExprObtenerDireccion* n=(struct ExprObtenerDireccion*)calloc(1,sizeof(struct ExprObtenerDireccion));
-        n->tipo=""" + _P + """cs("ExprObtenerDireccion"); n->expr=e;
+        n->tipo="""+_P+"""cs("ExprObtenerDireccion"); n->expr=e; n->es_mutable=_emut;
         return (struct Nodo*)n;
     }
     if (""" + _P + """mirar()->tipo==T_MUL) {

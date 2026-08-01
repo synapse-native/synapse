@@ -39,6 +39,9 @@ constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 constante ERR_MEM_LIFETIME_MISMATCH = 34
 constante ERR_MEM_LIFETIME_CYCLE = 35
 
+// --- Borrow checker error codes (Manual 4.2) ---
+constante ERR_MEM_BORROW_CONFLICT = 39
+
 // --- Structs ---
 estructura ReporteError:
     codigo: entero
@@ -164,6 +167,8 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
             retornar "Violacion de lifetime: la referencia '{nombre}' no vive lo suficiente (alcance {alcance}) vs. requerido {requerido}"
         si codigo == ERR_MEM_LIFETIME_CYCLE:
             retornar "Ciclo de lifetime detectado: las referencias '{a}' y '{b}' forman un ciclo de dependencia"
+        si codigo == ERR_MEM_BORROW_CONFLICT:
+            retornar "Conflicto de prestamo: la variable '{nombre}' tiene prestamos incompatibles (inmutable+mutable o multiples mutables)"
         retornar "Error desconocido"
     // English fallback
     si codigo == ERR_SYNTAX_EXPECTED_TOKEN:
@@ -236,6 +241,8 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
         retornar "Lifetime violation: reference '{nombre}' does not live long enough (scope {alcance}) vs required {requerido}"
     si codigo == ERR_MEM_LIFETIME_CYCLE:
         retornar "Lifetime cycle detected: references '{a}' and '{b}' form a dependency cycle"
+    si codigo == ERR_MEM_BORROW_CONFLICT:
+        retornar "Borrow conflict: variable '{nombre}' has incompatible active borrows (immutable+mutable or multiple mutables)"
     retornar "Unknown error"
 
 // --- Source line context helper ---

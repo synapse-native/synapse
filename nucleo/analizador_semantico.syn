@@ -102,6 +102,12 @@ estructura SemEstructuraInfo:
     campos_tipo: cadena
     total_campos: entero
 
+// M21.4: Borrow tracking entries (Manual 4 S4.2)
+estructura SemPrestamo:
+    idx_simbolo: entero
+    es_mutable: booleano
+    nivel_ambito: entero
+
 estructura AnalizadorSemanticoEst:
     nodos: SemNodo
     total_nodos: entero
@@ -120,6 +126,9 @@ estructura AnalizadorSemanticoEst:
     // M21.3: Lifetime tracking state (Manual 4.3)
     // region_graph y uf_lifetimes usan estaticos globales via asm
     proximo_lifetime: entero
+    // M21.4: Borrow tracking (Manual 4 S4.2)
+    prestamos: SemPrestamo
+    total_prestamos: entero
 
 // --- Error reporting helper ---
 funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero, mensaje: cadena) -> nulo:
@@ -197,6 +206,11 @@ funcion tabla_salir_scope(est: AnalizadorSemanticoEst) -> nulo:
         asm("while (est->tabla->total_entradas > 0) {")
         asm("    if (est->tabla->entradas[est->tabla->total_entradas - 1].nivel_ambito < est->tabla->nivel_actual) break;")
         asm("    est->tabla->total_entradas = est->tabla->total_entradas - 1;")
+        asm("}")
+        // M21.4: pop de prestamos del scope saliente (Manual 4 S4.2)
+        asm("while (est->total_prestamos > 0) {")
+        asm("    if (est->prestamos[est->total_prestamos - 1].nivel_ambito < est->tabla->nivel_actual) break;")
+        asm("    est->total_prestamos = est->total_prestamos - 1;")
         asm("}")
         asm("est->tabla->nivel_actual = est->tabla->nivel_actual - 1")
 
@@ -419,6 +433,91 @@ funcion nodo_hermano(est: AnalizadorSemanticoEst, idx: entero) -> entero:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].hermano : 0")
     retornar r
 
+funcion nodo_expr(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    // Slot [6] del flat array: hijo de expresion (len_str reutilizado por flatten)
+    r = 0
+    inseguro:
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? ((int*)&est->nodos[idx])[6] : 0")
+    retornar r
+
+funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
+    r = 0
+    inseguro:
+        asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].valor_int : 0")
+    retornar r
+
+// --- M21.4: Borrow tracking (Manual 4 S4.2) ---
+funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    // Conflicto si: hay mutable y pedimos inmutable, o hay cualquier prestamo y pedimos mutable
+    r = 0
+    i = 0
+    mientras i < est.total_prestamos:
+        inseguro:
+            asm("if (est->prestamos[i].idx_simbolo == idx_simbolo) {")
+            asm("    if (es_mutable) { r = 1; }")
+            asm("    else if (est->prestamos[i].es_mutable) { r = 1; }")
+            asm("}")
+        si r == 1:
+            romper
+        i = i + 1
+    si r == 1:
+        retornar verdadero
+    retornar falso
+
+funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
+    si prestamo_activo(est, idx_simbolo, es_mutable):
+        retornar falso
+    inseguro:
+        asm("if (est->total_prestamos < 4096) {")
+        asm("    est->prestamos[est->total_prestamos].idx_simbolo = idx_simbolo;")
+        asm("    est->prestamos[est->total_prestamos].es_mutable = es_mutable;")
+        asm("    est->prestamos[est->total_prestamos].nivel_ambito = est->tabla->nivel_actual;")
+        asm("    est->total_prestamos++;")
+        asm("}")
+    retornar verdadero
+
+// --- M21.4: Expression traversal to register borrows (Manual 4 S4.2) ---
+funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
+    si idx <= 0:
+        retornar
+    tipo = nodo_tipo(est, idx)
+    // NODO_PUNTERO (36): &x / &mut x
+    si tipo == NODO_PUNTERO:
+        es_mut = nodo_valor_int(est, idx)
+        hijo = nodo_expr(est, idx)
+        si hijo > 0:
+            h_tipo = nodo_tipo(est, hijo)
+            si h_tipo == NODO_IDENTIFICADOR:
+                inseguro:
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_cs); } } } }")
+        retornar
+    // NODO_BINARIA (12): recursar en operadores
+    si tipo == NODO_BINARIA:
+        analizar_expr(est, nodo_expr(est, idx))
+        analizar_expr(est, nodo_hijo_izq(est, idx))
+        retornar
+    // NODO_UNARIA (13)
+    si tipo == NODO_UNARIA:
+        analizar_expr(est, nodo_expr(est, idx))
+        retornar
+    // NODO_LLAMADA (14): argumentos en cadena desde slot [6]
+    si tipo == NODO_LLAMADA:
+        arg = nodo_expr(est, idx)
+        r2 = 1
+        mientras r2 == 1:
+            si arg <= 0:
+                r2 = 0
+                romper
+            analizar_expr(est, arg)
+            inseguro:
+                asm("arg = est->nodos[arg].hermano")
+        retornar
+    // NODO_INDICE (29)
+    si tipo == NODO_INDICE:
+        analizar_expr(est, nodo_expr(est, idx))
+        retornar
+    retornar
+
 // --- Struct info management ---
 funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_nodo: entero) -> nulo:
     // Check for duplicate
@@ -477,6 +576,8 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     si tipo == NODO_ASIGNACION:
         inseguro:
             asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
+        // M21.4: analizar RHS para prestamos (Manual 4 S4.2)
+        analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
 
     // DeclaracionVariable
@@ -486,10 +587,14 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             asm("    // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)")
             asm("    est->proximo_lifetime = est->proximo_lifetime + 1;")
             asm("} } }")
+        // M21.4: analizar inicializador para prestamos (Manual 4 S4.2)
+        analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
 
     // SentenciaSi
     si tipo == NODO_SI:
+        // M21.4: analizar condicion para prestamos (Manual 4 S4.2, slot [6])
+        analizar_expr(est, nodo_expr(est, idx_nodo))
         tabla_entrar_scope(est)
         cuerpo = nodo_hijo_izq(est, idx_nodo)
         stmt = cuerpo
@@ -506,6 +611,8 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
     // SentenciaMientras
     si tipo == NODO_MIENTRAS:
+        // M21.4: analizar condicion para prestamos (Manual 4 S4.2, slot [6])
+        analizar_expr(est, nodo_expr(est, idx_nodo))
         tabla_entrar_scope(est)
         cuerpo = nodo_hijo_izq(est, idx_nodo)
         stmt = cuerpo
@@ -605,16 +712,22 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
         est.en_coincidir = falso
         retornar
 
-    // SentenciaExpr - just infer type and discard
+    // SentenciaExpr - analizar expr para prestamos
     si tipo == NODO_EXPR:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
 
     // LogLlamada
     si tipo == NODO_LOG:
         retornar
 
+    // SentenciaRetornar - analizar expr para prestamos (Manual 4 S4.2)
+    si tipo == NODO_RETORNAR:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        retornar
+
     // For other types, just traverse body
-    // SentenciaRetornar, SentenciaRomper, SentenciaSiguiente, etc.
+    // SentenciaRomper, SentenciaSiguiente, etc.
     retornar
 
 // --- First pass: register struct definitions ---
