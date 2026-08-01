@@ -294,6 +294,7 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         # M21.3: Initialize lifetime tracking for this function
         self._func_params = nodo.parametros
         self._inicializar_lifetimes_funcion()
+        self._prestamos_registrados = set()  # Manual 4 S4.2: prestamos verificados por funcion
         
         for p in nodo.parametros:
             self.tabla.declarar(p.nombre, p.tipo, nodo)

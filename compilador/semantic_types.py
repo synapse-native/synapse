@@ -164,6 +164,8 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             return 'nulo'
         elif isinstance(nodo, ExprObtenerDireccion):
             tipo_base = self._inferir_tipo(nodo.expr)
+            # Manual 4 S4.2: verificar coexistencia de prestamos (borrow checker)
+            self._verificar_prestamo(nodo)
             # M21.3: Generar constraint de borrow si lifetime tracking esta activo
             if tipo_base and hasattr(self, '_region_graph'):
                 lt_borrow = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
@@ -217,6 +219,34 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     return 'texto'
             return 'int'
         return None
+
+    def _verificar_prestamo(self, nodo: ExprObtenerDireccion):
+        """Manual 4 §4.2: reglas de coexistencia de prestamos (borrow checker).
+
+        &T inmutable: multiples prestamos inmutables simultaneos permitidos.
+        &mut T mutable: un solo prestamo mutable a la vez, sin coexistir con inmutables.
+        Los prestamos se registran por scope (SymbolTable._prestamos) y se liberan
+        al salir del ambito.
+        """
+        if not hasattr(self, '_prestamos_registrados'):
+            self._prestamos_registrados = set()
+        if id(nodo) in self._prestamos_registrados:
+            return  # idempotencia: cada nodo de prestamo se verifica una sola vez
+        expr = nodo.expr
+        if not isinstance(expr, Identificador):
+            return  # solo se rastrean prestamos sobre identificadores
+        nombre = expr.nombre
+        if self.tabla.buscar(nombre) is None:
+            return  # variable no declarada: ya fue reportado por _inferir_tipo
+        self._prestamos_registrados.add(id(nodo))
+        if not self.tabla.registrar_prestamo(nombre, nodo.es_mutable):
+            tipo = '&mut' if nodo.es_mutable else '&'
+            self.diag.reportar(
+                ErrorCodes.ERR_MEM_BORROW_CONFLICT,
+                self._token(nodo.linea, nodo.columna),
+                nombre=nombre,
+                tipo=tipo,
+            )
 
     def _inferir_tipo_llamada(self, nodo: LlamadaFuncion) -> Optional[str]:
         if nodo.nombre == 'log':

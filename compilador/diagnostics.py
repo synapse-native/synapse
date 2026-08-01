@@ -45,6 +45,7 @@ class ErrorCodes(Enum):
     ERR_VER_RECURSION_NO_TERMINAL = auto()
     ERR_VER_CONTRATO_INVALIDO = auto()
     ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = auto()
+    ERR_MEM_BORROW_CONFLICT = auto()
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -74,6 +75,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acceso prohibido a memoria movida '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultado de canal sin desempaquetar '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Sentencia 'coincidir' no exhaustiva: faltan {faltan} variante(s). Use '_' como comodin o anada los casos faltantes",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Conflicto de prestamo sobre '{nombre}': prestamo {tipo} incompatible con prestamos activos (Manual 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifiesto axon.toml no encontrado en el directorio actual (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Módulo estándar '{modulo}' no encontrado. Sysroot corrupto (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependencia '{modulo}' no encontrada en axon_modules. Ejecute 'synapse construir' para descargar (E-602)",
@@ -114,6 +116,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Forbidden access to moved memory '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Unpacked channel result '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Non-exhaustive 'match' pattern: missing {faltan} variant(s). Add remaining cases or use '_' wildcard",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Borrow conflict on '{nombre}': borrow {tipo} incompatible with active borrows (Manual 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "axon.toml manifest not found in current directory (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Standard module '{modulo}' not found. Corrupt Sysroot (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependency '{modulo}' not found in axon_modules. Run 'synapse construir' to download (E-602)",
@@ -154,6 +157,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acces interdit a la memoire deplacee '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultat de canal non depaquete '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Pattern 'coincidir' non exhaustif: variante(s) manquante(s) {faltan}. Ajoutez les cas restants ou utilisez '_'",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Conflit d'emprunt sur '{nombre}': emprunt {tipo} incompatible avec les emprunts actifs (Manuel 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifest axon.toml introuvable dans le repertoire actuel (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Module standard '{modulo}' introuvable. Sysroot corrompu (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependance '{modulo}' introuvable dans axon_modules. Executez 'synapse construire' pour telecharger (E-602)",
@@ -190,6 +194,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Acesso proibido a memoria movida '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Resultado de canal nao desempacotado '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Padrao 'coincidir' nao exaustivo: faltam {faltan} variante(s). Adicione os casos restantes ou use '_'",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Conflito de emprestimo sobre '{nombre}': emprestimo {tipo} incompativel com emprestimos ativos (Manual 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifesto axon.toml nao encontrado no diretorio atual (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Modulo padrao '{modulo}' nao encontrado. Sysroot corrompido (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dependencia '{modulo}' nao encontrada em axon_modules. Execute 'synapse construir' para baixar (E-602)",
@@ -226,6 +231,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Verbotener Zugriff auf verschobenen Speicher '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Nicht entpacktes Kanal-Ergebnis '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Nicht-exhaustives 'coincidir'-Muster: {faltan} Variante(n) fehlt(en). Fuegen Sie die restlichen Faelle hinzu oder verwenden Sie '_'",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Ausleihkonflikt bei '{nombre}': Ausleihe {tipo} inkompatibel mit aktiven Ausleihen (Handbuch 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "axon.toml-Manifest im aktuellen Verzeichnis nicht gefunden (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Standardmodul '{modulo}' nicht gefunden. Sysroot beschaeigt (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Abhaengigkeit '{modulo}' nicht in axon_modules gefunden. Fuehren Sie 'synapse construir' zum Herunterladen aus (E-602)",
@@ -262,6 +268,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ACCESO_MEMORIA_MOVIDA: "Accesso vietato alla memoria spostata '{nombre}' (E-502)",
         ErrorCodes.ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR: "Risultato canale non spacchettato '{nombre}' (E-503)",
         ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED: "Pattern 'coincidir' non esaustivo: mancano {faltan} variante/i. Aggiungere i casi rimanenti o usare '_'",
+        ErrorCodes.ERR_MEM_BORROW_CONFLICT: "Conflitto di prestito su '{nombre}': prestito {tipo} incompatibile con prestiti attivi (Manuale 4 S4.2)",
         ErrorCodes.ERR_MANIFEST_NOT_FOUND: "Manifesto axon.toml non trovato nella directory corrente (E-600)",
         ErrorCodes.ERR_MODULE_STD_NOT_FOUND: "Modulo standard '{modulo}' non trovato. Sysroot corrotto (E-601)",
         ErrorCodes.ERR_MODULE_AXON_NOT_FOUND: "Dipendenza '{modulo}' non trovata in axon_modules. Eseguire 'synapse costruire' per scaricare (E-602)",

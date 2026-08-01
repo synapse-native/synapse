@@ -26,16 +26,50 @@ class Simbolo:
 class SymbolTable:
     def __init__(self):
         self._scopes: List[Dict[str, Simbolo]] = [{}]
+        self._prestamos: List[Dict[str, dict]] = [{}]  # Manual 4 S4.2: prestamos activos por scope
         self._scope_level = 0
 
     def entrar_scope(self):
         self._scopes.append({})
+        self._prestamos.append({})
         self._scope_level += 1
 
     def salir_scope(self):
         if len(self._scopes) > 1:
             self._scopes.pop()
+            self._prestamos.pop()
             self._scope_level -= 1
+
+    def prestamo_activo(self, nombre: str) -> tuple:
+        """Manual 4 S4.2: retorna (total_inmutables, hay_mutable) visibles en todos los scopes."""
+        inmutable_total = 0
+        hay_mutable = False
+        for layer in reversed(self._prestamos):
+            est = layer.get(nombre)
+            if est:
+                inmutable_total += est.get('inmutable', 0)
+                hay_mutable = hay_mutable or est.get('mutable', False)
+        return inmutable_total, hay_mutable
+
+    def registrar_prestamo(self, nombre: str, es_mutable: bool) -> bool:
+        """Manual 4 S4.2: registra un prestamo sobre 'nombre'.
+
+        Reglas: multiples inmutables simultaneos OK; un solo mutable a la vez
+        y sin coexistencia con inmutables.
+        Retorna True si el prestamo es permitido, False si viola coexistencia.
+        """
+        inmutables, hay_mutable = self.prestamo_activo(nombre)
+        if es_mutable:
+            if hay_mutable or inmutables > 0:
+                return False
+            self._prestamos[-1][nombre] = {'inmutable': 0, 'mutable': True}
+        else:
+            if hay_mutable:
+                return False
+            est = self._prestamos[-1].get(nombre, {'inmutable': 0, 'mutable': False})
+            est['inmutable'] += 1
+            self._prestamos[-1][nombre] = est
+        return True
 
     @property
     def scope_nivel(self) -> int:
