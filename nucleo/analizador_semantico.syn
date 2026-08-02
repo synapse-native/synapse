@@ -95,6 +95,7 @@ estructura SemTablaSimbolos:
     entradas: SemSimbolo
     total_entradas: entero
     nivel_actual: entero
+    max_entradas: entero
 
 estructura SemEstructuraInfo:
     nombre: cadena
@@ -171,9 +172,14 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
             asm("i = i + 1")
     si encontrado == verdadero:
         retornar falso
+    // Guard: la tabla de simbolos nunca debe desbordar su limite (Manual 3 S3.2/S3.3)
+    inseguro:
+        asm("if (est->tabla->total_entradas >= est->tabla->max_entradas) { return 0; }")
     // Add new symbol
     inseguro:
-        asm("est->tabla->entradas[est->tabla->total_entradas].nombre = nombre")
+        asm("// Propiedad del nombre: copia propia (evita use-after-free si el llamador libera su buffer)")
+        asm("char* _nmown = nombre.datos ? strdup(nombre.datos) : (char*)\"\";")
+        asm("est->tabla->entradas[est->tabla->total_entradas].nombre = (CadenaSegura){.longitud = (int)strlen(_nmown), .datos = _nmown}")
         asm("est->tabla->entradas[est->tabla->total_entradas].tipo = tipo")
         asm("est->tabla->entradas[est->tabla->total_entradas].nivel_ambito = est->tabla->nivel_actual")
         asm("est->tabla->entradas[est->tabla->total_entradas].propiedad = 1")
@@ -547,9 +553,10 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
             asm("    return;")
             asm("}")
             asm("i = i + 1")
-    // Store struct info
+    // Store struct info (propiedad del nombre: copia propia, Manual 3 S3.3)
     inseguro:
-        asm("est->info_estructuras[est->total_estructuras].nombre = nombre")
+        asm("char* _nmost = nombre.datos ? strdup(nombre.datos) : (char*)\"\";")
+        asm("est->info_estructuras[est->total_estructuras].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost}")
         asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
         asm("est->total_estructuras = est->total_estructuras + 1")
 

@@ -27,7 +27,8 @@ SUB_MODULOS = [
     "emision_c.syn",
     "expr_eval.syn",       # _oo_expr_a_c (extraido de nodos_flujo.syn para < 1000 lineas)
     "nodos_flujo.syn",
-    "orquestador.syn",
+    "frontend_p.syn",      # Front-end canonico _P_* embebido (generado por nucleo/_gen_frontend_p.py)
+    "orquestador.syn",     # Debe ir DESPUES de frontend_p.syn (gen_visitar_top_level los invoca)
 ]
 
 DIR_GENERADOR = os.path.join(os.path.dirname(__file__), "generador")

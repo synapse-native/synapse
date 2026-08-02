@@ -12,10 +12,8 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("const char* _t = (const char*)tipo_synapse;")
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("int _len = (int)strlen(_t);")
-        asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<')")
-        asm("    { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
-        asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<')")
-        asm("    { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
+        asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
+        asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
         asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0) { strcpy(_gen_tmp_buf, \"float\"); return; }")
@@ -27,6 +25,31 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (strcmp(_t, \"double\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")
         asm("if (strcmp(_t, \"puntero\")==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("snprintf(_gen_tmp_buf, 64, \"struct %s\", _t);")
+
+// ----------------------------------------------------------
+// traducir_tipo_c_campo
+// Manual 8 S8.2 + paridad con el generador de referencia (_P_mt/_vest):
+// para campos de estructura, los tipos primitivos se emiten por valor,
+// y los tipos de tipo struct se emiten como PUNTERO (struct X*).
+// ----------------------------------------------------------
+funcion traducir_tipo_c_campo(tipo_synapse: puntero) -> nulo:
+    inseguro:
+        asm("const char* _t = (const char*)tipo_synapse;")
+        asm("traducir_tipo_c((void*)_t);")
+        asm("extern char _gen_tmp_buf[4096];")
+        asm("// Si el tipo no es primitivo, traducir_tipo_c emite 'struct <X>'.")
+        asm("// Como campo de estructura ese tipo se referencia por puntero -> anadir '*'.")
+        asm("if (strncmp(_gen_tmp_buf, \"struct \", 7) == 0) { strcat(_gen_tmp_buf, \"*\"); }")
+
+// ----------------------------------------------------------
+// traducir_tipo_retorno
+// Paridad con el generador de referencia (_P_mt): tipos de retorno de tipo
+// struct se emiten como struct X (por valor), nunca puntero.
+// ----------------------------------------------------------
+funcion traducir_tipo_retorno(tipo_synapse: puntero) -> nulo:
+    inseguro:
+        asm("const char* _t = (const char*)tipo_synapse;")
+        asm("traducir_tipo_c((void*)_t);")
 
 // ----------------------------------------------------------
 // gen_emitir_linea — API PRINCIPAL
@@ -102,12 +125,8 @@ funcion gen_escribir_cadena_escapada(est: GeneradorCEst, str: puntero) -> nulo:
 // ----------------------------------------------------------
 funcion gen_emitir_traza(est: GeneradorCEst, modulo: puntero, nombre_nodo: puntero) -> nulo:
     inseguro:
-        asm("const char* _mod = (const char*)modulo;")
-        asm("const char* _nn = (const char*)nombre_nodo;")
-        asm("if (!_mod || !_nn) return;")
-        asm("char _buf[512];")
-        asm("snprintf(_buf, 512, \"  /* [Traza: %s - %s] */\", _mod, _nn);")
-        asm("gen_emitir_str(est, _buf);")
+        asm("// [Optimizacion] gen_emitir_traza anulado: no emitir comentarios de traza en el C")
+        asm("(void)modulo; (void)nombre_nodo; (void)est;")
 
 // ============================================================
 // CAPA 3: Auditoria Simetrica de Bloques
