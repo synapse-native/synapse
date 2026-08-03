@@ -88,42 +88,48 @@ jobs:
           echo "ISCC_VERSION=$(iscc /? 2>&1 | head -1)" >> $GITHUB_ENV
       
       # -------------------------------------------------------------------------
+      # 4b. Construir el binario del compilador (ME-R6)
+      # El instalador empaqueta dist\bin\synapse.exe; el link es el de ME-R1
+      # (runtime modular completo: Manual 3 S3.1, Manual 9 S9.1).
+      # -------------------------------------------------------------------------
+      - name: Setup MinGW (ME-R6)
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+          static: 0
+
+      - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
+        shell: cmd
+        run: |
+          python main.py nucleo/principal.syn
+          if not exist dist\bin mkdir dist\bin
+          gcc -O2 -static -o dist\bin\synapse.exe ^
+            synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c tweetnacl.c ^
+            -I. -lws2_32 -lm
+          if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
+
+      # -------------------------------------------------------------------------
       # 5. Preparar estructura de archivos para instalador
       # -------------------------------------------------------------------------
       - name: Prepare installer artifacts
         run: |
-          # Crear directorios esperados por instalador_synapse.iss
+          # ME-R6: dist\bin\synapse.exe ya fue construido por el paso 4b.
+          # El .iss referencia los fuentes/headers del runtime desde la raiz del
+          # checkout (synapse_rt.c, synapse_rt_types.h, runtime\core\*, ...).
           New-Item -ItemType Directory -Force -Path dist\bin
-          New-Item -ItemType Directory -Force -Path dist\lib
-          New-Item -ItemType Directory -Force -Path dist\include
-          New-Item -ItemType Directory -Force -Path dist\ia
           New-Item -ItemType Directory -Force -Path vscode-synapse
           
-          # Copiar binarios core (si existen de build previo)
-          if (Test-Path "synapse.exe") { Copy-Item synapse.exe dist\bin\ }
-          if (Test-Path "*.dll") { Copy-Item *.dll dist\bin\ }
-          
-          # Placeholders para componentes IA (descarga real en instalador)
-          # En CI real aquí se descargarían llama-server.exe y model.gguf
-          # Ver: https://github.com/ggerganov/llama.cpp/releases
-          # Ver: https://huggingface.co/TheBloke/Llama-3.2-1B-Instruct-GGUF
-          
-          # Archivos de configuración
-          if (Test-Path "axon.toml") { Copy-Item axon.toml dist\ }
-          if (Test-Path "synapse_rt.h") { Copy-Item synapse_rt.h dist\ }
-          if (Test-Path "synapse_rt.c") { Copy-Item synapse_rt.c dist\ }
-          if (Test-Path "tweetnacl.h") { Copy-Item tweetnacl.h dist\ }
-          if (Test-Path "tweetnacl.c") { Copy-Item tweetnacl.c dist\ }
-          
-          # VSIX placeholder
+          # VSIX placeholder (el .iss lo empaqueta)
           if (-not (Test-Path "vscode-synapse\synapse-vscode-v${{ env.SYNAPSE_VERSION }}.vsix")) {
             Write-Host "::warning::VSIX no encontrado, creando placeholder"
             "placeholder" | Out-File -Encoding utf8 vscode-synapse\synapse-vscode-v${{ env.SYNAPSE_VERSION }}.vsix
           }
           
-          # Headers core IA
-          Copy-Item nucleo\ai_orchestrator.h dist\include\ -Force
-          Copy-Item nucleo\llama_client.h dist\include\ -Force
+          # Puerta: el instalador no puede compilarse sin el binario
+          if (-not (Test-Path "dist\bin\synapse.exe")) {
+            Write-Host "::error::dist\bin\synapse.exe NO fue generado (ME-R6)"
+            exit 1
+          }
       
       # -------------------------------------------------------------------------
       # 6. Compilar instalador con Inno Setup
