@@ -1,0 +1,20 @@
+#lang: es
+
+// test_05_imports.syn
+// Guard de no-regresion del Bug B: resolucion recursiva de imports
+// (ME-B6), constructor de estructura (ME-B4) y AsignacionCampo (ME-B9.x).
+// Usa tipos de nodo soportados: SentenciaImportar, DefinicionFuncion,
+// AsignacionVariable, AsignacionCampo, LlamadaFuncion, SentenciaRetornar.
+//
+// Variante portable (compila con el compilador NATIVO y con la pipeline
+// de referencia): evita asignar campos de la union 'dato' (valor_str),
+// divergencia pre-existente de la referencia (Manual 8 S8.2).
+// Debe compilar con el compilador NATIVO (synapse_bootstrap.exe) sin
+// fallback a la pipeline Python (el runner lo verifica).
+
+importar std.err
+
+funcion principal() -> entero:
+    r = Resultado()
+    r.tag = 1
+    retornar 0

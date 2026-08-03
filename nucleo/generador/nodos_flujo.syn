@@ -329,6 +329,30 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("}")
 
 // ----------------------------------------------------------
+// gen_visitar_asignacion_campo  (ME-B9.x, paridad visitar_asignacion_campo)
+// ----------------------------------------------------------
+funcion gen_visitar_asignacion_campo(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct AsignacionCampo* _ac = (struct AsignacionCampo*)stmt;")
+        asm("if (!_ac) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"AsignacionCampo\");")
+        asm("char _buf[4096], _buf2[4096];")
+        asm("_buf[0] = 0; _buf2[0] = 0;")
+        asm("if (_ac->objeto) { _oo_expr_a_c(est, _ac->objeto, _buf, 4096); }")
+        asm("if (_ac->expresion) { _oo_expr_a_c(est, _ac->expresion, _buf2, 4096); }")
+        asm("const char* _sep = \".\";")
+        asm("if (_ac->objeto && _ac->objeto->tipo.datos && strcmp(_ac->objeto->tipo.datos, \"Identificador\") == 0) {")
+        asm("    struct Identificador* _oidc = (struct Identificador*)_ac->objeto;")
+        asm("    if (_oidc->nombre.datos) {")
+        asm("        extern char _G_fn_ptr_vars[64][64]; extern int _G_fn_ptr_vars_count;")
+        asm("        for (int _pvi = 0; _pvi < _G_fn_ptr_vars_count; _pvi++) { if (strcmp(_G_fn_ptr_vars[_pvi], _oidc->nombre.datos) == 0) { _sep = \"->\"; break; } }")
+        asm("    }")
+        asm("}")
+        asm("char _linea[8192];")
+        asm("snprintf(_linea, 8192, \"    %s%s%s = %s;\", _buf, _sep, _ac->nombre_campo.datos ? _ac->nombre_campo.datos : \"\", _buf2);")
+        asm("gen_emitir_str(est, _linea);")
+
+// ----------------------------------------------------------
 // gen_visitar_expr
 // ----------------------------------------------------------
 funcion gen_visitar_expr(est: GeneradorCEst, stmt: puntero) -> nulo:
@@ -428,7 +452,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("else if (_syn_es_tipo(_t, \"AsignacionVariable\")) { gen_visitar_asignacion(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaExpr\")) { gen_visitar_expr(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"DeclaracionVariable\")) { gen_visitar_declaracion(est, stmt); }")
-        asm("else if (_syn_es_tipo(_t, \"AsignacionCampo\")) { gen_visitar_expr(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"AsignacionCampo\")) { gen_visitar_asignacion_campo(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")
