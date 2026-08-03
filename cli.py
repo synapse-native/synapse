@@ -15,22 +15,42 @@ from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
 # ============================================================
 
 def _resolver_gcc() -> str:
-    """Resuelve la ruta al GCC del toolchain interno."""
-    import glob as _glob
+    """Resuelve la ruta al GCC del toolchain interno.
+
+    ME-R4 (Causa C): el C generado por el compilador usa extensiones GCC
+    (nested functions) que clang rechaza (Manual 8 §8.1) -> se fuerza un GCC
+    real. En macOS '/usr/bin/gcc' es un shim de clang: se valida con '--version'
+    que el binario NO reporte 'clang', y se busca el gcc de Homebrew (gcc-14/13/12)
+    antes de caer en el PATH. La variable SYNAPSE_GCC_PATH es un override
+    explicito del usuario y se respeta tal cual (si ejecuta).
+    """
     root = os.path.dirname(os.path.abspath(__file__))
+    env_gcc = os.environ.get('SYNAPSE_GCC_PATH', '')
     candidates = [
-        os.environ.get('SYNAPSE_GCC_PATH', ''),
+        env_gcc,
         os.path.join(root, 'toolchain_gcc12', 'mingw64', 'bin', 'gcc.exe'),
         os.path.join(root, 'toolchain', 'bin', 'gcc.exe'),
-        'gcc',
     ]
+    if sys.platform == 'darwin':
+        candidates += [
+            '/opt/homebrew/bin/gcc-14', '/opt/homebrew/bin/gcc-13', '/opt/homebrew/bin/gcc-12',
+            '/usr/local/bin/gcc-14', '/usr/local/bin/gcc-13', '/usr/local/bin/gcc-12',
+            'gcc-14', 'gcc-13', 'gcc-12',
+        ]
+    candidates += ['gcc', 'cc']
     for c in candidates:
-        if c:
-            try:
-                ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
-                if ret.returncode == 0:
-                    return c
-            except Exception: pass
+        if not c:
+            continue
+        try:
+            ret = subprocess.run([c, '--version'], capture_output=True, text=True, timeout=5)
+            if ret.returncode != 0:
+                continue
+            # Rechazar shims de clang (p. ej. /usr/bin/gcc de macOS) salvo override explicito
+            if c != env_gcc and 'clang' in (ret.stdout + ret.stderr).lower():
+                continue
+            return c
+        except Exception:
+            continue
     return 'gcc'
 
 
@@ -58,7 +78,7 @@ def _auditar_memoria():
     """
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
-    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
+    compiler = _resolver_gcc()
     
     # Tests C a compilar con ASan
     c_tests = [
@@ -122,7 +142,7 @@ def _auditar_hilos():
     """
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
-    compiler = os.environ.get('SYNAPSE_GCC', 'gcc')
+    compiler = _resolver_gcc()
     
     # Stress test con canales concurrentes (F10.5)
     stress_src = os.path.join(root, 'tests', 'stress', 'test_stress_concurrencia.c')
