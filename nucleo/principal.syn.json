@@ -69677,6 +69677,20 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "            // ME-B9.y: dedup de constantes globales top-level (paridad pipeline.py:374 StmtConstante)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            else if(strcmp(_tt0,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av0=(struct AsignacionVariable*)_ss->cabeza; _nm0=_av0->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "            if(_nm0 && _nm0[0] && _seen_sym_n < 2048){"
                 }
               },
@@ -70182,6 +70196,20 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "                        else if(strcmp(_tt2,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x2=(struct DeclaracionExterna*)_mc->cabeza; _nm2=_x2->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        // ME-B9.y: dedup de constantes globales top-level (paridad pipeline.py:374 StmtConstante)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        else if(strcmp(_tt2,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av2=(struct AsignacionVariable*)_mc->cabeza; _nm2=_av2->nombre.datos; }"
                 }
               },
               {
