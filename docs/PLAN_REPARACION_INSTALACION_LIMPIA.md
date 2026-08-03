@@ -8,7 +8,7 @@
 > **Fecha de creación:** 2026-08-03
 > **Versión del proyecto:** 5.1.1-industrial
 > **Commit auditado en el diagnóstico:** `2e50e4dce5dffc6c5ceaf170ec3b612dfdb056cf`
-> **Estado del plan:** 🔄 EN PROGRESO (9 micro-entregables definidos, ninguno ejecutado aún)
+> **Estado del plan:** 🔄 EN PROGRESO (9 micro-entregables definidos, 2 ejecutados)
 
 ---
 
@@ -231,9 +231,9 @@ build.bat bootstrap-full                     # → S2 == S3 (diff 0 bytes)
 ## 5. SEGUIMIENTO (marcar avance en cada sesión)
 
 - [x] **ME-R1** — Workflows: link runtime modular completo (fix validado) — ✅ 2026-08-03, commit `7734d2b`
-- [ ] **ME-R2** — `pipeline.py`: runtime desde fuente + propagar errores
+- [x] **ME-R2** — `pipeline.py`: runtime desde fuente + propagar errores — ✅ 2026-08-03, commit `80e18dd`
 - [ ] **ME-R3** — `build.sh`/`build.bat`: rutas `runtime/core/*.c`
-- [ ] **ME-R4** — Toolchain: forzar GCC antes que clang
+- [ ] **ME-R4** — Toolchain: forzar GCC antes que clang (**parte del resolver ya absorbida por ME-R2**)
 - [ ] **ME-R5** — Pipeline nativo: `nucleo/principal.syn:404` link desde fuente
 - [ ] **ME-R6** — Instalador: `LICENSE.txt`, `assets/`, `dist\bin\synapse.exe` previo
 - [ ] **ME-R7** — Tests: auto-compilar `.o` del runtime
@@ -245,6 +245,14 @@ build.bat bootstrap-full                     # → S2 == S3 (diff 0 bytes)
 | Fecha | ME | Resultado | Evidencia |
 |---|---|---|---|
 | 2026-08-03 | ME-R1 | ✅ COMPLETADO — `windows_release.yml` y `release-binaries.yml` enlazan el runtime modular completo (`runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`); macOS usa gcc de brew (Causa C resuelta en el entregable) | Commits `7734d2ba1f9fee1960e268f0c69a7110a121ab24` + revisión `c921a5a41bdc6b9313490e46256eaa824a76238c` (shell:cmd para continuación `^`, gcc-12 en loop darwin); validado en clon limpio: `synapse-windows-amd64.exe` (1,169,510 B) y `synapse-test.exe` (1,290,818 B), RC=0, cabecera MZ; YAML OK |
+| 2026-08-03 | ME-R2 | ✅ COMPLETADO — `pipeline.py` compila el runtime modular desde fuente a `build/obj/` y PROPAGA errores (Causas B/C/E). Absorbió la parte del resolver de ME-R4 (gcc antes que clang + branch darwin con verificación anti-shim). Destapó y corrigió bugs preexistentes enmascarados por la traga de errores: `std/debug.syn` (firmas `externo` no coincidían con el runtime C: `-> Resultado/TraceSession` vs `int/CadenaSegura`; wrappers ahora con prototipos C exactos en asm y `Resultado` ADT), `synapse_rt.c` (trazas ahora en `~/.synapse/traces` vía `_syn_home_dir`, antes `.synapse/traces` relativo al CWD), `tests/unit/test_debug.py` (fixture de aislamiento del directorio compartido de trazas), `tests/security/test_verificacion_formal.py` (`CODIGO_VALIDO_SAFE` sin `principal` → no enlazable) | Commit `80e18dd1f9132cbaf4674115f326ff49ff599082` (+ revisión: guard anti-shim clang en darwin y hint de `funcion principal` faltante). Validado en clon limpio: bootstrap RC=0 con 0 `error:`, `synapse_bootstrap.exe` (1,192,625 B) y `hola.exe` (857,938 B) generados, prueba negativa (toolchain roto) RC=1 con mensaje ME-R2. Suite completa: **667 passed, 0 failed, 9 skipped, 1 xfailed**. Post-revisión: 105/105 en tests afectados (safe, debug, lexer, parser) |
+
+> **Nota ME-R2 (deuda detectada, no bloqueante):** un test C de tar borra el fixture
+> `tests/fixtures/tar_test_out/test_normal.txt` como efecto secundario de la suite (restaurado
+> con `git checkout`; se mapea a ME-R7 higiene de tests). Además `tr_grabar_snapshot` en el
+> runtime usa `long long valor_entero` mientras `std/debug.syn` lo declara `entero` (int):
+> desajuste ABI latente NO ejercitado por ningún test actual (los tests de integración llaman
+> al runtime vía ctypes con la firma real) — documentado, pendiente de decisión del Arquitecto.
 
 ---
 
