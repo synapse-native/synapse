@@ -60590,6 +60590,34 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "// ME-C2: dedup del escaneo contra el seed de builtins (deuda ME-B8 nota 1)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Paridad semantic_types.py:258: las funciones de usuario tienen precedencia"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// sobre los builtins. Si el nombre ya existe en _G_native_func_returns"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// (seed o AST previo), SOBRESCRIBIR el tipo de retorno (usuario gana)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "while (_gefr && _G_native_func_returns_count < 255) {"
                 }
               },
@@ -60625,35 +60653,84 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            strncpy(_G_native_func_returns[_G_native_func_returns_count], _geff->nombre.datos, 63);"
+                  "instruccion": "            int _geidx = -1;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            _G_native_func_returns[_G_native_func_returns_count][63] = 0;"
+                  "instruccion": "            for (int _gei = 0; _gei < _G_native_func_returns_count; _gei++) { if (strcmp(_G_native_func_returns[_gei], _geff->nombre.datos) == 0) { _geidx = _gei; break; } }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            strncpy(_G_native_func_returns[_G_native_func_returns_count + 256], _geff->tipo_retorno.datos, 63);"
+                  "instruccion": "            if (_geidx >= 0) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            _G_native_func_returns[_G_native_func_returns_count + 256][63] = 0;"
+                  "instruccion": "                strncpy(_G_native_func_returns[_geidx + 256], _geff->tipo_retorno.datos, 63);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            _G_native_func_returns_count++;"
+                  "instruccion": "                _G_native_func_returns[_geidx + 256][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strncpy(_G_native_func_returns[_G_native_func_returns_count], _geff->nombre.datos, 63);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _G_native_func_returns[_G_native_func_returns_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strncpy(_G_native_func_returns[_G_native_func_returns_count + 256], _geff->tipo_retorno.datos, 63);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _G_native_func_returns[_G_native_func_returns_count + 256][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _G_native_func_returns_count++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
                 }
               },
               {
@@ -60688,35 +60765,84 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                strncpy(_G_native_func_returns[_G_native_func_returns_count], _gex->nombre.datos, 63);"
+                  "instruccion": "                int _gexidx = -1;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _G_native_func_returns[_G_native_func_returns_count][63] = 0;"
+                  "instruccion": "                for (int _gei2 = 0; _gei2 < _G_native_func_returns_count; _gei2++) { if (strcmp(_G_native_func_returns[_gei2], _gex->nombre.datos) == 0) { _gexidx = _gei2; break; } }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                strncpy(_G_native_func_returns[_G_native_func_returns_count + 256], _gex->tipo_retorno.datos, 63);"
+                  "instruccion": "                if (_gexidx >= 0) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _G_native_func_returns[_G_native_func_returns_count + 256][63] = 0;"
+                  "instruccion": "                    strncpy(_G_native_func_returns[_gexidx + 256], _gex->tipo_retorno.datos, 63);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _G_native_func_returns_count++;"
+                  "instruccion": "                    _G_native_func_returns[_gexidx + 256][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncpy(_G_native_func_returns[_G_native_func_returns_count], _gex->nombre.datos, 63);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _G_native_func_returns[_G_native_func_returns_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncpy(_G_native_func_returns[_G_native_func_returns_count + 256], _gex->tipo_retorno.datos, 63);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _G_native_func_returns[_G_native_func_returns_count + 256][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _G_native_func_returns_count++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
                 }
               },
               {
@@ -63703,6 +63829,20 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    // ME-C1: guard de overflow (deuda #4) — paridad con el patron _ep < 4095"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // de nodos_flujo.syn: el builder de externs no debe exceder _exps[4096]."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        char _exbuf[4096];"
                 }
               },
@@ -63745,7 +63885,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if (_expf) { _expo = 0; _expf = 0; } else { _exps[_expo++] = ','; _exps[_expo++] = ' '; }"
+                  "instruccion": "                if (_expf) { _expo = 0; _expf = 0; } else if (_expo < 4094) { _exps[_expo++] = ','; _exps[_expo++] = ' '; }"
                 }
               },
               {
@@ -63773,21 +63913,21 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                int _exk = 0; while (_expt[_exk]) _exps[_expo++] = _expt[_exk++];"
+                  "instruccion": "                int _exk = 0; while (_expt[_exk] && _expo < 4095) _exps[_expo++] = _expt[_exk++];"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _exps[_expo++] = ' ';"
+                  "instruccion": "                if (_expo < 4095) _exps[_expo++] = ' ';"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _exk = 0; while (_expar->nombre.datos[_exk]) _exps[_expo++] = _expar->nombre.datos[_exk++];"
+                  "instruccion": "                _exk = 0; while (_expar->nombre.datos[_exk] && _expo < 4095) _exps[_expo++] = _expar->nombre.datos[_exk++];"
                 }
               },
               {
