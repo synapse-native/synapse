@@ -244,7 +244,7 @@ build.bat bootstrap-full                     # → S2 == S3 (diff 0 bytes)
 
 | Fecha | ME | Resultado | Evidencia |
 |---|---|---|---|
-| 2026-08-03 | ME-R1 | ✅ COMPLETADO — `windows_release.yml` y `release-binaries.yml` enlazan el runtime modular completo (`runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`); macOS usa gcc de brew (Causa C resuelta en el entregable) | Commit `7734d2ba1f9fee1960e268f0c69a7110a121ab24`; validado en clon limpio: `synapse-windows-amd64.exe` (1,169,510 B) y `synapse-test.exe` (1,290,818 B), RC=0, cabecera MZ; YAML OK |
+| 2026-08-03 | ME-R1 | ✅ COMPLETADO — `windows_release.yml` y `release-binaries.yml` enlazan el runtime modular completo (`runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`); macOS usa gcc de brew (Causa C resuelta en el entregable) | Commits `7734d2ba1f9fee1960e268f0c69a7110a121ab24` + revisión `c921a5a41bdc6b9313490e46256eaa824a76238c` (shell:cmd para continuación `^`, gcc-12 en loop darwin); validado en clon limpio: `synapse-windows-amd64.exe` (1,169,510 B) y `synapse-test.exe` (1,290,818 B), RC=0, cabecera MZ; YAML OK |
 
 ---
 
