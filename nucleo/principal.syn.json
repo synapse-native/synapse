@@ -69579,21 +69579,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        struct ListaNodo* _cur=_prog.sentencias;"
+                  "instruccion": "        // ME-B9.z: _merged se construye inline desde _prog.sentencias (fusion abajo)"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        while(_cur){if(_cur->cabeza){*_mcur=(struct ListaNodo*)calloc(1,sizeof(struct ListaNodo));(*_mcur)->cabeza=_cur->cabeza;(*_mcur)->cola=NULL;_mcur=&(*_mcur)->cola;}_cur=_cur->cola;}"
+                  "instruccion": "// ME-B9.z: fusion INLINE de imports (paridad pipeline.py:327-383 / Manual 3 S3.1)"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// ME-B6: resolucion recursiva de imports (paridad pipeline.py:328-368 / Manual 3 S3.1)"
+                  "instruccion": "// (reemplaza el orden usuario-primero por el orden inline de la referencia:"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "//  cada modulo se expande en el punto de su importar; primero-gana)"
                 }
               },
               {
@@ -69614,98 +69621,287 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "{"
+                  "instruccion": "struct ListaNodo* _stk[64]; int _stk_n = 0;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    struct ListaNodo* _ss = _merged;"
+                  "instruccion": "_stk[0] = _prog.sentencias; _stk_n = 1;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    while(_ss){"
+                  "instruccion": "while(_stk_n > 0){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if(_ss->cabeza && _ss->cabeza->tipo.datos){"
+                  "instruccion": "    struct ListaNodo* _sc = _stk[_stk_n - 1];"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            const char* _tt0 = _ss->cabeza->tipo.datos;"
+                  "instruccion": "    if(!_sc){ _stk_n--; continue; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            const char* _nm0 = 0;"
+                  "instruccion": "    struct Nodo* _hd = _sc->cabeza;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if(strcmp(_tt0,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f0=(struct DefinicionFuncion*)_ss->cabeza; _nm0=_f0->nombre.datos; }"
+                  "instruccion": "    _stk[_stk_n - 1] = _sc->cola;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            else if(strcmp(_tt0,\"DefinicionEstructura\")==0){ struct DefinicionEstructura* _d0=(struct DefinicionEstructura*)_ss->cabeza; _nm0=_d0->nombre.datos; }"
+                  "instruccion": "    if(!_hd || !_hd->tipo.datos) continue;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            else if(strcmp(_tt0,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x0=(struct DeclaracionExterna*)_ss->cabeza; _nm0=_x0->nombre.datos; }"
+                  "instruccion": "    const char* _tt = _hd->tipo.datos;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            // ME-B9.y: dedup de constantes globales top-level (paridad pipeline.py:374 StmtConstante)"
+                  "instruccion": "    if(strcmp(_tt, \"SentenciaImportar\") == 0){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            else if(strcmp(_tt0,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av0=(struct AsignacionVariable*)_ss->cabeza; _nm0=_av0->nombre.datos; }"
+                  "instruccion": "        struct SentenciaImportar* _imp = (struct SentenciaImportar*)_hd;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if(_nm0 && _nm0[0] && _seen_sym_n < 2048){"
+                  "instruccion": "        const char* _rt = _imp->ruta.datos;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                int _dup0=0; for(int _si0=0;_si0<_seen_sym_n;_si0++){ if(strcmp(_seen_sym[_si0],_nm0)==0){_dup0=1;break;} }"
+                  "instruccion": "        if(!_rt || !_rt[0]) continue;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if(!_dup0){ strncpy(_seen_sym[_seen_sym_n],_nm0,63); _seen_sym[_seen_sym_n][63]=0; _seen_sym_n++; }"
+                  "instruccion": "        int _visto=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        for(int _vi=0;_vi<_seen_imp_n;_vi++){ if(strcmp(_seen_imp[_vi],_rt)==0){_visto=1;break;} }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(_visto) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(_seen_imp_n < 64){ strncpy(_seen_imp[_seen_imp_n],_rt,255); _seen_imp[_seen_imp_n][255]=0; _seen_imp_n++; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _path[512]=\"\";"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _res=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(strncmp(_rt,\"std.\",4)==0){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _subsl[256]; int _sk=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for(int _si=4;_rt[_si]&&_sk<255;_si++){ _subsl[_sk++]= (_rt[_si]=='.')?'/':_rt[_si]; } _subsl[_sk]=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            const char* _lib = getenv(\"SYNAPSE_LIB_PATH\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if(_lib && _lib[0]){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_path,sizeof(_path),\"%s/%s.syn\",_lib,_subsl);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(!_res){ snprintf(_path,sizeof(_path),\"%s/%s/principal.syn\",_lib,_subsl); FILE* _tf2=fopen(_path,\"rb\"); if(_tf2){ fclose(_tf2); _res=1; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if(!_res){ snprintf(_path,sizeof(_path),\"librerias/std/%s.syn\",_subsl); FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if(!_res){ snprintf(_path,sizeof(_path),\"std/%s.syn\",_subsl); FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _rsub[256]; int _rk2=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for(int _si=0;_rt[_si]&&_rk2<255;_si++){ _rsub[_rk2++]= (_rt[_si]=='.')?'/':_rt[_si]; } _rsub[_rk2]=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _c0[512],_c1[512],_c2[512],_c3[512];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_c0,sizeof(_c0),\"axon_modules/%s/principal.syn\",_rsub);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_c1,sizeof(_c1),\"axon_modules/%s.syn\",_rsub);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_c2,sizeof(_c2),\"%s.syn\",_rt);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_c3,sizeof(_c3),\"%s.syn\",_rsub);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            const char* _cands[4]={_c0,_c1,_c2,_c3};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for(int _ci=0;_ci<4;_ci++){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                FILE* _tf=fopen(_cands[_ci],\"rb\"); if(_tf){ fclose(_tf); strncpy(_path,_cands[_ci],511); _path[511]=0; _res=1; break; }"
                 }
               },
               {
@@ -69726,7 +69922,119 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        _ss=_ss->cola;"
+                  "instruccion": "        if(!_res){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            fprintf(stderr,\"[Synapse] ERROR: modulo '%s' no encontrado (ERR_MODULE_NOT_FOUND)\\n\",_rt);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct ResultadoEtapa _e = {1, 7}; return _e;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        FILE* _mf=fopen(_path,\"rb\"); if(!_mf){ struct ResultadoEtapa _e={1,2}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        fseek(_mf,0,SEEK_END); long _msz=ftell(_mf); fseek(_mf,0,SEEK_SET);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(_msz>1048576){ fprintf(stderr,\"FATAL: %s >1MB\\n\",_path); fclose(_mf); struct ResultadoEtapa _e={1,6}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char* _mb=(char*)malloc((size_t)(_msz<1048576?1048576:_msz)+1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(!_mb){ fclose(_mf); struct ResultadoEtapa _e={1,1}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        fread(_mb,1,(size_t)_msz,_mf); fclose(_mf); _mb[_msz]=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        CadenaSegura _msrc={.longitud=(int)_msz,.datos=_mb};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _P_ntks=0;_P_tpos=0;_P_p_err=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _mnt=tokenizar(_msrc); if(_mnt<0){ free(_mb); struct ResultadoEtapa _e={1,3}; return _e; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct Programa _mprog=parsear(_msrc); free(_mb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        fprintf(stderr,\"[Synapse] Importado: %s -> %s\\n\",_rt,_path);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if(_stk_n < 64){ _stk[_stk_n++] = _mprog.sentencias; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        continue;"
                 }
               },
               {
@@ -69740,588 +70048,105 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "}"
+                  "instruccion": "    const char* _nm=0;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "int _conv = 1;"
+                  "instruccion": "    if(strcmp(_tt,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f2=(struct DefinicionFuncion*)_hd; _nm=_f2->nombre.datos; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "int _pass = 0;"
+                  "instruccion": "    else if(strcmp(_tt,\"DefinicionEstructura\")==0){ struct DefinicionEstructura* _d2=(struct DefinicionEstructura*)_hd; _nm=_d2->nombre.datos; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "while(_conv && _pass < 64){"
+                  "instruccion": "    else if(strcmp(_tt,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x2=(struct DeclaracionExterna*)_hd; _nm=_x2->nombre.datos; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    _conv = 0; _pass++;"
+                  "instruccion": "    // ME-B9.y: dedup de constantes globales top-level (paridad pipeline.py:374 StmtConstante)"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    struct ListaNodo* _sc = _merged;"
+                  "instruccion": "    else if(strcmp(_tt,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av2=(struct AsignacionVariable*)_hd; _nm=_av2->nombre.datos; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    while(_sc){"
+                  "instruccion": "    int _aceptar=1;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if(_sc->cabeza && _sc->cabeza->tipo.datos && strcmp(_sc->cabeza->tipo.datos,\"SentenciaImportar\")==0){"
+                  "instruccion": "    if(_nm && _nm[0]){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            struct SentenciaImportar* _imp = (struct SentenciaImportar*)_sc->cabeza;"
+                  "instruccion": "        int _dup2=0; for(int _si2=0;_si2<_seen_sym_n;_si2++){ if(strcmp(_seen_sym[_si2],_nm)==0){_dup2=1;break;} }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            const char* _rt = _imp->ruta.datos;"
+                  "instruccion": "        if(_dup2){ _aceptar=0; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if(!_rt || !_rt[0]){ _sc=_sc->cola; continue; }"
+                  "instruccion": "        else if(_seen_sym_n<2048){ strncpy(_seen_sym[_seen_sym_n],_nm,63); _seen_sym[_seen_sym_n][63]=0; _seen_sym_n++; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            int _visto=0;"
+                  "instruccion": "    }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            for(int _vi=0;_vi<_seen_imp_n;_vi++){ if(strcmp(_seen_imp[_vi],_rt)==0){_visto=1;break;} }"
+                  "instruccion": "    if(_aceptar){"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if(_visto){ _sc=_sc->cola; continue; }"
+                  "instruccion": "        *_mcur=(struct ListaNodo*)calloc(1,sizeof(struct ListaNodo));"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            char _path[512]=\"\";"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            int _res=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(strncmp(_rt,\"std.\",4)==0){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                char _subsl[256]; int _sk=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                for(int _si=4;_rt[_si]&&_sk<255;_si++){ _subsl[_sk++]= (_rt[_si]=='.')?'/':_rt[_si]; } _subsl[_sk]=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                const char* _lib = getenv(\"SYNAPSE_LIB_PATH\");"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if(_lib && _lib[0]){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    snprintf(_path,sizeof(_path),\"%s/%s.syn\",_lib,_subsl);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    if(!_res){ snprintf(_path,sizeof(_path),\"%s/%s/principal.syn\",_lib,_subsl); FILE* _tf2=fopen(_path,\"rb\"); if(_tf2){ fclose(_tf2); _res=1; } }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if(!_res){ snprintf(_path,sizeof(_path),\"librerias/std/%s.syn\",_subsl); FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; } }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if(!_res){ snprintf(_path,sizeof(_path),\"std/%s.syn\",_subsl); FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; } }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            } else {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                char _rsub[256]; int _rk2=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                for(int _si=0;_rt[_si]&&_rk2<255;_si++){ _rsub[_rk2++]= (_rt[_si]=='.')?'/':_rt[_si]; } _rsub[_rk2]=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                char _c0[512],_c1[512],_c2[512],_c3[512];"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_c0,sizeof(_c0),\"axon_modules/%s/principal.syn\",_rsub);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_c1,sizeof(_c1),\"axon_modules/%s.syn\",_rsub);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_c2,sizeof(_c2),\"%s.syn\",_rt);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_c3,sizeof(_c3),\"%s.syn\",_rsub);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                const char* _cands[4]={_c0,_c1,_c2,_c3};"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                for(int _ci=0;_ci<4;_ci++){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    FILE* _tf=fopen(_cands[_ci],\"rb\"); if(_tf){ fclose(_tf); strncpy(_path,_cands[_ci],511); _path[511]=0; _res=1; break; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(!_res){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                fprintf(stderr,\"[Synapse] ERROR: modulo '%s' no encontrado (ERR_MODULE_NOT_FOUND)\\n\",_rt);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                struct ResultadoEtapa _e = {1, 7}; return _e;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(_seen_imp_n < 64){ strncpy(_seen_imp[_seen_imp_n],_rt,255); _seen_imp[_seen_imp_n][255]=0; _seen_imp_n++; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            FILE* _mf=fopen(_path,\"rb\"); if(!_mf){ struct ResultadoEtapa _e={1,2}; return _e; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            fseek(_mf,0,SEEK_END); long _msz=ftell(_mf); fseek(_mf,0,SEEK_SET);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(_msz>1048576){ fprintf(stderr,\"FATAL: %s >1MB\\n\",_path); fclose(_mf); struct ResultadoEtapa _e={1,6}; return _e; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            char* _mb=(char*)malloc((size_t)(_msz<1048576?1048576:_msz)+1);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(!_mb){ fclose(_mf); struct ResultadoEtapa _e={1,1}; return _e; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            fread(_mb,1,(size_t)_msz,_mf); fclose(_mf); _mb[_msz]=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            CadenaSegura _msrc={.longitud=(int)_msz,.datos=_mb};"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            _P_ntks=0;_P_tpos=0;_P_p_err=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            int _mnt=tokenizar(_msrc); if(_mnt<0){ free(_mb); struct ResultadoEtapa _e={1,3}; return _e; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            struct Programa _mprog=parsear(_msrc); free(_mb);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            fprintf(stderr,\"[Synapse] Importado: %s -> %s\\n\",_rt,_path);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            struct ListaNodo* _mc=_mprog.sentencias;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            while(_mc){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if(_mc->cabeza){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    int _aceptar=1;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    if(_mc->cabeza->tipo.datos){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        const char* _tt2=_mc->cabeza->tipo.datos;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        const char* _nm2=0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        if(strcmp(_tt2,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f2=(struct DefinicionFuncion*)_mc->cabeza; _nm2=_f2->nombre.datos; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        else if(strcmp(_tt2,\"DefinicionEstructura\")==0){ struct DefinicionEstructura* _d2=(struct DefinicionEstructura*)_mc->cabeza; _nm2=_d2->nombre.datos; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        else if(strcmp(_tt2,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x2=(struct DeclaracionExterna*)_mc->cabeza; _nm2=_x2->nombre.datos; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        // ME-B9.y: dedup de constantes globales top-level (paridad pipeline.py:374 StmtConstante)"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        else if(strcmp(_tt2,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av2=(struct AsignacionVariable*)_mc->cabeza; _nm2=_av2->nombre.datos; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        if(_nm2 && _nm2[0]){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                            int _dup2=0; for(int _si2=0;_si2<_seen_sym_n;_si2++){ if(strcmp(_seen_sym[_si2],_nm2)==0){_dup2=1;break;} }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                            if(_dup2){ _aceptar=0; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                            else if(_seen_sym_n<2048){ strncpy(_seen_sym[_seen_sym_n],_nm2,63); _seen_sym[_seen_sym_n][63]=0; _seen_sym_n++; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    if(_aceptar){"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        *_mcur=(struct ListaNodo*)calloc(1,sizeof(struct ListaNodo));"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        (*_mcur)->cabeza=_mc->cabeza; (*_mcur)->cola=NULL; _mcur=&(*_mcur)->cola;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                _mc=_mc->cola;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            _conv=1;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        _sc=_sc->cola;"
+                  "instruccion": "        (*_mcur)->cabeza=_hd; (*_mcur)->cola=NULL; _mcur=&(*_mcur)->cola;"
                 }
               },
               {
