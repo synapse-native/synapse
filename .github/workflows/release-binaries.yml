@@ -46,15 +46,37 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y gcc libpthread-stubs0-dev
 
+      # ME-R1: el C generado por el compilador usa extensiones GCC (nested functions);
+      # clang de macOS no lo compila (Manual 8 §8.1). Mismo patron que release_matrix.yml.
+      - name: Instalar GCC (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install gcc || true
+
       - name: Generar código C desde Synapse (bootstrap)
         run: python main.py nucleo/principal.syn
 
+      # ME-R1: compilar y enlazar el runtime modular completo (Manual 3 §3.1).
+      # pool_alloc/pool_free/pool_init: runtime/core/memory.c; canales: runtime/core/concurrency.c;
+      # crypto_sign_ed25519_tweet*: tweetnacl.c (mapeado via tweetnacl.h).
       - name: Compilar runtime y binario
+        shell: bash
         run: |
-          ${{ matrix.cc }} -c synapse_rt.c -o synapse_rt.o ${{ matrix.ldflags }}
-          ${{ matrix.cc }} -o ${{ matrix.artifact_name }}${{ matrix.ext }} \
-            synapse_unity.c synapse_rt.o \
-            -I. ${{ matrix.ldflags }} -O2
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            for G in /opt/homebrew/bin/gcc-14 /opt/homebrew/bin/gcc-13 /usr/local/bin/gcc-14 /usr/local/bin/gcc-13 gcc-14 gcc-13; do
+              if command -v "$G" &> /dev/null; then CC="$G"; break; fi
+            done
+            if [ -z "$CC" ]; then CC="clang"; fi
+          else
+            CC="${{ matrix.cc }}"
+          fi
+          echo "Compilador: ${CC} ($(${CC} --version 2>&1 | head -1))"
+          ${CC} -c synapse_rt.c -o synapse_rt.o -I. ${{ matrix.ldflags }}
+          ${CC} -c runtime/core/memory.c -o runtime_memory.o -I. ${{ matrix.ldflags }}
+          ${CC} -c runtime/core/concurrency.c -o runtime_concurrency.o -I. ${{ matrix.ldflags }}
+          ${CC} -c tweetnacl.c -o tweetnacl.o -I. ${{ matrix.ldflags }}
+          ${CC} -o ${{ matrix.artifact_name }}${{ matrix.ext }} \
+            synapse_unity.c synapse_rt.o runtime_memory.o runtime_concurrency.o tweetnacl.o \
+            -I. ${{ matrix.ldflags }} -lm -O2
 
       - name: Subir artefacto al Release
         uses: softprops/action-gh-release@v1
