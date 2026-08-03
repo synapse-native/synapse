@@ -1,0 +1,280 @@
+# PLAN DE REPARACIÓN — INSTALACIÓN LIMPIA FUNCIONAL (v5.1.1-industrial)
+
+> **Propósito:** Registro oficial para continuar en próximas sesiones la reparación de los
+> fallos de build en instalación limpia y CI. Este documento es AUTOCONTENIDO: no depende
+> del historial de conversación.
+>
+> **Autor:** Buffy (Freebuff AI) — Programador Synapse
+> **Fecha de creación:** 2026-08-03
+> **Versión del proyecto:** 5.1.1-industrial
+> **Commit auditado en el diagnóstico:** `2e50e4dce5dffc6c5ceaf170ec3b612dfdb056cf`
+> **Estado del plan:** 🔄 EN PROGRESO (9 micro-entregables definidos, ninguno ejecutado aún)
+
+---
+
+## 1. CONTEXTO Y SÍNTOMA
+
+El Arquitecto reportó: al hacer una **prueba de instalación en limpio** (clon del repositorio
+de GitHub), **faltan archivos necesarios** que sí existen en el repo local, y **nunca se
+genera `synapse.exe`**. Los **workflows de GitHub fallan al compilar el binario estático**.
+
+**Síntoma exacto reproducido** (comando literal de `.github/workflows/windows_release.yml`):
+
+```bash
+gcc -O2 -static -o synapse-windows-amd64.exe synapse_unity.c synapse_rt.c -I. -lws2_32
+# → undefined reference to: pool_alloc, pool_free, pool_init, _pool_malloc, _syn_texto_liberar
+#                          crypto_sign_ed25519_tweet, _keypair, _open
+# → synapse-windows-amd64.exe: No such file or directory   (NO se genera el binario)
+```
+
+**Corrección mínima VALIDADA** (probada en clon limpio; exe de 1,169,510 bytes generado):
+
+```bash
+gcc -O2 -static -o synapse-windows-amd64.exe synapse_unity.c synapse_rt.c \
+    runtime/core/memory.c runtime/core/concurrency.c tweetnacl.c -I. -lws2_32 -lm
+```
+
+---
+
+## 2. DIAGNÓSTICO — CAUSAS RAÍZ (con evidencia)
+
+### Causa A (PRINCIPAL): El runtime modularizado no se enlaza en CI
+- El commit `f03a7f5` ("M0.2: Modularización runtime/core") **movió** `pool_alloc`/`pool_free`/
+  `pool_init` desde `synapse_rt.c` a `runtime/core/memory.c` y las funciones de canales a
+  `runtime/core/concurrency.c`. `tweetnacl.c` aporta `crypto_sign_ed25519_tweet*`
+  (mapeado vía `tweetnacl.h` líneas 200-209).
+- **Workflows afectados:**
+  - `windows_release.yml` — enlaza solo `synapse_unity.c synapse_rt.c` → FALLA.
+  - `release-binaries.yml` — compila `tweetnacl.o` pero **no lo pasa al link** y no enlaza
+    `runtime/core/*.o` → FALLA en los 3 OS.
+  - `release_matrix.yml` — compila `runtime/core/*.c` + `tweetnacl.o` y los enlaza → ✅ ÚNICO CORRECTO.
+  - `ci-tests.yml` (job `bootstrap`) — grepea `error:` en el log de `python main.py src/main.syn`;
+    el log contiene `gcc: error: synapse_rt.o...` y errores C → FALLA.
+  - `build-installer.yml` / `cross-compile.yml` — esperan `dist\bin\synapse.exe` que nunca se
+    genera → FALLA.
+- **Símbolos indefinidos (8):** `_pool_malloc`, `_syn_texto_liberar`, `pool_alloc`, `pool_free`,
+  `pool_init`, `crypto_sign_ed25519_tweet`, `crypto_sign_ed25519_tweet_keypair`,
+  `crypto_sign_ed25519_tweet_open`. (Log: `/tmp/clean_link.log` en la sesión de diagnóstico.)
+
+### Causa B: `pipeline.py` espera `.o` precompilados que no existen en instalación limpia
+- `pipeline.py` `_resolve_rt_obj()` (líneas ~502-516 y ~767-780) busca `synapse_rt.o`,
+  `synapse_rt_memory.o`, `synapse_rt_concurrency.o`, `tweetnacl.o` en la raíz o `dist/lib/`.
+  Si no existen, **devuelve la ruta igualmente** y el link falla **SILENCIOSAMENTE**
+  (imprime `[!]` pero devuelve exit 0).
+- Los fuentes `synapse_rt_memory.c` / `synapse_rt_concurrency.c` **no existen** ni en disco
+  ni en git (fueron movidos a `runtime/core/`).
+- **El build local solo funciona gracias a 28 objetos `.o` huérfanos en la raíz**
+  (`synapse_rt.o`, `synapse_rt_memory.o`, `synapse_rt_concurrency.o`, `tweetnacl.o`,
+  `axon_rt.o`, `_*.c.o`, `nucleo/quantum_*.o`) **ignorados por git** → nunca llegan a GitHub.
+  **ESTOS son los "archivos que están en el repo original pero faltan en la instalación limpia".**
+- Reproducción con el binario nativo en clon limpio (`./synapse.exe hola.syn`):
+  ```
+  gcc: error: synapse_rt.o: No such file or directory
+  gcc: error: synapse_rt_memory.o: No such file or directory
+  gcc: error: synapse_rt_concurrency.o: No such file or directory
+  gcc: error: tweetnacl.o: No such file or directory
+  [Synapse] ERROR: GCC fallo con codigo 1 → "Error de compilacion" → NO se genera .exe
+  ```
+
+### Causa C: Errores de C reales en módulos generados (nested functions = extensión GCC)
+- El generador emite **funciones anidadas** (extensión GCC). `clang` las rechaza:
+  ```
+  .\_principal.c:246:37: error: function definition is not allowed here
+  .\_principal.c:270:41: error: function definition is not allowed here
+  .\_principal.c:395:48: error: call to undeclared function '_f8_flatten'
+  clang-22: error: no such file or directory: '...synapse_rt.o'
+  ```
+- La máquina local resuelve **clang-22 (LLVM-MinGW de WinGet)** como compilador; los errores
+  se **tragan** (pipeline devuelve 0). `release_matrix.yml` ya fuerza `export CC=gcc`.
+- `nucleo/generator.syn:2982` emite `extern void* pool_alloc(size_t size);` → el C generado
+  depende del runtime modular (consistente con Causa A).
+
+### Causa D: Instalador (Inno Setup) roto por dependencias ausentes
+- `instalador_synapse.iss` referencia recursos que **no existen**:
+  - `LicenseFile=LICENSE.txt` → NO existe (solo `LICENSE` sin `.txt`) → iscc falla.
+  - `SetupIconFile=assets\synapse.ico` → NO existe `assets/` → iscc falla.
+  - `Source: dist\bin\synapse.exe` → nunca se genera (Causa A) → instalador sin compilador.
+  - `build_installer.bat` (raíz) → **NO existe** (referenciado en docs, ausente en disco/git).
+
+### Causa E: Tests que dependen de `.o` locales (skips silenciosos en CI)
+- Muchos tests usan constantes `TWEETNACL_O`, `SYNAPSE_RT_O`, `SYNAPSE_RT_MEM_O`,
+  `SYNAPSE_RT_CONC_O` apuntando a la raíz del repo (v.g. `tests/integration/*.py`,
+  `tests/test_toml_raii.py`, `tests/stress/run_stress.py`, `tests/fuzz/*`).
+- Si el `.o` falta → `pytest.skip` → **en CI esos tests ni corren** ("184/184" solo se
+  cumple localmente con los `.o` presentes).
+- Patrón correcto ya existente: `tests/stress/run_stress.py` L51-57 auto-compila `tweetnacl.c`
+  si el objeto no existe.
+
+---
+
+## 3. PLAN DE MICRO-ENTREGABLES (ME-R1 … ME-R9)
+
+**Dependencias:**
+```
+ME-R1 → ME-R6 (instalador)
+ME-R2 ─┬→ ME-R4 → ME-R5
+ME-R3 ─┘        ME-R7 → ME-R9 (certificación final)
+                ME-R8
+```
+
+### ME-R1 — Workflows de CI: enlazar el runtime modular completo ⚡ (fix ya validado)
+- **Manual:** Manual 3 §3.1 | Manual 8 §8.1 | Manual 9 §9.1
+- **Archivos:** `.github/workflows/windows_release.yml`, `.github/workflows/release-binaries.yml`
+- **Cambios:**
+  - `windows_release.yml`: link con `synapse_unity.c synapse_rt.c runtime/core/memory.c
+    runtime/core/concurrency.c tweetnacl.c -I. -lws2_32 -lm` (comando validado).
+  - `release-binaries.yml`: pasar `tweetnacl.o` y los objetos `runtime/core/*.o` al link.
+- **Validación:** clon limpio (`git archive HEAD`) + comando del workflow → exe generado.
+- **Criterio:** binario estático generado en los 3 OS; CI verde.
+
+### ME-R2 — `pipeline.py`: compilar runtime desde fuente + propagar errores
+- **Manual:** Manual 9 §9.7 ("0 errores GCC") | Manual 4 §4.4 | Manual 6 §6.4
+- **Archivos:** `pipeline.py` (L502-516 `_resolve_rt_obj` en `ejecutar_compilador`;
+  L767-780 en `_link_object`)
+- **Cambios:**
+  1. Nueva función `_compilar_runtime()` → compila desde fuente a `build/obj/` (gitignored):
+     `synapse_rt.c`, `runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`
+     (+ `nucleo/quantum_*.c` si existen) con `-I.`.
+  2. Sustituir `_resolve_rt_obj` por los objetos compilados.
+  3. **Propagar fallos**: cualquier fallo de `gcc -c`/link → exit code ≠ 0 (hoy devuelve 0).
+- **Validación:** `python main.py nucleo/principal.syn` en clon limpio genera
+  `synapse_bootstrap.exe` funcional y el log NO contiene `error:`.
+- **Criterio:** compilación completa desde clon limpio, 0 errores, exe utilizable.
+
+### ME-R3 — `build.sh` / `build.bat`: rutas del runtime modular + pasos muertos
+- **Manual:** Manual 3 §3.1 | Manual 9 §9.1
+- **Archivos:** `build.sh`, `build.bat`
+- **Cambios:** `synapse_rt_memory.c`/`synapse_rt_concurrency.c` → `runtime/core/memory.c`/
+  `runtime/core/concurrency.c`; eliminar paso `fixup` (referencia `build/fixup_generator.py`
+  que NO existe); resolver la referencia a `build_installer.bat` (crearlo o quitarlo de la doc).
+- **Validación:** `build.bat bootstrap` y `build.sh` completos desde clon limpio.
+- **Criterio:** Stage 1 genera `synapse_stage2.exe`; Stage 2→3 diff 0 bytes.
+
+### ME-R4 — Toolchain: forzar GCC para el código generado
+- **Manual:** Manual 8 §8.1 | Manual 9 §9.7
+- **Archivos:** `pipeline.py` (`_resolver_toolchain_gcc`), `cli.py` (`_resolver_gcc`)
+- **Cambios:** prioridad: `SYNAPSE_GCC_PATH` → `toolchain_gcc12/mingw64/bin/gcc.exe` →
+  **gcc del sistema (antes que clang)** → clang solo en macOS (con gcc-N de brew).
+  Documentar la dependencia de extensión GCC (nested functions) del generador.
+- **Criterio:** compilación modular de `nucleo/principal.syn` con gcc → 0 errores de C.
+
+### ME-R5 — Pipeline nativo: link desde fuente en `nucleo/principal.syn:404`
+- **Manual:** Manual 9 §9.1 (bootstrap auto-hospedado) | Manual 3 §3.1
+- **Archivos:** `nucleo/principal.syn` línea 404:
+  `asm("snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident ... -I. synapse_unity.c synapse_rt.o synapse_rt_memory.o synapse_rt_concurrency.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", ...)")`
+  → cambiar por `synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c
+  tweetnacl.c ... -lpthread -lm -lws2_32`. Regenerar y commitear `nucleo/principal.c` si está
+  trackeado (verificar con `git ls-files nucleo/principal.c`).
+- **Validación:** con binario nativo recompilado en clon limpio: `synapse hola.syn` → genera
+  `hola.exe` (hoy falla RC=5).
+- **Criterio:** el compilador auto-hospedado compila programas en instalación limpia;
+  bootstrap S1→S2→S3 diff 0 bytes.
+
+### ME-R6 — Instalador: assets faltantes y binario previo
+- **Manual:** Manual 9 §9.9.1 (empaquetado multi-target)
+- **Archivos:** `instalador_synapse.iss`, `LICENSE`, crear `assets/`,
+  `.github/workflows/build-installer.yml`, `.github/workflows/cross-compile.yml`
+- **Cambios:** `LicenseFile=LICENSE` (o crear `LICENSE.txt`); resolver/eliminar
+  `SetupIconFile=assets\synapse.ico`; **añadir paso que construya `dist\bin\synapse.exe`
+  con el link de ME-R1** antes de `iscc`.
+- **Validación:** `iscc instalador_synapse.iss` sin errores; instalador > 10 MB con
+  `bin\synapse.exe` dentro.
+- **Criterio:** instalación desde el instalador → `synapse --version` responde.
+
+### ME-R7 — Tests: auto-compilar objetos del runtime (eliminar skips silenciosos)
+- **Manual:** Manual 9 §9.3 / §9.7 (184/184 tests reales)
+- **Archivos:** helpers de tests (constantes `TWEETNACL_O`, `SYNAPSE_RT_O/MEM/CONC` en
+  `tests/integration/*.py`, `tests/test_toml_raii.py`, `tests/stress/run_stress.py`,
+  `tests/fuzz/*`).
+- **Cambios:** helper compartido que **auto-compila el runtime desde fuente** si el `.o` no
+  existe (patrón de `tests/stress/run_stress.py` L51-57), apuntando a `build/obj/`.
+- **Criterio:** en clon limpio `pytest tests/ -v` corre la suite completa sin skips por `.o`.
+
+### ME-R8 — Higiene del repositorio
+- **Manual:** Manual 9 §9.7 | `.gitignore` coherente
+- **Cambios:**
+  - Eliminar `.o` huérfanos locales (ignorados).
+  - `git rm --cached` de `.axon_cache/*`, `tests/.axon_cache/*`, `test_lsp_bin.oculto`
+    (contradicen CLASE G/Q del `.gitignore`).
+  - Borrar archivo residual `Native` (31 bytes) y los accidentes `-o`, `--output`,
+    `-o.exe`, `--output.exe` de la raíz.
+- **Criterio:** `git status` limpio; `.gitignore` sin contradicciones.
+
+### ME-R9 — Job CI de instalación limpia + documentación + certificación final 🏁
+- **Manual:** Manual 9 §9.1, §9.7, §9.8/§9.9
+- **Cambios:**
+  1. Nuevo workflow `clean-install.yml`: checkout → `git archive HEAD` → `build.bat
+     bootstrap-full` → link estático → `synapse hola.syn` → `pytest tests/ -v` → subir
+     artefactos. **Bloquea regresiones futuras.**
+  2. Actualizar `ROADMAP.md` (registro de cambios: Fase R), `BLOCKERS.md`,
+     `tests/SKIPPED.md`, checklist Manual 9 §9.7.
+- **Validación:** push de prueba en GitHub → todos los workflows verdes.
+- **Criterio:** push a `main` con TODOS los workflows verdes.
+
+---
+
+## 4. PRUEBA DE ACEPTACIÓN FINAL (E2E instalación limpia)
+
+```bash
+git archive HEAD | tar -x -C /tmp/limpio && cd /tmp/limpio
+python main.py nucleo/principal.syn          # → synapse_unity.c, sin "error:"
+gcc -O2 -static -o synapse.exe synapse_unity.c synapse_rt.c \
+    runtime/core/memory.c runtime/core/concurrency.c tweetnacl.c -I. -lws2_32 -lm
+./synapse.exe --version                      # → responde
+./synapse.exe hola.syn                       # → genera hola.exe
+python -m pytest tests/ -v                   # → 184/184 PASS
+build.bat bootstrap-full                     # → S2 == S3 (diff 0 bytes)
+```
+
+---
+
+## 5. SEGUIMIENTO (marcar avance en cada sesión)
+
+- [x] **ME-R1** — Workflows: link runtime modular completo (fix validado) — ✅ 2026-08-03, commit `7734d2b`
+- [ ] **ME-R2** — `pipeline.py`: runtime desde fuente + propagar errores
+- [ ] **ME-R3** — `build.sh`/`build.bat`: rutas `runtime/core/*.c`
+- [ ] **ME-R4** — Toolchain: forzar GCC antes que clang
+- [ ] **ME-R5** — Pipeline nativo: `nucleo/principal.syn:404` link desde fuente
+- [ ] **ME-R6** — Instalador: `LICENSE.txt`, `assets/`, `dist\bin\synapse.exe` previo
+- [ ] **ME-R7** — Tests: auto-compilar `.o` del runtime
+- [ ] **ME-R8** — Higiene repo (`.o`, `Native`, `.axon_cache`, `test_lsp_bin.oculto`)
+- [ ] **ME-R9** — Workflow `clean-install.yml` + docs + certificación final
+
+### Bitácora de ejecución
+
+| Fecha | ME | Resultado | Evidencia |
+|---|---|---|---|
+| 2026-08-03 | ME-R1 | ✅ COMPLETADO — `windows_release.yml` y `release-binaries.yml` enlazan el runtime modular completo (`runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`); macOS usa gcc de brew (Causa C resuelta en el entregable) | Commit `7734d2ba1f9fee1960e268f0c69a7110a121ab24`; validado en clon limpio: `synapse-windows-amd64.exe` (1,169,510 B) y `synapse-test.exe` (1,290,818 B), RC=0, cabecera MZ; YAML OK |
+
+---
+
+## 6. DATOS CLAVE DE REFERENCIA (para retomar rápido)
+
+| Ítem | Dato |
+|---|---|
+| Link roto CI (Windows) | `windows_release.yml` — falta `memory.c`, `concurrency.c`, `tweetnacl.c` |
+| Link roto CI (multi-OS) | `release-binaries.yml` — `tweetnacl.o` compilado pero no enlazado |
+| Workflow correcto (referencia) | `release_matrix.yml` (compila `runtime/core/*.c` y enlaza todo) |
+| Link hardcodeado nativo | `nucleo/principal.syn:404` (asm snprintf gcc) |
+| Extern pool_alloc en generador | `nucleo/generator.syn:2982` |
+| Objetos que `pipeline.py` busca | `synapse_rt.o`, `synapse_rt_memory.o`, `synapse_rt_concurrency.o`, `tweetnacl.o` |
+| Símbolos faltantes (8) | `pool_alloc`, `pool_free`, `pool_init`, `_pool_malloc`, `_syn_texto_liberar`, `crypto_sign_ed25519_tweet{,_keypair,_open}` |
+| Fuente de los símbolos | `runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c` (+`tweetnacl.h` L200-209) |
+| Commit de modularización | `f03a7f5` (M0.2 — movió memory.c/concurrency.c a runtime/core/) |
+| Toolchain local (dev) | clang-22 LLVM-MinGW (WinGet) — rechaza nested functions |
+| Comando de fix validado | ver §1 (exe 1,169,510 bytes generado OK) |
+| Tests con skips por `.o` | `tests/integration/*.py`, `tests/test_toml_raii.py`, `tests/fuzz/*` |
+| Directorio temporal diagnóstico | `/tmp/synapse_clean`, logs `/tmp/clean_bootstrap.log`, `/tmp/clean_link.log` (sesión 2026-08-03) |
+
+---
+
+## 7. NOTAS DE GOBERNANZA
+
+- Cada ME se entrega con el formato `--- REPORTE DE MICRO-ENTREGABLE ---` de
+  `GUIA_DE_GOBERNANZA.md`:
+  TAREA / FASE / MANUAL REFERENCIADO / HASH COMMIT / COMPILACIÓN (log 10 líneas) / TESTS /
+  COBERTURA / MODIFICACIONES DE TESTS / MODULARIZACIÓN / RIESGOS / PRÓXIMO PASO.
+- Reglas: no inventar APIs; `requiere`/`garantiza` en funciones públicas nuevas; sin
+  hardcoding; si no se puede cumplir → DETENERSE y preguntar al Arquitecto.
+- Los manuales se citan como `Manual N §Sección` (los archivos reales son
+  `docs/manuales/MANUAL N.md` con espacio, aunque la guía los nombra con guion bajo).
