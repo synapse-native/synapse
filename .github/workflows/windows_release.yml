@@ -31,6 +31,8 @@ jobs:
       # ME-R1: enlazar el runtime modular completo (Manual 3 §3.1).
       # pool_alloc/pool_free/pool_init viven en runtime/core/memory.c;
       # crypto_sign_ed25519_tweet* en tweetnacl.c (mapeado via tweetnacl.h).
+      # shell: cmd explícito — la continuación con ^ es sintaxis cmd (no pwsh).
+      shell: cmd
       run: |
         gcc -O2 -static -o synapse-windows-amd64.exe ^
           synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c tweetnacl.c ^
