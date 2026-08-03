@@ -1,73 +1,61 @@
 #!/bin/bash
-# build.sh — OpenSyn Build Script (Unix/Linux/macOS)
+# build.sh - Synapse Build & Bootstrap (Unix/Linux/macOS)
 # Usage: ./build.sh [clean]
+#
+# Etapa 1 del Manual 9 S9.1: python main.py nucleo/principal.syn -o synapse_v1.exe
+# ME-R3: entrada alineada al manual (antes opensyn/principal.syn, que NO bootstrapea:
+#        89 errores semanticos preexistentes); el runtime modular lo compila el
+#        pipeline desde fuente (ME-R2: synapse_rt.c, runtime/core/*.c, tweetnacl.c).
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-OPENEXE="$ROOT_DIR/opensyn/principal.exe"
+STAGE1="$ROOT_DIR/synapse_v1.exe"
 
-echo "=== OpenSyn Build v1.0.0 ==="
+# Lanzador portable: python3 (Unix/macOS) o python (Windows/git-bash).
+# Se valida por ejecucion (--version), no por presencia en PATH: en Windows el
+# stub 'python3' de la Microsoft Store existe pero no ejecuta nada real.
+if python3 --version >/dev/null 2>&1; then
+    PY=python3
+else
+    PY=python
+fi
+
+echo "=== Synapse Build v2.1.0 ==="
 echo ""
 
 # Clean
 if [ "${1:-}" = "clean" ]; then
     echo "[*] Cleaning artifacts..."
-    rm -f "$ROOT_DIR/opensyn/principal.c" "$ROOT_DIR/opensyn/principal.exe"
-    rm -f "$ROOT_DIR/opensyn/principal.syn.json"
-    rm -f "$ROOT_DIR/synapse_rt.o"
-    rm -f "$ROOT_DIR/synapse_rt_memory.o"
-    rm -f "$ROOT_DIR/synapse_rt_concurrency.o"
+    rm -rf "$ROOT_DIR/build/obj"
+    rm -f "$ROOT_DIR/synapse_v1.exe" "$ROOT_DIR/synapse_v2.exe" "$ROOT_DIR/synapse_v3.exe"
+    rm -f "$ROOT_DIR/synapse_unity.c" "$ROOT_DIR/synapse_unity.c.o"
+    rm -f "$ROOT_DIR/synapse_rt.o" "$ROOT_DIR/tweetnacl.o"
     echo "[OK] Clean"
     exit 0
 fi
 
-# Step 1: Build modular runtime objects
-echo "[1/4] Compilando runtime (modular)..."
-gcc -c "$ROOT_DIR/synapse_rt.c" -o "$ROOT_DIR/synapse_rt.o" \
-    -std=c99 -Wall -Wextra \
-    -Wno-unused-parameter -Wno-unused-function \
-    -lpthread 2>&1
-echo "[OK] synapse_rt.o"
+# Step 1: Bootstrap Etapa 1 (Manual 9 S9.1).
+# El pipeline (ME-R2) compila el runtime modular desde fuente y enlaza el
+# compilador nativo (synapse_v1.exe).
+echo "[1/3] Bootstrap: $PY main.py nucleo/principal.syn -> synapse_v1.exe"
+"$PY" "$ROOT_DIR/main.py" "$ROOT_DIR/nucleo/principal.syn" -o "$STAGE1" 2>&1
+echo "[OK] synapse_v1.exe"
 
-gcc -c "$ROOT_DIR/synapse_rt_memory.c" -o "$ROOT_DIR/synapse_rt_memory.o" \
-    -std=c99 -Wall -Wextra \
-    -Wno-unused-parameter -Wno-unused-function \
-    -lpthread 2>&1
-echo "[OK] synapse_rt_memory.o"
-
-gcc -c "$ROOT_DIR/synapse_rt_concurrency.c" -o "$ROOT_DIR/synapse_rt_concurrency.o" \
-    -std=c99 -Wall -Wextra \
-    -Wno-unused-parameter -Wno-unused-function \
-    -lpthread 2>&1
-echo "[OK] synapse_rt_concurrency.o"
-
-# Step 2: Compile the orchestrator from Synapse source (via Python compiler)
-echo "[2/4] Compilando opensyn/principal.syn..."
-python3 "$ROOT_DIR/main.py" "$ROOT_DIR/opensyn/principal.syn" 2>&1
-echo "[OK] principal.c + principal.exe"
-
-# Step 3: Verify executable exists
-echo "[3/4] Verificando binario..."
-if [ -f "$OPENEXE" ]; then
-    echo "[OK] $OPENEXE"
+# Step 2: Verify executable exists
+echo "[2/3] Verificando binario..."
+if [ -f "$STAGE1" ]; then
+    echo "[OK] $STAGE1"
 else
-    # Fallback: direct GCC link
-    echo "[*] Fallback: enlazando con GCC directamente..."
-    gcc -o "$OPENEXE" "$ROOT_DIR/opensyn/principal.c" \
-        "$ROOT_DIR/synapse_rt.c" \
-        -std=c99 -Wall -Wextra -fno-ident \
-        -Wno-unused-parameter -Wno-unused-function \
-        -Wl,--no-insert-timestamp \
-        -I"$ROOT_DIR" -lws2_32 2>&1
-    echo "[OK] $OPENEXE (fallback)"
+    echo "[FAIL] No se genero $STAGE1" >&2
+    exit 1
 fi
 
-# Step 4: Regenerate embedded libraries header
-echo "[4/4] Regenerando librerias/embedded_libs.h..."
-python3 "$ROOT_DIR/tests/_gen_embedded.py" 2>&1
+# Step 3: Regenerate embedded libraries header
+echo "[3/3] Regenerando librerias/embedded_libs.h..."
+"$PY" "$ROOT_DIR/tests/_gen_embedded.py" 2>&1
 echo "[OK] embedded_libs.h"
 
 echo ""
 echo "=== Build complete ==="
-echo "Ejecuta: ./opensyn/principal.exe"
+echo "Ejecuta: $STAGE1"
