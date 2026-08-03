@@ -49,6 +49,7 @@ runtime_linked.dll
 
 # CLASE I: Directorios de build/toolchain (no fuente)
 toolchain_gcc12/
+build/
 
 # CLASE J: Directorios de distribución
 distbin/

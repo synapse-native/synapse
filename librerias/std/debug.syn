@@ -57,21 +57,20 @@ estructura TraceSession:
 // ============================================================
 // Funciones Externas (Runtime C)
 // ============================================================
+// ME-R2: firmas alineadas con las definiciones reales de synapse_rt.c.
+//   - _syn_debug_iniciar_sesion / _syn_debug_finalizar_sesion: el runtime usa
+//     CadenaSegura (texto) tanto en entrada como salida -> representable en Synapse.
+//   - _syn_debug_registrar_evento / _syn_debug_trace: el runtime usa const char*,
+//     long long y double (no representables con tipos Synapse) -> se declaran con
+//     su prototipo C exacto dentro del asm de sus wrappers para garantizar ABI.
+//   - _syn_debug_obtener_sesion: devuelve el TraceSession interno del runtime
+//     (estructura no representable en Synapse) -> declaracion eliminada (sin uso).
 
-// Inicializa una nueva sesion de traza
-externo funcion _syn_debug_iniciar_sesion(programa: texto) -> TraceSession
+// Inicializa una nueva sesion de traza. Retorna el id de sesion ("trace_...").
+externo funcion _syn_debug_iniciar_sesion(programa: texto) -> texto
 
-// Registra un evento en la sesion actual (buffer circular)
-externo funcion _syn_debug_registrar_evento(tag: entero, fn_nombre: texto, archivo: texto, linea: entero, variable: texto, valor_entero: entero, valor_decimal: decimal, valor_texto: texto) -> Resultado
-
-// Funcion trace generica: evalua expresion y registra su valor
-externo funcion _syn_debug_trace(expresion_texto: texto, valor: puntero, tipo: texto) -> Resultado
-
-// Finaliza la sesion y persiste a ~/.synapse/traces/{id}.trace
-externo funcion _syn_debug_finalizar_sesion() -> Resultado
-
-// Obtiene la sesion actual (para inspeccion)
-externo funcion _syn_debug_obtener_sesion() -> TraceSession
+// Finaliza la sesion y persiste a ~/.synapse/traces/{id}.trace. Retorna el id.
+externo funcion _syn_debug_finalizar_sesion() -> texto
 
 // ============================================================
 // Funciones Externas — M9.1 (Grabación Determinista rr-style)
@@ -196,25 +195,45 @@ externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
 // registrar_evento — Registra un evento de traza en la sesion actual
 // Retorna ok(0) si exito, err(Error) si fallo (ej. buffer lleno no esperado)
 funcion registrar_evento(evento: TraceEvent) -> Resultado:
+    // ME-R2: fix preexistente destapado por la propagacion de errores del pipeline.
+    // Bugs corregidos:
+    //   1. evento se recibe POR VALOR (struct TraceEvent) -> el cast requiere &evento.
+    //   2. El primer campo de TraceEvent es tipo_evento (no existia 'tag' en el struct).
+    //   3. La declaracion externo '-> Resultado' no coincidia con el runtime C (int):
+    //      ahora se declara el prototipo C exacto localmente (const char*, long long,
+    //      double) para ABI identica a synapse_rt.c y se construye Resultado como ADT.
     inseguro:
-        asm("struct TraceEvent* _e = (struct TraceEvent*)evento;")
-        asm("return _syn_debug_registrar_evento(_e->tag, _e->fn_nombre.datos, _e->archivo.datos, _e->linea, _e->variable.datos, _e->valor_entero, _e->valor_decimal, _e->valor_texto.datos);")
+        asm("extern int _syn_debug_registrar_evento(int tag, const char* fn, const char* arc, int ln, const char* var, long long vi, double vd, const char* vt);")
+        asm("struct TraceEvent* _e = (struct TraceEvent*)&evento;")
+        asm("int _rc = _syn_debug_registrar_evento(_e->tipo_evento, _e->fn_nombre.datos, _e->archivo.datos, _e->linea, _e->variable.datos, (long long)_e->valor_entero, (double)_e->valor_decimal, _e->valor_texto.datos);")
+        asm("struct Resultado _res; _res.tag = 0; _res.dato.valor = _rc; return _res;")
 
 // trace — Evalua una expresion y registra su valor en la traza
 // Util para inspeccionar valores intermedios sin modificar logica
 // Uso: trace(x + y)  -- registra el valor de x+y
 funcion trace(expresion: texto) -> Resultado:
-    // La expresion se evalua y su valor se registra automaticamente
+    // ME-R2: el asm anterior usaba #expr/typeof (no es C valido y nunca compilo).
+    // Ahora registra el texto de la expresion; el runtime ignora valor y tipo.
     inseguro:
-        asm("return _syn_debug_trace(#expr, &expr, typeof(expr));")
+        asm("extern int _syn_debug_trace(const char* e, void* v, const char* t);")
+        asm("struct Resultado _res; _res.tag = 0;")
+        asm("_res.dato.valor = _syn_debug_trace(expresion.datos, 0, \"\");")
+        asm("return _res;")
 
 // iniciar_sesion — Crea una nueva sesion de traza para un programa
 // Inicializa el buffer circular (max 50,000 eventos)
-funcion iniciar_sesion(programa: texto) -> TraceSession:
+funcion iniciar_sesion(programa: texto) -> texto:
+    // ME-R2: antes declaraba -> TraceSession (estructura no representable); el
+    // runtime retorna el id de sesion (CadenaSegura). El struct TraceSession se
+    // mantiene solo como documentacion del estado interno del runtime.
     retornar _syn_debug_iniciar_sesion(programa)
 
 // finalizar_sesion — Cierra la sesion actual y persiste la traza
 // Serializa a ~/.synapse/traces/{id}.trace
 // Retorna la sesion finalizada con estado PERSISTIDA
 funcion finalizar_sesion() -> Resultado:
-    retornar _syn_debug_finalizar_sesion()
+    // ME-R2: antes declaraba '-> Resultado' pero el runtime retorna CadenaSegura;
+    // ahora se construye el Resultado ADT con valor_str = id de sesion persistido.
+    inseguro:
+        asm("CadenaSegura _id = _syn_debug_finalizar_sesion();")
+        asm("struct Resultado _res; _res.tag = 0; _res.dato.valor_str = _id; return _res;")

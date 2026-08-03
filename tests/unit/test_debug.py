@@ -7,10 +7,27 @@ import os
 import sys
 import tempfile
 import glob
+import shutil
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from pipeline import ejecutar_compilador
+
+
+@pytest.fixture(autouse=True)
+def _limpiar_directorio_traces():
+    """ME-R2: aisla cada test limpiando ~/.synapse/traces antes de cada prueba.
+
+    El runtime persiste la traza en ~/.synapse/traces (directorio compartido por
+    todos los tests). El test de formato lee glob(trace_files)[-1] esperando SU
+    propia traza; sin aislamiento, recoge trazas acumuladas de otros tests
+    (p. ej. eventos=2 en vez de eventos=1) -> fallo no determinista.
+    """
+    trace_dir = os.path.expanduser("~/.synapse/traces")
+    if os.path.isdir(trace_dir):
+        shutil.rmtree(trace_dir, ignore_errors=True)
+    yield
 
 # Directorio del proyecto para archivos temporales
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))

@@ -69,8 +69,11 @@ def _resolver_toolchain_gcc() -> str:
         if os.path.isfile(ruta):
             return ruta
 
-    # Prioridad 3: compilador del sistema (Linux: gcc, macOS: clang, default: cc)
-    for cmd in ('clang', 'gcc', 'cc'):
+    # Prioridad 3: compilador del sistema.
+    # ME-R2 (Causa C): gcc ANTES que clang — el C generado usa extensiones GCC
+    # (nested functions) que clang rechaza (Manual 8 §8.1). En macOS el branch
+    # darwin de ejecutar_compilador selecciona gcc-N de Homebrew explícitamente.
+    for cmd in ('gcc', 'cc', 'clang'):
         path_found = shutil.which(cmd)
         if path_found:
             return path_found
@@ -81,6 +84,67 @@ def _resolver_toolchain_gcc() -> str:
         "\n".join(f"  - {r}" for r in candidatos) + "\n"
         "Ejecute el instalador (install.ps1) o descargue MinGW-w64 >= 12 desde https://winlibs.com/"
     )
+
+
+# ============================================================
+# RUNTIME MODULAR — compilación desde fuente (Manual 3 §3.1)
+# ME-R2: elimina la dependencia de .o precompilados que no existen
+# en una instalación limpia (eran artefactos locales ignorados por git).
+# ============================================================
+_RT_FUENTES = (
+    "synapse_rt.c",
+    "runtime/core/memory.c",
+    "runtime/core/concurrency.c",
+    "tweetnacl.c",
+)
+_RT_QUANTUM_FUENTES = (
+    "nucleo/quantum_runtime.c",
+    "nucleo/quantum_err_corr.c",
+    "nucleo/quantum_memory.c",
+    "nucleo/surface_code.c",
+)
+
+
+def _compilar_runtime_objetos(compiler: str, base_flags: str) -> List[str]:
+    """Compila el runtime modular desde fuente a build/obj/ (Manual 3 §3.1).
+
+    Retorna la lista de objetos .o. Lanza RuntimeError si alguna compilación
+    falla (el runtime es obligatorio para programas no-no_std).
+    """
+    build_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
+    os.makedirs(build_obj, exist_ok=True)
+    objs: List[str] = []
+    for src_rel in _RT_FUENTES:
+        src = os.path.join(SYNAPSE_BIN, src_rel)
+        nombre = os.path.splitext(os.path.basename(src_rel))[0]
+        ruta_obj = os.path.join(build_obj, nombre + ".o")
+        cmd = f'{compiler} -O2 -c {base_flags} "{src}" -o "{ruta_obj}"'
+        print(f"[RUNTIME] gcc -c: {src_rel}")
+        rc = subprocess.run(cmd, shell=True).returncode
+        if rc != 0:
+            raise RuntimeError(f"Fallo al compilar runtime desde fuente: {src_rel} (rc={rc})")
+        objs.append(ruta_obj)
+    return objs
+
+
+def _compilar_quantum_objetos(compiler: str, base_flags: str) -> List[str]:
+    """Compila los módulos cuánticos (M16.1-M16.4) desde fuente si existen. Opcionales."""
+    build_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
+    os.makedirs(build_obj, exist_ok=True)
+    objs: List[str] = []
+    for src_rel in _RT_QUANTUM_FUENTES:
+        src = os.path.join(SYNAPSE_BIN, src_rel)
+        if not os.path.exists(src):
+            continue
+        nombre = os.path.splitext(os.path.basename(src_rel))[0]
+        ruta_obj = os.path.join(build_obj, nombre + ".o")
+        cmd = f'{compiler} -O2 -c {base_flags} "{src}" -o "{ruta_obj}"'
+        rc = subprocess.run(cmd, shell=True).returncode
+        if rc != 0:
+            print(f"[RUNTIME][!] Modulo cuantico {src_rel} no compilo (rc={rc}); se omite", file=sys.stderr)
+            continue
+        objs.append(ruta_obj)
+    return objs
 
 
 # ============================================================
@@ -498,38 +562,33 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
         linker_extra = generador.linker_flags
         
-        # Modular runtime objects
-        def _resolve_rt_obj(name: str) -> str:
-            """Resuelve la ruta a un objeto del runtime, probando varias ubicaciones."""
-            candidates = [
-                os.path.join(SYNAPSE_BIN, f"{name}.o"),
-                os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
-            ]
-            for c in candidates:
-                if os.path.exists(c):
-                    return c
-            return candidates[0]  # return first regardless (linker dará error si no existe)
-        
-        synapse_rt = _resolve_rt_obj("synapse_rt")
-        synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
-        synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
-        tweetnacl_obj = _resolve_rt_obj("tweetnacl")
-        if not os.path.exists(tweetnacl_obj):
-            tweetnacl_obj = ""
-
-        # Quantum runtime modules (M16.1-M16.4) in nucleo/ directory
-        quantum_objs = []
-        for qfile in ["quantum_runtime", "quantum_err_corr", "quantum_memory", "surface_code"]:
-            qo = os.path.join(SYNAPSE_BIN, "nucleo", f"{qfile}.o")
-            if not os.path.exists(qo):
-                qo = os.path.join(SYNAPSE_BIN, "dist", "lib", f"{qfile}.o")
-                if not os.path.exists(qo):
-                    qo = os.path.join(SYNAPSE_BIN, f"{qfile}.o")
-            if os.path.exists(qo):
-                quantum_objs.append(qo)
 
         if sys.platform == "darwin":
+            # ME-R2 (Causa C): el C generado usa extensiones GCC que clang rechaza;
+            # preferir gcc de Homebrew (gcc-14/13/12) como hace release_matrix.yml.
+            # NOTA post-revision: en macOS 'gcc'/'cc' del PATH pueden ser shims de
+            # clang; solo se aceptan si --version NO reporta clang.
             compiler = "clang"
+            for g in ("/opt/homebrew/bin/gcc-14", "/opt/homebrew/bin/gcc-13", "/opt/homebrew/bin/gcc-12",
+                      "/usr/local/bin/gcc-14", "/usr/local/bin/gcc-13", "/usr/local/bin/gcc-12",
+                      "gcc-14", "gcc-13", "gcc-12"):
+                p = shutil.which(g)
+                if p:
+                    compiler = p
+                    break
+            if compiler == "clang":
+                for g in ("gcc", "cc"):
+                    p = shutil.which(g)
+                    if not p:
+                        continue
+                    try:
+                        out = subprocess.run([p, "--version"], capture_output=True,
+                                             text=True, timeout=10).stdout
+                    except Exception:
+                        continue
+                    if "clang" not in out.lower():
+                        compiler = p
+                        break
             platform_flags = "-Wl,-dead_strip"
             thread_flag = "-lpthread"
         else:
@@ -544,19 +603,18 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
         no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
-        if ast.is_no_std:
-            rt_objs = ""
-        else:
-            rt_objs = f'"{synapse_rt}"'
-            if os.path.exists(synapse_rt_memory):
-                rt_objs += f' "{synapse_rt_memory}"'
-            if os.path.exists(synapse_rt_concurrency):
-                rt_objs += f' "{synapse_rt_concurrency}"'
-            if tweetnacl_obj:
-                rt_objs += f' "{tweetnacl_obj}"'
-            for qo in quantum_objs:
-                rt_objs += f' "{qo}"'
         base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I.'.strip()
+        # ME-R2: compilar el runtime modular desde fuente (Manual 3 §3.1).
+        # Elimina la dependencia de .o precompilados inexistentes en instalación limpia.
+        rt_objs = ""
+        if not ast.is_no_std:
+            try:
+                rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags))
+            except RuntimeError as e:
+                print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
+                return 1
+            for qo in _compilar_quantum_objetos(compiler, base_flags):
+                rt_objs += f' "{qo}"'
         link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
 
         # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===
@@ -630,7 +688,23 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                     objs_fb += f' {rt_objs}'
                 gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
                 print(f"[FALLBACK] Link: {gcc_link_cmd}")
-                subprocess.run(gcc_link_cmd, shell=True)
+                link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
+                if link_rc != 0:
+                    print(f"[!] Link fallback fallo (rc={link_rc})", file=sys.stderr)
+
+        # ME-R2: propagar errores de compilación/link (antes se tragaban y retornaban 0).
+        if not os.path.exists(ruta_exe):
+            msg = f"[ME-R2][ERROR] No se genero el ejecutable: {ruta_exe}"
+            # Hint post-revision: si el C generado carece de main, el programa no
+            # define 'funcion principal' (sin punto de entrada no se puede enlazar).
+            try:
+                with open(ruta_c, 'r', encoding='utf-8', errors='ignore') as f_c:
+                    if "int main(" not in f_c.read():
+                        msg += " — el programa no define 'funcion principal' (sin punto de entrada)"
+            except OSError:
+                pass
+            print(msg, file=sys.stderr)
+            return 1
 
         # === ALMACENAR EN CACHE ===
         if incremental:
@@ -763,32 +837,15 @@ def _link_object(obj_path: str, output_exe: str) -> int:
     else:
         platform_flags += " -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
-    
-    def _resolve_rt_obj(name: str) -> str:
-        candidates = [
-            os.path.join(SYNAPSE_BIN, f"{name}.o"),
-            os.path.join(SYNAPSE_BIN, "dist", "lib", f"{name}.o"),
-        ]
-        for c in candidates:
-            if os.path.exists(c):
-                return c
-        return candidates[0]
+    base_flags = f'{platform_flags} -I.'.strip()
 
-    synapse_rt = _resolve_rt_obj("synapse_rt")
-    synapse_rt_memory = _resolve_rt_obj("synapse_rt_memory")
-    synapse_rt_concurrency = _resolve_rt_obj("synapse_rt_concurrency")
-    tweetnacl_obj = _resolve_rt_obj("tweetnacl")
-    if not os.path.exists(tweetnacl_obj):
-        tweetnacl_obj = ""
-    
-    rt_objs = f'"{synapse_rt}"'
-    if os.path.exists(synapse_rt_memory):
-        rt_objs += f' "{synapse_rt_memory}"'
-    if os.path.exists(synapse_rt_concurrency):
-        rt_objs += f' "{synapse_rt_concurrency}"'
-    if tweetnacl_obj:
-        rt_objs += f' "{tweetnacl_obj}"'
-    
-    gcc_cmd = f'{compiler} {platform_flags} -I. "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net}'.strip()
+    # ME-R2: runtime modular compilado desde fuente (Manual 3 §3.1)
+    try:
+        rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags))
+    except RuntimeError as e:
+        print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
+        return 1
+
+    gcc_cmd = f'{compiler} {base_flags} "{obj_path}" {rt_objs} -o "{output_exe}" {thread_flag} -lm {linker_net}'.strip()
     print(f"[CACHE LINK] {gcc_cmd}")
     return subprocess.run(gcc_cmd, shell=True).returncode

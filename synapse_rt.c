@@ -4364,13 +4364,32 @@ long long _get_timestamp_ns(void) {
 #endif
 }
 
-static void _ensure_trace_dir(void) {
+static const char* _syn_home_dir(void) {
+    const char* h = getenv("HOME");
 #ifdef _WIN32
-    _mkdir(".synapse");
-    _mkdir(TRACE_DIR);
+    if (h == NULL || h[0] == '\0') h = getenv("USERPROFILE");
+#endif
+    return (h != NULL && h[0] != '\0') ? h : ".";
+}
+
+static void _ensure_trace_dir(void) {
+    // ME-R2: la traza se persiste en ~/.synapse/traces (API documentada en
+    // std.debug y verificada por tests/unit/test_debug.py); antes se usaba
+    // ".synapse/traces" relativo al CWD -> el archivo nunca aparecia en el
+    // home del usuario y el test nunca encontraba el .trace.
+    char buf[1024];
+    const char* home = _syn_home_dir();
+    snprintf(buf, sizeof(buf), "%s/.synapse", home);
+#ifdef _WIN32
+    _mkdir(buf);
 #else
-    mkdir(".synapse", 0755);
-    mkdir(TRACE_DIR, 0755);
+    mkdir(buf, 0755);
+#endif
+    snprintf(buf, sizeof(buf), "%s/%s", home, TRACE_DIR);
+#ifdef _WIN32
+    _mkdir(buf);
+#else
+    mkdir(buf, 0755);
 #endif
 }
 
@@ -4464,7 +4483,7 @@ CadenaSegura _syn_debug_finalizar_sesion(void) {
     _ensure_trace_dir();
     
     char filepath[512];
-    snprintf(filepath, sizeof(filepath), "%s/%s.trace", TRACE_DIR, g_trace_session.id);
+    snprintf(filepath, sizeof(filepath), "%s/%s/%s.trace", _syn_home_dir(), TRACE_DIR, g_trace_session.id);
     
     FILE* f = fopen(filepath, "wb");
     if (!f) {
