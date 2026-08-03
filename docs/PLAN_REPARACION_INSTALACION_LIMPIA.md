@@ -247,12 +247,19 @@ build.bat bootstrap-full                     # → S2 == S3 (diff 0 bytes)
 | 2026-08-03 | ME-R1 | ✅ COMPLETADO — `windows_release.yml` y `release-binaries.yml` enlazan el runtime modular completo (`runtime/core/memory.c`, `runtime/core/concurrency.c`, `tweetnacl.c`); macOS usa gcc de brew (Causa C resuelta en el entregable) | Commits `7734d2ba1f9fee1960e268f0c69a7110a121ab24` + revisión `c921a5a41bdc6b9313490e46256eaa824a76238c` (shell:cmd para continuación `^`, gcc-12 en loop darwin); validado en clon limpio: `synapse-windows-amd64.exe` (1,169,510 B) y `synapse-test.exe` (1,290,818 B), RC=0, cabecera MZ; YAML OK |
 | 2026-08-03 | ME-R2 | ✅ COMPLETADO — `pipeline.py` compila el runtime modular desde fuente a `build/obj/` y PROPAGA errores (Causas B/C/E). Absorbió la parte del resolver de ME-R4 (gcc antes que clang + branch darwin con verificación anti-shim). Destapó y corrigió bugs preexistentes enmascarados por la traga de errores: `std/debug.syn` (firmas `externo` no coincidían con el runtime C: `-> Resultado/TraceSession` vs `int/CadenaSegura`; wrappers ahora con prototipos C exactos en asm y `Resultado` ADT), `synapse_rt.c` (trazas ahora en `~/.synapse/traces` vía `_syn_home_dir`, antes `.synapse/traces` relativo al CWD), `tests/unit/test_debug.py` (fixture de aislamiento del directorio compartido de trazas), `tests/security/test_verificacion_formal.py` (`CODIGO_VALIDO_SAFE` sin `principal` → no enlazable) | Commit `80e18dd1f9132cbaf4674115f326ff49ff599082` (+ revisión: guard anti-shim clang en darwin y hint de `funcion principal` faltante). Validado en clon limpio: bootstrap RC=0 con 0 `error:`, `synapse_bootstrap.exe` (1,192,625 B) y `hola.exe` (857,938 B) generados, prueba negativa (toolchain roto) RC=1 con mensaje ME-R2. Suite completa: **667 passed, 0 failed, 9 skipped, 1 xfailed**. Post-revisión: 105/105 en tests afectados (safe, debug, lexer, parser) |
 
-> **Nota ME-R2 (deuda detectada, no bloqueante):** un test C de tar borra el fixture
-> `tests/fixtures/tar_test_out/test_normal.txt` como efecto secundario de la suite (restaurado
-> con `git checkout`; se mapea a ME-R7 higiene de tests). Además `tr_grabar_snapshot` en el
-> runtime usa `long long valor_entero` mientras `std/debug.syn` lo declara `entero` (int):
-> desajuste ABI latente NO ejercitado por ningún test actual (los tests de integración llaman
-> al runtime vía ctypes con la firma real) — documentado, pendiente de decisión del Arquitecto.
+> **Aprobación del Arquitecto (2026-08-03):** los cambios a `tests/unit/test_debug.py`
+> (fixture de aislamiento) y `tests/security/test_verificacion_formal.py` (dato de prueba
+> `CODIGO_VALIDO_SAFE` con `principal`) fueron APROBADOS con justificación documentada, bajo
+> la regla: **SIEMPRE preguntar antes de modificar cualquier test** (los tests son solo
+> lectura por protección). Ninguna aserción fue modificada.
+>
+> **DEUDAS COMPROMETIDAS — resolución obligatoria en próximos ME (sin dejar deuda):**
+>
+> | # | Deuda | Resolución asignada |
+> |---|---|---|
+> | D1 | Desajuste ABI `tr_grabar_snapshot`: runtime `long long valor_entero` vs `std/debug.syn` `entero` (int). Latente: ningún test actual lo ejercita vía .syn (los de integración usan ctypes con la firma real del runtime). | **ME-R7** — alinear firma runtime↔`std/debug.syn` sin romper los tests ctypes (validar con `test_time_travel.py`/`test_memory_snapshots.py`) |
+> | D2 | Un test C de tar borra el fixture `tests/fixtures/tar_test_out/test_normal.txt` como efecto secundario de la suite (restaurado con `git checkout` en cada corrida). | **ME-R7** — higiene de tests: el test debe operar sobre un directorio temporal propio |
+> | D3 | Semántica de programa sin `funcion principal`: ME-R2 eligió RC=1 con hint explícito ("el programa no define 'funcion principal'"), lo que obligó a completar `CODIGO_VALIDO_SAFE`. | **ME-R9** — validar la semántica contra Manual 9 §9.1/§9.7 en la certificación final; si el Arquitecto prefiere RC=0 para bibliotecas, cambio de pipeline acotado (aviso explícito, sin generar exe) |
 
 ---
 
