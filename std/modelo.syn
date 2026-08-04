@@ -30,8 +30,7 @@ externo funcion _syn_modelo_cerrar(ctx: puntero) -> nulo
 
 // --- Evaluación e inferencia token a token ---
 externo funcion _syn_modelo_evaluar(ctx: puntero, token_id: entero) -> tensor
-externo funcion _syn_modelo_generar(ctx: puntero, token_id: entero,
-    temperatura: decimal, top_k: entero, top_p: decimal) -> entero
+externo funcion _syn_modelo_generar(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero
 
 // --- Contexto (n_past, max_seq_len) ---
 externo funcion _syn_modelo_n_past(ctx: puntero) -> entero
@@ -47,8 +46,7 @@ externo funcion _syn_modelo_codificar_obtener(ctx: puntero, indice: entero) -> e
 
 // --- Generación de texto de alto nivel ---
 // Procesa un prompt completo y genera texto autoregresivamente
-externo funcion _syn_modelo_generar_texto(ctx: puntero, prompt: texto,
-    max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto
+externo funcion _syn_modelo_generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto
 
 // --- Metadatos del modelo ---
 externo funcion _syn_modelo_obtener_metadato(ctx: puntero, clave: texto) -> texto
@@ -75,8 +73,7 @@ funcion cerrar_modelo(ctx: puntero) -> nulo:
 funcion evaluar(ctx: puntero, token_id: entero) -> tensor:
     retornar _syn_modelo_evaluar(ctx, token_id)
 
-funcion generar_token(ctx: puntero, token_id: entero,
-    temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
+funcion generar_token(ctx: puntero, token_id: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> entero:
     retornar _syn_modelo_generar(ctx, token_id, temperatura, top_k, top_p)
 
 // --- Gestión de contexto ---
@@ -111,9 +108,7 @@ funcion codificar_obtener(ctx: puntero, indice: entero) -> entero:
 
 // --- Generación de texto de alto nivel ---
 
-funcion generar_texto(ctx: puntero, prompt: texto,
-    max_tokens: entero, temperatura: decimal,
-    top_k: entero, top_p: decimal) -> texto:
+funcion generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto:
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
 
 // --- Metadatos ---
@@ -138,26 +133,19 @@ funcion obtener_n_heads(ctx: puntero) -> entero:
 // ============================================================
 
 // --- Ciclo de vida de sesión de fine-tuning ---
-externo funcion _syn_ft_iniciar(ctx: puntero, lr: decimal, rank: entero,
-    alpha: decimal) -> puntero
+externo funcion _syn_ft_iniciar(ctx: puntero, lr: decimal, rank: entero, alpha: decimal) -> puntero
 externo funcion _syn_ft_cerrar(sesion: puntero) -> nulo
 
 // --- Gestión de adaptadores LoRA ---
-externo funcion _syn_ft_agregar_adaptador(sesion: puntero,
-    capa_idx: entero, tipo_capa: entero, rank: entero,
-    alpha: decimal, dim_in: entero, dim_out: entero) -> entero
+externo funcion _syn_ft_agregar_adaptador(sesion: puntero, capa_idx: entero, tipo_capa: entero, rank: entero, alpha: decimal, dim_in: entero, dim_out: entero) -> entero
 
 // --- Dataset ---
-externo funcion _syn_ft_agregar_ejemplo(sesion: puntero,
-    tokens_entrada: puntero, len_in: entero,
-    tokens_salida: puntero, len_out: entero,
-    peso: decimal) -> entero
+externo funcion _syn_ft_agregar_ejemplo(sesion: puntero, tokens_entrada: puntero, len_in: entero, tokens_salida: puntero, len_out: entero, peso: decimal) -> entero
 
 // --- Entrenamiento ---
 externo funcion _syn_ft_paso_entrenamiento(sesion: puntero) -> decimal
 externo funcion _syn_ft_entrenar(sesion: puntero) -> decimal
-externo funcion _syn_ft_evaluar_perdida(sesion: puntero, len_salida: entero,
-    target_id: entero) -> decimal
+externo funcion _syn_ft_evaluar_perdida(sesion: puntero, len_salida: entero, target_id: entero) -> decimal
 
 // --- Persistencia ---
 externo funcion _syn_ft_guardar_pesos(sesion: puntero, ruta: texto) -> entero
@@ -185,18 +173,12 @@ funcion ft_cerrar(sesion: puntero) -> nulo:
     retornar
 
 // Agrega un adaptador LoRA para una capa específica
-funcion ft_agregar_adaptador(sesion: puntero, capa_idx: entero,
-    tipo_capa: entero, rank: entero, alpha: decimal,
-    dim_in: entero, dim_out: entero) -> entero:
-    retornar _syn_ft_agregar_adaptador(sesion, capa_idx, tipo_capa,
-        rank, alpha, dim_in, dim_out)
+funcion ft_agregar_adaptador(sesion: puntero, capa_idx: entero, tipo_capa: entero, rank: entero, alpha: decimal, dim_in: entero, dim_out: entero) -> entero:
+    retornar _syn_ft_agregar_adaptador(sesion, capa_idx, tipo_capa, rank, alpha, dim_in, dim_out)
 
 // Agrega un ejemplo al dataset de fine-tuning
-funcion ft_agregar_ejemplo(sesion: puntero, tokens_in: puntero,
-    len_in: entero, tokens_out: puntero, len_out: entero,
-    peso: decimal) -> entero:
-    retornar _syn_ft_agregar_ejemplo(sesion, tokens_in, len_in,
-        tokens_out, len_out, peso)
+funcion ft_agregar_ejemplo(sesion: puntero, tokens_in: puntero, len_in: entero, tokens_out: puntero, len_out: entero, peso: decimal) -> entero:
+    retornar _syn_ft_agregar_ejemplo(sesion, tokens_in, len_in, tokens_out, len_out, peso)
 
 // Ejecuta un paso de entrenamiento
 funcion ft_paso_entrenamiento(sesion: puntero) -> decimal:
@@ -207,8 +189,7 @@ funcion ft_entrenar(sesion: puntero) -> decimal:
     retornar _syn_ft_entrenar(sesion)
 
 // Evalúa pérdida sin actualizar pesos
-funcion ft_evaluar_perdida(sesion: puntero, len_salida: entero,
-    target_id: entero) -> decimal:
+funcion ft_evaluar_perdida(sesion: puntero, len_salida: entero, target_id: entero) -> decimal:
     retornar _syn_ft_evaluar_perdida(sesion, len_salida, target_id)
 
 // Guarda pesos de adaptadores a archivo
@@ -245,8 +226,7 @@ externo funcion _syn_qt_iniciar(formato: entero, block_size: entero) -> puntero
 externo funcion _syn_qt_cerrar(sesion: puntero) -> nulo
 
 // --- Gestión de tensores ---
-externo funcion _syn_qt_agregar_tensor(sesion: puntero, datos: puntero,
-    filas: entero, columnas: entero, nombre: texto) -> entero
+externo funcion _syn_qt_agregar_tensor(sesion: puntero, datos: puntero, filas: entero, columnas: entero, nombre: texto) -> entero
 externo funcion _syn_qt_cuantizar_tensor(sesion: puntero, idx: entero) -> entero
 externo funcion _syn_qt_cuantizar_todos(sesion: puntero) -> entero
 
@@ -279,8 +259,7 @@ funcion qt_cerrar(sesion: puntero) -> nulo:
     retornar
 
 // Agrega un tensor FP32 a la sesión
-funcion qt_agregar_tensor(sesion: puntero, datos: puntero,
-    filas: entero, columnas: entero, nombre: texto) -> entero:
+funcion qt_agregar_tensor(sesion: puntero, datos: puntero, filas: entero, columnas: entero, nombre: texto) -> entero:
     retornar _syn_qt_agregar_tensor(sesion, datos, filas, columnas, nombre)
 
 // Cuantiza un tensor específico
@@ -351,8 +330,7 @@ funcion muestra_logits(logits: tensor, n: entero) -> nulo:
 
 // generar_texto_simple: genera texto con parámetros por defecto
 // temperatura=0.7, top_k=40, top_p=0.9
-funcion generar_texto_simple(ctx: puntero, prompt: texto,
-    max_tokens: entero) -> texto:
+funcion generar_texto_simple(ctx: puntero, prompt: texto, max_tokens: entero) -> texto:
     retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, 0.7, 40, 0.9)
 
 // ============================================================
@@ -360,21 +338,15 @@ funcion generar_texto_simple(ctx: puntero, prompt: texto,
 // ============================================================
 
 // --- Ciclo de vida ---
-externo funcion _syn_kd_iniciar(temperatura: decimal, alpha: decimal,
-    vocab_size: entero) -> puntero
+externo funcion _syn_kd_iniciar(temperatura: decimal, alpha: decimal, vocab_size: entero) -> puntero
 externo funcion _syn_kd_cerrar(sesion: puntero) -> nulo
 
 // --- Gestión de dataset ---
-externo funcion _syn_kd_agregar_par(sesion: puntero,
-    logits_t: puntero, logits_s: puntero,
-    target_id: entero, peso: decimal) -> entero
+externo funcion _syn_kd_agregar_par(sesion: puntero, logits_t: puntero, logits_s: puntero, target_id: entero, peso: decimal) -> entero
 
 // --- Cómputo de pérdida ---
-externo funcion _syn_kd_divergencia_kl(logits_p: puntero, logits_q: puntero,
-    n: entero, temperatura: decimal) -> decimal
-externo funcion _syn_kd_perdida_combinada(logits_t: puntero, logits_s: puntero,
-    target_id: entero, vocab_size: entero,
-    temperatura: decimal, alpha: decimal) -> decimal
+externo funcion _syn_kd_divergencia_kl(logits_p: puntero, logits_q: puntero, n: entero, temperatura: decimal) -> decimal
+externo funcion _syn_kd_perdida_combinada(logits_t: puntero, logits_s: puntero, target_id: entero, vocab_size: entero, temperatura: decimal, alpha: decimal) -> decimal
 
 // --- Destilación ---
 externo funcion _syn_kd_paso_destilacion(sesion: puntero) -> decimal
@@ -385,16 +357,14 @@ externo funcion _syn_kd_guardar(sesion: puntero, ruta: texto) -> entero
 externo funcion _syn_kd_cargar(sesion: puntero, ruta: texto) -> entero
 
 // --- Integración ---
-externo funcion _syn_kd_estimar_reduccion(teacher_m: entero, student_m: entero,
-    fmt: entero) -> decimal
+externo funcion _syn_kd_estimar_reduccion(teacher_m: entero, student_m: entero, fmt: entero) -> decimal
 
 // ============================================================
 // Wrappers públicos de Destilación (Synapse idiomático)
 // ============================================================
 
 // Inicia una sesión de destilación
-funcion kd_iniciar(temperatura: decimal, alpha: decimal,
-    vocab_size: entero) -> puntero:
+funcion kd_iniciar(temperatura: decimal, alpha: decimal, vocab_size: entero) -> puntero:
     retornar _syn_kd_iniciar(temperatura, alpha, vocab_size)
 
 // Cierra la sesión y libera recursos
@@ -403,21 +373,16 @@ funcion kd_cerrar(sesion: puntero) -> nulo:
     retornar
 
 // Agrega un par de logits (teacher + student) para destilación
-funcion kd_agregar_par(sesion: puntero, logits_t: puntero,
-    logits_s: puntero, target_id: entero, peso: decimal) -> entero:
+funcion kd_agregar_par(sesion: puntero, logits_t: puntero, logits_s: puntero, target_id: entero, peso: decimal) -> entero:
     retornar _syn_kd_agregar_par(sesion, logits_t, logits_s, target_id, peso)
 
 // Computa la divergencia KL entre dos distribuciones
-funcion kd_divergencia_kl(logits_p: puntero, logits_q: puntero,
-    n: entero, temperatura: decimal) -> decimal:
+funcion kd_divergencia_kl(logits_p: puntero, logits_q: puntero, n: entero, temperatura: decimal) -> decimal:
     retornar _syn_kd_divergencia_kl(logits_p, logits_q, n, temperatura)
 
 // Computa la pérdida combinada (soft + hard) para destilación
-funcion kd_perdida_combinada(logits_t: puntero, logits_s: puntero,
-    target_id: entero, vocab_size: entero,
-    temperatura: decimal, alpha: decimal) -> decimal:
-    retornar _syn_kd_perdida_combinada(logits_t, logits_s, target_id,
-        vocab_size, temperatura, alpha)
+funcion kd_perdida_combinada(logits_t: puntero, logits_s: puntero, target_id: entero, vocab_size: entero, temperatura: decimal, alpha: decimal) -> decimal:
+    retornar _syn_kd_perdida_combinada(logits_t, logits_s, target_id, vocab_size, temperatura, alpha)
 
 // Ejecuta un paso de destilación sobre el dataset
 funcion kd_paso_destilacion(sesion: puntero) -> decimal:
@@ -436,6 +401,5 @@ funcion kd_cargar(sesion: puntero, ruta: texto) -> entero:
     retornar _syn_kd_cargar(sesion, ruta)
 
 // Estima la reducción teacher → student con cuantización
-funcion kd_estimar_reduccion(teacher_m: entero, student_m: entero,
-    fmt: entero) -> decimal:
+funcion kd_estimar_reduccion(teacher_m: entero, student_m: entero, fmt: entero) -> decimal:
     retornar _syn_kd_estimar_reduccion(teacher_m, student_m, fmt)

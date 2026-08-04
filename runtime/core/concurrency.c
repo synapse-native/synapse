@@ -4,7 +4,7 @@
 
 #include "synapse_rt_types.h"
 #include "librerias/embedded_libs.h"
-#include "tweetnacl.h"
+#include "axon/tweetnacl.h"
 
 #ifdef _WIN32
   #include <winsock2.h>

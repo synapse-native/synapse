@@ -107,14 +107,14 @@ jobs:
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Compilar runtime (C) - Windows
         if: matrix.os == 'windows-latest'
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lws2_32
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Smoke test — compilar programas Synapse
         run: |
@@ -151,7 +151,7 @@ jobs:
       - name: Compilar runtime objects
         run: |
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Crear directorios de fuzzing
         run: |
@@ -221,8 +221,8 @@ jobs:
       - name: Compilar runtime objects
         run: |
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
-          gcc -c axon_rt.c -o axon_rt.o -lpthread -lm 2>/dev/null || true
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/axon_rt.c -o axon_rt.o -lpthread -lm 2>/dev/null || true
 
       - name: Bootstrap — generar binario nativo
         run: |

@@ -442,7 +442,7 @@ def emitir_abrir(ctx: GeneratorContext, nodo: DefinicionFuncion):
     for lib in ['io', 'mem', 'math', 'fs', 'sys']:
         const_name = EMBEDDED_LIB_MAP.get(lib, f'LIB_{lib.upper()}')
         ctx.write_line(
-            f'if (strcmp(ruta.datos, "librerias/std/{lib}.syn") == 0) {{'
+            f'if (strcmp(ruta.datos, "std/{lib}.syn") == 0) {{'
         )
         ctx.inc_indent()
         ctx.write_line(f'_c.es_virtual = 1; _c.virtual_data = {const_name};')

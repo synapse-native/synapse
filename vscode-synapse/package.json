@@ -2,7 +2,7 @@
     "name": "synapse",
     "displayName": "Synapse Language",
     "description": "Synapse language support for VS Code — LSP nativo + IA local. CERO telemetría, 100% privacidad.",
-    "version": "5.1.1",
+    "version": "8.1.0",
     "publisher": "synapse-lang",
     "license": "MIT",
     "engines": {

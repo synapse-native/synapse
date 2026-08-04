@@ -35,11 +35,11 @@ def test_formato_sig_sin_cabecera():
 
 def test_tweetnacl_disponible():
     """Verifica que tweetnacl.c exista como fuente criptografica."""
-    ruta = os.path.join(RAIZ, "tweetnacl.c")
+    ruta = os.path.join(RAIZ, "axon/tweetnacl.c")
     assert os.path.exists(ruta), f"tweetnacl.c no encontrado en {ruta}"
 
 
 def test_tweetnacl_header_disponible():
     """Verifica que tweetnacl.h exista."""
-    ruta = os.path.join(RAIZ, "tweetnacl.h")
+    ruta = os.path.join(RAIZ, "axon/tweetnacl.h")
     assert os.path.exists(ruta), f"tweetnacl.h no encontrado en {ruta}"

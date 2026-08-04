@@ -3,7 +3,7 @@
 ; Compilar con: iscc instalador_synapse.iss
 
 #define MyAppName "Synapse Language"
-#define MyAppVersion "5.1.1-industrial"
+#define MyAppVersion "8.1.0-industrial"
 #define MyAppPublisher "Synapse Language Team"
 #define MyAppURL "https://github.com/synapse-lang/synapse"
 #define MyAppExeName "synapse.exe"
@@ -62,17 +62,18 @@ Source: "synapse_rt.c"; DestDir: "{app}\bin"; Components: core; Flags: ignorever
 Source: "synapse_rt.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
 Source: "synapse_rt_types.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
 Source: "synapse_rt_memory.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
-Source: "tweetnacl.c"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
-Source: "tweetnacl.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
+Source: "axon\tweetnacl.c"; DestDir: "{app}\bin\axon"; Components: core; Flags: ignoreversion
+Source: "axon\tweetnacl.h"; DestDir: "{app}\bin\axon"; Components: core; Flags: ignoreversion
 Source: "runtime\core\memory.c"; DestDir: "{app}\bin\runtime\core"; Components: core; Flags: ignoreversion
 Source: "runtime\core\concurrency.c"; DestDir: "{app}\bin\runtime\core"; Components: core; Flags: ignoreversion
 Source: "librerias\embedded_libs.h"; DestDir: "{app}\bin\librerias"; Components: core; Flags: ignoreversion
 ; Manual 9 S9.9.1: libreria estandar (std/*.syn)
+Source: "std\*"; DestDir: "{app}\std"; Components: core; Flags: ignoreversion recursesubdirs
 Source: "librerias\*"; DestDir: "{app}\librerias"; Components: core; Flags: ignoreversion recursesubdirs
 Source: "axon.toml"; DestDir: "{app}"; Components: core; Flags: ignoreversion
 ; Script de aprovisionamiento MinGW (usado en [Run])
 Source: "scripts\install.ps1"; DestDir: "{app}"; Components: core; Flags: ignoreversion
-Source: "vscode-synapse\synapse-vscode-v5.1.1.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
+Source: "vscode-synapse\synapse-vscode-v8.1.0.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
 
 ; --- AI ENGINE (Solo en opensyn_full) ---
 ; ME-R6: llama-server.exe y model.gguf se DESCARGAN en tiempo de instalacion

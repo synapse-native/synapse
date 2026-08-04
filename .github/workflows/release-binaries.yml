@@ -57,7 +57,7 @@ jobs:
 
       # ME-R1: compilar y enlazar el runtime modular completo (Manual 3 §3.1).
       # pool_alloc/pool_free/pool_init: runtime/core/memory.c; canales: runtime/core/concurrency.c;
-      # crypto_sign_ed25519_tweet*: tweetnacl.c (mapeado via tweetnacl.h).
+      # crypto_sign_ed25519_tweet*: axon/tweetnacl.c (mapeado via tweetnacl.h).
       - name: Compilar runtime y binario
         shell: bash
         run: |
@@ -73,7 +73,7 @@ jobs:
           ${CC} -c synapse_rt.c -o synapse_rt.o -I. ${{ matrix.ldflags }}
           ${CC} -c runtime/core/memory.c -o runtime_memory.o -I. ${{ matrix.ldflags }}
           ${CC} -c runtime/core/concurrency.c -o runtime_concurrency.o -I. ${{ matrix.ldflags }}
-          ${CC} -c tweetnacl.c -o tweetnacl.o -I. ${{ matrix.ldflags }}
+          ${CC} -c axon/tweetnacl.c -o tweetnacl.o -I. ${{ matrix.ldflags }}
           ${CC} -o ${{ matrix.artifact_name }}${{ matrix.ext }} \
             synapse_unity.c synapse_rt.o runtime_memory.o runtime_concurrency.o tweetnacl.o \
             -I. ${{ matrix.ldflags }} -lm -O2

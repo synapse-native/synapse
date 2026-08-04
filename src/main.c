@@ -360,7 +360,7 @@ CadenaSegura _campo_str(struct NodoToml nodo, CadenaSegura clave) {
 
 void principal(void) {
     _simd_detectar();
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("Synapse v5.1.1-industrial — Auto-hospedado"), .datos = "Synapse v5.1.1-industrial — Auto-hospedado" });
+    escribir_linea((CadenaSegura){ .longitud = (int)strlen("Synapse v8.1.0-industrial — Auto-hospedado"), .datos = "Synapse v8.1.0-industrial — Auto-hospedado" });
     escribir_linea((CadenaSegura){ .longitud = (int)strlen("Cargando manifiesto axon.toml..."), .datos = "Cargando manifiesto axon.toml..." });
     CadenaSegura toml_str = _leer_archivo((CadenaSegura){ .longitud = (int)strlen("axon.toml"), .datos = "axon.toml" });
     struct NodoToml doc = desde_texto(toml_str);

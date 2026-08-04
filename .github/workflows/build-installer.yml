@@ -22,7 +22,7 @@ permissions:
   packages: write
 
 env:
-  SYNAPSE_VERSION: "5.1.1-industrial"
+  SYNAPSE_VERSION: "8.1.0-industrial"
   INNO_SETUP_VERSION: "6.2.2"
 
 jobs:
@@ -104,7 +104,7 @@ jobs:
           python main.py nucleo/principal.syn
           if not exist dist\bin mkdir dist\bin
           gcc -O2 -static -o dist\bin\synapse.exe ^
-            synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c tweetnacl.c ^
+            synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c axon/tweetnacl.c ^
             -I. -lws2_32 -lm
           if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
 

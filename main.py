@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Synapse Compiler v5.1.1-industrial - Punto de entrada minimalista.
+Synapse Compiler v8.1.0-industrial - Punto de entrada minimalista.
 Delega todo el trabajo a cli.py y pipeline.py.
 """
 from cli import main

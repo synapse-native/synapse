@@ -11,7 +11,7 @@ set ERR=0
 
 REM --- gen_axon_test_fixtures.exe ---
 echo [1/3] Compilando gen_axon_test_fixtures.exe...
-gcc -I. -O2 tests\gen_axon_test_fixtures.c tweetnacl.c -o tests\gen_axon_test_fixtures.exe -lm
+gcc -I. -O2 tests\gen_axon_test_fixtures.c axon/tweetnacl.c -o tests\gen_axon_test_fixtures.exe -lm
 if %ERRORLEVEL% neq 0 (
     echo [FAIL] gen_axon_test_fixtures.exe
     set /a ERR+=1
@@ -50,7 +50,7 @@ if not exist synapse_rt_memory.o (
 )
 if not exist tweetnacl.o (
     echo [WARN] tweetnacl.o no encontrado - compilando...
-    gcc -I. -O2 -c tweetnacl.c -o tweetnacl.o
+    gcc -I. -O2 -c axon/tweetnacl.c -o tweetnacl.o
 )
 
 REM --- Preparar directorio .axon_cache para tests ---

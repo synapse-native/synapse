@@ -1,584 +1,532 @@
-MANUAL 3: ARQUITECTURA DEL COMPILADOR (PIPELINE) — COMPLETO (con adición 3.6.4)
+# MANUAL 3: SINTAXIS Y SEMÁNTICA DE SYQUEX
 
-Archivo: 03\_COMPILADOR\_PIPELINE.md
+**Archivo:** `03_SINTAXIS_Y_SEMANTICA_SYQUEX.md`  
+**Versión:** 8.0.0-industrial  
+**Propósito:** Definir la gramática formal del lenguaje Syquex, su sistema de tipos de alto nivel, las reglas semánticas (estructuras, métodos, manejo de errores algebraico, concurrencia), y la integración con el AST canónico de Synapse. Este manual establece las bases del frontend de productividad del ecosistema, diseñado para superar a Python en ergonomía y rendimiento.
 
-Versión: 5.1.1-industrial
+---
 
-Propósito: Describir las 5 etapas del compilador, el AST, la tabla de símbolos, el sistema de errores, la compilación incremental y el motor ATP con guardas de seguridad.
+## 1. DIRECTIVA DE ARCHIVO Y CODIFICACIÓN
 
+### 1.1. Directiva de Idioma
 
+Todo archivo fuente de Syquex **debe** comenzar con la directiva de idioma en la **línea 1**:
 
-3.1 Las 5 Etapas del Pipeline
+```syquex
+#lang: es
+```
 
-text
+Idiomas soportados: `es` (español), `en` (inglés), `fr` (francés), `pt` (portugués).
 
-┌─────────────┐
+La directiva obliga al lexer a cargar el diccionario correspondiente. Si el archivo omite esta directiva, el lexer rechazará el archivo con el error `ERR_LEX_MISSING_LANG`.
 
-│ fuente.syn  │ (UTF-8)
+### 1.2. Codificación
 
-└──────┬──────┘
+Todos los archivos fuente deben estar codificados en **UTF‑8 sin BOM**.
 
-&#x20;      ▼
+### 1.3. Comentarios
 
-┌─────────────────────────────────────────────────────────────┐
+Syquex soporta los mismos comentarios que Synapse:
+- **Comentarios de línea:** `//` hasta el final de la línea.
+- **Comentarios de bloque:** `/* ... */`, anidables.
 
-│ ETAPA 1: LEXER (lexer.syn)                                  │
+---
 
-│  - Lee caracteres, inyecta INDENT/DEDENT por indentación.   │
+## 2. FILOSOFÍA DE SYQUEX VS SYNAPSE
 
-│  - Detecta #lang: y selecciona diccionario multi-idioma.   │
+Syquex es el **hermano de alto nivel** de Synapse. Mientras Synapse se enfoca en el control total de la memoria, el rendimiento extremo y el bare metal, Syquex se enfoca en la **productividad del desarrollador**, la claridad del código y la velocidad de escritura.
 
-│  - Salida: flujo de tokens (TokenID + valor + ubicación).  │
+| Aspecto | Synapse | Syquex |
+|---------|---------|--------|
+| **Gestión de Memoria** | Manual (Ownership, Borrowing, Lifetimes) | Automática (Arenas + RC + Análisis de alcance) |
+| **Curva de Aprendizaje** | Media-Alta | Baja (similar a Python) |
+| **Tipado** | Estático inferido (Hindley-Milner) | Estático inferido (Hindley-Milner) |
+| **Concurrencia** | Fibras + Canales | Fibras + Canales (misma implementación) |
+| **Ecosistema** | Núcleo de sistemas | Aplicaciones, Web, GUI, Scripting |
+| **Propósito** | Motores, Kernels, IA de alto rendimiento | APIs, GUI, Automatización, Prototipado |
 
-└─────────────────────────────────────────────────────────────┘
+**La regla de oro de Syquex:** El desarrollador nunca escribe `free`, `&`, `mut` o lifetimes explícitos. El compilador deduce todo automáticamente mediante análisis de alcance y gestión por arenas.
 
-&#x20;      ▼
+---
 
-┌─────────────────────────────────────────────────────────────┐
+## 3. GRAMÁTICA FORMAL DE SYQUEX (EBNF COMPLETA)
 
-│ ETAPA 2: PARSER (parser.syn)                                │
+La gramática de Syquex es más expresiva que la de Synapse, incorporando elementos de programación orientada a objetos (estructuras con métodos y constructores) y manejo de errores algebraico integrado.
 
-│  - Descenso recursivo puro.                                 │
+```ebnf
+(* Programa principal *)
+programa          ::= lang_directive { declaracion } EOF
+lang_directive    ::= "#lang:" IDENTIFICADOR NEWLINE
+
+(* Declaraciones a nivel de módulo *)
+declaracion       ::= importacion
+                    | constante
+                    | variable
+                    | funcion
+                    | estructura
+                    | enumeracion
+                    | tipo_sinonimo
+                    | externo
+                    | exportacion
+
+importacion       ::= "importar" IDENTIFICADOR ("." IDENTIFICADOR)* [ "como" IDENTIFICADOR ] NEWLINE
+constante         ::= "constante" IDENTIFICADOR "=" expresion NEWLINE
+variable          ::= "variable" IDENTIFICADOR [ ":" tipo ] [ "=" expresion ] NEWLINE
+tipo_sinonimo     ::= "tipo" IDENTIFICADOR "=" tipo NEWLINE
+
+(* Funciones *)
+funcion           ::= "funcion" IDENTIFICADOR "(" [ parametros ] ")" [ "->" tipo ] [ contratos ] ":" NEWLINE INDENT bloque DEDENT
+                    | IDENTIFICADOR "(" [ parametros ] ")" "=" expresion   (* Función de una sola expresión *)
+
+parametros        ::= parametro { "," parametro }
+parametro         ::= IDENTIFICADOR [ ":" tipo ] [ "=" expresion ]   (* Valor por defecto *)
+
+contratos         ::= "requiere" ":" NEWLINE INDENT expresion NEWLINE DEDENT
+                    | "garantiza" ":" NEWLINE INDENT expresion NEWLINE DEDENT
+
+(* Estructuras (Orientación a Objetos) *)
+estructura        ::= "estructura" IDENTIFICADOR [ "(" IDENTIFICADOR ")" ]? ":" NEWLINE INDENT { miembro } DEDENT
+miembro           ::= campo | metodo | constructor
+campo             ::= IDENTIFICADOR ":" tipo [ "=" expresion ] NEWLINE
+metodo            ::= "metodo" IDENTIFICADOR "(" [ parametros ] ")" [ "->" tipo ] ":" NEWLINE INDENT bloque DEDENT
+constructor       ::= "crear" "(" [ parametros ] ")" ":" NEWLINE INDENT bloque DEDENT
+
+(* Enumeraciones (Tipos Algebraicos) *)
+enumeracion       ::= "enumeracion" IDENTIFICADOR ":" NEWLINE INDENT { caso_enum } DEDENT
+caso_enum         ::= IDENTIFICADOR [ "(" tipo { "," tipo } ")" ] NEWLINE
+
+(* FFI y Exportaciones *)
+externo           ::= "externo" funcion | "externo" estructura | "externo" "constante" IDENTIFICADOR "=" STRING NEWLINE
+exportacion       ::= "@export" "(" IDENTIFICADOR ")" funcion
+                    | "@export" "(" IDENTIFICADOR ")" estructura
+
+(* Bloques y sentencias *)
+bloque           ::= { sentencia NEWLINE }
+sentencia        ::= asignacion
+                    | llamada_funcion
+                    | retornar
+                    | condicional_si
+                    | bucle_mientras
+                    | bucle_para
+                    | bucle_para_rango
+                    | lanzar
+                    | escuchar
+                    | coincidir
+                    | intentar
+                    | romper
+                    | continuar
+                    | expresion
+                    | sentencia_vacia
+                    | declaracion_variable_local
+
+declaracion_variable_local ::= "let" IDENTIFICADOR [ ":" tipo ] [ "=" expresion ] NEWLINE
+
+asignacion        ::= IDENTIFICADOR "=" expresion
+                    | IDENTIFICADOR "." IDENTIFICADOR "=" expresion
+                    | IDENTIFICADOR "[" expresion "]" "=" expresion
+
+retornar          ::= "retornar" [ expresion ] [ "?" ]   (* "?" propaga el error como Resultado *)
+
+condicional_si    ::= "si" expresion ":" NEWLINE INDENT bloque DEDENT [ "sino" ":" NEWLINE INDENT bloque DEDENT ]
+bucle_mientras    ::= "mientras" expresion ":" NEWLINE INDENT bloque DEDENT
+bucle_para        ::= "para" IDENTIFICADOR "=" expresion ".." expresion [ "paso" expresion ] ":" NEWLINE INDENT bloque DEDENT
+bucle_para_rango  ::= "para" IDENTIFICADOR "en" expresion ":" NEWLINE INDENT bloque DEDENT   (* Iteración sobre lista o rango *)
+
+lanzar            ::= "lanzar" llamada_funcion
+escuchar          ::= "escuchar" IDENTIFICADOR ":" NEWLINE INDENT bloque DEDENT
+
+(* Pattern Matching *)
+coincidir         ::= "coincidir" expresion ":" NEWLINE INDENT { caso } DEDENT
+caso              ::= patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT )
+patron            ::= IDENTIFICADOR "(" IDENTIFICADOR ")"   (* ok(valor), err(e) *)
+                    | IDENTIFICADOR                         (* ninguno, ok, err *)
+                    | "_"                                  (* wildcard *)
+                    | numero | cadena                      (* Literales *)
+
+(* Manejo de Errores *)
+intentar          ::= "intentar" ":" NEWLINE INDENT bloque DEDENT [ "atrapar" IDENTIFICADOR ":" NEWLINE INDENT bloque DEDENT ]
+                    | "intentar" expresion "atrapar" expresion   (* Expresión funcional *)
+
+romper            ::= "romper"
+continuar         ::= "continuar"
+sentencia_vacia   ::= NEWLINE
+
+(* Tipos *)
+tipo              ::= tipo_primitivo
+                    | IDENTIFICADOR
+                    | "lista" "<" tipo ">"
+                    | "mapa" "<" tipo "," tipo ">"
+                    | "Resultado" "<" tipo "," tipo ">"
+                    | "Opcion" "<" tipo ">"
+                    | "Canal" "<" tipo ">"
+                    | "funcion" "(" [ tipos ] ")" "->" tipo
+                    | "&" tipo                          (* préstamo inmutable (solo modo sistema) *)
+                    | "rc" tipo                         (* conteo de referencias no atómico *)
+                    | "arc" tipo                        (* conteo de referencias atómico *)
+                    | "débil" tipo                      (* referencia débil *)
+                    | "arena" tipo                      (* asignación en arena *)
+                    | "[" tipo "]"                     (* slice / array *)
+
+tipo_primitivo    ::= "entero" | "int"
+                    | "decimal" | "float"
+                    | "booleano" | "bool"
+                    | "texto" | "string"
+                    | "caracter" | "char"
+                    | "nulo" | "void"
+
+tipos             ::= tipo { "," tipo }
+
+(* Expresiones *)
+expresion         ::= expresion_logica
+expresion_logica  ::= expresion_rel { ("y" | "o") expresion_rel }*
+expresion_rel     ::= expresion_arit { ("==" | "!=" | "<" | ">" | "<=" | ">=") expresion_arit }*
+expresion_arit    ::= termino { ("+" | "-") termino }*
+termino           ::= factor { ("*" | "/" | "%") factor }*
+factor            ::= [ "-" | "!" ] primario
+
+primario          ::= numero
+                    | cadena
+                    | IDENTIFICADOR
+                    | llamada_funcion
+                    | "(" expresion ")"
+                    | "[" [ expresiones ] "]"              (* Lista literal *)
+                    | "{" [ pares ] "}"                   (* Mapa literal *)
+                    | IDENTIFICADOR "." IDENTIFICADOR     (* Acceso a campo / método *)
+                    | IDENTIFICADOR "[" expresion "]"     (* Indexación *)
+                    | "?" expresion                       (* Propagación de error (operador ?) *)
+                    | "arena" "(" expresion ")"           (* Nueva arena *)
+                    | "rc" "(" expresion ")"              (* Nuevo RC *)
+                    | "arc" "(" expresion ")"             (* Nuevo ARC *)
+                    | "débil" "(" expresion ")"           (* Nueva débil *)
+
+llamada_funcion   ::= IDENTIFICADOR "(" [ argumentos ] ")"
+argumentos        ::= expresion { "," expresion }
+expresiones       ::= expresion { "," expresion }
+pares             ::= expresion ":" expresion { "," expresion ":" expresion }
+
+numero            ::= DIGITO+ [ "." DIGITO+ ] [ "e" [ "-" ] DIGITO+ ]
+cadena            ::= '"' { caracter } '"'
+```
+
+---
+
+## 4. TABLA DE PALABRAS RESERVADAS DE SYQUEX (MULTI‑IDIOMA)
+
+Syquex comparte las palabras clave de Synapse (ver Manual 2) y añade las propias de su dominio de alto nivel:
+
+| TokenID | Español (es) | Inglés (en) | Francés (fr) | Portugués (pt) |
+|---------|--------------|-------------|--------------|----------------|
+| T_METODO | metodo | method | méthode | metodo |
+| T_CREAR | crear | new | créer | criar |
+| T_ATRAPAR | atrapar | catch | attraper | capturar |
+| T_INTENTAR | intentar | try | essayer | tentar |
+| T_DELEGAR | delegar | delegate | déléguer | delegar |
+| T_LISTA | lista | list | liste | lista |
+| T_MAPA | mapa | map | carte | mapa |
+| T_ENUMERACION | enumeracion | enum | énumération | enumeração |
+| T_ARENA | arena | arena | arène | arena |
+| T_RC | rc | rc | rc | rc |
+| T_ARC | arc | arc | arc | arc |
+| T_DEBIL | débil | weak | faible | fraco |
+| T_EN | en | in | dans | em |
+| T_PASO | paso | step | pas | passo |
+| T_SINO | sino | else | sinon | senao |
+
+---
+
+## 5. SISTEMA DE TIPOS DE SYQUEX
+
+### 5.1. Tipos Primitivos
+
+Syquex comparte los tipos primitivos de Synapse (`entero`, `decimal`, `booleano`, `texto`, `caracter`, `nulo`), pero los trata con un modelo de memoria automático (arenas por defecto).
+
+### 5.2. Tipos de Colecciones (Nativos en la Biblioteca Estándar)
+
+- **`lista<T>`**: Lista dinámica (vector). Soporta `[]`, `len()`, `append()`, `pop()`, `iter()`.
+- **`mapa<K,V>`**: Diccionario hash. Soporte `[]`, `keys()`, `values()`, `iter()`.
+
+### 5.3. Tipos de Memoria Especiales (Para el Compilador)
+
+| Tipo | Propósito | Gestión |
+|------|-----------|---------|
+| `arena<T>` | Asigna `T` en una arena de ámbito. La arena se libera al salir del bloque. | Automática (bump allocator) |
+| `rc<T>` | Conteo de referencias no atómico. Para objetos compartidos dentro de una fibra. | Manual (el compilador inyecta `rc_inc`/`rc_dec`) |
+| `arc<T>` | Conteo de referencias atómico. Para objetos compartidos entre fibras (canales). | Automática (operaciones atómicas) |
+| `débil<T>` | Referencia débil a un `rc<T>`/`arc<T>`. Previene ciclos. | Automática (se invalida al destruir el fuerte) |
+| `&T` | Préstamo inmutable (solo en modo sistemas o FFI). | Verificación de alcance en tiempo de compilación |
+
+**Nota:** En Syquex, el 95% de los objetos se asignan implícitamente en la arena del ámbito (sin necesidad de anotar `arena`). El compilador deduce automáticamente que un objeto debe vivir en el heap o en la arena basándose en su uso y alcance.
+
+### 5.4. Tipos Algebraicos de Datos (ADTs) - `Resultado` y `Opcion`
+
+Syquex utiliza los mismos tipos algebraicos que Synapse:
+- `Resultado<T, E>`: `ok(T)` o `err(E)`.
+- `Opcion<T>`: `algun(T)` o `ninguno`.
+
+**Ergonomía mejorada:** El operador `?` (postfijo) propaga el error automáticamente. Si una expresión retorna `Resultado` y se le aplica `?`, el error se retorna de la función actual, y el éxito se desenvuelve.
+
+---
+
+## 6. ESTRUCTURAS, MÉTODOS Y CONSTRUCTORES (OOP NATIVO)
+
+Syquex adopta un modelo de orientación a objetos práctico, similar a Python o Swift, pero sin herencia compleja (usa composición y traits en su lugar).
+
+### 6.1. Definición de una Estructura
+
+```syquex
+estructura Persona:
+    nombre: texto
+    edad: entero
+    activo: booleano = verdadero   // Valor por defecto
+
+    // Constructor
+    crear(nombre: texto, edad: entero):
+        self.nombre = nombre
+        self.edad = edad
+        // activo ya tiene valor por defecto
+
+    // Método
+    metodo cumpleaños():
+        self.edad = self.edad + 1
+
+    metodo es_mayor_de_edad() -> booleano:
+        retornar self.edad >= 18
+```
+
+### 6.2. Uso de la Estructura
+
+```syquex
+funcion principal():
+    let ana = Persona("Ana", 28)
+    ana.cumpleaños()
+    si ana.es_mayor_de_edad():
+        log("Ana es mayor de edad")
+```
+
+### 6.3. Constructores y Métodos Estáticos
+
+Syquex no tiene métodos estáticos clásicos. Se utilizan funciones de módulo (funciones libres en el mismo archivo) para actuar como constructores alternativos.
+
+```syquex
+funcion crear_persona_desde_csv(fila: texto) -> Persona:
+    let partes = fila.separar(",")
+    retornar Persona(partes[0], entero(partes[1]))
+```
+
+---
+
+## 7. MANEJO DE ERRORES CON `Resultado` Y EL OPERADOR `?`
+
+Syquex abandona las excepciones de Python/Java en favor de tipos `Resultado` con propagación explícita pero ergonómica.
+
+### 7.1. Función que Retorna `Resultado`
+
+```syquex
+funcion dividir(a: decimal, b: decimal) -> Resultado<decimal, texto>:
+    si b == 0.0:
+        retornar err("División por cero")
+    retornar ok(a / b)
+```
+
+### 7.2. Uso del Operador `?` (Propagación Rápida)
+
+El operador `?` se coloca después de una expresión que retorna `Resultado`. Si es `err`, retorna el error de la función actual. Si es `ok`, desempaqueta el valor.
+
+```syquex
+funcion calcular_media(operaciones: Lista<decimal>) -> Resultado<decimal, texto>:
+    let suma = 0.0
+    para i en operaciones:
+        // Si dividir falla, la función retorna err(...) inmediatamente
+        suma = suma + dividir(i, 2.0)?
+    retornar ok(suma / operaciones.len())
+```
 
-│  - Construye AST (linked-list de Nodo\*).                   │
+### 7.3. `intentar` / `atrapar` (Para Interoperabilidad con Código que Lanza Excepciones)
 
-│  - Salida: AST enlazado.                                   │
+Syquex no tiene excepciones nativas, pero proporciona `intentar`/`atrapar` para envolver FFI o código que pueda generar pánicos.
+
+```syquex
+funcion operacion_riesgosa() -> Resultado<nulo, texto>:
+    intentar:
+        let archivo = abrir("datos.txt")
+        let contenido = archivo.leer()
+        // ...
+    atrapar e:
+        retornar err("Error en operación riesgosa: " + e)
+    retornar ok()
+```
 
-└─────────────────────────────────────────────────────────────┘
+---
 
-&#x20;      ▼
+## 8. CONCURRENCIA Y COMUNICACIÓN EN SYQUEX
 
-┌─────────────────────────────────────────────────────────────┐
+Syquex hereda el modelo de concurrencia de Synapse (fibras + canales), pero con una sintaxis aún más limpia.
 
-│ ETAPA 3: ANALIZADOR SEMÁNTICO (analizador\_semantico.syn)   │
+### 8.1. Lanzar una Fibra
+
+```syquex
+funcion trabajador(id: entero, canal: Canal<texto>):
+    canal <- "Hilo " + id.texto() + " listo"
+
+funcion principal():
+    let c = Canal<texto>(10)
+    lanzar trabajador(1, c)
+    lanzar trabajador(2, c)
+    
+    escuchar c:
+        let mensaje = c ->
+        log(mensaje)
+```
 
-│  - 3 pasadas: 1) Estructuras, 2) Firmas, 3) Cuerpos.       │
+### 8.2. Canales y Move Semantics (Automático)
 
-│  - Inferencia de tipos (Hindley-Milner).                   │
+Syquex aplica Move Semantics al enviar objetos por un canal: la variable origen se invalida (como en Rust, pero sin que el usuario tenga que pensarlo).
 
-│  - Verificación de Ownership y Lifetimes.                  │
+```syquex
+estructura Dato:
+    contenido: texto
 
-│  - Motor ATP (modo --safe) con guardas de profundidad.    │
+funcion enviar(c: Canal<Dato>):
+    let d = Dato("Secreto")
+    c <- d   // d se mueve, no se puede usar después de esta línea
+```
 
-│  - Salida: SemNodo\[] aplanado + Tabla de Símbolos.         │
+---
 
-└─────────────────────────────────────────────────────────────┘
+## 9. FFI E INTEGRACIÓN CON C (`externo`)
 
-&#x20;      ▼
+Syquex se integra con C mediante la palabra clave `externo`. Es la puerta de entrada a todo el ecosistema de librerías C (libcurl, SQLite, GTK, etc.).
 
-┌─────────────────────────────────────────────────────────────┐
+### 9.1. Declaración de Función C
 
-│ ETAPA 4: GENERADOR (generator.syn / llvm\_backend.syn)      │
+```syquex
+externo funcion strlen(s: &texto) -> entero
+```
 
-│  - Traduce SemNodo\[] a código C estándar o LLVM IR.        │
+### 9.2. Uso en Código Seguro (FFI Automático)
 
-│  - Emite funciones en orden alfabético (determinismo).     │
+```syquex
+funcion longitud(s: texto) -> entero:
+    retornar strlen(&s)   // El compilador maneja el marshaling
+```
 
-│  - Inyecta contratos como assert() o llvm.assume.          │
+### 9.3. Marshaling Automático (Estrategia Zero-Copy)
+
+Cuando se pasa un `texto` a C, el compilador añade un byte `\0` al final en la arena (sin copiar todo el buffer). Este es un detalle de implementación que el desarrollador no necesita conocer.
 
-│  - Salida: synapse\_unity.c (o .ll).                       │
+---
+
+## 10. EXPORTACIÓN A OTROS LENGUAJES (`@export`)
+
+Syquex puede exportar funciones y estructuras para ser usadas desde Python, JavaScript (via WASM), Java, etc.
+
+```syquex
+@export(python) funcion procesar(data: Lista<Decimal>) -> Resultado<Decimal, Texto>
 
-└─────────────────────────────────────────────────────────────┘
+@export(typescript) estructura Usuario:
+    nombre: Texto
+    edad: Entero
+```
 
-&#x20;      ▼
+El compilador genera automáticamente los bindings (archivos `.py`, `.d.ts`, `.java`) en la fase de generación de código.
 
-┌─────────────────────────────────────────────────────────────┐
+---
 
-│ ETAPA 5: BACKEND (GCC/Clang/LLVM/emcc)                     │
+## 11. INTEGRACIÓN CON EL AST CANÓNICO DE SYNAPSE (El Traductor)
 
-│  - Compila .c/.ll + runtime modular (core, net, quantum).  │
+Syquex no tiene su propio backend. Cada nodo del AST de Syquex se traduce al `SemNodo[]` canónico de Synapse.
 
-│  - Enlaza con -lpthread -lm (y -lws2\_32 en Windows).     │
+### 11.1. Mapeo de Nodos Clave
 
-│  - Salida: binario nativo (.exe, ELF) o WASM (.wat/.wasm).│
+| Nodo Syquex | Nodo Synapse (SemNodo) | Notas |
+|-------------|------------------------|-------|
+| `FuncionDef` | `NODO_FUNCION` | Se añaden metadatos de Syquex (ej. `es_metodo`) |
+| `EstructuraDef` | `NODO_ESTRUCTURA` | Se registran campos y métodos |
+| `MetodoDef` | `NODO_FUNCION` con `self` como primer parámetro implícito |
+| `ConstructorDef` | `NODO_FUNCION` especial que retorna la estructura |
+| `Coincidir` | `NODO_COINCIDIR` | Exhaustividad verificada por el analizador semántico de Synapse |
+| `Intento` | `NODO_INTENTO` | Traducido a un bloque `try` en C (via FFI) |
 
-└─────────────────────────────────────────────────────────────┘
+### 11.2. Preservación de Metadatos de Depuración
 
-3.2 El AST (Árbol de Sintaxis Abstracta)
+El traductor conserva `archivo`, `linea` y `columna` originales para que los errores del compilador de Synapse apunten a la fuente `.syq`.
 
-Estructura base del Nodo (C):
+---
 
+## 12. PRUEBAS OBLIGATORIAS PARA ESTA ETAPA
 
+| Test | Comando | Criterio |
+|------|---------|----------|
+| Lexer Syquex | `pytest tests/syquex/test_lexer.py -v` | 100% pass |
+| Parser Syquex (EBNF) | `pytest tests/syquex/test_parser.py -v` | 100% pass |
+| Estructuras y Métodos | `pytest tests/syquex/test_structs.py -v` | 100% pass |
+| Operador `?` y `Resultado` | `pytest tests/syquex/test_result.py -v` | Propagación correcta de errores |
+| Concurrencia (`lanzar`, canales) | `pytest tests/syquex/test_concurrency.py -v` | 0 deadlocks |
+| FFI y `externo` | `pytest tests/syquex/test_ffi.py -v` | 100% pass |
+| Exportación (`@export`) | `pytest tests/syquex/test_export.py -v` | Bindings generados correctamente |
+| Traductor a Synapse | `pytest tests/syquex/test_traductor.py -v` | AST canónico válido y compilable |
 
-c
+---
 
-typedef struct Nodo {
+## 13. EJEMPLO COMPLETO DE PROGRAMA SYQUEX
 
-&#x20;   int tipo;               // NODO\_PROGRAMA, NODO\_FUNCION, ...
+**Código fuente (`ejemplo.syq`):**
 
-&#x20;   int linea;
+```syquex
+#lang: es
 
-&#x20;   int columna;
+importar lib.io
+importar lib.web
+importar synapse.audio   // Módulo de Synapse
 
-&#x20;   struct Nodo\* siguiente; // Linked-list (hermanos)
+estructura Usuario:
+    nombre: texto
+    edad: entero
 
-&#x20;   union {
+    crear(nombre: texto, edad: entero):
+        self.nombre = nombre
+        self.edad = edad
 
-&#x20;       struct {
+    metodo saludar():
+        io.escribir_linea("Hola, soy " + self.nombre)
 
-&#x20;           char nombre\[64];
+funcion generar_audio(frecuencia: decimal, duracion: decimal) -> Resultado<tensor, texto>:
+    si frecuencia <= 0.0:
+        retornar err("Frecuencia inválida")
+    retornar ok(synapse.audio.generar(frecuencia, duracion, 1000.0))
 
-&#x20;           int num\_params;
+funcion principal() -> Resultado<nulo, texto>:
+    let usuario = Usuario("Ana", 28)
+    usuario.saludar()
 
-&#x20;           struct Nodo\* params;
+    // Usar el operador ? para propagar errores
+    let audio = generar_audio(440.0, 3.0)?
+    io.escribir_linea("Audio generado: " + audio.filas.texto() + " muestras")
 
-&#x20;           struct Nodo\* cuerpo;
+    // Servidor web simple
+    let servidor = web.servidor(8080)
+    servidor.get("/saludar", funcion(req):
+        retornar web.respuesta(200, "Hola desde Syquex")
+    )
+    servidor.iniciar()?
+    retornar ok()
+```
 
-&#x20;           struct Nodo\* contratos;
+**Explicación del flujo:**
+1. El lexer y parser leen el archivo `.syq`.
+2. El traductor convierte las estructuras, métodos y funciones a `SemNodo[]`.
+3. El analizador semántico de Synapse verifica tipos y ownership.
+4. El generador emite código C con arenas (para objetos de Syquex).
+5. GCC/Clang produce el binario final.
 
-&#x20;       } funcion;
+---
 
-&#x20;       struct {
+## 14. SIGUIENTES PASOS
 
-&#x20;           struct Nodo\* condicion;
+Con la sintaxis y semántica de Syquex definidas, el siguiente manual (Manual 4) se centrará en el **Modelo de Memoria de Syquex**: Arenas por ámbito, conteo de referencias, análisis de alcance, Cleanup Blocks y FFI Marshaling.
 
-&#x20;           struct Nodo\* cuerpo\_si;
+---
 
-&#x20;           struct Nodo\* cuerpo\_sino;
+*Este manual proporciona la base sintáctica y semántica de Syquex. La implementación del frontend debe seguir fielmente esta especificación para garantizar una experiencia de desarrollo productiva y segura.*
 
-&#x20;       } si;
-
-&#x20;       struct {
-
-&#x20;           char nombre\[64];
-
-&#x20;           struct Nodo\* expr;
-
-&#x20;       } asignacion;
-
-&#x20;       struct {
-
-&#x20;           char nombre\[64];
-
-&#x20;           struct Nodo\* args;
-
-&#x20;       } llamada;
-
-&#x20;       // ... más uniones para cada tipo de nodo
-
-&#x20;   };
-
-} Nodo;
-
-Constantes de tipo de nodo (tabla completa — 46 tipos reales definidos en nucleo/parser_constantes.syn):
-
-
-
-Constante	Valor	Descripción
-
-NODO\_PROGRAMA	1	Raíz del archivo
-
-NODO\_FUNCION	2	Definición de función
-
-NODO\_SI	3	Condicional si
-
-NODO\_MIENTRAS	4	Bucle mientras
-
-NODO\_RETORNAR	5	Sentencia retornar
-
-NODO\_EXPR	6	Sentencia de expresión
-
-NODO\_ASIGNACION	7	Asignación =
-
-NODO\_IDENTIFICADOR	8	Referencia a identificador
-
-NODO\_NUMERO	9	Literal numérico (entero)
-
-NODO\_DECIMAL	10	Literal numérico (decimal)
-
-NODO\_CADENA\_LIT	11	Literal de cadena
-
-NODO\_BINARIA	12	Operación binaria (+, -, *, /, ...)
-
-NODO\_UNARIA	13	Operación unaria (-, !, ...)
-
-NODO\_LLAMADA	14	Llamada a función
-
-NODO\_PARAMETRO	15	Parámetro de función
-
-NODO\_ESTRUCTURA	16	Definición de estructura
-
-NODO\_IMPORTAR	17	Sentencia importar
-
-NODO\_LANZAR	18	Sentencia lanzar (spawn)
-
-NODO\_ESCUCHAR	19	Sentencia escuchar (listen)
-
-NODO\_ROMPER	20	Sentencia romper (break)
-
-NODO\_SIGUIENTE	21	Sentencia siguiente (continue)
-
-NODO\_BOOLEANO	22	Literal booleano (verdadero/falso)
-
-NODO\_CONSTANTE	23	Declaración de constante
-
-NODO\_INSEGURO	24	Bloque inseguro
-
-NODO\_IMPORTAR\_C	25	Importar código C
-
-NODO\_EXTERNO	26	Declaración externa
-
-NODO\_RECUPERAR	27	Sentencia recuperar (recover)
-
-NODO\_TENSOR	28	Expresión tensor
-
-NODO\_INDICE	29	Acceso por índice []
-
-NODO\_TRANSFERIDO	30	Argumento transferido (ownership move)
-
-NODO\_ACCESO\_CAMPO	31	Acceso a campo (objeto.campo)
-
-NODO\_ASIGNACION\_CAMPO	32	Asignación a campo
-
-NODO\_PARRAFO	33	Párrafo (bloque de sentencias)
-
-NODO\_DECLARACION	34	Declaración de variable
-
-NODO\_LOG	35	Llamada de log
-
-NODO\_PUNTERO	36	Tipo puntero
-
-NODO\_DEREF	37	Desreferencia de puntero
-
-NODO\_COINCIDIR	38	Sentencia coincidir (match)
-
-NODO\_CASO	39	Caso de coincidir
-
-NODO\_ASM	40	Bloque asm
-
-NODO\_CANAL\_CREAR	41	Creación de canal
-
-NODO\_ENVIAR\_CANAL	42	Envío a canal
-
-NODO\_RECIBIR\_CANAL	43	Recepción de canal
-
-NODO\_VACIO	44	Nodo vacío
-
-NODO\_PARA	45	Bucle para
-
-NODO\_CONTRATO	46	Bloque requiere/garantiza
-
-AST Aplanado (SemNodo\[]): Para el análisis semántico, la linked-list se aplana a un array contiguo:
-
-
-
-c
-
-\#define F8\_MAX\_NODOS 65536
-
-typedef struct {
-
-&#x20;   int tipo\_nodo;
-
-&#x20;   int linea, columna;
-
-&#x20;   int owner\_id;
-
-&#x20;   int scope\_id;
-
-&#x20;   bool is\_owned;
-
-&#x20;   bool es\_prestado\_inmutable;
-
-&#x20;   bool es\_prestado\_mutable;
-
-&#x20;   union {
-
-&#x20;       struct { char nombre\[64]; int num\_params; } funcion;
-
-&#x20;       // ... igual que Nodo pero sin punteros (solo datos planos)
-
-&#x20;   };
-
-} SemNodo;
-
-3.3 El Analizador Semántico (3 Pasadas)
-
-c
-
-void analizar(AnalizadorSemanticoEst\* est) {
-
-&#x20;   // PASADA 1: ESTRUCTURAS Y TIPOS GLOBALES
-
-&#x20;   for (int i = 0; i < est->total\_nodos; i++) {
-
-&#x20;       if (est->nodos\[i].tipo\_nodo == NODO\_ESTRUCTURA) {
-
-&#x20;           \_sem\_registrar\_struct(est, \&est->nodos\[i]);
-
-&#x20;       }
-
-&#x20;   }
-
-&#x20;   // PASADA 2: FIRMAS DE FUNCIONES (sin cuerpos)
-
-&#x20;   for (int i = 0; i < est->total\_nodos; i++) {
-
-&#x20;       if (est->nodos\[i].tipo\_nodo == NODO\_FUNCION) {
-
-&#x20;           \_sem\_registrar\_funcion(est, \&est->nodos\[i]);
-
-&#x20;       }
-
-&#x20;   }
-
-&#x20;   // PASADA 3: CUERPOS DE FUNCIÓN + OWNERSHIP + LIFETIMES + ATP
-
-&#x20;   for (int i = 0; i < est->total\_nodos; i++) {
-
-&#x20;       if (est->nodos\[i].tipo\_nodo == NODO\_FUNCION) {
-
-&#x20;           \_sem\_analizar\_cuerpo(est, \&est->nodos\[i]);
-
-&#x20;           if (est->modo\_safe) {
-
-&#x20;               atp\_verificar\_funcion(est, \&est->nodos\[i]);
-
-&#x20;           }
-
-&#x20;       }
-
-&#x20;   }
-
-}
-
-Tabla de Símbolos (estructura interna):
-
-
-
-c
-
-typedef struct {
-
-&#x20;   char nombre\[64];
-
-&#x20;   int tipo;           // TIPO\_ENTERO, TIPO\_FUNCION, TIPO\_ESTRUCTURA, ...
-
-&#x20;   int scope\_id;
-
-&#x20;   int owner\_id;
-
-&#x20;   bool es\_movido;
-
-&#x20;   int num\_referencias;
-
-&#x20;   bool tiene\_mut\_borrow;
-
-} Simbolo;
-
-Regla de determinismo: La tabla de símbolos se serializa y se itera siempre en orden lexicográfico por nombre para garantizar que el código generado y los hashes de caché sean idénticos en todas las ejecuciones.
-
-
-
-Inferencia de Tipos (Hindley-Milner): Variables de tipo se representan como TVar(id). Unificación con occurs check. Si una expresión tiene tipo ambiguo (ej. \[]), se emite ERR\_SEM\_TYPE\_AMBIGUOUS.
-
-
-
-3.4 Sistema de Caché Incremental (v5.0)
-
-Clave de caché: SHA-256(contenido\_archivo + hash\_dependencias (ordenadas) + flags\_compilacion + version\_compilador). Importante: Las dependencias se ordenan alfabéticamente antes de ser hasheadas.
-
-
-
-Estructura de la entrada de caché:
-
-
-
-c
-
-typedef struct {
-
-&#x20;   char key\[65];              // SHA-256 hex
-
-&#x20;   char ast\_hash\[65];
-
-&#x20;   char\* codigo\_c;
-
-&#x20;   size\_t codigo\_len;
-
-&#x20;   char\*\* dependencias;       // Lista ordenada alfabéticamente
-
-&#x20;   int num\_deps;
-
-&#x20;   char flags\[256];
-
-&#x20;   time\_t timestamp;
-
-} CacheEntry;
-
-Flujo:
-
-
-
-Calcular clave.
-
-
-
-Buscar en \~/.synapse/cache/.
-
-
-
-Si existe y el ast\_hash coincide → CACHÉ HIT (usar objeto compilado).
-
-
-
-Si existe pero ast\_hash no coincide → CACHÉ STALE (recompilar y actualizar).
-
-
-
-Si no existe → CACHÉ MISS (compilar y guardar).
-
-
-
-3.5 Taxonomía de Errores del Compilador
-
-Categoría	Rango	Ejemplo
-
-Léxico	ERR\_LEX\_\*	ERR\_LEX\_TAB\_DETECTED, ERR\_LEX\_MISSING\_LANG
-
-Sintáctico	ERR\_SYNTAX\_\*	ERR\_SYNTAX\_EXPECTED\_TOKEN, ERR\_INDENT\_INVALID
-
-Semántico	ERR\_SEM\_\*	ERR\_SEM\_TYPE\_AMBIGUOUS, ERR\_SEM\_REDEFINICION
-
-Memoria	ERR\_MEM\_\*	ERR\_MEM\_USE\_AFTER\_MOVE, ERR\_MEM\_LIFETIME\_MISMATCH
-
-Caché	ERR\_CACHE\_\*	ERR\_CACHE\_CORRUPT, ERR\_CACHE\_VERSION\_MISMATCH
-
-Verificación (ATP)	ERR\_ATP\_\*	ERR\_ATP\_TAUTOLOGY\_FAILED, ERR\_ATP\_NON\_TERMINATING, ERR\_ATP\_TIMEOUT
-
-3.6 Motor de Verificación Formal (ATP) — Modo --safe
-
-El motor ATP (Automated Theorem Proving) se activa con la flag --safe y opera como una extensión de la Pasada 3. Su objetivo es demostrar matemáticamente que los contratos (requiere / garantiza) se cumplen para todas las entradas posibles.
-
-
-
-3.6.1 Flujo del ATP:
-
-
-
-Extracción de Fórmulas: Convierte requiere y garantiza a lógica de primer orden.
-
-
-
-Simbolización del Cuerpo: Traduce el AST de la función a una fórmula lógica.
-
-
-
-Verificación de Contratos: Demuestra que precondición ∧ cuerpo → postcondición.
-
-
-
-Terminación: Verifica que las funciones recursivas decrementan un well‑founded order (ej. n-1).
-
-
-
-Ejecución Simbólica: Explora caminos críticos para detectar violaciones de contratos.
-
-
-
-3.6.2 Guardas de Seguridad (Anti-Explosión Combinatoria):
-
-Para evitar que el ATP consuma recursos infinitos en contratos complejos, se aplican las siguientes restricciones obligatorias:
-
-
-
-max\_depth: Profundidad máxima de búsqueda en el árbol de resolución (por defecto 10, configurable con --atp-depth N).
-
-
-
-timeout\_seconds: Tiempo límite de ejecución del ATP por función (por defecto 2 segundos, configurable con --atp-timeout S).
-
-
-
-Si se excede el tiempo o la profundidad, el compilador emite ERR\_ATP\_TIMEOUT y aborta la compilación en modo --safe.
-
-
-
-3.6.3 Estructuras y API (C):
-
-
-
-c
-
-// validate\_atp\_engine.c
-
-typedef struct {
-
-&#x20;   int max\_depth;          // Obligatorio: por defecto 10
-
-&#x20;   int timeout\_seconds;    // Obligatorio: por defecto 2
-
-&#x20;   int use\_arithmetic;
-
-&#x20;   int use\_induction;
-
-} ATPConfig;
-
-
-
-ATPResult atp\_prove(const char\* pre, const char\* post, const char\* body);
-
-int atp\_verify\_termination(const char\* function\_def);
-
-3.6.4 Proof Bridge (Coq/Lean) — Adición v5.1.1-industrial
-
-
-
-El motor ATP puede exportar los teoremas verificados (contratos, terminación) a lenguajes de prueba formales como Coq o Lean, permitiendo una verificación externa más profunda.
-
-
-
-Exportación a Coq: Genera un archivo .v con las definiciones de las funciones y los lemas de los contratos.
-
-
-
-Exportación a Lean: Genera un archivo .lean con teoremas y pruebas tácticas.
-
-
-
-Comando: synapse build --safe --export-proof=coq main.syn o --export-proof=lean.
-
-
-
-Estructura del bridge (C):
-
-
-
-c
-
-// nucleo/proof\_bridge.c
-
-int proof\_bridge\_export\_coq(const char\* function\_name, const char\* pre, const char\* post, const char\* filename);
-
-int proof\_bridge\_export\_lean(const char\* function\_name, const char\* pre, const char\* post, const char\* filename);
-
-Test de validación:
-
-
-
-bash
-
-gcc -o test\_proof\_bridge validate\_formal\_proof.c -lm \&\& ./test\_proof\_bridge --test export\_coq
-
-\# Verifica que el archivo .v generado es sintácticamente válido.
-
-3.6.5 Tests Obligatorios para esta Etapa:
-
-
-
-Test	Comando	Criterio
-
-ATP Tautología simple	gcc -o test\_atp validate\_atp\_engine.c -lm \&\& ./test\_atp --test prove\_tautology	PASS
-
-ATP Contrato factorial	./test\_atp --test verify\_factorial	PASS
-
-ATP Detección de no-terminación	./test\_atp --test detect\_non\_termination	Detectar ERR\_ATP\_NON\_TERMINATING
-
-ATP Timeout (protección)	./test\_atp --test timeout --timeout 1	Debe fallar con ERR\_ATP\_TIMEOUT
-
-Ejecución simbólica	./test\_atp --test symbolic\_execution	PASS
-
-Proof Bridge Coq	./test\_proof\_bridge --test export\_coq	Archivo .v generado y sintácticamente válido
-
-Proof Bridge Lean	./test\_proof\_bridge --test export\_lean	Archivo .lean generado y sintácticamente válido
-
+**Fin del Manual 3**

@@ -11,7 +11,7 @@
 #include <pthread.h>
 #include <time.h>
 #include "librerias/embedded_libs.h"
-#include "tweetnacl.h"
+#include "axon/tweetnacl.h"
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -41,13 +41,13 @@ Canal abrir(CadenaSegura ruta, CadenaSegura modo) {
     if (strcmp(ruta.datos, "librerias/compiler/lexer.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_LEXER; _c.virtual_len = (int)strlen(LIB_LEXER); _c.es_valido = 1; return _c; }
     if (strcmp(ruta.datos, "librerias/compiler/parser.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_PARSER; _c.virtual_len = (int)strlen(LIB_PARSER); _c.es_valido = 1; return _c; }
     if (strcmp(ruta.datos, "librerias/compiler/generator.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_GENERATOR; _c.virtual_len = (int)strlen(LIB_GENERATOR); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/io.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_IO; _c.virtual_len = (int)strlen(LIB_IO); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/mem.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MEM; _c.virtual_len = (int)strlen(LIB_MEM); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/math.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MATH; _c.virtual_len = (int)strlen(LIB_MATH); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/fs.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_FS; _c.virtual_len = (int)strlen(LIB_FS); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/sys.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_SYS; _c.virtual_len = (int)strlen(LIB_SYS); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/modelo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MODELO; _c.virtual_len = (int)strlen(LIB_MODELO); _c.es_valido = 1; return _c; }
-    if (strcmp(ruta.datos, "librerias/std/oraculo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_ORACULO; _c.virtual_len = (int)strlen(LIB_ORACULO); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/io.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_IO; _c.virtual_len = (int)strlen(LIB_IO); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/mem.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MEM; _c.virtual_len = (int)strlen(LIB_MEM); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/math.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MATH; _c.virtual_len = (int)strlen(LIB_MATH); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/fs.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_FS; _c.virtual_len = (int)strlen(LIB_FS); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/sys.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_SYS; _c.virtual_len = (int)strlen(LIB_SYS); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/modelo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MODELO; _c.virtual_len = (int)strlen(LIB_MODELO); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/oraculo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_ORACULO; _c.virtual_len = (int)strlen(LIB_ORACULO); _c.es_valido = 1; return _c; }
     _c.stream = fopen(ruta.datos, modo.datos);
     _c.es_valido = (_c.stream != NULL) ? 1 : 0;
     if (!_c.es_valido) {
@@ -1637,7 +1637,7 @@ void _syn_dormir_ms(int ms) {
 
 // ============================================================
 // std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)
-#include "tweetnacl.h"
+#include "axon/tweetnacl.h"
 
 // --- SHA-256 (sin cambios) ---
 // ============================================================
@@ -3477,6 +3477,61 @@ int _syn_modelo_generar(void* ctx, int token_id, float temperature, int top_k, f
 }
 
 int _syn_modelo_n_past(void* ctx) { return ctx ? ((ModeloContexto*)ctx)->n_past : 0; }
+
+// ME-R8 (D5): metadatos del modelo que el contrato std.modelo declara y el
+// runtime no implementaba. Lectura directa de ModeloContexto (datos cargados
+// del header GGUF al abrir el modelo).
+int _syn_modelo_obtener_n_ctx(void* ctx) {
+    if (!ctx) return 0;
+    return ((ModeloContexto*)ctx)->max_seq_len;
+}
+
+void _syn_modelo_establecer_n_ctx(void* ctx, int max_tokens) {
+    if (!ctx || max_tokens <= 0) return;
+    ModeloContexto* mc = (ModeloContexto*)ctx;
+    mc->max_seq_len = max_tokens;
+    if (mc->n_past > max_tokens) mc->n_past = max_tokens;
+}
+
+int _syn_modelo_obtener_n_layers(void* ctx) {
+    if (!ctx) return 0;
+    return ((ModeloContexto*)ctx)->n_layers;
+}
+
+int _syn_modelo_obtener_n_embd(void* ctx) {
+    if (!ctx) return 0;
+    return ((ModeloContexto*)ctx)->n_embd;
+}
+
+int _syn_modelo_obtener_n_heads(void* ctx) {
+    if (!ctx) return 0;
+    return ((ModeloContexto*)ctx)->n_heads;
+}
+
+CadenaSegura _syn_modelo_obtener_arquitectura(void* ctx) {
+    if (!ctx || ((ModeloContexto*)ctx)->arch_name[0] == 0) {
+        return (CadenaSegura){0, ""};
+    }
+    const char* n = ((ModeloContexto*)ctx)->arch_name;
+    return (CadenaSegura){ .longitud = (int)strlen(n), .datos = strdup(n) };
+}
+
+CadenaSegura _syn_modelo_obtener_metadato(void* ctx, CadenaSegura clave) {
+    if (!ctx || !clave.datos) return (CadenaSegura){0, ""};
+    ModeloContexto* mc = (ModeloContexto*)ctx;
+    // Buscar en la tabla de metadatos GGUF del header del modelo
+    if (mc->datos_internos) {
+        InternalData* idata = (InternalData*)mc->datos_internos;
+        for (int i = 0; i < idata->cantidad_metadatos; i++) {
+            if (idata->metadatos[i].clave && idata->metadatos[i].valor &&
+                strcmp(idata->metadatos[i].clave, clave.datos) == 0) {
+                return (CadenaSegura){ .longitud = (int)strlen(idata->metadatos[i].valor),
+                                       .datos = strdup(idata->metadatos[i].valor) };
+            }
+        }
+    }
+    return (CadenaSegura){0, ""};
+}
 
 void _syn_modelo_reiniciar(void* ctx) {
     if (!ctx) return;

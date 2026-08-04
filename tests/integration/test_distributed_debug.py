@@ -189,7 +189,7 @@ class TestEstructuraCodigo:
 
     def test_externo_dd_en_cluster(self):
         """Verify dd_* externo functions are declared in cluster.syn."""
-        cluster_path = os.path.join(PROJECT_ROOT, "librerias/std/cluster.syn")
+        cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
@@ -238,7 +238,7 @@ class TestEstructuraCodigo:
 
     def test_dd_no_colision_lexica(self):
         """Verify no keyword collisions in dd_* parameter names."""
-        cluster_path = os.path.join(PROJECT_ROOT, "librerias/std/cluster.syn")
+        cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
             content = f.read()
 

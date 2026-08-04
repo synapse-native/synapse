@@ -69600,7 +69600,7 @@
                       "argumentos": [
                         {
                           "_tipo": "LiteralCadena",
-                          "valor": "librerias/std/"
+                          "valor": "std/"
                         },
                         {
                           "_tipo": "Identificador",
@@ -70395,13 +70395,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "            }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if(!_res){ snprintf(_path,sizeof(_path),\"librerias/std/%s.syn\",_subsl); FILE* _tf=fopen(_path,\"rb\"); if(_tf){ fclose(_tf); _res=1; } }"
                 }
               },
               {
@@ -72361,7 +72354,196 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I. synapse_unity.c synapse_rt.o synapse_rt_memory.o synapse_rt_concurrency.o tweetnacl.o -o \\\"%s\\\" -lpthread -lm -lws2_32\", _gcc_flags, salida.datos);"
+                  "instruccion": "// ME-R5: link desde fuente del runtime modular (Manual 3 S3.1, Manual 9 S9.1)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Antes: synapse_rt.o synapse_rt_memory.o synapse_rt_concurrency.o tweetnacl.o (inexistentes en instalacion limpia)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// ME-R6: rutas absolutas del runtime (Manual 9 S9.9.1; dependencia de instalacion)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Binario instalado (C:\\Synapse\\bin): fuentes del runtime junto al ejecutable, resueltas via"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// GetModuleFileNameA; checkout de desarrollo (fuentes en CWD): usa '.' (comportamiento ME-R5)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Portabilidad: GetModuleFileNameA/__stdcall solo existen en Windows (guard _WIN32);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// en Linux/macOS el compilador nativo usa '.' (CWD), como ME-R5."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#ifdef _WIN32"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern unsigned long __stdcall GetModuleFileNameA(void*, char*, unsigned long);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#endif"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "{"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _rt_dir[1024];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#ifdef _WIN32"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    unsigned long _rt_n = GetModuleFileNameA(0, _rt_dir, 1024);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_rt_n == 0) { strcpy(_rt_dir, \".\"); } else { char* _rt_sl = strrchr(_rt_dir, '\\\\'); if (_rt_sl) *_rt_sl = 0; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    { char _rt_probe[1200]; snprintf(_rt_probe, 1200, \"%s\\\\synapse_rt.c\", _rt_dir); FILE* _rt_f = fopen(_rt_probe, \"rb\"); if (!_rt_f) { strcpy(_rt_dir, \".\"); } else { fclose(_rt_f); } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#else"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strcpy(_rt_dir, \".\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#endif"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _rt_dir[200] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // ME-R8 (D5): modulos IA (fine_tuning/distillation/quantization) opcionales."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _ia_part[1024]; _ia_part[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    { char _ia_p[1600];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "      snprintf(_ia_p, 1600, \"%s\\\\nucleo\\\\fine_tuning.c %s\\\\nucleo\\\\distillation.c %s\\\\nucleo\\\\quantization.c\", _rt_dir, _rt_dir, _rt_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "      char* _ia_tok = strtok(_ia_p, \" \");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "      while (_ia_tok) { FILE* _ia_f = fopen(_ia_tok, \"rb\"); if (_ia_f) { strncat(_ia_part, \" \\\"\", 1023 - strlen(_ia_part)); strncat(_ia_part, _ia_tok, 1023 - strlen(_ia_part)); strncat(_ia_part, \"\\\"\", 1023 - strlen(_ia_part)); fclose(_ia_f); } _ia_tok = strtok(NULL, \" \"); } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\" \\\"%s\\\\runtime\\\\core\\\\memory.c\\\" \\\"%s\\\\runtime\\\\core\\\\concurrency.c\\\" \\\"%s\\\\axon\\\\tweetnacl.c\\\"%s -o \\\"%s\\\" -lpthread -lm -lws2_32\", _gcc_flags, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _ia_part, salida.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
                 }
               },
               {

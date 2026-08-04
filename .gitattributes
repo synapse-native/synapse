@@ -29,10 +29,8 @@ synapse_lsp/*.h linguist-generated=true
 # Runtime and supporting C libraries
 synapse_rt.c linguist-generated=true
 synapse_rt.h linguist-generated=true
-axon_rt.c linguist-generated=true
-axon_rt.h linguist-generated=true
-tweetnacl.c linguist-generated=true
-tweetnacl.h linguist-generated=true
+axon/*.c linguist-generated=true
+axon/*.h linguist-generated=true
 
 # Embedded libraries
 librerias/embedded_libs.h linguist-generated=true
@@ -99,3 +97,16 @@ tests/**/*.py linguist-generated=true
 # =============================================================================
 # END OF CONFIGURATION
 # =============================================================================
+
+# =============================================================================
+# DETERMINISMO DE EMBEDDED_LIBS (deuda D4, ME-R8)
+# =============================================================================
+# tests/_gen_embedded.py incrusta los bytes CRUDOS de los .syn en
+# librerias/embedded_libs.h. En checkout Windows (autocrlf) los .syn se
+# convertian a CRLF -> el header regenerado diferia entre plataformas y rompia
+# Manual 9 S9.7 ("mismo SHA-256"). Forzar eol=lf en los .syn de la libreria
+# estandar garantiza bytes identicos en cualquier checkout.
+librerias/**/*.syn text eol=lf
+std/**/*.syn text eol=lf
+*.syn text eol=lf
+*.syn.json text eol=lf

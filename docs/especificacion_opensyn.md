@@ -67,7 +67,7 @@ OpenSyn es el **motor de inteligencia artificial local y migración automática*
 | **LLM Backend** | `nucleo/llama_client.c` | Cliente HTTP nativo para `llama-server.exe`. Envía requests POST con timeout configurable y manejo de errores. |
 | **HW Detector** | `nucleo/detect_hardware.c` | Detecta RAM, VRAM, CPUs y sugiere configuración óptima de `llama-server` (modelo, `n_ctx`, `threads`, `ngl`). |
 | **Migration Pipeline** | `synapse_lsp/open_syn/py_parser.py`, `type_inference.py`, `ast_mapper.py`, `pretty_printer.py` | Parseo de Python 3.10+ a AST canónico, inferencia de tipos estrictos, mapeo a Synapse y pretty-print. |
-| **Time-Travel Debug** | `librerias/std/debug.syn` + `synapse_rt.c` | Grabación determinista de ejecución (rr-style), replay con breakpoints reversibles, snapshots de memoria. |
+| **Time-Travel Debug** | `std/debug.syn` + `synapse_rt.c` | Grabación determinista de ejecución (rr-style), replay con breakpoints reversibles, snapshots de memoria. |
 
 ---
 

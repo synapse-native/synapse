@@ -23,6 +23,12 @@ synapse_unity.c
 synapse_llvm.c
 _*.c
 _*.c.o
+_*.h
+
+# CLASE D2: Artefactos de prueba en raíz (auditoría Fase 0)
+prueba_*.c
+prueba_*.syn.json
+prueba_*.c.json
 
 # CLASE E: Directorios temporales de tests
 _test_*/
@@ -50,8 +56,10 @@ runtime_linked.dll
 # CLASE I: Directorios de build/toolchain (no fuente)
 toolchain_gcc12/
 build/
+bootstrap_tmp/
 
-# CLASE J: Directorios de distribución
+# CLASE J: Directorios de distribución (artefactos generados por workflows/instalador)
+dist/
 distbin/
 
 # CLASE K: Bootstrap binaries (generados por pipeline)

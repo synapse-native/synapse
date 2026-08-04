@@ -88,7 +88,7 @@ def _compilar_runtime_sanitizado(dir_rel: str, san_flags: str) -> list:
         ('synapse_rt.o', 'synapse_rt.c', []),
         ('synapse_rt_memory.o', 'runtime/core/memory.c', ['-DSYNAPSE_DEBUG_MEM']),
         ('synapse_rt_concurrency.o', 'runtime/core/concurrency.c', []),
-        ('tweetnacl.o', 'tweetnacl.c', []),
+        ('tweetnacl.o', 'axon/tweetnacl.c', []),
     ]
     objs = []
     for obj, src, extra in fuentes:
@@ -376,7 +376,7 @@ def main():
 
     if args.version:
         version_file = os.path.join(os.path.dirname(__file__), "VERSION")
-        version = "5.1.1-industrial"
+        version = "8.1.0-industrial"
         if os.path.exists(version_file):
             try:
                 with open(version_file, "r") as f:

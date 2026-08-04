@@ -30,7 +30,7 @@ Bienvenido a la documentación oficial del lenguaje de programación **Synapse**
 
 ## Documentos de la Biblioteca Estándar
 
-La biblioteca estándar de Synapse se encuentra en `librerias/std/` e incluye:
+La biblioteca estándar de Synapse se encuentra en `std/` e incluye:
 
 | Módulo | Descripción |
 |--------|-------------|

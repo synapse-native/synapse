@@ -45,7 +45,7 @@ permissions:
   packages: write
 
 env:
-  SYNAPSE_VERSION: "5.1.1-industrial"
+  SYNAPSE_VERSION: "8.1.0-industrial"
   PYTHON_VERSION: "3.11"
 
 jobs:
@@ -182,7 +182,7 @@ jobs:
 
           # Runtime base
           ${CC} -c synapse_rt.c -o synapse_rt.o ${RT_LDFLAGS} -O2
-          ${CC} -c tweetnacl.c -o tweetnacl.o -lm -O2
+          ${CC} -c axon/tweetnacl.c -o tweetnacl.o -lm -O2
 
           # Runtime modular (Manual 3 §3.1 — runtime/core/*.c)
           for f in runtime/core/*.c; do

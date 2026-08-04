@@ -1,123 +1,465 @@
-MANUAL 8: BACKEND Y GENERACIÓN DE CÓDIGO
-Archivo: 08_BACKEND_Y_GENERACION.md
-Versión: 5.1.1-industrial
-Propósito: Especificar la generación de código C, WASM, LLVM, las optimizaciones (PGO/LTO), la FFI y los bindings, con reglas estrictas de determinismo.
+# MANUAL 8: HERRAMIENTAS DE DESARROLLO
 
-8.1 Modos de Generación y Flags
-Modo	Flags C	Propósito
-debug	-O0 -g -DDEBUG	Desarrollo, trazas, asserts activos.
-release	-O2 -DNDEBUG	Producción estándar.
-release-pgo	-O3 -fprofile-generate -DNDEBUG	Generación de perfiles.
-release-pgo-use	-O3 -fprofile-use -flto -DNDEBUG	Optimización final PGO + LTO.
-safe	-O2 -fsanitize=address,undefined -DSAFE_MODE	Verificación formal + sanitizadores.
-wasm	emcc -O3 -s WASM=1	WebAssembly (WAT).
-incremental	-O2 -fno-whole-program	Compilación con caché.
-llvm	clang -O3 -emit-llvm	Generación de IR LLVM para análisis y optimización.
-llvm-jit	clang -O1 (JIT)	Ejecución interactiva (REPL) con compilación en tiempo de ejecución.
-8.2 Mapeo AST → C (Tabla de traducción)
-Nodo AST	C Generado (ejemplo)
-NODO_PROGRAMA	#include <stdio.h> + funciones.
-NODO_FUNCION	int mi_funcion(int a, char* b) { ... }
-NODO_ASIGNACION	int x = 42;
-NODO_SI	if (cond) { ... } else { ... }
-NODO_MIENTRAS	while (cond) { ... }
-NODO_PARA	for (int i=0; i<10; i++) { ... }
-NODO_LLAMADA	procesar(x, y);
-NODO_RETORNAR	return valor; (con verificación de contrato previa)
-NODO_CONTRATO	assert(precond && "Fallo de requiere");
-NODO_CANAL	SynapseCanal* c = canal_crear(sizeof(T), 100);
-NODO_LANZAR	pthread_create(&tid, NULL, (void*)funcion, args);
-NODO_ESTRUCTURA	struct Punto { int x; int y; };
-Regla de determinismo en la emisión: Todas las funciones globales, estructuras y variables estáticas se emiten en el archivo C generado en orden alfabético estricto por su nombre. Esto garantiza que el binario intermedio (y por tanto el binario final) sea idéntico entre compilaciones, cumpliendo con el requisito de diff 0 bytes del bootstrap.
+**Archivo:** `08_HERRAMIENTAS_DESARROLLO.md`  
+**Versión:** 8.1.0-industrial  
+**Propósito:** Especificar el conjunto de herramientas de desarrollo del ecosistema Synapse/Syquex: el servidor LSP nativo (`synapse_lsp`), la extensión para VS Code, el debugger (time‑travel y reversible), el CLI unificado (`synapse`), y la integración con OpenSyn para asistencia de IA en el editor. Este manual cubre la experiencia de desarrollo completa, desde la edición de código hasta la depuración y despliegue, incluyendo el bucle de validación y corrección automática de código generado por IA.
 
-8.3 Optimización Guiada por Perfil (PGO)
-Pipeline completo:
+---
 
-bash
-synapse build --release --pgo=instrument
-./instrumented_binary --benchmark
-synapse build --release --pgo=use
-Beneficios medidos: Reducción del binario en un 37% y mejora de velocidad ~15-20%.
+## 1. ARQUITECTURA DEL LSP NATIVO
 
-8.4 Backend WebAssembly (WAT)
-Mapeo de tipos: entero → i32/i64, decimal → f64, booleano → i32 (0/1).
-Ejemplo WAT:
+### 1.1. Visión General
 
-wat
-(module
-  (func $sumar (param $a i32) (param $b i32) (result i32)
-    local.get $a
-    local.get $b
-    i32.add
-  )
-  (export "sumar" (func $sumar))
-)
-8.5 FFI (Interfaz con C)
-synapse
-externo funcion strlen(s: puntero) -> entero
+El **Language Server Protocol (LSP)** es un binario independiente (`synapse_lsp.exe` en Windows, `synapse_lsp` en Unix) que se comunica con el editor a través de la entrada/salida estándar (`stdin`/`stdout`) usando **JSON‑RPC 2.0** con cabeceras `Content-Length`.
 
-funcion longitud(s: texto) -> entero:
-    inseguro:
-        retornar strlen(s.datos)
-Mapeo de tipos para FFI:
+**Flujo de comunicación:**
+```
+Editor (VS Code)  →  STDIN  →  synapse_lsp.exe  →  STDOUT  →  Editor
+```
 
-Synapse	C (pasado a la función)
-entero	int64_t
-decimal	double
-texto	const char*
-booleano	bool
-estructura	struct (pasado por valor o puntero)
-Generación de bindings (v5.0) — ACOTACIÓN DE ALCANCE (Regla 6: Cero Deuda Técnica):
+El LSP es **nativo**, **sin telemetría** y **sin dependencias externas** (excepto el binario `synapse.exe` para compilar y analizar código). Soporta Synapse (`.syn`) y Syquex (`.syq`) de forma transparente.
 
-El nivel bajo de la FFI (externo funcion + mapeo de tipos a C) está plenamente operativo y verificado en el release v5.1.1-industrial.
+### 1.2. Protocolo de Cabecera
 
-La generación automatizada de bindings de alto nivel (@export(python), @export(java), @export(typescript)) se declara formalmente FUERA DE ALCANCE del release industrial v5.1.1 y queda diferida al roadmap de la versión v5.2. No se implementan stubs parciales en el generador, a fin de no introducir deuda técnica ni código muerto.
+El LSP lee cabeceras HTTP‑like de la entrada estándar. Cada mensaje comienza con una cabecera `Content-Length:` seguida del tamaño del cuerpo JSON.
 
-synapse
-@export(python) fn procesar(datos: Lista<Entero>) -> Resultado<Flotante, Error>
-// (v5.2) Genera módulo Python con PyObject* wrapper.
+```c
+// nucleo/lsp.syn (extracto)
+funcion leer_cabecera() -> entero:
+    buffer = texto("")
+    content_length = -1
+    mientras verdadero:
+        linea = leer_linea_stdin()
+        si linea == "":
+            romper
+        si linea.comienza_con("Content-Length:"):
+            content_length = entero(linea.despues_de(":"))
+        si linea == "" o linea == "\r\n":
+            romper
+    retornar content_length
+```
 
-@export(java) class Procesador { ... } // (v5.2) Genera código JNI.
+Si el LSP no puede leer una cabecera válida (ej. `Content-Length` ausente), emite un error y termina.
 
-@export(typescript) fn validar(id: String) -> Booleano // (v5.2) Genera .d.ts.
-8.6 Backend LLVM (IR, JIT y Control Flow)
-El backend LLVM permite generar IR (Intermediate Representation) y compilarlo a código nativo con optimizaciones avanzadas o ejecutarlo vía JIT.
+### 1.3. Ciclo de Vida del LSP
 
-8.6.1 Estructuras y API (C):
+1. **Inicialización**: El editor envía `initialize` con las capacidades del cliente. El LSP responde con sus capacidades (soporte para Synapse, Syquex, OpenSyn, etc.).
+2. **Confirmación**: `initialized` confirma que la negociación ha terminado.
+3. **Apertura de documentos**: `textDocument/didOpen` notifica al LSP sobre un archivo abierto. El LSP analiza el archivo (usando el compilador) y envía diagnostics.
+4. **Cambios**: `textDocument/didChange` notifica cambios incrementales o full. El LSP re‑analiza y actualiza diagnostics.
+5. **Cierre**: `textDocument/didClose` limpia diagnostics y libera recursos.
+6. **Solicitudes de usuario**: `textDocument/hover`, `textDocument/definition`, `textDocument/completion`, etc.
+7. **Comandos IA**: `synapse/aiStatus`, `synapse/aiExplain`, `synapse/aiComplete`, `synapse/aiFix`, `synapse/aiTranspile`, `synapse/aiBindings`.
+8. **Finalización**: el LSP se cierra cuando el editor cierra la conexión.
 
-c
-// validate_llvm_backend.c
+### 1.4. Métodos LSP Soportados
+
+| Método | ID | Descripción |
+|--------|----|-------------|
+| `initialize` | ✅ | Negocia capacidades (idioma, características). |
+| `initialized` | ✅ | Confirmación de inicialización. |
+| `textDocument/didOpen` | ✅ | Envía diagnostics al abrir un archivo. |
+| `textDocument/didChange` | ✅ | Re‑analiza en cada cambio (full o incremental). |
+| `textDocument/didClose` | ✅ | Limpia diagnostics. |
+| `textDocument/hover` | ✅ | Muestra información sobre el símbolo bajo el cursor. |
+| `textDocument/definition` | ✅ | Navega a la definición del símbolo. |
+| `textDocument/completion` | ✅ | Autocompletado de símbolos y palabras clave. |
+| `textDocument/codeAction` | ✅ | Sugiere correcciones rápidas (refactorización). |
+| `textDocument/formatting` | ✅ | Formatea el código según las reglas de estilo. |
+| `textDocument/signatureHelp` | ✅ | Muestra la firma de la función mientras se escribe. |
+| `workspace/didChangeConfiguration` | ✅ | Cambia la configuración del LSP (ej. idioma, flags). |
+| `synapse/aiStatus` | ✅ | Extensión: estado de IA local (modelo cargado, uso de recursos). |
+| `synapse/aiExplain` | ✅ | Extensión: explica el código seleccionado. |
+| `synapse/aiComplete` | ✅ | Extensión: genera código basado en el contexto. |
+| `synapse/aiFix` | ✅ | Extensión: sugiere correcciones para errores. |
+| `synapse/aiTranspile` | ✅ | Extensión: transpila código Python a Syquex, o C a Synapse. |
+| `synapse/aiBindings` | ✅ | Extensión: genera bindings Syquex desde cabecera C. |
+
+### 1.5. Mapeo de Coordenadas
+
+Synapse/Syquex internamente usan **líneas 1‑based** y **columnas 0‑based**. El protocolo LSP exige líneas 0‑based y columnas 0‑based.
+
+```
+lsp_line = synapse_line - 1
+lsp_character = synapse_columna
+```
+
+### 1.6. Formato de Diagnostics
+
+Cada diagnostic incluye:
+
+```json
+{
+  "range": {
+    "start": { "line": 4, "character": 10 },
+    "end": { "line": 4, "character": 11 }
+  },
+  "severity": 1,           // 1: Error, 2: Warning, 3: Info, 4: Hint
+  "code": "ERR_SEM_VAR_NO_DECLARADA",
+  "source": "synapse",
+  "message": "Variable 'x' no declarada en este ámbito.",
+  "relatedInformation": [] // Opcional
+}
+```
+
+**Manejo de errores de sintaxis:** El LSP nunca debe llamar a `exit()` en caso de error de sintaxis. Captura, formatea y envía diagnostics. Si el parser encuentra errores, el LSP:
+1. Captura el error y lo convierte en un diagnostic.
+2. No interrumpe el análisis; intenta sincronizar y continuar.
+3. Envía todos los diagnostics acumulados al editor.
+
+---
+
+## 2. EXTENSIÓN VS CODE
+
+### 2.1. Estructura de la Extensión
+
+La extensión VS Code (`vscode-synapse`) es el cliente que conecta el editor con el LSP y proporciona la interfaz de usuario para OpenSyn.
+
+```
+vscode-synapse/
+├── package.json          # Metadatos, comandos, dependencias
+├── extension.js          # Punto de entrada (activación)
+├── src/
+│   ├── lsp_client.js     # Cliente LSP (JSON‑RPC sobre stdio)
+│   ├── commands.js       # Comandos de la paleta
+│   ├── ai_provider.js    # Integración con OpenSyn (IA)
+│   └── status_bar.js     # Barra de estado (mostrar estado de la IA)
+├── snippets/             # Snippets de código Synapse/Syquex
+│   ├── synapse.json
+│   └── syquex.json
+└── syntaxes/             # Definición de sintaxis (TextMate)
+    ├── synapse.tmLanguage.json
+    └── syquex.tmLanguage.json
+```
+
+### 2.2. Activación y Detección del Binario
+
+La extensión se activa cuando se abre un archivo `.syn` o `.syq`. Detecta el binario `synapse_lsp` en las siguientes ubicaciones (en orden):
+
+1. `./node_modules/.bin/synapse_lsp`
+2. `./nucleo/lsp_test.exe`
+3. `./build/bin/synapse_lsp`
+4. En el PATH del sistema (si `synapse` está instalado globalmente)
+
+Si no se encuentra el binario, la extensión muestra un mensaje de error y ofrece descargarlo o instalarlo.
+
+### 2.3. Comandos de la Paleta
+
+La extensión registra los siguientes comandos:
+
+- **Synapse: Verificar estado de IA local** → `synapse/aiStatus`
+- **Synapse: Explicar código con IA local** → `synapse/aiExplain`
+- **Synapse: Generar código con IA local** → `synapse/aiComplete`
+- **Synapse: Corregir errores con IA** → `synapse/aiFix`
+- **Synapse: Transpilar Python a Syquex** → `synapse/aiTranspile`
+- **Synapse: Generar bindings C → Syquex** → `synapse/aiBindings`
+- **Synapse: Formatear documento** → `synapse/format`
+- **Synapse: Abrir documentación** → abre la documentación local o en línea.
+
+### 2.4. Configuración
+
+La extensión permite configurar:
+
+```json
+{
+  "synapse.language": "es",            // Idioma de las palabras clave (es, en, fr, pt)
+  "synapse.lsp.path": "",              // Ruta al binario LSP (override)
+  "synapse.ai.enabled": true,          // Habilitar OpenSyn
+  "synapse.ai.model": "codellama-7b-q4", // Nombre del modelo a usar
+  "synapse.ai.serverPort": 8088,       // Puerto para llama-server
+  "synapse.ai.maxTokens": 2048,        // Tokens máximos por respuesta
+  "synapse.ai.temperature": 0.3,       // Temperatura de muestreo
+  "synapse.ai.maxRetries": 3,          // Número máximo de intentos de corrección
+  "synapse.debugger.enabled": true,    // Habilitar debugger
+  "synapse.format.indentSize": 4,      // Tamaño de indentación
+  "synapse.format.useTabs": false      // Usar tabs (false = espacios)
+}
+```
+
+---
+
+## 3. DEBUGGER (TIME‑TRAVEL Y REVERSIBLE)
+
+### 3.1. Visión General
+
+Synapse/Syquex incluye un debugger nativo que soporta **time‑travel debugging** (grabación y reproducción de la ejecución) y **breakpoints reversibles** (retroceder la ejecución). Esto es posible gracias al runtime determinista y al análisis de alcance.
+
+**Características:**
+- **Grabación de ejecución:** Registra el estado de las variables y el flujo de control.
+- **Reversión:** Permite retroceder a un punto anterior de la ejecución.
+- **Memory snapshots:** Captura el estado de la memoria en puntos específicos.
+- **Breakpoints condicionales y reversibles.**
+- **Integración con VS Code** (depuración visual).
+
+### 3.2. Módulo `std.debug`
+
+La biblioteca estándar proporciona un módulo `std.debug` para instrumentar código.
+
+**Synapse:**
+```synapse
+importar std.debug
+
+funcion principal() -> nulo:
+    debug.iniciar_sesion()
+    debug.marcar_punto("inicio")
+    // Código...
+    debug.marcar_punto("fin")
+    debug.guardar_traza("ejecucion.trace")
+```
+
+**Syquex:**
+```syquex
+importar std.debug
+
+funcion principal():
+    debug.iniciar_sesion()
+    debug.marcar_punto("inicio")
+    // Código...
+    debug.marcar_punto("fin")
+    debug.guardar_traza("ejecucion.trace")
+```
+
+### 3.3. Estructura de Datos (C)
+
+```c
+// runtime/core/debug.h
+#define MAX_EVENTOS 50000
+
+typedef enum {
+    DEBUG_EVENTO_LLAMADA,
+    DEBUG_EVENTO_RETORNO,
+    DEBUG_EVENTO_ASIGNACION,
+    DEBUG_EVENTO_BREAKPOINT,
+    DEBUG_EVENTO_SNAPSHOT
+} DebugEvento;
+
 typedef struct {
-    LLVMContextRef context;
-    LLVMModuleRef module;
-    LLVMBuilderRef builder;
-    int opt_level;  // 0, 1, 2, 3
-} LLVMBackend;
+    DebugEvento tipo;
+    int linea;
+    char* archivo;
+    char* funcion;
+    void* contexto;         // Puntero al estado de la función
+    size_t tamano_contexto;
+    uint64_t timestamp;     // Ciclos de CPU
+} DebugEvento;
 
-LLVMBackend* llvm_backend_create(const char* name, int opt_level);
-LLVMValueRef llvm_add_function(LLVMBackend* be, const char* name, LLVMTypeRef ret, LLVMTypeRef* params);
-int llvm_emit_ir(LLVMBackend* be, const char* filename);
-8.6.2 Control Flow y JIT:
+typedef struct {
+    DebugEvento* eventos;
+    int num_eventos;
+    int capacidad;
+    bool grabando;
+} DebugSesion;
 
-Bucles y Condicionales (validate_llvm_control_flow.c): Construcción de CFG con bloques básicos.
+typedef struct {
+    void* memoria;
+    size_t tamano;
+    uint64_t timestamp;
+} Snapshot;
 
-JIT (validate_llvm_jit.c): Compilación y ejecución en memoria.
+void debug_iniciar_sesion();
+void debug_marcar_punto(const char* nombre);
+void debug_guardar_traza(const char* ruta);
+void debug_cargar_traza(const char* ruta);
+void debug_avanzar();
+void debug_retroceder();
+void debug_breakpoint(int linea);
+```
 
-c
-int llvm_jit_run(LLVMJIT* jit, const char* name, void** args);
-8.6.3 Comandos CLI:
+### 3.4. Comandos del Debugger (CLI)
 
-bash
-synapse build --target llvm main.syn         # Genera .ll
-synapse build --target llvm --opt-level 3    # Optimización máxima
-synapse run --jit main.syn                   # Ejecuta con JIT
-8.6.4 Integración con --safe (ATP): Cuando se usa --safe, el generador LLVM inserta llvm.assume para las precondiciones y llvm.verifier para las postcondiciones, delegando la verificación formal al motor ATP durante la fase de generación.
+El CLI unificado (`synapse`) incluye comandos para depuración:
 
-8.7 Tests Obligatorios para esta Etapa
-Test	Comando	Criterio
-Generación C	pytest tests/integration/test_generator.py -v	100% pass
-PGO pipeline	bash nucleo/pgo_pipeline.sh	Mejora >15%
-WASM	synapse build --target wasm tests/fixtures/sum.syn	Genera .wasm válido
-LLVM IR	gcc -o test_llvm validate_llvm_backend.c -lLLVM && ./test_llvm --test emit_ir	PASS
-LLVM JIT	./test_llvm_jit --test run_fibonacci	PASS
-Determinismo (Ordenación alfabética)	synapse build --debug test.syn && md5sum test.c; synapse build --debug test.syn && md5sum test.c	Ambos md5sum deben ser idénticos
+```bash
+# Ejecutar con depuración
+synapse run --debug programa.syq
+
+# Cargar una traza guardada
+synapse debug --load ejecucion.trace
+
+# Avanzar un paso
+synapse debug --step
+
+# Retroceder un paso
+synapse debug --reverse
+
+# Ver snapshots
+synapse debug --snapshots
+```
+
+### 3.5. Integración con VS Code
+
+La extensión VS Code proporciona una interfaz visual para el debugger:
+
+- **Controles:** Play, Pause, Step Forward, Step Backward, Restart.
+- **Panel de variables:** Muestra el valor de las variables en el punto actual de la ejecución.
+- **Línea de tiempo:** Visualización de la traza de ejecución (permite arrastrar a cualquier punto).
+- **Breakpoints:** Click en el margen izquierdo del editor para establecer breakpoints.
+
+---
+
+## 4. CLI UNIFICADO (`synapse`)
+
+El CLI unificado es el punto de entrada principal para todas las herramientas del ecosistema. Soporta Synapse, Syquex, Axon, OpenSyn y el debugger.
+
+### 4.1. Comandos Principales
+
+| Comando | Descripción |
+|---------|-------------|
+| `synapse build <archivo>` | Compila el archivo (`.syn` o `.syq`) a binario. |
+| `synapse run <archivo>` | Ejecuta el archivo (modo interpretado o JIT para Syquex). |
+| `synapse test` | Ejecuta la suite de pruebas del proyecto actual. |
+| `synapse fetch` | Descarga dependencias (Axon). |
+| `synapse opensyn <subcomando>` | Comandos de OpenSyn (status, download, finetune, bindings, transpile). |
+| `synapse debug <subcomando>` | Comandos del debugger (load, step, reverse, snapshots). |
+| `synapse lsp` | Inicia el servidor LSP (normalmente usado por la extensión). |
+| `synapse init` | Crea un nuevo proyecto Synapse/Syquex (estructura básica). |
+
+### 4.2. Flags Comunes
+
+| Flag | Descripción |
+|------|-------------|
+| `--target` | `native`, `wasm`, `llvm` (por defecto `native`). |
+| `--release` | Compila en modo release (optimizaciones). |
+| `--debug` | Compila con información de depuración. |
+| `--safe` | Activa verificación formal (ATP). |
+| `--output` | Especifica el nombre del binario de salida. |
+| `--verbose` | Muestra información detallada de la compilación. |
+| **`--check`** / **`--no-emit`** | **Modo de validación:** Solo verifica la sintaxis y semántica, sin generar código de salida. Útil para el bucle de corrección de OpenSyn. |
+| `--emit-ast` | Emite el AST en formato JSON (útil para depuración). |
+
+**Ejemplos:**
+```bash
+# Compilar un programa Synapse en modo debug
+synapse build --debug programa.syn
+
+# Compilar un programa Syquex en modo release
+synapse build --release app.syq --target wasm
+
+# Validar código sin generar binario (para OpenSyn)
+synapse check --no-emit temp.syq
+
+# Ejecutar un programa Syquex con depuración
+synapse run --debug script.syq
+
+# Ejecutar tests
+synapse test
+```
+
+### 4.3. Estructura de un Proyecto
+
+El comando `synapse init` crea la siguiente estructura:
+
+```
+mi_proyecto/
+├── src/
+│   ├── main.syn (o main.syq)
+│   └── ...
+├── tests/
+│   ├── test_*.syn
+│   └── test_*.syq
+├── lib/                # Dependencias locales
+├── axon.toml           # Manifiesto del proyecto
+└── axon.lock           # Lockfile de dependencias
+```
+
+### 4.4. Integración con Axon
+
+El CLI unificado gestiona las dependencias a través de Axon:
+- `synapse fetch` descarga las dependencias listadas en `axon.toml`.
+- `synapse axon publish` publica un paquete en Axon Hub.
+- `synapse axon verify` verifica firmas y hashes.
+
+---
+
+## 5. INTEGRACIÓN CON OPENSYN EN EL LSP (BUCLE DE VALIDACIÓN)
+
+### 5.1. Comandos IA en el LSP
+
+El LSP expone comandos personalizados que invocan OpenSyn (ver sección 1.4 para detalles de esquemas JSON). La implementación de estos comandos incorpora un **bucle de validación y corrección** de hasta 3 intentos, orquestado por el LSP, tal como se especifica en el Manual 7, sección 6.3.
+
+### 5.2. Flujo de un Comando IA con Validación
+
+1. El usuario ejecuta un comando en VS Code (ej. "Explicar código" o "Completar código").
+2. El cliente LSP envía una petición JSON‑RPC al LSP con el método correspondiente.
+3. El LSP recibe la petición y la reenvía al orquestador de OpenSyn (via socket local en `localhost:8088` o similar).
+4. El orquestador invoca el pipeline RAG (`synapse_rag.c`) para construir el prompt, incluyendo el contexto estático de reglas (Manual 7, sección 2.3).
+5. El prompt se envía al servidor de inferencia (`llama-server`) mediante el cliente HTTP (`llama_client.c`).
+6. El servidor genera una respuesta.
+7. La respuesta se procesa (router) para extraer el código (si lo hay).
+8. **Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (usando el flag `--no-emit`). Esto se hace mediante el CLI `synapse check --no-emit <archivo>`.
+9. **Si compila:** El LSP devuelve el código al editor como sugerencia.
+10. **Si falla:** El LSP captura el error (stderr del compilador) y repite el proceso (hasta 3 intentos), añadiendo el error al prompt para que OpenSyn lo corrija. La instrucción adicional es: *"El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo."*
+11. **Fallo definitivo:** Si después de 3 intentos el código no compila, el LSP devuelve el último código generado y los errores al editor, mostrando un mensaje de "No se pudo generar código válido automáticamente. Intenta ajustar la instrucción."
+
+### 5.3. Pipeline RAG en el LSP
+
+El LSP puede invocar el pipeline RAG directamente (sin pasar por el orquestador) para respuestas rápidas. En este caso, el LSP se comunica directamente con `llama-server` usando `llama_client.c`.
+
+**Estructura del contexto RAG (C):**
+```c
+// opensyn/synapse_rag.h
+typedef struct {
+    char* archivo;
+    char* contenido;
+    int linea_inicio;
+    int linea_fin;
+    char* nodo_ast;           // JSON del nodo AST actual
+    char** diagnosticos;
+    int num_diagnosticos;
+    char* idioma;             // es, en, fr, pt
+    char* instruccion;
+} RagContext;
+
+PromptInfo rag_construir_prompt(RagContext* ctx, int n_ctx);
+```
+
+### 5.4. Validación de Código Generado (Detalle)
+
+Cuando OpenSyn genera código, el LSP lo valida automáticamente usando el compilador con el flag `--no-emit`. Si el código es válido, se muestra como sugerencia. Si no, se inicia el bucle de corrección descrito anteriormente. Este proceso asegura que el código generado por IA cumpla con las reglas del compilador antes de presentarse al usuario, reduciendo drásticamente la tasa de errores y mejorando la experiencia del desarrollador.
+
+---
+
+## 6. PRUEBAS OBLIGATORIAS PARA ESTA ETAPA
+
+| Test | Comando | Criterio |
+|------|---------|----------|
+| LSP inicialización | `pytest tests/integration/test_lsp_native.py -v` | 5/5 PASS |
+| Diagnostics en didOpen | `pytest tests/integration/test_lsp_diagnostics.py -v` | Errores mapeados correctamente |
+| Autocompletado | `pytest tests/integration/test_lsp_completion.py -v` | Sugerencias correctas |
+| Hover / Definition | `pytest tests/integration/test_lsp_hover.py -v` | Información precisa |
+| Comandos IA (aiExplain) | `pytest tests/integration/test_ai_explain.py -v` | 100% pass |
+| Comandos IA (aiComplete) | `pytest tests/integration/test_ai_complete.py -v` | Código generado compila (con bucle de corrección) |
+| Comandos IA (aiFix) | `pytest tests/integration/test_ai_fix.py -v` | Corrección sugerida es válida |
+| Bucle de corrección (3 intentos) | `pytest tests/integration/test_ai_correction.py -v` | El código se corrige exitosamente en ≤3 intentos |
+| Flag `--check` del CLI | `pytest tests/integration/test_cli_check.py -v` | El flag funciona correctamente y no genera binario |
+| Debugger (grabación) | `pytest tests/integration/test_debug_record.py -v` | Traza generada correctamente |
+| Debugger (reversión) | `pytest tests/integration/test_debug_reverse.py -v` | Retroceso funciona |
+| CLI unificado | `pytest tests/integration/test_cli.py -v` | 100% pass |
+
+---
+
+## 7. EJEMPLO DE FLUJO DE TRABAJO COMPLETO
+
+**Escenario:** Un desarrollador está escribiendo una aplicación Syquex y necesita ayuda con una función, incluyendo validación automática del código generado.
+
+1. **Abrir el proyecto en VS Code:** La extensión detecta el archivo `.syq` y activa el LSP.
+2. **Escribir código:** El LSP proporciona autocompletado, diagnósticos en tiempo real, y hover.
+3. **Pedir explicación:** El usuario selecciona una función y ejecuta "Synapse: Explicar código". OpenSyn genera una explicación (sin validación, ya que no hay código).
+4. **Generar código:** El usuario ejecuta "Synapse: Generar código con IA". OpenSyn genera código (intento 1). El LSP valida con `synapse check --no-emit`. Si falla, se repite hasta 3 veces. Si compila, se muestra.
+5. **Depurar:** El usuario establece un breakpoint y ejecuta `synapse run --debug app.syq`. El debugger se inicia y se detiene en el breakpoint.
+6. **Time-travel:** El usuario retrocede en la ejecución para inspeccionar el estado anterior.
+7. **Corregir error:** El usuario encuentra un error y ejecuta "Synapse: Corregir errores con IA". OpenSyn sugiere una corrección y el LSP la valida automáticamente.
+8. **Transpilar:** El usuario tiene un script Python antiguo. Ejecuta "Synapse: Transpilar Python a Syquex" y obtiene el código equivalente en Syquex.
+9. **Compilar y ejecutar:** El usuario compila la aplicación con `synapse build --release app.syq` y la ejecuta.
+
+---
+
+## 8. SIGUIENTES PASOS
+
+Con las herramientas de desarrollo completas, el siguiente manual (Manual 9) se centrará en la **Instalación y Distribución** del ecosistema, incluyendo el instalador unificado y el sistema de actualización.
+
+---
+
+*Este manual proporciona la especificación completa de las herramientas de desarrollo del ecosistema Synapse/Syquex, incluyendo la integración con OpenSyn y el bucle de validación automática. La implementación debe seguir estos lineamientos para garantizar una experiencia de desarrollo fluida, productiva y segura.*
+
+**Fin del Manual 8**

@@ -1,6 +1,6 @@
 # Programación Bare-Metal (Ring 0)
 
-Synapse v5.1.1-industrial extiende su alcance más allá de las aplicaciones con sistema operativo. La directiva `#pragma: no_std` transforma el compilador en una herramienta de desarrollo de sistemas de bajo nivel, ideal para kernels, bootloaders, firmware embebido y entornos de tiempo real (RTOS).
+Synapse v8.1.0-industrial extiende su alcance más allá de las aplicaciones con sistema operativo. La directiva `#pragma: no_std` transforma el compilador en una herramienta de desarrollo de sistemas de bajo nivel, ideal para kernels, bootloaders, firmware embebido y entornos de tiempo real (RTOS).
 
 ## `#pragma: no_std`
 

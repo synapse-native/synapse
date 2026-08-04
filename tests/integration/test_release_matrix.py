@@ -25,7 +25,7 @@ PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '.
 
 PLATAFORMAS_OBLIGATORIAS = ['linux_x64', 'linux_arm64', 'darwin_arm64', 'win_x64']
 MIN_BINARY_SIZE = 100_000  # 100 KB mínimo para un binario válido
-ARCHIVOS_OBLIGATORIOS = ['synapse_rt.c', 'synapse_rt.h', 'tweetnacl.c', 'tweetnacl.h',
+ARCHIVOS_OBLIGATORIOS = ['synapse_rt.c', 'synapse_rt.h', 'axon/tweetnacl.c', 'axon/tweetnacl.h',
                          'main.py', 'pipeline.py', 'requirements.txt']
 
 # ============================================================
@@ -204,7 +204,7 @@ class TestBootstrap:
 
     def test_runtime_objects_compilables(self):
         """Los archivos fuente del runtime deben existir para compilar."""
-        archivos_runtime = ['synapse_rt.c', 'tweetnacl.c']
+        archivos_runtime = ['synapse_rt.c', 'axon/tweetnacl.c']
         for archivo in archivos_runtime:
             ruta = os.path.join(PROJECT_ROOT, archivo)
             assert os.path.exists(ruta), f"Runtime source no encontrado: {archivo}"

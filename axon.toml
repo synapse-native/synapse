@@ -1,6 +1,6 @@
 [paquete]
 nombre = "synapse"
-version = "5.1.1-industrial"
+version = "8.1.0-industrial"
 autor = "3431e4dcf87432bdf03412a784e4a7b1cee9be459a2aab5cf32332710160c84e"
 tipo = "ejecutable"
 punto_entrada = "src/main.syn"

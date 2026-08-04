@@ -780,8 +780,15 @@ class GeneradorC:
         if scope_names is not None:
             funciones = [f for f in funciones if f.nombre in scope_names]
         # Non-function sentencias FIRST (externs, imports, constants before function bodies)
+        # ME-R8 (D5): las StmtConstante SIEMPRE se emiten (en modo 'modulo' no se
+        # filtran por scope_names) — un modulo que usa SYSTEM_PROMPT/ARCHIVO_CONFIG
+        # necesita el #define Y el registro en ctx._const_types para que el hoisting
+        # infiera el tipo correcto (antes: identificadores sin definir + vars como int).
         for s in ctx.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
+                continue
+            if isinstance(s, StmtConstante):
+                visitar_constante(ctx, s)
                 continue
             if scope_names is not None and hasattr(s, 'nombre') and getattr(s, 'nombre', None) not in scope_names:
                 continue

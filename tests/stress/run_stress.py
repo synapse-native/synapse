@@ -50,7 +50,7 @@ def compilar_stress(tsan: bool = False) -> bool:
 
     # 0) tweetnacl.o: auto-compilar desde tweetnacl.c si el objeto no existe
     if not os.path.exists(TWEETNACL_O):
-        tn_src = os.path.join(PROJECT_ROOT, 'tweetnacl.c')
+        tn_src = os.path.join(PROJECT_ROOT, 'axon/tweetnacl.c')
         if not os.path.exists(tn_src):
             print(f"[STRESS] tweetnacl.c no encontrado en {tn_src}")
             return False

@@ -1,4 +1,4 @@
-#librerias/std/surface_code.syn — Bindings para Surface Code (M16.3)
+#std/surface_code.syn — Bindings para Surface Code (M16.3)
 # ======================================================================
 # Expone las primitivas de correccion topologica de errores
 # (nucleo/surface_code.c) al lenguaje Synapse via std.surface_code.

@@ -1,7 +1,7 @@
 #lang: es
 
 # =============================================================================
-# librerias/std/llvm.syn — Synapse LLVM IR Backend Bindings (M12.1.2)
+# std/llvm.syn — Synapse LLVM IR Backend Bindings (M12.1.2)
 #
 # Declaraciones externo funcion para la API LLVM IR text emitter
 # implementada en synapse_llvm.c.

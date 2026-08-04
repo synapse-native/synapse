@@ -16,7 +16,7 @@ RUNTIME_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 RUNTIME_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 COMPILADOR_DIR = os.path.join(PROJECT_ROOT, "compilador")
-DEBUG_SYN = os.path.join(PROJECT_ROOT, "librerias", "std", "debug.syn")
+DEBUG_SYN = os.path.join(PROJECT_ROOT, "std", "debug.syn")
 BIN = "test_memory_snapshots.exe"
 BIN_ABS = os.path.abspath(BIN)
 

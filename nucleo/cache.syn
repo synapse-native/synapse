@@ -230,7 +230,7 @@ funcion _resolver_ruta_import(mod_nombre: texto) -> texto:
     // std.* modules
     si empieza_con(mod_nombre, "std."):
         sub = subcadena(mod_nombre, 4, len(mod_nombre) - 4)
-        retornar concat(concat("librerias/std/", sub), ".syn")
+        retornar concat(concat("std/", sub), ".syn")
     // compiler modules
     si empieza_con(mod_nombre, "compiler."):
         sub = subcadena(mod_nombre, 9, len(mod_nombre) - 9)

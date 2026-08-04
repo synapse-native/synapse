@@ -21,7 +21,7 @@ RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TEST_C = os.path.join(PROJECT_ROOT, "tests", "test_time_travel.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "test_time_travel.exe")
-DEBUG_SYN = os.path.join(PROJECT_ROOT, "librerias", "std", "debug.syn")
+DEBUG_SYN = os.path.join(PROJECT_ROOT, "std", "debug.syn")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 
 GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")

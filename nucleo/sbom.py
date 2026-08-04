@@ -175,7 +175,7 @@ def _leer_version(ruta_proyecto: str) -> str:
         with open(version_path, 'r') as f:
             return f.read().strip()
     except (OSError, IOError):
-        return '5.1.1-industrial'
+        return '8.1.0-industrial'
 
 
 def generar_sbom(ruta_proyecto: str,

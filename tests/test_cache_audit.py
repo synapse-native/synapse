@@ -71,8 +71,8 @@ def test_cache_stale():
         if rc1 != 0:
             return False
 
-        # Add a comment to librerias/std/io.syn to simulate modification
-        std_io = os.path.join(ROOT, "librerias", "std", "io.syn")
+        # Add a comment to std/io.syn to simulate modification
+        std_io = os.path.join(ROOT, "std", "io.syn")
         backup = std_io + ".bak"
         if os.path.exists(std_io):
             shutil.copy2(std_io, backup)

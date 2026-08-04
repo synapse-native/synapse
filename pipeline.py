@@ -95,13 +95,22 @@ _RT_FUENTES = (
     "synapse_rt.c",
     "runtime/core/memory.c",
     "runtime/core/concurrency.c",
-    "tweetnacl.c",
+    "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (
     "nucleo/quantum_runtime.c",
     "nucleo/quantum_err_corr.c",
     "nucleo/quantum_memory.c",
     "nucleo/surface_code.c",
+)
+
+# ME-R8 (D5): modulos de IA nativa (M13.4/M13.5/M13.6) que std.modelo declara
+# como externs (_syn_ft_*, _syn_kd_*, _syn_qt_*). No se enlazaban -> programas
+# que importan std.modelo (v.g. opensyn/) fallaban al link. Opcionales.
+_RT_IA_FUENTES = (
+    "nucleo/fine_tuning.c",
+    "nucleo/distillation.c",
+    "nucleo/quantization.c",
 )
 
 
@@ -174,7 +183,7 @@ def _cache_file_hash(ruta: str) -> str:
 
 def _cache_key(archivo: str, deps_hash: str, flags: str) -> str:
     """Genera clave de caché combinando hash del archivo, deps, flags y versión."""
-    version = os.environ.get('SYNAPSE_VERSION', '5.1.1-industrial')
+    version = os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial')
     contenido = _cache_file_hash(archivo)
     combinado = f"{contenido}:{deps_hash}:{flags}:{version}"
     return hashlib.sha256(combinado.encode()).hexdigest()
@@ -296,33 +305,23 @@ def _resolver_ruta_sysroot(ruta_import: str) -> str:
     if sysroot_base:
         sysroot_base = os.path.abspath(sysroot_base)
     else:
+        # Fase 0 (auditoría): std lib en <raíz>/std (Manual 1 §4);
+        # el prefijo '..' cubre el layout instalado (bin/../std).
         sysroot_base = os.path.normpath(os.path.join(SYNAPSE_BIN, '..', 'std'))
 
     bases = [sysroot_base]
     if not os.environ.get('SYNAPSE_LIB_PATH'):
-        bases.append(os.path.join(SYNAPSE_BIN, 'librerias'))
+        bases.append(os.path.normpath(os.path.join(SYNAPSE_BIN, 'std')))
 
     for base in bases:
-        if base.endswith('librerias'):
-            ruta_archivo = os.path.normpath(
-                os.path.join(base, ruta_import.replace('.', '/') + '.syn')
-            )
-            if os.path.exists(ruta_archivo):
-                return ruta_archivo
-            ruta_directorio = os.path.normpath(
-                os.path.join(base, ruta_import.replace('.', '/'), 'principal.syn')
-            )
-            if os.path.exists(ruta_directorio):
-                return ruta_directorio
-        else:
-            ruta_archivo = os.path.normpath(os.path.join(base, sub_ruta_rel))
-            if os.path.exists(ruta_archivo):
-                return ruta_archivo
-            ruta_directorio = os.path.normpath(
-                os.path.join(base, sub_ruta, 'principal.syn')
-            )
-            if os.path.exists(ruta_directorio):
-                return ruta_directorio
+        ruta_archivo = os.path.normpath(os.path.join(base, sub_ruta_rel))
+        if os.path.exists(ruta_archivo):
+            return ruta_archivo
+        ruta_directorio = os.path.normpath(
+            os.path.join(base, sub_ruta, 'principal.syn')
+        )
+        if os.path.exists(ruta_directorio):
+            return ruta_directorio
 
     raise FileNotFoundError(
         f"Módulo estándar '{ruta_import}' no encontrado en sysroot"
@@ -615,6 +614,20 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 return 1
             for qo in _compilar_quantum_objetos(compiler, base_flags):
                 rt_objs += f' "{qo}"'
+            # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
+            for ia_src in _RT_IA_FUENTES:
+                ia_abs = os.path.join(SYNAPSE_BIN, ia_src)
+                if not os.path.exists(ia_abs):
+                    continue
+                ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
+                ia_obj = os.path.join(
+                    os.path.join(SYNAPSE_BIN, "build", "obj"), ia_nombre + ".o")
+                ia_cmd = f'{compiler} -O2 -c {base_flags} "{ia_abs}" -o "{ia_obj}"'
+                ia_rc = subprocess.run(ia_cmd, shell=True).returncode
+                if ia_rc != 0:
+                    print(f"[ME-R8][!] Modulo IA {ia_src} no compilo (rc={ia_rc}); se omite", file=sys.stderr)
+                    continue
+                rt_objs += f' "{ia_obj}"'
         link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
 
         # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===

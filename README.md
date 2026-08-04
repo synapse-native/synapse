@@ -1,8 +1,9 @@
-# Synapse/OpenSyn v5.1.1-industrial
+# Synapse/OpenSyn v8.1.0-industrial
 
 > **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
-> **Estado:** **CERTIFICADO PRODUCCIÓN** — 125/125 tests Python, bootstrap determinista, SBOM SPDX 2.3, firma Ed25519
-> **Auditoría:** Fase 0 a Fase 20 certificada punto por punto bajo estándares industriales
+> **Estado:** **EN AUDITORÍA** — alineación con Manuales v8.1.0 en curso (ver `docs/AUDITORIA_ALINEACION_MANUALES.md`)
+> **Suite:** 667 tests Python PASS, bootstrap determinista, SBOM SPDX 2.3, firma Ed25519
+> **Auditoría:** Fase 0 en ejecución — punto por punto contra los 9 manuales y el roadmap
 
 ---
 
@@ -10,7 +11,7 @@
 
 | Calidad | Estado |
 |---------|--------|
-| **Tests Python** | 125/125 PASS (unitarios + semántica) |
+| **Tests Python** | 667/667 PASS (unitarios + semántica + integración) |
 | **Tests Integración** | 337/337 PASS |
 | **Tests Nativos C** | 1/1 PASS |
 | **GCC/Clang** | 0 errores, 0 warnings |
@@ -30,16 +31,16 @@
 
 | Documento | Descripción |
 |-----------|-------------|
-| [`MANUAL_1.md` — Arquitectura del Lenguaje](./docs/manuales/MANUAL_1.md) | Arquitectura del lenguaje, filosofía de diseño, hoja de ruta |
-| [`MANUAL_2.md` — Especificación Sintáctica](./docs/manuales/MANUAL_2.md) | Gramática EBNF, tipos, operadores, contratos |
-| [`MANUAL_3.md` — Arquitectura del Compilador](./docs/manuales/MANUAL_3.md) | Pipeline 5 etapas, AST, tabla de símbolos, motor ATP |
-| [`MANUAL_4.md` — Gestión de Memoria y Ownership](./docs/manuales/MANUAL_4.md) | Ownership, borrowing, lifetimes, pool allocator |
-| [`MANUAL_5.md` — Concurrencia y Comunicación](./docs/manuales/MANUAL_5.md) | Canales, hilos, sincronización, federated learning |
-| [`MANUAL_6.md` — Gestor de Paquetes Axon](./docs/manuales/MANUAL_6.md) | Axon, Ed25519, axon.lock, TAR |
-| [`MANUAL_7.md` — Herramientas de Desarrollo](./docs/manuales/MANUAL_7.md) | LSP nativo, VS Code extension, CLI |
-| [`MANUAL_8.md` — Backend y Generación de Código](./docs/manuales/MANUAL_8.md) | Generación C/LLVM/WASM, orden alfabético, PGO |
-| [`MANUAL_9.md` — Bootstrap, Pruebas y QA](./docs/manuales/MANUAL_9.md) | Bootstrap 3 etapas, CI/CD, sanitizadores, SBOM |
-| [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F20 |
+| [`MANUAL 1.md` — Arquitectura del Lenguaje](./docs/manuales/MANUAL%201.md) | Arquitectura del lenguaje, filosofía de diseño, hoja de ruta |
+| [`MANUAL 2.md` — Especificación Sintáctica](./docs/manuales/MANUAL%202.md) | Gramática EBNF, tipos, operadores, contratos |
+| [`MANUAL 3.md` — Arquitectura del Compilador](./docs/manuales/MANUAL%203.md) | Pipeline 5 etapas, AST, tabla de símbolos, motor ATP |
+| [`MANUAL 4.md` — Gestión de Memoria y Ownership](./docs/manuales/MANUAL%204.md) | Ownership, borrowing, lifetimes, pool allocator |
+| [`MANUAL 5.md` — Concurrencia y Comunicación](./docs/manuales/MANUAL%205.md) | Canales, hilos, sincronización, federated learning |
+| [`MANUAL 6.md` — Gestor de Paquetes Axon](./docs/manuales/MANUAL%206.md) | Axon, Ed25519, axon.lock, TAR |
+| [`MANUAL 7.md` — Herramientas de Desarrollo](./docs/manuales/MANUAL%207.md) | LSP nativo, VS Code extension, CLI |
+| [`MANUAL 8.md` — Backend y Generación de Código](./docs/manuales/MANUAL%208.md) | Generación C/LLVM/WASM, orden alfabético, PGO |
+| [`MANUAL 9.md` — Bootstrap, Pruebas y QA](./docs/manuales/MANUAL%209.md) | Bootstrap 3 etapas, CI/CD, sanitizadores, SBOM |
+| [`ROADMAP.md`](./ROADMAP.md) | Roadmap de implementación F0–F30 (v8.1.0) |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
 | [`BENCHMARK_RESULTS.md`](./BENCHMARK_RESULTS.md) | Benchmark completo: JSON parsing, SIMD, canales, throughput |
 | [`DOCS/`](./docs/) | Especificaciones adicionales y guías de migración |
@@ -57,8 +58,8 @@
 
 ```bash
 gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-gcc -c axon_rt.c -o axon_rt.o -lpthread -lm
-gcc -c tweetnacl.c -o tweetnacl.o
+gcc -c axon/axon_rt.c -o axon_rt.o -lpthread -lm
+gcc -c axon/tweetnacl.c -o tweetnacl.o
 ```
 
 ### 2. Escribir tu primer programa
@@ -171,18 +172,16 @@ proyecto_synapse/
 │   ├── lsp.syn              # Servidor LSP nativo
 │   ├── verificador_formal.syn  # Motor ATP
 │   └── cache.syn            # Caché incremental SHA-256
-├── runtime/                 # Runtime modularizado en C
-│   ├── core/                # memory.c, concurrency.c, io.c
-│   ├── net/                 # http.c
-│   ├── quantum/             # matrix.c
-│   └── federated/           # aggregator.c
-├── std/                     # Librería estándar (.syn)
+├── runtime/                 # Runtime modularizado en C (Manual 1 §4)
+│   └── core/                # memory.c, concurrency.c (io.c, net/, quantum/, ml/, federated/ en Fase 3/16)
+├── std/                     # Librería estándar (.syn) — Manual 1 §4
+├── librerias/               # Librerías embebidas (compiler/ + embedded_libs.h)
 ├── compilador/              # Compilador Python (referencia)
-├── axon/                    # Runtime Axon
+├── axon/                    # Runtime Axon (axon_rt.c, tweetnacl.c/.h) — Manual 1 §4
 ├── opensyn/                 # Servicio IA local
 ├── scripts/                 # Scripts de build, test, release
 ├── .github/workflows/       # CI/CD: release matrix, cross-compile, instalador
-├── docs/manuales/          # Los 9 manuales de ingeniería (MANUAL_1.md..MANUAL_9.md)
+├── docs/manuales/          # Los 9 manuales de ingeniería (MANUAL 1.md..MANUAL 9.md)
 ├── vscode-synapse/          # Extensión VS Code
 │   ├── extension.js         # Cliente LSP nativo
 │   └── package.json         # Configuración
@@ -193,12 +192,11 @@ proyecto_synapse/
 │   ├── synapse/             # Tests nativos C Synapse
 │   └── micro_bootstrap/     # Tests de bootstrap
 ├── nucleo/principal.syn.json  # Manifiesto del compilador
-├── axon.toml                # Configuración Axon
+├── axon.toml                # Manifiesto Axon del proyecto (Manual 8)
 ├── synapse_rt.c/.h          # Runtime base
-├── tweetnacl.c/.h           # Criptografía Ed25519
 ├── main.py                  # Entry point compilador Python
 ├── cli.py                   # CLI unificada
-├── VERSION                  # Versión canónica: 5.1.1-industrial
+├── VERSION                  # Versión canónica: 8.1.0-industrial
 ├── instalador_synapse.iss   # Inno Setup installer
 └── synapse.spdx.json        # SBOM SPDX 2.3
 ```
@@ -211,4 +209,4 @@ Distribuido bajo licencia **MIT**. Consulte el archivo [`LICENSE`](./LICENSE) pa
 
 ---
 
-**Synapse/OpenSyn v5.1.1-industrial** — *Auditado, certificado y sellado bajo estándares de ingeniería de grado industrial.*
+**Synapse/OpenSyn v8.1.0-industrial** — *Auditado, certificado y sellado bajo estándares de ingeniería de grado industrial.*

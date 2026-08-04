@@ -16,7 +16,7 @@ RUNTIME_MEM_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_
 RUNTIME_CONC_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(os.path.dirname(__file__), "..", "..", "tweetnacl.o")
 COMPILADOR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "compilador")
-ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "librerias", "std", "err.syn")
+ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "std", "err.syn")
 BIN = "test_reversible_debug.exe"
 BIN_ABS = os.path.abspath(BIN)
 
@@ -55,7 +55,7 @@ def test_sin_errores_valgrind():
 
 def test_imports_debug_syn_rp():
     """Verifica que debug.syn contenga las funciones rp_* esperadas."""
-    debug_syn = os.path.join(os.path.dirname(__file__), "..", "..", "librerias", "std", "debug.syn")
+    debug_syn = os.path.join(os.path.dirname(__file__), "..", "..", "std", "debug.syn")
     with open(debug_syn, "r", encoding="utf-8") as f:
         content = f.read()
     expected_funcs = [

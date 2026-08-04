@@ -1,4 +1,4 @@
-# Synapse/OpenSyn v5.1.1-industrial
+# Synapse/OpenSyn v8.1.0-industrial
 
 > **Auditoría Completa Certificada — Release Industrial**
 > Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente.
@@ -7,11 +7,11 @@
 
 ## Resumen Ejecutivo
 
-Synapse/OpenSyn v5.1.1-industrial es una release de grado industrial que completa la **Fase 20** del roadmap (Certificación de Producción). La totalidad de las 21 fases del proyecto han sido auditadas punto por punto, certificadas y selladas bajo estrictos estándares de ingeniería.
+Synapse/OpenSyn v8.1.0-industrial es una release de grado industrial que completa la **Fase 20** del roadmap (Certificación de Producción). La totalidad de las 21 fases del proyecto han sido auditadas punto por punto, certificadas y selladas bajo estrictos estándares de ingeniería.
 
 | Métrica | Valor |
 |---------|-------|
-| **Versión** | 5.1.1-industrial |
+| **Versión** | 8.1.0-industrial |
 | **Fases completadas** | 21/21 (100%) |
 | **Tests unitarios + semánticos** | 125/125 PASS |
 | **Tests de integración** | 337/337 PASS |
@@ -26,7 +26,7 @@ Synapse/OpenSyn v5.1.1-industrial es una release de grado industrial que complet
 ### M20.1: Empaquetado Multi-target y SBOM
 - Matriz de 4 targets obligatorios: Windows x64, Linux x64, macOS ARM, WASM
 - Generación SBOM SPDX 2.3 con escaneo de 3,023 archivos
-- Versión 5.1.1-industrial unificada en todos los manifiestos (VERSION, VSIX, instalador, ROADMAP)
+- Versión 8.1.0-industrial unificada en todos los manifiestos (VERSION, VSIX, instalador, ROADMAP)
 
 ### M20.2: Validación Cruzada Release Matrix
 - Suite de integración completa: 337/337 tests PASS
@@ -49,8 +49,8 @@ Synapse/OpenSyn v5.1.1-industrial es una release de grado industrial que complet
 ### M20.5: Saneamiento Crítico Pre-despliegue
 - **Toolchain excindido**: `toolchain_gcc12/` (10,569 archivos) removido del tracking de Git — repo reducido de ~112 MB a ~2 MB
 - **LICENSE MIT**: Incorporado formalmente en la raíz del repositorio
-- **README.md**: Reesctiro completo para v5.1.1-industrial con enlaces a MANUAL 1-9
-- **CI/CD workflows**: `release_matrix.yml` y `cross-compile.yml` actualizados a versión 5.1.1-industrial
+- **README.md**: Reesctiro completo para v8.1.0-industrial con enlaces a MANUAL 1-9
+- **CI/CD workflows**: `release_matrix.yml` y `cross-compile.yml` actualizados a versión 8.1.0-industrial
 - **Limpieza**: ~650 archivos temporales de fuzzing eliminados
 - **Bootstrap binaries**: Reubicados a `dist/bootstrap/`
 
@@ -91,7 +91,7 @@ Synapse/OpenSyn v5.1.1-industrial es una release de grado industrial que complet
 |-----|----------|----------|
 | CR-01 | Shell `pwsh` en win_x64 no entiende sintaxis bash | Cambio a `shell: bash` para todos los targets |
 | CR-02 | `VALID_STATUS` compara con `"OK"` pero Python imprime `True`/`False` | Aceptar ambos valores |
-| CR-03 | `ci_sign.py` sbom usa default `5.0.0-dev` | Actualizado a `5.1.1-industrial` |
+| CR-03 | `ci_sign.py` sbom usa default `5.0.0-dev` | Actualizado a `8.1.0-industrial` |
 | CR-04 | Summary job verifica `-d` (directorio) sobre archivos | Cambio a `-f` (file) |
 | CR-05 | YAML syntax error en "Verify signing module" | Heredoc + `shell: bash` explícito |
 
@@ -135,9 +135,9 @@ runtime/
 
 ## Despliegue
 
-- **Tag**: `v5.1.1-industrial`
+- **Tag**: `v8.1.0-industrial`
 - **Repositorio**: https://github.com/synapse-native/synapse
-- **Release**: https://github.com/synapse-native/synapse/releases/tag/v5.1.1-industrial
+- **Release**: https://github.com/synapse-native/synapse/releases/tag/v8.1.0-industrial
 - **SBOM**: `synapse.spdx.json` (SPDX 2.3, 3,023 archivos)
 - **Firma**: Ed25519 — verificación disponible offline
 
@@ -157,7 +157,7 @@ runtime/
 ```
 4bc542e fix(ci): tweetnacl randombytes + synapse_rt stub dedup
 425f909 fix(ci): cross-platform compile de synapse_rt.c
-fe77e20 fix(v5.1.1): actualizar banners v2.0 a v5.1.1-industrial
+fe77e20 fix(v8.1.0): actualizar banners v2.0 a v8.1.0-industrial
 7dbbbf1 fix(ci): yaml syntax error release_matrix.yml
 5044e40 fix(ci): 4 correcciones release_matrix.yml
 6adc78c docs(m20.5): ROADMAP actualizado

@@ -70,16 +70,16 @@ def ast_a_canonico_test(programa: Programa) -> str:
 # binarios extra se re-enlazan si cambia cualquier objeto del runtime.
 
 _RT_OBJ_DEFS = [
-    ("tweetnacl.o", "tweetnacl.c", []),
+    ("tweetnacl.o", "axon/tweetnacl.c", []),
     ("synapse_rt.o", "synapse_rt.c", []),
     ("synapse_rt_memory.o", "runtime/core/memory.c", ["-DSYNAPSE_DEBUG_MEM"]),
     ("synapse_rt_concurrency.o", "runtime/core/concurrency.c", []),
-    ("axon_rt.o", "axon_rt.c", []),
+    ("axon_rt.o", "axon/axon_rt.c", []),
 ]
 
 # Headers del runtime: cualquier cambio en ellos invalida los .o
 _RT_HEADERS = [
-    "synapse_rt.h", "synapse_rt_types.h", "synapse_rt_memory.h", "tweetnacl.h",
+    "synapse_rt.h", "synapse_rt_types.h", "synapse_rt_memory.h", "axon/tweetnacl.h",
     "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
 ]
 

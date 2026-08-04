@@ -1,489 +1,458 @@
-# ROADMAP — Synapse/OpenSyn
-## Historial Completo Verificado (Julio 2026)
+# ROADMAP DE IMPLEMENTACIÓN DEL ECOSISTEMA SYNAPSE + SYQUEX + OPENSYN
 
-> **Versión:** 5.1.1-industrial
-> **Última actualización:** 2026-08-04
-> **Tests:** 667/667 Python PASS | 19 validate_*.c nativos | Bootstrap Stage 1→2→3 OK (diff 0 bytes verificado) | Fase R: 7/9 ME completados
-> **Toolchain:** GCC 12.4.0 MinGW-w64 | Python 3.12
+**Versión:** 8.1.0-industrial  
+**Fecha:** 2026-08-03  
+**Propósito:** Guía de ejecución definitiva para la implementación completa del ecosistema desde cero. Este documento describe todas las fases, hitos, entregables, dependencias, riesgos y criterios de aceptación necesarios para construir Synapse, Syquex y OpenSyn como una plataforma unificada. No contiene marcas de estado previo, ya que está diseñado para iniciar desde una carpeta vacía.
 
 ---
 
-## LEYENDA
+## LEYENDA DE ESTRUCTURA
 
-| Símbolo | Significado |
-|---------|-------------|
-| ✅✅ COMPLETADO | Hito verificado contra código existente en el repositorio (archivos, tests, commits) |
-| 🔄 EN PROGRESO | Implementación parcial con código existente pero incompleto |
-| ⬜ PENDIENTE | No iniciado, planificado para futuro cercano |
+Cada fase se describe con los siguientes campos:
 
----
-
-## 1. FASES COMPLETADAS (Verificadas contra código real)
-
----
-
-### ✅✅ FASE 0: FUNDACIÓN Y SANEAMIENTO DEL REPOSITORIO — COMPLETADA 2026-07-22
-
-*Primera fase del proyecto: limpieza total del repositorio.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| Purga de 105 archivos .exe, caches y artefactos de build | ✅✅ Verificado| Commit bfe0342: cleanup |
-| Limpieza de repositorio y consolidación documental v2.0 | ✅✅ Verificado| Commit 7ef36a5 |
-| .gitignore actualizado con cobertura de artefactos | ✅✅ Verificado| Archivo .gitignore existe |
-| Pre-commit hooks configurados | ✅✅ Verificado| .pre-commit-config.yaml existe |
-| 231 tests passing iniciales | ✅✅ Verificado| Build record documenta 231 passed |
+- **Objetivo:** Declaración clara del propósito de la fase.
+- **Entregables:** Lista exhaustiva de artefactos de código, documentación y herramientas que deben generarse.
+- **Criterios de Aceptación:** Condiciones que deben cumplirse para considerar la fase completada.
+- **Dependencias:** Fases anteriores que deben estar completadas.
+- **Riesgos y Mitigaciones:** Posibles obstáculos y estrategias para superarlos.
+- **Duración Estimada:** Tiempo de trabajo requerido (expresado en meses-persona o meses-calendario para un equipo de 3-5 ingenieros).
 
 ---
 
-### ✅✅ FASE 1: NÚCLEO Y PIPELINE BASE — COMPLETADA 2026-07-22/24
+## FASES 0 A 21: FUNDACIÓN Y NÚCLEO DE SYNAPSE (24 meses estimados)
 
-*Implementación del compilador, pipeline y bootstrap inicial.*
+Estas fases establecen el compilador de Synapse, el runtime, el sistema de tipos, la concurrencia, el gestor de paquetes Axon, el backend LLVM/WASM y el motor ATP. Constituyen la base de todo el ecosistema.
 
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| Lexer (Python + Nativo .syn) | ✅✅ Verificado| compilador/lexer.py, nucleo/lexer.syn, nucleo/lexer.c |
-| Parser (descenso recursivo) | ✅✅ Verificado| compilador/parser.py, nucleo/parser.syn, nucleo/parser.c |
-| AST Nodes | ✅✅ Verificado| compilador/ast_nodes.py, nucleo/ast_nodes.syn |
-| Analizador Semántico (3 fases) | ✅✅ Verificado| compilador/semantic_checker.py, nucleo/analizador_semantico.syn |
-| Generador C | ✅✅ Verificado| compilador/generator/, nucleo/generator.syn |
-| Pipeline Python (main.py + cli.py) | ✅✅ Verificado| main.py, cli.py, pipeline.py |
-| Pipeline Nativa (principal.syn) | ✅✅ Verificado| nucleo/principal.syn, nucleo/principal.c |
-| Tokens / Tabla símbolos / Errores | ✅✅ Verificado| nucleo/tokens.syn, tabla_simbolos.syn, errores.syn |
-| Prueba de bootstrap | ✅✅ Verificado| main.syn, bootstrap_test.syn, bootstrap_test.c |
+### FASE 0: SANEAMIENTO Y ESTRUCTURA INICIAL
 
-**Certificación:** 184/184 tests PASS | Lexer/parser/semántica/generador funcionales
-
----
-
-### ✅✅ FASE 2: CONCURRENCIA Y TIPOS AVANZADOS — COMPLETADA 2026-07-24/25
-
-*Canal<T> tipado, ownership enforcement, fuzzing destructivo.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| CanalConcurrencia thread-safe | ✅✅ Verificado| synapse_rt_concurrency.c (canal_crear, enviar, recibir, destruir) |
-| std.concurrencia bindings | ✅✅ Verificado| librerias/std/concurrencia.syn |
-| Ownership enforcement | ✅✅ Verificado| Commit 1dd1589: ERR_MEM_USE_AFTER_MOVE (E-504) |
-| Use-After-Move detection | ✅✅ Verificado| tests/fail_use_after_move.syn, pass_safe_transfer.syn |
-| Fuzzing destructivo (7 estrategias) | ✅✅ Verificado| tests/fuzz/fuzz_engine.py (500+ iteraciones 0 crashes) |
-| Canal stress test | ✅✅ Verificado| tests/stress/test_canales_stress.syn |
-
-**Certificación:** Canal<T> + ownership + fuzzing 500+ iteraciones 0 crashes
+- **Objetivo:** Preparar el entorno de desarrollo y la estructura de directorios del monorepo.
+- **Entregables:**
+  - Creación de la estructura de carpetas: `/nucleo/`, `/std/`, `/runtime/`, `/axon/`, `/tests/`.
+  - Archivo `.gitignore` con cobertura de artefactos de build (`.exe`, `.o`, `.so`, `.dll`, `__pycache__`, etc.).
+  - Archivo `LICENSE` (MIT).
+  - Archivo `README.md` inicial con la descripción del proyecto.
+  - Configuración de pre-commit hooks (formateo, linting básico).
+  - Script de bootstrap inicial (`bootstrap.py` o `build.sh`) para compilar el compilador Stage 0 (si se usa Python como semilla).
+- **Criterios de Aceptación:** El repositorio tiene la estructura definida en el Manual 1. El script de bootstrap ejecuta sin errores.
+- **Dependencias:** Ninguna.
+- **Riesgos y Mitigaciones:** Bajo.
+- **Duración Estimada:** 1 mes.
 
 ---
 
-### ✅✅ FASE 3: LSP Y VS CODE — COMPLETADA 2026-07-24/25
+### FASE 1: LEXER Y PARSER DE SYNAPSE
 
-*Servidor LSP nativo, extensión VS Code.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| LSP nativo (JSON-RPC 2.0 sobre stdio) | ✅✅ Verificado| nucleo/lsp.syn, synapse_lsp/server.py, transport.py |
-| LSP features (8 módulos) | ✅✅ Verificado| diagnostics, hover, definition, completions, code_action, signature, formatting, ai |
-| VS Code extension | ✅✅ Verificado| vscode-synapse/ (package.json, extension.js, snippets, syntaxes) |
-| LSP tests | ✅✅ Verificado| tests/unit/test_lsp.py, tests/integration/test_lsp_native.py |
-
-**Certificación:** LSP funcional 8+ características | Zero telemetry
-
----
-
-### ✅✅ FASE 4: CONTRATOS, PIPELINE Y BOOTSTRAP — COMPLETADA 2026-07-24
-
-*Contratos lógicos, pipeline reentrante, bootstrap.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| Contratos requiere/garantiza | ✅✅ Verificado| nucleo/verificador_formal.syn + compilador/verificador_formal.py |
-| Pipeline reentrante | ✅✅ Verificado| nucleo/principal.syn, pipeline.py |
-| Bootstrap Stage 1→2→3 | ✅✅ Verificado| bootstrap.sh, build.bat, build.sh |
-| Micro-bootstrap tests (5) | ✅✅ Verificado| tests/micro_bootstrap/ (flujo, tipos, funciones, scope, punteros) |
-
-**Certificación:** Contratos requiere/garantiza + Bootstrap funcional
+- **Objetivo:** Implementar el analizador léxico y el analizador sintáctico de Synapse.
+- **Entregables:**
+  - `nucleo/lexer.syn`: Tokenizador que soporta `#lang`, indentación (INDENT/DEDENT), comentarios, cadenas, números y operadores.
+  - `nucleo/parser.syn`: Parser de descenso recursivo que construye el AST enlazado (`Nodo*`) según la gramática EBNF del Manual 2.
+  - `nucleo/tokens.syn`: Definición de `TokenID` y los diccionarios multi-idioma (es, en, fr, pt).
+  - `nucleo/ast_nodes.syn`: Definición de las estructuras de nodos del AST.
+  - Tests unitarios para lexer y parser (`tests/unit/test_lexer.py`, `tests/unit/test_parser.py`) que cubran casos válidos e inválidos.
+- **Criterios de Aceptación:** El lexer tokeniza correctamente todos los ejemplos del Manual 2. El parser construye el AST correctamente para programas válidos y reporta errores sintácticos con ubicación precisa.
+- **Dependencias:** Fase 0.
+- **Riesgos y Mitigaciones:** Medio. La gestión de indentación puede ser compleja; se deben implementar pruebas de estrés con diferentes niveles de anidación.
+- **Duración Estimada:** 2 meses.
 
 ---
 
-### ✅✅ FASE 5: AXON Y EDGE AI — COMPLETADA 2026-07-24/25
+### FASE 2: TABLA DE SÍMBOLOS Y ANÁLISIS SEMÁNTICO
 
-*Gestor de paquetes inmutable con Ed25519 + runtime IA local.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| Axon runtime | ✅✅ Verificado| axon_rt.c (166KB): Ed25519, TAR, HTTP, TOML, SemVer, lock |
-| Ed25519 crypto (TweetNaCl) | ✅✅ Verificado| tweetnacl.c, tweetnacl.h |
-| Axon E2E tests | ✅✅ Verificado| tests/test_axon_e2e.py, test_axon_e2e.c |
-| Path traversal protection | ✅✅ Verificado| Commit 467ff3d: _syn_normalizar_ruta |
-| HW detection | ✅✅ Verificado| nucleo/detect_hardware.c, detect_hardware.h, detect_hardware_cli.c |
-| RAG pipeline / LLama client | ✅✅ Verificado| nucleo/synapse_rag.c, llama_client.c, ollama_client.h |
-
-**Certificación:** Axon criptográfico | HW detect + RAG operativo | 184 tests PASS
-
----
-
-### ✅✅ FASE 6: PGO/LTO AVANZADO — COMPLETADA 2026-07-25
-
-*Profile-Guided Optimization + Link-Time Optimization.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| PGO pipeline | ✅✅ Verificado| nucleo/pgo_pipeline.sh, generator_pgo.c, generator_pgo.syn |
-| LTO flags integrados | ✅✅ Verificado| pipeline.py, build.bat con -flto |
-| Reducción binario -37% | ✅✅ Verificado| BENCHMARK_RESULTS.md |
-
-**Certificación:** PGO + LTO activos | -37% binario | Bootstrap determinista
+- **Objetivo:** Implementar la tabla de símbolos y el analizador semántico de tres pasadas.
+- **Entregables:**
+  - `nucleo/tabla_simbolos.syn`: Gestión de scopes anidados, declaración y búsqueda de símbolos.
+  - `nucleo/analizador_semantico.syn`: Motor de análisis de 3 pasadas (Estructuras → Firmas → Cuerpos).
+  - `nucleo/errores.syn`: Taxonomía de errores semánticos (ERR_SEM_*).
+  - Implementación del algoritmo Hindley-Milner (unificación, occurs check) para inferencia de tipos.
+  - Verificación de ownership y borrowing (use-after-move, préstamos).
+  - Verificación de exhaustividad en `coincidir` para tipos algebraicos.
+- **Criterios de Aceptación:** El compilador detecta variables no declaradas, tipos incompatibles, usos después de movimiento, y falta de casos en match. Todos los tests de integración de la Fase 1 siguen pasando.
+- **Dependencias:** Fase 1.
+- **Riesgos y Mitigaciones:** Alto. El algoritmo Hindley-Milner debe implementarse con cuidado para evitar falsos positivos. Se recomienda empezar con un subconjunto de tipos y expandir gradualmente.
+- **Duración Estimada:** 4 meses.
 
 ---
 
-### ✅✅ FASE 7: CACHÉ INCREMENTAL — COMPLETADA 2026-07-26
+### FASE 3: GENERADOR DE CÓDIGO C Y RUNTIME
 
-*Sistema de caché incremental con SHA-256.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| CacheEntry / CacheStats SHA-256 | ✅✅ Verificado| nucleo/cache.syn |
-| Pipeline intercept HIT/MISS/STALE | ✅✅ Verificado| pipeline.py |
-| CLI gestión de caché | ✅✅ Verificado| cli.py (cache stats, clean, --incremental) |
-
-**Certificación:** Cache HIT/MISS/STALE | SHA-256 | diff 0 bytes
-
----
-
-### ✅✅ FASE 8: CONCURRENCIA DISTRIBUIDA (M8.1–M8.6) — COMPLETADA 2026-07-26
-
-*Red de nodos, work-stealing, Raft, migración live, descubrimiento, multicast.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M8.1 Red Nodos UDP+Ed25519 | ✅✅ Verificado| synapse_rt.c (líneas 4440+), Commit aae1922 |
-| M8.2 Work-Stealing | ✅✅ Verificado| test_work_stealing.c (43/43 asserts), Commit e0e89c5 |
-| M8.3 Consenso Raft | ✅✅ Verificado| test_cluster_raft.c (77 tests C), Commit e147e27 |
-| M8.4 Migración Live | ✅✅ Verificado| test_live_migration.c (19 tests), Commit 71825c7 |
-| M8.5 Auto-Discovery | ✅✅ Verificado| test_cluster_discovery.c (52/52 PASS), Commit 6f9222c |
-| M8.6 Multicast Real | ✅✅ Verificado| test_cluster_multicast.c (23/23 PASS), Commit be097c4 |
-| std.cluster bindings (90 funcs) | ✅✅ Verificado| librerias/std/cluster.syn (639 líneas) |
-
-**Certificación:** 6 subsistemas de cluster funcionales
+- **Objetivo:** Traducir el AST validado a código C estándar y compilar el runtime básico.
+- **Entregables:**
+  - `nucleo/generator.syn`: Emisor de código C que recorre el AST y escribe archivos `.c`.
+  - `runtime/core/memory.c`: Pool allocator básico (sin TLC todavía).
+  - `runtime/core/io.c`: Funciones de entrada/salida básicas (log, lectura/escritura de archivos).
+  - `runtime/core/concurrency.c`: Soporte para fibras y canales (estructuras base).
+  - Inyección de RAII (liberación automática al final del scope).
+  - Mapeo de tipos Synapse → C (entero → int, texto → CadenaSegura, tensor → Tensor).
+- **Criterios de Aceptación:** El compilador genera un archivo `.c` compilable con GCC/Clang para programas simples. El binario resultante ejecuta `principal()` y produce la salida esperada.
+- **Dependencias:** Fase 2.
+- **Riesgos y Mitigaciones:** Medio. La generación de código debe manejar correctamente la recursión de estructuras. Se deben implementar pruebas con estructuras auto-referenciales.
+- **Duración Estimada:** 3 meses.
 
 ---
 
-### ✅✅ FASE 9: DEPURACIÓN TIME-TRAVEL (M9.0–M9.4) — COMPLETADA 2026-07-26
+### FASE 4: CONCURRENCIA Y CANALES
 
-*Debugging determinista con grabación, breakpoints reversibles, snapshots.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M9.0 std.debug (219 líneas) | ✅✅ Verificado| librerias/std/debug.syn: TraceEvent, TraceSession |
-| M9.0b Buffer circular C | ✅✅ Verificado| synapse_rt.c: _syn_debug_registrar_evento() |
-| M9.1 Grabación rr-style | ✅✅ Verificado| tests/test_time_travel.c, Commit 8cb5496 |
-| M9.2 Breakpoints reversibles | ✅✅ Verificado| tests/test_reversible_debug.c (70/70), Commit 17fe457 |
-| M9.3 Memory Snapshots | ✅✅ Verificado| tests/test_memory_snapshots.c (79 tests), Commit 9bae896 |
-| M9.4 Debugging distribuido | ✅✅ Verificado| tests/integration/test_distributed_debug.py, Commit fa9397a |
-
-**Certificación:** 6 subsistemas | Buffer 50K | 70/70 reversibles | 79 snapshots
+- **Objetivo:** Implementar el modelo de concurrencia (fibras y canales) en el runtime y en el generador.
+- **Entregables:**
+  - `runtime/core/concurrency.c`: Implementación completa de fibras (scheduler, colas), canales síncronos y asíncronos (buffer circular), mutexes, semáforos.
+  - `std/concurrencia.syn`: Bindings para `lanzar`, `escuchar`, `Canal<T>`, `cerrar`.
+  - Generación de código para `lanzar` (pthread_create) y `escuchar` (bucle de recepción).
+  - Pruebas de estrés con 10,000 fibras concurrentes y comunicación intensiva.
+- **Criterios de Aceptación:** 100% de pruebas de concurrencia pasan (sin deadlocks ni data races). El runtime soporta miles de fibras sin degradación significativa.
+- **Dependencias:** Fase 3.
+- **Riesgos y Mitigaciones:** Alto. La sincronización sin GC requiere cuidado extremo. Se implementará un scheduler work-stealing con pruebas de carga extensivas.
+- **Duración Estimada:** 3 meses.
 
 ---
 
-### ✅✅ FASE 10: HARDENING INDUSTRIAL (M10.1–M10.4) — COMPLETADA 2026-07-26
+### FASE 5: CONTRATOS Y BOOTSTRAP
 
-*Verificación formal, SBOM/SLSA L3, fuzzing 24/7, fuzzing distribuido.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M10.1 Verif. Formal (--safe) | ✅✅ Verificado| nucleo/verificador_formal.syn + Python, 19 tests |
-| M10.2 SBOM SPDX 2.3 + SLSA L3 | ✅✅ Verificado| nucleo/sbom.py, ed25519_signer.py, 37 tests |
-| M10.3 Fuzzing 24/7 ASan/UBSan | ✅✅ Verificado| tests/fuzz/fuzz_engine.py, 14 tests |
-| M10.4 Fuzzing Distribuido | ✅✅ Verificado| tests/fuzz/test_distributed_fuzz.py, Commits 9d9a52e/7a0bee8 |
-
-**Certificación:** Verif. formal + SBOM SLSA L3 + Fuzzing 24/7 + Distribuido
-
----
-
-### ✅✅ FASE 11: LIBERACIÓN Y DISTRIBUCIÓN (M11.1–M11.5) — COMPLETADA 2026-07-26
-
-*Release matrix, firma artefactos, documentación, marketplace, benchmarks.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M11.1 Release Matrix (4 targets) | ✅✅ Verificado| .github/workflows/release_matrix.yml, 23 tests |
-| M11.2 Ed25519 Artifact Signing | ✅✅ Verificado| 34 tests, Commit 800e11e |
-| M11.3 Documentación | ✅✅ Verificado| docs/especificacion_opensyn.md + migración + AST API |
-| M11.4 Marketplace Pipeline | ✅✅ Verificado| .github/workflows/vscode_publish.yml, 54 tests |
-| M11.5 Benchmarks | ✅✅ Verificado| BENCHMARK_RESULTS.md (1.25M obj/s, SIMD 1.63×, 65K msg/s) |
-
-**Certificación:** 4 targets CI/CD + Firmas + Docs + Marketplace + Benchmarks
+- **Objetivo:** Implementar contratos lógicos y completar el proceso de bootstrap (self-hosting).
+- **Entregables:**
+  - `nucleo/verificador_formal.syn`: Motor básico de contratos (requiere/garantiza) que genera aserciones en C.
+  - Pipeline de bootstrap de 3 etapas (Stage 1: Python, Stage 2: Synapse compilando Synapse, Stage 3: Synapse compilando Synapse).
+  - Verificación de determinismo: `diff` de 0 bytes entre Stage 2 y Stage 3.
+- **Criterios de Aceptación:** El compilador de Synapse puede compilar su propio código fuente. El diff entre Stage 2 y Stage 3 es 0 bytes.
+- **Dependencias:** Fase 4.
+- **Riesgos y Mitigaciones:** Alto. Cualquier error en el generador o en el runtime rompe el bootstrap. Se requiere una suite de tests de regresión exhaustiva antes de iniciar el bootstrap.
+- **Duración Estimada:** 3 meses.
 
 ---
 
-### ✅✅ FASE 12: LLVM BACKEND + WASM (M12.1.1–M12.2) — COMPLETADA 2026-07-26/27
+### FASE 6: AXON (GESTOR DE PAQUETES)
 
-*Backend LLVM IR, control de flujo, JIT, WebAssembly.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M12.1.1 LLVM IR Base | ✅✅ Verificado| synapse_llvm.c, validate_llvm_backend.c (40/40 PASS) |
-| M12.1.2 Control Flow | ✅✅ Verificado| validate_llvm_control_flow.c (48/48 PASS) |
-| M12.1.3 JIT + Encryption | ✅✅ Verificado| validate_llvm_jit.c (28/30 PASS, 2 pendientes) |
-| M12.2 WASM WAT Backend | ✅✅ Verificado| nucleo/wasm_backend.syn, validate_wasm_backend.c (45/45 PASS) |
-| std.llvm bindings | ✅✅ Verificado| librerias/std/llvm.syn |
-
-**Certificación:** LLVM IR 40/40 + Control Flow 48/48 + JIT 28/30 + WASM 45/45
-
----
-
-### ✅✅ FASE 13: AI NATIVA (M13.1–M13.6) — COMPLETADA 2026-07-27
-
-*6 módulos de IA nativa: inferencia, RAG, codegen, fine-tuning, quantization, distillation.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M13.1 Modelo Local | ✅✅ Verificado| nucleo/optimizador_ia.syn, validate_modelo_local.c (68/68) |
-| M13.2 RAG Pipeline | ✅✅ Verificado| nucleo/synapse_rag.c, validate_synapse_rag.c (81/81) |
-| M13.3 Code Gen + LSP | ✅✅ Verificado| synapse_lsp/features/code_action.py + ai.py |
-| M13.4 Fine-Tuning LoRA | ✅✅ Verificado| nucleo/fine_tuning.c/.h, validate_fine_tuning.c |
-| M13.5 Quantization | ✅✅ Verificado| nucleo/quantization.c/.h, validate_quantization.c |
-| M13.6 Distillation KD | ✅✅ Verificado| nucleo/distillation.c/.h, validate_distillation.c |
-| std.modelo + OpenSyn Router | ✅✅ Verificado| librerias/std/modelo.syn, opensyn/router.syn |
-
-**Certificación:** 6 módulos IA | ~500 tests | RAG + LoRA + Quant + KD
+- **Objetivo:** Implementar el gestor de paquetes inmutable con firma Ed25519.
+- **Entregables:**
+  - `axon/axon_rt.c`: Runtime de Axon (lectura de TOML, manejo de TAR, SHA-256, Ed25519 con TweetNaCl).
+  - `axon/tweetnacl.c`: Implementación de criptografía Ed25519.
+  - `axon/axon.toml`: Esquema de manifiesto.
+  - Comandos CLI: `synapse axon init`, `fetch`, `publish`, `verify`, `search`.
+  - Protección contra path traversal en extracción de TAR.
+- **Criterios de Aceptación:** Los comandos de Axon funcionan correctamente. Los paquetes se firman y verifican correctamente. Los lockfiles (`axon.lock`) garantizan builds deterministas.
+- **Dependencias:** Fase 5.
+- **Riesgos y Mitigaciones:** Medio. La implementación de Ed25519 debe ser auditada.
+- **Duración Estimada:** 3 meses.
 
 ---
 
-### ✅✅ FASE 14: FEDERATED LEARNING (M14.1–M14.2) — COMPLETADA 2026-07-27
+### FASE 7: BACKEND LLVM Y WASM
 
-*FedAvg + Ed25519 + orquestador distribuido.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M14.1 FedAvg + Ed25519 | ✅✅ Verificado| nucleo/federated.c/.h, validate_federated.c |
-| M14.2 Orquestador Distribuido | ✅✅ Verificado| nucleo/dist_orchestrator.c/.h, validate_dist_orchestrator.c |
-| std.federated + dist_orchestrator | ✅✅ Verificado| librerias/std/federated.syn, dist_orchestrator.syn |
-
-**Certificación:** FedAvg + fault tolerance + Dataset partitioning + LoRA/KD
-
----
-
-### ✅✅ FASE 15: VERIFICACIÓN FORMAL Y EJECUCIÓN SIMBÓLICA (M15.1–M15.3) — COMPLETADA 2026-07-27
-
-*Proof Bridge (Coq/Lean), ATP Engine, Symbolic Execution.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M15.1 Proof Bridge Coq/Lean | ✅✅ Verificado| nucleo/proof_bridge.c/.h, validate_formal_proof.c |
-| M15.2 ATP Engine SMT-light | ✅✅ Verificado| nucleo/atp_engine.c/.h, validate_atp_engine.c (90/90) |
-| M15.3 Symbolic Execution | ✅✅ Verificado| nucleo/symbolic_exec.c/.h, validate_symbolic_exec.c (66/66) |
-| 3 std bindings | ✅✅ Verificado| proof_bridge.syn, atp_engine.syn, symbolic_exec.syn |
-
-**Certificación:** Proof bridge + ATP 90/90 + Symbolic exec 66/66
+- **Objetivo:** Extender el backend para soportar LLVM IR y WebAssembly.
+- **Entregables:**
+  - `nucleo/llvm_backend.syn`: Generación de IR LLVM.
+  - `nucleo/wasm_backend.syn`: Generación de WAT/WASM (usando emcc o wasm-ld).
+  - Comandos CLI: `synapse build --target llvm`, `synapse build --target wasm`.
+  - `std/llvm.syn`, `std/wasm.syn`: Bindings básicos.
+- **Criterios de Aceptación:** El compilador genera `.ll` válido que se compila con `clang`. El compilador genera `.wasm` ejecutable en navegador.
+- **Dependencias:** Fase 6.
+- **Riesgos y Mitigaciones:** Medio. El IR LLVM debe ser correcto para múltiples arquitecturas.
+- **Duración Estimada:** 3 meses.
 
 ---
 
-### ✅✅ FASE 16: MEMORIA CUÁNTICA Y DECOHERENCIA (M16.1–M16.4) — COMPLETADA 2026-07-27
+### FASES 8 A 21: MÓDULOS AVANZADOS
 
-*Quantum Runtime (8 qubits), Shor QEC, Surface Code, Decoherence T1/T2.*
+*Nota: Las Fases 8 a 21 cubren módulos avanzados como Concurrencia Distribuida, Time-Travel Debugging, IA Nativa, Federated Learning, Verificación Formal (ATP), Computación Cuántica, Modularización del Runtime, Optimización PGO/LTO, Caché Incremental, etc. Cada una tiene un objetivo específico, entregables, criterios de aceptación, dependencias y riesgos. Para mantener este roadmap manejable y sin ambigüedad, se detallan en el siguiente esquema resumido (pero completo).*
 
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| M16.1 Quantum Runtime | ✅✅ Verificado| nucleo/quantum_runtime.c, validate_quantum_runtime.c (40/40) |
-| M16.2 Shor 9-qubit QEC | ✅✅ Verificado| nucleo/quantum_err_corr.c, validate_quantum_err_corr.c (55/55) |
-| M16.3 Surface Code | ✅✅ Verificado| nucleo/surface_code.c, validate_surface_code.c (32/32) |
-| M16.4 Decoherence T1/T2 | ✅✅ Verificado| nucleo/quantum_memory.c, validate_quantum_memory.c (28/28) |
-| 4 std bindings cuánticos | ✅✅ Verificado| quantum.syn, quantum_err_corr.syn, quantum_memory.syn, surface_code.syn |
+- **Fase 8 (Concurrencia Distribuida):** Implementar `std.cluster` con Raft, work-stealing, multicast, handshake Ed25519. **Duración:** 3 meses.
+- **Fase 9 (Time-Travel Debugging):** Implementar `std.debug` y el debugger reversible con snapshots. **Duración:** 3 meses.
+- **Fase 10 (Hardening Industrial):** Verificación formal ATP avanzada, SBOM SPDX y SLSA L3, fuzzing 24/7. **Duración:** 3 meses.
+- **Fase 11 (Liberación y Distribución):** Release matrix (4 targets), firma Ed25519 de artefactos, marketplace, benchmarks. **Duración:** 3 meses.
+- **Fase 12 (IA Nativa):** Modelo local, RAG, fine-tuning LoRA, quantization, distillation. **Duración:** 3 meses.
+- **Fase 13 (Federated Learning):** FedAvg, orquestador distribuido. **Duración:** 2 meses.
+- **Fase 14 (Verificación Formal Avanzada):** Proof Bridge (Coq/Lean), symbolic execution. **Duración:** 3 meses.
+- **Fase 15 (Computación Cuántica):** Quantum runtime, Shor QEC, Surface Code, T1/T2 decoherence. **Duración:** 3 meses.
+- **Fase 16 (Modularización Runtime):** Descomposición de `synapse_rt.c` en módulos. **Duración:** 2 meses.
+- **Fase 17 (Optimización Runtime):** PGO/LTO, reducción de footprint, benchmarks. **Duración:** 2 meses.
+- **Fase 18 (Caché Incremental):** SHA-256 caching, pipeline intercept HIT/MISS/STALE. **Duración:** 2 meses.
+- **Fase 19 (CanalRemoto v2):** Handshake Ed25519, canales remotos completos. **Duración:** 2 meses.
+- **Fase 20 (Lifetimes Avanzados):** Region graph y union-find para lifetimes. **Duración:** 2 meses.
+- **Fase 21 (RAII y Scopes):** Refactorización RAII, destructor maps y scopes. **Duración:** 2 meses.
 
-**Certificación:** 4 módulos cuánticos | ~155 tests | Shor + Surface + T1/T2
-
----
-
-### ✅✅ FASE 17: MODULARIZACIÓN DEL RUNTIME — COMPLETADA 2026-07-28
-
-*Descomposición de synapse_rt.c en módulos, unificación memory pool, limpieza.*
-
-| Hito | Verificación | Evidencia |
-|------|-------------|-----------|
-| 3 módulos runtime | ✅✅ Verificado| synapse_rt_memory.c (10KB), synapse_rt_concurrency.c (5.3KB) |
-| Cabeceras unificadas | ✅✅ Verificado| synapse_rt_types.h (4.3KB), synapse_rt_memory.h (313B) |
-| Pool allocator unificado | ✅✅ Verificado| axon_rt.c refactorizado (-240 líneas), Commit 82a2005 |
-| tests/SKIPPED.md | ✅✅ Verificado| tests/SKIPPED.md (26 tests omitidos documentados) |
-| 5 directorios temporales eliminados | ✅✅ Verificado| cluster_temp, debug_temp, raft_temp, migration_cluster, ws_temp |
-| 184/184 tests PASS | ✅✅ Verificado| Suite Python completa: 184 passed, 0 failed |
-| Bootstrap Stage 1 verificado | ✅✅ Verificado| 3 objetos modulares enlazados correctamente |
-
-**Certificación:** Runtime modularizado + Pool unificado + 184 tests PASS + Bootstrap OK
+**Dependencia global:** Todas las Fases 8-21 dependen de la Fase 7 y se pueden ejecutar en paralelo parcial, pero el orden sugerido es secuencial para minimizar conflictos. **Duración total acumulada para Fases 0-21:** 24 meses.
 
 ---
 
-## 2. FASES COMPLETADAS (Continuación)
+## FASES 22 A 30: SYQUEX Y ECOSISTEMA COMPLETO (30 meses estimados)
+
+Estas fases construyen el lenguaje hermano de alto nivel (Syquex), integran OpenSyn como asistente IA universal, y completan la instalación unificada.
+
+### FASE 22: FUNDACIÓN DE SYQUEX (LÉXICO Y PARSER)
+
+- **Objetivo:** Diseñar e implementar el lexer, parser y traductor de Syquex al AST canónico de Synapse (`SemNodo[]`).
+- **Entregables:**
+  - `syquex/lexer.syq`: Tokenizador con soporte para `#lang`, palabras clave de Syquex (estructura, metodo, crear, intentar, etc.).
+  - `syquex/parser.syq`: Parser de descenso recursivo basado en la gramática EBNF del Manual 3.
+  - `syquex/traductor.syq`: Conversión del AST de Syquex a `SemNodo[]` (ABI v1).
+  - `nucleo/ast_abi.syn`: Definición formal del `SemNodo ABI v1` con versionado y tests de regresión.
+  - Pruebas de integración para confirmar que el código Syquex se traduce correctamente y pasa el análisis semántico de Synapse.
+- **Criterios de Aceptación:** El compilador acepta archivos `.syq` y genera el mismo AST canónico que Synapse para construcciones equivalentes. La metadata de depuración (archivo, línea, columna) se conserva.
+- **Dependencias:** Fase 21 (Synapse completo).
+- **Riesgos y Mitigaciones:** Medio. El mapeo de conceptos de alto nivel (métodos, constructores) a funciones de Synapse debe ser preciso. Se debe mantener la ABI del AST estable.
+- **Duración Estimada:** 4 meses (incluye Fase 22.B integrada).
 
 ---
 
-### ✅✅ FASE 18: CANAL REMOTO CON HANDSHAKE ED25519 (v2) — COMPLETADA 2026-07-28
+### FASE 22.B: ESTABILIZACIÓN DEL AST Y ABI (Integrada en Fase 22)
 
-*Extensión de std.cluster con CanalRemoto<T> y conectar() zero-trust.*
-
-| Hito | Estado | Verificación |
-|------|--------|-------------|
-| M18.1 CanalRemoto<T> struct + bindings | ✅✅ COMPLETADO | librerias/std/cluster.syn (639 líneas) con CanalRemoto, conectar(), enviar(), recibir(), cerrar() |
-| M18.2 conectar() handshake Ed25519 | ✅✅ COMPLETADO | cluster.syn usa cluster_generar_par_claves, cluster_enviar_hello, cluster_recibir_paquete, cluster_verificar_firma |
-| M18.3 Test integración handshake | ✅✅ COMPLETADO (2026-07-28) | tests/integration/test_cluster_handshake.syn creado y compilado, 9 pruebas de handshake Ed25519 |
-| M18.4 Test Python con UDP real | ✅✅ COMPLETADO (2026-07-28) | tests/integration/test_cluster_handshake_e2e.py + C binary (24/24 PASS: Ed25519 crypto + UDP) |
-
-**Certificación:** CanalRemoto<T> + Handshake Ed25519 + 24/24 tests E2E PASS
+- **Objetivo:** Establecer y probar la estabilidad del AST canónico.
+- **Entregables:**
+  - `nucleo/ast_abi.syn`: Archivo de especificación de la ABI.
+  - Tests de compatibilidad que verifiquen que los cambios en el AST no rompen el traductor.
+- **Criterios de Aceptación:** El traductor funciona correctamente con múltiples versiones menores del AST.
+- **Duración Estimada:** 1 mes (paralelo al desarrollo del traductor).
 
 ---
 
-### ✅✅ FASE 19: OPTIMIZACIÓN DEL RUNTIME — COMPLETADA 2026-07-28
+### FASE 23: MODELO DE MEMORIA DE SYQUEX
 
-*Benchmarks de rendimiento, perfilamiento pool allocator, reducción de footprint. Commit: `491d3d46` — purga de 4,329 líneas de deuda técnica (F17), `#pragma weak` eliminados, inyección `extern/static`, fix FFI SIMD.*
-
-| Hito | Descripción | Estado |
-|------|-------------|--------|
-| M19.1 Perfilamiento slab allocator | Benchmarks del pool de memoria | ✅✅ COMPLETADO |
-| M19.2 Benchmarks rendimiento runtime | Throughput y latencia del runtime | ✅✅ COMPLETADO |
-| M19.3 Reducción de footprint | Minimizar tamaño del runtime (`.text` 252,724 bytes < 300 KB) | ✅✅ COMPLETADO |
-| M19.4 Benchmarks SIMD v2 | Actualizar benchmarks SIMD | ✅✅ COMPLETADO |
-
----
-
-## 3. FASES COMPLETADAS (Continuacion): FASE 20 Y HITOS AVANZADOS M21-M22
-
----
-
-### ✅✅ FASE 20: CERTIFICACIÓN DE PRODUCCIÓN Y HARDENING FINAL — COMPLETADA 2026-07-30
-
-*Empaquetado final de despliegue, validación cruzada multi-target, sellado criptográfico definitivo de artefactos, saneamiento pre-despliegue y despliegue a GitHub.*
-
-| Hito | Descripción | Estado |
-|------|-------------|--------|
-| M20.1 Empaquetado multi-target + SBOM SPDX 2.3 | Instaladores 4 targets, VSIX, Inno Setup, scripts de release unificados a versión 5.1.1-industrial | ✅✅ COMPLETADO |
-| **M0.3.4–M0.3.7FIX Pipeline Bootstrap Auditado** | Orden lexicográfico tabla símbolos (M0.3.5FIX), orden alfabético generador (M0.3.6), flags deterministas GCC diff 0 bytes (M0.3.7FIX), sanitizadores funcionales | ✅✅ VERIFICADO |
-| M20.2 Validación cruzada release matrix | 337/337 tests integración PASS + 1/1 nativos C + 125/125 unitarios/semántica. Falla corregida: test_version_formato (VSIX semver strict) | ✅✅ COMPLETADO |
-| M20.3 Sellado criptográfico definitivo | Firma Ed25519 verificada + detección de manipulación + attestación SLSA Level 3 + SBOM SPDX 2.3 (3,023 files, SHA-256) | ✅✅ COMPLETADO |
-| M20.4 Certificación de producción | Checklist Manual 9 §9.7: 11/15 items cumplidos, 3 parciales (LSP/Axon requieren toolchain nativo), 1 N/A (ASan en MinGW) | ✅✅ COMPLETADO |
-| M20.5 Saneamiento crítico pre-despliegue | Excisión toolchain (10,569 archivos, repo de ~112MB a ~2MB), LICENSE MIT, README.md v5.1.1-industrial, CI workflows actualizados, .gitignore ampliado, ~650 fuzz artifacts limpiados. Push + tag v5.1.1-industrial desplegado en GitHub. | ✅✅ COMPLETADO |
-
-
-### ✅✅ FASE 21: HITOS AVANZADOS M21-M22 — COMPLETADA
-
-*Hitos avanzados ya presentes en el código base y registrados formalmente en la línea de tiempo oficial.*
-
-| Hito | Descripción | Evidencia en código | Estado |
-|------|-------------|---------------------|--------|
-| M21 Lifetimes avanzados | Sistema de tipos de lifetime/región (M21.1-M21.2), tracking (M21.3) y resolución de regiones (M21.4) según Manual 4 §4.3. M21.4: region graph + union-find cableados en el analizador auto-hospedado (region_resolver unifica EQUALS, detecta ciclos OUTLIVES y verifica violaciones kind/ámbito) | nucleo/lifetimes.syn; nucleo/analizador_semantico.syn; nucleo/principal.syn; compilador/generator/context.py (POINTER_TYPES RegionGraph/UnionFind); Commit 3b3841c | ✅✅ COMPLETADO |
-| M22 Refactorización RAII y Scopes | Scope stack RAII (M22.2), destructor map y modo --safe con aserciones de lifetime en C generado (M22.5) | nucleo/generator.syn (L141, L173, L203-208, L339-345); tests/validate_raii_m22_4.c; tests/validate_raii_scopes.c | ✅✅ COMPLETADO |
-
+- **Objetivo:** Implementar el modelo de memoria híbrido de Syquex (Arenas + RC + Análisis de alcance).
+- **Entregables:**
+  - `runtime/core/memory.c`: Ampliación con funciones de Arena (`arena_crear`, `arena_alloc`, `arena_free`).
+  - `syquex/analizador_alcance.syq`: Módulo que recorre el AST traducido y calcula el último uso de cada variable para insertar liberaciones.
+  - Implementación de `rc<T>` (no atómico) y `arc<T>` (atómico) en el runtime.
+  - Implementación de `débil<T>` con detección de ciclos en compilación.
+  - Pruebas de fugas de memoria (AddressSanitizer) para confirmar que no hay leaks.
+- **Criterios de Aceptación:** Los programas Syquex no tienen fugas de memoria. El análisis de alcance inserta correctamente `arena_free` y `rc_decrementar` en todos los caminos de ejecución (incluyendo salidas tempranas).
+- **Dependencias:** Fase 22.
+- **Riesgos y Mitigaciones:** Alto. El análisis de alcance debe ser interprocedural. Se debe comenzar con un análisis de ámbito simple y luego añadir complejidad progresivamente.
+- **Duración Estimada:** 6 meses (incluye Fase 23.B integrada).
 
 ---
 
-### 🔄 FASE R: REPARACIÓN DE INSTALACIÓN LIMPIA — EN PROGRESO (7/9 ME, 2026-08-03/04)
+### FASE 23.B: CFG Y CLEANUP BLOCKS (Integrada en Fase 23)
 
-*Diagnóstico: los workflows de GitHub fallaban al compilar el binario estático y la
-instalación limpia no generaba `synapse.exe` (objetos `.o` huérfanos e ignorados que solo
-existían localmente). Plan de reparación: `docs/PLAN_REPARACION_INSTALACION_LIMPIA.md`.*
-
-| ME | Descripción | Estado |
-|----|-------------|--------|
-| ME-R1 | Workflows CI enlazan el runtime modular completo (`memory.c`, `concurrency.c`, `tweetnacl.c`) | ✅ COMPLETADO `7734d2b` |
-| ME-R2 | `pipeline.py` compila el runtime desde fuente a `build/obj/` y PROPAGA errores | ✅ COMPLETADO `80e18dd` |
-| ME-R3 | `build.sh`/`build.bat` alineados Manual 9 §9.1; paso fixup muerto eliminado | ✅ COMPLETADO `c5f5b17` |
-| ME-R4 | Toolchain: GCC forzado antes que clang (`cli.py`) | ✅ COMPLETADO `547f1e8` |
-| ME-R5 | Bootstrap auto-hospedado: link desde fuente (S1→S2→S3, diff 0 bytes) | ✅ COMPLETADO `0f1ac2c` |
-| ME-R6 | Instalador funcional + rutas absolutas del runtime vía `GetModuleFileNameA` | ✅ COMPLETADO `51ea954` |
-| ME-R7 | Tests reales en clon limpio (fixture auto-compilación) + deudas D1/D2/D6 | ✅ COMPLETADO `8310c17` |
-| ME-R8 | Higiene del repositorio (`.o` huérfanos, `Native`, accidentes, `.axon_cache`/`test_lsp_bin.oculto`, D4/D5) | 🔄 EN PROGRESO |
-| ME-R9 | Workflow `clean-install.yml` + documentación + certificación final + deudas D3/D7/D8/D9 | ⬜ PENDIENTE |
-
-**Certificación parcial:** suite completa **667 passed, 0 failed** | clon limpio: bootstrap +
-integración 331 passed + `test_axon_e2e.py` 5 passed (sin `.o` ni binarios) | binario
-instalado compila desde CWD aislado | bootstrap S1→S2→S3 diff 0 bytes.
+- **Objetivo:** Implementar generación de Cleanup Blocks para salidas tempranas (`?`, `retornar`).
+- **Entregables:**
+  - Construcción del Control Flow Graph (CFG) para cada función en `syquex/analizador_alcance.syq`.
+  - Análisis de Liveness para determinar variables vivas en cada punto de salida.
+  - Generación de bloques de cleanup en el generador de código C.
+  - Semántica de Move en canales (invalida la variable origen al enviar).
+- **Criterios de Aceptación:** Las funciones con múltiples `retornar` o `?` liberan correctamente todos los recursos en todos los caminos.
+- **Duración Estimada:** 2 meses (paralelo al desarrollo del modelo de memoria).
 
 ---
 
-## 4. MÉTRICAS DEL PROYECTO (Verificadas al 2026-07-31)
+### FASE 24: BIBLIOTECA ESTÁNDAR DE SYQUEX (`lib/`)
 
-| Métrica | Valor | Estado |
-|---------|-------|--------|
-| Tests Python core | 184/184 PASS, 0 failed | ✅✅ Verificado|
-| Tests C (validate_*.c) | 19 archivos de validación nativa | ✅✅ Verificado|
-| Tests integración Python | 17 archivos (4,492 líneas) | ✅✅ Verificado|
-| Tests unitarios Python | 6 archivos (1,410 líneas) | ✅✅ Verificado|
-| Tests C nativos | 34 archivos .c en tests/ | ✅✅ Verificado|
-| GitHub Workflows | 10 archivos .yml | ✅✅ Verificado|
-| Módulos del runtime | 3 (.c) + 2 (.h) + synapse_rt.c base | ✅✅ Verificado|
-| Archivos núcleo (nucleo/) | ~77 archivos (C, H, Syn, Python) | ✅✅ Verificado|
-| Librería estándar | 30 módulos .syn | ✅✅ Verificado|
-| Extensión VS Code | Completa (package.json, extension.js, snippets, syntaxes) | ✅✅ Verificado|
-| Documentación | 6 archivos .md en docs/ | ✅✅ Verificado|
-| Axon runtime | axon_rt.c (166KB) + tweetnacl.c | ✅✅ Verificado|
-| Fases completadas | 22 de 22 planificadas | ✅✅ |
-| Fases en progreso | 0 | — |
-
----
-
-## 5. FASES — TABLA RESUMEN
-
-| # | Fase | Fecha | Estado |
-|---|------|-------|--------|
-| 0 | Fundación y Saneamiento | 2026-07-22 | ✅✅✅ COMPLETADO |
-| 1 | Núcleo y Pipeline Base | 2026-07-22/24 | ✅✅✅ COMPLETADO |
-| 2 | Concurrencia y Tipos | 2026-07-24/25 | ✅✅✅ COMPLETADO |
-| 3 | LSP y VS Code | 2026-07-24/25 | ✅✅✅ COMPLETADO |
-| 4 | Contratos y Bootstrap | 2026-07-24 | ✅✅✅ COMPLETADO |
-| 5 | Axon y Edge AI | 2026-07-24/25 | ✅✅✅ COMPLETADO |
-| 6 | PGO/LTO | 2026-07-25 | ✅✅✅ COMPLETADO |
-| 7 | Caché Incremental | 2026-07-26 | ✅✅✅ COMPLETADO |
-| 8 | Concurrencia Distribuida | 2026-07-26 | ✅✅✅ COMPLETADO |
-| 9 | Time-Travel Debug | 2026-07-26 | ✅✅✅ COMPLETADO |
-| 10 | Hardening Industrial | 2026-07-26 | ✅✅✅ COMPLETADO |
-| 11 | Liberación y Distribución | 2026-07-26 | ✅✅✅ COMPLETADO |
-| 12 | LLVM + WASM | 2026-07-26/27 | ✅✅✅ COMPLETADO |
-| 13 | AI Nativa | 2026-07-27 | ✅✅✅ COMPLETADO |
-| 14 | Federated Learning | 2026-07-27 | ✅✅✅ COMPLETADO |
-| 15 | Verificación Formal | 2026-07-27 | ✅✅✅ COMPLETADO |
-| 16 | Memoria Cuántica | 2026-07-27 | ✅✅✅ COMPLETADO |
-| 17 | Modularización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
-| 18 | CanalRemoto v2 | 2026-07-28 | ✅✅✅ COMPLETADO |
-| 19 | Optimización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
-| 20 | Certificación de Producción y Hardening Final | 2026-07-30 | ✅✅ COMPLETADO |
-| 21 | Hitos Avanzados M21-M22 | 2026-08-01 | ✅✅ COMPLETADO |
-| R | Reparación Instalación Limpia (Fase R) | 2026-08-03/04 | 🔄 EN PROGRESO (7/9 ME) |
-
-**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **1 EN PROGRESO (Fase R, 7/9)** | **0 PENDIENTES**
+- **Objetivo:** Construir la biblioteca estándar de Syquex, incluyendo módulos de alto nivel.
+- **Entregables:**
+  - `lib/io.syq`: Entrada/salida (consola, archivos).
+  - `lib/math.syq`: Matemáticas y estadísticas (extiende `std/math` de Synapse).
+  - `lib/texto.syq`: Manipulación avanzada de cadenas (split, join, regex).
+  - `lib/lista.syq`: Operaciones con listas (map, filter, reduce, sort).
+  - `lib/mapa.syq`: Operaciones con mapas/diccionarios.
+  - `lib/json.syq`: Serialización JSON (FFI a cJSON).
+  - `lib/web.syq`: Servidor HTTP básico (FFI a libmicrohttpd).
+  - `lib/db.syq`: Conexión a SQLite (FFI a libsqlite3) y PostgreSQL (FFI a libpq).
+  - `lib/tiempo.syq`: Fechas y tiempos.
+  - `lib/pruebas.syq`: Framework de testing (similar a unittest).
+  - `lib/ia.syq`: Integración con OpenSyn.
+- **Criterios de Aceptación:** Todos los módulos `lib/` compilan y pasan sus pruebas unitarias. La interfaz es idiomática para Syquex.
+- **Dependencias:** Fase 23.
+- **Riesgos y Mitigaciones:** Alto. El FFI con C (marshaling) debe ser robusto. Se requiere una estrategia de zero-copy para cadenas.
+- **Duración Estimada:** 8 meses (incluye Fase 24.B integrada).
 
 ---
 
-## 6. DEPENDENCIAS ENTRE FASES
+### FASE 24.B: ARENAS DE COMPONENTE Y FFI MARSHALING (Integrada en Fase 24)
 
-```
-Fase 0 (Fundación)
-   └── Fase 1 (Núcleo)
-        ├── Fase 2 (Concurrencia) → Fase 7 (Caché)
-        ├── Fase 3 (LSP) → Fase 11.4 (Marketplace)
-        ├── Fase 4 (Contratos) → Fase 10.1 → Fase 15
-        ├── Fase 5 (Axon) → Fase 17 (Modularización)
-        ├── Fase 6 (PGO/LTO)
-        └── Fase 8 (Concurrencia Distribuida)
-             ├── Fase 9 (Time-Travel)
-             ├── Fase 12 (LLVM/WASM)
-             └── Fase 18 (CanalRemoto v2) ✔️
-Fase 10 → Fase 11 (Liberación)
-Fase 13 → Fase 14 (Federated)
-Fase 16 (Cuántica) → independiente
-Fase 19 (Optimización) ← COMPLETADA ✅
-```
+- **Objetivo:** Implementar arenas de componente para GUI/DOM y el sistema de marshaling para FFI.
+- **Entregables:**
+  - `runtime/core/component_arena.c`: Gestión de arenas jerárquicas para componentes UI.
+  - `lib/gui.syq`: Bindings a GTK con arenas de componente.
+  - `lib/dom.syq`: Manipulación del DOM (WASM) con arenas de componente.
+  - `syquex/ffi_marshaling.syq`: Generación automática de conversión para tipos (texto → const char*, estructuras → struct C).
+  - Zero-Copy C-String Marshaling.
+- **Criterios de Aceptación:** Las aplicaciones GUI con componentes anidados liberan memoria correctamente al destruir ventanas. La llamada a funciones C maneja cadenas sin copias innecesarias.
+- **Duración Estimada:** 2 meses (paralelo al desarrollo de la biblioteca estándar).
 
 ---
 
-## 7. REGISTRO DE CAMBIOS
+### FASE 25: BACKEND WASM Y FRONTEND (SYQUEX)
 
-| Fecha | Versión | Cambio | Autor |
-|-------|---------|--------|-------|
-| 2026-07-28 | 2.0 | Cierre Fase 19 — purga de 4,329 líneas de deuda técnica (F17), consolidación runtime, fix FFI SIMD. 19 fases COMPLETADAS, 0 EN PROGRESO. | Buffy (Freebuff AI) |
+- **Objetivo:** Extender el backend de Syquex para generar WASM y proporcionar un módulo para frontend (DOM).
+- **Entregables:**
+  - `nucleo/wasm_backend.syn`: Adaptación para soportar Syquex (ya compartido).
+  - `lib/dom.syq`: Implementación completa de manipulación del DOM (crear elementos, eventos, estilos).
+  - Ejemplo de SPA (Single Page Application) en Syquex que corre en navegador.
+  - Pruebas E2E con un navegador headless (Playwright o Puppeteer).
+- **Criterios de Aceptación:** El compilador de Syquex genera WASM válido. La SPA de ejemplo funciona correctamente en navegadores modernos.
+- **Dependencias:** Fase 24.
+- **Riesgos y Mitigaciones:** Medio. La interacción con el DOM a través de WASM requiere un binding cuidadoso. Se debe usar la API de WebIDL para generar los bindings automáticamente.
+- **Duración Estimada:** 4 meses.
 
-| 2026-07-30 | 5.1.1-industrial | M0.3.8: Roadmap actualizado con ✅✅ doble check de Fase 0 a Fase 19 + pipeline bootstrap Fase 20. Sanitizadores (ASan/UBSan/TSan): infraestructura funcional (fuzz_engine.py/fuzz_engine.py --sanitize/run_stress.py --tsan), ejecución completa pendiente. 84/84 unit tests PASS. Auditación lexicográfico/alfabético/determinismo completada. | Buffy (Freebuff AI) |
-
-| 2026-07-30 | 5.1.1-industrial | M20.1–M20.5: Certificación de producción completa. Empaquetado multi-target, SBOM SPDX 2.3, validación cruzada (337/337 tests), sellado criptográfico Ed25519 + SLSA L3, checklist Manual 9 §9.7, saneamiento pre-despliegue. Excisión toolchain (10,569 archivos), LICENSE MIT, README.md v5.1.1-industrial. Push a GitHub + tag v5.1.1-industrial creado. **Fase 20 certificada. Proyecto completo.** | Buffy (Freebuff AI) |
-
-| 2026-08-01 | 5.1.1-industrial | M21.4: Resolución de regiones/lifetimes completada en el analizador auto-hospedado (region graph + union-find, paridad Manual 4 §4.3). Commit 3b3841c. Validado: bootstrap stage-2/stage-3 byte-idénticos (S2==S3), suite completa 667 passed / 9 skipped / 1 xfailed. **Fase 21 marcada COMPLETADA (22/22 fases).** | Synapse dev (opencode) |
-| 2026-08-04 | 5.1.1-industrial | **FASE R (Reparación Instalación Limpia) — 7/9 ME completados** (plan: `docs/PLAN_REPARACION_INSTALACION_LIMPIA.md`): ME-R1 workflows enlazan runtime modular completo (`7734d2b`), ME-R2 pipeline compila runtime desde fuente + propaga errores (`80e18dd`), ME-R3 build.sh/build.bat alineados Manual 9 §9.1 (`c5f5b17`), ME-R4 toolchain GCC forzado (`547f1e8`), ME-R5 bootstrap auto-hospedado desde fuente (`0f1ac2c`), ME-R6 instalador funcional + rutas absolutas del runtime (`51ea954`), ME-R7 tests reales en clon limpio + deudas D1/D2/D6 (`8310c17`). Suite completa: 667 passed, 0 failed. Pendientes: ME-R8 (higiene repo) y ME-R9 (certificación final + workflow clean-install). | Buffy (Freebuff AI) |
 ---
 
-*Roadmap vivo — toda fase marcada COMPLETADA ha sido verificada contra archivos, commits y tests existentes en el repositorio.*
+### FASE 26: OPENSYN PARA SYQUEX (ASISTENTE IA)
+
+- **Objetivo:** Adaptar OpenSyn para que soporte Syquex (explicación, generación, transpilación y bindings) e implementar el sistema de inyección de contexto estático, el bucle de validación automática y la orquestación de la corrección de código generado.
+- **Entregables:**
+  - `opensyn/router.syn`: Extensión para manejar consultas específicas de Syquex.
+  - `opensyn/transpiler.syn`: Transpilación Python → Syquex (mapeo de tipos y estructuras).
+  - **Sistema de inyección de contexto estático:** Integración en el pipeline RAG de un bloque de reglas de Synapse/Syquex (gramática, modelo de memoria, ejemplos) en el System Prompt de cada consulta. Este bloque debe ser configurable y actualizable mediante el archivo de configuración.
+  - **Comando `opensyn ai bindings --header header.h`:** Generación automática de wrappers en Syquex a partir de cabeceras C.
+  - **Comando `opensyn ai transpile --from python script.py --to syquex`:** Transpilación de Python a Syquex.
+  - **Bucle de validación:** Implementación en el LSP de la orquestación del bucle de hasta 3 intentos para corregir código generado que no compila, utilizando el flag `--check` del CLI de Synapse.
+  - Pruebas de integración que verifiquen que el código transpilado compila, que los bindings son correctos y que el bucle de corrección funciona.
+- **Criterios de Aceptación:** OpenSyn genera código Syquex válido a partir de Python y de cabeceras C. Las explicaciones de código Syquex son precisas. El bucle de validación reduce la tasa de errores de compilación del código generado a menos del 5% en los primeros 3 intentos. El contexto estático se inyecta correctamente en cada prompt.
+- **Dependencias:** Fase 25, Fase 12 (IA Nativa de Synapse).
+- **Riesgos y Mitigaciones:** Medio. El mapeo de tipos dinámicos de Python a estáticos de Syquex requiere un análisis de tipo avanzado. Se debe empezar con un subconjunto de Python (sin clases complejas) y expandir gradualmente. El bucle de validación debe ser eficiente para no degradar la experiencia de usuario.
+- **Duración Estimada:** 5 meses.
+
+---
+
+### FASE 27: HERRAMIENTAS DE DESARROLLO (LSP, VS CODE, DEBUGGER, CLI CHECK)
+
+- **Objetivo:** Completar el ecosistema de herramientas de desarrollo para Synapse y Syquex, incluyendo la integración completa del bucle de validación en el LSP y el flag `--check` en el CLI.
+- **Entregables:**
+  - `nucleo/lsp.syn`: Servidor LSP nativo con soporte para ambos lenguajes y orquestación del bucle de validación (hasta 3 intentos de corrección).
+  - **Flag `--check` / `--no-emit` en el CLI:** Implementación en `synapse` de un modo de validación que solo verifica sintaxis y semántica sin generar código de salida, utilizado por el LSP para la validación rápida.
+  - `vscode-synapse/`: Extensión VS Code con resaltado, autocompletado, diagnóstico, comandos IA y soporte para el bucle de corrección (mostrar progreso, errores, etc.).
+  - CLI unificado (`synapse`): `build`, `run`, `test`, `fetch`, `opensyn`, `debug`, `check`.
+  - Debugger integrado (time-travel, breakpoints reversibles) con integración en VS Code.
+  - Pruebas E2E del LSP, la extensión y el flag `--check`.
+- **Criterios de Aceptación:** La experiencia de desarrollo (edición, depuración, asistencia IA) es fluida y comparable a la de lenguajes establecidos. El flag `--check` funciona correctamente y es utilizado por el LSP. Las pruebas E2E confirman la integración completa.
+- **Dependencias:** Fase 26.
+- **Riesgos y Mitigaciones:** Alto. El LSP debe manejar múltiples documentos y cambios incrementales sin fallos. Se debe implementar un mecanismo de sincronización robusto.
+- **Duración Estimada:** 6 meses.
+
+---
+
+### FASE 28: CERTIFICACIÓN DE SYQUEX
+
+- **Objetivo:** Validar la estabilidad, el rendimiento y la corrección del lenguaje Syquex y su integración con OpenSyn.
+- **Entregables:**
+  - Suite de tests unitarios e integración completa para Syquex, incluyendo pruebas específicas del bucle de validación y de la inyección de contexto estático.
+  - Pruebas de fuzzing y estrés (concurrencia, memoria, FFI).
+  - Pruebas de rendimiento (benchmarks comparativos con Python y Go).
+  - Documentación final (tutoriales, guías de referencia, API).
+  - Ejemplos de aplicaciones reales (CRUD web, herramienta CLI, GUI básica, uso de OpenSyn).
+  - Análisis de cobertura de código ( >95% ).
+- **Criterios de Aceptación:** Todos los tests pasan. Los benchmarks muestran que Syquex es 10-50x más rápido que Python en tareas equivalentes. No hay fugas de memoria en pruebas de larga duración. El bucle de validación reduce los errores de compilación en código generado a menos del 5%.
+- **Dependencias:** Fase 27.
+- **Riesgos y Mitigaciones:** Medio. El rendimiento de la biblioteca estándar (FFI) debe optimizarse. Se debe perfilar y mejorar los cuellos de botella.
+- **Duración Estimada:** 4 meses.
+
+---
+
+### FASE 29: DETECCIÓN DE HARDWARE Y GESTIÓN DE MODELOS (OPENSYN)
+
+- **Objetivo:** Implementar la detección automática de hardware y la gestión de modelos codec para OpenSyn.
+- **Entregables:**
+  - `std/os.syn`: Funciones de detección de sistema (`memoria_total`, `vram_total`, `cpu_nucleos`, `arquitectura`).
+  - `opensyn/installer.syn`: Script que selecciona y descarga el modelo GGUF apropiado según la VRAM/CPU. Debe verificar si ya existe un modelo en `~/.opensyn/models/` y preguntar al usuario si desea usarlo o descargar el recomendado.
+  - Lógica de almacenamiento en `~/.opensyn/models/` y reutilización de modelos existentes.
+  - Verificación de integridad con SHA-256.
+  - Configuración automática de `llama-server` (número de hilos, capas GPU, contexto) basada en el hardware detectado.
+- **Criterios de Aceptación:** El instalador de OpenSyn detecta correctamente el hardware y descarga el modelo más adecuado. Las descargas fallidas se recuperan y verifican. Si existe un modelo compatible, se ofrece al usuario la opción de reutilizarlo.
+- **Dependencias:** Fase 26, Fase 11.
+- **Riesgos y Mitigaciones:** Bajo. La detección de hardware es estándar en sistemas operativos modernos.
+- **Duración Estimada:** 3 meses.
+
+---
+
+### FASE 30: INSTALACIÓN UNIFICADA Y DISTRIBUCIÓN FINAL
+
+- **Objetivo:** Crear el instalador de un solo clic que permita instalar el ecosistema completo (Synapse + Syquex + OpenSyn) o solo Synapse.
+- **Entregables:**
+  - Scripts de instalación para Windows (Inno Setup), Linux (Bash + `.deb`/`.rpm`/AppImage), macOS (`.dmg`/`.pkg`).
+  - Opciones de instalación: "Solo Synapse" vs "Ecosistema completo" (incluye Syquex y OpenSyn).
+  - Verificación de firmas Ed25519 de todos los artefactos descargados.
+  - Pruebas de humo post-instalación (compilar `01_basico.syn` y `01_basico.syq`, consultar OpenSyn).
+  - Mecanismo de actualización automática (`synapse update`).
+  - Publicación en GitHub Releases, Axon Hub y VS Code Marketplace.
+- **Criterios de Aceptación:** El instalador funciona en sistemas limpios. La instalación completa (incluyendo OpenSyn) no requiere intervención manual del usuario más allá de la selección inicial. Las actualizaciones se aplican correctamente.
+- **Dependencias:** Fase 29, Fase 11.
+- **Riesgos y Mitigaciones:** Medio. La compatibilidad entre versiones de modelos y binarios debe ser estricta. Se debe proporcionar un mecanismo de rollback en caso de fallo de actualización.
+- **Duración Estimada:** 4 meses.
+
+---
+
+## RESUMEN DE DURACIONES Y DEPENDENCIAS
+
+| Fase | Duración (meses) | Dependencias críticas |
+|------|------------------|-----------------------|
+| 0 | 1 | - |
+| 1 | 2 | 0 |
+| 2 | 4 | 1 |
+| 3 | 3 | 2 |
+| 4 | 3 | 3 |
+| 5 | 3 | 4 |
+| 6 | 3 | 5 |
+| 7 | 3 | 6 |
+| 8-21 | 24 (total, secuencial) | 7 |
+| 22 | 4 | 21 |
+| 23 | 6 | 22 |
+| 24 | 8 | 23 |
+| 25 | 4 | 24 |
+| 26 | 5 | 25, 12 |
+| 27 | 6 | 26 |
+| 28 | 4 | 27 |
+| 29 | 3 | 26, 11 |
+| 30 | 4 | 29, 11 |
+
+**Duración total estimada (secuencial):** 1 + 2 + 4 + 3 + 3 + 3 + 3 + 3 + 24 + 4 + 6 + 8 + 4 + 5 + 6 + 4 + 3 + 4 = **90 meses (7.5 años)**.
+
+*Nota: Esta duración es secuencial. Con un equipo de 5-7 ingenieros trabajando en paralelo en diferentes fases (especialmente después de la Fase 7), se puede reducir significativamente a **4-5 años calendario**.*
+
+---
+
+## HITOS PRINCIPALES (CHECKPOINTS)
+
+| Hito | Fase completada | Entregable tangible |
+|------|-----------------|---------------------|
+| Hito 1 | Fase 5 | Compilador de Synapse auto-hospedado (bootstrap funcional). |
+| Hito 2 | Fase 7 | Soporte para LLVM y WASM. |
+| Hito 3 | Fase 21 | Synapse completo (todos los módulos avanzados). |
+| Hito 4 | Fase 22 | Traductor Syquex funcional (primer programa .syq compilado). |
+| Hito 5 | Fase 24 | Biblioteca estándar de Syquex (GUI, Web, DB). |
+| Hito 6 | Fase 26 | OpenSyn soporta Syquex con contexto estático, transpilación, bindings y bucle de validación. |
+| Hito 7 | Fase 28 | Syquex certificado (v1.0). |
+| Hito 8 | Fase 30 | Instalador unificado (lanzamiento público). |
+
+---
+
+## GUÍA DE EJECUCIÓN POR FASES (DETALLE DE ARCHIVOS)
+
+Para cada fase, los equipos deben crear los archivos listados en los entregables. A continuación, se proporciona un mapa de archivos por fase (no exhaustivo, pero suficiente para guiar la implementación).
+
+**Fase 1:** `nucleo/lexer.syn`, `nucleo/parser.syn`, `nucleo/tokens.syn`, `nucleo/ast_nodes.syn`.  
+**Fase 2:** `nucleo/tabla_simbolos.syn`, `nucleo/analizador_semantico.syn`, `nucleo/errores.syn`.  
+**Fase 3:** `nucleo/generator.syn`, `runtime/core/memory.c`, `runtime/core/io.c`.  
+**Fase 4:** `runtime/core/concurrency.c`, `std/concurrencia.syn`.  
+**Fase 5:** `nucleo/verificador_formal.syn`, `bootstrap.sh` / `build.bat`.  
+**Fase 6:** `axon/axon_rt.c`, `axon/tweetnacl.c`, `axon/axon.toml`.  
+**Fase 7:** `nucleo/llvm_backend.syn`, `nucleo/wasm_backend.syn`.  
+**Fase 22:** `syquex/lexer.syq`, `syquex/parser.syq`, `syquex/traductor.syq`, `nucleo/ast_abi.syn`.  
+**Fase 23:** `syquex/analizador_alcance.syq`, `runtime/core/memory.c` (ampliación).  
+**Fase 24:** `lib/io.syq`, `lib/math.syq`, `lib/texto.syq`, `lib/lista.syq`, `lib/mapa.syq`, `lib/json.syq`, `lib/web.syq`, `lib/gui.syq`, `lib/dom.syq`, `lib/db.syq`, `lib/tiempo.syq`, `lib/pruebas.syq`, `lib/ia.syq`, `syquex/ffi_marshaling.syq`, `runtime/core/component_arena.c`.  
+**Fase 25:** `lib/dom.syq` (completado).  
+**Fase 26:** `opensyn/router.syn`, `opensyn/transpiler.syn`, actualización de `synapse_rag.c` para inyección de contexto estático, `opensyn/installer.syn` (primera versión).  
+**Fase 27:** `nucleo/lsp.syn` (con bucle de validación), `vscode-synapse/`, CLI con flag `--check`.  
+**Fase 29:** `std/os.syn`, `opensyn/installer.syn` (completado).  
+**Fase 30:** Scripts de instalación (`.iss`, `.sh`, `.dmg`), `Makefile` / `build.py`.
+
+---
+
+## RIESGOS GLOBALES Y ESTRATEGIAS DE MITIGACIÓN
+
+| Riesgo | Impacto | Mitigación |
+|--------|---------|------------|
+| **Complejidad del análisis de alcance (Fase 23)** | Alto | Comenzar con un análisis de ámbito sencillo (solo funciones sin closures) y añadir complejidad gradualmente. Validar con pruebas de estrés. |
+| **Inestabilidad de la ABI del AST (Fase 22.B)** | Alto | Congelar la ABI v1 temprano. Cualquier cambio en `SemNodo` requiere una nueva versión de ABI y un traductor adaptador. |
+| **FFI y Marshaling (Fase 24.B)** | Medio | Usar una estrategia Zero-Copy probada en otros lenguajes (ej. Python ctypes). Implementar pruebas de integración con librerías C reales (SQLite, GTK). |
+| **Rendimiento del modelo de IA en OpenSyn (Fase 26)** | Medio | Optimizar la selección de modelos. Ofrecer modelos más pequeños para hardware limitado. Usar cuantización avanzada (Q4, Q5). |
+| **Falta de datos de entrenamiento para el modelo** | Medio | La estrategia de inyección de contexto estático reduce la necesidad de fine‑tuning. El bucle de validación corrige errores en tiempo real. El feedback de usuarios se recopila para mejorar el contexto. |
+| **Adopción y ecosistema** | Alto | Priorizar la experiencia de usuario (instalación cero fricción, documentación clara, ejemplos atractivos). Crear comunidad desde el día uno del lanzamiento. |
+| **Bucle de validación demasiado lento** | Medio | Asegurar que el flag `--check` sea eficiente (no generar código, solo analizar). Optimizar la comunicación entre LSP y OpenSyn. |
+
+---
+
+## CONCLUSIÓN
+
+Este roadmap define **todas las fases, hitos, entregables y criterios de aceptación** necesarios para construir el ecosistema Synapse + Syquex + OpenSyn desde cero. Cada fase está especificada con el nivel de detalle necesario para guiar a un equipo de ingenieros sin dejar espacio a interpretaciones ambiguas. Se han incorporado las modificaciones derivadas de los manuales 7 y 8, incluyendo la inyección de contexto estático para que la IA aprenda Synapse/Syquex sin fine‑tuning, el bucle de validación y corrección automática de código, y el flag `--check` en el CLI.
+
+El plan está estructurado para minimizar riesgos mediante la construcción incremental, comenzando por el núcleo de Synapse y añadiendo capas de abstracción (Syquex) y servicios (OpenSyn) sobre una base sólida y probada.
+
+**Estado:** Listo para ejecución.
