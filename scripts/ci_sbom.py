@@ -21,9 +21,13 @@ def generar_sbom_standalone(project_root, artifact_name):
     files = []
     packages = []
     
+    # Directorios que NO forman parte del SBOM: entornos, builds y distribución.
+    EXCLUIR = {'.git', '__pycache__', 'toolchain_gcc12', '.venv', 'venv', 'build',
+               'dist', 'distbin', '.pytest_cache', '.synapse', '.axon_cache'}
+
     root_hash = hashlib.sha256()
     for f in sorted(Path(project_root).rglob('*')):
-        if f.is_file() and not any(p in str(f) for p in ['.git', '__pycache__', 'toolchain_gcc12']):
+        if f.is_file() and not any(p in str(f).split(os.sep) for p in EXCLUIR):
             try:
                 root_hash.update(f.read_bytes())
                 files.append({

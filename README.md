@@ -12,18 +12,17 @@
 | Calidad | Estado |
 |---------|--------|
 | **Tests Python** | 667/667 PASS (unitarios + semántica + integración) |
-| **Tests Integración** | 337/337 PASS |
-| **Tests Nativos C** | 1/1 PASS |
-| **GCC/Clang** | 0 errores, 0 warnings |
-| **Bootstrap** | Stage0→Stage1→Stage2→Stage3, **diff=0 bytes** |
+| **Bootstrap** | Stage1→Stage2→Stage3, **diff=0 bytes** (Manual 9 §9.7) |
 | **Fuzzing** | 500+ entradas, **0 crashes** |
 | **Concurrencia** | 50 hilos, 13,004 msg/s, **0 deadlocks** |
 | **Determinismo** | SHA-256 idéntico en compilaciones repetidas |
 | **Firma Ed25519** | Verificada + detección de manipulación |
-| **SBOM SPDX 2.3** | 3,023 archivos escaneados |
-| **SLSA Level 3** | Attestación firmada |
-| **Runtime** | < 139 KB |
+| **SBOM SPDX 2.3** | Regenerado con v8.1.0-industrial |
 | **Multiplataforma** | Windows (MinGW), Linux (gcc), macOS (clang/clang ARM) |
+
+> **Nota:** métricas de rendimiento (runtime KB, msg/s) y SLSA se re-certificarán
+> en la Fase 10/17 de la auditoría (Hardening y Optimización); no se reportan como
+> verificadas hasta obtener evidencia nueva con el código v8.1.0.
 
 ---
 

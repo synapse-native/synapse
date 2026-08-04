@@ -186,7 +186,11 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 | H11 | Workflows: faltan `test.yml` (existe `ci-tests.yml`) — alinear nombres a Manual 1 §4 | Baja | Fase 0.4 | 🔄 registro — renombrar/crear alias test.yml en Fase 0.4 |
 | H12 | `opensyn/` stale: `opensyn/principal.syn` no bootstrapea (deuda D5 de Fase R) | Media | decidir en Fase 26 | ⬜ |
 | H13 | `librerias/compiler/*.syn` (53–188 líneas) son stubs legacy que DIFIEREN de `nucleo/*.syn` (734–3591 líneas); solo usados por tabla virtual embedded | Media | Fase 3 | 🔄 registro — no tocar sin auditar flujo de embedded libs |
-| H14 | **`build.bat bootstrap-full` comparaba Etapa 1 (Python, -static) vs Etapa 2 (nativa) — no es el criterio del Manual 9 §9.7 (S2 vs S3) → BINARY MISMATCH siempre** | **Crítica** | Fase 0.6 | ✅ RESUELTA — build.bat reescrito a 3 etapas nativas (S1→S2→S3), diff S2 vs S3 = 0 bytes VERIFICADO; ASCII puro + CRLF para cmd.exe |
+| H14 | **`build.bat bootstrap-full` comparaba Etapa 1 (Python, -static) vs Etapa 2 (nativa) — no es el criterio del Manual 9 §9.7 (S2 vs S3) → BINARY MISMATCH siempre** | **Crítica** | Fase 0.6 | ✅ RESUELTA — build.bat, build.sh y scripts/bootstrap.sh unificados a 3 etapas nativas (S1→S2→S3), diff S2 vs S3 = 0 bytes VERIFICADO en Windows; ASCII puro + CRLF para cmd.exe |
+| H15 | **`ci-tests.yml` job bootstrap usaba `python main.py src/main.syn` (entrada vieja) + compilaba .o a mano — desvío del Manual 9 §9.1 y de ME-R2** | Alta | Fase 0.6 | ✅ RESUELTA — corregido a `python main.py nucleo/principal.syn -o synapse_stage1.exe` + verificación de existencia |
+| H16 | **`scripts/bootstrap.sh` usaba `src/main.syn` como entrada y nomenclatura stage2/stage3 para las etapas 1/2** | Media | Fase 0.6 | ✅ RESUELTA — alineado a `nucleo/principal.syn` y nomenclatura stage1/stage2/stage3 con diff S2 vs S3 |
+| H17 | **SBOM incluía `.venv`, `build/`, `dist/` (miles de archivos de pip) — SBOM no significativo** | Media | Fase 0.6 | ✅ RESUELTA — `ci_sbom.py` excluye .venv, venv, build, dist, distbin, .pytest_cache, .synapse, .axon_cache; SBOM regenerado: 2,368 archivos, 0 refs .venv |
+| H18 | **README: métricas de insignias viejas de certificación 5.1.1 (337/337, 1/1, runtime <139KB, SLSA) inconsistentes con baseline 667** | Baja | Fase 0.6 | ✅ RESUELTA — insignias alineadas a 667 tests; runtime/SLSA marcados pendientes de re-certificación en Fases 10/17 |
 
 ---
 
@@ -200,6 +204,7 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 | 2026-08-04 | F0.4 README + estructura | ✅ Enlaces y estructura | README: MANUAL N.md (con espacio), runtime/ solo core/, métricas 667 tests, estado EN AUDITORÍA |
 | 2026-08-04 | F0.5 Bootstrap + tests | ✅ Validados | `python main.py nucleo/principal.syn` → S1 OK; **667 passed, 9 skipped, 1 xfailed** en 12:32 min; hola.syn compilado por nativo OK |
 | 2026-08-04 | F0.6 Determinismo (bug H14) | ✅ Corregido y verificado | `build.bat bootstrap-full`: S1→S2→S3; **diff 0 bytes S2 vs S3 (Manual 9 §9.7)**; causa: comparaba S1(Python) vs S2(nativa); fix ASCII+CRLF |
+| 2026-08-04 | F0.6b Revisión code-reviewer | ✅ 3 puntos críticos resueltos | H15 ci-tests.yml→nucleo/principal.syn; H16 bootstrap.sh→stage1/2/3; H17 SBOM excluye .venv/build/dist; H18 README métricas; build.sh→3 etapas nativas |
 
 ---
 
