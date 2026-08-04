@@ -60,6 +60,7 @@ def emitir_token_defs(ctx: GeneratorContext, _unused=None):
             "#define T_IMPORTAR_C 47",
             "#define T_AMPERSAND 45",
             "#define T_EXTERNO 48",
+            "#define T_PIPE 58",
             "",
             "#define MAX_TOKS 65536",
             "typedef struct { int tipo; int linea; int col; char val[1024]; } _P_Token;",
@@ -222,6 +223,7 @@ def gen_tok_c(ctx: GeneratorContext):
             "            else if (c == '>') tt = T_GT;",
             "            else if (c == '<') tt = T_LT;",
             "            else if (c == '&') tt = T_AMPERSAND;",
+            "            else if (c == '|') tt = T_PIPE;",
             "            if (tt == T_EOF) { fprintf(stderr,\"Error Lexico: caracter inesperado '%%c'(%%d) en linea %%d\\n\",c,c,li); exit(1); }",
             "            " + P + "tks[" + P + "ntks].tipo = tt; " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = co;",
             "            " + P + "ntks++; i++; co++;",
@@ -290,6 +292,8 @@ def gen_parse(ctx: GeneratorContext):
             "struct Nodo* " + _P + "term();",
             "struct Nodo* " + _P + "una();",
             "struct Nodo* " + _P + "prim();",
+            "void " + _P + "leer_constructores(struct ListaNodo** ccur);",
+            "struct Nodo* " + _P + "decl_tipo();",
             "struct Programa " + _P + "programa();",
         ])
         # Now emit the function bodies using a clean string template
@@ -307,6 +311,105 @@ struct ListaNodo* """ + _P + """bloque() {
     }
     """ + _P + """esperar(T_DEDENT);
     return lst;
+}
+void """ + _P + """leer_constructores(struct ListaNodo** ccur) {
+    while (1) {
+        if (""" + _P + """mirar()->tipo != T_IDENT) break;
+        char _cn[256]; strncpy(_cn, """ + _P + """mirar()->val, sizeof(_cn)-1); _cn[sizeof(_cn)-1] = '\\0';
+        """ + _P + """avanzar();
+        struct ConstructorTipo* c = (struct ConstructorTipo*)calloc(1,sizeof(struct ConstructorTipo));
+        c->tipo = """ + _P + """cs("ConstructorTipo"); c->nombre = """ + _P + """cs(_cn);
+        c->tipos = NULL;
+        if (""" + _P + """mirar()->tipo == T_LPAREN) {
+            """ + _P + """avanzar();
+            struct ListaNodo** tccur = &(c->tipos);
+            while (""" + _P + """mirar()->tipo != T_RPAREN && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+                char _tpb[256]; _tpb[0] = '\\0';
+                if (""" + _P + """mirar()->tipo == T_AMPERSAND) {
+                    """ + _P + """avanzar();
+                    strncat(_tpb, "&", sizeof(_tpb)-1-(int)strlen(_tpb));
+                    if (""" + _P + """mirar()->tipo == T_IDENT && strcmp(""" + _P + """mirar()->val, "mut") == 0) {
+                        strncat(_tpb, "mut ", sizeof(_tpb)-1-(int)strlen(_tpb));
+                        """ + _P + """avanzar();
+                    }
+                }
+                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                strncat(_tpb, """ + _P + """mirar()->val, sizeof(_tpb)-1-(int)strlen(_tpb));
+                """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tpb, "*", sizeof(_tpb)-1-(int)strlen(_tpb)); """ + _P + """avanzar(); }
+                struct Identificador* tip = (struct Identificador*)calloc(1,sizeof(struct Identificador));
+                tip->tipo = """ + _P + """cs("Identificador"); tip->nombre = """ + _P + """cs(_tpb);
+                *tccur = """ + _P + """mk_list((struct Nodo*)tip, NULL); tccur = &(*tccur)->cola;
+                if (""" + _P + """mirar()->tipo == T_COMMA) { """ + _P + """avanzar(); }
+                else break;
+            }
+            """ + _P + """esperar(T_RPAREN);
+        }
+        *ccur = """ + _P + """mk_list((struct Nodo*)c, NULL); ccur = &(*ccur)->cola;
+        if (""" + _P + """mirar()->tipo == T_PIPE) { """ + _P + """avanzar(); continue; }
+        break;
+    }
+}
+struct Nodo* """ + _P + """decl_tipo() {
+    """ + _P + """avanzar(); /* consume 'tipo' */
+    if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+    char _tdn[256]; strncpy(_tdn, """ + _P + """mirar()->val, sizeof(_tdn)-1); _tdn[sizeof(_tdn)-1] = '\\0';
+    """ + _P + """avanzar();
+    struct ListaNodo* tparams = NULL;
+    struct ListaNodo** tpcur = &tparams;
+    if (""" + _P + """mirar()->tipo == T_LT) {
+        """ + _P + """avanzar();
+        while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+            if (""" + _P + """mirar()->tipo != T_IDENT) break;
+            struct Identificador* tp = (struct Identificador*)calloc(1,sizeof(struct Identificador));
+            tp->tipo = """ + _P + """cs("Identificador"); tp->nombre = """ + _P + """cs(""" + _P + """mirar()->val);
+            *tpcur = """ + _P + """mk_list((struct Nodo*)tp, NULL); tpcur = &(*tpcur)->cola;
+            """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_COMMA) { """ + _P + """avanzar(); }
+            else break;
+        }
+        """ + _P + """esperar(T_GT);
+    }
+    """ + _P + """esperar(T_ASSIGN);
+    char _tbase[1024]; _tbase[0] = '\\0';
+    struct ListaNodo* ctors = NULL;
+    struct ListaNodo** ccur = &ctors;
+    if (""" + _P + """mirar()->tipo == T_LPAREN) {
+        """ + _P + """avanzar();
+        """ + _P + """leer_constructores(ccur);
+        """ + _P + """esperar(T_RPAREN);
+    } else if (""" + _P + """mirar()->tipo == T_PIPE) {
+        """ + _P + """leer_constructores(ccur);
+    } else if (""" + _P + """mirar()->tipo == T_IDENT) {
+        int _sig = (""" + _P + """tpos + 1 < """ + _P + """ntks) ? """ + _P + """tks[""" + _P + """tpos + 1].tipo : T_EOF;
+        if (_sig == T_PIPE || _sig == T_LPAREN) {
+            """ + _P + """leer_constructores(ccur);
+        } else {
+            if (""" + _P + """mirar()->tipo == T_AMPERSAND) {
+                """ + _P + """avanzar();
+                strncat(_tbase, "&", sizeof(_tbase)-1-(int)strlen(_tbase));
+                if (""" + _P + """mirar()->tipo == T_IDENT && strcmp(""" + _P + """mirar()->val, "mut") == 0) {
+                    strncat(_tbase, "mut ", sizeof(_tbase)-1-(int)strlen(_tbase));
+                    """ + _P + """avanzar();
+                }
+            }
+            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+            strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase));
+            """ + _P + """avanzar();
+            while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tbase, "*", sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
+            if (""" + _P + """mirar()->tipo == T_LT) {
+                """ + _P + """avanzar();
+                strncat(_tbase, "<", sizeof(_tbase)-1-(int)strlen(_tbase));
+                if (""" + _P + """mirar()->tipo == T_IDENT) { strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
+                """ + _P + """esperar(T_GT);
+                strncat(_tbase, ">", sizeof(_tbase)-1-(int)strlen(_tbase));
+            }
+        }
+    }
+    struct DeclaracionTipo* n = (struct DeclaracionTipo*)calloc(1,sizeof(struct DeclaracionTipo));
+    n->tipo = """ + _P + """cs("DeclaracionTipo"); n->nombre = """ + _P + """cs(_tdn);
+    n->parametros_tipo = tparams; n->tipo_base = """ + _P + """cs(_tbase); n->constructores = ctors;
+    return (struct Nodo*)n;
 }
 struct Nodo* """ + _P + """sentencia() {
 #ifdef SYN_DEBUG_PARSE
@@ -541,6 +644,11 @@ _P_retry:;
         n->nombre=""" + _P + """cs(_vn); n->expresion=val;
         return (struct Nodo*)n;
     }
+    // D-F1: declaracion_tipo (Manual 2 §2). El guard replica el del parser Python:
+    // 'tipo' + IDENTIFICADOR + ('=' | '<' | '|' | '(')
+    if (t->tipo == T_IDENT && strcmp(t->val, "tipo") == 0 && """ + _P + """tpos + 2 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_IDENT && (""" + _P + """tks[""" + _P + """tpos + 2].tipo == T_ASSIGN || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LT || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_PIPE || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LPAREN)) {
+        return """ + _P + """decl_tipo();
+    }
     // Guard: skip stray INDENT/DEDENT/NL and retry keyword matching
     if (""" + _P + """mirar()->tipo == T_INDENT || """ + _P + """mirar()->tipo == T_DEDENT || """ + _P + """mirar()->tipo == T_NL) {
         """ + _P + """avanzar();
@@ -694,6 +802,23 @@ struct Nodo* """ + _P + """prim() {
         return (struct Nodo*)n;
     }
     if (t->tipo==T_IDENT) {
+        // D-F1: 'nulo' -> LiteralNulo y 'tensor(filas, columnas)' -> ExprTensor (Manual 2 §4.1/§4.3)
+        if (strcmp(t->val, "nulo") == 0) {
+            """ + _P + """avanzar();
+            struct LiteralNulo* _ln=(struct LiteralNulo*)calloc(1,sizeof(struct LiteralNulo));
+            _ln->tipo=""" + _P + """cs("LiteralNulo");
+            return (struct Nodo*)_ln;
+        }
+        if (strcmp(t->val, "tensor") == 0 && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_LPAREN) {
+            """ + _P + """avanzar(); """ + _P + """avanzar();
+            struct Nodo* _fl=""" + _P + """expr();
+            """ + _P + """esperar(T_COMMA);
+            struct Nodo* _cl=""" + _P + """expr();
+            """ + _P + """esperar(T_RPAREN);
+            struct ExprTensor* _tn=(struct ExprTensor*)calloc(1,sizeof(struct ExprTensor));
+            _tn->tipo=""" + _P + """cs("ExprTensor"); _tn->filas=_fl; _tn->columnas=_cl;
+            return (struct Nodo*)_tn;
+        }
         char _nm[256]; strncpy(_nm, t->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\\0';
         """ + _P + """avanzar();
         if (""" + _P + """mirar()->tipo==T_LPAREN) {

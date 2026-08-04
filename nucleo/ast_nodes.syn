@@ -203,3 +203,18 @@ estructura SentenciaEnviarCanal:
 estructura ExprRecibirCanal:
     tipo: texto
     canal: Nodo
+
+estructura LiteralNulo:
+    tipo: texto
+
+estructura ConstructorTipo:
+    tipo: texto
+    nombre: texto
+    tipos: ListaNodo
+
+estructura DeclaracionTipo:
+    tipo: texto
+    nombre: texto
+    parametros_tipo: ListaNodo
+    tipo_base: texto
+    constructores: ListaNodo
