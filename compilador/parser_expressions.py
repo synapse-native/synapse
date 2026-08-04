@@ -4,13 +4,18 @@ from compilador.ast_nodes import (
     TokenID, Token, Nodo,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor,
-    ArgumentoTransferido, ExprCrearCanal,
+    LiteralNulo, ArgumentoTransferido, ExprCrearCanal,
     ExprObtenerDireccion, ExprDereferencia, ExprAccesoCampo, ExprAsm,
     ExprIndice,
 )
 from compilador.lexer import OPERADORES_BINARIOS
 from compilador.diagnostics import ErrorCodes
-from compilador.parser_base import ParserBase, _SYNC_EXPR
+from compilador.parser_base import ParserBase, _SYNC_EXPR, es_token_identificador, nombre_de_token
+
+# F1.2: constructores ADT del Manual 2 §4.2 en posición de expresión.
+_CONSTRUCTORES_ADT: frozenset = frozenset({
+    TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+})
 
 
 class ParserExpressionsMixin(ParserBase):
@@ -65,7 +70,7 @@ class ParserExpressionsMixin(ParserBase):
 
     def _parsear_multiplicacion(self) -> Nodo:
         izquierdo = self._parsear_unario()
-        ops = {TokenID.STAR, TokenID.SLASH, TokenID.MODULO}
+        ops = {TokenID.STAR, TokenID.SLASH, TokenID.MOD}
         while self._mirar().tipo in ops:
             tok_op = self._avanzar()
             derecho = self._parsear_unario()
@@ -134,10 +139,10 @@ class ParserExpressionsMixin(ParserBase):
         if t.tipo == TokenID.STRING:
             self._avanzar()
             return LiteralCadena(valor=t.valor, linea=t.linea, columna=t.columna)
-        if t.tipo == TokenID.TRUE:
+        if t.tipo == TokenID.VERDADERO:
             self._avanzar()
             return LiteralBooleano(valor=True, linea=t.linea, columna=t.columna)
-        if t.tipo == TokenID.FALSE:
+        if t.tipo == TokenID.FALSO:
             self._avanzar()
             return LiteralBooleano(valor=False, linea=t.linea, columna=t.columna)
         if t.tipo == TokenID.ASM:
@@ -148,27 +153,75 @@ class ParserExpressionsMixin(ParserBase):
             if isinstance(expr, LiteralCadena):
                 return ExprAsm(instruccion=expr.valor, linea=t.linea, columna=t.columna)
             return ExprAsm(expr=expr, linea=t.linea, columna=t.columna)
-        if t.tipo in (TokenID.IDENTIFIER, TokenID.CANAL):
+        if t.tipo == TokenID.NULO:
+            # F1.2: literal nulo (Manual 2 §4.1) — emitido como la macro `nulo`
             self._avanzar()
-            nombre = t.valor if t.tipo == TokenID.IDENTIFIER else 'canal'
+            return LiteralNulo(linea=t.linea, columna=t.columna)
+        if t.tipo == TokenID.TENSOR:
+            # F1.2: tensor(filas, columnas) como expresión (Manual 2 §2 tensor)
+            # o `tensor` como nombre de tipo/variable contextual (std/tensor.syn:
+            # `rope(tensor: tensor, ...)`); se decide tras consumir el token.
+            self._avanzar()
             if self._mirar().tipo == TokenID.LPAREN:
-                if nombre == 'tensor':
-                    expr = self._parsear_tensor(t)
-                elif nombre == 'canal':
-                    expr = self._parsear_crear_canal(t)
-                else:
-                    expr = self._parsear_llamada(Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
-            else:
-                expr: Nodo = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
+                return self._parsear_tensor(t)
+            expr: Nodo = Identificador(nombre='tensor', linea=t.linea, columna=t.columna)
             while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
                 if self._mirar().tipo == TokenID.DOT:
                     self._avanzar()
-                    tok_campo = self._esperar(TokenID.IDENTIFIER)
+                    tok_campo = self._esperar_identificador()
                     if tok_campo is None:
                         break
                     expr = ExprAccesoCampo(
                         objeto=expr,
-                        nombre_campo=tok_campo.valor,
+                        nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
+                        linea=expr.linea,
+                        columna=expr.columna,
+                    )
+                else:
+                    self._avanzar()  # consume [
+                    indice = self._parsear_expresion()
+                    self._esperar(TokenID.RBRACKET)
+                    expr = ExprIndice(
+                        expr=expr,
+                        indice=indice,
+                        linea=expr.linea,
+                        columna=expr.columna,
+                    )
+            return expr
+        if es_token_identificador(t) or t.tipo == TokenID.CANAL:
+            self._avanzar()
+            if t.tipo in _CONSTRUCTORES_ADT:
+                # F1.2: constructores ADT (ok/err/algun/ninguno) — llamada o
+                # identificador (en patrones de coincidir se manejan aparte).
+                nombre = t.valor or t.tipo.name.lower()
+                if self._mirar().tipo == TokenID.LPAREN:
+                    expr = self._parsear_llamada(
+                        Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
+                else:
+                    expr = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
+            elif t.tipo == TokenID.CANAL:
+                if self._mirar().tipo == TokenID.LPAREN:
+                    expr = self._parsear_crear_canal(t)
+                else:
+                    expr = Identificador(nombre='canal', linea=t.linea, columna=t.columna)
+            else:
+                nombre = nombre_de_token(t)
+                if nombre == 'tensor' and self._mirar().tipo == TokenID.LPAREN:
+                    expr = self._parsear_tensor(t)
+                elif self._mirar().tipo == TokenID.LPAREN:
+                    expr = self._parsear_llamada(
+                        Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
+                else:
+                    expr = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
+            while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
+                if self._mirar().tipo == TokenID.DOT:
+                    self._avanzar()
+                    tok_campo = self._esperar_identificador()
+                    if tok_campo is None:
+                        break
+                    expr = ExprAccesoCampo(
+                        objeto=expr,
+                        nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
                         linea=expr.linea,
                         columna=expr.columna,
                     )
@@ -244,9 +297,9 @@ class ParserExpressionsMixin(ParserBase):
         self._esperar(TokenID.LPAREN)
         tipo_contenido = ''
         capacidad = None
-        if self._mirar().tipo == TokenID.IDENTIFIER:
+        if es_token_identificador(self._mirar()):
             tok_tipo = self._avanzar()
-            tipo_contenido = tok_tipo.valor or ''
+            tipo_contenido = nombre_de_token(tok_tipo)
         if self._mirar().tipo == TokenID.COMMA:
             self._avanzar()
             capacidad = self._parsear_expresion()

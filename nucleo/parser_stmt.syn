@@ -49,7 +49,7 @@ funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
 
 // Helper: Parse control flow statements (if, while, for, etc.)
 funcion parsear_sentencia_control(est: ParserEst, t: entero) -> entero:
-    si t == T_IF:
+    si t == T_SI:
         retornar parsear_si(est)
     si t == T_MIENTRAS:
         retornar parsear_mientras(est)
@@ -79,7 +79,9 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
         inseguro:
             asm("est.nodos[nodo].hijo_izq = expr")
         retornar nodo
-    si t == T_IDENTIFICADOR:
+    // AUDITORIA F1 (D-F1): keywords contextuales en posicion de sentencia
+    // (ej. `tipo = nodo_tipo(...)` — variable llamada tipo)
+    si token_es_nombre(t) == 1:
         t2 = token_tipo(est, est.posicion + 1)
         si t2 == T_ASIGNAR:
             retornar parsear_asignacion(est)

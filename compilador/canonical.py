@@ -276,53 +276,53 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
                 f"{'-> ' if p.es_transferencia else ''}{p.nombre}: {p.tipo}"
                 for p in nodo.parametros
             )
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.FUNCTION, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}:")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.FUNCION, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}:")
             for s in nodo.cuerpo:
                 lines.extend(_render_nodo(s, indent + 1))
 
         elif isinstance(nodo, SentenciaSi):
             cond = _render_expr(nodo.condicion, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.IF, dicc_inv)} {cond}:")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.SI, dicc_inv)} {cond}:")
             for s in nodo.cuerpo:
                 lines.extend(_render_nodo(s, indent + 1))
             if nodo.cuerpo_sino:
-                lines.append(f"{prefijo}{_token_a_palabra(TokenID.ELSE, dicc_inv)}:")
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.SINO, dicc_inv)}:")
                 for s in nodo.cuerpo_sino:
                     lines.extend(_render_nodo(s, indent + 1))
 
         elif isinstance(nodo, SentenciaMientras):
             cond = _render_expr(nodo.condicion, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.WHILE, dicc_inv)} {cond}:")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.MIENTRAS, dicc_inv)} {cond}:")
             for s in nodo.cuerpo:
                 lines.extend(_render_nodo(s, indent + 1))
 
         elif isinstance(nodo, SentenciaRomper):
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.BREAK, dicc_inv)}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.ROMPER, dicc_inv)}")
 
         elif isinstance(nodo, SentenciaSiguiente):
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.CONTINUE, dicc_inv)}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.SIGUIENTE, dicc_inv)}")
 
         elif isinstance(nodo, SentenciaLanzar):
             llam = _render_expr(nodo.llamada, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.SPAWN, dicc_inv)} {llam}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.LANZAR, dicc_inv)} {llam}")
 
         elif isinstance(nodo, SentenciaRecuperar):
             acc = _render_expr(nodo.accion_critica, dicc_inv)
             plan = _render_expr(nodo.plan_b, dicc_inv)
-            lines.append(f"{prefijo}{acc} {_token_a_palabra(TokenID.RECOVER, dicc_inv)}: {plan}")
+            lines.append(f"{prefijo}{acc} {_token_a_palabra(TokenID.RECUPERAR, dicc_inv)}: {plan}")
 
         elif isinstance(nodo, SentenciaRetornar):
             if nodo.expr:
                 marca = " ->" if nodo.es_transferencia else ""
                 expr_str = _render_expr(nodo.expr, dicc_inv)
-                lines.append(f"{prefijo}{_token_a_palabra(TokenID.RETURN, dicc_inv)}{marca} {expr_str}")
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.RETORNAR, dicc_inv)}{marca} {expr_str}")
             else:
-                lines.append(f"{prefijo}{_token_a_palabra(TokenID.RETURN, dicc_inv)}")
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.RETORNAR, dicc_inv)}")
 
         elif isinstance(nodo, SentenciaEscuchar):
             canal = _render_expr(nodo.canal, dicc_inv)
             resp = _render_expr(nodo.respuesta, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.LISTEN, dicc_inv)} {canal} -> {resp}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.ESCUCHAR, dicc_inv)} {canal} -> {resp}")
 
         elif isinstance(nodo, SentenciaExpr):
             expr_str = _render_expr(nodo.expr, dicc_inv)
@@ -334,21 +334,21 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
 
         elif isinstance(nodo, LogLlamada):
             args = ", ".join(_render_expr(a, dicc_inv) for a in nodo.argumentos)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.LOG, dicc_inv)} {args}")
+            lines.append(f"{prefijo}log {args}")
 
         elif isinstance(nodo, SentenciaImportar):
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.IMPORT, dicc_inv)} {nodo.modulo}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.IMPORTAR, dicc_inv)} {nodo.modulo}")
 
         elif isinstance(nodo, DeclaracionExterna):
             params = ", ".join(f"{p.nombre}: {p.tipo}" for p in nodo.parametros)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERN, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}")
 
         elif isinstance(nodo, StmtConstante):
             val = _render_expr(nodo.valor, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.CONST, dicc_inv)} {nodo.nombre}: {nodo.tipo} = {val}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.CONSTANTE, dicc_inv)} {nodo.nombre}: {nodo.tipo} = {val}")
 
         elif isinstance(nodo, DefinicionEstructura):
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.STRUCT, dicc_inv)} {nodo.nombre}:")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.ESTRUCTURA, dicc_inv)} {nodo.nombre}:")
             for campo in nodo.campos:
                 lines.append(f"{prefijo}    {campo.nombre}: {campo.tipo}")
 

@@ -3,25 +3,30 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Any
 
 
+# TokenID alineados al Manual 2 §3 (nombres universales multi-idioma).
+# AUDITORIA F1 (H23): renombrados a los TokenID del manual (T_SI, T_SINO,
+# T_FUNCION, T_RETORNAR, ...) y añadidos los 14 faltantes (T_LET, T_TIPO,
+# T_TENSOR, T_NULO, T_OK, T_ERR, T_ALGUN, T_NINGUNO, T_MODULO, T_DELEGAR,
+# T_EXPORT, T_RC, T_ARC, T_DEBIL).
 class TokenID(Enum):
-    IF = auto()
-    ELSE = auto()
-    FUNCTION = auto()
-    RETURN = auto()
-    SPAWN = auto()
-    RECOVER = auto()
-    LISTEN = auto()
-    WHILE = auto()
-    IMPORT = auto()
-    STRUCT = auto()
-    BREAK = auto()
-    CONTINUE = auto()
+    SI = auto()          # T_SI     (si / if)
+    SINO = auto()        # T_SINO   (sino / else)
+    FUNCION = auto()     # T_FUNCION (funcion / function)
+    RETORNAR = auto()    # T_RETORNAR (retornar / return)
+    LANZAR = auto()      # T_LANZAR (lanzar / spawn)
+    RECUPERAR = auto()   # T_RECUPERAR (recuperar / recover)
+    ESCUCHAR = auto()    # T_ESCUCHAR (escuchar / listen)
+    MIENTRAS = auto()    # T_MIENTRAS (mientras / while)
+    IMPORTAR = auto()    # T_IMPORTAR (importar / import)
+    ESTRUCTURA = auto()  # T_ESTRUCTURA (estructura / struct)
+    ROMPER = auto()      # T_ROMPER (romper / break)
+    SIGUIENTE = auto()   # T_SIGUIENTE (siguiente / continue)
     DOT = auto()
-    AND = auto()
-    OR = auto()
-    NOT = auto()
-    TRUE = auto()
-    FALSE = auto()
+    AND = auto()         # T_AND (y / and)
+    OR = auto()          # T_OR (o / or)
+    NOT = auto()         # T_NOT (no / not)
+    VERDADERO = auto()   # T_VERDADERO (verdadero / true)
+    FALSO = auto()       # T_FALSO (falso / false)
 
     IDENTIFIER = auto()
     NUMBER = auto()
@@ -39,9 +44,9 @@ class TokenID(Enum):
     MINUS = auto()
     STAR = auto()
     SLASH = auto()
-    MODULO = auto()
+    MOD = auto()           # T_MOD (% — operador módulo; el keyword T_MODULO está abajo)
     ARROW = auto()
-    MATCH = auto()
+    COINCIDIR = auto()   # T_COINCIDIR (coincidir / match)
     ARROW_RIGHT = auto()
 
     LPAREN = auto()
@@ -65,6 +70,23 @@ class TokenID(Enum):
     PARA = auto()         # para (bucle for)
     LBRACKET = auto()     # [ índice de arreglo/tensor
     RBRACKET = auto()     # ]
+    PIPE = auto()         # | separador de constructores en declaración de tipo (Manual 2 §2 declaracion_tipo)
+
+    # AUDITORIA F1 (H22): palabras reservadas del Manual 2 §3 que faltaban.
+    LET = auto()          # T_LET (let)
+    TIPO = auto()         # T_TIPO (tipo / type)
+    TENSOR = auto()       # T_TENSOR (tensor)
+    NULO = auto()         # T_NULO (nulo / null)
+    OK = auto()           # T_OK (ok) — constructor Resultado
+    ERR = auto()          # T_ERR (err) — constructor Resultado
+    ALGUN = auto()        # T_ALGUN (algun / some) — constructor Opcion
+    NINGUNO = auto()      # T_NINGUNO (ninguno / none) — constructor Opcion
+    MODULO = auto()       # T_MODULO (modulo / module) — keyword reservado (Manual 2 §3)
+    DELEGAR = auto()      # T_DELEGAR (delegar / delegate)
+    EXPORT = auto()       # T_EXPORT (@export)
+    RC = auto()           # T_RC (rc / rc)
+    ARC = auto()          # T_ARC (arc / arc)
+    DEBIL = auto()        # T_DEBIL (débil / weak)
 
     EOF = auto()
 
@@ -268,6 +290,36 @@ class DeclaracionExterna(Nodo):
 class ExprTensor(Nodo):
     filas: Optional[Nodo] = None
     columnas: Optional[Nodo] = None
+
+
+@dataclass
+class LiteralNulo(Nodo):
+    """Literal `nulo` (Manual 2 §2: tipo_primitivo nulo / §4.1 ausencia de valor).
+    En C se emite como la macro `nulo` (((void*)0)) que ya emite el generador;
+    en inferencia de tipos equivale a 'puntero' (paridad con el tratamiento
+    previo del identificador 'nulo').
+    """
+    pass
+
+
+@dataclass
+class ConstructorTipo:
+    nombre: str = ''
+    tipos: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DeclaracionTipo(Nodo):
+    """Declaración de tipo (Manual 2 §2 declaracion_tipo / §4.2).
+    - Alias simple: `tipo X = entero`
+    - Tipo algebraico: `tipo X = ok(entero) | err(texto)`
+    El LHS puede llevar parámetros de tipo: `tipo Opcion<T> = algun(T) | ninguno`
+    (se registran en `parametros_tipo`; la emisión C usa el nombre base).
+    """
+    nombre: str = ''
+    parametros_tipo: List[str] = field(default_factory=list)
+    tipo_base: str = ''            # alias simple: tipo al que se iguala
+    constructores: List[ConstructorTipo] = field(default_factory=list)
 
 
 @dataclass

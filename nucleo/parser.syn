@@ -42,7 +42,7 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     si token_mirar(est) != T_PAREN_DER:
         r = 1
         mientras r == 1:
-            si token_mirar(est) != T_IDENTIFICADOR:
+            si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
             linea_p = token_linea(est, est.posicion)
@@ -60,7 +60,7 @@ funcion parsear_parametros(est: ParserEst) -> entero:
                     len_m = token_len_valor(est, est.posicion)
                     inseguro:
                         asm("if (len_m == 3 && ((const char*)ptr_m)[0]=='m' && ((const char*)ptr_m)[1]=='u' && ((const char*)ptr_m)[2]=='t') est.posicion++;")
-            si token_mirar(est) != T_IDENTIFICADOR:
+            si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
             token_avanzar(est)
@@ -83,7 +83,7 @@ funcion parsear_parametros(est: ParserEst) -> entero:
 
 // Helper: Parse return type
 funcion parsear_tipo_retorno(est: ParserEst) -> entero:
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
@@ -146,7 +146,7 @@ funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
 
 // Helper: Parse return type
 funcion parsear_tipo_retorno(est: ParserEst) -> entero:
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
@@ -224,7 +224,7 @@ funcion parsear_funcion(est: ParserEst) -> entero:
 funcion parsear_si(est: ParserEst) -> entero:
     stmt = 0
     r = 1
-    si token_esperar(est, T_IF) == 0:
+    si token_esperar(est, T_SI) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -265,7 +265,7 @@ funcion parsear_si(est: ParserEst) -> entero:
         inseguro:
             asm("est.nodos[nodo].hijo_der = primero_si")
     r = 1
-    si token_mirar(est) == T_ELSE:
+    si token_mirar(est) == T_SINO:
         token_avanzar(est)
         si token_esperar(est, T_DOSPUNTOS) == 0:
             retornar 0
@@ -342,7 +342,7 @@ funcion parsear_para(est: ParserEst) -> entero:
     // Ej: para i = 0 mientras i < 10:
     si token_esperar(est, T_PARA) == 0:
         retornar 0
-    si token_mirar(est) != T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 0:
         parser_error(est, "Se esperaba variable de bucle para", token_linea(est, est.posicion), token_columna(est, est.posicion))
         retornar 0
     linea = token_linea(est, est.posicion)
@@ -438,7 +438,7 @@ funcion parsear_escuchar(est: ParserEst) -> entero:
 
 funcion parsear_asignacion(est: ParserEst) -> entero:
     t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
+    si token_es_nombre(t) == 0:
         retornar 0
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
@@ -446,7 +446,7 @@ funcion parsear_asignacion(est: ParserEst) -> entero:
     si token_esperar(est, T_ASIGNAR) == 0:
         retornar 0
     nodo = parser_nuevo_nodo(est, NODO_ASIGNACION, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR y token_tipo(est, est.posicion + 1) == T_FLECHA:
+    si token_es_nombre(token_mirar(est)) == 1 y token_tipo(est, est.posicion + 1) == T_FLECHA:
         expr = parsear_recibir_canal(est)
     sino:
         expr = parsear_expresion(est)
@@ -483,11 +483,11 @@ funcion parsear_estructura_def(est: ParserEst) -> entero:
                 si t == T_FIN:
                     r = 0
                     romper
-                si t == T_IDENTIFICADOR:
+                si token_es_nombre(t) == 1:
                     token_avanzar(est)
                     si token_esperar(est, T_DOSPUNTOS) == 0:
                         retornar 0
-                    si token_mirar(est) == T_IDENTIFICADOR:
+                    si token_es_nombre(token_mirar(est)) == 1:
                         token_avanzar(est)
                 siguiente
             retornar nodo
@@ -505,7 +505,7 @@ funcion parsear_constante(est: ParserEst) -> entero:
     nodo = parser_nuevo_nodo(est, NODO_CONSTANTE, linea, col)
     si token_mirar(est) == T_DOSPUNTOS:
         token_avanzar(est)
-        si token_mirar(est) == T_IDENTIFICADOR:
+        si token_es_nombre(token_mirar(est)) == 1:
             token_avanzar(est)
     si token_esperar(est, T_ASIGNAR) == 0:
         retornar 0
@@ -590,11 +590,11 @@ funcion parsear_externo(est: ParserEst) -> entero:
         si t == T_PAREN_DER:
             r = 0
             romper
-        si t == T_IDENTIFICADOR:
+        si token_es_nombre(t) == 1:
             token_avanzar(est)
             si token_esperar(est, T_DOSPUNTOS) == 0:
                 retornar 0
-            si token_mirar(est) == T_IDENTIFICADOR:
+            si token_es_nombre(token_mirar(est)) == 1:
                 token_avanzar(est)
             si token_mirar(est) == T_POR:
                 token_avanzar(est)
@@ -605,7 +605,7 @@ funcion parsear_externo(est: ParserEst) -> entero:
         retornar 0
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     retornar nodo
 
@@ -637,14 +637,14 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
                 si t == T_FIN:
                     r = 0
                     romper
-                si t == T_IDENTIFICADOR:
+                si token_es_nombre(t) == 1:
                     linea_c = token_linea(est, est.posicion)
                     col_c = token_columna(est, est.posicion)
                     token_avanzar(est)
                     nodo_caso = parser_nuevo_nodo(est, NODO_CASO, linea_c, col_c)
                     si token_mirar(est) == T_PAREN_IZQ:
                         token_avanzar(est)
-                        si token_mirar(est) == T_IDENTIFICADOR:
+                        si token_es_nombre(token_mirar(est)) == 1:
                             token_avanzar(est)
                         si token_esperar(est, T_PAREN_DER) == 0:
                             retornar 0
@@ -671,7 +671,7 @@ funcion parsear_enviar_canal(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_ENVIAR_CANAL, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     si token_esperar(est, T_FLECHA_IZQ) == 0:
         retornar 0
@@ -686,7 +686,7 @@ funcion parsear_crear_canal(est: ParserEst) -> entero:
     nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
     si token_esperar(est, T_PAREN_IZQ) == 0:
         retornar 0
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     si token_mirar(est) == T_COMA:
         token_avanzar(est)
@@ -701,7 +701,7 @@ funcion parsear_recibir_canal(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR:
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0

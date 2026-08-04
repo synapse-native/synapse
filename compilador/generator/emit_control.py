@@ -103,7 +103,14 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
             ctx.write_line("default:")
         else:
             tag = patron.split("(")[0] if "(" in patron else patron
-            ctx.write_line(f"case TAG_{tag.upper()}:")
+            # F1.2: el tag del ADT Opcion es TAG_ALGUNO (Manual 2 §4.2 / encabezado
+            # emite #define TAG_ALGUNO 0); 'algun'.upper() daría TAG_ALGUN inexistente.
+            _TAG_MAP = {
+                'ok': 'TAG_OK', 'err': 'TAG_ERR',
+                'algun': 'TAG_ALGUNO', 'ninguno': 'TAG_NINGUNO',
+            }
+            tag_c = _TAG_MAP.get(tag, f"TAG_{tag.upper()}")
+            ctx.write_line(f"case {tag_c}:")
         ctx.write_line("{")  # Wrap body in {} to allow declarations after label
         ctx.inc_indent()
         ctx.push_scope()

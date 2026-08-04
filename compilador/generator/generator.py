@@ -11,7 +11,7 @@ from compilador.ast_nodes import (
     AsignacionVariable, AsignacionCampo, LogLlamada,
     BloqueInseguro, NodoCoincidir,
     ImportarC, DeclaracionExterna, StmtConstante,
-    SentenciaEnviarCanal,
+    SentenciaEnviarCanal, DeclaracionTipo,
     ExprAsm,
 )
 from .context import GeneratorContext
@@ -22,6 +22,7 @@ from .emit_declarations import (
     visitar_asignacion_campo, visitar_enviar_canal,
     visitar_import_c, visitar_externa, visitar_constante,
     visitar_retornar, visitar_lanzar, visitar_recuperar, visitar_escuchar,
+    visitar_declaracion_tipo,
 )
 from .emit_expressions import (
     expr_a_c, tipo_de_expr, visitar_log,
@@ -245,6 +246,10 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         visitar_enviar_canal(ctx, nodo)
     elif isinstance(nodo, DefinicionEstructura):
         pass
+    elif isinstance(nodo, DeclaracionTipo):
+        # F1.2: el typedef se emite en la sección dedicada de GeneradorC.generar()
+        # (tras las estructuras, antes de prototipos), no aquí.
+        pass
     elif isinstance(nodo, ImportarC):
         visitar_import_c(ctx, nodo)
     elif isinstance(nodo, DeclaracionExterna):
@@ -265,18 +270,21 @@ def _emitir_token_defines(ctx: GeneratorContext):
     T_FIN (57 vs 59) en la compilacion modular.
     """
     from compilador.ast_nodes import TokenID, StmtConstante
+    # AUDITORIA F1 (H23): claves = nombres actuales del enum TokenID (renombrados
+    # al Manual 2 §3); valores = constantes T_* del compilador auto-hospedado
+    # (nucleo/tokens.syn, renombradas T_SI/T_SINO). Incluye los 14 TokenID nuevos (H22).
     _T_MAP = {
-        'IF':'T_IF','ELSE':'T_ELSE','FUNCTION':'T_FUNCION','RETURN':'T_RETORNAR',
-        'SPAWN':'T_LANZAR','RECOVER':'T_RECUPERAR','LISTEN':'T_ESCUCHAR',
-        'WHILE':'T_MIENTRAS','IMPORT':'T_IMPORTAR','STRUCT':'T_ESTRUCTURA',
-        'BREAK':'T_ROMPER','CONTINUE':'T_SIGUIENTE','AND':'T_Y','OR':'T_O',
-        'NOT':'T_NO','TRUE':'T_VERDADERO','FALSE':'T_FALSO',
+        'SI':'T_SI','SINO':'T_SINO','FUNCION':'T_FUNCION','RETORNAR':'T_RETORNAR',
+        'LANZAR':'T_LANZAR','RECUPERAR':'T_RECUPERAR','ESCUCHAR':'T_ESCUCHAR',
+        'MIENTRAS':'T_MIENTRAS','IMPORTAR':'T_IMPORTAR','ESTRUCTURA':'T_ESTRUCTURA',
+        'ROMPER':'T_ROMPER','SIGUIENTE':'T_SIGUIENTE','AND':'T_Y','OR':'T_O',
+        'NOT':'T_NO','VERDADERO':'T_VERDADERO','FALSO':'T_FALSO',
         'IDENTIFIER':'T_IDENTIFICADOR','NUMBER':'T_NUMERO','FLOAT':'T_FLOTANTE',
         'STRING':'T_CADENA','GREATER':'T_MAYOR','LESS':'T_MENOR',
         'EQUALS':'T_IGUAL','NOT_EQUALS':'T_DISTINTO','LESS_EQUALS':'T_MENOR_IGUAL',
         'GREATER_EQUALS':'T_MAYOR_IGUAL','ASSIGN':'T_ASIGNAR','PLUS':'T_MAS',
-        'MINUS':'T_MENOS','STAR':'T_POR','SLASH':'T_DIV','MODULO':'T_MOD',
-        'ARROW':'T_FLECHA','MATCH':'T_COINCIDIR','ARROW_RIGHT':'T_FLECHA_DER',
+        'MINUS':'T_MENOS','STAR':'T_POR','SLASH':'T_DIV','MOD':'T_MOD',
+        'ARROW':'T_FLECHA','COINCIDIR':'T_COINCIDIR','ARROW_RIGHT':'T_FLECHA_DER',
         'LPAREN':'T_PAREN_IZQ','RPAREN':'T_PAREN_DER','COLON':'T_DOSPUNTOS',
         'COMMA':'T_COMA','NEWLINE':'T_NUEVALINEA','INDENT':'T_INDENTAR',
         'DEDENT':'T_DESINDENTAR','AMPERSAND':'T_AMPERSAND','INSEGURO':'T_INSEGURO',
@@ -285,6 +293,12 @@ def _emitir_token_defines(ctx: GeneratorContext):
         'ASM':'T_ASM','CONSTANTE':'T_CONSTANTE','SEMICOLON':'T_PUNTOCOMA',
         'PARA':'T_PARA','LBRACKET':'T_CORCH_IZQ','RBRACKET':'T_CORCH_DER',
         'EOF':'T_FIN','DOT':'T_PUNTO',
+        # H22: 14 TokenID del Manual 2 §3 (activación de keywords en el lexer
+        # auto-hospedado pendiente de soporte de parser — ver deuda D-F1).
+        'LET':'T_LET','TIPO':'T_TIPO','TENSOR':'T_TENSOR','NULO':'T_NULO',
+        'OK':'T_OK','ERR':'T_ERR','ALGUN':'T_ALGUN','NINGUNO':'T_NINGUNO',
+        'MODULO':'T_MODULO','DELEGAR':'T_DELEGAR','EXPORT':'T_EXPORT',
+        'RC':'T_RC','ARC':'T_ARC','DEBIL':'T_DEBIL',
     }
     # Valores T_* declarados en el propio programa (fuente de verdad = codigo)
     ast_vals = {}
@@ -854,6 +868,27 @@ class GeneradorC:
                 ):
                     info['campos_pointer'].add(c_nombre)
 
+        # F1.2: pre-pass de DeclaracionTipo — registrar alias y ADTs ANTES de
+        # prototipos/uso (traducir_tipo_c y visitar_coincidir dependen de ellos).
+        for s in ctx.programa.sentencias:
+            if not isinstance(s, DeclaracionTipo):
+                continue
+            if s.constructores:
+                campos = [('tag', 'entero')]
+                for c in s.constructores:
+                    t_campo = c.tipos[0] if c.tipos else 'entero'
+                    if t_campo in s.parametros_tipo:
+                        t_campo = 'puntero'
+                    campos.append((c.nombre, t_campo))
+                if s.nombre not in ctx._estructuras:
+                    ctx._estructuras[s.nombre] = {
+                        'campos': campos,
+                        'campos_pointer': set(),
+                        'es_adt': True,
+                    }
+            elif s.tipo_base and s.nombre not in ctx._tipo_aliases:
+                ctx._tipo_aliases[s.nombre] = s.tipo_base
+
         if modo == 'header':
             # Solo cabecera: #includes, tipos, prototipos + extern declarations
             # IMPORTANTE: NO llamar _emit_cabecera_comun (emite DEFINICIONES _g_argc/_argc/salir/concat)
@@ -885,6 +920,10 @@ class GeneradorC:
                 ctx.write_line("")
             for s in estructuras:
                 visitar_estructura(ctx, s)
+            # F1.2: typedefs de DeclaracionTipo (alias/ADT) en la cabecera
+            for s in ctx.programa.sentencias:
+                if isinstance(s, DeclaracionTipo):
+                    visitar_declaracion_tipo(ctx, s)
             # Prototipos de funciones
             self._emit_prototipos_funciones(ctx)
             # Declaraciones externas (DeclaracionExterna): emitir como extern
@@ -1032,6 +1071,11 @@ class GeneradorC:
             ctx.write_line("")
         for s in estructuras:
             visitar_estructura(ctx, s)
+
+        # F1.2: typedefs de DeclaracionTipo (alias/ADT) tras las estructuras
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DeclaracionTipo):
+                visitar_declaracion_tipo(ctx, s)
 
         self._emit_prototipos_funciones(ctx)
 

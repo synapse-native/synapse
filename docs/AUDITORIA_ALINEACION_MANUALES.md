@@ -9,7 +9,7 @@
 > **Inicio:** 2026-08-04
 > **Versión objetivo:** 8.1.0-industrial (manuales, gobernanza y roadmap)
 > **Versión del código al iniciar:** 5.1.1-industrial (VERSION) → ACTUALIZADA a 8.1.0-industrial
-> **Estado general:** 🔄 EN PROGRESO — Fase 0 completada, pendiente commit + revisión
+> **Estado general:** 🔄 EN PROGRESO — Fase 0 ✅ commitada y revisada (commit `auditoria(F0): revision code-reviewer…`); **Fase 1 (F1) en curso**: F1.3 parcial — TokenID alineados al Manual 2 §3 y 14 TokenID nuevos (H19–H25, D-F1 pendiente de parser); **herramienta de espejo del frontend embebido creada (H24 VIVO)** — `nucleo/_gen_frontend_p.py` + `frontend_p.syn` regenerado, espejo `_G_fp*`/`_G_tk*` exacto, bootstrap diff 0 bytes
 
 ---
 
@@ -26,6 +26,8 @@
 9. **Cero deuda técnica** (nueva o antigua): todo hallazgo se resuelve o se registra con
    resolución asignada; nada queda sin seguimiento.
 10. **Código muerto se elimina.** Todo archivo/símbolo sin uso real se borra o se justifica.
+11. **Modularizacion** todo archivo debe ser evaluado para su modularizacion.
+
 
 ## 2. PROTOCOLO DE ENTREGA (por micro-entregable)
 
@@ -70,7 +72,7 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 |---|-------|--------|--------|
 | 1.1 | `nucleo/lexer.syn`: `#lang`, INDENT/DEDENT, comentarios, cadenas, números, operadores | Manual 2 (EBNF) | ⬜ |
 | 1.2 | `nucleo/parser.syn`: descenso recursivo, AST enlazado (`Nodo*`) | Manual 2 | ⬜ |
-| 1.3 | `nucleo/tokens.syn`: `TokenID` + diccionarios multi-idioma (es/en/fr/pt) | Manual 2 | ⬜ |
+| 1.3 | `nucleo/tokens.syn`: `TokenID` + diccionarios multi-idioma (es/en/fr/pt) | Manual 2 | 🔄 TokenID renombrados al Manual 2 §3 (T_SI/T_SINO; enum Python SI/SINO/FUNCION/…) + 14 TokenID nuevos (H22); lexer Python: 6 keywords activados (let, delegar, arc, débil, @export — H21); activación completa bloqueada por colisiones con el parser actual (D-F1) |
 | 1.4 | `nucleo/ast_nodes.syn`: estructuras de nodos del AST | Manual 2 | ⬜ |
 | 1.5 | Tests unitarios lexer/parser (válidos e inválidos) | Manual 2 §Tests | ⬜ |
 | 1.6 | Criterio: ejemplos del Manual 2 tokenizan; errores con ubicación precisa | Manual 2 | ⬜ |
@@ -191,6 +193,13 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 | H16 | **`scripts/bootstrap.sh` usaba `src/main.syn` como entrada y nomenclatura stage2/stage3 para las etapas 1/2** | Media | Fase 0.6 | ✅ RESUELTA — alineado a `nucleo/principal.syn` y nomenclatura stage1/stage2/stage3 con diff S2 vs S3 |
 | H17 | **SBOM incluía `.venv`, `build/`, `dist/` (miles de archivos de pip) — SBOM no significativo** | Media | Fase 0.6 | ✅ RESUELTA — `ci_sbom.py` excluye .venv, venv, build, dist, distbin, .pytest_cache, .synapse, .axon_cache; SBOM regenerado: 2,368 archivos, 0 refs .venv |
 | H18 | **README: métricas de insignias viejas de certificación 5.1.1 (337/337, 1/1, runtime <139KB, SLSA) inconsistentes con baseline 667** | Baja | Fase 0.6 | ✅ RESUELTA — insignias alineadas a 667 tests; runtime/SLSA marcados pendientes de re-certificación en Fases 10/17 |
+| H19 | **`compilador/ast_nodes.py` definía `MODULO` dos veces** (operador `%` y keyword T_MODULO) → `TypeError: 'MODULO' already defined` al importar → **compilador Python caído** (bloqueaba toda la F1) | **Crítica** | F1 | ✅ RESUELTA — operador renombrado a `MOD`/`T_MOD` (paridad auto-hospedado `T_MOD=34`); refs en lexer.py, parser_expressions.py y tests |
+| H20 | **`_T_MAP` en `compilador/generator/generator.py` con claves obsoletas** (IF/ELSE/FUNCTION/…) tras el rename del enum → los #define T_* emitidos dependían del fallback; hubiera divergido de las constantes del auto-hospedado | Alta | F1 | ✅ RESUELTA — claves = nombres actuales del enum (SI/SINO/FUNCION/…) y valores alineados a `nucleo/tokens.syn`; añadidos los 14 nuevos (H22) |
+| H21 | **6 keywords del Manual 2 §3 conectados al lexer Python** (let→T_LET, delegar→T_DELEGAR, arc→T_ARC, débil→T_DEBIL, @export→T_EXPORT con soporte de `@`; module→T_MODULO no conectado por colisión) | Media | F1 | ✅ RESUELTA — DICCIONARIOS es/en/fr/pt + de/it (fallback EN documentado); 8 tests nuevos en test_lexer.py (endurecimiento, ver bitácora). **Nota:** estas 6 palabras pasan a ser RESERVADAS en el lexer Python (cambio de lenguaje conforme al Manual 2 §3; verificado sin regresiones en el repo — 675 tests + bootstrap) |
+| H22 | **14 TokenID del Manual 2 §3 faltantes** en enum Python y `nucleo/tokens.syn` (T_LET, T_TIPO, T_TENSOR, T_NULO, T_OK, T_ERR, T_ALGUN, T_NINGUNO, T_MODULO, T_DELEGAR, T_EXPORT, T_RC, T_ARC, T_DEBIL) | Media | F1 | ✅ RESUELTA — añadidos (59–72) en enum Python, tokens.syn, lexer.syn, parser_constantes.syn; **no activables aún** en el lexer (D-F1) |
+| H23 | **`T_IF`/`T_ELSE` (y enum IF/ELSE) no coincidían con el Manual 2 §3 (T_SI/T_SINO)** — nombre universal del token condicional | Media | F1 | ✅ RESUELTA — renombrado en los 5 `.syn` (tokens, lexer, parser_constantes, parser, parser_stmt); valores intactos (1/2); determinismo S2==S3 verificado (md5 `7911ea60…`) |
+| H24 | **Frontend embebido `_P_*` es CÓDIGO VIVO (no muerto):** el auto-hospedado S2/S3 NO usa `nucleo/lexer.syn`/`parser*.syn` sino el frontend C legacy embebido (`_P_tokenizar`/`_P_programa`), generado por `emit_selfhost.py` (S1→S2) y espejado como cadenas `_G_fp*` en `generator.syn` (`gen_emitir_frontend_p`, 758 líneas) + `_G_tk*` (`gen_emitir_tokenizar`, 17 líneas). Esquema legacy T_IF/T_ELSE/T_FUNC/T_RET auto-consistente con los valores del Manual (solo difieren los nombres). `lexer.syn`/`parser*.syn` SON código muerto en runtime (reescritos por el frontend embebido). | **Alta** | F1.2/1.4 | ✅ VIVO — tool `nucleo/_gen_frontend_p.py` CREADO (faltaba) + `nucleo/generador/frontend_p.syn` generado; espejo verificado EXACTO (doble-escapado) y `_rebuild_generator.py` reensambla `generator.syn` byte-idéntico; fix 10 bytes NUL (`'\0'`→`'\\0'`) en `emit_selfhost.py` que alineaba S1 a S2/S3; bootstrap-full OK diff 0 bytes; D-F1 se implementará en el frontend embebido (fase B) |
+| H25 | **Artefactos generados trackeados obsoletos vs `.syn` renombrados**: `nucleo/lexer.c`, `nucleo/parser.c`, `nucleo/generator.c`, `nucleo/parser_unity.c` (dumps por módulo sin script regenerador; `principal.syn.json` SÍ se regeneró en el bootstrap y `tests/integration/_synapse_shared.h` + `test_cluster_handshake.c` se regeneraron en la suite) | Baja | ME-R8 | 🔄 registro — higiene en ME-R8 (no son insumos de build) |
 
 ---
 
@@ -205,6 +214,14 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 | 2026-08-04 | F0.5 Bootstrap + tests | ✅ Validados | `python main.py nucleo/principal.syn` → S1 OK; **667 passed, 9 skipped, 1 xfailed** en 12:32 min; hola.syn compilado por nativo OK |
 | 2026-08-04 | F0.6 Determinismo (bug H14) | ✅ Corregido y verificado | `build.bat bootstrap-full`: S1→S2→S3; **diff 0 bytes S2 vs S3 (Manual 9 §9.7)**; causa: comparaba S1(Python) vs S2(nativa); fix ASCII+CRLF |
 | 2026-08-04 | F0.6b Revisión code-reviewer | ✅ 3 puntos críticos resueltos | H15 ci-tests.yml→nucleo/principal.syn; H16 bootstrap.sh→stage1/2/3; H17 SBOM excluye .venv/build/dist; H18 README métricas; build.sh→3 etapas nativas |
+| 2026-08-04 | F1.1 TokenID al Manual 2 §3 + 14 nuevos + 6 keywords activos | ✅ Completado | Renombrado enum Python (IF→SI, …) + `nucleo/tokens.syn` (T_IF→T_SI, T_ELSE→T_SINO); H19 (MODULO dup) y H20 (_T_MAP) corregidos; 14 constantes añadidas (59–72); lexer Python: let/delegar/arc/débil/@export (H21); **suite completa 675 passed, 9 skipped, 1 xfailed** (667 + 8 tests nuevos = 675); **bootstrap S1→S2→S3 OK con DIFF 0 bytes** (md5 `7911ea60…`); `nucleo/principal.syn.json` regenerado; tests modificados SOLO en referencias de token y añadidos (endurecimiento: 8 tests lexer) |
+| 2026-08-04 | F1.x Herramienta de espejo del frontend embebido (H24 VIVO) | ✅ Completado | **H24 re-clasificado: el frontend embebido `_P_*` es CÓDIGO VIVO** — S2/S3 no usan `lexer.syn`/`parser*.syn` (código muerto en runtime). Creado `nucleo/_gen_frontend_p.py` (regenera `nucleo/generador/frontend_p.syn` desde `emitir_parsear`/`emitir_tokenizar`) + `nucleo/generador/frontend_p.syn`; espejo `_G_fp*` (758) + `_G_tk*` (17) verificado EXACTO (doble-escapado: C + Synapse; decodificación = 2 pasadas de unescape); `_rebuild_generator.py` reensambla `generator.syn` **byte-idéntico** al commit; fix en `emit_selfhost.py`: 10 bytes NUL reales en el C generado (`'\0'`) → `'\\0'` (alinea S1 a S2/S3, funcionalmente idéntico); **bootstrap-full S1→S2→S3 diff 0 bytes OK**; smoke 16/16, unitarios 106, generator 49 |
+
+> **Nota F1 (tests):** conforme a la regla 5 (tests inmodificables), los únicos cambios a tests fueron: (a) renombrado de `TokenID.*` a los nombres del Manual en `tests/test_lexer.py` (consecuencia directa del rename, sin tocar aserciones de comportamiento) y (b) **8 tests NUEVOS** añadidos en `TestLexerKeywordsNuevos` (endurecimiento). Pendiente de aprobación formal del Arquitecto como quedó registrado en Fase R.
+>
+> **DEUDA D-F1 (nueva, resolución obligatoria y BLOQUEANTE para F1.2/1.4):** los keywords restantes del Manual 2 §3 (tipo, tensor, nulo, ok, err, algun, ninguno, rc, modulo) **NO se activan** en el lexer porque colisionan con identificadores/constructores existentes del lenguaje (evidencia): `rc` = variable de retorno (`std/cluster.syn:149`, `std/quantum_err_corr.syn:47`), `tipo` = campo de struct (`x.tipo`), `tensor` = tipo y constructor `tensor(filas, columnas)`, `nulo` = tipo `-> nulo:`, `ok/err/algun/ninguno` = constructores ADT, `modulo` = parámetro `gen_emitir_traza(est, modulo: puntero, …)` en `nucleo/generator.syn:343`. **Resolución: F1.2/1.4 (estratégia A en fases — decidida por el Arquitecto): FASE B** — extender el frontend embebido `_P_*` (`emit_selfhost.py` + regenerar `_G_fp*` con `nucleo/_gen_frontend_p.py`, ver H24) para soportar `tipo X = …` (alias y ADT con `|`), `nulo`, `tensor()`, constructores ADT, `let`/`delegar`/`arc`/`débil`/`@export`; luego **FASE A** — refactorizar el frontend embebido al frontend Synapse nativo (`lexer.syn`/`parser*.syn`), que hoy es código muerto en runtime (reescrito por `_P_*`). Mientras tanto los TokenID quedan DEFINIDOS (set canónico completo) pero sin mapping de palabra.
+>
+> **NOTA LATENTE (sin cambio de comportamiento):** el fallback de `_emitir_token_defines` para programas que NO declaran constantes T_* emite `T_FIN` con el valor auto() del enum (73, desplazado por los 14 nuevos) en vez de 57; el override por `ast_vals` lo neutraliza para el auto-hospedado (siempre declara T_FIN=57). Si en el futuro un programa de usuario dependiera de T_* embebidos sin declararlos, fijar 57 explícito.
 
 ---
 

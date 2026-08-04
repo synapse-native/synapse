@@ -7,7 +7,7 @@ Los emisores de tensores están en emit_tensors.py.
 from typing import Optional
 from compilador.ast_nodes import (
     Nodo, Identificador, LiteralNumero, LiteralDecimal, LiteralCadena,
-    LiteralBooleano, OpBinaria, OpUnaria, LlamadaFuncion,
+    LiteralBooleano, LiteralNulo, OpBinaria, OpUnaria, LlamadaFuncion,
     ExprAccesoCampo, ExprTensor, ExprIndice, ArgumentoTransferido,
     ExprObtenerDireccion, ExprDereferencia, ExprAsm,
     ExprCrearCanal, ExprRecibirCanal,
@@ -33,6 +33,9 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return 'texto'  # Synapse type name (consistent with traducir_tipo_c)
     if isinstance(nodo, LiteralBooleano):
         return 'int'
+    if isinstance(nodo, LiteralNulo):
+        # F1.2: literal nulo (macro `nulo` = ((void*)0)) — puntero
+        return 'puntero'
 
     if isinstance(nodo, Identificador):
         nombre = nodo.nombre
@@ -150,6 +153,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, LiteralBooleano):
         return "1" if nodo.valor else "0"
+
+    if isinstance(nodo, LiteralNulo):
+        # F1.2: emite la macro `nulo` (((void*)0)) que ya define el encabezado
+        return "nulo"
 
     if isinstance(nodo, LiteralCadena):
         # Escapar la cadena para C: \n, \r, \t, \\, \"

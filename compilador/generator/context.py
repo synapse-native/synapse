@@ -205,6 +205,9 @@ class GeneratorContext:
         self._deferred_wrap_decls: List[str] = []
         self._emitted_typedefs: set = set()  # rastreo estricto contra duplicacion estatica
         self._emitted_wrap_decls: set = set()  # idem para forward declarations
+        # F1.2: alias de tipos declarados con `tipo X = <tipo>` (Manual 2 §2
+        # declaracion_tipo). traducir_tipo_c resuelve el alias antes del fallback.
+        self._tipo_aliases: Dict[str, str] = {}
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()
@@ -392,6 +395,9 @@ class GeneratorContext:
         tipo_c = MAPA_TIPOS_C.get(tipo_synapse)
         if tipo_c is not None:
             return tipo_c
+        # F1.2: resolver alias de tipo declarados (`tipo X = Y`)
+        if tipo_synapse in self._tipo_aliases:
+            return self.traducir_tipo_c(self._tipo_aliases[tipo_synapse])
         return f"struct {tipo_synapse}"
 
     def aplicar_coercion(self, expr_c: str, tipo_origen: str,

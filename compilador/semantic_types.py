@@ -2,7 +2,7 @@ from typing import Optional
 
 from compilador.ast_nodes import (
     Nodo, LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
-    Identificador, OpBinaria, OpUnaria, LlamadaFuncion, ExprTensor,
+    LiteralNulo, Identificador, OpBinaria, OpUnaria, LlamadaFuncion, ExprTensor,
     ArgumentoTransferido, ExprAsm, ExprObtenerDireccion, ExprDereferencia,
     ExprAccesoCampo, ExprCrearCanal, ExprRecibirCanal, ExprIndice,
     DefinicionFuncion,
@@ -48,6 +48,10 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             return 'texto'
         elif isinstance(nodo, LiteralBooleano):
             return 'booleano'
+        elif isinstance(nodo, LiteralNulo):
+            # F1.2: literal nulo = puntero (paridad con el tratamiento previo
+            # del identificador 'nulo' en _inferir_tipo).
+            return 'puntero'
         elif isinstance(nodo, Identificador):
             if nodo.nombre == 'nulo':
                 return 'puntero'

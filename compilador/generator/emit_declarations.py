@@ -12,6 +12,7 @@ from compilador.ast_nodes import (
     SentenciaRetornar, SentenciaEscuchar,
     BloqueInseguro, SentenciaExpr,
     ExprAsm, Identificador, LlamadaFuncion, ArgumentoTransferido,
+    DeclaracionTipo,
 )
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
@@ -152,6 +153,48 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
     ctx.dec_indent()
     ctx.write_line(f"}} {nodo.nombre};")
     ctx.write_line("")
+
+
+# ================================================================
+# Type declaration (Manual 2 §2 declaracion_tipo / §4.2)
+# ================================================================
+
+def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
+    """F1.2: emite el typedef de una declaración de tipo.
+    - Alias simple (`tipo X = entero`): `typedef <c> X;`
+    - Tipo algebraico (`tipo X = ok(entero) | err(texto)`): tagged union
+      `typedef struct X { int tag; union {...} dato; } X;` compatible con
+      visitar_coincidir (switch sobre .tag + TAG_*) y ExprAccesoCampo (.dato.).
+    El registro de ctx._tipo_aliases / ctx._estructuras lo hace el pre-pass
+    de GeneradorC.generar() (antes de prototipos/uso).
+    """
+    if nodo.constructores:
+        partes = []
+        for c in nodo.constructores:
+            if not c.tipos:
+                continue
+            tipo_campo = c.tipos[0]
+            # placeholder para parámetros de tipo no instanciados (T, E)
+            if tipo_campo in nodo.parametros_tipo:
+                tipo_campo = 'puntero'
+            tipo_c = ctx.traducir_tipo_c(tipo_campo)
+            if tipo_c.startswith('struct '):
+                tipo_c += '*'
+            partes.append(f"{tipo_c} {c.nombre};")
+        if not partes:
+            partes.append("int _unidad;")
+        td = (f"typedef struct {nodo.nombre} {{ int tag; "
+              f"union {{ {' '.join(partes)} }} dato; }} {nodo.nombre};")
+        if td not in ctx._emitted_typedefs:
+            ctx._emitted_typedefs.add(td)
+            ctx.write_line(td)
+            ctx.write_line("")
+    elif nodo.tipo_base:
+        td = f"typedef {ctx.traducir_tipo_c(nodo.tipo_base)} {nodo.nombre};"
+        if td not in ctx._emitted_typedefs:
+            ctx._emitted_typedefs.add(td)
+            ctx.write_line(td)
+            ctx.write_line("")
 
 
 # ================================================================

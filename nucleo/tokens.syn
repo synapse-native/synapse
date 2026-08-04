@@ -1,7 +1,8 @@
 #lang: es
 
-constante T_IF = 1
-constante T_ELSE = 2
+// AUDITORIA F1 (H23): nombres alineados al Manual 2 §3 (T_SI/T_SINO).
+constante T_SI = 1
+constante T_SINO = 2
 constante T_FUNCION = 3
 constante T_RETORNAR = 4
 constante T_LANZAR = 5
@@ -56,5 +57,24 @@ constante T_ASM = 53
 constante T_CONSTANTE = 54
 constante T_PUNTOCOMA = 55
 constante T_PARA = 56
+// AUDITORIA F1 (H22): 14 TokenID del Manual 2 §3 (aún no activados en el lexer
+// auto-hospedado: colisión con identificadores/constructores existentes y soporte
+// unicode; ver deuda D-F1 en docs/AUDITORIA_ALINEACION_MANUALES.md).
+constante T_LET = 59
+constante T_TIPO = 60
+constante T_TENSOR = 61
+constante T_NULO = 62
+constante T_OK = 63
+constante T_ERR = 64
+constante T_ALGUN = 65
+constante T_NINGUNO = 66
+constante T_MODULO = 67
+constante T_DELEGAR = 68
+constante T_EXPORT = 69
+constante T_RC = 70
+constante T_ARC = 71
+constante T_DEBIL = 72
+// AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
+constante T_PIPE = 73
 // EOF removido (F15): colisiona con #define EOF (-1) de <stdio.h>
 // Usar T_FIN (57) definido en lexer.syn/parser.syn

@@ -5,7 +5,7 @@
     "sentencias": [
       {
         "_tipo": "StmtConstante",
-        "nombre": "T_IF",
+        "nombre": "T_SI",
         "tipo": "",
         "valor": {
           "_tipo": "LiteralNumero",
@@ -14,7 +14,7 @@
       },
       {
         "_tipo": "StmtConstante",
-        "nombre": "T_ELSE",
+        "nombre": "T_SINO",
         "tipo": "",
         "valor": {
           "_tipo": "LiteralNumero",
@@ -509,6 +509,141 @@
       },
       {
         "_tipo": "StmtConstante",
+        "nombre": "T_LET",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 59
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_TIPO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 60
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_TENSOR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 61
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_NULO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 62
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_OK",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 63
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_ERR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 64
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_ALGUN",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 65
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_NINGUNO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 66
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_MODULO",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 67
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_DELEGAR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 68
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_EXPORT",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 69
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_RC",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 70
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_ARC",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 71
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_DEBIL",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 72
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "T_PIPE",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 73
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
         "nombre": "T_FIN",
         "tipo": "",
         "valor": {
@@ -852,7 +987,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_IF"
+                  "nombre": "T_SI"
                 },
                 "es_transferencia": false
               }
@@ -887,7 +1022,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_ELSE"
+                  "nombre": "T_SINO"
                 },
                 "es_transferencia": false
               }
@@ -1769,6 +1904,251 @@
             ]
           },
           {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tipo"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TIPO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tensor"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TENSOR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "nulo"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NULO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ok"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_OK"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "err"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ERR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "algun"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ALGUN"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ninguno"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NINGUNO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
             "_tipo": "SentenciaRetornar",
             "expr": {
               "_tipo": "LiteralNumero",
@@ -1820,7 +2200,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_IF"
+                  "nombre": "T_SI"
                 },
                 "es_transferencia": false
               }
@@ -1855,7 +2235,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_ELSE"
+                  "nombre": "T_SINO"
                 },
                 "es_transferencia": false
               }
@@ -2737,6 +3117,251 @@
             ]
           },
           {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "type"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TIPO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tensor"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TENSOR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "null"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NULO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ok"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_OK"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "err"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ERR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "some"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ALGUN"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "none"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NINGUNO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
             "_tipo": "SentenciaRetornar",
             "expr": {
               "_tipo": "LiteralNumero",
@@ -2788,7 +3413,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_IF"
+                  "nombre": "T_SI"
                 },
                 "es_transferencia": false
               }
@@ -2823,7 +3448,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_ELSE"
+                  "nombre": "T_SINO"
                 },
                 "es_transferencia": false
               }
@@ -3670,6 +4295,251 @@
             ]
           },
           {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "type"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TIPO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tenseur"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TENSOR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "nul"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NULO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ok"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_OK"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "err"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ERR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "some"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ALGUN"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "aucun"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NINGUNO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
             "_tipo": "SentenciaRetornar",
             "expr": {
               "_tipo": "LiteralNumero",
@@ -3721,7 +4591,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_IF"
+                  "nombre": "T_SI"
                 },
                 "es_transferencia": false
               }
@@ -3756,7 +4626,7 @@
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "T_ELSE"
+                  "nombre": "T_SINO"
                 },
                 "es_transferencia": false
               }
@@ -4597,6 +5467,251 @@
                 "expr": {
                   "_tipo": "Identificador",
                   "nombre": "T_PARA"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tipo"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TIPO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "tensor"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_TENSOR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "nulo"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NULO"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "ok"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_OK"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "err"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ERR"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "algum"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_ALGUN"
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "str_eq",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "palabra"
+                  },
+                  {
+                    "_tipo": "LiteralCadena",
+                    "valor": "nenhum"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "Identificador",
+                  "nombre": "T_NINGUNO"
                 },
                 "es_transferencia": false
               }
@@ -6690,41 +7805,197 @@
                         ],
                         "cuerpo_sino": [
                           {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "LlamadaFuncion",
-                              "nombre": "lexer_push_token",
-                              "argumentos": [
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "lex"
-                                },
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "tok"
-                                },
-                                {
-                                  "_tipo": "ExprAccesoCampo",
-                                  "objeto": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "lex"
+                            "_tipo": "SentenciaSi",
+                            "condicion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "OpBinaria",
+                                "izquierdo": {
+                                  "_tipo": "OpBinaria",
+                                  "izquierdo": {
+                                    "_tipo": "OpBinaria",
+                                    "izquierdo": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "OpBinaria",
+                                        "izquierdo": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "tok"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_TIPO"
+                                          }
+                                        },
+                                        "operador": "||",
+                                        "derecho": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "tok"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_TENSOR"
+                                          }
+                                        }
+                                      },
+                                      "operador": "||",
+                                      "derecho": {
+                                        "_tipo": "OpBinaria",
+                                        "izquierdo": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "tok"
+                                        },
+                                        "operador": "==",
+                                        "derecho": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "T_NULO"
+                                        }
+                                      }
+                                    },
+                                    "operador": "||",
+                                    "derecho": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "tok"
+                                      },
+                                      "operador": "==",
+                                      "derecho": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "T_OK"
+                                      }
+                                    }
                                   },
-                                  "nombre_campo": "linea_actual"
+                                  "operador": "||",
+                                  "derecho": {
+                                    "_tipo": "OpBinaria",
+                                    "izquierdo": {
+                                      "_tipo": "Identificador",
+                                      "nombre": "tok"
+                                    },
+                                    "operador": "==",
+                                    "derecho": {
+                                      "_tipo": "Identificador",
+                                      "nombre": "T_ERR"
+                                    }
+                                  }
                                 },
-                                {
+                                "operador": "||",
+                                "derecho": {
                                   "_tipo": "OpBinaria",
                                   "izquierdo": {
                                     "_tipo": "Identificador",
-                                    "nombre": "inicio"
+                                    "nombre": "tok"
                                   },
-                                  "operador": "+",
+                                  "operador": "==",
                                   "derecho": {
-                                    "_tipo": "LiteralNumero",
-                                    "valor": 1
+                                    "_tipo": "Identificador",
+                                    "nombre": "T_ALGUN"
                                   }
                                 }
-                              ]
-                            }
+                              },
+                              "operador": "||",
+                              "derecho": {
+                                "_tipo": "OpBinaria",
+                                "izquierdo": {
+                                  "_tipo": "Identificador",
+                                  "nombre": "tok"
+                                },
+                                "operador": "==",
+                                "derecho": {
+                                  "_tipo": "Identificador",
+                                  "nombre": "T_NINGUNO"
+                                }
+                              }
+                            },
+                            "cuerpo": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "lexer_push_token_valor",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "lex"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "tok"
+                                    },
+                                    {
+                                      "_tipo": "ExprAccesoCampo",
+                                      "objeto": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "lex"
+                                      },
+                                      "nombre_campo": "linea_actual"
+                                    },
+                                    {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "inicio"
+                                      },
+                                      "operador": "+",
+                                      "derecho": {
+                                        "_tipo": "LiteralNumero",
+                                        "valor": 1
+                                      }
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "palabra"
+                                    }
+                                  ]
+                                }
+                              }
+                            ],
+                            "cuerpo_sino": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "lexer_push_token",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "lex"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "tok"
+                                    },
+                                    {
+                                      "_tipo": "ExprAccesoCampo",
+                                      "objeto": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "lex"
+                                      },
+                                      "nombre_campo": "linea_actual"
+                                    },
+                                    {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "inicio"
+                                      },
+                                      "operador": "+",
+                                      "derecho": {
+                                        "_tipo": "LiteralNumero",
+                                        "valor": 1
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
                           }
                         ]
                       },
@@ -8292,6 +9563,70 @@
                             {
                               "_tipo": "Identificador",
                               "nombre": "T_PUNTOCOMA"
+                            },
+                            {
+                              "_tipo": "ExprAccesoCampo",
+                              "objeto": {
+                                "_tipo": "Identificador",
+                                "nombre": "lex"
+                              },
+                              "nombre_campo": "linea_actual"
+                            },
+                            {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "i"
+                              },
+                              "operador": "+",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "i = i + 1"
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "c"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 124
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "lexer_push_token",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "lex"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "T_PIPE"
                             },
                             {
                               "_tipo": "ExprAccesoCampo",
@@ -14362,6 +15697,229 @@
       },
       {
         "_tipo": "DefinicionFuncion",
+        "nombre": "token_es_nombre",
+        "parametros": [
+          {
+            "nombre": "t",
+            "tipo": "entero"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_IDENTIFICADOR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_TIPO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_TENSOR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_NULO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_OK"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_ERR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_ALGUN"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_NINGUNO"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
         "nombre": "parsear_expresion",
         "parametros": [
           {
@@ -18155,13 +19713,19 @@
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "t"
+                  }
+                ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -18549,13 +20113,19 @@
                         "condicion": {
                           "_tipo": "OpBinaria",
                           "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "tok_campo"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_es_nombre",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "tok_campo"
+                              }
+                            ]
                           },
                           "operador": "==",
                           "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_IDENTIFICADOR"
+                            "_tipo": "LiteralNumero",
+                            "valor": 1
                           }
                         },
                         "cuerpo": [
@@ -18776,18 +20346,24 @@
                       "_tipo": "OpBinaria",
                       "izquierdo": {
                         "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
+                        "nombre": "token_es_nombre",
                         "argumentos": [
                           {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_mirar",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              }
+                            ]
                           }
                         ]
                       },
                       "operador": "==",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_IDENTIFICADOR"
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
                       }
                     },
                     "cuerpo": [
@@ -19793,7 +21369,7 @@
               "operador": "==",
               "derecho": {
                 "_tipo": "Identificador",
-                "nombre": "T_IF"
+                "nombre": "T_SI"
               }
             },
             "cuerpo": [
@@ -20188,13 +21764,19 @@
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "t"
+                  }
+                ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -21278,18 +22860,24 @@
                       "_tipo": "OpBinaria",
                       "izquierdo": {
                         "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
+                        "nombre": "token_es_nombre",
                         "argumentos": [
                           {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_mirar",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              }
+                            ]
                           }
                         ]
                       },
-                      "operador": "!=",
+                      "operador": "==",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_IDENTIFICADOR"
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
                       }
                     },
                     "cuerpo": [
@@ -21567,18 +23155,24 @@
                       "_tipo": "OpBinaria",
                       "izquierdo": {
                         "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
+                        "nombre": "token_es_nombre",
                         "argumentos": [
                           {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_mirar",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              }
+                            ]
                           }
                         ]
                       },
-                      "operador": "!=",
+                      "operador": "==",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_IDENTIFICADOR"
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
                       }
                     },
                     "cuerpo": [
@@ -21782,18 +23376,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -23351,7 +24951,7 @@
                   },
                   {
                     "_tipo": "Identificador",
-                    "nombre": "T_IF"
+                    "nombre": "T_SI"
                   }
                 ]
               },
@@ -23859,7 +25459,7 @@
               "operador": "==",
               "derecho": {
                 "_tipo": "Identificador",
-                "nombre": "T_ELSE"
+                "nombre": "T_SINO"
               }
             },
             "cuerpo": [
@@ -24764,18 +26364,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
-              "operador": "!=",
+              "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 0
               }
             },
             "cuerpo": [
@@ -26084,13 +27690,19 @@
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "t"
+                  }
+                ]
               },
-              "operador": "!=",
+              "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 0
               }
             },
             "cuerpo": [
@@ -26230,18 +27842,24 @@
                 "_tipo": "OpBinaria",
                 "izquierdo": {
                   "_tipo": "LlamadaFuncion",
-                  "nombre": "token_mirar",
+                  "nombre": "token_es_nombre",
                   "argumentos": [
                     {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_mirar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
                     }
                   ]
                 },
                 "operador": "==",
                 "derecho": {
-                  "_tipo": "Identificador",
-                  "nombre": "T_IDENTIFICADOR"
+                  "_tipo": "LiteralNumero",
+                  "valor": 1
                 }
               },
               "operador": "&&",
@@ -26752,13 +28370,19 @@
                         "condicion": {
                           "_tipo": "OpBinaria",
                           "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "t"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_es_nombre",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "t"
+                              }
+                            ]
                           },
                           "operador": "==",
                           "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_IDENTIFICADOR"
+                            "_tipo": "LiteralNumero",
+                            "valor": 1
                           }
                         },
                         "cuerpo": [
@@ -26816,18 +28440,24 @@
                               "_tipo": "OpBinaria",
                               "izquierdo": {
                                 "_tipo": "LlamadaFuncion",
-                                "nombre": "token_mirar",
+                                "nombre": "token_es_nombre",
                                 "argumentos": [
                                   {
-                                    "_tipo": "Identificador",
-                                    "nombre": "est"
+                                    "_tipo": "LlamadaFuncion",
+                                    "nombre": "token_mirar",
+                                    "argumentos": [
+                                      {
+                                        "_tipo": "Identificador",
+                                        "nombre": "est"
+                                      }
+                                    ]
                                   }
                                 ]
                               },
                               "operador": "==",
                               "derecho": {
-                                "_tipo": "Identificador",
-                                "nombre": "T_IDENTIFICADOR"
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
                               }
                             },
                             "cuerpo": [
@@ -27085,18 +28715,24 @@
                   "_tipo": "OpBinaria",
                   "izquierdo": {
                     "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
+                    "nombre": "token_es_nombre",
                     "argumentos": [
                       {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "token_mirar",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          }
+                        ]
                       }
                     ]
                   },
                   "operador": "==",
                   "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_IDENTIFICADOR"
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
                   }
                 },
                 "cuerpo": [
@@ -28308,13 +29944,19 @@
                 "condicion": {
                   "_tipo": "OpBinaria",
                   "izquierdo": {
-                    "_tipo": "Identificador",
-                    "nombre": "t"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_es_nombre",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "t"
+                      }
+                    ]
                   },
                   "operador": "==",
                   "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_IDENTIFICADOR"
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
                   }
                 },
                 "cuerpo": [
@@ -28372,18 +30014,24 @@
                       "_tipo": "OpBinaria",
                       "izquierdo": {
                         "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
+                        "nombre": "token_es_nombre",
                         "argumentos": [
                           {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_mirar",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              }
+                            ]
                           }
                         ]
                       },
                       "operador": "==",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_IDENTIFICADOR"
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
                       }
                     },
                     "cuerpo": [
@@ -28557,18 +30205,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -28988,13 +30642,19 @@
                         "condicion": {
                           "_tipo": "OpBinaria",
                           "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "t"
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_es_nombre",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "t"
+                              }
+                            ]
                           },
                           "operador": "==",
                           "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_IDENTIFICADOR"
+                            "_tipo": "LiteralNumero",
+                            "valor": 1
                           }
                         },
                         "cuerpo": [
@@ -29121,18 +30781,24 @@
                                   "_tipo": "OpBinaria",
                                   "izquierdo": {
                                     "_tipo": "LlamadaFuncion",
-                                    "nombre": "token_mirar",
+                                    "nombre": "token_es_nombre",
                                     "argumentos": [
                                       {
-                                        "_tipo": "Identificador",
-                                        "nombre": "est"
+                                        "_tipo": "LlamadaFuncion",
+                                        "nombre": "token_mirar",
+                                        "argumentos": [
+                                          {
+                                            "_tipo": "Identificador",
+                                            "nombre": "est"
+                                          }
+                                        ]
                                       }
                                     ]
                                   },
                                   "operador": "==",
                                   "derecho": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "T_IDENTIFICADOR"
+                                    "_tipo": "LiteralNumero",
+                                    "valor": 1
                                   }
                                 },
                                 "cuerpo": [
@@ -29473,18 +31139,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -29721,18 +31393,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [
@@ -29947,18 +31625,24 @@
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
+                "nombre": "token_es_nombre",
                 "argumentos": [
                   {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
+                "_tipo": "LiteralNumero",
+                "valor": 1
               }
             },
             "cuerpo": [

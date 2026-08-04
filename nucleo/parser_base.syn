@@ -134,4 +134,29 @@ funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
     est.hay_error = verdadero
     retornar 0
 
+// AUDITORIA F1 (D-F1): keywords contextuales del Manual 2 §3 — se comportan como
+// identificadores cuando el parser lo decide por contexto (tipo/tensor/nulo en
+// posicion de tipo; ok/err/algun/ninguno como constructores ADT; keyword tras '.').
+// Paridad con el parser Python (compilador/parser*.py): el lexer ya emite T_TIPO/
+// T_TENSOR/T_NULO/T_OK/T_ERR/T_ALGUN/T_NINGUNO conservando el lexema; aqui se
+// aceptan en todas las posiciones de identificador/nombre/tipo.
+funcion token_es_nombre(t: entero) -> entero:
+    si t == T_IDENTIFICADOR:
+        retornar 1
+    si t == T_TIPO:
+        retornar 1
+    si t == T_TENSOR:
+        retornar 1
+    si t == T_NULO:
+        retornar 1
+    si t == T_OK:
+        retornar 1
+    si t == T_ERR:
+        retornar 1
+    si t == T_ALGUN:
+        retornar 1
+    si t == T_NINGUNO:
+        retornar 1
+    retornar 0
+
 // ---- Expression parsing ----

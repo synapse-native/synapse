@@ -6,11 +6,34 @@ from compilador.ast_nodes import (
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
 
-_SYNC_TOP = {TokenID.FUNCTION, TokenID.IMPORT, TokenID.EOF}
+_SYNC_TOP = {TokenID.FUNCION, TokenID.IMPORTAR, TokenID.EOF}
 _SYNC_STMT = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF} | _SYNC_TOP
 _SYNC_BLOCK = {TokenID.DEDENT, TokenID.EOF}
 _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
               TokenID.COMMA, TokenID.RPAREN, TokenID.COLON, TokenID.SEMICOLON}
+
+# AUDITORIA F1.2 (D-F1): keywords contextuales que el parser acepta donde un
+# identificador es válido (campo x.tipo, variable/parámetro tipo o tensor,
+# tipo de retorno nulo/tensor, patrones ADT ok/err/algun/ninguno). El lexer
+# conserva su lexema en Token.valor (ver TOKENS_CONTEXTUALES en lexer.py).
+TOKENS_CONTEXTUALES: frozenset = frozenset({
+    TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
+    TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+})
+
+
+def es_token_identificador(t: Token) -> bool:
+    """True si el token puede actuar como identificador (IDENTIFIER o keyword contextual)."""
+    return t.tipo == TokenID.IDENTIFIER or t.tipo in TOKENS_CONTEXTUALES
+
+
+def nombre_de_token(t: Token) -> str:
+    """Lexema usable del token (identificadores y keywords contextuales)."""
+    if t.valor:
+        return t.valor
+    if t.tipo == TokenID.IDENTIFIER:
+        return t.valor or ''
+    return t.tipo.name.lower()
 
 
 class ParserBase:
@@ -45,6 +68,17 @@ class ParserBase:
             esperado = ' o '.join(tt.name for tt in tipos)
             self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, t,
                                esperado=esperado, encontrado=t.tipo.name)
+            self._sincronizar(_SYNC_EXPR)
+            return None
+        return self._avanzar()
+
+    def _esperar_identificador(self) -> Optional[Token]:
+        """Consume un token usable como identificador: IDENTIFIER o keyword
+        contextual (F1.2). Devuelve el token (con su lexema en .valor) o None."""
+        t = self._mirar()
+        if not es_token_identificador(t):
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, t,
+                               esperado='IDENTIFICADOR', encontrado=t.tipo.name)
             self._sincronizar(_SYNC_EXPR)
             return None
         return self._avanzar()
@@ -106,16 +140,15 @@ class ParserBase:
         # Manual 4 §4.2: referencias &T y &mut T
         if self._mirar().tipo == TokenID.AMPERSAND:
             self._avanzar()
-            if (self._mirar().tipo == TokenID.IDENTIFIER
-                    and (self._mirar().valor or '') == 'mut'):
+            if es_token_identificador(self._mirar()) and (self._mirar().valor or '') == 'mut':
                 self._avanzar()
                 prefijo = '&mut '
             else:
                 prefijo = '&'
-        tok_tipo = self._esperar(TokenID.IDENTIFIER)
+        tok_tipo = self._esperar_identificador()
         if tok_tipo is None:
             return prefijo + 'int'
-        tipo = prefijo + tok_tipo.valor
+        tipo = prefijo + (tok_tipo.valor or tok_tipo.tipo.name.lower())
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo, '<']

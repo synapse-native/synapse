@@ -300,7 +300,9 @@ funcion parsear_primario(est: ParserEst) -> entero:
         inseguro:
             asm("est.nodos[nodo].valor_int = 0")
         retornar nodo
-    si t == T_IDENTIFICADOR:
+    // AUDITORIA F1 (D-F1): keywords contextuales como identificadores en expresiones
+    // (tipo/tensor/nulo como variables; ok/err/algun/ninguno como constructores ADT).
+    si token_es_nombre(t) == 1:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         token_avanzar(est)
@@ -326,7 +328,8 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 tok_campo = token_mirar(est)
                 linea2 = token_linea(est, est.posicion)
                 col2 = token_columna(est, est.posicion)
-                si tok_campo == T_IDENTIFICADOR:
+                // AUDITORIA F1 (D-F1): keyword tras '.' como nombre de campo (x.tipo)
+                si token_es_nombre(tok_campo) == 1:
                     token_avanzar(est)
                     nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
                     inseguro:
@@ -340,7 +343,7 @@ funcion parsear_primario(est: ParserEst) -> entero:
         si token_mirar(est) == T_PAREN_IZQ:
             nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
             token_esperar(est, T_PAREN_IZQ)
-            si token_mirar(est) == T_IDENTIFICADOR:
+            si token_es_nombre(token_mirar(est)) == 1:
                 token_avanzar(est)
             si token_mirar(est) == T_COMA:
                 token_avanzar(est)

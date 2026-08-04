@@ -77,11 +77,11 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #include "librerias/embedded_libs.h"
 
 // --- Token ID constants (Manual 2 §2.3) ---
-#ifndef T_IF
-#define T_IF (1)
+#ifndef T_SI
+#define T_SI (1)
 #endif
-#ifndef T_ELSE
-#define T_ELSE (2)
+#ifndef T_SINO
+#define T_SINO (2)
 #endif
 #ifndef T_FUNCION
 #define T_FUNCION (3)
@@ -251,8 +251,53 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef T_CORCH_DER
 #define T_CORCH_DER (58)
 #endif
+#ifndef T_PIPE
+#define T_PIPE (59)
+#endif
+#ifndef T_LET
+#define T_LET (60)
+#endif
+#ifndef T_TIPO
+#define T_TIPO (61)
+#endif
+#ifndef T_TENSOR
+#define T_TENSOR (62)
+#endif
+#ifndef T_NULO
+#define T_NULO (63)
+#endif
+#ifndef T_OK
+#define T_OK (64)
+#endif
+#ifndef T_ERR
+#define T_ERR (65)
+#endif
+#ifndef T_ALGUN
+#define T_ALGUN (66)
+#endif
+#ifndef T_NINGUNO
+#define T_NINGUNO (67)
+#endif
+#ifndef T_MODULO
+#define T_MODULO (68)
+#endif
+#ifndef T_DELEGAR
+#define T_DELEGAR (69)
+#endif
+#ifndef T_EXPORT
+#define T_EXPORT (70)
+#endif
+#ifndef T_RC
+#define T_RC (71)
+#endif
+#ifndef T_ARC
+#define T_ARC (72)
+#endif
+#ifndef T_DEBIL
+#define T_DEBIL (73)
+#endif
 #ifndef T_FIN
-#define T_FIN (59)
+#define T_FIN (74)
 #endif
 
 // --- Nodo type constants (AST node types) ---

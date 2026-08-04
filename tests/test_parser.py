@@ -11,7 +11,8 @@ from compilador.ast_nodes import (
     AsignacionVariable, OpBinaria, LiteralNumero,
     LlamadaFuncion, LiteralCadena, LiteralDecimal, SentenciaRomper,
     SentenciaSiguiente, SentenciaImportar, AsignacionCampo, ExprAccesoCampo,
-    SentenciaEscuchar, SentenciaRecuperar, OpUnaria, ExprTensor, ArgumentoTransferido
+    SentenciaEscuchar, SentenciaRecuperar,    OpUnaria, ExprTensor, ArgumentoTransferido,
+    DeclaracionTipo, LiteralNulo, NodoCoincidir
 )
 
 
@@ -503,6 +504,144 @@ class TestParserLiterales:
         assign = prog.sentencias[0]
         assert isinstance(assign.expresion, LiteralCadena)
         assert assign.expresion.valor == "hola"
+
+
+class TestParserTipoYADTs:
+    """AUDITORIA F1.2 (D-F1): soporte de parser para los keywords contextuales
+    del Manual 2 §3 — declaración de tipo, tensor() como expresión, nulo
+    literal/tipo, constructores ADT en coincidir y keywords como campo/variable.
+    """
+
+    def test_declaracion_tipo_alias(self):
+        """tipo X = <tipo> (alias, Manual 2 §2 declaracion_tipo)"""
+        fuente = "#lang: es\ntipo Edad = entero"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        assert isinstance(prog.sentencias[0], DeclaracionTipo)
+        assert prog.sentencias[0].nombre == "Edad"
+        assert prog.sentencias[0].tipo_base == "entero"
+        assert not diag.hay_errores()
+
+    def test_declaracion_tipo_adt(self):
+        """tipo X = ok(T) | err(E) (tipo algebraico, Manual 2 §4.2)"""
+        fuente = "#lang: es\ntipo Resultado = ok(entero) | err(texto)"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        decl = prog.sentencias[0]
+        assert isinstance(decl, DeclaracionTipo)
+        assert decl.nombre == "Resultado"
+        assert [(c.nombre, c.tipos) for c in decl.constructores] == [
+            ("ok", ["entero"]), ("err", ["texto"])
+        ]
+        assert not diag.hay_errores()
+
+    def test_declaracion_tipo_generico(self):
+        """tipo X<T> = algun(T) | ninguno (genéricos, Manual 2 §4.2)"""
+        fuente = "#lang: es\ntipo Opcion<T> = algun(T) | ninguno"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        decl = prog.sentencias[0]
+        assert isinstance(decl, DeclaracionTipo)
+        assert decl.nombre == "Opcion"
+        assert decl.parametros_tipo == ["T"]
+        assert not diag.hay_errores()
+
+    def test_nulo_literal(self):
+        """nulo como literal en expresión (Manual 2 §4.1)"""
+        fuente = "#lang: es\nsi ctx == nulo:\n    retornar"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        stmt_si = prog.sentencias[0]
+        assert isinstance(stmt_si, SentenciaSi)
+        op = stmt_si.condicion
+        assert isinstance(op, OpBinaria)
+        assert isinstance(op.derecho, LiteralNulo)
+        assert not diag.hay_errores()
+
+    def test_retorno_nulo_y_tensor(self):
+        """-> nulo: / -> tensor: como tipos de retorno (keywords contextuales)"""
+        fuente = ("#lang: es\nfuncion f() -> nulo:\n    retornar\n"
+                  "funcion g() -> tensor:\n    retornar tensor(1, 1)")
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        assert prog.sentencias[0].tipo_retorno == "nulo"
+        assert prog.sentencias[1].tipo_retorno == "tensor"
+        assert not diag.hay_errores()
+
+    def test_parametro_nombrado_tensor(self):
+        """Parámetro llamado tensor con tipo tensor (std/tensor.syn: rope(...))"""
+        fuente = "#lang: es\nfuncion rope(tensor: tensor, pos: entero) -> nulo:\n    retornar"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        fn = prog.sentencias[0]
+        assert fn.parametros[0].nombre == "tensor"
+        assert fn.parametros[0].tipo == "tensor"
+        assert not diag.hay_errores()
+
+    def test_tipo_como_variable(self):
+        """tipo como variable (asignación y uso, paridad analizador auto-hospedado)"""
+        fuente = "#lang: es\ntipo = 5\nx = tipo + 1"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        assert isinstance(prog.sentencias[0], AsignacionVariable)
+        assert prog.sentencias[0].nombre == "tipo"
+        assert not diag.hay_errores()
+
+    def test_campo_tipo(self):
+        """x.tipo como acceso a campo (TokenLex.tipo del auto-hospedado)"""
+        fuente = "#lang: es\nx = obj.tipo"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        assign = prog.sentencias[0]
+        assert isinstance(assign.expresion, ExprAccesoCampo)
+        assert assign.expresion.nombre_campo == "tipo"
+        assert not diag.hay_errores()
+
+    def test_coincidir_constructores_adt(self):
+        """Patrones ok(v)/err(e)/algun(v)/ninguno en coincidir (Manual 2 §2)"""
+        fuente = ("#lang: es\ncoincidir res:\n"
+                  "    ok(v) => escribir_linea(v)\n"
+                  "    err(e) => escribir_linea(e)\n"
+                  "    algun(v) => escribir_linea(v)\n"
+                  "    ninguno => escribir_linea(\"vacio\")")
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        coincidir = prog.sentencias[0]
+        assert isinstance(coincidir, NodoCoincidir)
+        patrones = [c.patron for c in coincidir.casos]
+        assert "ok(v)" in patrones
+        assert "err(e)" in patrones
+        assert "algun(v)" in patrones
+        assert "ninguno" in patrones
+        assert not diag.hay_errores()
+
+    def test_importar_std_err(self):
+        """importar std.err (err keyword contextual en ruta de importación)"""
+        fuente = "#lang: es\nimportar std.err"
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(tokens, diag).parsear()
+        assert prog.sentencias[0].ruta == "std.err"
+        assert not diag.hay_errores()
 
 
 class TestParserRecuperacionErrores:

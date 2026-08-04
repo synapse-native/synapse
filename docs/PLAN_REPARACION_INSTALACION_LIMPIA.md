@@ -1,5 +1,7 @@
 # PLAN DE REPARACIÓN — INSTALACIÓN LIMPIA FUNCIONAL (v5.1.1-industrial)
 
+**ATENCION** este plan esta suspendido hasta terminar la auditoria alineacion manuales 
+
 > **Propósito:** Registro oficial para continuar en próximas sesiones la reparación de los
 > fallos de build en instalación limpia y CI. Este documento es AUTOCONTENIDO: no depende
 > del historial de conversación.

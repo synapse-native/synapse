@@ -9,12 +9,14 @@ from compilador.ast_nodes import (
     NodoCaso, NodoCoincidir,
 )
 from compilador.diagnostics import ErrorCodes
-from compilador.parser_base import ParserBase, _SYNC_STMT, _SYNC_BLOCK
+from compilador.parser_base import (
+    ParserBase, _SYNC_STMT, _SYNC_BLOCK, es_token_identificador, nombre_de_token,
+)
 
 
 class ParserControlMixin(ParserBase):
     def _parsear_si(self) -> Optional[SentenciaSi]:
-        tok_si = self._esperar(TokenID.IF)
+        tok_si = self._esperar(TokenID.SI)
         if tok_si is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -30,7 +32,7 @@ class ParserControlMixin(ParserBase):
             if stmt is not None:
                 cuerpo.append(stmt)
         cuerpo_sino = None
-        if self._mirar().tipo == TokenID.ELSE:
+        if self._mirar().tipo == TokenID.SINO:
             self._avanzar()
             if self._esperar(TokenID.COLON) is None:
                 self._sincronizar(_SYNC_STMT)
@@ -51,7 +53,7 @@ class ParserControlMixin(ParserBase):
         )
 
     def _parsear_lanzar(self) -> Optional[SentenciaLanzar]:
-        tok_spawn = self._esperar(TokenID.SPAWN)
+        tok_spawn = self._esperar(TokenID.LANZAR)
         if tok_spawn is None:
             return None
         llamada = self._parsear_llamada()
@@ -78,7 +80,7 @@ class ParserControlMixin(ParserBase):
         )
 
     def _parsear_escuchar(self) -> Optional[SentenciaEscuchar]:
-        tok_listen = self._esperar(TokenID.LISTEN)
+        tok_listen = self._esperar(TokenID.ESCUCHAR)
         if tok_listen is None:
             return None
         canal = self._parsear_expresion()
@@ -94,7 +96,7 @@ class ParserControlMixin(ParserBase):
         )
 
     def _parsear_mientras(self) -> Optional[SentenciaMientras]:
-        tok_mientras = self._esperar(TokenID.WHILE)
+        tok_mientras = self._esperar(TokenID.MIENTRAS)
         if tok_mientras is None:
             return None
         condicion = self._parsear_expresion()
@@ -164,7 +166,7 @@ class ParserControlMixin(ParserBase):
         return BloqueInseguro(cuerpo=cuerpo)
 
     def _parsear_coincidir(self) -> Optional[NodoCoincidir]:
-        tok_coincidir = self._esperar(TokenID.MATCH)
+        tok_coincidir = self._esperar(TokenID.COINCIDIR)
         if tok_coincidir is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -194,23 +196,24 @@ class ParserControlMixin(ParserBase):
                 self._avanzar()
                 continue
 
-            tok_patron = self._esperar(TokenID.IDENTIFIER)
+            tok_patron = self._esperar_identificador()
             if tok_patron is None:
                 self._sincronizar(_SYNC_BLOCK)
                 break
 
-            nombre_patron = tok_patron.valor
+            # F1.2: el patrón puede ser un keyword contextual (ok/err/algun/ninguno)
+            nombre_patron = nombre_de_token(tok_patron)
 
             # Patron con payload: ok(valor) — Manual 2 §2.2
             # Patron nulo (variante sin argumentos): ninguno — Manual 2 §2.4
             var_patron = None
             if self._mirar().tipo == TokenID.LPAREN:
                 self._avanzar()
-                tok_var = self._esperar(TokenID.IDENTIFIER)
+                tok_var = self._esperar_identificador()
                 if tok_var is None:
                     self._sincronizar(_SYNC_BLOCK)
                     break
-                var_patron = tok_var.valor
+                var_patron = nombre_de_token(tok_var)
                 if self._esperar(TokenID.RPAREN) is None:
                     self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, self._mirar(),
                                        esperado=')', encontrado=self._mirar().tipo.name)

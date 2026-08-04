@@ -1,8 +1,9 @@
 #lang: es
 
 // --- Token ID constants ---
-constante T_IF = 1
-constante T_ELSE = 2
+// AUDITORIA F1 (H23): nombres alineados al Manual 2 §3 (T_SI/T_SINO).
+constante T_SI = 1
+constante T_SINO = 2
 constante T_FUNCION = 3
 constante T_RETORNAR = 4
 constante T_LANZAR = 5
@@ -59,6 +60,26 @@ constante T_PUNTOCOMA = 55
 constante T_PARA = 56
 constante T_FIN = 57
 constante T_ERROR = 58
+// AUDITORIA F1 (D-F1 RESUELTA): los 7 keywords contextuales (tipo, tensor, nulo,
+// ok, err, algun, ninguno) quedan ACTIVADOS en este lexer (Manual 2 §3, tabla
+// es/en/fr/pt) con soporte contextual del parser (ver token_es_nombre en
+// parser_base.syn). Modulo/rc siguen sin activar por colisión con identificadores.
+constante T_LET = 59
+constante T_TIPO = 60
+constante T_TENSOR = 61
+constante T_NULO = 62
+constante T_OK = 63
+constante T_ERR = 64
+constante T_ALGUN = 65
+constante T_NINGUNO = 66
+constante T_MODULO = 67
+constante T_DELEGAR = 68
+constante T_EXPORT = 69
+constante T_RC = 70
+constante T_ARC = 71
+constante T_DEBIL = 72
+// AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
+constante T_PIPE = 73
 
 // --- Language IDs (Manual 2 S2.3) ---
 constante IDIOMA_ES = 0
@@ -107,9 +128,9 @@ funcion str_len_ptr(ptr: entero) -> entero:
 // --- Keyword dictionary lookup (multi-idioma, Manual 2 S2.3) ---
 funcion keyword_token_es(palabra: cadena) -> entero:
     si str_eq(palabra, "si") == 1:
-        retornar T_IF
+        retornar T_SI
     si str_eq(palabra, "sino") == 1:
-        retornar T_ELSE
+        retornar T_SINO
     si str_eq(palabra, "funcion") == 1:
         retornar T_FUNCION
     si str_eq(palabra, "retornar") == 1:
@@ -160,13 +181,28 @@ funcion keyword_token_es(palabra: cadena) -> entero:
         retornar T_CONSTANTE
     si str_eq(palabra, "para") == 1:
         retornar T_PARA
+    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
+    si str_eq(palabra, "tipo") == 1:
+        retornar T_TIPO
+    si str_eq(palabra, "tensor") == 1:
+        retornar T_TENSOR
+    si str_eq(palabra, "nulo") == 1:
+        retornar T_NULO
+    si str_eq(palabra, "ok") == 1:
+        retornar T_OK
+    si str_eq(palabra, "err") == 1:
+        retornar T_ERR
+    si str_eq(palabra, "algun") == 1:
+        retornar T_ALGUN
+    si str_eq(palabra, "ninguno") == 1:
+        retornar T_NINGUNO
     retornar 0
 
 funcion keyword_token_en(palabra: cadena) -> entero:
     si str_eq(palabra, "if") == 1:
-        retornar T_IF
+        retornar T_SI
     si str_eq(palabra, "else") == 1:
-        retornar T_ELSE
+        retornar T_SINO
     si str_eq(palabra, "function") == 1:
         retornar T_FUNCION
     si str_eq(palabra, "return") == 1:
@@ -217,13 +253,28 @@ funcion keyword_token_en(palabra: cadena) -> entero:
         retornar T_CONSTANTE
     si str_eq(palabra, "for") == 1:
         retornar T_PARA
+    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
+    si str_eq(palabra, "type") == 1:
+        retornar T_TIPO
+    si str_eq(palabra, "tensor") == 1:
+        retornar T_TENSOR
+    si str_eq(palabra, "null") == 1:
+        retornar T_NULO
+    si str_eq(palabra, "ok") == 1:
+        retornar T_OK
+    si str_eq(palabra, "err") == 1:
+        retornar T_ERR
+    si str_eq(palabra, "some") == 1:
+        retornar T_ALGUN
+    si str_eq(palabra, "none") == 1:
+        retornar T_NINGUNO
     retornar 0
 
 funcion keyword_token_fr(palabra: cadena) -> entero:
     si str_eq(palabra, "si") == 1:
-        retornar T_IF
+        retornar T_SI
     si str_eq(palabra, "sinon") == 1:
-        retornar T_ELSE
+        retornar T_SINO
     si str_eq(palabra, "fonction") == 1:
         retornar T_FUNCION
     si str_eq(palabra, "retourner") == 1:
@@ -272,13 +323,28 @@ funcion keyword_token_fr(palabra: cadena) -> entero:
         retornar T_CONSTANTE
     si str_eq(palabra, "pour") == 1:
         retornar T_PARA
+    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
+    si str_eq(palabra, "type") == 1:
+        retornar T_TIPO
+    si str_eq(palabra, "tenseur") == 1:
+        retornar T_TENSOR
+    si str_eq(palabra, "nul") == 1:
+        retornar T_NULO
+    si str_eq(palabra, "ok") == 1:
+        retornar T_OK
+    si str_eq(palabra, "err") == 1:
+        retornar T_ERR
+    si str_eq(palabra, "some") == 1:
+        retornar T_ALGUN
+    si str_eq(palabra, "aucun") == 1:
+        retornar T_NINGUNO
     retornar 0
 
 funcion keyword_token_pt(palabra: cadena) -> entero:
     si str_eq(palabra, "se") == 1:
-        retornar T_IF
+        retornar T_SI
     si str_eq(palabra, "senao") == 1:
-        retornar T_ELSE
+        retornar T_SINO
     si str_eq(palabra, "funcao") == 1:
         retornar T_FUNCION
     si str_eq(palabra, "retornar") == 1:
@@ -327,6 +393,21 @@ funcion keyword_token_pt(palabra: cadena) -> entero:
         retornar T_CONSTANTE
     si str_eq(palabra, "para") == 1:
         retornar T_PARA
+    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
+    si str_eq(palabra, "tipo") == 1:
+        retornar T_TIPO
+    si str_eq(palabra, "tensor") == 1:
+        retornar T_TENSOR
+    si str_eq(palabra, "nulo") == 1:
+        retornar T_NULO
+    si str_eq(palabra, "ok") == 1:
+        retornar T_OK
+    si str_eq(palabra, "err") == 1:
+        retornar T_ERR
+    si str_eq(palabra, "algum") == 1:
+        retornar T_ALGUN
+    si str_eq(palabra, "nenhum") == 1:
+        retornar T_NINGUNO
     retornar 0
 
 funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
@@ -526,7 +607,12 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                 si tok == T_IDENTIFICADOR:
                     lexer_push_token_valor(lex, tok, lex.linea_actual, inicio + 1, palabra)
                 sino:
-                    lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
+                    // AUDITORIA F1 (D-F1): los keywords contextuales conservan el lexema
+                    // para que el parser decida por contexto (identificador vs constructo).
+                    si tok == T_TIPO o tok == T_TENSOR o tok == T_NULO o tok == T_OK o tok == T_ERR o tok == T_ALGUN o tok == T_NINGUNO:
+                        lexer_push_token_valor(lex, tok, lex.linea_actual, inicio + 1, palabra)
+                    sino:
+                        lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
                 siguiente
             si c == 43:
                 lexer_push_token(lex, T_MAS, lex.linea_actual, i + 1)
@@ -627,6 +713,11 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                 siguiente
             si c == 59:
                 lexer_push_token(lex, T_PUNTOCOMA, lex.linea_actual, i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 124:
+                // AUDITORIA F1 (D-F1): '|' para declaraciones ADT (Manual 2 §3)
+                lexer_push_token(lex, T_PIPE, lex.linea_actual, i + 1)
                 asm("i = i + 1")
                 siguiente
             lexer_error(lex, "Caracter inesperado", lex.linea_actual, i + 1)
