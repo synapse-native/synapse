@@ -163,24 +163,24 @@ static void test_path_traversal() {
     fprintf(stderr, "\n=== ESCENARIO 3: Path Traversal ===\n");
 
     /* Clean output dir */
-    system("rm -rf tests/fixtures/tar_test_out");
-    mkdir("tests/fixtures/tar_test_out");
+    system("rm -rf .axon_cache/tar_test_out");
+    mkdir(".axon_cache/tar_test_out");
 
     /* Normal extraction should work */
-    int rc = _syn_tar_extraer("tests/fixtures/malicious.tar", "tests/fixtures/tar_test_out");
+    int rc = _syn_tar_extraer("tests/fixtures/malicious.tar", ".axon_cache/tar_test_out");
     TEST("TAR extraido correctamente", rc == 0, "rc=%d", rc);
 
     /* Check normal file was extracted */
-    TEST("Archivo normal extraido", file_exists("tests/fixtures/tar_test_out/test_normal.txt"), "");
+    TEST("Archivo normal extraido", file_exists(".axon_cache/tar_test_out/test_normal.txt"), "");
 
     /* Check path traversal was blocked (../etc/passwd) */
-    TEST("Path traversal ../ bloqueado", !file_exists("tests/fixtures/tar_test_out/../../etc/passwd"), "");
+    TEST("Path traversal ../ bloqueado", !file_exists(".axon_cache/tar_test_out/../../etc/passwd"), "");
 
     /* Check absolute path was blocked (/etc/shadow) */
-    TEST("Ruta absoluta bloqueada", !file_exists("tests/fixtures/tar_test_out/etc/shadow"), "");
+    TEST("Ruta absoluta bloqueada", !file_exists(".axon_cache/tar_test_out/etc/shadow"), "");
 
     /* Cleanup */
-    system("rm -rf tests/fixtures/tar_test_out");
+    system("rm -rf .axon_cache/tar_test_out");
 }
 
 /* ----- Test 4: axon.lock SHA-256 determinism ----- */
@@ -398,7 +398,7 @@ int main() {
     fprintf(stderr, "============================================================\n");
 
     /* Cleanup */
-    system("rm -rf tests/fixtures/tar_test_out");
+    system("rm -rf .axon_cache/tar_test_out");
     delete_file("axon.lock");
 
     if (g_failed == 0) {

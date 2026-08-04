@@ -5785,7 +5785,7 @@ int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion) {
 // valor_entero: integer value (or 0 if using texto)
 // valor_texto: string value (or empty if using entero)
 // linea: source line number
-int tr_grabar_snapshot(CadenaSegura nombre_variable, long long valor_entero,
+int tr_grabar_snapshot(CadenaSegura nombre_variable, int valor_entero,
                        CadenaSegura valor_texto, int linea) {
     if (!_tr_initialized) return -1;
     int seq = _tr_next_seq();

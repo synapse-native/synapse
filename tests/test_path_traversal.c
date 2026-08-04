@@ -17,11 +17,11 @@ int main() {
     // Test 1: Regular file - should succeed
     printf("Test 1: Archivo normal... ");
     fflush(stdout);
-    system("mkdir -p tests/fixtures/tar_test_out");
-    int rc = _syn_tar_extraer("tests/fixtures/malicious.tar", "tests/fixtures/tar_test_out");
+    system("mkdir -p .axon_cache/tar_test_out");
+    int rc = _syn_tar_extraer("tests/fixtures/malicious.tar", ".axon_cache/tar_test_out");
     if (rc == 0) {
         // Check if test_normal.txt was extracted
-        FILE* f = fopen("tests/fixtures/tar_test_out/test_normal.txt", "rb");
+        FILE* f = fopen(".axon_cache/tar_test_out/test_normal.txt", "rb");
         if (f) {
             printf("PASS (archivo extraido correctamente)\n");
             fclose(f);
@@ -38,14 +38,14 @@ int main() {
     // Test 2: Check that malicious files were NOT extracted
     printf("Test 2: Path traversal bloqueado... ");
     fflush(stdout);
-    FILE* f = fopen("tests/fixtures/tar_test_out/../../etc/passwd", "rb");
+    FILE* f = fopen(".axon_cache/tar_test_out/../../etc/passwd", "rb");
     if (f) {
         printf("FAIL (archivo malicioso extraido!)\n");
         fclose(f);
         failed++;
     } else {
         // Also check if it escaped the output dir
-        f = fopen("tests/fixtures/../../tmp/escaped_test", "rb");
+        f = fopen(".axon_cache/tar_test_out/../../tmp/escaped_test", "rb");
         if (!f) {
             printf("PASS (path traversal bloqueado)\n");
             passed++;
@@ -59,7 +59,7 @@ int main() {
     // Test 3: Check that /etc/shadow was NOT extracted
     printf("Test 3: Ruta absoluta bloqueada... ");
     fflush(stdout);
-    f = fopen("tests/fixtures/tar_test_out/etc/shadow", "rb");
+    f = fopen(".axon_cache/tar_test_out/etc/shadow", "rb");
     if (f) {
         printf("FAIL (ruta absoluta extraida!)\n");
         fclose(f);
@@ -70,7 +70,7 @@ int main() {
     }
     
     // Cleanup
-    system("rm -rf tests/fixtures/tar_test_out");
+    system("rm -rf .axon_cache/tar_test_out");
     
     printf("\n=== Resultados: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;

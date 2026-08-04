@@ -71,6 +71,37 @@ def _tiene_sanitizers(gcc: str) -> bool:
         return False, False
 
 
+def _compilar_runtime_sanitizado(dir_rel: str, san_flags: str) -> list:
+    """ME-R7 (D6): compila el runtime modular desde fuente con sanitizadores.
+
+    Los .o pre-ME-R2 (synapse_rt.o, synapse_rt_memory.o, synapse_rt_concurrency.o)
+    no existen en instalacion limpia; el runtime se compila desde fuente a
+    build/obj/<dir_rel> con -fsanitize (Manual 9 S9.5).
+    """
+    import subprocess
+    root = os.path.dirname(os.path.abspath(__file__))
+    compiler = _resolver_gcc()
+    dir_obj = os.path.join(root, 'build', 'obj', dir_rel)
+    os.makedirs(dir_obj, exist_ok=True)
+    base = [compiler, '-O1', '-g', san_flags, '-fno-omit-frame-pointer', '-I' + root, '-c']
+    fuentes = [
+        ('synapse_rt.o', 'synapse_rt.c', []),
+        ('synapse_rt_memory.o', 'runtime/core/memory.c', ['-DSYNAPSE_DEBUG_MEM']),
+        ('synapse_rt_concurrency.o', 'runtime/core/concurrency.c', []),
+        ('tweetnacl.o', 'tweetnacl.c', []),
+    ]
+    objs = []
+    for obj, src, extra in fuentes:
+        salida = os.path.join(dir_obj, obj)
+        cmd = base + extra + [os.path.join(root, src), '-o', salida]
+        ret = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if ret.returncode != 0:
+            raise RuntimeError(f'ME-R7/D6: fallo al compilar {src} con {san_flags}: {ret.stderr[:400]}')
+        objs.append(salida)
+    return objs
+
+
+
 def _auditar_memoria():
     """Ejecuta AddressSanitizer + LeakSanitizer sobre el core del runtime.
     Manual 9 §9.5: 0 fugas de memoria.
@@ -88,9 +119,12 @@ def _auditar_memoria():
         'tests/test_same_buffer.c',           # RAW hazard
     ]
     
-    rt_obj = os.path.join(root, 'synapse_rt.o')
-    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
-    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
+    try:
+        rt_objs = _compilar_runtime_sanitizado('asan', '-fsanitize=address,undefined')
+    except RuntimeError as e:
+        print(f'  [FAIL] {e}')
+        return 1
+    rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
     
     flags = '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DSYNAPSE_DEBUG_MEM -I.'
     link_flags = '-fsanitize=address,undefined -lpthread -lm -lws2_32'
@@ -102,7 +136,7 @@ def _auditar_memoria():
             print(f'  [SKIP] {src_rel}: no encontrado')
             continue
         exe = src + '.asan.exe'
-        cmd = f'{compiler} {flags} "{src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{exe}" {link_flags}'
+        cmd = f'{compiler} {flags} "{src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" "{rt_tweet}" -o "{exe}" {link_flags}'
         print(f'[ASan] Compilando: {src_rel} ...', end=' ')
         ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
         if ret.returncode != 0:
@@ -146,9 +180,12 @@ def _auditar_hilos():
     
     # Stress test con canales concurrentes (F10.5)
     stress_src = os.path.join(root, 'tests', 'stress', 'test_stress_concurrencia.c')
-    rt_obj = os.path.join(root, 'synapse_rt.o')
-    rt_mem = os.path.join(root, 'synapse_rt_memory.o')
-    rt_conc = os.path.join(root, 'synapse_rt_concurrency.o')
+    try:
+        rt_objs = _compilar_runtime_sanitizado('tsan', '-fsanitize=thread')
+    except RuntimeError as e:
+        print(f'  [FAIL] {e}')
+        return 1
+    rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
     
     flags = '-O1 -g -fsanitize=thread -DSYNAPSE_DEBUG_MEM -I.'
     link_flags = '-fsanitize=thread -lpthread -lm -lws2_32'
@@ -159,7 +196,7 @@ def _auditar_hilos():
     
     # Compilar stress test con TSan
     stress_exe = os.path.join(root, 'tests', 'stress', 'stress_tsan.exe')
-    cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" -o "{stress_exe}" {link_flags}'
+    cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" "{rt_tweet}" -o "{stress_exe}" {link_flags}'
     print(f'[TSan] Compilando stress test...', end=' ')
     ret = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
     if ret.returncode != 0:

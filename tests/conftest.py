@@ -1,4 +1,6 @@
-﻿import os, sys, json, re
+import os, sys, json, re
+import pytest
+import subprocess
 from typing import Tuple
 
 _project_root = os.path.join(os.path.dirname(__file__), '..')
@@ -52,3 +54,120 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
 
 def ast_a_canonico_test(programa: Programa) -> str:
     return json.dumps(_nodo_a_dict(programa), indent=2, ensure_ascii=False)
+
+
+
+
+
+# ── ME-R7: auto-compilar objetos del runtime (tests de integracion) ────────
+# Los tests de integracion (cluster, time_travel, memory_snapshots, ...) enlazan
+# contra synapse_rt.o / synapse_rt_memory.o / synapse_rt_concurrency.o /
+# tweetnacl.o / axon_rt.o en la RAIZ del repo (constantes inline de cada test).
+# En una instalacion limpia esos objetos no existen (Causa E del plan de
+# reparacion) y los tests no podian ejecutarse. Este fixture es HARNESS (no
+# toca tests): compila los .o desde fuente cuando faltan o estan desactualizados.
+# Post-revision ME-R7: las dependencias incluyen los headers del runtime y los
+# binarios extra se re-enlazan si cambia cualquier objeto del runtime.
+
+_RT_OBJ_DEFS = [
+    ("tweetnacl.o", "tweetnacl.c", []),
+    ("synapse_rt.o", "synapse_rt.c", []),
+    ("synapse_rt_memory.o", "runtime/core/memory.c", ["-DSYNAPSE_DEBUG_MEM"]),
+    ("synapse_rt_concurrency.o", "runtime/core/concurrency.c", []),
+    ("axon_rt.o", "axon_rt.c", []),
+]
+
+# Headers del runtime: cualquier cambio en ellos invalida los .o
+_RT_HEADERS = [
+    "synapse_rt.h", "synapse_rt_types.h", "synapse_rt_memory.h", "tweetnacl.h",
+    "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
+]
+
+# Binarios de test pre-compilados que algunos tests Python esperan listos en
+# tests/: se linkean con los .o del runtime. Formato:
+#   (nombre_binario, fuente.c, [objetos]) — si objetos es None, se usan TODOS
+#   los .o del runtime.
+_RT_BINARIOS_EXTRA = [
+    ("test_work_stealing", "test_work_stealing.c", None),
+    ("test_cluster_raft", "test_cluster_raft.c", None),
+    # test_axon_e2e.py espera estos binarios con sufijo _new (Causa E):
+    ("test_path_traversal_new", "test_path_traversal.c", None),
+    ("test_ed25519_axon_new", "test_ed25519_axon.c", None),
+    # gen_axon_test_fixtures define su propio randombytes -> solo tweetnacl.o
+    ("gen_axon_test_fixtures", "gen_axon_test_fixtures.c", ["tweetnacl.o"]),
+]
+
+
+def _rt_resolver_gcc() -> str:
+    """Reusa el resolver de cli.py (ME-R4); fallback a gcc del PATH."""
+    try:
+        from cli import _resolver_gcc
+        return _resolver_gcc()
+    except Exception:
+        for c in ("gcc", "gcc.exe"):
+            try:
+                subprocess.run([c, "--version"], capture_output=True)
+                return c
+            except FileNotFoundError:
+                continue
+        return "gcc"
+
+
+def _rt_mtime_max(paths):
+    """Maximo mtime de las dependencias (archivos existentes)."""
+    mx = 0.0
+    for p in paths:
+        try:
+            mx = max(mx, os.path.getmtime(p))
+        except OSError:
+            pass
+    return mx
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _auto_compilar_objetos_runtime():
+    """Compila los .o del runtime (raiz) desde fuente si faltan/desactualizados.
+
+    Post-revision: dependencias = fuente + headers del runtime; los binarios
+    extra se re-enlazan si cambia cualquier objeto; si la compilacion falla se
+    emite un WARNING y los tests que dependan del artefacto fallaran con su
+    propio mensaje (no se aborta toda la suite).
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    gcc = _rt_resolver_gcc()
+    try:
+        # 1) Objetos del runtime
+        for obj, src, extra in _RT_OBJ_DEFS:
+            obj_path = os.path.join(root, obj)
+            src_path = os.path.join(root, src.replace("/", os.sep))
+            deps = [src_path] + [os.path.join(root, h) for h in _RT_HEADERS]
+            if os.path.exists(obj_path) and os.path.getmtime(obj_path) >= _rt_mtime_max(deps):
+                continue
+            cmd = [gcc, "-O2", "-I.", "-c", src_path, "-o", obj_path] + extra
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if res.returncode != 0:
+                try:
+                    os.remove(obj_path)
+                except OSError:
+                    pass
+                raise RuntimeError(f"no se pudo compilar {obj} desde {src}: {res.stderr[:400]}")
+
+        # 2) Binarios de test extra (re-enlazar si cambia el runtime)
+        all_rt_objs = [os.path.join(root, o) for o, _, _ in _RT_OBJ_DEFS]
+        for bin_name, src, objs in _RT_BINARIOS_EXTRA:
+            exe_path = os.path.join(root, "tests", bin_name + ".exe")
+            src_path = os.path.join(root, "tests", src)
+            if objs is None:
+                rt_objs = all_rt_objs
+            else:
+                rt_objs = [os.path.join(root, o) for o in objs]
+            deps = [src_path] + rt_objs
+            if os.path.exists(exe_path) and os.path.getmtime(exe_path) >= _rt_mtime_max(deps):
+                continue
+            cmd = [gcc, "-O2", "-I.", src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32", "-o", exe_path]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            if res.returncode != 0:
+                raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")
+    except Exception as e:
+        print(f"[ME-R7] WARNING: runtime objects no auto-compilados: {e}")
+    yield
