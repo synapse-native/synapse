@@ -2,8 +2,8 @@
 ## Historial Completo Verificado (Julio 2026)
 
 > **Versión:** 5.1.1-industrial
-> **Última actualización:** 2026-07-30
-> **Tests:** 184/184 Python PASS (✅✅ auditados lexicográfico/alfabético/determinismo) | 19 validate_*.c nativos | Bootstrap Stage 1→2→3 OK (diff 0 bytes verificado)
+> **Última actualización:** 2026-08-04
+> **Tests:** 667/667 Python PASS | 19 validate_*.c nativos | Bootstrap Stage 1→2→3 OK (diff 0 bytes verificado) | Fase R: 7/9 ME completados
 > **Toolchain:** GCC 12.4.0 MinGW-w64 | Python 3.12
 
 ---
@@ -373,6 +373,30 @@
 
 ---
 
+### 🔄 FASE R: REPARACIÓN DE INSTALACIÓN LIMPIA — EN PROGRESO (7/9 ME, 2026-08-03/04)
+
+*Diagnóstico: los workflows de GitHub fallaban al compilar el binario estático y la
+instalación limpia no generaba `synapse.exe` (objetos `.o` huérfanos e ignorados que solo
+existían localmente). Plan de reparación: `docs/PLAN_REPARACION_INSTALACION_LIMPIA.md`.*
+
+| ME | Descripción | Estado |
+|----|-------------|--------|
+| ME-R1 | Workflows CI enlazan el runtime modular completo (`memory.c`, `concurrency.c`, `tweetnacl.c`) | ✅ COMPLETADO `7734d2b` |
+| ME-R2 | `pipeline.py` compila el runtime desde fuente a `build/obj/` y PROPAGA errores | ✅ COMPLETADO `80e18dd` |
+| ME-R3 | `build.sh`/`build.bat` alineados Manual 9 §9.1; paso fixup muerto eliminado | ✅ COMPLETADO `c5f5b17` |
+| ME-R4 | Toolchain: GCC forzado antes que clang (`cli.py`) | ✅ COMPLETADO `547f1e8` |
+| ME-R5 | Bootstrap auto-hospedado: link desde fuente (S1→S2→S3, diff 0 bytes) | ✅ COMPLETADO `0f1ac2c` |
+| ME-R6 | Instalador funcional + rutas absolutas del runtime vía `GetModuleFileNameA` | ✅ COMPLETADO `51ea954` |
+| ME-R7 | Tests reales en clon limpio (fixture auto-compilación) + deudas D1/D2/D6 | ✅ COMPLETADO `8310c17` |
+| ME-R8 | Higiene del repositorio (`.o` huérfanos, `Native`, accidentes, `.axon_cache`/`test_lsp_bin.oculto`, D4/D5) | 🔄 EN PROGRESO |
+| ME-R9 | Workflow `clean-install.yml` + documentación + certificación final + deudas D3/D7/D8/D9 | ⬜ PENDIENTE |
+
+**Certificación parcial:** suite completa **667 passed, 0 failed** | clon limpio: bootstrap +
+integración 331 passed + `test_axon_e2e.py` 5 passed (sin `.o` ni binarios) | binario
+instalado compila desde CWD aislado | bootstrap S1→S2→S3 diff 0 bytes.
+
+---
+
 ## 4. MÉTRICAS DEL PROYECTO (Verificadas al 2026-07-31)
 
 | Métrica | Valor | Estado |
@@ -420,8 +444,9 @@
 | 19 | Optimización Runtime | 2026-07-28 | ✅✅✅ COMPLETADO |
 | 20 | Certificación de Producción y Hardening Final | 2026-07-30 | ✅✅ COMPLETADO |
 | 21 | Hitos Avanzados M21-M22 | 2026-08-01 | ✅✅ COMPLETADO |
+| R | Reparación Instalación Limpia (Fase R) | 2026-08-03/04 | 🔄 EN PROGRESO (7/9 ME) |
 
-**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **0 EN PROGRESO** | **0 PENDIENTES**
+**Total:** 22 fases | **22 COMPLETADAS (✅✅ auditadas)** | **1 EN PROGRESO (Fase R, 7/9)** | **0 PENDIENTES**
 
 ---
 
@@ -458,6 +483,7 @@ Fase 19 (Optimización) ← COMPLETADA ✅
 | 2026-07-30 | 5.1.1-industrial | M20.1–M20.5: Certificación de producción completa. Empaquetado multi-target, SBOM SPDX 2.3, validación cruzada (337/337 tests), sellado criptográfico Ed25519 + SLSA L3, checklist Manual 9 §9.7, saneamiento pre-despliegue. Excisión toolchain (10,569 archivos), LICENSE MIT, README.md v5.1.1-industrial. Push a GitHub + tag v5.1.1-industrial creado. **Fase 20 certificada. Proyecto completo.** | Buffy (Freebuff AI) |
 
 | 2026-08-01 | 5.1.1-industrial | M21.4: Resolución de regiones/lifetimes completada en el analizador auto-hospedado (region graph + union-find, paridad Manual 4 §4.3). Commit 3b3841c. Validado: bootstrap stage-2/stage-3 byte-idénticos (S2==S3), suite completa 667 passed / 9 skipped / 1 xfailed. **Fase 21 marcada COMPLETADA (22/22 fases).** | Synapse dev (opencode) |
+| 2026-08-04 | 5.1.1-industrial | **FASE R (Reparación Instalación Limpia) — 7/9 ME completados** (plan: `docs/PLAN_REPARACION_INSTALACION_LIMPIA.md`): ME-R1 workflows enlazan runtime modular completo (`7734d2b`), ME-R2 pipeline compila runtime desde fuente + propaga errores (`80e18dd`), ME-R3 build.sh/build.bat alineados Manual 9 §9.1 (`c5f5b17`), ME-R4 toolchain GCC forzado (`547f1e8`), ME-R5 bootstrap auto-hospedado desde fuente (`0f1ac2c`), ME-R6 instalador funcional + rutas absolutas del runtime (`51ea954`), ME-R7 tests reales en clon limpio + deudas D1/D2/D6 (`8310c17`). Suite completa: 667 passed, 0 failed. Pendientes: ME-R8 (higiene repo) y ME-R9 (certificación final + workflow clean-install). | Buffy (Freebuff AI) |
 ---
 
 *Roadmap vivo — toda fase marcada COMPLETADA ha sido verificada contra archivos, commits y tests existentes en el repositorio.*
