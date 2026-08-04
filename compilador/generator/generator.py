@@ -499,6 +499,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
     ctx.write_line("extern int _G_fn_ptr_vars_count;")
+    # ME-F1.2b: alias de tipo declarados (`tipo X = Y`) — paridad orquestador nativo
+    ctx.write_line("extern char _G_tipo_aliases[128][64];")
+    ctx.write_line("extern char _G_tipo_aliases_base[128][64];")
+    ctx.write_line("extern int _G_tipo_aliases_count;")
     ctx.write_line("")
     ctx.write_line("// PGO variables (defined in self-hosted parser module)")
     ctx.write_line("extern int _P_ntks, _P_tpos, _P_p_err;")
@@ -679,6 +683,10 @@ class GeneradorC:
             ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
             ctx.write_line("int _G_fn_ptr_vars_count;")
+            # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
+            ctx.write_line("char _G_tipo_aliases[128][64];")
+            ctx.write_line("char _G_tipo_aliases_base[128][64];")
+            ctx.write_line("int _G_tipo_aliases_count;")
             ctx.write_line("")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
@@ -1005,6 +1013,10 @@ class GeneradorC:
                 ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
                 ctx.write_line("int _G_fn_ptr_vars_count;")
+                # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
+                ctx.write_line("char _G_tipo_aliases[128][64];")
+                ctx.write_line("char _G_tipo_aliases_base[128][64];")
+                ctx.write_line("int _G_tipo_aliases_count;")
                 ctx.write_line("")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")

@@ -303,7 +303,7 @@ class LiteralNulo(Nodo):
 
 
 @dataclass
-class ConstructorTipo:
+class ConstructorTipo(Nodo):
     nombre: str = ''
     tipos: List[str] = field(default_factory=list)
 
