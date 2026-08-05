@@ -359,24 +359,32 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     nombre=nodo.nombre
                 )
                 return
+            # F1.2c: `let IDENT [":" tipo] ["=" expresion]` — el tipo es opcional.
+            # Sin anotacion se infiere de la expresion; sin ambas, defecto 'int'
+            # (Manual 2 §2 L134, paridad con el codegen S1/S2).
+            tipo_decl = nodo.tipo
+            if not tipo_decl:
+                tipo_decl = self._inferir_tipo(nodo.expresion) or 'int'
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
-                norm_decl = _tipo_normalizado(nodo.tipo)
+                norm_decl = _tipo_normalizado(tipo_decl)
                 norm_expr = _tipo_normalizado(tipo_expr)
                 if norm_decl != norm_expr:
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(nodo.linea, nodo.columna),
-                        tipo1=tipo_expr, tipo2=nodo.tipo, operacion='declaracion'
+                        tipo1=tipo_expr, tipo2=tipo_decl, operacion='declaracion'
                     )
                 else:
-                    self.tabla.declarar(nodo.nombre, nodo.tipo, nodo)
+                    self.tabla.declarar(nodo.nombre, tipo_decl, nodo)
                     # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
                     if hasattr(self, '_region_graph'):
                         lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
                         scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
                         self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
                         self._proximo_lifetime += 1
+            else:
+                self.tabla.declarar(nodo.nombre, tipo_decl, nodo)
         elif isinstance(nodo, StmtConstante):
             tipo_const = self._inferir_tipo(nodo.valor)
             if tipo_const:

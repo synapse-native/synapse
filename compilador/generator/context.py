@@ -20,6 +20,7 @@ MAPA_TIPOS_C: Dict[str, str] = {
     'entero': 'int', 'int': 'int', 'Entero': 'int',
     'vacio': 'void', 'nulo': 'void', 'Nulo': 'void',
     'decimal': 'float', 'real': 'float', 'flotante': 'float', 'Flotante': 'float', 'Decimal': 'float',
+    'float': 'float',
     'Tensor': 'Tensor', 'tensor': 'Tensor',
     'Canal': 'Canal', 'canal': 'Canal',
     'texto': 'CadenaSegura', 'cadena': 'CadenaSegura', 'Texto': 'CadenaSegura',

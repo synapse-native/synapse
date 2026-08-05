@@ -61,6 +61,8 @@ def emitir_token_defs(ctx: GeneratorContext, _unused=None):
             "#define T_AMPERSAND 45",
             "#define T_EXTERNO 48",
             "#define T_PIPE 58",
+            "#define T_LET 59",
+            "#define T_DELEGAR 60",
             "",
             "#define MAX_TOKS 65536",
             "typedef struct { int tipo; int linea; int col; char val[1024]; } _P_Token;",
@@ -175,6 +177,8 @@ def gen_tok_c(ctx: GeneratorContext):
             '                {"inseguro",T_INSEGURO},{"unsafe",T_INSEGURO},',
             '                {"importar_c",T_IMPORTAR_C},{"import_c",T_IMPORTAR_C},{"importer_c",T_IMPORTAR_C},{"importa_c",T_IMPORTAR_C},',
             '                {"externo",T_EXTERNO},{"extern",T_EXTERNO},{"externe",T_EXTERNO},{"esterno",T_EXTERNO},',
+            '                {"let",T_LET},{"let",T_LET},{"let",T_LET},{"let",T_LET},',
+            '                {"delegar",T_DELEGAR},{"delegate",T_DELEGAR},{"déléguer",T_DELEGAR},{"delegar",T_DELEGAR},',
             '                {NULL,0}',
             '            };',
             '            int _kt = T_IDENT;',
@@ -635,6 +639,36 @@ _P_retry:;
         n->tipo=""" + _P + """cs("BloqueInseguro"); n->cuerpo=cpo;
         return (struct Nodo*)n;
     }
+    if (t->tipo == T_LET) {  // F1.2c: let IDENT [':' tipo] ['=' expresion] (Manual 2 §2 L134)
+        """ + _P + """avanzar();
+        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        char _lvn[256]; strcpy(_lvn, """ + _P + """mirar()->val);
+        """ + _P + """avanzar();
+        char _ltp[256]; _ltp[0] = 0;
+        if (""" + _P + """mirar()->tipo == T_COLON) {
+            """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+            strcpy(_ltp, """ + _P + """mirar()->val);
+            """ + _P + """avanzar();
+            while (""" + _P + """mirar()->tipo == T_MUL) { strcat(_ltp,"*"); """ + _P + """avanzar(); }
+        }
+        struct Nodo* _lexpr = NULL;
+        if (""" + _P + """mirar()->tipo == T_ASSIGN) {
+            """ + _P + """avanzar();
+            _lexpr = """ + _P + """expr();
+        }
+        struct DeclaracionVariable* _ldv = (struct DeclaracionVariable*)calloc(1,sizeof(struct DeclaracionVariable));
+        _ldv->tipo=""" + _P + """cs("DeclaracionVariable");
+        _ldv->nombre=""" + _P + """cs(_lvn); _ldv->tipo_param=""" + _P + """cs(_ltp); _ldv->expresion=_lexpr;
+        return (struct Nodo*)_ldv;
+    }
+    if (t->tipo == T_DELEGAR) {  // F1.2c: delegar expresion -> retornar err(...) (Manual 2 §2 L132)
+        """ + _P + """avanzar();
+        struct Nodo* _dexpr = """ + _P + """expr();
+        struct SentenciaDelegar* _ndl = (struct SentenciaDelegar*)calloc(1,sizeof(struct SentenciaDelegar));
+        _ndl->tipo=""" + _P + """cs("SentenciaDelegar"); _ndl->expresion=_dexpr;
+        return (struct Nodo*)_ndl;
+    }
     if (t->tipo == T_IDENT && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
         char _vn[256]; strcpy(_vn, t->val);
         """ + _P + """avanzar(); """ + _P + """avanzar();
@@ -780,6 +814,11 @@ struct Nodo* """ + _P + """una() {
 struct Nodo* """ + _P + """prim() {
     """ + _P + """Token* t=""" + _P + """mirar();
     if (t->tipo==T_NUM) {
+        if (strchr(t->val, '.') != NULL) {
+            struct LiteralDecimal* n=(struct LiteralDecimal*)calloc(1,sizeof(struct LiteralDecimal));
+            n->tipo=""" + _P + """cs("LiteralDecimal"); n->valor=atof(t->val);
+            """ + _P + """avanzar(); return (struct Nodo*)n;
+        }
         struct LiteralNumero* n=(struct LiteralNumero*)calloc(1,sizeof(struct LiteralNumero));
         n->tipo=""" + _P + """cs("LiteralNumero"); n->valor=atoi(t->val);
         """ + _P + """avanzar(); return (struct Nodo*)n;
@@ -1029,6 +1068,7 @@ const char* {_PH}tex(struct Nodo* n) {{
     if(!n) return "int";
     const char* t=n->tipo.datos;
     if(strcmp(t,"LiteralNumero")==0) return "int";
+    if(strcmp(t,"LiteralDecimal")==0) return "float";
     if(strcmp(t,"LiteralCadena")==0) return "CadenaSegura";
     if(strcmp(t,"Identificador")==0) {{ struct Identificador* i=(struct Identificador*)n; char m[256]; {_PH}cp(m,i->nombre); int j={_PH}find(m); return j>=0?{_PH}vt[j]:"int"; }}
     if(strcmp(t,"OpBinaria")==0||strcmp(t,"OpUnaria")==0) return "int";
@@ -1086,6 +1126,7 @@ void {_PH}ea(struct Nodo* n, char* b, int sz) {{
     if(!n){{ snprintf(b,sz,"0"); return; }}
     const char* t=n->tipo.datos;
     if(strcmp(t,"LiteralNumero")==0){{ struct LiteralNumero* x=(struct LiteralNumero*)n; snprintf(b,sz,"%d",x->valor); return; }}
+    if(strcmp(t,"LiteralDecimal")==0){{ struct LiteralDecimal* x=(struct LiteralDecimal*)n; snprintf(b,sz,"%.9g",x->valor); if(!strchr(b,'.')&&!strchr(b,'e')&&!strchr(b,'E')) strcat(b,".f"); else strcat(b,"f"); return; }}
     if(strcmp(t,"LiteralCadena")==0){{ struct LiteralCadena* x=(struct LiteralCadena*)n; snprintf(b,sz,"(CadenaSegura){{.longitud=%d,.datos=\\"%.*s\\"}}",x->valor.longitud,x->valor.longitud,x->valor.datos); return; }}
     if(strcmp(t,"Identificador")==0){{ struct Identificador* x=(struct Identificador*)n; char _tmp_nm[256]; {_PH}cp(_tmp_nm,x->nombre); if(strcmp(_tmp_nm,"nulo")==0) strcpy(b,"NULL"); else strcpy(b,_tmp_nm); return; }}
     if(strcmp(t,"OpBinaria")==0){{ struct OpBinaria* x=(struct OpBinaria*)n; {_PH}ea(x->izquierdo,i,512); {_PH}ea(x->derecho,d,512); char _o[16]; {_PH}cp(_o,x->operador->lexema); snprintf(b,sz,"(%s %s %s)",i,_o,d); return; }}

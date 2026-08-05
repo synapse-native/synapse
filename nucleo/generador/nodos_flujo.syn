@@ -143,9 +143,20 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("char _buf[4096], _buf2[4096];")
         asm("_buf[0] = 0;")
         asm("// Manual 8 S8.2 / paridad: literal string -> CadenaSegura (no const char*)")
+        asm("// F1.2c: `let x: tipo = ...` usa la anotacion explicita (paridad visitar_declaracion);")
+        asm("// si no hay anotacion se infiere: LiteralCadena -> CadenaSegura, LiteralDecimal -> float, resto int.")
+        asm("extern char _gen_tmp_buf[4096];")
+        asm("char _var_type_buf[128]; _var_type_buf[0] = 0;")
         asm("const char* _var_type = \"int \";")
-        asm("if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
+        asm("if (_dv->tipo_param.datos && _dv->tipo_param.datos[0] != 0) {")
+        asm("    traducir_tipo_c((void*)_dv->tipo_param.datos);")
+        asm("    strncpy(_var_type_buf, _gen_tmp_buf, 127); _var_type_buf[127] = 0;")
+        asm("    strcat(_var_type_buf, \" \");")
+        asm("    _var_type = _var_type_buf;")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralCadena\") == 0) {")
         asm("    _var_type = \"CadenaSegura \";")
+        asm("} else if (_dv->expresion && _dv->expresion->tipo.datos && strcmp(_dv->expresion->tipo.datos, \"LiteralDecimal\") == 0) {")
+        asm("    _var_type = \"float \";")
         asm("}")
         asm("strcat(_buf, \"    \");")
         asm("strcat(_buf, _var_type);")
@@ -214,6 +225,26 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        _G_scope_vars_names[_idx][63] = 0;")
         asm("    }")
         asm("}")
+
+// ----------------------------------------------------------
+// gen_visitar_delegar
+// F1.2c: `delegar expresion` == `retornar err(...)` (Manual 2 §2 L132,
+// Manual 3 §7). Patron `?` de Resultado: si el tag es err, propaga el valor;
+// si es ok, continua (el valor se descarta).
+// ----------------------------------------------------------
+funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    inseguro:
+        asm("struct SentenciaDelegar* _dl = (struct SentenciaDelegar*)stmt;")
+        asm("if (!_dl) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaDelegar\");")
+        asm("char _dbuf[4096]; _dbuf[0] = 0;")
+        asm("if (_dl->expresion) { _oo_expr_a_c(est, _dl->expresion, _dbuf, 4096); }")
+        asm("char _dline[4128]; _dline[0] = 0;")
+        asm("snprintf(_dline, 4128, \"    Resultado _del = %s;\", _dbuf);")
+        asm("gen_emitir_str(est, \"{\");")
+        asm("gen_emitir_str(est, _dline);")
+        asm("gen_emitir_str(est, \"    if (_del.tag == 1) return _del;\");")
+        asm("gen_emitir_str(est, \"}\");")
 
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -449,6 +480,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("else if (_syn_es_tipo(_t, \"SentenciaMientras\")) { gen_visitar_mientras(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaPara\")) { gen_visitar_para(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRetornar\")) { gen_visitar_retornar(est, stmt); }")
+        asm("else if (_syn_es_tipo(_t, \"SentenciaDelegar\")) { gen_visitar_delegar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"AsignacionVariable\")) { gen_visitar_asignacion(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaExpr\")) { gen_visitar_expr(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"DeclaracionVariable\")) { gen_visitar_declaracion(est, stmt); }")

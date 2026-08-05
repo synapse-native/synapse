@@ -29,6 +29,10 @@ estructura LiteralNumero:
     tipo: texto
     valor: entero
 
+estructura LiteralDecimal:
+    tipo: texto
+    valor: decimal
+
 estructura LiteralCadena:
     tipo: texto
     valor: texto
@@ -62,9 +66,14 @@ estructura AsignacionVariable:
 estructura DeclaracionVariable:
     tipo: texto
     nombre: texto
+    tipo_param: texto
     expresion: Nodo
     linea: entero
     columna: entero
+
+estructura SentenciaDelegar:
+    tipo: texto
+    expresion: Nodo
 
 estructura AsignacionCampo:
     tipo: texto

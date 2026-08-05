@@ -9,6 +9,7 @@ from compilador.ast_nodes import (
     TokenID, Nodo, Programa,
     SentenciaRecuperar, LogLlamada, SentenciaExpr,
     AsignacionVariable, DeclaracionVariable, AsignacionCampo,
+    SentenciaDelegar,
     SentenciaEnviarCanal, ExprRecibirCanal,
     Identificador, LlamadaFuncion, ConstructorTipo, DeclaracionTipo,
 )
@@ -68,6 +69,10 @@ class Parser(
             return self._parsear_constante()
         elif t.tipo == TokenID.COINCIDIR:
             return self._parsear_coincidir()
+        elif t.tipo == TokenID.LET:
+            return self._parsear_let()
+        elif t.tipo == TokenID.DELEGAR:
+            return self._parsear_delegar()
         elif t.tipo in (TokenID.INDENT, TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF, TokenID.SEMICOLON):
             return None
         elif (t.tipo == TokenID.TIPO
@@ -144,6 +149,45 @@ class Parser(
             expresion=expr,
             linea=tok_id.linea,
             columna=tok_id.columna,
+        )
+
+    def _parsear_let(self) -> DeclaracionVariable:
+        """F1.2c: `let IDENTIFICADOR [":" tipo] ["=" expresion]` (Manual 2 §2 L134)."""
+        tok_let = self._avanzar()
+        tok_id = self._esperar_identificador()
+        if tok_id is None:
+            self._sincronizar(_SYNC_EXPR)
+            return DeclaracionVariable(
+                nombre='',
+                tipo='',
+                expresion=None,
+                linea=tok_let.linea,
+                columna=tok_let.columna,
+            )
+        tipo = ''
+        if self._mirar().tipo == TokenID.COLON:
+            self._avanzar()
+            tipo = self._parsear_tipo_parametro()
+        expr = None
+        if self._mirar().tipo == TokenID.ASSIGN:
+            self._avanzar()
+            expr = self._parsear_expresion()
+        return DeclaracionVariable(
+            nombre=nombre_de_token(tok_id),
+            tipo=tipo,
+            expresion=expr,
+            linea=tok_let.linea,
+            columna=tok_let.columna,
+        )
+
+    def _parsear_delegar(self) -> SentenciaDelegar:
+        """F1.2c: `delegar expresion` (Manual 2 §2 L132) -> retornar err(...)."""
+        tok_delegar = self._avanzar()
+        expr = self._parsear_expresion()
+        return SentenciaDelegar(
+            expresion=expr,
+            linea=tok_delegar.linea,
+            columna=tok_delegar.columna,
         )
 
     def _parsear_declaracion_tipo(self) -> Optional[DeclaracionTipo]:

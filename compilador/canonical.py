@@ -11,6 +11,7 @@ from compilador.ast_nodes import (
     SentenciaRetornar, SentenciaEscuchar, SentenciaMientras,
     SentenciaRomper, SentenciaSiguiente,
     SentenciaExpr, AsignacionVariable, LogLlamada, SentenciaImportar,
+    DeclaracionVariable, SentenciaDelegar,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
     DeclaracionExterna, StmtConstante,
@@ -331,6 +332,19 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
         elif isinstance(nodo, AsignacionVariable):
             expr_str = _render_expr(nodo.expresion, dicc_inv)
             lines.append(f"{prefijo}{nodo.nombre} = {expr_str}")
+
+        elif isinstance(nodo, DeclaracionVariable):
+            # F1.2c: let IDENT [":" tipo] ["=" expresion] (Manual 2 §2 L134)
+            expr_str = _render_expr(nodo.expresion, dicc_inv) if nodo.expresion else ''
+            if nodo.tipo:
+                head = f"let {nodo.nombre}: {nodo.tipo}"
+            else:
+                head = f"let {nodo.nombre}"
+            lines.append(f"{prefijo}{head}" + (f" = {expr_str}" if expr_str else ""))
+
+        elif isinstance(nodo, SentenciaDelegar):
+            expr_str = _render_expr(nodo.expresion, dicc_inv)
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.DELEGAR, dicc_inv)} {expr_str}")
 
         elif isinstance(nodo, LogLlamada):
             args = ", ".join(_render_expr(a, dicc_inv) for a in nodo.argumentos)

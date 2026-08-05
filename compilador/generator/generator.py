@@ -9,6 +9,7 @@ from compilador.ast_nodes import (
     SentenciaRomper, SentenciaSiguiente,
     SentenciaExpr, DeclaracionVariable,
     AsignacionVariable, AsignacionCampo, LogLlamada,
+    SentenciaDelegar,
     BloqueInseguro, NodoCoincidir,
     ImportarC, DeclaracionExterna, StmtConstante,
     SentenciaEnviarCanal, DeclaracionTipo,
@@ -22,6 +23,7 @@ from .emit_declarations import (
     visitar_asignacion_campo, visitar_enviar_canal,
     visitar_import_c, visitar_externa, visitar_constante,
     visitar_retornar, visitar_lanzar, visitar_recuperar, visitar_escuchar,
+    visitar_delegar,
     visitar_declaracion_tipo,
 )
 from .emit_expressions import (
@@ -238,6 +240,8 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         visitar_declaracion(ctx, nodo)
     elif isinstance(nodo, AsignacionVariable):
         visitar_asignacion(ctx, nodo)
+    elif isinstance(nodo, SentenciaDelegar):
+        visitar_delegar(ctx, nodo)
     elif isinstance(nodo, LogLlamada):
         visitar_log(ctx, nodo)
     elif isinstance(nodo, AsignacionCampo):

@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     DeclaracionVariable, AsignacionVariable, AsignacionCampo,
     DeclaracionExterna, ImportarC, StmtConstante,
     SentenciaEnviarCanal, SentenciaLanzar, SentenciaRecuperar,
-    SentenciaRetornar, SentenciaEscuchar,
+    SentenciaRetornar, SentenciaEscuchar, SentenciaDelegar,
     BloqueInseguro, SentenciaExpr,
     ExprAsm, Identificador, LlamadaFuncion, ArgumentoTransferido,
     DeclaracionTipo,
@@ -46,18 +46,36 @@ def _visitar_stmt(ctx, nodo):
 # ================================================================
 
 def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
-    """Genera código C para declaración de variable con tipo explícito."""
-    tipo_c = ctx.traducir_tipo_c(nodo.tipo)
+    """Genera código C para declaración de variable. F1.2c: el tipo es opcional
+    (`let x = 5`); se infiere de la expresión (Manual 2 §2 L134)."""
+    tipo_syn = nodo.tipo
+    if not tipo_syn:
+        tipo_syn = tipo_de_expr(ctx, nodo.expresion) if nodo.expresion else 'int'
+    tipo_c = ctx.traducir_tipo_c(tipo_syn)
     if nodo.expresion:
         val = expr_a_c(ctx, nodo.expresion)
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {val};")
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
-    ctx._variables[nodo.nombre] = nodo.tipo  # Store Synapse type (consistent)
-    if nodo.tipo == 'CanalConcurrencia*':
+    ctx._variables[nodo.nombre] = tipo_syn  # Store Synapse type (consistent)
+    if tipo_syn == 'CanalConcurrencia*':
         ctx._canal_vars_concurrencia.add(nodo.nombre)
-    elif nodo.tipo == 'Canal':
+    elif tipo_syn == 'Canal':
         ctx._canal_vars.add(nodo.nombre)
+    elif tipo_syn == 'Tensor':
+        ctx._tensor_vars.add(nodo.nombre)
+
+
+def visitar_delegar(ctx: GeneratorContext, nodo: SentenciaDelegar):
+    """F1.2c: `delegar expr` == `retornar err(expr)` (Manual 2 §2 L132, Manual 3
+    §7). Emite el patrón `?` de Resultado: si el tag es err, propaga el valor;
+    si es ok, continúa (el valor se descarta)."""
+    val = expr_a_c(ctx, nodo.expresion)
+    ctx.write_line("{")
+    ctx.write_line(f"    Resultado _del = {val};")
+    ctx.write_line("    if (_del.tag == 1) return _del;")
+    ctx.write_line("}")
+
 
 
 def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):

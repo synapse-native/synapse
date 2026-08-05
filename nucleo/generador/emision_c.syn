@@ -16,7 +16,7 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
         asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")
-        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0) { strcpy(_gen_tmp_buf, \"float\"); return; }")
+        asm("if (strcmp(_t, \"decimal\")==0 || strcmp(_t, \"real\")==0 || strcmp(_t, \"flotante\")==0 || strcmp(_t, \"float\")==0) { strcpy(_gen_tmp_buf, \"float\"); return; }")
         asm("if (strcmp(_t, \"Tensor\")==0 || strcmp(_t, \"tensor\")==0) { strcpy(_gen_tmp_buf, \"Tensor\"); return; }")
         asm("if (strcmp(_t, \"Canal\")==0 || strcmp(_t, \"canal\")==0) { strcpy(_gen_tmp_buf, \"Canal\"); return; }")
         asm("if (strcmp(_t, \"texto\")==0 || strcmp(_t, \"cadena\")==0) { strcpy(_gen_tmp_buf, \"CadenaSegura\"); return; }")

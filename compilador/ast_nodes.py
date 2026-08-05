@@ -249,6 +249,11 @@ class DeclaracionVariable(Nodo):
 
 
 @dataclass
+class SentenciaDelegar(Nodo):
+    expresion: Optional[Nodo] = None
+
+
+@dataclass
 class LogLlamada(Nodo):
     argumentos: List[Nodo] = field(default_factory=list)
 
