@@ -5,6 +5,8 @@
 > ejecuta en la FASE A** (Etapa A5 del plan `docs/FASE_A_PLAN.md`). Regla 7: no se adelanta
 > una fase; esta deuda está asignada a FASE A con criterio de cierre (Manual 2 §4.1 L267-268).
 > Fuente de verdad: `docs/AUDITORIA_ALINEACION_MANUALES.md` (registro de deuda, D-7).
+> HASH COMMIT: 4733dd8 (`docs(D-7): preparacion del cierre del ABI — matriz de impacto
+> (15 puntos con file:line) + plan de migracion A5.1-A5.6`).
 
 ---
 
