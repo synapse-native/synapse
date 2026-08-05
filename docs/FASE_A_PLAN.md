@@ -84,7 +84,10 @@ y tokenización UTF-8 (H26).
 ### Etapa A5 — Cierre de deudas asociadas (en el orden del roadmap)
 - **D-6** (`?` postfijo en expresiones, Manual 3 §7 L331-342): parser + codegen nativo.
 - **D-7** (ABI: `entero`/`int` → `int64_t`, `decimal`/`float`/`real` → `double`, Manual 2
-  §4.1 L267-268): `traducir_tipo_c` + runtime (`synapse_rt.c`); ítem 3.6 de la bitácora.
+  §4.1 L267-268): ítem 3.6 de la bitácora. **Preparación lista** (2026-08-05): matriz de
+  impacto (15 puntos con file:line) y plan de migración por pasos en
+  `docs/D7_ABI_IMPACTO.md` — ejecutar los pasos A5.1-A5.6 de ese documento (runtime →
+  mapeos → formatos → tests → FFI → bootstrap).
 - **D-2** (instanciación de ADT genéricos `T/E`): generador de campos tipados.
 - **D-3** (divergencia cosmética `Tensor t;` vs `Tensor t = {0};`): unificar emisión.
 - **D-5** (cobertura del generador ≥70%): harness reorientado al frontend único.
