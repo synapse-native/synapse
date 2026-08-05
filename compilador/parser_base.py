@@ -12,14 +12,15 @@ _SYNC_BLOCK = {TokenID.DEDENT, TokenID.EOF}
 _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
               TokenID.COMMA, TokenID.RPAREN, TokenID.COLON, TokenID.SEMICOLON}
 
-# AUDITORIA F1.2 (D-F1): keywords contextuales que el parser acepta donde un
-# identificador es válido (campo x.tipo, variable/parámetro tipo o tensor,
-# tipo de retorno nulo/tensor, patrones ADT ok/err/algun/ninguno). El lexer
-# conserva su lexema en Token.valor (ver TOKENS_CONTEXTUALES en lexer.py).
+# AUDITORIA F1.2 (D-F1) + F1.4: keywords contextuales que el parser acepta
+# donde un identificador es válido (campo x.tipo, variable/parámetro tipo o
+# tensor, tipo de retorno nulo/tensor, patrones ADT ok/err/algun/ninguno,
+# variable rc, parámetro modulo — F1.4). El lexer conserva su lexema en
+# Token.valor (ver TOKENS_CONTEXTUALES en lexer.py).
 TOKENS_CONTEXTUALES: frozenset = frozenset({
     TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
     TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
-    TokenID.ARC, TokenID.DEBIL,
+    TokenID.ARC, TokenID.DEBIL, TokenID.RC, TokenID.MODULO,
 })
 
 

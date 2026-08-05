@@ -36,14 +36,18 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         # F1.2 (D-F1 resuelta): activados tipo/tensor/nulo/ok/err/algun/ninguno
         # con soporte de parser contextual (declaración `tipo X = ...`, `tensor()`
         # como expresión, `nulo` literal/tipo, constructores ADT en coincidir).
-        # NO conectado: rc (variable de retorno ubicua, p.ej. std/cluster.syn:149)
-        # y modulo (parámetro en nucleo/generator.syn:343) — requieren diseño de
-        # parser propio (ver docs/AUDITORIA_ALINEACION_MANUALES.md, deuda D-F1).
+        # F1.4 (D-F1 cerrada): rc/modulo activados como keywords CONTEXTUALES —
+        # colisionan con identificadores reales (rc = variable de retorno en
+        # std/cluster.syn:149; modulo = parámetro en nucleo/generator.syn:343),
+        # por lo que el parser los acepta también donde un identificador vale
+        # (ver TOKENS_CONTEXTUALES y parser_base.es_token_identificador).
         'let': TokenID.LET,
         'delegar': TokenID.DELEGAR,
         'arc': TokenID.ARC,
         'débil': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'modulo': TokenID.MODULO,
         'tipo': TokenID.TIPO,
         'tensor': TokenID.TENSOR,
         'nulo': TokenID.NULO,
@@ -82,6 +86,8 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'arc': TokenID.ARC,
         'weak': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
         'type': TokenID.TIPO,
         'tensor': TokenID.TENSOR,
         'null': TokenID.NULO,
@@ -120,6 +126,8 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'arc': TokenID.ARC,
         'faible': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
         'type': TokenID.TIPO,
         'tenseur': TokenID.TENSOR,
         'nul': TokenID.NULO,
@@ -158,6 +166,8 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'arc': TokenID.ARC,
         'fraco': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'modulo': TokenID.MODULO,
         'tipo': TokenID.TIPO,
         'tensor': TokenID.TENSOR,
         'nulo': TokenID.NULO,
@@ -197,6 +207,8 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'arc': TokenID.ARC,
         'weak': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
         'type': TokenID.TIPO,
         'tensor': TokenID.TENSOR,
         'null': TokenID.NULO,
@@ -235,6 +247,8 @@ DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
         'arc': TokenID.ARC,
         'weak': TokenID.DEBIL,
         '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
         'type': TokenID.TIPO,
         'tensor': TokenID.TENSOR,
         'null': TokenID.NULO,
@@ -250,16 +264,16 @@ for _idioma, _mapa in DICCIONARIOS.items():
     DICCIONARIOS_INVERSO[_idioma] = {v: k for k, v in _mapa.items()}
 
 
-# AUDITORIA F1.2 (D-F1): keywords CONTEXTUALES del Manual 2 §3. Se tokenizan
-# como su TokenID (activación completa del lexer), pero el parser los acepta
-# también donde un identificador es válido (campo x.tipo, variable tipo,
-# parámetro tensor, patrón ok(...), tipo nulo/tensor). Para eso el lexer
-# conserva el LEXEMA en Token.valor de estos tokens (los demás keywords
-# mantienen valor=None como antes).
+# AUDITORIA F1.2 (D-F1) + F1.4: keywords CONTEXTUALES del Manual 2 §3. Se
+# tokenizan como su TokenID (activación completa del lexer), pero el parser los
+# acepta también donde un identificador es válido (campo x.tipo, variable tipo,
+# parámetro tensor, patrón ok(...), tipo nulo/tensor, variable rc, parámetro
+# modulo). Para eso el lexer conserva el LEXEMA en Token.valor de estos tokens
+# (los demás keywords mantienen valor=None como antes).
 TOKENS_CONTEXTUALES: frozenset = frozenset({
     TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
     TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
-    TokenID.ARC, TokenID.DEBIL,
+    TokenID.ARC, TokenID.DEBIL, TokenID.RC, TokenID.MODULO,
 })
 
 

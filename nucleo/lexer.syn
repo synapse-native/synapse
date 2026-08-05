@@ -63,7 +63,9 @@ constante T_ERROR = 58
 // AUDITORIA F1 (D-F1 RESUELTA): los 7 keywords contextuales (tipo, tensor, nulo,
 // ok, err, algun, ninguno) quedan ACTIVADOS en este lexer (Manual 2 §3, tabla
 // es/en/fr/pt) con soporte contextual del parser (ver token_es_nombre en
-// parser_base.syn). Modulo/rc siguen sin activar por colisión con identificadores.
+// parser_base.syn). F1.4: rc/modulo resueltos en S1 y en el frontend embebido
+// (_P_*, T_RC 64/T_MODULO 65); ESTE frontend nativo (código muerto en runtime,
+// reescrito por _P_*) los activa en la FASE A (ver docs/FASE_A_PLAN.md).
 constante T_LET = 59
 constante T_TIPO = 60
 constante T_TENSOR = 61

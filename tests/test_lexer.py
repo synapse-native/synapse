@@ -1,6 +1,8 @@
 ﻿import pytest
 from compilador.lexer import Lexer, DICCIONARIOS, TOKEN_UNICARACTER, TOKEN_BICARACTER
 from compilador.ast_nodes import TokenID, Token
+from compilador.parser import Parser
+from compilador.diagnostics import DiagnosticManager
 
 
 class TestLexerBasico:
@@ -229,12 +231,13 @@ class TestLexerKeywords:
 
 
 class TestLexerKeywordsNuevos:
-    """AUDITORIA F1 (H22/H22-F1.2): keywords del Manual 2 §3 conectados al lexer
-    Python. F1.2: tipo/tensor/nulo/ok/err/algun/ninguno ACTIVADOS con soporte de
-    parser contextual (declaración `tipo X = ...`, `tensor()` expresión, `nulo`
-    literal/tipo, constructores ADT en coincidir). NO conectados: rc (variable de
-    retorno ubicua) y modulo (parámetro en nucleo/generator.syn:343) — requieren
-    diseño de parser propio (deuda D-F1 restante, ver docs/AUDITORIA_ALINEACION_MANUALES.md).
+    """AUDITORIA F1 (H22/H22-F1.2/F1.4): keywords del Manual 2 §3 conectados al
+    lexer Python. F1.2: tipo/tensor/nulo/ok/err/algun/ninguno ACTIVADOS con
+    soporte de parser contextual (declaración `tipo X = ...`, `tensor()`
+    expresión, `nulo` literal/tipo, constructores ADT en coincidir). F1.4:
+    rc/modulo ACTIVADOS como keywords CONTEXTUALES (colisionan con identificadores
+    reales — variable rc, parámetro modulo — y el parser los acepta donde un
+    identificador vale; ver parser_base.es_token_identificador).
     """
 
     def test_keyword_let(self):
@@ -249,15 +252,21 @@ class TestLexerKeywordsNuevos:
         tokens = lexer.tokenizar()
         assert TokenID.DELEGAR in [t.tipo for t in tokens]
 
-    def test_modulo_sigue_siendo_identificador(self):
-        """modulo NO es keyword: colisión con el parámetro 'modulo' de
-        nucleo/generator.syn (gen_emitir_traza) — rompería el bootstrap.
-        El operador % sigue siendo T_MOD."""
+    def test_keyword_modulo(self):
+        """F1.4: modulo -> T_MODULO (Manual 2 §3: es='modulo') como keyword
+        CONTEXTUAL: conserva su lexema en .valor (el parser lo acepta como
+        parámetro/variable). El operador % sigue siendo T_MOD."""
         lexer = Lexer("#lang: es\nmodulo = 5")
         tokens = lexer.tokenizar()
-        assert any(t.tipo == TokenID.IDENTIFIER and t.valor == "modulo" for t in tokens)
+        assert any(t.tipo == TokenID.MODULO and t.valor == "modulo" for t in tokens)
         lexer2 = Lexer("#lang: es\nx = 1 % 2")
         assert TokenID.MOD in [t.tipo for t in lexer2.tokenizar()]
+
+    def test_keyword_module_en(self):
+        """F1.4: en la variante inglesa la keyword es 'module' (Manual 2 §3)."""
+        lexer = Lexer("#lang: en\nmodule = 5")
+        tokens = lexer.tokenizar()
+        assert any(t.tipo == TokenID.MODULO and t.valor == "module" for t in tokens)
 
     def test_keyword_arc(self):
         """Test keyword arc"""
@@ -282,12 +291,24 @@ class TestLexerKeywordsNuevos:
         with pytest.raises(SyntaxError, match="Error Léxico.*Carácter inesperado"):
             Lexer("#lang: es\nx = @").tokenizar()
 
-    def test_rc_sigue_siendo_identificador(self):
-        """rc NO es keyword (colisión con variable de retorno en std/cluster.syn)"""
+    def test_keyword_rc(self):
+        """F1.4: rc -> T_RC (Manual 2 §3) como keyword CONTEXTUAL: conserva su
+        lexema en .valor (el parser lo acepta como variable de retorno)."""
         lexer = Lexer("#lang: es\nrc = cluster_iniciar_nodo(0)")
         tokens = lexer.tokenizar()
-        assert TokenID.IDENTIFIER in [t.tipo for t in tokens]
-        assert any(t.tipo == TokenID.IDENTIFIER and t.valor == "rc" for t in tokens)
+        assert any(t.tipo == TokenID.RC and t.valor == "rc" for t in tokens)
+
+    def test_contextual_modulo_como_parametro(self):
+        """F1.4: la colisión que motivó el diseño contextual — el parámetro
+        'modulo' de gen_emitir_traza (nucleo/generator.syn:343) debe parsear."""
+        src = "#lang: es\nfuncion f(est: entero, modulo: puntero) -> nulo:\n    retornar\n"
+        toks = Lexer(src).tokenizar()
+        diag = DiagnosticManager()
+        prog = Parser(toks, diag).parsear()
+        assert not diag.hay_errores(), "parametro 'modulo' debe parsear como identificador"
+        fn = prog.sentencias[0]
+        assert [p.nombre for p in fn.parametros] == ["est", "modulo"], (
+            "nombre del parametro contextual preservado")
 
     def test_keyword_tipo(self):
         """F1.2: keyword tipo (T_TIPO, Manual 2 §3 es='tipo')"""

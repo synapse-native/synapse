@@ -66,6 +66,8 @@ def emitir_token_defs(ctx: GeneratorContext, _unused=None):
             "#define T_EXPORT 61",
             "#define T_ARC 62",
             "#define T_DEBIL 63",
+            "#define T_RC 64",
+            "#define T_MODULO 65",
             "",
             "#define MAX_TOKS 65536",
             "typedef struct { int tipo; int linea; int col; char val[1024]; } _P_Token;",
@@ -186,6 +188,11 @@ def gen_tok_c(ctx: GeneratorContext):
             '                {"delegar",T_DELEGAR},{"delegate",T_DELEGAR},{"déléguer",T_DELEGAR},{"delegar",T_DELEGAR},',
             '                {"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},',
             '                {"débil",T_DEBIL},{"weak",T_DEBIL},{"faible",T_DEBIL},{"fraco",T_DEBIL},',
+            '                // F1.4: rc/modulo (Manual 2 S3 L249/L255). Keywords contextuales:',
+            '                // el parser los acepta tambien donde un identificador vale',
+            '                // (variable rc, parametro modulo) — paridad con S1.',
+            '                {"rc",T_RC},{"rc",T_RC},{"rc",T_RC},{"rc",T_RC},',
+            '                {"modulo",T_MODULO},{"module",T_MODULO},{"module",T_MODULO},{"modulo",T_MODULO},',
             '                {NULL,0}',
             '            };',
             '            int _kt = T_IDENT;',
@@ -340,8 +347,7 @@ struct ListaNodo* """ + _P + """bloque() {
     return lst;
 }
 void """ + _P + """leer_constructores(struct ListaNodo** ccur) {
-    while (1) {
-        if (""" + _P + """mirar()->tipo != T_IDENT) break;
+    while (1) {            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
         char _cn[256]; strncpy(_cn, """ + _P + """mirar()->val, sizeof(_cn)-1); _cn[sizeof(_cn)-1] = '\\0';
         """ + _P + """avanzar();
         struct ConstructorTipo* c = (struct ConstructorTipo*)calloc(1,sizeof(struct ConstructorTipo));
@@ -360,7 +366,7 @@ void """ + _P + """leer_constructores(struct ListaNodo** ccur) {
                         """ + _P + """avanzar();
                     }
                 }
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 strncat(_tpb, """ + _P + """mirar()->val, sizeof(_tpb)-1-(int)strlen(_tpb));
                 """ + _P + """avanzar();
                 while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tpb, "*", sizeof(_tpb)-1-(int)strlen(_tpb)); """ + _P + """avanzar(); }
@@ -379,7 +385,7 @@ void """ + _P + """leer_constructores(struct ListaNodo** ccur) {
 }
 struct Nodo* """ + _P + """decl_tipo() {
     """ + _P + """avanzar(); /* consume 'tipo' */
-    if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+    if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
     char _tdn[256]; strncpy(_tdn, """ + _P + """mirar()->val, sizeof(_tdn)-1); _tdn[sizeof(_tdn)-1] = '\\0';
     """ + _P + """avanzar();
     struct ListaNodo* tparams = NULL;
@@ -387,7 +393,7 @@ struct Nodo* """ + _P + """decl_tipo() {
     if (""" + _P + """mirar()->tipo == T_LT) {
         """ + _P + """avanzar();
         while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
-            if (""" + _P + """mirar()->tipo != T_IDENT) break;
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
             struct Identificador* tp = (struct Identificador*)calloc(1,sizeof(struct Identificador));
             tp->tipo = """ + _P + """cs("Identificador"); tp->nombre = """ + _P + """cs(""" + _P + """mirar()->val);
             *tpcur = """ + _P + """mk_list((struct Nodo*)tp, NULL); tpcur = &(*tpcur)->cola;
@@ -407,7 +413,7 @@ struct Nodo* """ + _P + """decl_tipo() {
         """ + _P + """esperar(T_RPAREN);
     } else if (""" + _P + """mirar()->tipo == T_PIPE) {
         """ + _P + """leer_constructores(ccur);
-    } else if (""" + _P + """mirar()->tipo == T_IDENT) {
+    } else if (""" + _P + """mirar()->tipo == T_IDENT || """ + _P + """mirar()->tipo == T_RC || """ + _P + """mirar()->tipo == T_MODULO) {
         int _sig = (""" + _P + """tpos + 1 < """ + _P + """ntks) ? """ + _P + """tks[""" + _P + """tpos + 1].tipo : T_EOF;
         if (_sig == T_PIPE || _sig == T_LPAREN) {
             """ + _P + """leer_constructores(ccur);
@@ -420,14 +426,14 @@ struct Nodo* """ + _P + """decl_tipo() {
                     """ + _P + """avanzar();
                 }
             }
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
             strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase));
             """ + _P + """avanzar();
             while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tbase, "*", sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
             if (""" + _P + """mirar()->tipo == T_LT) {
                 """ + _P + """avanzar();
                 strncat(_tbase, "<", sizeof(_tbase)-1-(int)strlen(_tbase));
-                if (""" + _P + """mirar()->tipo == T_IDENT) { strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
+                if (""" + _P + """mirar()->tipo == T_IDENT || """ + _P + """mirar()->tipo == T_RC || """ + _P + """mirar()->tipo == T_MODULO) { strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
                 """ + _P + """esperar(T_GT);
                 strncat(_tbase, ">", sizeof(_tbase)-1-(int)strlen(_tbase));
             }
@@ -448,7 +454,7 @@ _P_retry:;
     """ + _P + """Token* t = """ + _P + """mirar();
     if (t->tipo == T_FUNC) {
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _nm[256]; strncpy(_nm, """ + _P + """mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\\0';
         """ + _P + """avanzar();
         """ + _P + """esperar(T_LPAREN);
@@ -458,17 +464,17 @@ _P_retry:;
             while (1) {
                 int is_transfer = 0;
                 if (""" + _P + """mirar()->tipo == T_ARROW) { is_transfer=1; """ + _P + """avanzar(); }
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
                 """ + _P + """avanzar();
                 """ + _P + """esperar(T_COLON);
-                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
                 """ + _P + """avanzar();
                 if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
                     while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_RPAREN && """ + _P + """mirar()->tipo != T_COMMA) {
                         int _gl=(int)strlen(_pt);
-                        if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                        if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
                         """ + _P + """avanzar();
                     }
                     if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
@@ -484,13 +490,13 @@ _P_retry:;
             }
         }
         """ + _P + """esperar(T_RPAREN); """ + _P + """esperar(T_ARROW);
-        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _rt[256]; strcpy(_rt, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_rt); if(_gtl<255){ _rt[_gtl]='<'; _rt[_gtl+1]='\\0'; } """ + _P + """avanzar();
             while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_COLON) {
                 int _gl=(int)strlen(_rt);
-                if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _rt[_gl++]=""" + _P + """mirar()->val[_k++]; } _rt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _rt[_gl]='<'; _rt[_gl+1]='\\0'; } }
+                if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _rt[_gl++]=""" + _P + """mirar()->val[_k++]; } _rt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _rt[_gl]='<'; _rt[_gl+1]='\\0'; } }
                 """ + _P + """avanzar();
             }
             if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_rt); if(_gl<255){ _rt[_gl]='>'; _rt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
@@ -505,7 +511,7 @@ _P_retry:;
     }
     if (t->tipo == T_STRUCT) {
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _snm[256]; strcpy(_snm, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         """ + _P + """esperar(T_COLON);
@@ -520,13 +526,13 @@ _P_retry:;
             char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
             """ + _P + """avanzar();
             """ + _P + """esperar(T_COLON);
-            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); break; }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); break; }
             char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
             """ + _P + """avanzar();
             if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
                 while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_DEDENT) {
                     int _gl=(int)strlen(_pt);
-                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
                     """ + _P + """avanzar();
                 }
                 if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
@@ -620,10 +626,10 @@ _P_retry:;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_IMPORT) { """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _imp[256]; strncpy(_imp, """ + _P + """mirar()->val, sizeof(_imp)-1); _imp[sizeof(_imp)-1] = '\\0'; int _iml = (int)strlen(_imp);
         """ + _P + """avanzar();
-        while (""" + _P + """mirar()->tipo == T_DOT) { """ + _P + """avanzar(); if (""" + _P + """mirar()->tipo != T_IDENT) break; { int _il = (int)strlen(_imp); if (_il < 254) { _imp[_il] = '.'; _imp[_il+1] = '\\0'; } if ((int)strlen(_imp) + (int)strlen(""" + _P + """mirar()->val) < 255) { strncat(_imp, """ + _P + """mirar()->val, 255 - (int)strlen(_imp) - 1); } } """ + _P + """avanzar(); }
+        while (""" + _P + """mirar()->tipo == T_DOT) { """ + _P + """avanzar(); if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break; { int _il = (int)strlen(_imp); if (_il < 254) { _imp[_il] = '.'; _imp[_il+1] = '\\0'; } if ((int)strlen(_imp) + (int)strlen(""" + _P + """mirar()->val) < 255) { strncat(_imp, """ + _P + """mirar()->val, 255 - (int)strlen(_imp) - 1); } } """ + _P + """avanzar(); }
         struct SentenciaImportar* n = (struct SentenciaImportar*)calloc(1,sizeof(struct SentenciaImportar));
         n->tipo=""" + _P + """cs("SentenciaImportar"); n->ruta=""" + _P + """cs(_imp);
         return (struct Nodo*)n;
@@ -641,7 +647,7 @@ _P_retry:;
     if (t->tipo == T_EXTERNO) { """ + _P + """avanzar();
         if (""" + _P + """mirar()->tipo != T_FUNC) { """ + _P + """sinc_skip(); return NULL; }
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _enm[256]; strcpy(_enm, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         """ + _P + """esperar(T_LPAREN);
@@ -649,11 +655,11 @@ _P_retry:;
         struct ListaParametro** epcur = &eparams;
         if (""" + _P + """mirar()->tipo != T_RPAREN) {
             while (1) {
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _epn[256]; strcpy(_epn, """ + _P + """mirar()->val);
                 """ + _P + """avanzar();
                 """ + _P + """esperar(T_COLON);
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _ept[256]; strcpy(_ept, """ + _P + """mirar()->val);
                 """ + _P + """avanzar();
                 while (""" + _P + """mirar()->tipo == T_MUL) { strcat(_ept,"*"); """ + _P + """avanzar(); }
@@ -665,7 +671,7 @@ _P_retry:;
             }
         }
         """ + _P + """esperar(T_RPAREN); """ + _P + """esperar(T_ARROW);
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _ert[256]; strcpy(_ert, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         struct DeclaracionExterna* n = (struct DeclaracionExterna*)calloc(1,sizeof(struct DeclaracionExterna));
@@ -688,19 +694,19 @@ _P_retry:;
     }
     if (t->tipo == T_LET) {  // F1.2c: let IDENT [':' tipo] ['=' expresion] (Manual 2 §2 L134)
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _lvn[256]; strcpy(_lvn, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         char _ltp[256]; _ltp[0] = 0;
         if (""" + _P + """mirar()->tipo == T_COLON) {
             """ + _P + """avanzar();
-            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); return NULL; }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
             strcpy(_ltp, """ + _P + """mirar()->val);
             """ + _P + """avanzar();
             if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_ltp); if(_gtl<255){ _ltp[_gtl]='<'; _ltp[_gtl+1]='\\0'; } """ + _P + """avanzar();
                 while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
                     int _gl=(int)strlen(_ltp);
-                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _ltp[_gl++]=""" + _P + """mirar()->val[_k++]; } _ltp[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _ltp[_gl]='<'; _ltp[_gl+1]='\\0'; } }
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _ltp[_gl++]=""" + _P + """mirar()->val[_k++]; } _ltp[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _ltp[_gl]='<'; _ltp[_gl+1]='\\0'; } }
                     """ + _P + """avanzar();
                 }
                 if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_ltp); if(_gl<255){ _ltp[_gl]='>'; _ltp[_gl+1]='\\0'; } """ + _P + """avanzar(); }
@@ -727,7 +733,7 @@ _P_retry:;
     if (t->tipo == T_EXPORT) {  // F1.2d: @export ( IDENT ) funcion (Manual 2 §2 L81)
         """ + _P + """avanzar();
         """ + _P + """esperar(T_LPAREN);
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _xdn[256]; strncpy(_xdn, """ + _P + """mirar()->val, sizeof(_xdn)-1); _xdn[sizeof(_xdn)-1] = '\\0';
         """ + _P + """avanzar();
         """ + _P + """esperar(T_RPAREN);
@@ -736,7 +742,9 @@ _P_retry:;
         _xne->tipo=""" + _P + """cs("DeclaracionExport"); _xne->destino=""" + _P + """cs(_xdn); _xne->funcion=_xfn;
         return (struct Nodo*)_xne;
     }
-    if (t->tipo == T_IDENT && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
+    // F1.4: la variable rc (y modulo) son keywords CONTEXTUALES — asignacion
+    // rc = ... valida (paridad S1, Manual 2 S3 L249/L255).
+    if ((t->tipo == T_IDENT || t->tipo == T_RC || t->tipo == T_MODULO) && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
         char _vn[256]; strcpy(_vn, t->val);
         """ + _P + """avanzar(); """ + _P + """avanzar();
         struct Nodo* val=""" + _P + """expr();
@@ -747,7 +755,7 @@ _P_retry:;
     }
     // D-F1: declaracion_tipo (Manual 2 §2). El guard replica el del parser Python:
     // 'tipo' + IDENTIFICADOR + ('=' | '<' | '|' | '(')
-    if (t->tipo == T_IDENT && strcmp(t->val, "tipo") == 0 && """ + _P + """tpos + 2 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_IDENT && (""" + _P + """tks[""" + _P + """tpos + 2].tipo == T_ASSIGN || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LT || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_PIPE || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LPAREN)) {
+    if (t->tipo == T_IDENT && strcmp(t->val, "tipo") == 0 && """ + _P + """tpos + 2 < """ + _P + """ntks && (""" + _P + """tks[""" + _P + """tpos + 1].tipo == T_IDENT || """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_RC || """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_MODULO) && (""" + _P + """tks[""" + _P + """tpos + 2].tipo == T_ASSIGN || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LT || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_PIPE || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LPAREN)) {
         return """ + _P + """decl_tipo();
     }
     // Guard: skip stray INDENT/DEDENT/NL and retry keyword matching
@@ -907,7 +915,8 @@ struct Nodo* """ + _P + """prim() {
         n->tipo=""" + _P + """cs("LiteralNumero"); n->valor=0;
         return (struct Nodo*)n;
     }
-    if (t->tipo==T_IDENT) {
+    // F1.4: rc/modulo son keywords contextuales — tambien expresiones primarias.
+    if (t->tipo==T_IDENT || t->tipo==T_RC || t->tipo==T_MODULO) {
         // D-F1: 'nulo' -> LiteralNulo y 'tensor(filas, columnas)' -> ExprTensor (Manual 2 §4.1/§4.3)
         if (strcmp(t->val, "nulo") == 0) {
             """ + _P + """avanzar();
@@ -959,7 +968,7 @@ struct Nodo* """ + _P + """prim() {
             struct Nodo* prev=(struct Nodo*)NULL;
             while (""" + _P + """mirar()->tipo==T_DOT) {
                 """ + _P + """avanzar();
-                if (""" + _P + """mirar()->tipo!=T_IDENT) break;
+                if (""" + _P + """mirar()->tipo!=T_IDENT && """ + _P + """mirar()->tipo!=T_RC && """ + _P + """mirar()->tipo!=T_MODULO) break;
                 if (!prev) {
                     struct Identificador* obj=(struct Identificador*)calloc(1,sizeof(struct Identificador));
                     obj->tipo=""" + _P + """cs("Identificador"); obj->nombre=""" + _P + """cs(_nm);
@@ -1253,7 +1262,7 @@ const char* {_PH}mt(const char* st) {{
     char _bare[64]; strcpy(_bare,_base);
     char* _lt = strchr(_bare,'<'); if(_lt)*_lt=0;
     // F1.2d: arc<T>/debil<T> (Manual 2 §4.3). ABI placeholder (void*) hasta la Fase 23.
-    if(strcmp(_bare,"arc")==0||strcmp(_bare,"debil")==0||strcmp(_bare,"d\u00e9bil")==0||strcmp(_bare,"weak")==0||strcmp(_bare,"faible")==0||strcmp(_bare,"fraco")==0) _r="void*";
+    if(strcmp(_bare,"rc")==0||strcmp(_bare,"arc")==0||strcmp(_bare,"debil")==0||strcmp(_bare,"d\u00e9bil")==0||strcmp(_bare,"weak")==0||strcmp(_bare,"faible")==0||strcmp(_bare,"fraco")==0) _r="void*";
     else if(strcmp(_base,"entero")==0||strcmp(_base,"int")==0) _r="int";
     else if(strcmp(_base,"texto")==0||strcmp(_base,"cadena")==0) _r="CadenaSegura";
     else if(strcmp(_base,"nulo")==0||strcmp(_base,"vacio")==0) _r="void";
