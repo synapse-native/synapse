@@ -134,6 +134,12 @@ class DefinicionFuncion(Nodo):
 
 
 @dataclass
+class DeclaracionExport(Nodo):
+    destino: str = ''
+    funcion: Optional[Nodo] = None
+
+
+@dataclass
 class SentenciaSi(Nodo):
     condicion: Optional[Nodo] = None
     cuerpo: List[Nodo] = field(default_factory=list)

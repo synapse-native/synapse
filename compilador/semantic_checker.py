@@ -9,11 +9,24 @@ from compilador.ast_nodes import (
     SentenciaEscuchar, SentenciaRecuperar, BloqueInseguro,
     SentenciaEnviarCanal, LogLlamada, NodoCoincidir, Identificador,
     LlamadaFuncion, DeclaracionExterna, ArgumentoTransferido,
+    DeclaracionExport,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN
 from compilador.semantic_types import AnalizadorSemanticoTypes
+
+
+# F1.2d: tipos de conteo de referencias rc/arc/débil (Manual 2 §2 L151-153 y
+# §4.3 L290-292). Se compilan a void* (ABI placeholder hasta Fase 23); el
+# literal `nulo` (puntero) es su valor inicial válido (Manual 4 §4.1).
+_TIPOS_RC = frozenset({'rc', 'arc', 'debil', 'débil', 'weak', 'faible', 'fraco'})
+
+
+def _es_tipo_referencia_rc(tipo: str) -> bool:
+    """True si `tipo` es un tipo de conteo de referencias (rc/arc/débil)."""
+    base = tipo.split('<')[0].strip()
+    return base in _TIPOS_RC
 
 
 # --- Lifetime/Region type constants (Manual 4.3) ---
@@ -240,6 +253,14 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         self._token(s.linea, s.columna),
                         nombre=s.nombre
                     )
+            elif isinstance(s, DeclaracionExport):
+                fn = s.funcion
+                if isinstance(fn, DefinicionFuncion) and not self.tabla.declarar(fn.nombre, fn.tipo_retorno, fn):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(fn.linea, fn.columna),
+                        nombre=fn.nombre
+                    )
             elif isinstance(s, StmtConstante):
                 tipo_const = self._inferir_tipo(s.valor)
                 if tipo_const:
@@ -256,6 +277,10 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre not in _FUNCIONES_BUILTIN:
                 self._analizar_funcion(s)
+            elif isinstance(s, DeclaracionExport):
+                fn = s.funcion
+                if isinstance(fn, DefinicionFuncion) and fn.nombre not in _FUNCIONES_BUILTIN:
+                    self._analizar_funcion(fn)
 
     # M21.3: Report error from lifetime resolver
     def _reportar_error(self, code: str, linea: int, mensaje: str):
@@ -334,6 +359,10 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         # M22.6: Allow int->pointer assignment inside inseguro blocks (NULL ptr)
                         elif self._dentro_de_inseguro and norm_expr == 'int' and norm_existente.endswith('*'):
                             pass  # Allow NULL assignment to pointer in unsafe mode
+                        # F1.2d: `nulo` (puntero) -> rc/arc/débil (ABI void*, Manual 2 §4.3)
+                        elif (_es_tipo_referencia_rc(sim_existente.tipo)
+                              and norm_expr in ('puntero', 'void*')):
+                            pass
                         else:
                             self.diag.reportar(
                                 ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -369,7 +398,11 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if tipo_expr:
                 norm_decl = _tipo_normalizado(tipo_decl)
                 norm_expr = _tipo_normalizado(tipo_expr)
-                if norm_decl != norm_expr:
+                # F1.2d: `let x: arc<T> = nulo` — nulo (puntero) es válido para
+                # tipos de conteo de referencias (ABI void*, Manual 2 §4.3).
+                compat_rc = (_es_tipo_referencia_rc(tipo_decl)
+                             and norm_expr in ('puntero', 'void*'))
+                if norm_decl != norm_expr and not compat_rc:
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(nodo.linea, nodo.columna),
@@ -419,7 +452,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         )
                     else:
                         tipo_expr = self._inferir_tipo(nodo.expresion)
-                        if tipo_expr and _tipo_normalizado(tipo_expr) != _tipo_normalizado(campo_val.tipo):
+                        # F1.2d: `campo_arc = nulo` — nulo (puntero) es válido para
+                        # campos rc/arc/débil (ABI void*, Manual 2 §4.3).
+                        compat_rc = (_es_tipo_referencia_rc(campo_val.tipo)
+                                     and _tipo_normalizado(tipo_expr) in ('puntero', 'void*'))
+                        if (tipo_expr and not compat_rc
+                                and _tipo_normalizado(tipo_expr) != _tipo_normalizado(campo_val.tipo)):
                             self.diag.reportar(
                                 ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                                 self._token(nodo.linea, nodo.columna),
@@ -480,12 +518,16 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if nodo.expr:
                 tipo_ret = self._inferir_tipo(nodo.expr)
                 if tipo_ret and _tipo_normalizado(tipo_ret) != _tipo_normalizado(self._func_retorno or 'nulo'):
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_RETORNO,
-                        self._token(nodo.linea, nodo.columna),
-                        esperado=self._func_retorno or 'nulo',
-                        obtenido=tipo_ret
-                    )
+                    # F1.2d: `retornar nulo` en funcion que devuelve rc/arc/débil
+                    # (nulo es el valor nulo de void*, Manual 2 §4.3).
+                    if not (_es_tipo_referencia_rc(self._func_retorno or '')
+                            and _tipo_normalizado(tipo_ret) in ('puntero', 'void*')):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_TIPO_RETORNO,
+                            self._token(nodo.linea, nodo.columna),
+                            esperado=self._func_retorno or 'nulo',
+                            obtenido=tipo_ret
+                        )
             elif self._func_retorno and _tipo_normalizado(self._func_retorno) != 'void':
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_TIPO_RETORNO,

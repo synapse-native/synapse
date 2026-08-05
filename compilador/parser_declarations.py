@@ -54,6 +54,21 @@ class ParserDeclarationsMixin(ParserBase):
         if tok_retorno is None:
             self._sincronizar(_SYNC_STMT)
             return None
+        tipo_retorno = nombre_de_token(tok_retorno)
+        # F1.2d: tipos genéricos en el retorno (-> arc<NodoLista> / -> debil<T>,
+        # Manual 2 §2 L151-153). Paridad con _parsear_tipo_parametro: se consumen
+        # los tokens hasta '>' (identificadores con valor; '<' inicial literal).
+        if self._mirar().tipo == TokenID.LESS:
+            self._avanzar()
+            partes = [tipo_retorno, '<']
+            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF,
+                                             TokenID.NEWLINE, TokenID.RPAREN):
+                t = self._avanzar()
+                partes.append(t.valor or '')
+            if self._mirar().tipo == TokenID.GREATER:
+                self._avanzar()
+            partes.append('>')
+            tipo_retorno = ''.join(partes)
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -111,7 +126,7 @@ class ParserDeclarationsMixin(ParserBase):
         return DefinicionFuncion(
             nombre=tok_nombre.valor,
             parametros=params,
-            tipo_retorno=nombre_de_token(tok_retorno),
+            tipo_retorno=tipo_retorno,
             requiere=requiere,
             garantiza=garantiza,
             cuerpo=cuerpo,

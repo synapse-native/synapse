@@ -63,6 +63,9 @@ def emitir_token_defs(ctx: GeneratorContext, _unused=None):
             "#define T_PIPE 58",
             "#define T_LET 59",
             "#define T_DELEGAR 60",
+            "#define T_EXPORT 61",
+            "#define T_ARC 62",
+            "#define T_DEBIL 63",
             "",
             "#define MAX_TOKS 65536",
             "typedef struct { int tipo; int linea; int col; char val[1024]; } _P_Token;",
@@ -151,7 +154,9 @@ def gen_tok_c(ctx: GeneratorContext):
             "        }",
 "        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {",
 "            int st = i; int scol = co;",
-"            while (i < len && ((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_')) i++;",
+"            // F1.2d: identificadores con bytes >= 0x80 (UTF-8) para keywords",
+"            // acentuadas del Manual 2 S3 (p.ej. 'debil'); el resto ASCII puro.",
+"            while (i < len && (((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_') || (unsigned char)s[i] >= 0x80)) i++;",
             "            int vl = (i - st) < 1023 ? (i - st) : 1023;",
             "            strncpy(" + P + "tks[" + P + "ntks].val, s + st, vl); " + P + "tks[" + P + "ntks].val[vl] = 0;",
             "            " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = scol;",
@@ -179,6 +184,8 @@ def gen_tok_c(ctx: GeneratorContext):
             '                {"externo",T_EXTERNO},{"extern",T_EXTERNO},{"externe",T_EXTERNO},{"esterno",T_EXTERNO},',
             '                {"let",T_LET},{"let",T_LET},{"let",T_LET},{"let",T_LET},',
             '                {"delegar",T_DELEGAR},{"delegate",T_DELEGAR},{"déléguer",T_DELEGAR},{"delegar",T_DELEGAR},',
+            '                {"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},',
+            '                {"débil",T_DEBIL},{"weak",T_DEBIL},{"faible",T_DEBIL},{"fraco",T_DEBIL},',
             '                {NULL,0}',
             '            };',
             '            int _kt = T_IDENT;',
@@ -186,6 +193,22 @@ def gen_tok_c(ctx: GeneratorContext):
             '                if (strcmp(' + P + 'tks[' + P + 'ntks].val, _ks[_ki].p) == 0) { _kt = _ks[_ki].t; break; }',
             '            }',
             '            ' + P + 'tks[' + P + 'ntks].tipo = _kt;',
+            "            " + P + "ntks++; co += (i - st); continue;",
+            "        }",
+            "        if (c == '@') {",
+            "            int st = i; int scol = co;",
+            "            i++;",
+            "            // F1.2d: identificadores con bytes >= 0x80 (UTF-8) para keywords",
+"            // acentuadas del Manual 2 S3 (p.ej. 'debil'); el resto ASCII puro.",
+"            while (i < len && (((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_') || (unsigned char)s[i] >= 0x80)) i++;",
+            "            int vl = (i - st) < 1023 ? (i - st) : 1023;",
+            "            strncpy(" + P + "tks[" + P + "ntks].val, s + st, vl); " + P + "tks[" + P + "ntks].val[vl] = 0;",
+            "            " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = scol;",
+            "            if (strcmp(" + P + "tks[" + P + "ntks].val, \"@export\") == 0) {",
+            "                " + P + "tks[" + P + "ntks].tipo = T_EXPORT;",
+            "            } else {",
+            '                fprintf(stderr,"Error Lexico: caracter inesperado \'%s\' en linea %d\\n",' + P + 'tks[' + P + 'ntks].val, li); exit(1);',
+            "            }",
             "            " + P + "ntks++; co += (i - st); continue;",
             "        }",
             "        if ((unsigned char)c >= 0x80) { i++; continue; }",
@@ -439,9 +462,17 @@ _P_retry:;
                 char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
                 """ + _P + """avanzar();
                 """ + _P + """esperar(T_COLON);
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) break;
                 char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
                 """ + _P + """avanzar();
+                if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                    while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_RPAREN && """ + _P + """mirar()->tipo != T_COMMA) {
+                        int _gl=(int)strlen(_pt);
+                        if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                        """ + _P + """avanzar();
+                    }
+                    if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+                }
                 while (""" + _P + """mirar()->tipo == T_MUL) { { int _pl = (int)strlen(_pt); if (_pl < 255) { _pt[_pl] = '*'; _pt[_pl+1] = '\\0'; } } """ + _P + """avanzar(); }
                 struct Parametro* pp = (struct Parametro*)calloc(1,sizeof(struct Parametro));
                 pp->tipo=""" + _P + """cs("Parametro");
@@ -453,9 +484,17 @@ _P_retry:;
             }
         }
         """ + _P + """esperar(T_RPAREN); """ + _P + """esperar(T_ARROW);
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); return NULL; }
         char _rt[256]; strcpy(_rt, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
+        if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_rt); if(_gtl<255){ _rt[_gtl]='<'; _rt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+            while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_COLON) {
+                int _gl=(int)strlen(_rt);
+                if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _rt[_gl++]=""" + _P + """mirar()->val[_k++]; } _rt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _rt[_gl]='<'; _rt[_gl+1]='\\0'; } }
+                """ + _P + """avanzar();
+            }
+            if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_rt); if(_gl<255){ _rt[_gl]='>'; _rt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+        }
         """ + _P + """esperar(T_COLON);
         struct ListaNodo* body=""" + _P + """bloque();
         struct DefinicionFuncion* n = (struct DefinicionFuncion*)calloc(1,sizeof(struct DefinicionFuncion));
@@ -477,13 +516,21 @@ _P_retry:;
         struct ListaParametro** ccur = &campos;
         while (""" + _P + """mirar()->tipo != T_DEDENT && """ + _P + """mirar()->tipo != T_EOF) {
             if (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); continue; }
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); break; }
+            if (""" + _P + """mirar()->tipo == T_DEDENT || """ + _P + """mirar()->tipo == T_EOF || """ + _P + """mirar()->tipo == T_COLON) break;
             char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
             """ + _P + """avanzar();
             """ + _P + """esperar(T_COLON);
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); break; }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); break; }
             char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
             """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_DEDENT) {
+                    int _gl=(int)strlen(_pt);
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                    """ + _P + """avanzar();
+                }
+                if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+            }
             struct Parametro* pp=(struct Parametro*)calloc(1,sizeof(struct Parametro));
             pp->tipo=""" + _P + """cs("Parametro"); pp->nombre=""" + _P + """cs(_pn); pp->tipo_param=""" + _P + """cs(_pt); pp->es_transferencia=0;
             *ccur=(struct ListaParametro*)""" + _P + """mk_list((struct Nodo*)pp,NULL); ccur=&(*ccur)->cola;
@@ -647,9 +694,17 @@ _P_retry:;
         char _ltp[256]; _ltp[0] = 0;
         if (""" + _P + """mirar()->tipo == T_COLON) {
             """ + _P + """avanzar();
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL) { """ + _P + """sinc_skip(); return NULL; }
             strcpy(_ltp, """ + _P + """mirar()->val);
             """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_ltp); if(_gtl<255){ _ltp[_gtl]='<'; _ltp[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+                    int _gl=(int)strlen(_ltp);
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _ltp[_gl++]=""" + _P + """mirar()->val[_k++]; } _ltp[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _ltp[_gl]='<'; _ltp[_gl+1]='\\0'; } }
+                    """ + _P + """avanzar();
+                }
+                if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_ltp); if(_gl<255){ _ltp[_gl]='>'; _ltp[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+            }
             while (""" + _P + """mirar()->tipo == T_MUL) { strcat(_ltp,"*"); """ + _P + """avanzar(); }
         }
         struct Nodo* _lexpr = NULL;
@@ -668,6 +723,18 @@ _P_retry:;
         struct SentenciaDelegar* _ndl = (struct SentenciaDelegar*)calloc(1,sizeof(struct SentenciaDelegar));
         _ndl->tipo=""" + _P + """cs("SentenciaDelegar"); _ndl->expresion=_dexpr;
         return (struct Nodo*)_ndl;
+    }
+    if (t->tipo == T_EXPORT) {  // F1.2d: @export ( IDENT ) funcion (Manual 2 §2 L81)
+        """ + _P + """avanzar();
+        """ + _P + """esperar(T_LPAREN);
+        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        char _xdn[256]; strncpy(_xdn, """ + _P + """mirar()->val, sizeof(_xdn)-1); _xdn[sizeof(_xdn)-1] = '\\0';
+        """ + _P + """avanzar();
+        """ + _P + """esperar(T_RPAREN);
+        struct Nodo* _xfn = """ + _P + """sentencia();
+        struct DeclaracionExport* _xne = (struct DeclaracionExport*)calloc(1,sizeof(struct DeclaracionExport));
+        _xne->tipo=""" + _P + """cs("DeclaracionExport"); _xne->destino=""" + _P + """cs(_xdn); _xne->funcion=_xfn;
+        return (struct Nodo*)_xne;
     }
     if (t->tipo == T_IDENT && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
         char _vn[256]; strcpy(_vn, t->val);
@@ -1183,7 +1250,11 @@ const char* {_PH}mt(const char* st) {{
     int _isptr = (_mlen>0 && _base[_mlen-1]=='*');
     if(_isptr) _base[_mlen-1]=0;
     const char* _r=NULL;
-    if(strcmp(_base,"entero")==0||strcmp(_base,"int")==0) _r="int";
+    char _bare[64]; strcpy(_bare,_base);
+    char* _lt = strchr(_bare,'<'); if(_lt)*_lt=0;
+    // F1.2d: arc<T>/debil<T> (Manual 2 §4.3). ABI placeholder (void*) hasta la Fase 23.
+    if(strcmp(_bare,"arc")==0||strcmp(_bare,"debil")==0||strcmp(_bare,"d\u00e9bil")==0||strcmp(_bare,"weak")==0||strcmp(_bare,"faible")==0||strcmp(_bare,"fraco")==0) _r="void*";
+    else if(strcmp(_base,"entero")==0||strcmp(_base,"int")==0) _r="int";
     else if(strcmp(_base,"texto")==0||strcmp(_base,"cadena")==0) _r="CadenaSegura";
     else if(strcmp(_base,"nulo")==0||strcmp(_base,"vacio")==0) _r="void";
     else if(strcmp(_base,"decimal")==0||strcmp(_base,"real")==0) _r="float";

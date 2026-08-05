@@ -13,6 +13,9 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (!_t) { strcpy(_gen_tmp_buf, \"void\"); return; }")
         asm("int _len = (int)strlen(_t);")
         asm("if (_len > 7 && _t[0]=='C' && _t[1]=='a' && _t[2]=='n' && _t[3]=='a' && _t[4]=='l' && _t[5]=='<') { strcpy(_gen_tmp_buf, \"CanalConcurrencia*\"); return; }")
+        // F1.2d: arc<T>/debil<T> (Manual 2 sec. 4.3). ABI placeholder (void*)
+        // hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
+        asm("if (strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
         asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int\"); return; }")
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")

@@ -75,6 +75,11 @@ estructura SentenciaDelegar:
     tipo: texto
     expresion: Nodo
 
+estructura DeclaracionExport:
+    tipo: texto
+    destino: texto
+    funcion: Nodo
+
 estructura AsignacionCampo:
     tipo: texto
     objeto: Nodo

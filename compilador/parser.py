@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     TokenID, Nodo, Programa,
     SentenciaRecuperar, LogLlamada, SentenciaExpr,
     AsignacionVariable, DeclaracionVariable, AsignacionCampo,
-    SentenciaDelegar,
+    SentenciaDelegar, DeclaracionExport,
     SentenciaEnviarCanal, ExprRecibirCanal,
     Identificador, LlamadaFuncion, ConstructorTipo, DeclaracionTipo,
 )
@@ -73,6 +73,8 @@ class Parser(
             return self._parsear_let()
         elif t.tipo == TokenID.DELEGAR:
             return self._parsear_delegar()
+        elif t.tipo == TokenID.EXPORT:
+            return self._parsear_export()
         elif t.tipo in (TokenID.INDENT, TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF, TokenID.SEMICOLON):
             return None
         elif (t.tipo == TokenID.TIPO
@@ -188,6 +190,20 @@ class Parser(
             expresion=expr,
             linea=tok_delegar.linea,
             columna=tok_delegar.columna,
+        )
+
+    def _parsear_export(self) -> DeclaracionExport:
+        """F1.2d: `@export ( IDENTIFICADOR ) funcion` (Manual 2 §2 L81)."""
+        tok_export = self._esperar(TokenID.EXPORT)
+        self._esperar(TokenID.LPAREN)
+        tok_destino = self._esperar_identificador()
+        self._esperar(TokenID.RPAREN)
+        funcion = self._parsear_def_funcion()
+        return DeclaracionExport(
+            destino=nombre_de_token(tok_destino) if tok_destino is not None else '',
+            funcion=funcion,
+            linea=tok_export.linea if tok_export is not None else 0,
+            columna=tok_export.columna if tok_export is not None else 0,
         )
 
     def _parsear_declaracion_tipo(self) -> Optional[DeclaracionTipo]:

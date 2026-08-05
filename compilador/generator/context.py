@@ -384,6 +384,11 @@ class GeneratorContext:
             return self.traducir_tipo_c(tipo_synapse[5:]) + '*'
         if tipo_synapse.startswith('&'):
             return self.traducir_tipo_c(tipo_synapse[1:]) + '*'
+        # F1.2d: arc<T>/débil<T> (Manual 2 §4.3). ABI placeholder (void*) hasta la
+        # Fase 23 (runtime real de rc/arc/débil — ROADMAP Fase 23 L213-214).
+        if (tipo_synapse.startswith(('arc<', 'débil<', 'weak<', 'faible<', 'fraco<'))
+                or tipo_synapse in ('arc', 'débil', 'weak', 'faible', 'fraco')):
+            return 'void*'
         if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
             return 'CanalConcurrencia*'
         if tipo_synapse.startswith('Resultado<'):

@@ -259,6 +259,7 @@ for _idioma, _mapa in DICCIONARIOS.items():
 TOKENS_CONTEXTUALES: frozenset = frozenset({
     TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
     TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+    TokenID.ARC, TokenID.DEBIL,
 })
 
 

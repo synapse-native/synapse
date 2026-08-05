@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     SentenciaRomper, SentenciaSiguiente,
     SentenciaExpr, DeclaracionVariable,
     AsignacionVariable, AsignacionCampo, LogLlamada,
-    SentenciaDelegar,
+    SentenciaDelegar, DeclaracionExport,
     BloqueInseguro, NodoCoincidir,
     ImportarC, DeclaracionExterna, StmtConstante,
     SentenciaEnviarCanal, DeclaracionTipo,
@@ -242,6 +242,9 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         visitar_asignacion(ctx, nodo)
     elif isinstance(nodo, SentenciaDelegar):
         visitar_delegar(ctx, nodo)
+    elif isinstance(nodo, DeclaracionExport):
+        if nodo.funcion is not None:
+            visitar(ctx, nodo.funcion)
     elif isinstance(nodo, LogLlamada):
         visitar_log(ctx, nodo)
     elif isinstance(nodo, AsignacionCampo):
@@ -737,8 +740,12 @@ class GeneradorC:
             'generar': 'int generar(struct Programa programa, CadenaSegura ruta)',
         }
         # Manual 8 §8.2: orden alfabético estricto por nombre
+        # F1.2d: incluir funciones envueltas en @export (sus llamadas necesitan
+        # prototipo cuando el llamador se emite antes que la definición).
         funciones = sorted(
-            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS],
+            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS]
+            + [s.funcion for s in ctx.programa.sentencias
+               if isinstance(s, DeclaracionExport) and isinstance(s.funcion, DefinicionFuncion)],
             key=lambda f: f.nombre
         )
         for s in funciones:
@@ -858,6 +865,11 @@ class GeneradorC:
                 ctx._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
             elif isinstance(s, DeclaracionExterna):
                 ctx._func_return_types[s.nombre] = s.tipo_retorno
+            elif isinstance(s, DeclaracionExport) and isinstance(s.funcion, DefinicionFuncion):
+                # F1.2d: registrar retorno/params de funciones envueltas en @export
+                # (inferencia de tipos en sitios de llamada, paridad con orquestador ME-B6).
+                ctx._func_return_types[s.funcion.nombre] = s.funcion.tipo_retorno
+                ctx._func_param_types[s.funcion.nombre] = [p.tipo for p in s.funcion.parametros]
 
         # Construir mapa de _estructuras
         for s in ctx.programa.sentencias:

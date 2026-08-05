@@ -19,6 +19,7 @@ _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
 TOKENS_CONTEXTUALES: frozenset = frozenset({
     TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
     TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+    TokenID.ARC, TokenID.DEBIL,
 })
 
 
