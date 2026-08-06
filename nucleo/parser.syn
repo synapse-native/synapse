@@ -63,7 +63,13 @@ funcion parsear_parametros(est: ParserEst) -> entero:
             si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
-            token_avanzar(est)
+            // AUDITORIA FASE A (A2.2): tipos genericos <T> en parametros (Manual 2 §2 L144-153)
+            // ej: -> Resultado<T, E>, parametro: Canal<entero>, campo: Lista<texto>
+            si token_mirar(est) == T_MENOR:
+                token_avanzar(est)
+                mientras token_mirar(est) != T_MAYOR:
+                    token_avanzar(est)
+                token_esperar(est, T_MAYOR)
             nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
             inseguro:
                 asm("est.nodos[nodo_p].ptr_str = ptr_n")
@@ -82,9 +88,20 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     retornar primero
 
 // Helper: Parse return type
+// AUDITORIA FASE A (A2.2): soportar tipos genericos en retorno -> arc<T>, -> Resultado<T,E>
+// (Manual 2 §2 L144-153, §4.2). Se consumen identificador + posible < T1, T2 >.
 funcion parsear_tipo_retorno(est: ParserEst) -> entero:
     si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
+        // AUDITORIA FASE A (A2.2): genericos <T, E> en tipo de retorno
+        si token_mirar(est) == T_MENOR:
+            token_avanzar(est)
+            mientras token_mirar(est) != T_MAYOR:
+                si token_es_nombre(token_mirar(est)) == 1:
+                    token_avanzar(est)
+                si token_mirar(est) == T_COMA:
+                    token_avanzar(est)
+            token_esperar(est, T_MAYOR)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
     retornar 1
@@ -142,14 +159,6 @@ funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
             asm("est.nodos[contrato].hijo_der = est.contr_primera_garantiza")
             asm("est.nodos[contrato].valor_int = est.contr_cuenta_requiere")
             asm("est.nodos[nodo_func].ptr_extra = contrato")
-    retornar 1
-
-// Helper: Parse return type
-funcion parsear_tipo_retorno(est: ParserEst) -> entero:
-    si token_es_nombre(token_mirar(est)) == 1:
-        token_avanzar(est)
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
     retornar 1
 
 // Helper: Parse function body (returns first stmt index, 0 if none)
@@ -705,6 +714,79 @@ funcion parsear_recibir_canal(est: ParserEst) -> entero:
         token_avanzar(est)
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0
+    retornar nodo
+
+// AUDITORIA FASE A (A2.2): declaracion_tipo (Manual 2 §2 L74-76)
+// tipo Nombre [<T, E>] = tipo_base | ctor(T1) | ctor(T1) | ctor2
+// o alias simple: tipo Nombre = tipo_base
+funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
+    si token_esperar(est, T_TIPO) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    si token_es_nombre(token_mirar(est)) == 0:
+        retornar 0
+    token_avanzar(est)
+    nodo = parser_nuevo_nodo(est, NODO_DECLARACION_TIPO, linea, col)
+    // parametros de tipo genericos <T, E>
+    si token_mirar(est) == T_MENOR:
+        token_avanzar(est)
+        primer_param = parser_nuevo_nodo(est, NODO_PARAMETRO, linea, col)
+        token_avanzar(est)  // consumir nombre del parametro
+        token_esperar(est, T_COMA)
+        mientras token_mirar(est) != T_MAYOR:
+            token_avanzar(est)  // consumir nombre
+            si token_mirar(est) == T_COMA:
+                token_avanzar(est)
+        token_esperar(est, T_MAYOR)
+    si token_esperar(est, T_ASIGNAR) == 0:
+        retornar 0
+    // RHS: alias simple o constructores ADT
+    si token_mirar(est) == T_PAREN_IZQ:
+        token_avanzar(est)
+        // primer constructor
+        si token_es_nombre(token_mirar(est)) == 1:
+            token_avanzar(est)
+            si token_mirar(est) == T_PAREN_IZQ:
+                token_avanzar(est)
+                mientras token_mirar(est) != T_PAREN_DER:
+                    token_avanzar(est)
+                token_esperar(est, T_PAREN_DER)
+        mientras token_mirar(est) == T_PIPE:
+            token_avanzar(est)
+            si token_es_nombre(token_mirar(est)) == 1:
+                token_avanzar(est)
+                si token_mirar(est) == T_PAREN_IZQ:
+                    token_avanzar(est)
+                    mientras token_mirar(est) != T_PAREN_DER:
+                        token_avanzar(est)
+                    token_esperar(est, T_PAREN_DER)
+        token_esperar(est, T_PAREN_DER)
+    sino:
+        // alias simple: tipo base
+        si token_es_nombre(token_mirar(est)) == 1:
+            token_avanzar(est)
+    retornar nodo
+
+// AUDITORIA FASE A (A2.2): @export ( IDENT ) funcion (Manual 2 §2 L81)
+funcion parsear_export(est: ParserEst) -> entero:
+    si token_mirar(est) != T_EXPORT:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nodo = parser_nuevo_nodo(est, NODO_EXPORT, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    // destino (idioma: python, c, etc.)
+    si token_es_nombre(token_mirar(est)) == 1:
+        token_avanzar(est)
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    // parsear la funcion que sigue
+    nodo_func = parsear_funcion(est)
+    inseguro:
+        asm("est.nodos[nodo].hijo_izq = nodo_func")
     retornar nodo
 
 // ---- Main parse function ----

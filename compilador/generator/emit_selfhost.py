@@ -1429,8 +1429,8 @@ int generar(struct Programa programa, CadenaSegura ruta) {{
     fprintf({_PH}out,"extern Tensor producto(Tensor a, Tensor b);\\n");
     fprintf({_PH}out,"extern int texto_a_entero(CadenaSegura str);\\n");
     fprintf({_PH}out,"extern float texto_a_decimal(CadenaSegura str);\\n");
-    fprintf({_PH}out,"extern CadenaSegura decimal_a_texto(float n);\\n");
-    fprintf({_PH}out,"extern CadenaSegura entero_a_texto(int n);\\n");
+    fprintf({_PH}out,"extern CadenaSegura decimal_a_texto(double n);\\n");
+    fprintf({_PH}out,"extern CadenaSegura entero_a_texto(int64_t n);\\n");
     fprintf({_PH}out,"extern int str_eq(CadenaSegura a, CadenaSegura b);\\n");
     fprintf({_PH}out,"extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);\\n");
     fprintf({_PH}out,"extern void synapse_esperar_hilos(void);\\n");

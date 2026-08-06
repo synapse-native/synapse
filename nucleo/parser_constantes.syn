@@ -125,4 +125,16 @@ constante NODO_RECIBIR_CANAL = 43
 constante NODO_VACIO = 44
 constante NODO_PARA = 45
 constante NODO_CONTRATO = 46
+// AUDITORIA FASE A (A2.2): NODO_NULO para literal nulo (Manual 2 §4.1)
+constante NODO_NULO = 47
+// AUDITORIA FASE A (A2.2): NODO_LET para declaracion con let (Manual 2 §2 L134)
+constante NODO_LET = 48
+// AUDITORIA FASE A (A2.2): NODO_DELEGAR para sentencia delegar (Manual 2 §2 L132)
+constante NODO_DELEGAR = 49
+// AUDITORIA FASE A (A2.2): NODO_EXPORT para @export (Manual 2 §2 L81)
+constante NODO_EXPORT = 50
+// AUDITORIA FASE A (A2.2): NODO_DECLARACION_TIPO para tipo ADT/genéricos (Manual 2 §2 L74)
+constante NODO_DECLARACION_TIPO = 51
+// AUDITORIA FASE A (A2.2): NODO_CONSTRUCTOR para constructores ADT (Manual 2 §2 L75)
+constante NODO_CONSTRUCTOR = 52
 

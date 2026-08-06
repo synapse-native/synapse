@@ -713,7 +713,7 @@ float texto_a_decimal(CadenaSegura str) {
     return (float)strtod(str.datos, NULL);
 }
 
-CadenaSegura decimal_a_texto(float n) {
+CadenaSegura decimal_a_texto(double n) {
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%f", n);
     char* data = (char*)malloc(len + 1);
@@ -722,9 +722,12 @@ CadenaSegura decimal_a_texto(float n) {
     return (CadenaSegura){ .longitud = len, .datos = data };
 }
 
-CadenaSegura entero_a_texto(int n) {
+// A5.1 (D-7): entero -> int64_t (Manual 2 S4.1 L267-268). Ensayo de runtime:
+// %lld con cast (long long) para portabilidad; salida identica para valores
+// pequenos, sin truncar en rangos 32->64 bits. Los mapeos se migran en A5.2.
+CadenaSegura entero_a_texto(int64_t n) {
     char buf[64];
-    int len = snprintf(buf, sizeof(buf), "%d", n);
+    int len = snprintf(buf, sizeof(buf), "%lld", (long long)n);
     char* data = (char*)malloc(len + 1);
     if (!data) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en entero_a_texto\n"); exit(1); }
     memcpy(data, buf, len + 1);

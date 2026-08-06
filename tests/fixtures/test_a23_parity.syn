@@ -1,0 +1,23 @@
+#lang: es
+
+// A2.3: paridad inferencia de tipos S1 (GeneradorC) vs S2 (orquestador nativo)
+// Casos: ExprTensor -> Tensor, LiteralNulo -> void*, LiteralCadena -> CadenaSegura,
+//        LiteralDecimal -> float, entero -> int, anotacion explicita.
+// Manual 2 S4.3 (arc/debil -> void* placeholder ABI), Manual 8 (tensor/Tensor).
+
+tipo Edad = entero
+
+estructura NodoLista:
+    valor: entero
+    siguiente: arc<NodoLista>
+
+funcion principal() -> nulo:
+    let x = 5
+    let edad: entero = 10
+    let s = "hola"
+    let ref: débil<NodoLista> = nulo
+    let t = tensor(2, 3)
+    escribir_linea(entero_a_texto(x + edad))
+    escribir_linea(s)
+    escribir_linea(entero_a_texto(t.filas))
+    retornar

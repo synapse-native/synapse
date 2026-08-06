@@ -300,6 +300,29 @@ funcion parsear_primario(est: ParserEst) -> entero:
         inseguro:
             asm("est.nodos[nodo].valor_int = 0")
         retornar nodo
+    // AUDITORIA FASE A (A2.2): nulo -> LiteralNulo (Manual 2 §2 L160, §4.1)
+    si t == T_NULO:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_NULO, linea, col)
+        retornar nodo
+    // AUDITORIA FASE A (A2.2): tensor(filas, columnas) -> ExprTensor (Manual 2 §2 L194-195)
+    // T_TENSOR también puede ser tipo contextual (tensor: tensor), se decide tras '('.
+    si t == T_TENSOR y token_tipo(est, est.posicion + 1) == T_PAREN_IZQ:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        token_esperar(est, T_PAREN_IZQ)
+        filas = parsear_expresion(est)
+        token_esperar(est, T_COMA)
+        columnas = parsear_expresion(est)
+        token_esperar(est, T_PAREN_DER)
+        nodo = parser_nuevo_nodo(est, NODO_TENSOR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = filas")
+            asm("est.nodos[nodo].hijo_der = columnas")
+        retornar nodo
     // AUDITORIA F1 (D-F1): keywords contextuales como identificadores en expresiones
     // (tipo/tensor/nulo como variables; ok/err/algun/ninguno como constructores ADT).
     si token_es_nombre(t) == 1:

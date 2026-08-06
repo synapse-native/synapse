@@ -1,0 +1,158 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DeclaracionTipo",
+        "nombre": "Edad",
+        "parametros_tipo": [],
+        "tipo_base": "entero",
+        "constructores": []
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "NodoLista",
+        "campos": [
+          {
+            "nombre": "valor",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "siguiente",
+            "tipo": "arc<NodoLista>"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "x",
+            "tipo": "",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 5
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "edad",
+            "tipo": "entero",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 10
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "s",
+            "tipo": "",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": "hola"
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "ref",
+            "tipo": "débil<NodoLista>",
+            "expresion": {
+              "_tipo": "LiteralNulo"
+            }
+          },
+          {
+            "_tipo": "DeclaracionVariable",
+            "nombre": "t",
+            "tipo": "",
+            "expresion": {
+              "_tipo": "ExprTensor",
+              "filas": {
+                "_tipo": "LiteralNumero",
+                "valor": 2
+              },
+              "columnas": {
+                "_tipo": "LiteralNumero",
+                "valor": 3
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "entero_a_texto",
+                  "argumentos": [
+                    {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "x"
+                      },
+                      "operador": "+",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "edad"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "s"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "entero_a_texto",
+                  "argumentos": [
+                    {
+                      "_tipo": "ExprAccesoCampo",
+                      "objeto": {
+                        "_tipo": "Identificador",
+                        "nombre": "t"
+                      },
+                      "nombre_campo": "filas"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

@@ -140,6 +140,12 @@ funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
 // Paridad con el parser Python (compilador/parser*.py): el lexer ya emite T_TIPO/
 // T_TENSOR/T_NULO/T_OK/T_ERR/T_ALGUN/T_NINGUNO conservando el lexema; aqui se
 // aceptan en todas las posiciones de identificador/nombre/tipo.
+//
+// AUDITORIA FASE A (A2.2): keywords contextuales activadas en A2.1 que también
+// deben comportarse como identificadores en posicion de nombre/tipo:
+//   T_LET (let x = ...), T_DELEGAR (delegar expresion), T_RC/T_ARC/T_DEBIL (rc/arc/débil<T>),
+//   T_MODULO (modulo), T_EXPORT (@export ... funcion).
+// Manual 2 §3: let, delegar, rc, arc, débil, modulo conservan el lexema.
 funcion token_es_nombre(t: entero) -> entero:
     si t == T_IDENTIFICADOR:
         retornar 1
@@ -156,6 +162,19 @@ funcion token_es_nombre(t: entero) -> entero:
     si t == T_ALGUN:
         retornar 1
     si t == T_NINGUNO:
+        retornar 1
+    // AUDITORIA FASE A (A2.2): keywords contextuales para identificadores/tipos
+    si t == T_LET:
+        retornar 1
+    si t == T_DELEGAR:
+        retornar 1
+    si t == T_RC:
+        retornar 1
+    si t == T_ARC:
+        retornar 1
+    si t == T_DEBIL:
+        retornar 1
+    si t == T_MODULO:
         retornar 1
     retornar 0
 

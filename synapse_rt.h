@@ -23,8 +23,8 @@ void libera(Tensor bloque);
 
 int texto_a_entero(CadenaSegura str);
 float texto_a_decimal(CadenaSegura str);
-CadenaSegura decimal_a_texto(float n);
-CadenaSegura entero_a_texto(int n);
+CadenaSegura decimal_a_texto(double n);
+CadenaSegura entero_a_texto(int64_t n);
 
 // --- CanalConcurrencia API (Zero-Copy, Thread-Safe) ---
 CanalConcurrencia* canal_crear(uint32_t capacidad);

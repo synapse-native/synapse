@@ -564,8 +564,9 @@ funcion principal() -> entero:
     inseguro:
         asm("if (ruta.longitud == 0) { r = 1; return r; }")
         asm("// Parse -o <output> flag (Manual 3: CLI debe aceptar -o)")
+        asm("extern int _G_usar_nativo_frontend;")
         asm("int _ai; CadenaSegura _a;")
-        asm("for(_ai=2;_ai<_argc()-1;_ai++){ _a=_argv(_ai); if(_a.longitud==2&&strcmp(_a.datos,\"-o\")==0){ CadenaSegura _next=_argv(_ai+1); char*_dup=strdup(_next.datos); if(_dup){ salida_ruta=(CadenaSegura){.longitud=_next.longitud,.datos=_dup}; } break; } }")
+        asm("for(_ai=2;_ai<_argc()-1;_ai++){ _a=_argv(_ai); if(_a.longitud==2&&strcmp(_a.datos,\"-o\")==0){ CadenaSegura _next=_argv(_ai+1); char*_dup=strdup(_next.datos); if(_dup){ salida_ruta=(CadenaSegura){.longitud=_next.longitud,.datos=_dup}; } break; } else if(_a.longitud==17&&strcmp(_a.datos,\"--nativo-frontend\")==0){ _G_usar_nativo_frontend=1; } }")
         asm("// Fallback: si argv(2) empieza con '-', no es salida posicional")
         asm("if(salida_ruta.datos&&salida_ruta.longitud>0&&salida_ruta.datos[0]=='-'){ salida_ruta=(CadenaSegura){0,\"\"}; }")
         asm("if (salida_ruta.longitud == 0) { salida_ruta = (CadenaSegura){.longitud=19,.datos=\"synapse_stage2.exe\"}; }")

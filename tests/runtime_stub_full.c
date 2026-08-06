@@ -25,7 +25,7 @@ Tensor suma(Tensor a, Tensor b) { return (Tensor){0}; }
 Tensor producto(Tensor a, Tensor b) { return (Tensor){0}; }
 int texto_a_entero(CadenaSegura str) { return 0; }
 float texto_a_decimal(CadenaSegura str) { return 0.0f; }
-CadenaSegura decimal_a_texto(float n) { return (CadenaSegura){0, ""}; }
-CadenaSegura entero_a_texto(int n) { return (CadenaSegura){0, ""}; }
+CadenaSegura decimal_a_texto(double n) { return (CadenaSegura){0, ""}; }
+CadenaSegura entero_a_texto(int64_t n) { return (CadenaSegura){0, ""}; }
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg) {}
 void synapse_esperar_hilos(void) { fprintf(stderr, "synapse_esperar_hilos\n"); }

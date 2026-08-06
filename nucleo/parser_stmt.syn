@@ -32,6 +32,14 @@ funcion parsear_sentencia_decl(est: ParserEst, t: entero) -> entero:
         col = token_columna(est, est.posicion)
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_IMPORTAR, linea, col)
+        // AUDITORIA FASE A (A2.2): parsear ruta de importacion a.b.c (Manual 2 §2 L77)
+        // El token valor de cada parte se guarda en ptr_str/len_str del nodo.
+        si token_es_nombre(token_mirar(est)) == 1:
+            token_avanzar(est)
+        mientras token_mirar(est) == T_PUNTO:
+            token_avanzar(est)
+            si token_es_nombre(token_mirar(est)) == 1:
+                token_avanzar(est)
         retornar nodo
     si t == T_CONSTANTE:
         retornar parsear_constante(est)
@@ -111,6 +119,46 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
     col = 0
     nodo = 0
     t = token_mirar(est)
+    // AUDITORIA FASE A (A2.2): @export ( Manual 2 §2 L81)
+    si t == T_EXPORT:
+        retornar parsear_export(est)
+    // AUDITORIA FASE A (A2.2): tipo (declaracion_tipo, Manual 2 §2 L74)
+    si t == T_TIPO:
+        retornar parsear_declaracion_tipo(est)
+    // AUDITORIA FASE A (A2.2): delegar (Manual 2 §2 L132) — precedencia baja
+    si t == T_DELEGAR:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        expr = parsear_expresion(est)
+        nodo = parser_nuevo_nodo(est, NODO_DELEGAR, linea, col)
+        inseguro:
+            asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
+    // AUDITORIA FASE A (A2.2): let (Manual 2 §2 L134)
+    si t == T_LET:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_LET, linea, col)
+        si token_es_nombre(token_mirar(est)) == 1:
+            token_avanzar(est)
+        si token_mirar(est) == T_DOSPUNTOS:
+            token_avanzar(est)
+            // tipo opcional (con genéricos <T> posible)
+            mientras token_es_nombre(token_mirar(est)) == 1:
+                token_avanzar(est)
+            si token_mirar(est) == T_MENOR:
+                token_avanzar(est)
+                mientras token_mirar(est) != T_MAYOR:
+                    token_avanzar(est)
+                token_esperar(est, T_MAYOR)
+        si token_mirar(est) == T_ASIGNAR:
+            token_avanzar(est)
+            expr = parsear_expresion(est)
+            inseguro:
+                asm("est.nodos[nodo].hijo_izq = expr")
+        retornar nodo
     // Control flow
     nodo = parsear_sentencia_control(est, t)
     si nodo != -1:

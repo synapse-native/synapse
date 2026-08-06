@@ -1,9 +1,3 @@
-extern int _G_scope_depth;
-extern int _G_scope_vars_depth[256];
-extern char _G_scope_vars_names[256][64];
-extern int _G_scope_vars_total;
-extern int _G_safe_mode;  // M22.5: --safe flag
-
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
@@ -18,9 +12,6 @@ extern int _G_safe_mode;  // M22.5: --safe flag
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
-// A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): incluir
-// `es_mapeado` para que el lifetime codegen S1 (`t.es_mapeado`,
-// emit_declarations.py:430) compile. Antes faltaba -> "no member named es_mapeado".
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
@@ -681,74 +672,105 @@ extern void _simd_detectar(void);
         exit(1); }} while(0)
 #endif
 
-extern int _g_argc;
-extern char** _g_argv;
-extern int _argc(void);
-extern CadenaSegura _argv(int i);
-extern void salir(int codigo);
-extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
+char _gen_tmp_buf[4096];
 
-struct Opcion;
-struct Resultado;
+char _G_emit_buf[1048576];
+int _G_emit_pos;
+FILE* _G_fp;
+int _G_scope_depth;
+int _G_scope_vars_depth[256];
+char _G_scope_vars_names[256][64];
+int _G_scope_vars_total;
+int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
+char _G_native_structs[256][64];
+int _G_native_structs_count;
+int _G_native_es_estructura(const char* n) {
+    if (!n) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], n) == 0) return 1;
+    }
+    return 0;
+}
 
-typedef struct Opcion {
-    int tag;
-    union {
-        int valor;
-        CadenaSegura valor_str;
-        float valor_float;
-    } dato;
-} Opcion;
+char _G_native_func_returns[512][64];
+int _G_native_func_returns_count;
+int _G_native_tipo_retorno(const char* fn, char* out) {
+    if (!fn || !out) return 0;
+    for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
+        if (strcmp(_G_native_func_returns[_i], fn) == 0) {
+            strcpy(out, _G_native_func_returns[_i + 256]); return 1;
+        }
+    }
+    return 0;
+}
 
-typedef struct Resultado {
-    int tag;
-    union {
-        int valor;
-        CadenaSegura valor_str;
-        float valor_float;
-    } dato;
-} Resultado;
+char _G_emit_func_names[2048][64];
+int _G_emit_func_count;
+char _G_fn_vars[2048][64];
+int _G_fn_vars_count;
+void* _G_fn_var_src[2048];
+int _G_fn_var_auto[2048];
+char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
+char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
+int _G_fn_ptr_vars_count;
+char _G_tipo_aliases[128][64];
+char _G_tipo_aliases_base[128][64];
+int _G_tipo_aliases_count;
 
-CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
-int ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
-int ejecutar_comando(CadenaSegura cmd);
-int eliminar_archivo(CadenaSegura ruta);
-int escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
-int existe_archivo(CadenaSegura ruta);
-CadenaSegura leer_archivo(CadenaSegura ruta);
-CadenaSegura obtener_env(CadenaSegura nombre);
-int principal(void);
-int prueba_clave_incorrecta(void);
-int prueba_enviar_datos_canal(void);
-int prueba_enviar_hello(void);
-int prueba_firma_corrupta(void);
-int prueba_firmar_verificar(void);
-int prueba_generar_par(void);
-int prueba_handshake_bidireccional(void);
-int prueba_iniciar_detener_nodo(void);
-int prueba_resultado_algebraico(void);
-CadenaSegura sha256_texto(CadenaSegura datos);
 
-extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
-extern int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
-extern CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
-extern CadenaSegura _syn_obtener_cwd(void);
-extern int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
-extern int _syn_ejecutar_comando(CadenaSegura cmd);
-extern int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
-extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
-extern CadenaSegura _syn_obtener_env(CadenaSegura nombre);
-extern int _syn_existe_archivo(CadenaSegura ruta);
-extern int _syn_eliminar_archivo(CadenaSegura ruta);
-extern Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo);
-extern CadenaSegura _syn_leer(Canal c);
-extern void _syn_escribir(CadenaSegura texto);
-extern void _syn_escribir_linea(CadenaSegura texto);
-extern CadenaSegura _syn_leer_linea(void);
-extern CadenaSegura cluster_generar_par_claves(void);
-extern CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje, CadenaSegura clave_privada_hex);
-extern int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, CadenaSegura clave_publica_hex);
-extern int cluster_iniciar_nodo(int puerto);
-extern int cluster_detener_nodo(void);
-extern int cluster_enviar_hello(CadenaSegura ip, int puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
-extern int cluster_canal_remoto_enviar(CadenaSegura ip, int puerto, CadenaSegura datos, int lon, int chan_id);
+int _g_argc;
+char** _g_argv;
+int _argc() { return _g_argc; }
+
+CadenaSegura _argv(int i) {
+    if (i < 0 || i >= _g_argc) return (CadenaSegura){0, ""};
+    return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]), .datos = _g_argv[i] };
+}
+
+void salir(int codigo) { exit(codigo); }
+
+CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
+    int _tl = a.longitud + b.longitud;
+    char* _buf = (char*)malloc(_tl + 1);
+    if (!_buf) { fprintf(stderr,"Error: malloc fallo en concat()\\n"); exit(1); }
+    memcpy(_buf, a.datos, a.longitud);
+    memcpy(_buf + a.longitud, b.datos, b.longitud);
+    _buf[_tl] = 0;
+    return (CadenaSegura){_tl, _buf};
+}
+
+struct NodoLista;
+
+typedef struct NodoLista {
+    int valor;
+    void* siguiente;
+} NodoLista;
+
+typedef int Edad;
+
+void principal(void);
+
+void principal(void) {
+    _simd_detectar();
+    int x = 5;
+    int edad = 10;
+    CadenaSegura s = (CadenaSegura){ .longitud = (int)strlen("hola"), .datos = "hola" };
+    void* ref = nulo;
+    Tensor t = crear_tensor(2, 3);
+    escribir_linea(entero_a_texto((x + edad)));
+    escribir_linea(s);
+    escribir_linea(entero_a_texto(t.filas));
+    return;
+    if (!t.es_mapeado) { pool_free(t.datos); }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int main(int argc, char** argv) {
+    _g_argc = argc;
+    _g_argv = argv;
+    pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
+    principal();
+    synapse_esperar_hilos();
+    pool_destroy();
+    return 0;
+}

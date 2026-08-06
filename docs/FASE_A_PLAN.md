@@ -1,8 +1,13 @@
 # PLAN FASE A — Migración del frontend embebido `_P_*` al frontend nativo Synapse (`lexer.syn`/`parser*.syn`)
 
 > Documento de planificación de la auditoría de alineación a Manuales v8.1.0.
-> Fecha: 2026-08-05. Estado: **PLAN APROBADO PARA EJECUCIÓN** (F1.4 cierra el mapeo de
-> keywords del Manual 2 §3 y deja preparada esta fase).
+> Fecha: 2026-08-06. Estado: **EN EJECUCIÓN — Etapas A1 ✅, A2 ✅ (A2.1/A2.2/A2.3/A2.4 ✅) completadas** (matriz de brechas en
+> `docs/reportes/FASE_A_A1.md`; plan aprobado tras F1.4, que cerró el mapeo de keywords
+> del Manual 2 §3). **Etapa A2.1 completada** (tokenizador nativo con paridad UTF-8/keywords/`.`).
+> **Etapa A2.2 completada** (port del parser tipado nativo con structs tipados y todos los
+> constructos P0; `docs/reportes/FASE_A_A2_2.md`).
+> **Etapa A2.3 completada** (paridad `.c` S2 nativo vs S1 GeneradorC;
+> `docs/reportes/FASE_A_A2_3.md`). Siguiente hito: **Etapa A3 (conmutación del runtime)**.
 > Fuente de verdad: `docs/AUDITORIA_ALINEACION_MANUALES.md` (deuda D-F1, D-6, D-7, D-2,
 > D-3, D-5), `GUIA_DE_GOBERNANZA.md` §PROTOCOLO DE ENTREGA, ROADMAP Fase 1.
 
@@ -20,12 +25,12 @@ Resultado buscado: **un único frontend** (el nativo, escrito en el propio lengu
 fuente de verdad del compilador auto-hospedado S2/S3, con paridad S1 (Python) y
 determinismo de bootstrap (diff 0 bytes, Manual 9 §9.7).
 
-## 2. Estado actual (2026-08-05)
+## 2. Estado actual (2026-08-06)
 
 | Componente | Rol actual | Tamaño | Estado |
 |---|---|---|---|
 | `nucleo/lexer.syn` | Tokenizador nativo | 827 líneas | Código muerto en runtime; cubre `#lang`, indentación, comentarios, cadenas, números, operadores, keywords contextuales (F1.2) |
-| `nucleo/parser.syn` | Parser nativo | 748 líneas | Código muerto; NO tiene `declaracion_tipo`, `nulo`, `tensor()`, `let`, `delegar`, `arc`/`débil`/`rc`, `@export`, retornos genéricos |
+| `nucleo/parser.syn` | Parser nativo | ~798 líneas | Código muerto en runtime; **A2.2 portó P0** (`parsear_declaracion_tipo` alias/ADT/genéricos, `parsear_export`, `nulo`→NODO_NULO, `tensor(f,c)`→NODO_TENSOR, genéricos `<T>` en params/retorno, `token_es_nombre` ampliado). AST sigue `NodoAST[]` plano (deuda A1 #2 → A3) |
 | `nucleo/parser_base.syn` | Base del parser nativo | 162 líneas | `token_es_nombre` (keywords contextuales) presente |
 | `nucleo/parser_constantes.syn` | Constantes | 128 líneas | TokenID alineados (F1) |
 | `nucleo/parser_expr.syn` / `parser_stmt.syn` | Expresiones/sentencias | 366/143 | Parciales |
@@ -52,13 +57,22 @@ y tokenización UTF-8 (H26).
 
 ## 4. Estrategia (por etapas, criterio de aceptación por etapa)
 
-### Etapa A1 — Inventario de brechas (feature matrix)
-- Levantar una matriz `frontend nativo` vs `frontend _P_*` (por constructo gramatical).
-- Identificar qué construcciones del Manual 2 §2 (y Manual 3) faltan en el nativo.
-- **Criterio**: matriz documentada con las brechas priorizadas.
+### Etapa A1 — Inventario de brechas (feature matrix) — ✅ COMPLETADA (2026-08-05)
+- Matriz `frontend nativo` vs `frontend _P_*` por constructo gramatical del Manual 2 §2/§3,
+  con evidencia file:line en ambos frontends: **`docs/reportes/FASE_A_A1.md`** (Anexo A aquí).
+- **Hallazgos clave** (resumen): (1) el lexer nativo NO emite tokens de literales (números y
+  cadenas consumidos sin `push_token` — P0); (2) la forma del AST difiere (nativo `NodoAST[]`
+  plano vs structs tipados que consume el orquestador — P0); (3) el nativo FALTA: `declaracion_tipo`,
+  `let`, `delegar`, `@export`, `nulo`, `tensor()`, `rc/arc/débil/modulo`, genéricos `<T>`, UTF-8
+  (P0) — todo ya existe en el embebido y se porta; (4) el embebido FALTA constructos que el nativo
+  SÍ tiene (`constante`, `asm`, `coincidir`, `para`, canales, contratos, `;`) — deben preservarse
+  en el frontend unificado (P1); (5) TokenID divergentes entre frontends → la numeración canónica
+  de `nucleo/tokens.syn` manda al unificar.
+- **Criterio cumplido**: matriz documentada con brechas priorizadas (P0-P3).
+- Brechas P0/P2 → Etapa A2; P1 → Etapa A3; P3 (arrays, `como`, `/* */`, exponente, `?` D-6) → A5/deuda.
 
-### Etapa A2 — Port del frontend `_P_*` al nativo (S2/S3)
-- Portar al nativo: `declaracion_tipo` (alias/ADT/genéricos con `<T,E>` y paréntesis),
+### Etapa A2 — Port del frontend `_P_*` al nativo (S2/S3) — ✅ COMPLETADA (A2.1, A2.2, A2.3)
+- Portar al nativo: `declaracion_tipo` (alias/ADT/genéricos `<T,E>` y paréntesis),
   `nulo` (literal + tipo), `tensor(filas, columnas)`, `let` (tipo opcional/inferido),
   `delegar`, `arc<T>`/`débil<T>`/`rc<T>` (incl. retornos genéricos `-> arc<T>`),
   `@export ( IDENT ) funcion`, keywords contextuales (`token_es_nombre` ampliado con
@@ -67,6 +81,37 @@ y tokenización UTF-8 (H26).
   consume el orquestador `gen_visitar_*`).
 - **Criterio**: un programa que ejercite TODAS las construcciones portadas produce el
   MISMO `.c` compilando con S2 (frontend nativo) que con S1 (referencia).
+- **A2.1 — Tokenizador (✅ COMPLETADA 2026-08-05)**: `nucleo/lexer.syn` reescrito con
+  paridad contra `_P_tokenizar` (literales con valor, UTF-8, keywords contextuales,
+  `@export`, TokenID canónicos) — `tests/native_lexer_paridad.py` (5 tests, 11 casos),
+  bootstrap diff 0 bytes, 28/28 tests. Detalle: `docs/reportes/FASE_A_A2_1.md`.
+- **A2.2 — Parser tipado (✅ COMPLETADA 2026-08-05)**: port de constructos P0 al
+  frontend nativo `nucleo/parser*.syn`: `declaracion_tipo` (alias/ADT/genéricos `<T,E>`,
+  `|`), `let`, `delegar`, `@export`, `nulo`→`LiteralNulo`, `tensor(f,c)`→`ExprTensor`,
+  genéricos `<T>` en retorno/parámetros, `token_es_nombre` ampliado (T_LET/T_DELEGAR/
+  T_RC/T_ARC/T_DEBIL/T_MODULO), `import` con ruta `a.b.c`. Nodos AST nuevos en
+  `parser_constantes.syn` (NODO_NULO/LET/DELEGAR/EXPORT/DECLARACION_TIPO/CONSTRUCTOR).
+  Bootstrap diff 0 bytes; 65/65 tests (5 lexer paridad + 46 parser + 14 codegen).
+  Detalle: `docs/reportes/FASE_A_A2_2.md`.
+   - **A2.3 — Paridad `.c` (✅ COMPLETADA 2026-08-06)**: programa de ejercicio
+     `tests/fixtures/test_a23_parity.syn` (constructos P0: `let`/`tensor()`/`nulo`/`débil`)
+     produce el MISMO `.c` con S2 (nativo) que S1 (ref) en las líneas A2.3
+     (`Tensor t = crear_tensor(2, 3);`, `void* ref = nulo;`, `_simd_detectar();`,
+     `int x = 5;`). Bug corregido en S2: `int t =` → `Tensor t =` (ExprTensor en
+     `gen_visitar_declaracion`); + inyección `_simd_detectar()` en `principal()` y indentación
+     `SentenciaExpr`. Fix en `nucleo/generator.syn` (unity) y `nucleo/generador/*.syn`
+     (modular, sync manual). Bootstrap S2==S3 diff 0 bytes; E2E S2/S3 salida `15/hola/2`.
+      Tests `tests/test_a23_parity.py`: 6 passed, 1 skipped (S1 main.py E2E — deuda preexistente
+      `es_mapeado`/struct-Tensor, F23/A2.4). Detalle: `docs/reportes/FASE_A_A2_3.md`.
+   - **A2.4 — Cierre deuda `es_mapeado`/struct-Tensor S1 (✅ COMPLETADA 2026-08-06)**: el
+     typedef `Tensor` del GeneradorC S1 (`generator.py` `_emitir_encabezado:425-428`) faltaba
+     `int es_mapeado;`; lifetimes S1 emitía `t.es_mapeado` (paridad `emit_declarations.py:430`)
+     → GCC `'Tensor' has no member named 'es_mapeado'` en el E2E S1. Añadido `int es_mapeado;`
+     a `generator.py` y `tests/integration/_synapse_shared.h`, alineado al canónico
+     `synapse_rt_types.h:14` / `nucleo/generator.c:2501` (S2/S3 ya lo tenía). **Verif:**
+     `tests/test_a23_parity.py` 7/7 (E2E S1 `test_e2e_s1_runtime` deja de skip → `15/hola/2`,
+     paridad S1↔S2↔S3); `test_codegen_embebido_d_f1d.py` + `native_lexer_paridad.py` 13/13 sin
+     regresión; `build.bat bootstrap-full` **diff 0 bytes**. Detalle: `docs/reportes/FASE_A_A2_4.md`.
 
 ### Etapa A3 — Conmutación del runtime (unity build)
 - `nucleo/principal.syn`: reemplazar el wrapper `parsear(CadenaSegura)` que invoca `_P_*`
@@ -124,8 +169,38 @@ y tokenización UTF-8 (H26).
 ## 8. Artefactos
 
 - `docs/FASE_A_PLAN.md` (este documento).
+- `docs/reportes/FASE_A_A1.md` (✅ **reporte de la Etapa A1**: matriz de brechas completa con
+  evidencia file:line, priorización P0-P3, check de puntos resueltos — 2026-08-05).
 - `docs/reportes/FASE_A.md` (reporte formal al cerrar; formato de la serie F1.x).
-- Matriz de brechas frontend nativo vs `_P_*` (Anexo A de este documento al completar A1).
+- Matriz de brechas frontend nativo vs `_P_*` (**Anexo A** de este documento, abajo).
 
 ---
-*Fin del plan FASE A — preparado en el micro-entregable F1.4 (2026-08-05).*
+
+## Anexo A — Matriz de brechas resumida (Etapa A1, 2026-08-05)
+
+> Matriz completa con evidencia file:line en `docs/reportes/FASE_A_A1.md`. Resumen por
+> prioridad (P0 = bloquea A2, P1 = bloquea A3, P2 = paridad S1/S2, P3 = diferida).
+
+| # | Brecha | Nativo | Embebido `_P_*` | Prio | Etapa |
+|---|---|---|---|---|---|
+| 1 | Tokenización de literales (números, decimales, cadenas con escapes) | ❌ consume sin token (lexer.syn L414-481) | ✅ T_NUM/T_STR (emit_selfhost L910-935) | **P0** | A2 |
+| 2 | Forma del AST (structs tipados vs `NodoAST[]` plano) | ❌ plano | ✅ structs `ast_nodes.syn` | **P0** | A2 |
+| 3 | `declaracion_tipo` (alias/ADT/genéricos `<T,E>`, `\|`) | ❌ | ✅ `_P_decl_tipo` L385-465 | **P0** | A2 |
+| 4 | `let` (tipo opcional/inferido) | ❌ T_LET no activado | ✅ L695-725 | **P0** | A2 |
+| 5 | `delegar` | ❌ | ✅ L726-732 | **P0** | A2 |
+| 6 | `@export ( IDENT ) funcion` + token `@` | ❌ sin `@` en lexer | ✅ L733-745 + gen_tok_c L221 | **P0** | A2 |
+| 7 | `nulo` literal → `LiteralNulo` | ❌ (identificador) | ✅ strcmp L921-925 | **P0** | A2 |
+| 8 | `tensor(filas, columnas)` → `ExprTensor` | ❌ (llamada normal) | ✅ strcmp L927-933 | **P0** | A2 |
+| 9 | `rc`/`arc`/`débil`/`modulo` activadas + `token_es_nombre` ampliado | ❌ definidas no activas | ✅ `_ks[]` L189-196 | **P0** | A2 |
+| 10 | Genéricos `<T>` en params/campos/let/retorno `-> arc<T>` | ❌ 1 token | ✅ L470-507 | **P0** | A2 |
+| 11 | UTF-8 en identificadores | ❌ ASCII | ✅ bytes ≥ 0x80 | **P0** | A2 |
+| 12 | Booleanos: representación única (`NODO_BOOLEANO` vs `LiteralNumero` 1/0) | ⚠️ NODO_BOOLEANO | ⚠️ LiteralNumero | P2 | A2 |
+| 13 | Preservar `constante` (nativo la tiene; orquestador descarta artefacto embebido) | ✅ L496 | ❌ hack orquestador L352-357 | P1 | A2/A3 |
+| 14 | Preservar `asm`, `coincidir`, `para`, canales (`<-`), contratos, `;` (nativo los parsea; hoy S2/S3 no los compila) | ✅ | ❌ (embebido no los soporta) | P1 | A2/A3 |
+| 15 | `retornar -> expr`, args de llamada enlazados, sombreado `tokenizar`/`parsear` (generator.syn L3807) | ⚠️ | ✅/⚠️ | P1 | A3 |
+| 16 | `recuperar` postfix (paridad S1), asignación de campo, `a.b.c`, método, `log`, transferencia `->` | ⚠️ parcial | ✅ | P2 | A2 |
+| 17 | 6 idiomas (de/it) en el lexer nativo (paridad S1) — `_ks[]` del embebido: es/en/fr/pt + de/it parcial (filas 4-6 entradas) | ⚠️ 4 | ✅ es/en/fr/pt + de/it (parcial) | P2 | A2 |
+| 18 | Arrays `[T]`, `importar ... como ...`, `/* */`, exponente `e`, `?` postfijo (D-6) | ❌ ambos | ❌ ambos | P3 | A5/deuda |
+
+---
+*Fin del plan FASE A — Etapa A1 (matriz de brechas) completada el 2026-08-05; siguiente hito: Etapa A2 (port).*

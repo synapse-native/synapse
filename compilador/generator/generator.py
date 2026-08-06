@@ -422,9 +422,13 @@ def _emitir_encabezado(ctx: GeneratorContext):
         "typedef struct { int longitud; const char* datos; } CadenaSegura;"
     )
     ctx.write_line("")
+    # A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): el runtime
+    # de lifetimes (emit_declarations.py:430) accede `t.es_mapeado`; el typedef
+    # emitido en n.h/synapse_unity.c debe incluirlo o el E2E S1 falla en gcc
+    # con "no member named es_mapeado" (deuda previamente skip en test_a23).
     ctx.write_line(
         "typedef struct { uint32_t filas; uint32_t columnas; "
-        "float* datos; } Tensor;"
+        "float* datos; int es_mapeado; } Tensor;"
     )
     ctx.write_line("")
     if not ctx.is_no_std():
@@ -585,8 +589,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "Tensor producto(Tensor a, Tensor b)",
             "int texto_a_entero(CadenaSegura str)",
             "float texto_a_decimal(CadenaSegura str)",
-            "CadenaSegura decimal_a_texto(float n)",
-            "CadenaSegura entero_a_texto(int n)",
+            "CadenaSegura decimal_a_texto(double n)",
+            "CadenaSegura entero_a_texto(int64_t n)",
             "int str_eq(CadenaSegura a, CadenaSegura b)",
             "void synapse_lanzar_hilo(void* (*fn)(void*), void* arg)",
             "void synapse_esperar_hilos(void)",
@@ -697,6 +701,7 @@ class GeneradorC:
             ctx.write_line("")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
+            ctx.write_line("int _G_usar_nativo_frontend = 0;")
             ctx.write_line("char** _g_argv;")
             ctx.write_line("int _argc() { return _g_argc; }")
             ctx.write_line("")
@@ -927,6 +932,7 @@ class GeneradorC:
             # Extern declarations para runtime helpers (NO definiciones \u2014 son solo para link)
             if not ctx.is_no_std():
                 ctx.write_line("extern int _g_argc;")
+                ctx.write_line("extern int _G_usar_nativo_frontend;")
                 ctx.write_line("extern char** _g_argv;")
                 ctx.write_line("extern int _argc(void);")
                 ctx.write_line("extern CadenaSegura _argv(int i);")
@@ -1036,6 +1042,7 @@ class GeneradorC:
                 ctx.write_line("")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")
+                ctx.write_line("int _G_usar_nativo_frontend = 0;")
                 ctx.write_line("char** _g_argv;")
                 ctx.write_line("int _argc() { return _g_argc; }")
                 ctx.write_line("")
