@@ -139,6 +139,21 @@ funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: 
         asm("est->nodos[idx].hijo_izq = 0")
         asm("est->nodos[idx].hijo_der = 0")
         asm("est->nodos[idx].hermano = 0")
+        // FASE A (A4.5): ZERO COMPLETO del payload — el buffer plano
+        // parser_nodos() se REUTILIZA entre archivos del unity build
+        // (cada parsear() resetea total_nodos a 0), asi que un indice
+        // reutilizado heredaba ptr_str/len_str/ptr_extra del archivo
+        // anterior. El puente plano->tipado (puente_str/puente_str2)
+        // reconstruia punteros basura -> crash (harness) o mis-parse
+        // (S2). Se zeroean tambien los arrays paralelos de bits altos y
+        // el slot str2.
+        asm("est->nodos[idx].valor_dec = 0")
+        asm("est->nodos[idx].ptr_str = 0")
+        asm("est->nodos[idx].len_str = 0")
+        asm("est->nodos[idx].ptr_extra = 0")
+        asm("int* _hi_z = (int*)parser_ptr_hi(); if (_hi_z) _hi_z[idx] = 0;")
+        asm("int* _s2p_z = (int*)parser_str2_ptr(); int* _s2h_z = (int*)parser_str2_hi(); int* _s2l_z = (int*)parser_str2_len();")
+        asm("if (_s2p_z) _s2p_z[idx] = 0; if (_s2h_z) _s2h_z[idx] = 0; if (_s2l_z) _s2l_z[idx] = 0;")
         asm("est->total_nodos = idx + 1")
         retornar idx
 

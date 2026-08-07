@@ -27,8 +27,9 @@ SUB_MODULOS = [
     "emision_c.syn",
     "expr_eval.syn",       # _oo_expr_a_c (extraido de nodos_flujo.syn para < 1000 lineas)
     "nodos_flujo.syn",
-    "frontend_p.syn",      # Front-end canonico _P_* embebido (generado por nucleo/_gen_frontend_p.py)
-    "orquestador.syn",     # Debe ir DESPUES de frontend_p.syn (gen_visitar_top_level los invoca)
+    "frontend_nativo.syn", # Wrapper del frontend nativo (A3.2/A4): gen_emitir_frontend_nativo.
+                          # El espejo embebido frontend_p.syn (_P_*) se retiro en A4.
+    "orquestador.syn",     # Debe ir DESPUES de frontend_nativo.syn (hook ME-B7 lo invoca)
 ]
 
 DIR_GENERADOR = os.path.join(os.path.dirname(__file__), "generador")

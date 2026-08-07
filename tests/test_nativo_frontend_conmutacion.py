@@ -1,30 +1,36 @@
 # -*- coding: utf-8 -*-
-"""tests/test_nativo_frontend_conmutacion.py — FASE A (Etapa A3.2)
+"""tests/test_nativo_frontend_conmutacion.py — FASE A (Etapas A3.2/A4)
 
-Conmutación de `principal.syn` al frontend NATIVO via `_G_usar_nativo_frontend`
-(`--nativo-frontend`), desactivando el sombreado `_P_*` del frontend embebido:
+Conmutación de `principal.syn` al frontend NATIVO. Desde A4 el frontend nativo
+es el UNICO frontend: el flag de rollback `_G_usar_nativo_frontend` y el espejo
+embebido `frontend_p.syn` (_P_*) se retiraron (AUDITORIA_ALINEACION_MANUALES.md,
+Etapa A4). El hook ME-B7 (`nucleo/generator.syn`) emite SIEMPRE el wrapper
+nativo:
 
-  flag=0 (default): `tokenizar`/`parsear` -> frontend EMBEBIDO `_P_*`
-      (`gen_emitir_tokenizar` / `gen_emitir_frontend_p`, paridad bootstrap).
-  flag=1: el hook ME-B7 (`nucleo/generator.syn`) emite el cuerpo nativo de
-      `tokenizar` (lexer.syn) y el wrapper
-      `struct Programa parsear(CadenaSegura fuente)` (`gen_emitir_frontend_nativo`)
-      que ejecuta la pipeline NATIVA completa:
-          tokenizar -> parsear_nativo (parser.syn) -> puente_construir_programa
-          (puente_ast.syn, A3.1) -> struct Programa.
+  `struct Programa parsear(CadenaSegura fuente)` (`gen_emitir_frontend_nativo`)
+  que ejecuta la pipeline NATIVA completa:
+      tokenizar (lexer.syn) -> parsear_nativo (parser.syn) -> puente_construir_programa
+      (puente_ast.syn, A3.1) -> struct Programa.
+
+Nota de arquitectura (Opción A, decisión del Arquitecto): `synapse_stage1.exe`
+(compilado por S1/Python vía `_BUILTIN_EMITTER_MAP`) conserva el frontend
+embebido `_P_*` como puente de bootstrap; el compilador auto-hospedado
+(stage1 -> stage2) usa el frontend nativo. Este test verifica la emisión del
+wrapper nativo y la paridad de comportamiento entre ambos.
 
 Verificaciones:
-  1. Estructural: el C generado con flag=1 contiene el wrapper nativo y la
-     llamada `parsear_nativo(&_pe);`, y NO contiene definiciones de funciones
-     del frontend embebido (`_P_programa`/`_P_tokenizar`).
-  2. E2E: el compilador nativo (flag=1) compila el fixture A2.3 con la
+  1. Estructural: el C generado por stage1 (auto-compilación) contiene el
+     wrapper nativo y la llamada `parsear_nativo(&_pe);`, y NO contiene
+     definiciones de funciones del frontend embebido (`_P_programa`/`_P_tokenizar`).
+  2. E2E: el compilador nativo (stage2) compila el fixture A2.3 con la
      pipeline nativa y el programa resultante imprime `15/hola/2` (Manual 2 §2
      EBNF; Manual 3 §3.3 el pipeline consume `struct Programa` tipado).
-  3. Paridad flag=0 vs flag=1: el mismo fixture produce la MISMA salida con
-     el frontend embebido y con el nativo.
+  3. Paridad embebido vs nativo: el mismo fixture produce la MISMA salida con
+     stage1 (frontend embebido `_P_*`, puente de bootstrap) y con stage2
+     (frontend nativo).
 
 Manuales: Manual 2 §2 (EBNF), Manual 3 §3.3 (pipeline runtime), Manual 9 §9.7
-(bootstrap determinista S2==S3, diff 0 bytes). Hito A3.2.
+(bootstrap determinista S2==S3, diff 0 bytes). Hitos A3.2/A4.
 """
 import os
 import re
@@ -63,18 +69,19 @@ def _stage1():
 
 @pytest.fixture(scope="module")
 def compilador_nativo():
-    """Construye una vez el compilador flag=1 (stage1 --nativo-frontend) y
-    devuelve (ruta_exe, texto_del_unity_C_flag1).
-    El unity build se ejecuta con cwd=RAIZ: los _files[] de principal.syn usan
-    rutas relativas "nucleo/...". El synapse_unity.c resultante queda en RAIZ
-    (artefacto gitignored) y se elimina al finalizar."""
+    """Auto-compila `principal.syn` con stage1 (sin flag: el hook ME-B7 emite
+    SIEMPRE el frontend nativo desde A4) y devuelve
+    (ruta_exe, texto_del_unity_C). El unity build se ejecuta con cwd=RAIZ: los
+    _files[] de principal.syn usan rutas relativas "nucleo/...". El
+    synapse_unity.c resultante queda en RAIZ (artefacto gitignored) y se
+    elimina al finalizar."""
     tmp = tempfile.mkdtemp(prefix="a32_")
     nativo = os.path.join(tmp, "synapse_nativo.exe")
     unity = os.path.join(RAIZ, "synapse_unity.c")
     if os.path.exists(unity):
         os.unlink(unity)
     proc = subprocess.run(
-        [_stage1(), PRINCIPAL, "--nativo-frontend", "-o", nativo],
+        [_stage1(), PRINCIPAL, "-o", nativo],
         capture_output=True, text=True, timeout=1200, cwd=RAIZ,
     )
     c = None
@@ -83,9 +90,9 @@ def compilador_nativo():
             c = f.read()
         os.unlink(unity)
     if proc.returncode != 0:
-        pytest.fail(f"unity build --nativo-frontend fallo rc={proc.returncode}\n"
+        pytest.fail(f"auto-compilacion fallo rc={proc.returncode}\n"
                     f"{proc.stderr[-1500:]}")
-    assert c, "synapse_unity.c flag=1 no generado"
+    assert c, "synapse_unity.c (frontend nativo) no generado"
     yield nativo, c
     for f in (unity, nativo):
         try:
@@ -98,8 +105,8 @@ def compilador_nativo():
         pass
 
 
-def test_flag1_wrapper_nativo_emitido(compilador_nativo):
-    """A3.2: con flag=1 el C de principal.syn contiene el wrapper nativo y la
+def test_wrapper_nativo_emitido(compilador_nativo):
+    """A3.2/A4: el C auto-compilado contiene el wrapper nativo y la
     llamada a parsear_nativo(&_pe); y NO define funciones del frontend embebido."""
     _, c = compilador_nativo
     assert "struct Programa parsear(CadenaSegura fuente)" in c, (
@@ -115,13 +122,13 @@ def test_flag1_wrapper_nativo_emitido(compilador_nativo):
                    r"^struct Nodo\*\s+_P_\w+\s*\(",
                    r"^int\s+_P_\w+\s*\("):
         assert not re.search(patron, c, re.M), (
-            f"definicion del frontend embebido presente con flag=1: {patron}")
+            f"definicion del frontend embebido presente: {patron}")
 
 
-def test_e2e_flag1_nativo(compilador_nativo):
-    """A3.2 E2E: el compilador nativo (flag=1) compila el fixture A2.3 con la
-    pipeline NATIVA (tokenizar -> parsear_nativo -> puente) y el programa
-    resultante imprime 15/hola/2."""
+def test_e2e_nativo(compilador_nativo):
+    """A3.2/A4 E2E: el compilador nativo (auto-compilado) compila el fixture
+    A2.3 con la pipeline NATIVA (tokenizar -> parsear_nativo -> puente) y el
+    programa resultante imprime 15/hola/2."""
     if not _gcc_ok():
         pytest.skip("gcc no disponible")
     nativo, _ = compilador_nativo
@@ -136,14 +143,15 @@ def test_e2e_flag1_nativo(compilador_nativo):
             f"compilador nativo fallo rc={proc.returncode}\n{proc.stderr[-1500:]}")
         run = subprocess.run([exe], capture_output=True, text=True, timeout=60)
         assert run.returncode == 0, (
-            f"exe flag=1 fallo rc={run.returncode}\n{run.stderr[-800:]}")
+            f"exe nativo fallo rc={run.returncode}\n{run.stderr[-800:]}")
         assert run.stdout.splitlines() == SALIDA_ESPERADA, (
-            f"salida flag=1 inesperada: {run.stdout.splitlines()}")
+            f"salida nativa inesperada: {run.stdout.splitlines()}")
 
 
-def test_paridad_salida_flag0_flag1(compilador_nativo):
-    """A3.2: el fixture produce la MISMA salida con flag=0 (frontend embebido,
-    stage1 default) y con flag=1 (frontend nativo) — paridad de comportamiento."""
+def test_paridad_salida_embebido_nativo(compilador_nativo):
+    """A3.2/A4: el fixture produce la MISMA salida con stage1 (frontend
+    embebido `_P_*`, puente de bootstrap) y con el compilador nativo
+    (auto-compilado) — paridad de comportamiento."""
     if not _gcc_ok():
         pytest.skip("gcc no disponible")
     nativo, _ = compilador_nativo
@@ -152,17 +160,17 @@ def test_paridad_salida_flag0_flag1(compilador_nativo):
         p0 = subprocess.run([_stage1(), FIXTURE, "-o", exe0],
                             capture_output=True, text=True, timeout=600,
                             cwd=tmp)
-        assert p0.returncode == 0, f"flag=0 fallo:\n{p0.stderr[-1200:]}"
+        assert p0.returncode == 0, f"embebido fallo:\n{p0.stderr[-1200:]}"
         r0 = subprocess.run([exe0], capture_output=True, text=True, timeout=60)
         assert r0.returncode == 0
         exe1 = os.path.join(tmp, "p1.exe")
         p1 = subprocess.run([nativo, FIXTURE, "-o", exe1],
                             capture_output=True, text=True, timeout=900,
                             cwd=RAIZ)
-        assert p1.returncode == 0, f"flag=1 fallo:\n{p1.stderr[-1200:]}"
+        assert p1.returncode == 0, f"nativo fallo:\n{p1.stderr[-1200:]}"
         r1 = subprocess.run([exe1], capture_output=True, text=True, timeout=60)
         assert r1.returncode == 0
         assert r0.stdout.splitlines() == SALIDA_ESPERADA
         assert r1.stdout.splitlines() == r0.stdout.splitlines(), (
-            f"paridad rota: flag=0 {r0.stdout.splitlines()} vs "
-            f"flag=1 {r1.stdout.splitlines()}")
+            f"paridad rota: embebido {r0.stdout.splitlines()} vs "
+            f"nativo {r1.stdout.splitlines()}")

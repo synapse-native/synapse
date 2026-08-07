@@ -1,0 +1,45 @@
+// ==========================================================
+// frontend_nativo — wrapper del frontend NATIVO (único frontend
+// desde A4). El espejo embebido frontend_p.syn (_P_*) fue
+// retirado en A4 (AUDITORIA_ALINEACION_MANUALES.md).
+// Pipeline: tokenizar (lexer.syn) -> parsear_nativo (parser.syn)
+//   -> puente_construir_programa (puente_ast.syn, A3.1).
+// ==========================================================
+
+// ----------------------------------------------------------
+// gen_emitir_frontend_nativo — wrapper 'struct Programa parsear(CadenaSegura
+// fuente)' para el frontend NATIVO (A3.2/A4): ejecuta la pipeline
+//   tokenizar (cuerpo nativo de lexer.syn) -> parsear_nativo (parser.syn) ->
+//   puente_construir_programa (puente_ast.syn, A3.1).
+// Paridad: firma canonica 'struct Programa parsear(CadenaSegura fuente)'
+// (L3818 / S1 _SPECIAL_SIGS generator.py) que consume principal.syn y lsp.syn.
+// Guard _G_fnn_emitido: evita doble emision si el hook ME-B7 se invoca 2 veces.
+// ----------------------------------------------------------
+funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("static int _G_fnn_emitido = 0;")
+        asm("if (_G_fnn_emitido) return; _G_fnn_emitido = 1;")
+        asm("// A4: el frontend embebido _P_* se retiró; estos globals")
+        asm("// (_P_ntks/_P_tpos/_P_p_err) son compatibilidad linker-ficticia")
+        asm("// (muertos en el pipeline nativo, nunca se leen ni escriben).")
+        asm("static char _G_fnn00[] = \"int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;\";")
+        asm("gen_emitir_str(est, _G_fnn00);")
+        asm("static char _G_fnn0[] = \"struct Programa parsear(CadenaSegura fuente) {\";")
+        asm("gen_emitir_str(est, _G_fnn0);")
+        asm("static char _G_fnn1[] = \"    int _nt = tokenizar(fuente);\";")
+        asm("gen_emitir_str(est, _G_fnn1);")
+        asm("static char _G_fnn2[] = \"    if (_nt < 0) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn2);")
+        asm("static char _G_fnn3[] = \"    struct ParserEst _pe = {0};\";")
+        asm("gen_emitir_str(est, _G_fnn3);")
+        asm("static char _G_fnn3a[] = \"    parsear_nativo(&_pe);\";")
+        asm("gen_emitir_str(est, _G_fnn3a);")
+        asm("static char _G_fnn4[] = \"    struct Programa* _pr = (struct Programa*)puente_construir_programa();\";")
+        asm("gen_emitir_str(est, _G_fnn4);")
+        asm("static char _G_fnn5[] = \"    if (!_pr) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn5);")
+        asm("static char _G_fnn6[] = \"    return *_pr;\";")
+        asm("gen_emitir_str(est, _G_fnn6);")
+        asm("static char _G_fnn7[] = \"}\";")
+        asm("gen_emitir_str(est, _G_fnn7);")
+

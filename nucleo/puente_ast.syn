@@ -94,6 +94,10 @@ funcion puente_tok(tipo: entero, lexema: cadena) -> puntero:
 // _P_* (_P_logica/_P_comp/_P_suma/_P_term/_P_una en _parser.c). Los codigos
 // 100/101 = y/o (T_Y=14/T_O=15), 200-205 = comparacion, 300-301 = suma,
 // 400-402 = multiplicacion, 500-501 = unarios (menos/no).
+// A4.5 fix (bootstrap S2/S3): los TIPOS se emiten con la numeracion CANONICA
+// de _P_* que consume expr_eval.syn (case 16=" > ", 17=" < ") — NO con la
+// numeracion nativa del lexer (T_MAYOR=23/T_MENOR=24), que caia en el default
+// ' ? ' del emisor (operadores > y < emitidos mal en la compilacion self-hosted).
 funcion puente_operador(codigo: entero) -> puntero:
     r = nulo
     si codigo == 100:
@@ -101,9 +105,9 @@ funcion puente_operador(codigo: entero) -> puntero:
     si codigo == 101:
         retornar puente_tok(15, "||")
     si codigo == 200:
-        retornar puente_tok(23, ">")
+        retornar puente_tok(16, ">")
     si codigo == 201:
-        retornar puente_tok(24, "<")
+        retornar puente_tok(17, "<")
     si codigo == 202:
         retornar puente_tok(25, "==")
     si codigo == 203:
@@ -300,9 +304,20 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
-    // constante: _P_* NO la produce (T_CONSTANTE sin handler en _P_sentencia) —
-    // el puente la descarta igual para mantener paridad (el generador actual ya
-    // convive con esa omision; deuda registrada en el reporte A3.1).
+    // constante: paridad con la pipeline _P_* (el espejo representaba
+    // `constante X = N` como AsignacionVariable a nivel top-level — el
+    // generador las emite via Fase 2A / gen_visitar_asignacion como
+    // 'int X = N;' / 'CadenaSegura X = ...' con hoisting). A4.5 fix
+    // (bootstrap S2/S3): sin esta rama, NODO_CONSTANTE caia en el default
+    // del puente y las constantes globales T_*/IDIOMA_* se perdian en la
+    // compilacion self-hosted (unity S3 sin 'IDIOMA_EN undeclared' en gcc).
+    si t == NODO_CONSTANTE:
+        inseguro:
+            asm("{ struct AsignacionVariable* _p = (struct AsignacionVariable*)calloc(1, sizeof(struct AsignacionVariable));")
+            asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
     si t == NODO_FUNCION:
         inseguro:
             asm("{ struct DefinicionFuncion* _p = (struct DefinicionFuncion*)calloc(1, sizeof(struct DefinicionFuncion));")
@@ -445,6 +460,28 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("{ struct BloqueInseguro* _p = (struct BloqueInseguro*)calloc(1, sizeof(struct BloqueInseguro));")
             asm("  _p->tipo = puente_cs_str((void*)\"BloqueInseguro\");")
             asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  r = (void*)_p; }")
+    // FASE A (A4.5 fix, bootstrap S2/S3): asm("...") -> SentenciaExpr con
+    // LlamadaFuncion("asm", [LiteralCadena]) — paridad con el emisor ME-B5
+    // (nodos_flujo.syn gen_visitar_expr) que detecta la llamada "asm" y emite
+    // la instruccion cruda. Sin esta rama, NODO_ASM caia en el default del
+    // puente (r=nulo) y TODAS las sentencias asm() se perdian: los cuerpos
+    // envueltos en inseguro: (el generador entero) quedaban VACIOS y el
+    // bootstrap S2/S3 emitia funciones stub (constantes T_*/IDIOMA_* ausentes).
+    si t == NODO_ASM:
+        inseguro:
+            asm("{ struct SentenciaExpr* _p = (struct SentenciaExpr*)calloc(1, sizeof(struct SentenciaExpr));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaExpr\");")
+            asm("  struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)calloc(1, sizeof(struct LlamadaFuncion));")
+            asm("  _lf->tipo = puente_cs_str((void*)\"LlamadaFuncion\");")
+            asm("  _lf->nombre = puente_cs_str((void*)\"asm\");")
+            asm("  struct LiteralCadena* _lc = (struct LiteralCadena*)calloc(1, sizeof(struct LiteralCadena));")
+            asm("  _lc->tipo = puente_cs_str((void*)\"LiteralCadena\");")
+            asm("  _lc->valor = puente_cs_str(puente_str(idx));")
+            asm("  struct ListaNodo* _la = (struct ListaNodo*)calloc(1, sizeof(struct ListaNodo));")
+            asm("  _la->cabeza = (struct Nodo*)_lc; _la->cola = 0;")
+            asm("  _lf->argumentos = _la;")
+            asm("  _p->expr = (struct Nodo*)_lf;")
             asm("  r = (void*)_p; }")
     si t == NODO_DELEGAR:
         inseguro:

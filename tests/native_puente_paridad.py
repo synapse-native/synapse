@@ -12,7 +12,8 @@ Manuales:
     (arbol tipado); el puente convierte la salida del frontend nativo
     (NodoAST[] plano) a ese arbol — la brecha #2 de la matriz A1 que A3 cierra.
   - Criterio FASE A (docs/FASE_A_PLAN.md): A3 conmuta principal.syn al frontend
-    nativo via _G_usar_nativo_frontend; el puente es el eslabon que falta.
+    nativo; el puente es el eslabon que falta (A4: frontend nativo unico, el
+    flag de rollback _G_usar_nativo_frontend se retiro).
 
 Estrategia (patron tests/test_frontend_embebido_d_f1.py + native_parser_paridad.py):
   - BINARIO NATIVO: concatenacion de nucleo/*.syn (parser_constantes, parser_base,

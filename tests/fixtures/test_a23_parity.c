@@ -433,6 +433,24 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef NODO_CONTRATO
 #define NODO_CONTRATO (46)
 #endif
+#ifndef NODO_NULO
+#define NODO_NULO (47)
+#endif
+#ifndef NODO_LET
+#define NODO_LET (48)
+#endif
+#ifndef NODO_DELEGAR
+#define NODO_DELEGAR (49)
+#endif
+#ifndef NODO_EXPORT
+#define NODO_EXPORT (50)
+#endif
+#ifndef NODO_DECLARACION_TIPO
+#define NODO_DECLARACION_TIPO (51)
+#endif
+#ifndef NODO_CONSTRUCTOR
+#define NODO_CONSTRUCTOR (52)
+#endif
 
 // --- Error code constants (Manual 3 §3.5) ---
 #ifndef ERR_SYNTAX_EXPECTED_TOKEN
@@ -594,9 +612,6 @@ extern char _G_tipo_aliases[128][64];
 extern char _G_tipo_aliases_base[128][64];
 extern int _G_tipo_aliases_count;
 
-// PGO variables (defined in self-hosted parser module)
-extern int _P_ntks, _P_tpos, _P_p_err;
-
 extern int _G_indent;
 
 const char* _G_mt(const char* st);
@@ -719,7 +734,6 @@ int _G_tipo_aliases_count;
 
 
 int _g_argc;
-int _G_usar_nativo_frontend = 0;
 char** _g_argv;
 int _argc() { return _g_argc; }
 

@@ -518,7 +518,7 @@ constante MAX_INDENT = 64
 
 estructura LexerBuffers:
     tokens: puntero      // struct TokenLex[65536]
-    sbuf: puntero        // char[65536] (pool de cadenas)
+    sbuf: puntero        // char[1048576] (pool de cadenas; 1MB — ver SBUF_TAM en lexer_buffers)
     indent_stack: puntero // int[64] — NOTA: el nombre evita el hack 'pila_indent'
                           // de _ARRAY_OVERRIDE_FIELDS (context.py) que fuerza int[64]
                           // (FASE A, A2.1)
@@ -538,7 +538,13 @@ funcion lexer_buffers() -> puntero:
         let r: puntero = nulo
         asm("static struct LexerBuffers _N_bufs = {0,0,0,0,0,0,0,0,0,0};")
         asm("static struct TokenLex _N_tks[65536];")
-        asm("static char _N_sbuf[65536];")
+        // FASE A (A4.5): pool de cadenas 1MB. El pool es ACUMULATIVO por archivo
+        // (lexer_reset_buffers resetea str_pos por modulo) y generator.syn acumula
+        // ~86KB de literales en una sola tokenizacion (medido con _medir_sbuf.py);
+        // con 64KB el guard de lexer_decodificar_cadena truncaba las cadenas
+        // posteriores -> bootstrap S3 roto (cadenas asm vacias, stubs). 1MB = BSS
+        // estatico (no infla el exe) con margen 12x sobre el peor caso actual.
+        asm("static char _N_sbuf[1048576];")
         asm("static int _N_indents[64];")
         asm("if (_N_bufs.tokens == 0) { _N_bufs.tokens = (void*)_N_tks; _N_bufs.sbuf = (void*)_N_sbuf; _N_bufs.indent_stack = (void*)_N_indents; }")
         asm("r = (void*)&_N_bufs;")
@@ -600,7 +606,7 @@ funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cade
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("const char* _p = (const char*)ptr + ini;")
         asm("char* _out = (char*)_b->sbuf + _b->str_pos; int _n = 0;")
-        asm("for (int _k = 0; _k < len && _n < 65535 - _b->str_pos; _k++) {")
+        asm("for (int _k = 0; _k < len && _n < 1048575 - _b->str_pos; _k++) {")
         asm("    if (_p[_k] == 92 && _k + 1 < len) {")
         asm("        switch (_p[_k + 1]) {")
         asm("            case 34: _out[_n++] = 34; _k++; break;")   // \" -> comilla doble
@@ -1000,15 +1006,23 @@ funcion tokenizar(fuente: cadena) -> entero:
         si len_linea > 0:
             c0 = 0
             es_comentario = 0
+            // FASE A (A4.5): paridad con _P_tokenizar y compilador/lexer.py —
+            // el comentario se detecta tras saltar espacios/tabs iniciales
+            // (lineas "   // ..." o "   # ..." con alineacion en col > 0).
+            // Antes solo se miraba la columna 0: el auto-compilado del propio
+            // lexer.syn fallaba (E-102) en sus lineas de comentario alineadas.
+            j = 0
             inseguro:
-                asm("c0 = (unsigned char)((const char*)ptr_linea)[0]")
-                si c0 == 35:
-                    es_comentario = 1
-                si c0 == 47:
-                    si len_linea >= 2:
-                        asm("c0 = (unsigned char)((const char*)ptr_linea)[1]")
-                        si c0 == 47:
-                            es_comentario = 1
+                asm("while (j < len_linea && (((const char*)ptr_linea)[j] == ' ' || ((const char*)ptr_linea)[j] == 9)) { j = j + 1; }")
+                si j < len_linea:
+                    asm("c0 = (unsigned char)((const char*)ptr_linea)[j]")
+                    si c0 == 35:
+                        es_comentario = 1
+                    si c0 == 47:
+                        si j + 1 < len_linea:
+                            asm("c0 = (unsigned char)((const char*)ptr_linea)[j + 1]")
+                            si c0 == 47:
+                                es_comentario = 1
             si es_comentario == 0:
                 // linea solo-espacios: se trata como vacia (paridad _P_*: no
                 // modifica la indentacion)

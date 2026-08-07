@@ -344,6 +344,8 @@ def _emitir_nodo_defines(ctx: GeneratorContext):
         ("NODO_ASM",40),("NODO_CANAL_CREAR",41),("NODO_ENVIAR_CANAL",42),
         ("NODO_RECIBIR_CANAL",43),("NODO_VACIO",44),("NODO_PARA",45),
         ("NODO_CONTRATO",46),
+        ("NODO_NULO",47),("NODO_LET",48),("NODO_DELEGAR",49),
+        ("NODO_EXPORT",50),("NODO_DECLARACION_TIPO",51),("NODO_CONSTRUCTOR",52),
     ]
     ctx.write_line("// --- Nodo type constants (AST node types) ---")
     for name, val in NODOS:
@@ -514,9 +516,6 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_tipo_aliases[128][64];")
     ctx.write_line("extern char _G_tipo_aliases_base[128][64];")
     ctx.write_line("extern int _G_tipo_aliases_count;")
-    ctx.write_line("")
-    ctx.write_line("// PGO variables (defined in self-hosted parser module)")
-    ctx.write_line("extern int _P_ntks, _P_tpos, _P_p_err;")
     ctx.write_line("")
     ctx.write_line("extern int _G_indent;")
     ctx.write_line("")
@@ -701,7 +700,6 @@ class GeneradorC:
             ctx.write_line("")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
-            ctx.write_line("int _G_usar_nativo_frontend = 0;")
             ctx.write_line("char** _g_argv;")
             ctx.write_line("int _argc() { return _g_argc; }")
             ctx.write_line("")
@@ -932,7 +930,6 @@ class GeneradorC:
             # Extern declarations para runtime helpers (NO definiciones \u2014 son solo para link)
             if not ctx.is_no_std():
                 ctx.write_line("extern int _g_argc;")
-                ctx.write_line("extern int _G_usar_nativo_frontend;")
                 ctx.write_line("extern char** _g_argv;")
                 ctx.write_line("extern int _argc(void);")
                 ctx.write_line("extern CadenaSegura _argv(int i);")
@@ -1042,7 +1039,6 @@ class GeneradorC:
                 ctx.write_line("")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")
-                ctx.write_line("int _G_usar_nativo_frontend = 0;")
                 ctx.write_line("char** _g_argv;")
                 ctx.write_line("int _argc() { return _g_argc; }")
                 ctx.write_line("")
