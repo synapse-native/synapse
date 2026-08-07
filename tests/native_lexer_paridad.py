@@ -153,6 +153,14 @@ _INCLUDES = (
     '#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n'
 )
 
+# FIX A2.3 (deuda heredada del commit 198707d): lexer_obtener_tokens() usa
+# struct TokenExt (nucleo/parser_base.syn), pero el harness compila SOLO
+# nucleo/lexer.syn. El struct se define aqui (mismo layout: 5 int) para que el
+# C generado compile; paridad verificada por los tests del parser A2.3.
+_PREAMBULO_TOKENEXT = (
+    'struct TokenExt { int tipo; int linea; int columna; int ptr_valor; int len_valor; };\n'
+)
+
 _STUBS_RUNTIME = """
 int str_eq(CadenaSegura a, CadenaSegura b) {
     if (a.longitud != b.longitud) return 0;
@@ -261,7 +269,7 @@ def binarios():
     if not _gcc_disponible():
         pytest.skip("gcc no disponible en este entorno")
     with tempfile.TemporaryDirectory(prefix="synapse_a21_") as tmp:
-        nat_c = _INCLUDES + _generar_c_nativo() + "\n" + _STUBS_RUNTIME + "\n" + _MAIN_C_NATIVO
+        nat_c = _INCLUDES + _PREAMBULO_TOKENEXT + _generar_c_nativo() + "\n" + _STUBS_RUNTIME + "\n" + _MAIN_C_NATIVO
         ref_c = _INCLUDES + _generar_c_referencia() + "\n" + _MAIN_C_REFERENCIA
         gcc = _resolver_gcc()
         exe_nat = os.path.join(tmp, "nat.exe")

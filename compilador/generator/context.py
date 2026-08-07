@@ -248,8 +248,13 @@ class GeneratorContext:
         # M21.4: RegionGraph y UnionFind (lifetimes.syn) se pasan por puntero
         # para que region_agregar_restriccion/uf_union muten el grafo real
         # (por valor, g.total_constraints++ se perdería en la copia).
+        # FASE A (A2.3): ParserEst (parser.syn) — mismo defecto por valor:
+        # est.posicion/total_nodos/hay_error se perdían en cada llamada helper
+        # (BUG 4 de la auditoría A2.3: el parser nativo era código muerto).
+        # El call-site añade & automáticamente (emit_expressions.py); el acceso
+        # de campo emite -> (precedente AnalizadorSemanticoEst).
         self._POINTER_TYPES: frozenset = frozenset({
-            'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind',
+            'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind', 'ParserEst',
         })
 
         # Destructor map for RAII types

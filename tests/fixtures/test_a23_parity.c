@@ -719,6 +719,7 @@ int _G_tipo_aliases_count;
 
 
 int _g_argc;
+int _G_usar_nativo_frontend = 0;
 char** _g_argv;
 int _argc() { return _g_argc; }
 

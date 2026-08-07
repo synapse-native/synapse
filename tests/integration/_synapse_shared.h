@@ -18,9 +18,6 @@ extern int _G_safe_mode;  // M22.5: --safe flag
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
-// A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): incluir
-// `es_mapeado` para que el lifetime codegen S1 (`t.es_mapeado`,
-// emit_declarations.py:430) compile. Antes faltaba -> "no member named es_mapeado".
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
@@ -682,6 +679,7 @@ extern void _simd_detectar(void);
 #endif
 
 extern int _g_argc;
+extern int _G_usar_nativo_frontend;
 extern char** _g_argv;
 extern int _argc(void);
 extern CadenaSegura _argv(int i);

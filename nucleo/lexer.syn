@@ -634,6 +634,24 @@ funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, val
 funcion lexer_push_token(tipo: entero, linea: entero, columna: entero) -> nulo:
     lexer_push_token_valor(tipo, linea, columna, "")
 
+// FASE A (A3.1): tokens de puntuacion de TIPOS (<, >, ,, &, *) con su lexema
+// real de la fuente (slice [ini, fin) de ptr_texto) — paridad _P_* (todo token
+// conserva el lexema; _parser.c corta la fuente para CADA token). Necesario
+// para los SPANS de tipos (nodo_guardar_span): con valor vacio, la aritmetica
+// de punteros del span no podia reconstruir 'arc<NodoLista>' ni '&mut entero'
+// (los tokens <, >, &, *, , iban con datos="" -> diferencia de punteros basura).
+// El resto de la puntuacion sigue con valor vacio: el harness no compara valores
+// de puntuacion y el puente mapea los operadores de OpBinaria por CODIGO.
+funcion lexer_push_token_punt(tipo: entero, linea: entero, columna: entero, ini: entero, fin: entero, ptr: puntero) -> nulo:
+    // A3.2 fix RAII: SIN variable cadena intermedia. Una var local cadena dispara
+    // el destructor RAII (_syn_texto_liberar al cierre de scope) que liberaria el
+    // puntero al buffer de la FUENTE (slice prestado) -> pool_free -> free() sobre
+    // puntero interior -> 0xC0000374 heap corruption. El slice se pasa directo al
+    // buffer de tokens via asm (paridad: el embebido _P_* strncpy del slice; el
+    // lexema conserva el puntero al buffer, que vive mas que la tokenizacion).
+    inseguro:
+        asm("lexer_push_token_valor(tipo, linea, columna, (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini});")
+
 // --- Report lexer error ---
 funcion lexer_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
     inseguro:
@@ -809,13 +827,15 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 si tok == T_IDENTIFICADOR:
                     lexer_push_token_valor(tok, lexer_linea_actual(), inicio + 1, palabra)
                 sino:
-                    // AUDITORIA F1 (D-F1) + FASE A (A2.1): los keywords contextuales
-                    // conservan el lexema para que el parser decida por contexto
-                    // (identificador vs constructo) — Manual 2 §3.
-                    si tok == T_TIPO o tok == T_TENSOR o tok == T_NULO o tok == T_OK o tok == T_ERR o tok == T_ALGUN o tok == T_NINGUNO o tok == T_LET o tok == T_DELEGAR o tok == T_RC o tok == T_ARC o tok == T_DEBIL o tok == T_MODULO:
-                        lexer_push_token_valor(tok, lexer_linea_actual(), inicio + 1, palabra)
-                    sino:
-                        lexer_push_token(tok, lexer_linea_actual(), inicio + 1)
+                    // FASE A (A3.0): TODOS los keywords conservan el lexema — paridad
+                    // con el embebido _P_* (tests/native_lexer_paridad.py _mapear:
+                    // "los keywords conservan su lexema"; _P_* strncpy del slice en
+                    // _parser.c L344/L354). Antes solo los contextuales lo conservaban;
+                    // los estructurales (si/y/funcion/...) iban con valor vacio. El
+                    // parser nativo necesita el lexema para nombres de campo que
+                    // coinciden con keywords (ej: estructura Punto: y: entero —
+                    // campo 'y' = T_Y con lexema "y") — payload del puente A3.
+                    lexer_push_token_valor(tok, lexer_linea_actual(), inicio + 1, palabra)
                 siguiente
             si c == 43:
                 lexer_push_token(T_MAS, lexer_linea_actual(), i + 1)
@@ -865,7 +885,7 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         lexer_push_token(T_MENOR_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                lexer_push_token(T_MENOR, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_MENOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 62:
@@ -875,11 +895,11 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         lexer_push_token(T_MAYOR_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                lexer_push_token(T_MAYOR, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_MAYOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 42:
-                lexer_push_token(T_POR, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_POR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 47:
@@ -903,7 +923,7 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 asm("i = i + 1")
                 siguiente
             si c == 44:
-                lexer_push_token(T_COMA, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_COMA, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 46:
@@ -911,7 +931,7 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 asm("i = i + 1")
                 siguiente
             si c == 38:
-                lexer_push_token(T_AMPERSAND, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_AMPERSAND, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 59:

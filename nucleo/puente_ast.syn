@@ -1,0 +1,489 @@
+#lang: es
+
+// ============================================================================
+// FASE A (A3.1): PUENTE plano->tipado (AST plano NodoAST[] -> struct Programa)
+// ============================================================================
+// Recorre parser_nodos()/parser_obtener_total() (AST plano producido por el
+// lexer+parser nativos) y construye el arbol TIPADO (struct Programa con los
+// nodos de ast_nodes.syn: Identificador, OpBinaria, DefinicionFuncion, ...) con
+// PARIDAD campo a campo con el frontend embebido _P_* (_parser.c).
+//
+// Manuales:
+//   - Manual 3 S3.3 / Manual 9 S9.7: el estado del pipeline (tokenizar ->
+//     parsear -> puente -> analizar -> generar). El puente es la pieza que
+//     convierte la salida del frontend nativo en lo que consumen los pasos
+//     siguientes (analizador_semantico.syn, generator.syn via struct Programa).
+//   - Criterio FASE A (docs/FASE_A_PLAN.md): brecha #2 de la matriz A1
+//     (NodoAST[] plano -> structs tipados) — la deuda que A3 debe cerrar.
+//
+// Estrategia: funciones Synapse con cuerpos asm-C (patron lexer.syn/parser.syn).
+// Los structs tipados existen en el unity build via ast_nodes.syn/_synapse_shared.h;
+// el S1/S2/S3 emite prototipos para las funciones generadas, asi que las llamadas
+// cruzadas (puente_nodo <-> puente_lista) compilan sin tocar _synapse_shared.h.
+//
+// NOTA de implementacion: las variables Synapse se declaran FUERA de los bloques
+// inseguro (el codegen S1 les da ambito de funcion y las asm las ven); las
+// variables C declaradas DENTRO de un bloque asm quedan confinadas a ese bloque.
+// NOTA de memoria: las cadenas del AST plano persisten en los buffers del lexer
+// (fuente + sbuf) hasta el final de la compilacion; puente_str/puente_str2 hacen
+// malloc+memcpy (como _P_cs) para que el arbol tipado sea independiente.
+//
+// DEUDA documentada (no bloquea paridad del test set; ver reporte A3.1):
+//   - Parametro.es_transferencia: el parser plano no registra el prefijo '->'
+//     (paridad solo con parametros normales).
+//   - SentenciaPara.incremento: la sintaxis del Manual 2 (para i = 0 mientras
+//     condicion:) no tiene incremento explicito -> NULL.
+//   - ImportarC.es_sistema: el parser plano captura la ruta sin distinguir
+//     <...> de "..." -> 0.
+//   - Coincidir/caso, recuperar, indice, asignacion_campo: _P_* no los produce
+//     (o el parser plano no los enlaza) -> fuera del test set de paridad.
+// ============================================================================
+
+// Convierte un char* (o NULL) a CadenaSegura (sin copiar; el puntero debe
+// sobrevivir — literales estaticos o buffers malloc'd por puente_str/str2).
+funcion puente_cs_str(p: puntero) -> cadena:
+    r = ""
+    inseguro:
+        asm("if (p) { r = (CadenaSegura){(int)strlen((const char*)p), (const char*)p}; } else { r = (CadenaSegura){0, \"\"}; }")
+    retornar r
+
+// Payload primario (s1) del nodo plano idx -> char* malloc'd (o "").
+funcion puente_str(idx: entero) -> puntero:
+    r = nulo
+    inseguro:
+        asm("struct NodoAST* _an_s = (struct NodoAST*)parser_nodos();")
+        asm("int* _ahi_s = (int*)parser_ptr_hi();")
+        asm("if (idx <= 0 || idx >= parser_obtener_total()) { r = (void*)calloc(1,1); }")
+        asm("else {")
+        asm("    uintptr_t _pp_s = (uintptr_t)(unsigned)_an_s[idx].ptr_str | ((uintptr_t)(unsigned)_ahi_s[idx] << 32);")
+        asm("    int _pl_s = _an_s[idx].len_str; if (_pl_s < 0) _pl_s = 0;")
+        asm("    char* _ps_s = (char*)malloc(_pl_s + 1);")
+        asm("    if (!_ps_s) _ps_s = (char*)calloc(1,1);")
+        asm("    else { if (_pl_s > 0 && _pp_s) memcpy(_ps_s, (const char*)_pp_s, _pl_s); _ps_s[_pl_s] = 0; }")
+        asm("    r = (void*)_ps_s;")
+        asm("}")
+    retornar r
+
+// Payload secundario (s2: tipo_retorno/tipo_param/tipo_base) -> char* malloc'd.
+funcion puente_str2(idx: entero) -> puntero:
+    r = nulo
+    inseguro:
+        asm("struct NodoAST* _an_s2 = (struct NodoAST*)parser_nodos();")
+        asm("int* _s2p_s2 = (int*)parser_str2_ptr(); int* _s2h_s2 = (int*)parser_str2_hi(); int* _s2l_s2 = (int*)parser_str2_len();")
+        asm("if (idx <= 0 || idx >= parser_obtener_total() || !_s2p_s2 || !_s2h_s2 || !_s2l_s2) { r = (void*)calloc(1,1); }")
+        asm("else {")
+        asm("    uintptr_t _pp_s2 = (uintptr_t)(unsigned)_s2p_s2[idx] | ((uintptr_t)(unsigned)_s2h_s2[idx] << 32);")
+        asm("    int _pl_s2 = _s2l_s2[idx]; if (_pl_s2 < 0) _pl_s2 = 0;")
+        asm("    char* _ps_s2 = (char*)malloc(_pl_s2 + 1);")
+        asm("    if (!_ps_s2) _ps_s2 = (char*)calloc(1,1);")
+        asm("    else { if (_pl_s2 > 0 && _pp_s2) memcpy(_ps_s2, (const char*)_pp_s2, _pl_s2); _ps_s2[_pl_s2] = 0; }")
+        asm("    r = (void*)_ps_s2;")
+        asm("}")
+    retornar r
+
+// struct Token* con tipo/lexema (operadores: linea=columna=0, paridad _P_*).
+funcion puente_tok(tipo: entero, lexema: cadena) -> puntero:
+    r = nulo
+    inseguro:
+        asm("struct Token* _tk_t = (struct Token*)calloc(1, sizeof(struct Token));")
+        asm("_tk_t->tipo = tipo; _tk_t->linea = 0; _tk_t->columna = 0; _tk_t->lexema = lexema;")
+        asm("r = (void*)_tk_t;")
+    retornar r
+
+// Mapeo codigo de operador del AST plano -> Token (tipo T_* + lexema), paridad
+// _P_* (_P_logica/_P_comp/_P_suma/_P_term/_P_una en _parser.c). Los codigos
+// 100/101 = y/o (T_Y=14/T_O=15), 200-205 = comparacion, 300-301 = suma,
+// 400-402 = multiplicacion, 500-501 = unarios (menos/no).
+funcion puente_operador(codigo: entero) -> puntero:
+    r = nulo
+    si codigo == 100:
+        retornar puente_tok(14, "&&")
+    si codigo == 101:
+        retornar puente_tok(15, "||")
+    si codigo == 200:
+        retornar puente_tok(23, ">")
+    si codigo == 201:
+        retornar puente_tok(24, "<")
+    si codigo == 202:
+        retornar puente_tok(25, "==")
+    si codigo == 203:
+        retornar puente_tok(26, "!=")
+    si codigo == 204:
+        retornar puente_tok(27, "<=")
+    si codigo == 205:
+        retornar puente_tok(28, ">=")
+    si codigo == 300:
+        retornar puente_tok(30, "+")
+    si codigo == 301:
+        retornar puente_tok(31, "-")
+    si codigo == 400:
+        retornar puente_tok(32, "*")
+    si codigo == 401:
+        retornar puente_tok(33, "/")
+    si codigo == 402:
+        retornar puente_tok(34, "%")
+    si codigo == 500:
+        retornar puente_tok(31, "-")
+    si codigo == 501:
+        retornar puente_tok(16, "!")
+    retornar r
+
+// Cadena hermano de nodos -> ListaNodo* (cada nodo convertido via puente_nodo).
+funcion puente_lista(idx: entero) -> puntero:
+    r = nulo
+    inseguro:
+        asm("if (idx > 0) {")
+        asm("    struct NodoAST* _an_l = (struct NodoAST*)parser_nodos();")
+        asm("    struct ListaNodo* _l0_l = 0; struct ListaNodo** _lc_l = &_l0_l;")
+        asm("    int _li_l = idx; int _tot_l = parser_obtener_total();")
+        asm("    while (_li_l > 0 && _li_l < _tot_l) {")
+        asm("        struct Nodo* _cn_l = (struct Nodo*)puente_nodo(_li_l);")
+        asm("        if (_cn_l) { *(_lc_l) = (struct ListaNodo*)calloc(1, sizeof(struct ListaNodo)); (*(_lc_l))->cabeza = _cn_l; _lc_l = &((*(_lc_l))->cola); }")
+        asm("        _li_l = _an_l[_li_l].hermano;")
+        asm("    }")
+        asm("    r = (void*)_l0_l;")
+        asm("}")
+    retornar r
+
+// Cadena hermano de NODO_PARAMETRO -> ListaParametro* (Parametro.es_transferencia=0).
+funcion puente_lista_param(idx: entero) -> puntero:
+    r = nulo
+    inseguro:
+        asm("if (idx > 0) {")
+        asm("    struct NodoAST* _an_lp = (struct NodoAST*)parser_nodos();")
+        asm("    struct ListaParametro* _l0_lp = 0; struct ListaParametro** _lc_lp = &_l0_lp;")
+        asm("    int _li_lp = idx; int _tot_lp = parser_obtener_total();")
+        asm("    while (_li_lp > 0 && _li_lp < _tot_lp) {")
+        asm("        struct Parametro* _cp_lp = (struct Parametro*)puente_nodo(_li_lp);")
+        asm("        if (_cp_lp) { *(_lc_lp) = (struct ListaParametro*)calloc(1, sizeof(struct ListaParametro)); (*(_lc_lp))->cabeza = _cp_lp; _lc_lp = &((*(_lc_lp))->cola); }")
+        asm("        _li_lp = _an_lp[_li_lp].hermano;")
+        asm("    }")
+        asm("    r = (void*)_l0_lp;")
+        asm("}")
+    retornar r
+
+// ============================================================================
+// DISPATCHER PRINCIPAL: NodoAST[idx] -> struct Nodo* tipado (paridad _P_*).
+// Los enlaces del nodo plano se HOISTEAN a variables Synapse (hi/hd/extra/val/
+// linea/col) para que las ramas (fuera del bloque inseguro) los usen: el codegen
+// S1 da ambito de funcion a las variables Synapse, mientras las C locales de un
+// bloque asm quedan confinadas a el.
+// ============================================================================
+funcion puente_nodo(idx: entero) -> puntero:
+    r = nulo
+    t = 0
+    hi = 0
+    hd = 0
+    extra = 0
+    val = 0
+    linea_n = 0
+    col_n = 0
+    inseguro:
+        asm("struct NodoAST* _an_n = (struct NodoAST*)parser_nodos();")
+        asm("if (idx <= 0 || idx >= parser_obtener_total()) return 0;")
+        asm("t = _an_n[idx].tipo_nodo;")
+        asm("hi = _an_n[idx].hijo_izq;")
+        asm("hd = _an_n[idx].hijo_der;")
+        asm("extra = _an_n[idx].ptr_extra;")
+        asm("val = _an_n[idx].valor_int;")
+        asm("linea_n = _an_n[idx].linea;")
+        asm("col_n = _an_n[idx].columna;")
+    si t == NODO_IDENTIFICADOR:
+        inseguro:
+            asm("{ struct Identificador* _p = (struct Identificador*)calloc(1, sizeof(struct Identificador));")
+            asm("  _p->tipo = puente_cs_str((void*)\"Identificador\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_NUMERO:
+        inseguro:
+            asm("{ struct LiteralNumero* _p = (struct LiteralNumero*)calloc(1, sizeof(struct LiteralNumero));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LiteralNumero\");")
+            asm("  _p->valor = atoi((const char*)puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_DECIMAL:
+        inseguro:
+            asm("{ struct LiteralDecimal* _p = (struct LiteralDecimal*)calloc(1, sizeof(struct LiteralDecimal));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LiteralDecimal\");")
+            asm("  _p->valor = (float)atof((const char*)puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_CADENA_LIT:
+        inseguro:
+            asm("{ struct LiteralCadena* _p = (struct LiteralCadena*)calloc(1, sizeof(struct LiteralCadena));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LiteralCadena\");")
+            asm("  _p->valor = puente_cs_str(puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    // paridad _P_*: verdadero/falso -> LiteralNumero (T_TRUE/T_FALSE en _P_prim)
+    si t == NODO_BOOLEANO:
+        inseguro:
+            asm("{ struct LiteralNumero* _p = (struct LiteralNumero*)calloc(1, sizeof(struct LiteralNumero));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LiteralNumero\");")
+            asm("  _p->valor = val;")
+            asm("  r = (void*)_p; }")
+    si t == NODO_NULO:
+        inseguro:
+            asm("{ struct LiteralNulo* _p = (struct LiteralNulo*)calloc(1, sizeof(struct LiteralNulo));")
+            asm("  _p->tipo = puente_cs_str((void*)\"LiteralNulo\");")
+            asm("  r = (void*)_p; }")
+    si t == NODO_BINARIA:
+        inseguro:
+            asm("{ struct OpBinaria* _p = (struct OpBinaria*)calloc(1, sizeof(struct OpBinaria));")
+            asm("  _p->tipo = puente_cs_str((void*)\"OpBinaria\");")
+            asm("  _p->izquierdo = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->derecho = (struct Nodo*)puente_nodo(hd);")
+            asm("  _p->operador = (struct Token*)puente_operador(val);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_UNARIA:
+        inseguro:
+            asm("{ struct OpUnaria* _p = (struct OpUnaria*)calloc(1, sizeof(struct OpUnaria));")
+            asm("  _p->tipo = puente_cs_str((void*)\"OpUnaria\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->operador = (struct Token*)puente_operador(val);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_PUNTERO:
+        inseguro:
+            asm("{ struct ExprObtenerDireccion* _p = (struct ExprObtenerDireccion*)calloc(1, sizeof(struct ExprObtenerDireccion));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprObtenerDireccion\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->es_mutable = val;")
+            asm("  r = (void*)_p; }")
+    si t == NODO_DEREF:
+        inseguro:
+            asm("{ struct ExprDereferencia* _p = (struct ExprDereferencia*)calloc(1, sizeof(struct ExprDereferencia));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprDereferencia\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_LLAMADA:
+        inseguro:
+            asm("{ char* _nm_ll = (char*)puente_str(idx);")
+            asm("  if (_nm_ll && strcmp(_nm_ll, \"log\") == 0) {")
+            asm("    struct LogLlamada* _p = (struct LogLlamada*)calloc(1, sizeof(struct LogLlamada));")
+            asm("    _p->tipo = puente_cs_str((void*)\"LogLlamada\");")
+            asm("    _p->argumentos = (struct ListaNodo*)puente_lista(hd);")
+            asm("    r = (void*)_p;")
+            asm("  } else {")
+            asm("    struct LlamadaFuncion* _p = (struct LlamadaFuncion*)calloc(1, sizeof(struct LlamadaFuncion));")
+            asm("    _p->tipo = puente_cs_str((void*)\"LlamadaFuncion\");")
+            asm("    _p->nombre = puente_cs_str(_nm_ll);")
+            asm("    _p->argumentos = (struct ListaNodo*)puente_lista(hd);")
+            asm("    r = (void*)_p;")
+            asm("  } }")
+    si t == NODO_ACCESO_CAMPO:
+        inseguro:
+            asm("{ struct ExprAccesoCampo* _p = (struct ExprAccesoCampo*)calloc(1, sizeof(struct ExprAccesoCampo));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprAccesoCampo\");")
+            asm("  _p->objeto = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_ASIGNACION:
+        inseguro:
+            asm("{ struct AsignacionVariable* _p = (struct AsignacionVariable*)calloc(1, sizeof(struct AsignacionVariable));")
+            asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_PARAMETRO:
+        inseguro:
+            asm("{ struct Parametro* _p = (struct Parametro*)calloc(1, sizeof(struct Parametro));")
+            asm("  _p->tipo = puente_cs_str((void*)\"Parametro\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipo_param = puente_cs_str(puente_str2(idx));")
+            asm("  _p->es_transferencia = 0;")
+            asm("  r = (void*)_p; }")
+    // let IDENT [: tipo] [= expr] -> DeclaracionVariable (paridad _P_let):
+    // nombre (s1), tipo_param (s2, span completo), expresion (hijo_izq), linea/col.
+    si t == NODO_LET:
+        inseguro:
+            asm("{ struct DeclaracionVariable* _p = (struct DeclaracionVariable*)calloc(1, sizeof(struct DeclaracionVariable));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DeclaracionVariable\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipo_param = puente_cs_str(puente_str2(idx));")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  r = (void*)_p; }")
+    // constante: _P_* NO la produce (T_CONSTANTE sin handler en _P_sentencia) —
+    // el puente la descarta igual para mantener paridad (el generador actual ya
+    // convive con esa omision; deuda registrada en el reporte A3.1).
+    si t == NODO_FUNCION:
+        inseguro:
+            asm("{ struct DefinicionFuncion* _p = (struct DefinicionFuncion*)calloc(1, sizeof(struct DefinicionFuncion));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DefinicionFuncion\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipo_retorno = puente_cs_str(puente_str2(idx));")
+            asm("  _p->parametros = (struct ListaParametro*)puente_lista_param(hd);")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  if (extra > 0) {")
+            asm("    struct NodoAST* _ac_n = (struct NodoAST*)parser_nodos();")
+            asm("    if (extra > 0 && extra < parser_obtener_total()) {")
+            asm("      _p->requiere = (struct ListaNodo*)puente_lista(_ac_n[extra].hijo_izq);")
+            asm("      _p->garantiza = (struct ListaNodo*)puente_lista(_ac_n[extra].hijo_der);")
+            asm("    }")
+            asm("  }")
+            asm("  r = (void*)_p; }")
+    si t == NODO_ESTRUCTURA:
+        inseguro:
+            asm("{ struct DefinicionEstructura* _p = (struct DefinicionEstructura*)calloc(1, sizeof(struct DefinicionEstructura));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DefinicionEstructura\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->campos = (struct ListaParametro*)puente_lista_param(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_SI:
+        inseguro:
+            asm("{ struct SentenciaSi* _p = (struct SentenciaSi*)calloc(1, sizeof(struct SentenciaSi));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaSi\");")
+            asm("  _p->condicion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hd);")
+            asm("  _p->cuerpo_sino = (struct ListaNodo*)puente_lista(extra);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_MIENTRAS:
+        inseguro:
+            asm("{ struct SentenciaMientras* _p = (struct SentenciaMientras*)calloc(1, sizeof(struct SentenciaMientras));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaMientras\");")
+            asm("  _p->condicion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_PARA:
+        inseguro:
+            asm("{ struct SentenciaPara* _p = (struct SentenciaPara*)calloc(1, sizeof(struct SentenciaPara));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaPara\");")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  _p->inicializacion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->condicion = (struct Nodo*)puente_nodo(hd);")
+            asm("  _p->incremento = 0;")
+            asm("  _p->cuerpo = (struct Nodo*)puente_nodo(extra);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_RETORNAR:
+        inseguro:
+            asm("{ struct SentenciaRetornar* _p = (struct SentenciaRetornar*)calloc(1, sizeof(struct SentenciaRetornar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaRetornar\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_ROMPER:
+        inseguro:
+            asm("{ struct SentenciaRomper* _p = (struct SentenciaRomper*)calloc(1, sizeof(struct SentenciaRomper));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaRomper\");")
+            asm("  r = (void*)_p; }")
+    si t == NODO_SIGUIENTE:
+        inseguro:
+            asm("{ struct SentenciaSiguiente* _p = (struct SentenciaSiguiente*)calloc(1, sizeof(struct SentenciaSiguiente));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaSiguiente\");")
+            asm("  r = (void*)_p; }")
+    si t == NODO_EXPR:
+        inseguro:
+            asm("{ struct SentenciaExpr* _p = (struct SentenciaExpr*)calloc(1, sizeof(struct SentenciaExpr));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaExpr\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_LANZAR:
+        inseguro:
+            asm("{ struct SentenciaLanzar* _p = (struct SentenciaLanzar*)calloc(1, sizeof(struct SentenciaLanzar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaLanzar\");")
+            asm("  _p->llamada = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_ESCUCHAR:
+        inseguro:
+            asm("{ struct SentenciaEscuchar* _p = (struct SentenciaEscuchar*)calloc(1, sizeof(struct SentenciaEscuchar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEscuchar\");")
+            asm("  _p->canal = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->respuesta = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_ENVIAR_CANAL:
+        inseguro:
+            asm("{ struct SentenciaEnviarCanal* _p = (struct SentenciaEnviarCanal*)calloc(1, sizeof(struct SentenciaEnviarCanal));")
+            asm("  struct Identificador* _cid = (struct Identificador*)calloc(1, sizeof(struct Identificador));")
+            asm("  _cid->tipo = puente_cs_str((void*)\"Identificador\");")
+            asm("  _cid->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEnviarCanal\");")
+            asm("  _p->canal = (struct Nodo*)_cid;")
+            asm("  _p->valor = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_RECIBIR_CANAL:
+        inseguro:
+            asm("{ struct ExprRecibirCanal* _p = (struct ExprRecibirCanal*)calloc(1, sizeof(struct ExprRecibirCanal));")
+            asm("  struct Identificador* _cid2 = (struct Identificador*)calloc(1, sizeof(struct Identificador));")
+            asm("  _cid2->tipo = puente_cs_str((void*)\"Identificador\");")
+            asm("  _cid2->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprRecibirCanal\");")
+            asm("  _p->canal = (struct Nodo*)_cid2;")
+            asm("  r = (void*)_p; }")
+    si t == NODO_CANAL_CREAR:
+        inseguro:
+            asm("{ struct ExprCrearCanal* _p = (struct ExprCrearCanal*)calloc(1, sizeof(struct ExprCrearCanal));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprCrearCanal\");")
+            asm("  _p->tipo_contenido = puente_cs_str(puente_str(idx));")
+            asm("  _p->capacidad = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_IMPORTAR:
+        inseguro:
+            asm("{ struct SentenciaImportar* _p = (struct SentenciaImportar*)calloc(1, sizeof(struct SentenciaImportar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaImportar\");")
+            asm("  _p->ruta = puente_cs_str(puente_str(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_IMPORTAR_C:
+        inseguro:
+            asm("{ struct ImportarC* _p = (struct ImportarC*)calloc(1, sizeof(struct ImportarC));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ImportarC\");")
+            asm("  _p->ruta = puente_cs_str(puente_str(idx));")
+            asm("  _p->es_sistema = 0;")
+            asm("  r = (void*)_p; }")
+    si t == NODO_EXTERNO:
+        inseguro:
+            asm("{ struct DeclaracionExterna* _p = (struct DeclaracionExterna*)calloc(1, sizeof(struct DeclaracionExterna));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DeclaracionExterna\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->parametros = (struct ListaParametro*)puente_lista_param(hd);")
+            asm("  _p->tipo_retorno = puente_cs_str(puente_str2(idx));")
+            asm("  r = (void*)_p; }")
+    si t == NODO_EXPORT:
+        inseguro:
+            asm("{ struct DeclaracionExport* _p = (struct DeclaracionExport*)calloc(1, sizeof(struct DeclaracionExport));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DeclaracionExport\");")
+            asm("  _p->destino = puente_cs_str(puente_str(idx));")
+            asm("  _p->funcion = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_INSEGURO:
+        inseguro:
+            asm("{ struct BloqueInseguro* _p = (struct BloqueInseguro*)calloc(1, sizeof(struct BloqueInseguro));")
+            asm("  _p->tipo = puente_cs_str((void*)\"BloqueInseguro\");")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_DELEGAR:
+        inseguro:
+            asm("{ struct SentenciaDelegar* _p = (struct SentenciaDelegar*)calloc(1, sizeof(struct SentenciaDelegar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"SentenciaDelegar\");")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_DECLARACION_TIPO:
+        inseguro:
+            asm("{ struct DeclaracionTipo* _p = (struct DeclaracionTipo*)calloc(1, sizeof(struct DeclaracionTipo));")
+            asm("  _p->tipo = puente_cs_str((void*)\"DeclaracionTipo\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->parametros_tipo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  _p->tipo_base = puente_cs_str(puente_str2(idx));")
+            asm("  _p->constructores = (struct ListaNodo*)puente_lista(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_CONSTRUCTOR:
+        inseguro:
+            asm("{ struct ConstructorTipo* _p = (struct ConstructorTipo*)calloc(1, sizeof(struct ConstructorTipo));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ConstructorTipo\");")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  _p->tipos = (struct ListaNodo*)puente_lista(hi);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_TENSOR:
+        inseguro:
+            asm("{ struct ExprTensor* _p = (struct ExprTensor*)calloc(1, sizeof(struct ExprTensor));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprTensor\");")
+            asm("  _p->filas = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->columnas = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
+    retornar r
+
+// Construye el struct Programa tipado completo desde el AST plano.
+funcion puente_construir_programa() -> puntero:
+    r = nulo
+    inseguro:
+        asm("struct Programa* _pr_b = (struct Programa*)calloc(1, sizeof(struct Programa));")
+        asm("_pr_b->tipo = puente_cs_str((void*)\"Programa\");")
+        asm("{ struct NodoAST* _an_b = (struct NodoAST*)parser_nodos();")
+        asm("  if (parser_obtener_total() > 0) _pr_b->sentencias = (struct ListaNodo*)puente_lista(_an_b[0].hijo_izq); }")
+        asm("r = (void*)_pr_b;")
+    retornar r

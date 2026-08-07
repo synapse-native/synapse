@@ -12,7 +12,7 @@
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
-typedef struct { uint32_t filas; uint32_t columnas; float* datos; } Tensor;
+typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
 
@@ -719,6 +719,7 @@ int _G_tipo_aliases_count;
 
 
 int _g_argc;
+int _G_usar_nativo_frontend = 0;
 char** _g_argv;
 int _argc() { return _g_argc; }
 

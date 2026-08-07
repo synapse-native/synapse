@@ -3305,6 +3305,46 @@ funcion gen_emitir_frontend_p(est: GeneradorCEst) -> nulo:
 
 
 // ----------------------------------------------------------
+// gen_emitir_frontend_nativo — wrapper 'struct Programa parsear(CadenaSegura
+// fuente)' para el modo NATIVO (_G_usar_nativo_frontend=1): ejecuta la pipeline
+//   tokenizar (cuerpo nativo de lexer.syn) -> parsear_nativo (parser.syn) ->
+//   puente_construir_programa (puente_ast.syn, A3.1).
+// Paridad: firma canonica 'struct Programa parsear(CadenaSegura fuente)'
+// (L3818 / S1 _SPECIAL_SIGS generator.py) que consume principal.syn y lsp.syn.
+// Guard _G_fnn_emitido: evita doble emision si el hook ME-B7 se invoca 2 veces
+// (mismo patron que _G_fp_emitido de gen_emitir_frontend_p).
+// ----------------------------------------------------------
+funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("static int _G_fnn_emitido = 0;")
+        asm("if (_G_fnn_emitido) return; _G_fnn_emitido = 1;")
+        asm("// principal.syn L77/L81/L149 resetean el estado del frontend embebido")
+        asm("// (_P_ntks/_P_tpos/_P_p_err) en el pipeline del unity build sin condicionar")
+        asm("// al flag; en modo nativo esos globals no los emite gen_emitir_frontend_p,")
+        asm("// asi que se definen aqui (muertos en este modo) para que linkee.")
+        asm("static char _G_fnn00[] = \"int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;\";")
+        asm("gen_emitir_str(est, _G_fnn00);")
+        asm("static char _G_fnn0[] = \"struct Programa parsear(CadenaSegura fuente) {\";")
+        asm("gen_emitir_str(est, _G_fnn0);")
+        asm("static char _G_fnn1[] = \"    int _nt = tokenizar(fuente);\";")
+        asm("gen_emitir_str(est, _G_fnn1);")
+        asm("static char _G_fnn2[] = \"    if (_nt < 0) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn2);")
+        asm("static char _G_fnn3[] = \"    struct ParserEst _pe = {0};\";")
+        asm("gen_emitir_str(est, _G_fnn3);")
+        asm("static char _G_fnn3a[] = \"    parsear_nativo(&_pe);\";")
+        asm("gen_emitir_str(est, _G_fnn3a);")
+        asm("static char _G_fnn4[] = \"    struct Programa* _pr = (struct Programa*)puente_construir_programa();\";")
+        asm("gen_emitir_str(est, _G_fnn4);")
+        asm("static char _G_fnn5[] = \"    if (!_pr) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn5);")
+        asm("static char _G_fnn6[] = \"    return *_pr;\";")
+        asm("gen_emitir_str(est, _G_fnn6);")
+        asm("static char _G_fnn7[] = \"}\";")
+        asm("gen_emitir_str(est, _G_fnn7);")
+
+
+// ----------------------------------------------------------
 // gen_emitir_tokenizar — funcion tokenizar canonica (contador).
 // Paridad: emitir_tokenizar (compilador/generator/emit_expressions.py).
 // ----------------------------------------------------------
@@ -3830,7 +3870,8 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
         asm("                extern char _gen_tmp_buf[4096];")
         asm("                const char* _pct0 = _gen_tmp_buf;")
         asm("                // Manual 3 S3.3 / paridad _POINTER_TYPES: tipos de estado se pasan por puntero")
-        asm("                if (_ppt0 && (strcmp(_ppt0, \"AnalizadorSemanticoEst\") == 0 || strcmp(_ppt0, \"RegionGraph\") == 0 || strcmp(_ppt0, \"UnionFind\") == 0)) { strcat(_gen_tmp_buf, \"*\"); _pct0 = _gen_tmp_buf; }")
+        asm("                // FASE A (A2.3): ParserEst (parser.syn) — mismo mecanismo que AnalizadorSemanticoEst")
+        asm("                if (_ppt0 && (strcmp(_ppt0, \"AnalizadorSemanticoEst\") == 0 || strcmp(_ppt0, \"RegionGraph\") == 0 || strcmp(_ppt0, \"UnionFind\") == 0 || strcmp(_ppt0, \"ParserEst\") == 0)) { strcat(_gen_tmp_buf, \"*\"); _pct0 = _gen_tmp_buf; }")
         asm("                int _pk0 = 0; while (_pct0[_pk0]) _pp0[_ppo0++] = _pct0[_pk0++];")
         asm("                _pp0[_ppo0++] = ' ';")
         asm("                _pk0 = 0; while (_ppar->nombre.datos[_pk0]) _pp0[_ppo0++] = _ppar->nombre.datos[_pk0++];")
@@ -4017,14 +4058,20 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("    // ME-B7: funciones canonicas del front-end (paridad _BUILTIN_EMITTER_MAP de la referencia)")
-        asm("    // tokenizar/parsear se REEMPLAZAN por las implementaciones canonicas embebidas")
-        asm("    // (frontend_p.syn), nunca por los cuerpos legacy de lexer.syn/parser.syn.")
+        asm("    // A3.2: conmutacion al frontend nativo via _G_usar_nativo_frontend:")
+        asm("    //   flag=0 (default): tokenizar/parsear -> implementaciones embebidas")
+        asm("    //     (gen_emitir_tokenizar / gen_emitir_frontend_p, paridad _P_*).")
+        asm("    //   flag=1 (--nativo-frontend): tokenizar -> cuerpo nativo (lexer.syn);")
+        asm("    //     parsear -> wrapper nativo (gen_emitir_frontend_nativo).")
         asm("    extern int _g_argc;")
         asm("    extern char** _g_argv;")
         asm("    extern int _G_usar_nativo_frontend;")
-        asm("    if (!_G_usar_nativo_frontend) {")
-        asm("        if (strcmp(_fn, \"tokenizar\") == 0) { gen_emitir_tokenizar(est); return; }")
-        asm("        if (strcmp(_fn, \"parsear\") == 0) { gen_emitir_frontend_p(est); return; }")
+        asm("    if (strcmp(_fn, \"tokenizar\") == 0) {")
+        asm("        if (!_G_usar_nativo_frontend) { gen_emitir_tokenizar(est); return; }")
+        asm("    }")
+        asm("    if (strcmp(_fn, \"parsear\") == 0) {")
+        asm("        if (!_G_usar_nativo_frontend) { gen_emitir_frontend_p(est); return; }")
+        asm("        gen_emitir_frontend_nativo(est); return;")
         asm("    }")
         asm("    char _sig[4096];")
         asm("    char _ps[4096] = \"void\"; int _pp = 0, _pfi = 1;")
@@ -4038,7 +4085,8 @@ funcion gen_visitar_top_level(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("            extern char _gen_tmp_buf[4096];")
         asm("            const char* _ct = _gen_tmp_buf;")
         asm("            // Manual 3 S3.3 / paridad _POINTER_TYPES: tipos de estado se pasan por puntero")
-        asm("            if (_pt && (strcmp(_pt, \"AnalizadorSemanticoEst\") == 0 || strcmp(_pt, \"RegionGraph\") == 0 || strcmp(_pt, \"UnionFind\") == 0)) {")
+        asm("            // FASE A (A2.3): ParserEst (parser.syn) — mismo mecanismo que AnalizadorSemanticoEst")
+        asm("            if (_pt && (strcmp(_pt, \"AnalizadorSemanticoEst\") == 0 || strcmp(_pt, \"RegionGraph\") == 0 || strcmp(_pt, \"UnionFind\") == 0 || strcmp(_pt, \"ParserEst\") == 0)) {")
         asm("                strcat(_gen_tmp_buf, \"*\"); _ct = _gen_tmp_buf;")
         asm("                // ME-B9.x: registrar nombre del parametro puntero (AsignacionCampo ->)")
         asm("                extern char _G_fn_ptr_vars[64][64]; extern int _G_fn_ptr_vars_count;")
