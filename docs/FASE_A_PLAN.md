@@ -1,13 +1,19 @@
 # PLAN FASE A — Migración del frontend embebido `_P_*` al frontend nativo Synapse (`lexer.syn`/`parser*.syn`)
 
 > Documento de planificación de la auditoría de alineación a Manuales v8.1.0.
-> Fecha: 2026-08-06. Estado: **EN EJECUCIÓN — Etapas A1 ✅, A2 ✅ (A2.1/A2.2/A2.3/A2.4 ✅) completadas** (matriz de brechas en
+> Fecha: 2026-08-06. Estado: **EN EJECUCIÓN — Etapas A1 ✅, A2 ✅ (A2.1/A2.2/A2.3/A2.4 ✅),
+> A3 ✅ (A3.0/A3.1/A3.2 ✅) y A4 ✅ (retirada del espejo) completadas** (matriz de brechas en
 > `docs/reportes/FASE_A_A1.md`; plan aprobado tras F1.4, que cerró el mapeo de keywords
 > del Manual 2 §3). **Etapa A2.1 completada** (tokenizador nativo con paridad UTF-8/keywords/`.`).
 > **Etapa A2.2 completada** (port del parser tipado nativo con structs tipados y todos los
 > constructos P0; `docs/reportes/FASE_A_A2_2.md`).
 > **Etapa A2.3 completada** (paridad `.c` S2 nativo vs S1 GeneradorC;
-> `docs/reportes/FASE_A_A2_3.md`). Siguiente hito: **Etapa A3 (conmutación del runtime)**.
+> `docs/reportes/FASE_A_A2_3.md`). **Etapa A3 completada** (A3.0 payload AST 64-bit,
+> A3.1 puente plano→tipado, A3.2 conmutación del runtime con `_G_usar_nativo_frontend`;
+> `docs/reportes/FASE_A_A3_2_conmutacion_frontend_nativo.md`). **Etapa A4 completada**
+> (retirada del espejo: `frontend_p.syn`, `_gen_frontend_p.py`, `_BUILTIN_EMITTER_MAP` y
+> emisores `_P_*` sin uso; frontend nativo = fuente única en S1/S2/S3;
+> `docs/reportes/FASE_A_A4.md`). Siguiente hito: **Etapa A5 (cierre de deudas D-6/D-7/D-2/D-3/D-5)**.
 > Fuente de verdad: `docs/AUDITORIA_ALINEACION_MANUALES.md` (deuda D-F1, D-6, D-7, D-2,
 > D-3, D-5), `GUIA_DE_GOBERNANZA.md` §PROTOCOLO DE ENTREGA, ROADMAP Fase 1.
 
@@ -120,11 +126,21 @@ y tokenización UTF-8 (H26).
   rollback) hasta el bootstrap de aceptación.
 - **Criterio**: `build.bat bootstrap-full` S1→S2→S3 con **diff 0 bytes** (Manual 9 §9.7).
 
-### Etapa A4 — Retirada del espejo
-- Eliminar `nucleo/generador/frontend_p.syn` y `nucleo/_gen_frontend_p.py` (H24 pasa a
-  histórico) y las funciones emisoras `_P_*` de `emit_selfhost.py` que queden sin uso.
-- **Criterio**: la regeneración del compilador no depende de ningún espejo; `git grep`
-  de `_G_fp`/`_gen_frontend_p` devuelve 0 en runtime (solo referencias documentales).
+### Etapa A4 — Retirada del espejo — ✅ COMPLETADA (2026-08-07)
+- `nucleo/generador/frontend_p.syn` y `nucleo/_gen_frontend_p.py` **eliminados** (H24 →
+  histórico); `_rebuild_generator.py` usa `frontend_nativo.syn`. Funciones emisoras `_P_*`
+  sin uso retiradas (`emitir_tokenizar`); `emitir_parsear` se conserva como referencia
+  canónica del harness `native_puente_paridad.py` (retirable con D-5).
+- **Criterio cumplido**: la regeneración del compilador NO depende de ningún espejo
+  (bootstrap S1→S2→S3 rc 0 con el frontend nativo en las 3 etapas); `git grep` del espejo
+  en runtime = 0 (`_G_fp[0-9]`/`_G_tk[0-9]` ausentes; `frontend_p.syn`/`_gen_frontend_p.py`
+  inexistentes; solo referencias documentales). Bootstrap diff 0 bytes S2==S3
+  (SHA256 `a5435bcd…`). Detalle: `docs/reportes/FASE_A_A4.md`.
+- La retirada destapó y corrigió bugs del frontend nativo que el espejo ocultaba: dispatch
+  `T_TIPO`, rama `NODO_ASIGNACION_CAMPO`, cuerpos inline `si/mientras/para`, `importar
+  puente_ast` faltante en S1, y el fix RAII 0xC0000374 del lexer (slices vía `asm`).
+- `_rebuild_generator.py` ya NO reintroduce divergencia (generator.syn byte-idéntico tras
+  rebuild — dualidad de fuentes sincronizada).
 
 ### Etapa A5 — Cierre de deudas asociadas (en el orden del roadmap)
 - **D-6** (`?` postfijo en expresiones, Manual 3 §7 L331-342): parser + codegen nativo.
@@ -203,4 +219,7 @@ y tokenización UTF-8 (H26).
 | 18 | Arrays `[T]`, `importar ... como ...`, `/* */`, exponente `e`, `?` postfijo (D-6) | ❌ ambos | ❌ ambos | P3 | A5/deuda |
 
 ---
-*Fin del plan FASE A — Etapa A1 (matriz de brechas) completada el 2026-08-05; siguiente hito: Etapa A2 (port).*
+*Plan FASE A — Etapas A1-A4 completadas (2026-08-07): A1 matriz de brechas, A2 port
+(A2.0-A2.4), A3 conmutación (A3.0-A3.2) y A4 retirada del espejo. Siguiente hito:
+Etapa A5 — cierre de deudas D-6/D-7/D-2/D-3/D-5 (plan D-7 A5.1-A5.6 en
+`docs/D7_ABI_IMPACTO.md`).*

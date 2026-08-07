@@ -24,7 +24,9 @@ from .emit_selfhost import (
 
 
 # FASE A (A4.5): retirada COMPLETA del espejo _P_* — el map ya NO enruta
-# tokenizar/parsear a los emisores del espejo (emitir_tokenizar/emitir_parsear).
+# tokenizar/parsear a los emisores del espejo (emitir_parsear, la última emisora
+# viva, se conserva solo como referencia del harness native_puente_paridad.py;
+# emitir_tokenizar fue retirado en A4 por quedar sin uso).
 # Paridad con el hook ME-B7 del orquestador nativo (nucleo/generador/orquestador.syn):
 #   - tokenizar: NO se intercepta — se emite el cuerpo nativo de lexer.syn
 #     (A4.5 fix: la supresion dejaba el unity SIN definicion de tokenizar).

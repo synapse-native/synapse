@@ -543,53 +543,6 @@ def emitir_cerrar(ctx: GeneratorContext, nodo: DefinicionFuncion):
 
 
 
-def emitir_tokenizar(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    ctx.write_line("int tokenizar(CadenaSegura fuente) {")
-    ctx.inc_indent()
-    ctx.write_line("int _i=0, _linea=1, _columna=1, _token_count=0;")
-    ctx.write_line("while (_i < fuente.longitud) {")
-    ctx.inc_indent()
-    ctx.write_line("char _c = fuente.datos[_i];")
-    ctx.write_line("if (_c==' '||_c=='\\t'){_i++;_columna++;continue;}")
-    ctx.write_line("if (_c=='\\r'){_i++;continue;}")
-    ctx.write_line("if (_c=='\\n'){_i++;_linea++;_columna=1;continue;}")
-    ctx.write_line("if (_c=='/'&&_i+1<fuente.longitud&&fuente.datos[_i+1]=='/'){")
-    ctx.inc_indent()
-    ctx.write_line("while(_i<fuente.longitud&&fuente.datos[_i]!='\\n')_i++;continue;")
-    ctx.dec_indent()
-    ctx.write_line("}")
-    ctx.write_line(
-        "if(_c=='\\\"'||_c=='\\''){char _q=_c;int _st=_i;_i++;_columna++;"
-        "while(_i<fuente.longitud&&fuente.datos[_i]!=_q)"
-        "{_i++;_columna++;}"
-        "if(_i>=fuente.longitud){break;}"
-        "_i++;_columna++;_token_count++;}"
-    )
-    ctx.write_line(
-        "else if(_c>='0'&&_c<='9'){int _st=_i;"
-        "while(_i<fuente.longitud&&fuente.datos[_i]>='0'&&"
-        "fuente.datos[_i]<='9')_i++;"
-        "_columna+=_i-_st;_token_count++;}"
-    )
-    ctx.write_line(
-        "else if((_c>='a'&&_c<='z')||(_c>='A'&&_c<='Z')||_c=='_'){"
-        "int _st=_i;"
-        "while(_i<fuente.longitud&&((fuente.datos[_i]>='a'&&"
-        "fuente.datos[_i]<='z')||(fuente.datos[_i]>='A'&&"
-        "fuente.datos[_i]<='Z')||(fuente.datos[_i]>='0'&&"
-        "fuente.datos[_i]<='9')||fuente.datos[_i]=='_'))_i++;"
-        "_columna+=_i-_st;_token_count++;}"
-    )
-    ctx.write_line(
-        "else{_i++;_columna++;_token_count++;}"
-    )
-    ctx.dec_indent()
-    ctx.write_line("}")
-    ctx.write_line("return _token_count;")
-    ctx.dec_indent()
-    ctx.write_line("}")
-    ctx.write_line("")
-
 def emitir_token_defs(ctx: GeneratorContext):
     """Emite las definiciones de tokens del generador embebido."""
     if ctx._gen_defs_emitido:
