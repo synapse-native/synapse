@@ -600,9 +600,11 @@ funcion lexer_idioma_actual() -> entero:
 
 // --- Decodifica una cadena literal al pool compartido (Manual 2 §2 escapes) ---
 // Paridad exacta con _P_tokenizar (emit_selfhost.py gen_tok_c): \" \' \\ \n \t \r \0.
+// A4.5 fix RAII: SIN variable cadena intermedia (r). El pool sbuf es BSS estatico;
+// un destructor RAII (_syn_texto_liberar) llamaria pool_free sobre un puntero al
+// pool estatico -> 0xC0000374 heap corruption (mismo patron que lexer_push_token_punt).
 funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
     inseguro:
-        r = ""
         asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         asm("const char* _p = (const char*)ptr + ini;")
         asm("char* _out = (char*)_b->sbuf + _b->str_pos; int _n = 0;")
@@ -620,9 +622,10 @@ funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cade
         asm("        }")
         asm("    } else { _out[_n++] = _p[_k]; }")
         asm("}")
-        asm("r = (CadenaSegura){_n, _out};")
+        asm("CadenaSegura _rv = (CadenaSegura){_n, _out};")
         asm("_b->str_pos += _n;")
-        retornar r
+        asm("return _rv;")
+    retornar ""
 
 // --- Add token to list (buffer global; S1 pasa structs por valor) ---
 funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
@@ -676,17 +679,14 @@ funcion lexer_detectar_idioma(ptr: puntero, len: entero) -> entero:
         asm("while (ini < len && ((const char*)ptr)[ini] == ' ') { ini = ini + 1; }")
         fin = ini
         asm("while (fin < len && ((const char*)ptr)[fin] != ' ' && ((const char*)ptr)[fin] != 10 && ((const char*)ptr)[fin] != 13) { fin = fin + 1; }")
-        lang = ""
-        asm("lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}")
-        si str_eq(lang, "es") == 1:
-            retornar IDIOMA_ES
-        si str_eq(lang, "en") == 1:
-            retornar IDIOMA_EN
-        si str_eq(lang, "fr") == 1:
-            retornar IDIOMA_FR
-        si str_eq(lang, "pt") == 1:
-            retornar IDIOMA_PT
-        retornar -2
+        // A4.5 fix RAII: sin variable cadena lang (slice de ptr) — el destructor RAII
+        // liberaria el slice prestado del buffer de la fuente (patron lexer_push_token_punt).
+        id_detectado = -2
+        asm("if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"es\"}) == 1) { id_detectado = IDIOMA_ES; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"en\"}) == 1) { id_detectado = IDIOMA_EN; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"fr\"}) == 1) { id_detectado = IDIOMA_FR; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"pt\"}) == 1) { id_detectado = IDIOMA_PT; }")
+        retornar id_detectado
 
 // --- Process indentation for a line ---
 funcion lexer_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
@@ -763,8 +763,8 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                             romper
                     asm("i = i + 1")
                 si cerrada == 1:
-                    contenido = lexer_decodificar_cadena(ptr_texto, inicio_str + 1, i - inicio_str - 1)
-                    lexer_push_token_valor(T_CADENA, lexer_linea_actual(), inicio_str + 1, contenido)
+                    inseguro:
+                        asm("lexer_push_token_valor(T_CADENA, lexer_linea_actual(), (inicio_str + 1), lexer_decodificar_cadena(ptr_texto, inicio_str + 1, (i - inicio_str - 1)));")
                 asm("i = i + 1")
                 siguiente
             si c >= 48:
@@ -790,13 +790,13 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                                 si c > 57:
                                     romper
                                 asm("i = i + 1")
-                    lexema_num = ""
-                    inseguro:
-                        asm("lexema_num = (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num}")
+                    // A4.5 fix RAII: sin variable cadena lexema_num (slice de ptr_texto).
                     si es_float == 1:
-                        lexer_push_token_valor(T_FLOTANTE, lexer_linea_actual(), inicio_num + 1, lexema_num)
+                        inseguro:
+                            asm("lexer_push_token_valor(T_FLOTANTE, lexer_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
                     sino:
-                        lexer_push_token_valor(T_NUMERO, lexer_linea_actual(), inicio_num + 1, lexema_num)
+                        inseguro:
+                            asm("lexer_push_token_valor(T_NUMERO, lexer_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
                     siguiente
             si c == 64:
                 // FASE A (A2.1): '@export' -> T_EXPORT (Manual 2 §3 T_EXPORT)
@@ -808,11 +808,13 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         si c != 95:
                             romper
                     asm("i = i + 1")
-                arroba = ""
+                // A4.5 fix RAII: sin variable cadena arroba (slice de ptr_texto).
+                es_export = 0
                 inseguro:
-                    asm("arroba = (CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar}")
-                si str_eq(arroba, "@export") == 1:
-                    lexer_push_token_valor(T_EXPORT, lexer_linea_actual(), inicio_ar + 1, arroba)
+                    asm("es_export = str_eq((CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar}, (CadenaSegura){.longitud = 7, .datos = \"@export\"});")
+                si es_export == 1:
+                    inseguro:
+                        asm("lexer_push_token_valor(T_EXPORT, lexer_linea_actual(), (inicio_ar + 1), (CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar});")
                 sino:
                     lexer_error("Caracter inesperado '@'", lexer_linea_actual(), inicio_ar + 1)
                 siguiente
@@ -824,14 +826,17 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         si c != 95:
                             romper
                     asm("i = i + 1")
-                palabra = ""
+                // A4.5 fix RAII: sin variable cadena palabra (slice de ptr_texto) — el
+                // destructor RAII (_syn_texto_liberar en reasignacion, pipeline S1) liberaba
+                // el slice prestado -> pool_free sobre puntero interior -> 0xC0000374.
+                tok = 0
                 inseguro:
-                    asm("palabra = (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}")
-                tok = keyword_token(palabra, lexer_idioma_actual())
+                    asm("tok = keyword_token((CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}, lexer_idioma_actual());")
                 si tok == 0:
                     tok = T_IDENTIFICADOR
                 si tok == T_IDENTIFICADOR:
-                    lexer_push_token_valor(tok, lexer_linea_actual(), inicio + 1, palabra)
+                    inseguro:
+                        asm("lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio});")
                 sino:
                     // FASE A (A3.0): TODOS los keywords conservan el lexema — paridad
                     // con el embebido _P_* (tests/native_lexer_paridad.py _mapear:
@@ -841,7 +846,8 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                     // parser nativo necesita el lexema para nombres de campo que
                     // coinciden con keywords (ej: estructura Punto: y: entero —
                     // campo 'y' = T_Y con lexema "y") — payload del puente A3.
-                    lexer_push_token_valor(tok, lexer_linea_actual(), inicio + 1, palabra)
+                    inseguro:
+                        asm("lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio});")
                 siguiente
             si c == 43:
                 lexer_push_token(T_MAS, lexer_linea_actual(), i + 1)

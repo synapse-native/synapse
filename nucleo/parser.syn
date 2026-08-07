@@ -415,6 +415,16 @@ funcion parsear_si(est: ParserEst) -> entero:
                             asm("est->nodos[ultimo_si].hermano = stmt")
                     ultimo_si = stmt
                 siguiente
+    sino:
+        // FASE A (A4.5): cuerpo inline 'si cond: stmt' en una sola linea
+        // (paridad _P_si del espejo: 'else { _P_sentencia(); }'). Antes solo
+        // se manejaba NUEVALINEA+INDENTAR y el inline quedaba como sentencia
+        // hermana — 'si idx == 0: retornar "tensor"' dejaba el retornar FUERA
+        // del if (55 usos solo en analizador_semantico.syn -> divergencia S3).
+        stmt = parsear_sentencia(est)
+        si stmt != 0:
+            primero_si = stmt
+            ultimo_si = stmt
     si primero_si > 0:
         inseguro:
             asm("est->nodos[nodo].hijo_der = primero_si")
@@ -455,6 +465,12 @@ funcion parsear_si(est: ParserEst) -> entero:
                                 asm("est->nodos[ultimo_sino].hermano = stmt")
                         ultimo_sino = stmt
                     siguiente
+        sino:
+            // FASE A (A4.5): cuerpo inline del sino (paridad _P_si).
+            stmt = parsear_sentencia(est)
+            si stmt != 0:
+                primero_sino = stmt
+                ultimo_sino = stmt
     si primero_sino > 0:
         inseguro:
             asm("est->nodos[nodo].ptr_extra = primero_sino")
@@ -503,8 +519,14 @@ funcion parsear_mientras(est: ParserEst) -> entero:
                     sino:
                         inseguro:
                             asm("est->nodos[ultimo].hermano = stmt")
-                    ultimo = stmt
-                siguiente
+                    ultimo = stmt                    siguiente
+    sino:
+        // FASE A (A4.5): cuerpo inline 'mientras cond: stmt' (paridad _P_*
+        // T_WHILE: 'else { _P_sentencia(); }').
+        stmt = parsear_sentencia(est)
+        si stmt != 0:
+            primero = stmt
+            ultimo = stmt
     si primero > 0:
         inseguro:
             asm("est->nodos[nodo].hijo_der = primero")
@@ -570,8 +592,13 @@ funcion parsear_para(est: ParserEst) -> entero:
                     sino:
                         inseguro:
                             asm("est->nodos[ultimo].hermano = stmt")
-                    ultimo = stmt
-                siguiente
+                    ultimo = stmt                    siguiente
+    sino:
+        // FASE A (A4.5): cuerpo inline 'para ...: stmt' (paridad _P_* T_PARA).
+        stmt = parsear_sentencia(est)
+        si stmt != 0:
+            primero = stmt
+            ultimo = stmt
     si primero > 0:
         inseguro:
             asm("est->nodos[nodo].ptr_extra = primero")

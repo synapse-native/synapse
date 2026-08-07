@@ -285,6 +285,21 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
             asm("  r = (void*)_p; }")
+    // A4.5 fix (bootstrap S2/S3): `expr.campo = val` -> AsignacionCampo.
+    // Paridad _P_sentencia del espejo (ExprAccesoCampo + T_ASSIGN ->
+    // AsignacionCampo{objeto, nombre_campo, expresion}). El parser plano
+    // guarda objeto en hijo_izq, nombre_campo en el payload primario y el
+    // valor en hijo_der. Sin esta rama, NODO_ASIGNACION_CAMPO caia en el
+    // default del puente (r=nulo) y las asignaciones a campos de struct del
+    // propio compilador se perdian en la compilacion self-hosted (S2/S3).
+    si t == NODO_ASIGNACION_CAMPO:
+        inseguro:
+            asm("{ struct AsignacionCampo* _p = (struct AsignacionCampo*)calloc(1, sizeof(struct AsignacionCampo));")
+            asm("  _p->tipo = puente_cs_str((void*)\"AsignacionCampo\");")
+            asm("  _p->objeto = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
+            asm("  r = (void*)_p; }")
     si t == NODO_PARAMETRO:
         inseguro:
             asm("{ struct Parametro* _p = (struct Parametro*)calloc(1, sizeof(struct Parametro));")

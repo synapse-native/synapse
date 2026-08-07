@@ -11,6 +11,13 @@ importar parser_base
 importar parser_expr
 importar parser_stmt
 importar parser
+// FASE A (A4.5): el pipeline Python (S1) tambien debe incluir el puente
+// plano->tipado (puente_ast.syn) — paridad con la lista _files[] del unity
+// build del SELF-HOSTED (generar_etapa, nucleo/principal.syn) que SI lo
+// incluye. El espejo _P_* (retirado) construia el AST tipado directamente y
+// ocultaba la ausencia del puente en S1: el wrapper nativo 'parsear' llama
+// puente_construir_programa y S1 fallaba al link (implicit declaration).
+importar puente_ast
 importar tabla_simbolos
 importar analizador_semantico
 importar lifetimes

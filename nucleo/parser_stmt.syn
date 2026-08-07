@@ -135,6 +135,49 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
             token_esperar(est, T_DOSPUNTOS)
             plan_b = parsear_expresion(est)
             retornar expr
+        // A4.5 fix (bootstrap S2/S3): asignacion de CAMPO `expr.campo = val`.
+        // Paridad _P_sentencia del espejo: tras parsear la expresion, si el
+        // siguiente token es '=', se crea AsignacionCampo (si el LHS es un
+        // acceso a campo) o AsignacionVariable (si es un identificador).
+        // Antes se creaba NODO_EXPR y el '= val' quedaba sin consumir y se
+        // perdia en el sinc-skip -> en el bootstrap S2/S3 TODAS las
+        // asignaciones a campos de struct del propio compilador (est->x = 0,
+        // est.func_retorno = ...) degradaban a 'est->x;' (LHS sin RHS).
+        si t3 == T_ASIGNAR:
+            token_avanzar(est)
+            val = parsear_expresion(est)
+            tipo_expr = 0
+            inseguro:
+                asm("tipo_expr = (expr > 0 && expr < est->total_nodos) ? est->nodos[expr].tipo_nodo : 0")
+            si tipo_expr == NODO_ACCESO_CAMPO:
+                // AsignacionCampo: objeto (hijo_izq del acceso) + nombre_campo
+                // (payload del acceso) + expresion (val).
+                nodo = parser_nuevo_nodo(est, NODO_ASIGNACION_CAMPO, linea, col)
+                inseguro:
+                    asm("if (nodo > 0 && expr > 0 && nodo < est->total_nodos && expr < est->total_nodos) {")
+                    asm("    est->nodos[nodo].hijo_izq = est->nodos[expr].hijo_izq;")
+                    asm("    est->nodos[nodo].hijo_der = val;")
+                    asm("    est->nodos[nodo].ptr_str = est->nodos[expr].ptr_str;")
+                    asm("    est->nodos[nodo].len_str = est->nodos[expr].len_str;")
+                    asm("    int* _ahi_c = (int*)parser_ptr_hi(); if (_ahi_c) _ahi_c[nodo] = _ahi_c[expr];")
+                    asm("}")
+                retornar nodo
+            si tipo_expr == NODO_IDENTIFICADOR:
+                // AsignacionVariable: nombre = payload del identificador.
+                nodo = parser_nuevo_nodo(est, NODO_ASIGNACION, linea, col)
+                inseguro:
+                    asm("if (nodo > 0 && expr > 0 && nodo < est->total_nodos && expr < est->total_nodos) {")
+                    asm("    est->nodos[nodo].hijo_der = val;")
+                    asm("    est->nodos[nodo].ptr_str = est->nodos[expr].ptr_str;")
+                    asm("    est->nodos[nodo].len_str = est->nodos[expr].len_str;")
+                    asm("    int* _ahi_i = (int*)parser_ptr_hi(); if (_ahi_i) _ahi_i[nodo] = _ahi_i[expr];")
+                    asm("}")
+                retornar nodo
+            // LHS no asignable (indice, llamada, ...): SentenciaExpr (paridad espejo).
+            nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
+            inseguro:
+                asm("est->nodos[nodo].hijo_izq = expr")
+            retornar nodo
         nodo = parser_nuevo_nodo(est, NODO_EXPR, linea, col)
         inseguro:
             asm("est->nodos[nodo].hijo_izq = expr")
@@ -151,8 +194,18 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
     si t == T_EXPORT:
         retornar parsear_export(est)
     // AUDITORIA FASE A (A2.2): tipo (declaracion_tipo, Manual 2 §2 L74)
+    // A4.5 fix (bootstrap S2/S3): `tipo` es keyword CONTEXTUAL — si el token
+    // siguiente es '=' es una VARIABLE llamada tipo (ej: tipo = nodo_tipo(...)
+    // en el analizador semantico), NO una declaracion de tipo (tipo Nombre =
+    // ...). Paridad _P_sentencia del espejo: tipo + T_ASSIGN -> AsignacionVariable;
+    // _P_decl_tipo solo si tipo + IDENT + (=|<|PIPE|LPAREN). Si el siguiente
+    // no es '=', se delega en parsear_declaracion_tipo; si lo es, el flujo
+    // sigue y parsear_sentencia_canal (token_es_nombre(T_TIPO)==1) lo enruta
+    // a parsear_asignacion.
     si t == T_TIPO:
-        retornar parsear_declaracion_tipo(est)
+        sig_tipo = token_tipo(est, est.posicion + 1)
+        si sig_tipo != T_ASIGNAR:
+            retornar parsear_declaracion_tipo(est)
     // AUDITORIA FASE A (A2.2): delegar (Manual 2 §2 L132) — precedencia baja
     si t == T_DELEGAR:
         linea = token_linea(est, est.posicion)

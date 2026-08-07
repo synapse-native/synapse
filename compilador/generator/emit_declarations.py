@@ -17,20 +17,40 @@ from compilador.ast_nodes import (
 from .context import GeneratorContext, MAPA_TIPOS_C
 from .emit_expressions import (
     expr_a_c, tipo_de_expr,
-    emitir_tokenizar, emitir_token_defs,
 )
 from .emit_selfhost import (
-    emitir_parsear, emitir_volcar_ast,
+    emitir_volcar_ast,
 )
 
 
-# Mapa de builtins a sus emisores
-# Auto-hospedaje: tokenizar, parsear, generar, volcar_ast.
+# FASE A (A4.5): retirada COMPLETA del espejo _P_* — el map ya NO enruta
+# tokenizar/parsear a los emisores del espejo (emitir_tokenizar/emitir_parsear).
+# Paridad con el hook ME-B7 del orquestador nativo (nucleo/generador/orquestador.syn):
+#   - tokenizar: NO se intercepta — se emite el cuerpo nativo de lexer.syn
+#     (A4.5 fix: la supresion dejaba el unity SIN definicion de tokenizar).
+#   - parsear: wrapper NATIVO (paridad literal con gen_emitir_frontend_nativo,
+#     nucleo/generador/frontend_nativo.syn) — pipeline tokenizar -> parsear_nativo
+#     -> puente_construir_programa. El espejo emitir_parsear quedaba ocultando
+#     bugs del frontend nativo (asignacion de campo, T_TIPO, si inline).
+#   - volcar_ast: utilidad de volcado (no es el espejo; se mantiene).
 # I/O y tensor functions están en synapse_rt.o y se linkean.
 # (No incluirlas aquí causa multiple-definition linker errors)
+def _emitir_parsear_nativo(ctx: GeneratorContext, nodo: DefinicionFuncion):
+    """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo)."""
+    ctx.write_line("int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;")
+    ctx.write_line("struct Programa parsear(CadenaSegura fuente) {")
+    ctx.write_line("    int _nt = tokenizar(fuente);")
+    ctx.write_line("    if (_nt < 0) { struct Programa _e = {0}; return _e; }")
+    ctx.write_line("    struct ParserEst _pe = {0};")
+    ctx.write_line("    parsear_nativo(&_pe);")
+    ctx.write_line("    struct Programa* _pr = (struct Programa*)puente_construir_programa();")
+    ctx.write_line("    if (!_pr) { struct Programa _e = {0}; return _e; }")
+    ctx.write_line("    return *_pr;")
+    ctx.write_line("}")
+
+
 _BUILTIN_EMITTER_MAP = {
-    'tokenizar': emitir_tokenizar,
-    'parsear': emitir_parsear,
+    'parsear': _emitir_parsear_nativo,
     'volcar_ast': emitir_volcar_ast,
 }
 
