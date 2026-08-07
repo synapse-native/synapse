@@ -30,8 +30,9 @@ MANUAL REFERENCIADO: Manual 2 §2 (EBNF L36-200: la pipeline de principal.syn co
      tokenizar/parsear), Manual 3 §3.3 (el pipeline runtime consume struct Programa
      tipado — el wrapper nativo devuelve ese struct via el puente A3.1), Manual 9 §9.1
      (bootstrap S1->S2->S3) y §9.7 (determinismo diff 0 bytes).
-HASH COMMIT: pendiente (working tree; convencion 'auditoria(FASE_A-A3.2): conmutacion
-     al frontend nativo via _G_usar_nativo_frontend + fix RAII heap corruption lexer').
+HASH COMMIT: 8930ec1 (tramo A2.3b->A3.2 en un solo commit — los cambios estan
+     entrelazados en los mismos archivos parser.syn/generator.syn/lexer.syn; HEAD base
+     198707d).
 COMPILACION: S1 (python main.py nucleo/principal.syn -o synapse_stage1.exe) OK; unity
      build flag=1 (synapse_stage1.exe nucleo/principal.syn --nativo-frontend) compila C
      completo rc 0 con el wrapper nativo emitido y 0 definiciones _P_*.
