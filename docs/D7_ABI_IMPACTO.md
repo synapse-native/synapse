@@ -1,9 +1,9 @@
 # D-7 — Preparación del cierre: ABI de tipos primitivos (`entero`→`int64_t`, `decimal`→`double`)
 
 > Preparación del cierre de la deuda **D-7** (ítem 3.6 de la bitácora de la auditoría).
-> Fecha: 2026-08-05. Estado: **PREPARADA — impacto auditado con evidencia; la MIGRACIÓN se
-> ejecuta en la FASE A** (Etapa A5 del plan `docs/FASE_A_PLAN.md`). Regla 7: no se adelanta
-> una fase; esta deuda está asignada a FASE A con criterio de cierre (Manual 2 §4.1 L267-268).
+> Fecha: 2026-08-05 (preparación) → **CERRADA el 2026-08-07** (Ejecución en FASE A,
+> Etapa A5, commit `2b90be6`; ver `docs/reportes/FASE_A_A5.md` y la fila A5 de la bitácora).
+> Plan A5.1-A5.6 ejecutado al 100% con bootstrap S2==S3 C idéntico y e2e 64-bit correctos.
 > Fuente de verdad: `docs/AUDITORIA_ALINEACION_MANUALES.md` (registro de deuda, D-7).
 > HASH COMMIT: 4733dd8 (`docs(D-7): preparacion del cierre del ABI — matriz de impacto
 > (15 puntos con file:line) + plan de migracion A5.1-A5.6`).
@@ -106,3 +106,27 @@ Orden propuesto con criterio de aceptación por paso (cada paso + bootstrap diff
 
 ---
 *Fin de la preparación de D-7 — micro-entregable documental (2026-08-05).*
+
+---
+
+## 8. Cierre de la deuda (2026-08-07, FASE A — Etapa A5, commit `2b90be6`)
+
+La migración se ejecutó íntegramente en la FASE A (Etapa A5):
+
+| Paso | Criterio del plan | Resultado |
+|---|---|---|
+| A5.1 | Runtime: `entero_a_texto(int64_t)`+`%lld`, `decimal_a_texto(double)`, boxing `int64_t` | ✅ `synapse_rt.c/h` migrados (`entero_a_texto(int64_t)`, `decimal_a_texto(double)`, `texto_a_entero`→`int64_t`/`strtoll`, `texto_a_decimal`→`double`) |
+| A5.2 | Mapeos S1/S2/S3 → `int64_t`/`double` | ✅ `MAPA_TIPOS_C`, `traducir_tipo_c` (S1+S2/S3 `emision_c.syn`), `mt()`; boxing `int64_t` |
+| A5.3 | Formatos `%lld`, literales decimales sin `f`, coerción | ✅ `puente_ast.syn` `atoll`/`double`; `expr_eval.syn` `%lld`; sufijo `LL` en literales enteros S1+self-hosted; `_TABLA_COERCION` normalizada |
+| A5.4 | Tests: aserciones `int`→`int64_t` + e2e rango 64 bits | ✅ 4 tests f1 + a23 actualizados (excepción regla 5); e2e rango 64 bits y precisión doble verdes |
+| A5.5 | FFI `externo`: bindings `entero`/`decimal` | ✅ `texto_a_entero`/`texto_a_decimal`; `int` restantes del runtime = plumbing interno (net/ed25519/simd), ajenos al ABI |
+| A5.6 | Bootstrap completo + suite + e2e Manual 2 §4.1 | ✅ Bootstrap S1→S2→S3 rc 0, **C idéntico S2==S3**; suite pytest 240 passed, 1 skipped, 0 fallos; e2e `2147483647+1`=2147483648, `2*4294967296`=8589934592, `INT64_MAX`, `3.14159265358979` |
+
+**Criterio de cierre (§6):** `entero`→`int64_t` y `decimal`→`double` en el C generado (S1 y
+S2/S3) ✅ · e2e con rangos de 64 bits y precisión doble ✅ · bootstrap diff 0 bytes ✅ ·
+bitácora ítem 3.6 → ✅. **D-7 CERRADA.**
+
+Decisión documentada (según §5): las dimensiones de `Tensor` se mantienen `int` en el
+runtime (plumbing interno); `booleano` se mantiene `int` (extensión no incluida en este
+cierre). Los scripts de ejecución de la migración quedan en la raíz como evidencia
+(`_a53_*.py`, `_a54_*.py`, `_a55_*.py`) hasta la limpieza de la FASE A.

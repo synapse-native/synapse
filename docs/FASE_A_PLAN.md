@@ -144,11 +144,12 @@ y tokenización UTF-8 (H26).
 
 ### Etapa A5 — Cierre de deudas asociadas (en el orden del roadmap)
 - **D-6** (`?` postfijo en expresiones, Manual 3 §7 L331-342): parser + codegen nativo.
-- **D-7** (ABI: `entero`/`int` → `int64_t`, `decimal`/`float`/`real` → `double`, Manual 2
-  §4.1 L267-268): ítem 3.6 de la bitácora. **Preparación lista** (2026-08-05): matriz de
-  impacto (15 puntos con file:line) y plan de migración por pasos en
-  `docs/D7_ABI_IMPACTO.md` — ejecutar los pasos A5.1-A5.6 de ese documento (runtime →
-  mapeos → formatos → tests → FFI → bootstrap).
+- **D-7 ✅ CERRADA (2026-08-07, commit `2b90be6`)** (ABI: `entero`/`int` → `int64_t`,
+  `decimal`/`float`/`real` → `double`, Manual 2 §4.1 L267-268): ítem 3.6 de la bitácora
+  → ✅. Ejecutados los pasos A5.1-A5.6 de `docs/D7_ABI_IMPACTO.md` (runtime → mapeos →
+  formatos → tests → FFI → bootstrap): bootstrap S1→S2→S3 rc 0 con C idéntico S2==S3,
+  e2e rango 64 bits y precisión doble correctos, suite pytest 240 passed / 1 skip / 0
+  fallos. Reporte: `docs/reportes/FASE_A_A5.md`. Pendientes de A5: D-6, D-2, D-3, D-5.
 - **D-2** (instanciación de ADT genéricos `T/E`): generador de campos tipados.
 - **D-3** (divergencia cosmética `Tensor t;` vs `Tensor t = {0};`): unificar emisión.
 - **D-5** (cobertura del generador ≥70%): harness reorientado al frontend único.
