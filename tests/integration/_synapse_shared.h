@@ -439,6 +439,24 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef NODO_CONTRATO
 #define NODO_CONTRATO (46)
 #endif
+#ifndef NODO_NULO
+#define NODO_NULO (47)
+#endif
+#ifndef NODO_LET
+#define NODO_LET (48)
+#endif
+#ifndef NODO_DELEGAR
+#define NODO_DELEGAR (49)
+#endif
+#ifndef NODO_EXPORT
+#define NODO_EXPORT (50)
+#endif
+#ifndef NODO_DECLARACION_TIPO
+#define NODO_DECLARACION_TIPO (51)
+#endif
+#ifndef NODO_CONSTRUCTOR
+#define NODO_CONSTRUCTOR (52)
+#endif
 
 // --- Error code constants (Manual 3 §3.5) ---
 #ifndef ERR_SYNTAX_EXPECTED_TOKEN
@@ -600,9 +618,6 @@ extern char _G_tipo_aliases[128][64];
 extern char _G_tipo_aliases_base[128][64];
 extern int _G_tipo_aliases_count;
 
-// PGO variables (defined in self-hosted parser module)
-extern int _P_ntks, _P_tpos, _P_p_err;
-
 extern int _G_indent;
 
 const char* _G_mt(const char* st);
@@ -614,16 +629,16 @@ void _G_vest(struct DefinicionEstructura* n);
 #define TAG_NINGUNO 1
 
 // --- Helpers de serialización primitiva ---
-static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
-static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
-static inline void* _synapse_box_float(float v) {
-    float* _p = (float*)malloc(sizeof(float));
+static inline void* _synapse_box_int(int64_t v) { return (void*)(intptr_t)v; }
+static inline int64_t _synapse_unbox_int(void* p) { return (int64_t)(intptr_t)p; }
+static inline void* _synapse_box_float(double v) {
+    double* _p = (double*)malloc(sizeof(double));
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\\n"); exit(1); }
     *_p = v;
     return (void*)_p;
 }
-static inline float _synapse_unbox_float(void* p) {
-    float _v = *(float*)p;
+static inline double _synapse_unbox_float(void* p) {
+    double _v = *(double*)p;
     free(p);
     return _v;
 }
@@ -646,8 +661,8 @@ extern Tensor reserva(int tamano);
 extern void libera(Tensor bloque);
 extern Tensor suma(Tensor a, Tensor b);
 extern Tensor producto(Tensor a, Tensor b);
-extern int texto_a_entero(CadenaSegura str);
-extern float texto_a_decimal(CadenaSegura str);
+extern int64_t texto_a_entero(CadenaSegura str);
+extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
@@ -679,7 +694,6 @@ extern void _simd_detectar(void);
 #endif
 
 extern int _g_argc;
-extern int _G_usar_nativo_frontend;
 extern char** _g_argv;
 extern int _argc(void);
 extern CadenaSegura _argv(int i);
@@ -692,52 +706,52 @@ struct Resultado;
 typedef struct Opcion {
     int tag;
     union {
-        int valor;
+        int64_t valor;
         CadenaSegura valor_str;
-        float valor_float;
+        double valor_float;
     } dato;
 } Opcion;
 
 typedef struct Resultado {
     int tag;
     union {
-        int valor;
+        int64_t valor;
         CadenaSegura valor_str;
-        float valor_float;
+        double valor_float;
     } dato;
 } Resultado;
 
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
-int ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
-int ejecutar_comando(CadenaSegura cmd);
-int eliminar_archivo(CadenaSegura ruta);
-int escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+int64_t ejecutar_comando(CadenaSegura cmd);
+int64_t eliminar_archivo(CadenaSegura ruta);
+int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
 int existe_archivo(CadenaSegura ruta);
 CadenaSegura leer_archivo(CadenaSegura ruta);
 CadenaSegura obtener_env(CadenaSegura nombre);
-int principal(void);
-int prueba_clave_incorrecta(void);
-int prueba_enviar_datos_canal(void);
-int prueba_enviar_hello(void);
-int prueba_firma_corrupta(void);
-int prueba_firmar_verificar(void);
-int prueba_generar_par(void);
-int prueba_handshake_bidireccional(void);
-int prueba_iniciar_detener_nodo(void);
-int prueba_resultado_algebraico(void);
+int64_t principal(void);
+int64_t prueba_clave_incorrecta(void);
+int64_t prueba_enviar_datos_canal(void);
+int64_t prueba_enviar_hello(void);
+int64_t prueba_firma_corrupta(void);
+int64_t prueba_firmar_verificar(void);
+int64_t prueba_generar_par(void);
+int64_t prueba_handshake_bidireccional(void);
+int64_t prueba_iniciar_detener_nodo(void);
+int64_t prueba_resultado_algebraico(void);
 CadenaSegura sha256_texto(CadenaSegura datos);
 
 extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
-extern int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+extern int64_t _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 extern CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
 extern CadenaSegura _syn_obtener_cwd(void);
-extern int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
-extern int _syn_ejecutar_comando(CadenaSegura cmd);
-extern int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+extern int64_t _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
+extern int64_t _syn_ejecutar_comando(CadenaSegura cmd);
+extern int64_t _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
 extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
 extern CadenaSegura _syn_obtener_env(CadenaSegura nombre);
-extern int _syn_existe_archivo(CadenaSegura ruta);
-extern int _syn_eliminar_archivo(CadenaSegura ruta);
+extern int64_t _syn_existe_archivo(CadenaSegura ruta);
+extern int64_t _syn_eliminar_archivo(CadenaSegura ruta);
 extern Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura _syn_leer(Canal c);
 extern void _syn_escribir(CadenaSegura texto);
@@ -745,8 +759,8 @@ extern void _syn_escribir_linea(CadenaSegura texto);
 extern CadenaSegura _syn_leer_linea(void);
 extern CadenaSegura cluster_generar_par_claves(void);
 extern CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje, CadenaSegura clave_privada_hex);
-extern int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, CadenaSegura clave_publica_hex);
-extern int cluster_iniciar_nodo(int puerto);
-extern int cluster_detener_nodo(void);
-extern int cluster_enviar_hello(CadenaSegura ip, int puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
-extern int cluster_canal_remoto_enviar(CadenaSegura ip, int puerto, CadenaSegura datos, int lon, int chan_id);
+extern int64_t cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, CadenaSegura clave_publica_hex);
+extern int64_t cluster_iniciar_nodo(int64_t puerto);
+extern int64_t cluster_detener_nodo(void);
+extern int64_t cluster_enviar_hello(CadenaSegura ip, int64_t puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
+extern int64_t cluster_canal_remoto_enviar(CadenaSegura ip, int64_t puerto, CadenaSegura datos, int64_t lon, int64_t chan_id);

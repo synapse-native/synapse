@@ -15,29 +15,29 @@ CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int ejecutar_comando(CadenaSegura cmd) {
+int64_t ejecutar_comando(CadenaSegura cmd) {
     return _syn_ejecutar_comando(cmd);
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int eliminar_archivo(CadenaSegura ruta) {
+int64_t eliminar_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
     _syn_texto_liberar(ruta_segura);
     ruta_segura = _validar_ruta_segura(ruta);
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        return (-1);
+        return (-1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
     return _syn_eliminar_archivo(ruta_segura);
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
+int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
     CadenaSegura ruta_segura = {0};
     _syn_texto_liberar(ruta_segura);
     ruta_segura = _validar_ruta_segura(ruta);
     if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        return (-1);
+        return (-1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
     return _syn_escribir_archivo(ruta_segura, contenido);
@@ -52,7 +52,7 @@ int existe_archivo(CadenaSegura ruta) {
         return 0;
           /* [Lifetime Scope: exit depth=1] */
     }
-    return (_syn_existe_archivo(ruta_segura) == 1);
+    return (_syn_existe_archivo(ruta_segura) == 1LL);
       /* [Lifetime Scope: exit depth=0] */
 }
 
