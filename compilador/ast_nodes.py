@@ -89,6 +89,7 @@ class TokenID(Enum):
     DEBIL = auto()        # T_DEBIL (débil / weak)
 
     EOF = auto()
+    INTERROGACION = auto()  # D-6: operador '?' postfijo (Manual 3 §7 L331-342)
 
 
 @dataclass
@@ -301,6 +302,13 @@ class DeclaracionExterna(Nodo):
 class ExprTensor(Nodo):
     filas: Optional[Nodo] = None
     columnas: Optional[Nodo] = None
+
+
+@dataclass
+class ExprPropagar(Nodo):
+    """D-6: operador `?` postfijo — propaga el `err` de un Resultado y desempaqueta
+    el valor `ok` (Manual 3 §7 L331-342). ExprPropagar(expresion=f())."""
+    expresion: Optional[Nodo] = None
 
 
 @dataclass

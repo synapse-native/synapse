@@ -83,6 +83,9 @@ constante T_ARC = 71
 constante T_DEBIL = 72
 // AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
 constante T_PIPE = 73
+// AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) — operador postfijo de
+// propagacion de Resultado (Manual 3 §7 L331-342).
+constante T_INTERROGACION = 74
 
 // --- Language IDs (Manual 2 S2.3) ---
 constante IDIOMA_ES = 0
@@ -953,6 +956,11 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
             si c == 124:
                 // AUDITORIA F1 (D-F1): '|' para declaraciones ADT (Manual 2 §3)
                 lexer_push_token(T_PIPE, lexer_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 63:
+                // AUDITORIA FASE A (A5/D-6): '?' operador postfijo (Manual 3 §7)
+                lexer_push_token(T_INTERROGACION, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             lexer_error("Caracter inesperado", lexer_linea_actual(), i + 1)

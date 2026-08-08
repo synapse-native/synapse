@@ -313,6 +313,7 @@ TOKEN_UNICARACTER: dict[str, TokenID] = {
     '[': TokenID.LBRACKET,
     ']': TokenID.RBRACKET,
     '|': TokenID.PIPE,  # Manual 2 §2: separador de constructores en declaracion_tipo
+    '?': TokenID.INTERROGACION,  # D-6: operador '?' postfijo (Manual 3 §7 L331-342)
 }
 
 TOKEN_BICARACTER: dict[str, TokenID] = {

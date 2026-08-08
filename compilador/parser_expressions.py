@@ -6,7 +6,7 @@ from compilador.ast_nodes import (
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano, ExprTensor,
     LiteralNulo, ArgumentoTransferido, ExprCrearCanal,
     ExprObtenerDireccion, ExprDereferencia, ExprAccesoCampo, ExprAsm,
-    ExprIndice,
+    ExprIndice, ExprPropagar,
 )
 from compilador.lexer import OPERADORES_BINARIOS
 from compilador.diagnostics import ErrorCodes
@@ -128,6 +128,40 @@ class ParserExpressionsMixin(ParserBase):
             )
         return self._parsear_primario()
 
+    def _parsear_postfijo(self, expr: Nodo) -> Nodo:
+        """Postfijos: `.campo`, `[indice]` y `?` (D-6, Manual 3 §7 L331-342).
+        El `?` propaga el `err` de un Resultado y desempaqueta el valor `ok`."""
+        while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET, TokenID.INTERROGACION):
+            if self._mirar().tipo == TokenID.DOT:
+                self._avanzar()
+                tok_campo = self._esperar_identificador()
+                if tok_campo is None:
+                    break
+                expr = ExprAccesoCampo(
+                    objeto=expr,
+                    nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
+                    linea=expr.linea,
+                    columna=expr.columna,
+                )
+            elif self._mirar().tipo == TokenID.LBRACKET:
+                self._avanzar()  # consume [
+                indice = self._parsear_expresion()
+                self._esperar(TokenID.RBRACKET)
+                expr = ExprIndice(
+                    expr=expr,
+                    indice=indice,
+                    linea=expr.linea,
+                    columna=expr.columna,
+                )
+            else:  # TokenID.INTERROGACION
+                tok_q = self._avanzar()
+                expr = ExprPropagar(
+                    expresion=expr,
+                    linea=tok_q.linea,
+                    columna=tok_q.columna,
+                )
+        return expr
+
     def _parsear_primario(self) -> Nodo:
         t = self._mirar()
         if t.tipo == TokenID.NUMBER:
@@ -165,29 +199,7 @@ class ParserExpressionsMixin(ParserBase):
             if self._mirar().tipo == TokenID.LPAREN:
                 return self._parsear_tensor(t)
             expr: Nodo = Identificador(nombre='tensor', linea=t.linea, columna=t.columna)
-            while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
-                if self._mirar().tipo == TokenID.DOT:
-                    self._avanzar()
-                    tok_campo = self._esperar_identificador()
-                    if tok_campo is None:
-                        break
-                    expr = ExprAccesoCampo(
-                        objeto=expr,
-                        nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
-                        linea=expr.linea,
-                        columna=expr.columna,
-                    )
-                else:
-                    self._avanzar()  # consume [
-                    indice = self._parsear_expresion()
-                    self._esperar(TokenID.RBRACKET)
-                    expr = ExprIndice(
-                        expr=expr,
-                        indice=indice,
-                        linea=expr.linea,
-                        columna=expr.columna,
-                    )
-            return expr
+            return self._parsear_postfijo(expr)
         if es_token_identificador(t) or t.tipo == TokenID.CANAL:
             self._avanzar()
             if t.tipo in _CONSTRUCTORES_ADT:
@@ -213,34 +225,12 @@ class ParserExpressionsMixin(ParserBase):
                         Identificador(nombre=nombre, linea=t.linea, columna=t.columna))
                 else:
                     expr = Identificador(nombre=nombre, linea=t.linea, columna=t.columna)
-            while self._mirar().tipo in (TokenID.DOT, TokenID.LBRACKET):
-                if self._mirar().tipo == TokenID.DOT:
-                    self._avanzar()
-                    tok_campo = self._esperar_identificador()
-                    if tok_campo is None:
-                        break
-                    expr = ExprAccesoCampo(
-                        objeto=expr,
-                        nombre_campo=tok_campo.valor or tok_campo.tipo.name.lower(),
-                        linea=expr.linea,
-                        columna=expr.columna,
-                    )
-                else:
-                    self._avanzar()  # consume [
-                    indice = self._parsear_expresion()
-                    self._esperar(TokenID.RBRACKET)
-                    expr = ExprIndice(
-                        expr=expr,
-                        indice=indice,
-                        linea=expr.linea,
-                        columna=expr.columna,
-                    )
-            return expr
+            return self._parsear_postfijo(expr)
         if t.tipo == TokenID.LPAREN:
             self._avanzar()
             expr = self._parsear_expresion()
             self._esperar(TokenID.RPAREN)
-            return expr
+            return self._parsear_postfijo(expr)
         self.diag.reportar(ErrorCodes.ERR_SYNTAX_UNEXPECTED_EXPR, t, tipo=t.tipo.name)
         self._sincronizar(_SYNC_EXPR)
         return LiteralNumero(valor=0, linea=t.linea, columna=t.columna)

@@ -299,6 +299,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef T_FIN
 #define T_FIN (74)
 #endif
+#ifndef T_INTERROGACION
+#define T_INTERROGACION (75)
+#endif
 
 // --- Nodo type constants (AST node types) ---
 #ifndef NODO_PROGRAMA
@@ -457,6 +460,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef NODO_CONSTRUCTOR
 #define NODO_CONSTRUCTOR (52)
 #endif
+#ifndef NODO_PROPAGAR
+#define NODO_PROPAGAR (53)
+#endif
 
 // --- Error code constants (Manual 3 §3.5) ---
 #ifndef ERR_SYNTAX_EXPECTED_TOKEN
@@ -603,6 +609,16 @@ extern int _G_native_es_estructura(const char* n);
 extern char _G_native_func_returns[512][64];
 extern int _G_native_func_returns_count;
 extern int _G_native_tipo_retorno(const char* fn, char* out);
+
+extern char _G_native_adt_ctrs[256][64];
+extern char _G_native_adt_ctrs_adt[256][64];
+extern int _G_native_adt_ctrs_tag[256];
+extern char _G_native_adt_ctrs_tipo[256][64];
+extern int _G_native_adt_ctrs_count;
+extern int _G_native_es_adt_ctr(const char* c);
+extern int _G_native_adt_ctr_info(const char* c, char* adt_out, int* tag_out, char* tipo_out);
+extern int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out);
+extern int _G_native_adt_unwrap_field(const char* adt, char* field_out);
 
 // ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)
 extern char _G_emit_func_names[2048][64];

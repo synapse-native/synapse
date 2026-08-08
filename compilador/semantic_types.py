@@ -5,7 +5,7 @@ from compilador.ast_nodes import (
     LiteralNulo, Identificador, OpBinaria, OpUnaria, LlamadaFuncion, ExprTensor,
     ArgumentoTransferido, ExprAsm, ExprObtenerDireccion, ExprDereferencia,
     ExprAccesoCampo, ExprCrearCanal, ExprRecibirCanal, ExprIndice,
-    DefinicionFuncion,
+    ExprPropagar, DefinicionFuncion,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
@@ -222,6 +222,17 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 if norm == 'CadenaSegura':
                     return 'texto'
             return 'int'
+        elif isinstance(nodo, ExprPropagar):
+            # D-6: `expr?` desempaqueta el campo del primer constructor (ok) del
+            # ADT Resultado (Manual 3 §7 L331-342).
+            tipo_inner = self._inferir_tipo(nodo.expresion)
+            if not tipo_inner:
+                return None
+            struct = self._estructuras.get(tipo_inner.rstrip('*'))
+            if struct is not None:
+                for campo in struct.campos[1:]:  # saltar el campo tag
+                    return campo.tipo
+            return None
         return None
 
     def _verificar_prestamo(self, nodo: ExprObtenerDireccion):
@@ -318,6 +329,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     esperados=0
                 )
             return nodo.nombre
+
+        # D-6/F1.2: constructores ADT (ok/err/algun/ninguno) — devuelven el ADT
+        # (Manual 2 §2 L75; std/err.syn los documenta como nativos).
+        if nodo.nombre in self._constructores_adt:
+            for a in nodo.argumentos:
+                self._inferir_tipo(a)
+            return self._constructores_adt[nodo.nombre]
 
         if sim is None:
             self.diag.reportar(

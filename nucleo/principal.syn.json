@@ -644,6 +644,15 @@
       },
       {
         "_tipo": "StmtConstante",
+        "nombre": "T_INTERROGACION",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 74
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
         "nombre": "T_FIN",
         "tipo": "",
         "valor": {
@@ -11005,6 +11014,63 @@
                     ]
                   },
                   {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "c"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 63
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "lexer_push_token",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "T_INTERROGACION"
+                            },
+                            {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "lexer_linea_actual",
+                              "argumentos": []
+                            },
+                            {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "i"
+                              },
+                              "operador": "+",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "i = i + 1"
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
+                      }
+                    ]
+                  },
+                  {
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "LlamadaFuncion",
@@ -12773,6 +12839,20 @@
           },
           {
             "nombre": "indice",
+            "tipo": "Nodo"
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionEstructura",
+        "nombre": "ExprPropagar",
+        "campos": [
+          {
+            "nombre": "tipo",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "expresion",
             "tipo": "Nodo"
           }
         ]
@@ -16227,6 +16307,15 @@
         "valor": {
           "_tipo": "LiteralNumero",
           "valor": 52
+        }
+      },
+      {
+        "_tipo": "StmtConstante",
+        "nombre": "NODO_PROPAGAR",
+        "tipo": "",
+        "valor": {
+          "_tipo": "LiteralNumero",
+          "valor": 53
         }
       },
       {
@@ -22281,6 +22370,132 @@
                 ]
               },
               {
+                "_tipo": "SentenciaMientras",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_INTERROGACION"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "linea_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "col_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_columna",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "parser_nuevo_nodo",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "NODO_PROPAGAR"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "linea_q"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "col_q"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "est->nodos[nodo_q].hijo_izq = nodo"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo_q"
+                    }
+                  }
+                ]
+              },
+              {
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
@@ -22974,6 +23189,132 @@
                 ]
               },
               {
+                "_tipo": "SentenciaMientras",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_INTERROGACION"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "linea_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "col_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_columna",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "parser_nuevo_nodo",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "NODO_PROPAGAR"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "linea_q"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "col_q"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "est->nodos[nodo_q].hijo_izq = nodo"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo_q"
+                    }
+                  }
+                ]
+              },
+              {
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
@@ -23378,10 +23719,144 @@
                 }
               },
               {
+                "_tipo": "AsignacionVariable",
+                "nombre": "nodo",
+                "expresion": {
+                  "_tipo": "Identificador",
+                  "nombre": "expr"
+                }
+              },
+              {
+                "_tipo": "SentenciaMientras",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_INTERROGACION"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "linea_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "col_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_columna",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo_q",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "parser_nuevo_nodo",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "NODO_PROPAGAR"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "linea_q"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "col_q"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "est->nodos[nodo_q].hijo_izq = nodo"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo_q"
+                    }
+                  }
+                ]
+              },
+              {
                 "_tipo": "SentenciaRetornar",
                 "expr": {
                   "_tipo": "Identificador",
-                  "nombre": "expr"
+                  "nombre": "nodo"
                 },
                 "es_transferencia": false
               }
@@ -45211,6 +45686,56 @@
             ]
           },
           {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "NODO_PROPAGAR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "{ struct ExprPropagar* _p = (struct ExprPropagar*)calloc(1, sizeof(struct ExprPropagar));"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->tipo = puente_cs_str((void*)\"ExprPropagar\");"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->expresion = (struct Nodo*)puente_nodo(hi);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  r = (void*)_p; }"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "_tipo": "SentenciaRetornar",
             "expr": {
               "_tipo": "Identificador",
@@ -57399,6 +57924,181 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "if (_syn_es_tipo(_t, \"ExprPropagar\")) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // D-6: operador '?' postfijo (Manual 3 §7 L331-342). Statement-expression"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // GNU: si el Resultado es err (tag 1) propaga el valor entero; si es ok,"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // evalua al campo del primer constructor (dato.ok)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct ExprPropagar* _pp = (struct ExprPropagar*)_n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _pe[2048]; _pe[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_pp->expresion) { _oo_expr_a_c(est, _pp->expresion, _pe, 2048); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _padt[64]; _padt[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_pp->expresion && _pp->expresion->tipo.datos && strcmp(_pp->expresion->tipo.datos, \"LlamadaFuncion\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct LlamadaFuncion* _plf = (struct LlamadaFuncion*)_pp->expresion;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_plf->nombre.datos) { _G_native_tipo_retorno(_plf->nombre.datos, _padt); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (!_padt[0]) strcpy(_padt, \"Resultado\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // la variable temporal es del tipo ADT (Resultado); el desempaquetado"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // .dato.ok da el valor (el tipo de destino lo infiere gen_visitar_asignacion)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    traducir_tipo_c((void*)_padt);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    extern char _gen_tmp_buf[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _ptc[64]; _ptc[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncpy(_ptc, _gen_tmp_buf, 63); _ptc[63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _pfield[64]; _pfield[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_native_adt_unwrap_field(_padt, _pfield);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (!_pfield[0]) strcpy(_pfield, \"ok\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_b, _sz, \"({ %s _prop = %s; if (_prop.tag == 1) return _prop; _prop.dato.%s; })\", _ptc, _pe, _pfield);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "if (_syn_es_tipo(_t, \"OpBinaria\")) {"
                 }
               },
@@ -58219,6 +58919,83 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // D-6: constructores ADT (ok/err/algun/ninguno) -> compound literal del"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // tagged-union (paridad emit_expressions.py 'D-6: constructores ADT')."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_lf->nombre.datos && _G_native_es_adt_ctr(_lf->nombre.datos)) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _cad_adt[64]; _cad_adt[0] = 0; int _ctag = 0; char _cft[64]; _cft[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _G_native_adt_ctr_info(_lf->nombre.datos, _cad_adt, &_ctag, _cft);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _carg[2048]; _carg[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct ListaNodo* _carg_cur = _lf->argumentos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_carg_cur && _carg_cur->cabeza) { _oo_expr_a_c(est, _carg_cur->cabeza, _carg, 2048); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        snprintf(_b, _sz, \"(%s){.tag=%d,.dato.%s=%s}\", _cad_adt, _ctag, _lf->nombre.datos, _carg);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
                 }
               },
               {
@@ -59766,7 +60543,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); }"
+                  "instruccion": "// D-3: sin expresion -> `= {0};` (paridad visitar_declaracion S1: `{tipo} {nombre} = {0};`)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_dv->expresion) { _oo_expr_a_c(est, _dv->expresion, _buf2, 4096); } else { strcpy(_buf2, \"{0}\"); }"
                 }
               },
               {
@@ -60542,6 +61326,139 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "// D-6: ExprPropagar (operador ?) -> tipo del campo ok desempaquetado"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "const char* _prop_type = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (!_struct_name && _a->expresion && _a->expresion->tipo.datos && strcmp(_a->expresion->tipo.datos, \"ExprPropagar\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct ExprPropagar* _pp2 = (struct ExprPropagar*)_a->expresion;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_pp2->expresion && _pp2->expresion->tipo.datos && strcmp(_pp2->expresion->tipo.datos, \"LlamadaFuncion\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct LlamadaFuncion* _plf2 = (struct LlamadaFuncion*)_pp2->expresion;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_plf2->nombre.datos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _padt2[64]; _padt2[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_G_native_tipo_retorno(_plf2->nombre.datos, _padt2)) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _pft2[64]; _pft2[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_G_native_adt_unwrap_tipo(_padt2, _pft2) && _pft2[0]) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    traducir_tipo_c((void*)_pft2);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    extern char _gen_tmp_buf[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_gen_tmp_buf[0]) { _prop_type = _gen_tmp_buf; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "strcat(_buf, \"    \");"
                 }
               },
@@ -60606,6 +61523,20 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        strcat(_buf, \"struct \"); strcat(_buf, _struct_name); strcat(_buf, \" \");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    } else if (_prop_type) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        strcat(_buf, _prop_type); strcat(_buf, \" \");"
                 }
               },
               {
@@ -63396,6 +64327,23 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
+                  "valor": "struct ExprPropagar;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
                   "valor": ""
                 }
               ]
@@ -63958,6 +64906,771 @@
                 {
                   "_tipo": "LiteralCadena",
                   "valor": "            strcpy(out, _G_native_func_returns[_i + 256]); return 1;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "}"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "char _G_native_adt_ctrs[256][64];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "char _G_native_adt_ctrs_adt[256][64];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_adt_ctrs_tag[256];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "char _G_native_adt_ctrs_tipo[256][64];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_adt_ctrs_count;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_es_adt_ctr(const char* c) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    if (!c) return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        if (strcmp(_G_native_adt_ctrs[_i], c) == 0) return 1;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "}"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_adt_ctr_info(const char* c, char* adt_out, int* tag_out, char* tipo_out) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    if (!c) return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        if (strcmp(_G_native_adt_ctrs[_i], c) == 0) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            if (adt_out) strcpy(adt_out, _G_native_adt_ctrs_adt[_i]);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            if (tag_out) *tag_out = _G_native_adt_ctrs_tag[_i];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            if (tipo_out) strcpy(tipo_out, _G_native_adt_ctrs_tipo[_i]);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            return 1;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "}"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    if (!adt || !tipo_out) return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            strcpy(tipo_out, _G_native_adt_ctrs_tipo[_i]);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            return 1;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    }"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "}"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_native_adt_unwrap_field(const char* adt, char* field_out) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    if (!adt || !field_out) return 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            strcpy(field_out, _G_native_adt_ctrs[_i]);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "            return 1;"
                 }
               ]
             }
@@ -66088,6 +67801,249 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "extern char _G_native_adt_ctrs[256][64]; extern char _G_native_adt_ctrs_adt[256][64]; extern int _G_native_adt_ctrs_tag[256]; extern char _G_native_adt_ctrs_tipo[256][64]; extern int _G_native_adt_ctrs_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "_G_native_adt_ctrs_count = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct ListaNodo* _gacd = programa.sentencias;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "while (_gacd && _G_native_adt_ctrs_count < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct Nodo* _gacn = _gacd->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_gacn && _gacn->tipo.datos && strcmp(_gacn->tipo.datos, \"DeclaracionTipo\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct DeclaracionTipo* _gac = (struct DeclaracionTipo*)_gacn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_gac->nombre.datos && _gac->constructores) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            int _gaci = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct ListaNodo* _gac_l = _gac->constructores;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while (_gac_l && _G_native_adt_ctrs_count < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                struct Nodo* _gac_c = _gac_l->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_gac_c && _gac_c->tipo.datos && strcmp(_gac_c->tipo.datos, \"ConstructorTipo\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ConstructorTipo* _gacc = (struct ConstructorTipo*)_gac_c;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_gacc->nombre.datos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        strncpy(_G_native_adt_ctrs[_G_native_adt_ctrs_count], _gacc->nombre.datos, 63); _G_native_adt_ctrs[_G_native_adt_ctrs_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        strncpy(_G_native_adt_ctrs_adt[_G_native_adt_ctrs_count], _gac->nombre.datos, 63); _G_native_adt_ctrs_adt[_G_native_adt_ctrs_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        _G_native_adt_ctrs_tag[_G_native_adt_ctrs_count] = _gaci;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        struct Nodo* _gact0 = (_gacc->tipos && _gacc->tipos->cabeza) ? _gacc->tipos->cabeza : 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        if (_gact0 && _gact0->tipo.datos && strcmp(_gact0->tipo.datos, \"Identificador\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                            struct Identificador* _gi = (struct Identificador*)_gact0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                            if (_gi->nombre.datos) { strncpy(_G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count], _gi->nombre.datos, 63); _G_native_adt_ctrs_tipo[_G_native_adt_ctrs_count][63] = 0; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        _G_native_adt_ctrs_count++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _gaci++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _gac_l = _gac_l->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _gacd = _gacd->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "fprintf(stderr, \"[Orquestador] D-6: %d constructores ADT registrados\\n\", _G_native_adt_ctrs_count); fflush(stderr);"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "fprintf(stderr, \"[Orquestador] Iniciando recorrido AST\\n\"); fflush(stderr);"
                 }
               },
@@ -67908,14 +69864,63 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    struct Nodo* _hp_stack[1024];"
+                  "instruccion": "    // D-3: recorrido FIFO (orden de aparicion) — paridad _collect_vars de S1"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    int _hp_top = 0;"
+                  "instruccion": "    // (for s in stmts): la PRIMERA declaracion gana; una AsignacionVariable"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // posterior a un `let` del mismo nombre NO se hoistea como auto=1."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Divergencia documentada: los bloques anidados (si/mientras/para) se"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // procesan al final de la cola (no en su posicion de documento como S1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // solo afecta a codigo que cruza ambito (declaracion en bloque + asignacion"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // fuera), que Synapse no permite — aceptada."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct Nodo* _hp_stack[4096];  // D-3: FIFO consume el array monotonamente (total sentencias/funcion)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _hp_head = 0, _hp_tail = 0;"
                 }
               },
               {
@@ -67929,21 +69934,21 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    while (_hp0) { if (_hp0->cabeza && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp0->cabeza; } _hp0 = _hp0->cola; }"
+                  "instruccion": "    while (_hp0) { if (_hp0->cabeza && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp0->cabeza; } _hp0 = _hp0->cola; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    while (_hp_top > 0) {"
+                  "instruccion": "    while (_hp_head < _hp_tail) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        struct Nodo* _hp_n = _hp_stack[--_hp_top];"
+                  "instruccion": "        struct Nodo* _hp_n = _hp_stack[_hp_head++];"
                 }
               },
               {
@@ -68153,7 +70158,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                while (_hp_sl) { if (_hp_sl->cabeza && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp_sl->cabeza; } _hp_sl = _hp_sl->cola; }"
+                  "instruccion": "                while (_hp_sl) { if (_hp_sl->cabeza && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp_sl->cabeza; } _hp_sl = _hp_sl->cola; }"
                 }
               },
               {
@@ -68167,7 +70172,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                while (_hp_el) { if (_hp_el->cabeza && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp_el->cabeza; } _hp_el = _hp_el->cola; }"
+                  "instruccion": "                while (_hp_el) { if (_hp_el->cabeza && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp_el->cabeza; } _hp_el = _hp_el->cola; }"
                 }
               },
               {
@@ -68202,7 +70207,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                while (_hp_ml) { if (_hp_ml->cabeza && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp_ml->cabeza; } _hp_ml = _hp_ml->cola; }"
+                  "instruccion": "                while (_hp_ml) { if (_hp_ml->cabeza && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp_ml->cabeza; } _hp_ml = _hp_ml->cola; }"
                 }
               },
               {
@@ -68237,7 +70242,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                while (_hp_bl) { if (_hp_bl->cabeza && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp_bl->cabeza; } _hp_bl = _hp_bl->cola; }"
+                  "instruccion": "                while (_hp_bl) { if (_hp_bl->cabeza && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp_bl->cabeza; } _hp_bl = _hp_bl->cola; }"
                 }
               },
               {
@@ -68349,7 +70354,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if (_hp_p->cuerpo && _hp_top < 1024) { _hp_stack[_hp_top++] = _hp_p->cuerpo; }"
+                  "instruccion": "                if (_hp_p->cuerpo && _hp_tail < 4096) { _hp_stack[_hp_tail++] = _hp_p->cuerpo; }"
                 }
               },
               {

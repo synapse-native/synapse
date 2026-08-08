@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     Nodo, Identificador, LiteralNumero, LiteralDecimal, LiteralCadena,
     LiteralBooleano, LiteralNulo, OpBinaria, OpUnaria, LlamadaFuncion,
     ExprAccesoCampo, ExprTensor, ExprIndice, ArgumentoTransferido,
-    ExprObtenerDireccion, ExprDereferencia, ExprAsm,
+    ExprPropagar, ExprObtenerDireccion, ExprDereferencia, ExprAsm,
     ExprCrearCanal, ExprRecibirCanal,
     LogLlamada, DefinicionFuncion,
 )
@@ -108,6 +108,17 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if nombre in ctx._estructuras:
             return nombre
         return 'int'
+
+    if isinstance(nodo, ExprPropagar):
+        # D-6: `expr?` desempaqueta el campo del primer constructor (ok) del ADT
+        # (Manual 3 §7). Se devuelve el tipo SINAPSE (p.ej. 'entero'); el C se
+        # traduce al emitir la declaracion. Con el placeholder de D-2 (genéricos
+        # T/E) el campo es 'puntero'.
+        inner_tipo = tipo_de_expr(ctx, nodo.expresion)
+        info = ctx._estructuras.get(inner_tipo)
+        if info and info.get('es_adt') and len(info.get('campos', [])) > 1:
+            return info['campos'][1][1]
+        return 'puntero'
 
     if isinstance(nodo, ExprIndice):
         obj_tipo = tipo_de_expr(ctx, nodo.expr)
@@ -252,6 +263,15 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
         args_str = ", ".join(args)
 
+        # D-6: constructores ADT (ok/err/algun/ninguno) — compound literal del
+        # tagged-union (Manual 2 §2 L75; std/err.syn los documenta como
+        # 'implementados nativamente en el compilador').
+        if nombre in ctx._constructores_adt:
+            adt, tag, _tipo_syn = ctx._constructores_adt[nombre]
+            if not args:
+                return f"({adt}){{.tag={tag}}}"
+            return f"({adt}){{.tag={tag}, .dato.{nombre}={args[0]}}}"
+
         # Move semantics via transfer (->): si un argumento es ArgumentoTransferido,
         # la variable subyacente se considera consumida INCONDICIONALMENTE.
         # Esto maneja casos como liberar_nodo(->doc) donde la funcion NO es
@@ -356,6 +376,27 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             # String indexing returns single-char CadenaSegura (Manual 4 §4.5)
             return f"((CadenaSegura){{1, &({obj}.datos[{idx}])}})"
         return f"{obj}[{idx}]"
+
+    if isinstance(nodo, ExprPropagar):
+        # D-6: operador '?' postfijo (Manual 3 §7 L331-342). Statement-expression
+        # GNU: si el Resultado es err (tag 1) propaga el valor entero de la funcion
+        # actual; si es ok, evalua al campo del primer constructor (dato.ok).
+        inner = expr_a_c(ctx, nodo.expresion)
+        inner_tipo = tipo_de_expr(ctx, nodo.expresion)
+        tipo_c = ctx.traducir_tipo_c(inner_tipo)
+        if tipo_c in ('void*', 'puntero'):
+            tipo_c = 'Resultado'
+        campo = 'ok'
+        info = ctx._estructuras.get(inner_tipo)
+        if info and info.get('es_adt') and len(info.get('campos', [])) > 1:
+            campo = info['campos'][1][0]
+        return (
+            f"({{\n"
+            f"    {tipo_c} _prop = {inner};\n"
+            f"    if (_prop.tag == 1) return _prop;\n"
+            f"    _prop.dato.{campo};\n"
+            f"}})"
+        )
 
     if isinstance(nodo, ExprObtenerDireccion):
         inner = expr_a_c(ctx, nodo.expr)

@@ -172,6 +172,12 @@ estructura ExprIndice:
     expr: Nodo
     indice: Nodo
 
+// D-6: operador '?' postfijo — propaga el err de un Resultado y desempaqueta el
+// valor ok (Manual 3 §7 L331-342).
+estructura ExprPropagar:
+    tipo: texto
+    expresion: Nodo
+
 estructura ArgumentoTransferido:
     tipo: texto
     expr: Nodo

@@ -33,6 +33,51 @@ int _G_native_tipo_retorno(const char* fn, char* out) {
     return 0;
 }
 
+char _G_native_adt_ctrs[256][64];
+char _G_native_adt_ctrs_adt[256][64];
+int _G_native_adt_ctrs_tag[256];
+char _G_native_adt_ctrs_tipo[256][64];
+int _G_native_adt_ctrs_count;
+int _G_native_es_adt_ctr(const char* c) {
+    if (!c) return 0;
+    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {
+        if (strcmp(_G_native_adt_ctrs[_i], c) == 0) return 1;
+    }
+    return 0;
+}
+int _G_native_adt_ctr_info(const char* c, char* adt_out, int* tag_out, char* tipo_out) {
+    if (!c) return 0;
+    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {
+        if (strcmp(_G_native_adt_ctrs[_i], c) == 0) {
+            if (adt_out) strcpy(adt_out, _G_native_adt_ctrs_adt[_i]);
+            if (tag_out) *tag_out = _G_native_adt_ctrs_tag[_i];
+            if (tipo_out) strcpy(tipo_out, _G_native_adt_ctrs_tipo[_i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out) {
+    if (!adt || !tipo_out) return 0;
+    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {
+        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {
+            strcpy(tipo_out, _G_native_adt_ctrs_tipo[_i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+int _G_native_adt_unwrap_field(const char* adt, char* field_out) {
+    if (!adt || !field_out) return 0;
+    for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {
+        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {
+            strcpy(field_out, _G_native_adt_ctrs[_i]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 char _G_emit_func_names[2048][64];
 int _G_emit_func_count;
 char _G_fn_vars[2048][64];

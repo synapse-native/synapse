@@ -77,6 +77,8 @@ constante T_ARC = 71
 constante T_DEBIL = 72
 // AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
 constante T_PIPE = 73
+// AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) — propagacion de Resultado.
+constante T_INTERROGACION = 74
 
 // ---- AST node type constants ----
 constante NODO_PROGRAMA = 1
@@ -137,4 +139,7 @@ constante NODO_EXPORT = 50
 constante NODO_DECLARACION_TIPO = 51
 // AUDITORIA FASE A (A2.2): NODO_CONSTRUCTOR para constructores ADT (Manual 2 §2 L75)
 constante NODO_CONSTRUCTOR = 52
+// AUDITORIA FASE A (A5/D-6): NODO_PROPAGAR para el operador '?' postfijo
+// (Manual 3 §7 L331-342).
+constante NODO_PROPAGAR = 53
 

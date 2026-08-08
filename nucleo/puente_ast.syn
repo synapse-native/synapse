@@ -527,6 +527,13 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->filas = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->columnas = (struct Nodo*)puente_nodo(hd);")
             asm("  r = (void*)_p; }")
+    // AUDITORIA FASE A (A5/D-6): NODO_PROPAGAR -> ExprPropagar (Manual 3 §7)
+    si t == NODO_PROPAGAR:
+        inseguro:
+            asm("{ struct ExprPropagar* _p = (struct ExprPropagar*)calloc(1, sizeof(struct ExprPropagar));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ExprPropagar\");")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
     retornar r
 
 // Construye el struct Programa tipado completo desde el AST plano.

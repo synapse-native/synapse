@@ -338,6 +338,16 @@ funcion parsear_primario(est: ParserEst) -> entero:
         inseguro:
             asm("est->nodos[nodo].hijo_izq = filas")
             asm("est->nodos[nodo].hijo_der = columnas")
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
         retornar nodo
     // AUDITORIA F1 (D-F1): keywords contextuales como identificadores en expresiones
     // (tipo/tensor/nulo como variables; ok/err/algun/ninguno como constructores ADT).
@@ -400,6 +410,16 @@ funcion parsear_primario(est: ParserEst) -> entero:
                     inseguro:
                         asm("est->nodos[nodo2].hijo_izq = nodo")
                     nodo = nodo2
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
         retornar nodo
     si t == T_CANAL:
         linea = token_linea(est, est.posicion)
@@ -426,7 +446,18 @@ funcion parsear_primario(est: ParserEst) -> entero:
         token_avanzar(est)
         expr = parsear_expresion(est)
         token_esperar(est, T_PAREN_DER)
-        retornar expr
+        nodo = expr
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
+        retornar nodo
     parser_error(est, "Expresion inesperada", token_linea(est, est.posicion), token_columna(est, est.posicion))
     retornar 0
 

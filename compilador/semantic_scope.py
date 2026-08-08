@@ -81,6 +81,8 @@ class AnalizadorSemanticoScope:
         self._func_retorno: Optional[str] = None
         self._func_actual: Optional[str] = None
         self._estructuras: Dict[str, DefinicionEstructura] = {}
+        # D-6: constructores ADT (ok/err/algun/ninguno) -> nombre del ADT
+        self._constructores_adt: Dict[str, str] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False
         self._inicializar_estructuras_nativas()

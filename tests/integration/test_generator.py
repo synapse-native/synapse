@@ -25,7 +25,8 @@ class TestGeneradorCFunciones:
         generador = GeneradorC(prog)
         codigo = generador.generar()
         
-        assert "int f(void)" in codigo
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t f(void)" in codigo
         assert "return 42" in codigo
     
     def test_funcion_con_parametros(self):
@@ -43,7 +44,8 @@ class TestGeneradorCFunciones:
         generador = GeneradorC(prog)
         codigo = generador.generar()
         
-        assert "int sumar(int a, int b)" in codigo
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t sumar(int64_t a, int64_t b)" in codigo
     
     def test_funcion_con_principal(self):
         """Test generaci??n de funci??n principal"""
@@ -433,8 +435,9 @@ class TestGeneradorCEstructuras:
         codigo = generador.generar()
         
         assert "struct Punto" in codigo
-        assert "int a" in codigo
-        assert "int b" in codigo
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t a" in codigo
+        assert "int64_t b" in codigo
     
     def test_acceso_campo(self):
         """Test generaci??n de acceso a campo"""

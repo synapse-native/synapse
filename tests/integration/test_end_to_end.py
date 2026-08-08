@@ -53,7 +53,10 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int sumar(void)" in codigo_c or "int sumar(int" in codigo_c
+        # D-7 (A5, ABI Manual 2 §4.1 L267-268): entero/int -> int64_t (8 bytes).
+        # Excepcion regla 5 documentada en docs/reportes/FASE_A_A5_D6.md: el
+        # assert original (`int sumar(int`) quedo obsoleto tras el cierre de D-7.
+        assert "int64_t sumar(int64_t" in codigo_c or "int sumar(int" in codigo_c
         assert "a + b" in codigo_c
     
     def test_condicional_si(self):
@@ -227,8 +230,9 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int f1(void)" in codigo_c or "int f1(" in codigo_c
-        assert "int f2(void)" in codigo_c or "int f2(" in codigo_c
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t f1(void)" in codigo_c or "int64_t f1(" in codigo_c
+        assert "int64_t f2(void)" in codigo_c or "int64_t f2(" in codigo_c
     
     def test_parametros_funcion(self):
         """Test compilaci??n de funci??n con par??metros"""
@@ -238,7 +242,8 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int sumar(int a, int b, int c)" in codigo_c
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t sumar(int64_t a, int64_t b, int64_t c)" in codigo_c
     
     def test_anidamiento_bloques(self):
         """Test compilaci??n de bloques anidados"""

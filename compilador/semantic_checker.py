@@ -2,14 +2,14 @@ import re
 from typing import Dict
 
 from compilador.ast_nodes import (
-    Nodo, DefinicionFuncion, DefinicionEstructura,
+    Nodo, DefinicionFuncion, DefinicionEstructura, Parametro,
     AsignacionVariable, DeclaracionVariable, StmtConstante,
     AsignacionCampo, SentenciaSi, SentenciaMientras, SentenciaPara,
     SentenciaRetornar, SentenciaLanzar, SentenciaExpr,
     SentenciaEscuchar, SentenciaRecuperar, BloqueInseguro,
     SentenciaEnviarCanal, LogLlamada, NodoCoincidir, Identificador,
     LlamadaFuncion, DeclaracionExterna, ArgumentoTransferido,
-    DeclaracionExport,
+    DeclaracionExport, DeclaracionTipo,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
@@ -238,6 +238,21 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     )
                 else:
                     self._estructuras[s.nombre] = s
+        # D-6/F1.2: registrar ADTs (`tipo X = ok(...) | err(...)`) como
+        # pseudo-estructuras (campos: tag + campos de constructores) para que el
+        # acceso a campos (.tag) y la inferencia de `expr?` funcionen (Manual 2
+        # §2 L75, Manual 3 §7).
+        for s in self.programa.sentencias:
+            if isinstance(s, DeclaracionTipo) and s.constructores:
+                campos = [Parametro(nombre='tag', tipo='entero')]
+                for c in s.constructores:
+                    t_campo = c.tipos[0] if c.tipos else 'entero'
+                    campos.append(Parametro(nombre=c.nombre, tipo=t_campo))
+                    self._constructores_adt[c.nombre] = s.nombre
+                if s.nombre not in self._estructuras:
+                    self._estructuras[s.nombre] = DefinicionEstructura(
+                        nombre=s.nombre, campos=campos,
+                        linea=s.linea, columna=s.columna)
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
                 if not self.tabla.declarar(s.nombre, s.tipo_retorno, s):

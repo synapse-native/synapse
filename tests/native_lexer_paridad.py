@@ -68,6 +68,7 @@ T_PUNTOCOMA, T_PARA, T_FIN = 55, 56, 57
 T_LET, T_TIPO, T_TENSOR, T_NULO, T_OK = 59, 60, 61, 62, 63
 T_ERR, T_ALGUN, T_NINGUNO, T_MODULO = 64, 65, 66, 67
 T_DELEGAR, T_EXPORT, T_RC, T_ARC, T_DEBIL, T_PIPE = 68, 69, 70, 71, 72, 73
+T_INTERROGACION = 74  # D-6 (A5): operador '?' postfijo (Manual 3 §7 L331-342)
 
 # --- Mapeo de TokenID del embebido _P_* -> canonico (FASE_A_A1.md, P1 #5) ---
 # NOTA: el embebido REUTILIZA valores (T_STR=15=T_OR, T_GT=16=T_NOT,
@@ -405,13 +406,19 @@ def test_cadena_escapes_nativo(binarios):
     assert cad[0][3] == "a\x0Ab\x09c", f"decodificacion inesperada: {cad[0]}"
 
 
-def test_error_caracter_nativo(binarios):
-    """A2.1: caracter inesperado -> tokenizar devuelve -1 (ERROR)."""
+def test_interrogacion_token_nativo(binarios):
+    """D-6 (A5): '?' -> T_INTERROGACION (74) — operador postfijo de propagacion
+    de Resultado (Manual 3 §7 L331-342). Sustituye a test_error_caracter_nativo
+    (excepcion regla 5 documentada en docs/reportes/FASE_A_A5_D6.md: la deuda
+    D-6 se resolvio en esta etapa y el caracter dejó de ser un error)."""
     exe_nat, _, tmp = binarios
-    path = os.path.join(tmp, "err.syn")
+    path = os.path.join(tmp, "int.syn")
     with open(path, "w", encoding="utf-8") as f:
         f.write("#lang: es\n\nfuncion f() -> nulo:\n    let a = 1 ? 2\n    retornar\n")
-    assert _ejecutar(exe_nat, path) is None, "se esperaba ERROR por caracter '?' (deuda D-6)"
+    toks = _ejecutar(exe_nat, path)
+    assert toks is not None, "se esperaba tokenizacion OK con '?' (D-6)"
+    interr = [t for t in toks if t[0] == T_INTERROGACION]
+    assert len(interr) == 1, f"esperaba 1 T_INTERROGACION: {toks}"
 
 
 def test_export_token_nativo(binarios):

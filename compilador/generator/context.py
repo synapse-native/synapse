@@ -211,6 +211,8 @@ class GeneratorContext:
         # F1.2: alias de tipos declarados con `tipo X = <tipo>` (Manual 2 §2
         # declaracion_tipo). traducir_tipo_c resuelve el alias antes del fallback.
         self._tipo_aliases: Dict[str, str] = {}
+        # D-6: constructores ADT (ok/err/algun/ninguno) -> (ADT, tag, tipo_campo)
+        self._constructores_adt: Dict[str, tuple] = {}
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()

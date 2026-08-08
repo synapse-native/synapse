@@ -14,7 +14,7 @@ from compilador.ast_nodes import (
     DeclaracionVariable, SentenciaDelegar, DeclaracionExport,
     OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, ExprTensor, ArgumentoTransferido,
-    DeclaracionExterna, StmtConstante,
+    ExprPropagar, DeclaracionExterna, StmtConstante,
 )
 from compilador.lexer import DICCIONARIOS, DICCIONARIOS_INVERSO
 
@@ -121,6 +121,10 @@ def imprimir_ast(nodo: Nodo, nivel: int = 0):
         print(f"{prefijo}  columnas:")
         imprimir_ast(nodo.columnas, nivel + 1)
 
+    elif isinstance(nodo, ExprPropagar):
+        print(f"{prefijo}Propagar (?):")
+        imprimir_ast(nodo.expresion, nivel + 1)
+
     elif isinstance(nodo, ArgumentoTransferido):
         print(f"{prefijo}Transferido:")
         imprimir_ast(nodo.expr, nivel + 1)
@@ -150,6 +154,8 @@ def _repr_nodo(n: Nodo) -> str:
         return f"({n.operador}{_repr_nodo(n.expr)})"
     if isinstance(n, ExprTensor):
         return f"tensor({_repr_nodo(n.filas)}, {_repr_nodo(n.columnas)})"
+    if isinstance(n, ExprPropagar):
+        return f"{_repr_nodo(n.expresion)}?"
     if isinstance(n, ArgumentoTransferido):
         return f"->{_repr_nodo(n.expr)}"
     return "?"
@@ -266,6 +272,8 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
             return f"->{_render_expr(nodo.expr, dicc_inv)}"
         if isinstance(nodo, ExprAccesoCampo):
             return f"{_render_expr(nodo.objeto, dicc_inv)}.{nodo.nombre_campo}"
+        if isinstance(nodo, ExprPropagar):
+            return f"{_render_expr(nodo.expresion, dicc_inv)}?"
         return "?"
 
     def _render_nodo(nodo: Nodo, indent: int = 0) -> List[str]:

@@ -76,5 +76,8 @@ constante T_ARC = 71
 constante T_DEBIL = 72
 // AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
 constante T_PIPE = 73
+// AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) operador postfijo de
+// propagacion de Resultado (Manual 3 §7 L331-342).
+constante T_INTERROGACION = 74
 // EOF removido (F15): colisiona con #define EOF (-1) de <stdio.h>
 // Usar T_FIN (57) definido en lexer.syn/parser.syn
