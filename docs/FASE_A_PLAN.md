@@ -151,7 +151,7 @@ y tokenización UTF-8 (H26).
   e2e rango 64 bits y precisión doble correctos, suite pytest 240 passed / 1 skip / 0
   fallos. Reporte: `docs/reportes/FASE_A_A5.md`. Pendientes de A5: D-6, D-2, D-3, D-5.
 - **D-2** (instanciación de ADT genéricos `T/E`): generador de campos tipados.
-- **D-3** (divergencia cosmética `Tensor t;` vs `Tensor t = {0};`): unificar emisión.
+- **D-3 ✅ CERRADA (2026-08-07)**: divergencia `Tensor t;` vs `Tensor t = {0};` — fix pre-pass FIFO + `= {0};` en `gen_visitar_declaracion`; reporte `docs/reportes/FASE_A_A5_D3.md`.
 - **D-5** (cobertura del generador ≥70%): harness reorientado al frontend único.
 - **Criterio**: suite completa verde + deuda D-6/D-7/D-2/D-3/D-5 con cierre verificado.
 

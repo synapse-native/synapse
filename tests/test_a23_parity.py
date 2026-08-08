@@ -196,3 +196,50 @@ def test_e2e_s1_runtime():
         run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
         assert run.returncode == 0
         assert run.stdout.splitlines() == SALIDA_ESPERADA
+
+
+# ================================================================
+# D-3 (FASE A): declaracion con tipo anotado SIN inicializador
+# ================================================================
+FIXTURE_D3 = os.path.join(RAIZ, "tests", "fixtures", "test_d3_declaracion.syn")
+
+
+def _compilar_s1_fuente(src: str) -> str:
+    ast, diag = compilar_desde_texto(src, set())
+    assert not diag.hay_errores(), f"S1 no pudo parsear fixture D-3: {diag.errores}"
+    return GeneradorC(ast).generar()
+
+
+def _compilar_s2_fuente(stage: str, src: str) -> str:
+    with tempfile.TemporaryDirectory(prefix="d3_") as tmp:
+        exe = os.path.join(tmp, "program.exe")
+        proc, c = _run_stage(stage, src, exe, tmp)
+        if c is None:
+            pytest.fail(f"{stage} no genero synapse_unity.c para D-3\nstderr: {proc.stderr[-1500:]}")
+        return c
+
+
+def test_d3_s1_declaracion_sin_inicializador():
+    """D-3: S1 emite `Tensor t = {0};` para `let t: Tensor` (sin expr)."""
+    c = _compilar_s1_fuente(FIXTURE_D3)
+    assert "Tensor t = {0};" in c, "S1 debe emitir `Tensor t = {0};`"
+    assert "Tensor t = ;" not in c, "S1 no debe emitir `Tensor t = ;`"
+    assert "int64_t t = {0};" not in c
+
+
+def test_d3_s2_declaracion_sin_inicializador():
+    """D-3: S2 emite `Tensor t = {0};` y NO el hoisting erroneo `int64_t t = {0};`.
+    Antes del fix: `int64_t t = {0};` (LIFO) + `Tensor t = ;` (sin {0}) -> C invalido."""
+    c = _compilar_s2_fuente("stage2", FIXTURE_D3)
+    assert "Tensor t = {0};" in c, "S2 debe emitir `Tensor t = {0};`"
+    assert "Tensor t = ;" not in c, "S2 no debe emitir `Tensor t = ;`"
+    assert "int64_t t = {0};" not in c, "S2 no debe hoistear `int64_t t` (primera declaracion gana)"
+
+
+def test_d3_paridad_s1_s2():
+    """D-3: S1 y S2 emiten la misma secuencia para la declaracion sin inicializador."""
+    s1 = _compilar_s1_fuente(FIXTURE_D3)
+    s2 = _compilar_s2_fuente("stage2", FIXTURE_D3)
+    for linea in ["Tensor t = {0};", "t = crear_tensor(2LL, 3LL);"]:
+        assert linea in s1, f"S1 carece de: {linea}"
+        assert linea in s2, f"S2 carece de: {linea}"
