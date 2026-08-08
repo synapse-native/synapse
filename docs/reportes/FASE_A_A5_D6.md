@@ -22,7 +22,7 @@ TAREA: FASE A - Etapa A5 - Cierre de la deuda D-6: operador '?' postfijo en expr
 FASE: FASE A (Etapa A5 - cierre de deudas D-6/D-7/D-2/D-3/D-5). Este reporte cierra D-6.
 MANUAL REFERENCIADO: Manual 3 §7 L331-342 (operador '?' postfijo); Manual 2 §2 L75 (ADT
      con constructores); Manual 9 §9.1/§9.7 (bootstrap y determinismo).
-HASH COMMIT: <COMMIT> (ver seccion 8). HEAD base 2b90be6 (D-7).
+HASH COMMIT: 3ef4deb (33 archivos, +3856/-489). HEAD base 2b90be6 (D-7).
 COMPILACION: bootstrap S1 (python main.py) rc 0; unity S1->S2->S3 rc 0 en las 3 etapas
      con C identico S2==S3 (SHA256 5caeadaa...).
 TESTS: tests/test_codegen_d6_propagar.py 4/4 PASS (canonico serializable con ExprPropagar,
@@ -304,8 +304,7 @@ Sin deuda nueva. D-6 queda **CERRADA**. Quedan pendientes de la Etapa A5: **D-2*
 
 ## 8. Commits
 
-- **<COMMIT>** — `auditoria(FASE_A-A5): cierre de la deuda D-6 (operador '?' postfijo, Manual 3 §7 L331-342) …`
-  HEAD base `2b90be6` (D-7).
+- **3ef4deb** — `auditoria(FASE_A-A5): cierre de la deuda D-6 - operador '?' postfijo (Manual 3 S7 L331-342) en S1/S2/S3` (33 archivos, +3856/−489). HEAD base `2b90be6` (D-7).
 
 ---
 
