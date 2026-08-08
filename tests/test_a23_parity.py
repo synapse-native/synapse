@@ -113,14 +113,14 @@ def _principal(c_code: str):
 def test_s1_codegen_tipo_inferencia_tensor():
     """A2.3: S1 GeneradorC infiere `Tensor` para `tensor(2,3)` (ExprTensor)."""
     c = _compilar_s1()
-    assert "Tensor t = crear_tensor(2, 3);" in c
+    assert "Tensor t = crear_tensor(2LL, 3LL);" in c
     assert "int t = crear_tensor" not in c
 
 
 def test_s2_codegen_tipo_inferencia_tensor():
     """A2.3: S2 (orquestador) corrige `int t` -> `Tensor t` (paridad S1)."""
     c = _compilar_s2("stage2")
-    assert "Tensor t = crear_tensor(2, 3);" in c
+    assert "Tensor t = crear_tensor(2LL, 3LL);" in c
     assert "int t = crear_tensor" not in c
 
 
@@ -128,11 +128,11 @@ def test_paridad_tipo_s1_s2():
     """A2.3: S1 y S2 emiten la misma linea de inferencia para el tensor."""
     s1 = _compilar_s1()
     s2 = _compilar_s2("stage2")
-    linea = "    Tensor t = crear_tensor(2, 3);"
+    linea = "    Tensor t = crear_tensor(2LL, 3LL);"
     assert linea in s1, "S1 carece de la linea de inferencia Tensor"
     assert linea in s2, "S2 carece de la linea de inferencia Tensor"
     assert "void* ref = nulo;" in s1 and "void* ref = nulo;" in s2
-    assert "int x = 5;" in s1 and "int x = 5;" in s2
+    assert "int64_t x = 5LL;" in s1 and "int64_t x = 5LL;" in s2
 
 
 def test_s2_inyecta_simd_detectar():

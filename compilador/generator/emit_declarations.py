@@ -203,7 +203,7 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
     """F1.2: emite el typedef de una declaración de tipo.
     - Alias simple (`tipo X = entero`): `typedef <c> X;`
     - Tipo algebraico (`tipo X = ok(entero) | err(texto)`): tagged union
-      `typedef struct X { int tag; union {...} dato; } X;` compatible con
+      `typedef struct X { int64_t tag; union {...} dato; } X;` compatible con
       visitar_coincidir (switch sobre .tag + TAG_*) y ExprAccesoCampo (.dato.).
     El registro de ctx._tipo_aliases / ctx._estructuras lo hace el pre-pass
     de GeneradorC.generar() (antes de prototipos/uso).
@@ -223,7 +223,7 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             partes.append(f"{tipo_c} {c.nombre};")
         if not partes:
             partes.append("int _unidad;")
-        td = (f"typedef struct {nodo.nombre} {{ int tag; "
+        td = (f"typedef struct {nodo.nombre} {{ int64_t tag; "
               f"union {{ {' '.join(partes)} }} dato; }} {nodo.nombre};")
         if td not in ctx._emitted_typedefs:
             ctx._emitted_typedefs.add(td)

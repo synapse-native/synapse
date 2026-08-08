@@ -94,13 +94,13 @@ def test_codegen_s1_declaracion_tipo():
     ast = _compilar_ast()
     codigo = GeneradorC(ast).generar()
     # Manual 2 L74/L279-280: alias (`tipo Edad = entero`) y ADT con genericos.
-    assert "typedef int Edad;" in codigo, "alias -> typedef int Edad;"
-    assert "typedef struct Resultado { int tag; union {" in codigo, "ADT -> tagged union"
+    assert "typedef int64_t Edad;" in codigo, "alias -> typedef int64_t Edad;"
+    assert "typedef struct Resultado { int64_t tag; union {" in codigo, "ADT -> tagged union"
     assert "void* ok;" in codigo and "void* err;" in codigo, (
         "genericos T/E -> placeholder puntero (void*)")
     assert "} Resultado;" in codigo, "cierre del typedef ADT"
     # Manual 2 L194-195: tensor(filas, columnas) crea un tensor [filas, columnas].
-    assert "crear_tensor(2, 3)" in codigo, "ExprTensor -> crear_tensor(2, 3)"
+    assert "crear_tensor(2LL, 3LL)" in codigo, "ExprTensor -> crear_tensor(2LL, 3LL)"
     # Manual 2 L272: nulo = ausencia de valor -> macro nulo.
     assert "p = nulo;" in codigo, "LiteralNulo -> macro nulo"
     # Hoisting: LiteralNulo -> void*, ExprTensor -> Tensor (paridad tipo_de_expr).

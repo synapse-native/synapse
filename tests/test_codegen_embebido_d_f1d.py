@@ -146,8 +146,8 @@ def test_codegen_s1_export_arc_debil():
     assert "void* ref = nulo;" in codigo, (
         "let ref: debil<NodoLista> = nulo -> void* ref = nulo;")
     # Manual 2 S2 L81 + Manual 6 S4: la funcion de @export se emite con cuerpo
-    assert "int sumar(int a, int b) {" in codigo, (
-        "@export ( python ) funcion sumar -> int sumar(int a, int b) {")
+    assert "int64_t sumar(int64_t a, int64_t b) {" in codigo, (
+        "@export ( python ) funcion sumar -> int64_t sumar(int64_t a, int64_t b) {")
     assert "return a + b;" in codigo or "return r;" in codigo, (
         "cuerpo de la funcion exportada presente en el C de salida")
 
@@ -176,9 +176,9 @@ funcion principal() -> nulo:
         ast, diag = compilar_desde_texto(path, set())
         assert not diag.hay_errores(), "Error compilando programa arc/debil S1"
         codigo = GeneradorC(ast).generar()
-        assert "void* crear_nodo(int v) {" in codigo, (
-            "retorno arc<NodoLista> -> void* crear_nodo(int v) {")
-        assert "void* nodo = crear_nodo(1);" in codigo, (
+        assert "void* crear_nodo(int64_t v) {" in codigo, (
+            "retorno arc<NodoLista> -> void* crear_nodo(int64_t v) {")
+        assert "void* nodo = crear_nodo(1LL);" in codigo, (
             "let nodo: arc<NodoLista> -> void* nodo = ...;")
         assert "void* debil_ref = nulo;" in codigo, (
             "let debil_ref: debil<NodoLista> -> void* debil_ref = nulo;")
@@ -217,7 +217,7 @@ def test_codegen_s1_export_llamadas_cruzadas():
         ast, diag = compilar_desde_texto(path, set())
         assert not diag.hay_errores(), "Error compilando programa cruzado F1.2d"
         codigo = GeneradorC(ast).generar()
-        assert "int sumar(int a, int b);" in codigo, (
+        assert "int64_t sumar(int64_t a, int64_t b);" in codigo, (
             "prototipo de la funcion exportada llamada antes de su definicion")
 
 

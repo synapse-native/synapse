@@ -60,7 +60,17 @@ def _tipo_normalizado(tipo: str) -> str:
         return _tipo_normalizado(tipo[5:]) + '*'
     if tipo.startswith('&'):
         return _tipo_normalizado(tipo[1:]) + '*'
-    return MAPA_TIPOS_C.get(tipo, tipo)
+    t = MAPA_TIPOS_C.get(tipo, tipo)
+    # A5.2 (D-7): el ABI fisico (entero->int64_t, decimal->double, Manual 2
+    # §4.1 L267-268) es SOLO de emision; el checker semantico compara en tipos
+    # LOGICOS ('int'/'float'/'booleano'), igual que antes del cambio de ABI.
+    # Sin este mapeo inverso, toda condicion/aritmetica de enteros fallaria
+    # (MAPA_TIPOS_C ahora devuelve int64_t/double).
+    if t == 'int64_t':
+        return 'int'
+    if t == 'double':
+        return 'float'
+    return t
 
 
 class AnalizadorSemanticoScope:

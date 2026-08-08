@@ -117,11 +117,11 @@ def test_codegen_s1_let_delegar():
     ast = _compilar_ast()
     codigo = GeneradorC(ast).generar()
     # Manual 2 L134: let IDENT [":" tipo] ["=" expresion]
-    assert "int x = 5;" in codigo, "let x = 5 -> int x = 5;"
-    assert "int edad = 10;" in codigo, "let edad: entero = 10 -> int edad = 10;"
+    assert "int64_t x = 5LL;" in codigo, "let x = 5 -> int64_t x = 5LL;"
+    assert "int64_t edad = 10LL;" in codigo, "let edad: entero = 10 -> int64_t edad = 10LL;"
     assert "CadenaSegura s =" in codigo, "let s = \"hola\" -> CadenaSegura s = ..."
     # Manual 3 §7.2: `let suma = 0.0` infiere decimal/float
-    assert "float suma = 2.5f;" in codigo, "let suma = 2.5 -> float suma = 2.5f;"
+    assert "double suma = 2.5;" in codigo, "let suma = 2.5 -> double suma = 2.5;"
 
 
 def test_codegen_s1_delegar_patron():

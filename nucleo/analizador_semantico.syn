@@ -495,7 +495,7 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
     // NODO_PUNTERO (36): &x / &mut x
     si tipo == NODO_PUNTERO:
         es_mut = nodo_valor_int(est, idx)
-        hijo = nodo_expr(est, idx)
+        hijo = nodo_hijo_izq(est, idx)
         si hijo > 0:
             h_tipo = nodo_tipo(est, hijo)
             si h_tipo == NODO_IDENTIFICADOR:

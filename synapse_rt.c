@@ -703,14 +703,14 @@ void libera(Tensor bloque) {
 }
 
 // --- std.conv ---
-int texto_a_entero(CadenaSegura str) {
+int64_t texto_a_entero(CadenaSegura str) {
     if (str.datos == NULL || str.longitud == 0) return 0;
-    return (int)strtol(str.datos, NULL, 10);
+    return (int64_t)strtoll(str.datos, NULL, 10);
 }
 
-float texto_a_decimal(CadenaSegura str) {
-    if (str.datos == NULL || str.longitud == 0) return 0.0f;
-    return (float)strtod(str.datos, NULL);
+double texto_a_decimal(CadenaSegura str) {
+    if (str.datos == NULL || str.longitud == 0) return 0.0;
+    return strtod(str.datos, NULL);
 }
 
 CadenaSegura decimal_a_texto(double n) {

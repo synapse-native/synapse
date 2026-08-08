@@ -21,8 +21,8 @@ Tensor producto(Tensor a, Tensor b);
 Tensor reserva(int tamano);
 void libera(Tensor bloque);
 
-int texto_a_entero(CadenaSegura str);
-float texto_a_decimal(CadenaSegura str);
+int64_t texto_a_entero(CadenaSegura str);
+double texto_a_decimal(CadenaSegura str);
 CadenaSegura decimal_a_texto(double n);
 CadenaSegura entero_a_texto(int64_t n);
 

@@ -17,10 +17,12 @@ from compilador.ast_nodes import (
 # ================================================================
 
 MAPA_TIPOS_C: Dict[str, str] = {
-    'entero': 'int', 'int': 'int', 'Entero': 'int',
+    # A5.2 (D-7): ABI Manual 2 §4.1 L267-268 — entero/int → int64_t (8 bytes)
+    'entero': 'int64_t', 'int': 'int64_t', 'Entero': 'int64_t',
     'vacio': 'void', 'nulo': 'void', 'Nulo': 'void',
-    'decimal': 'float', 'real': 'float', 'flotante': 'float', 'Flotante': 'float', 'Decimal': 'float',
-    'float': 'float',
+    # A5.2 (D-7): decimal/real/flotante/float → double (8 bytes)
+    'decimal': 'double', 'real': 'double', 'flotante': 'double', 'Flotante': 'double', 'Decimal': 'double',
+    'float': 'double',
     'Tensor': 'Tensor', 'tensor': 'Tensor',
     'Canal': 'Canal', 'canal': 'Canal',
     'texto': 'CadenaSegura', 'cadena': 'CadenaSegura', 'Texto': 'CadenaSegura',

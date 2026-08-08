@@ -530,18 +530,18 @@ def _emitir_encabezado(ctx: GeneratorContext):
 
     if not ctx.is_no_std():
         ctx.write_line("// --- Helpers de serializaci\u00f3n primitiva ---")
-        ctx.write_line("static inline void* _synapse_box_int(int v) "
+        ctx.write_line("static inline void* _synapse_box_int(int64_t v) "
             "{ return (void*)(intptr_t)v; }"
         )
         ctx.write_line(
-            "static inline int _synapse_unbox_int(void* p) "
-            "{ return (int)(intptr_t)p; }"
+            "static inline int64_t _synapse_unbox_int(void* p) "
+            "{ return (int64_t)(intptr_t)p; }"
         )
         ctx.write_line(
-            "static inline void* _synapse_box_float(float v) {"
+            "static inline void* _synapse_box_float(double v) {"
         )
         ctx.inc_indent()
-        ctx.write_line("float* _p = (float*)malloc(sizeof(float));")
+        ctx.write_line("double* _p = (double*)malloc(sizeof(double));")
         ctx.write_line(
             'if (!_p) { fprintf(stderr, '
             '"ESCAPA_DEL_ALCANCE: malloc fallo\\\\n"); exit(1); }'
@@ -551,10 +551,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.dec_indent()
         ctx.write_line("}")
         ctx.write_line(
-            "static inline float _synapse_unbox_float(void* p) {"
+            "static inline double _synapse_unbox_float(void* p) {"
         )
         ctx.inc_indent()
-        ctx.write_line("float _v = *(float*)p;")
+        ctx.write_line("double _v = *(double*)p;")
         ctx.write_line("free(p);")
         ctx.write_line("return _v;")
         ctx.dec_indent()
@@ -586,8 +586,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "void libera(Tensor bloque)",
             "Tensor suma(Tensor a, Tensor b)",
             "Tensor producto(Tensor a, Tensor b)",
-            "int texto_a_entero(CadenaSegura str)",
-            "float texto_a_decimal(CadenaSegura str)",
+            "int64_t texto_a_entero(CadenaSegura str)",
+            "double texto_a_decimal(CadenaSegura str)",
             "CadenaSegura decimal_a_texto(double n)",
             "CadenaSegura entero_a_texto(int64_t n)",
             "int str_eq(CadenaSegura a, CadenaSegura b)",
@@ -737,10 +737,13 @@ class GeneradorC:
     def _emit_prototipos_funciones(self, ctx):
         """Helper: forward-declares de funciones (prototipos) en orden alfabético (Manual 8 §8.2)."""
         _SPECIAL_SIGS = {
-            'tokenizar': 'int tokenizar(CadenaSegura fuente)',
+            # A5.2 (D-7): tokenizar/generar retornan `entero` (Manual 2 §4.1
+            # L267-268) → int64_t en C; 'int' entraba en conflicto con la
+            # definicion (conflicting types) tras migrar el mapeo.
+            'tokenizar': 'int64_t tokenizar(CadenaSegura fuente)',
             'parsear': 'struct Programa parsear(CadenaSegura fuente)',
             'volcar_ast': 'void volcar_ast(struct Nodo* nodo, int nivel)',
-            'generar': 'int generar(struct Programa programa, CadenaSegura ruta)',
+            'generar': 'int64_t generar(struct Programa programa, CadenaSegura ruta)',
         }
         # Manual 8 §8.2: orden alfabético estricto por nombre
         # F1.2d: incluir funciones envueltas en @export (sus llamadas necesitan

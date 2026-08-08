@@ -225,13 +225,13 @@ def test_codegen_s1_rc_modulo():
         assert not diag.hay_errores(), "Error compilando programa F1.4 S1"
         codigo = GeneradorC(ast).generar()
         # Parametros llamados rc/modulo preservan su nombre (colision resuelta)
-        assert "int sumar_rc(int rc, int modulo) {" in codigo, (
+        assert "int64_t sumar_rc(int64_t rc, int64_t modulo) {" in codigo, (
             "parametros rc/modulo preservados en la firma C")
         # Tipo rc<Entero> -> void* (Manual 2 §4.3)
         assert "void* ref = nulo;" in codigo, (
             "let ref: rc<Entero> = nulo -> void* ref = nulo;")
         # Variables rc/modulo declaradas implicitamente
-        assert "int rc = 0;" in codigo or "rc = 0;" in codigo, (
+        assert "int64_t rc = 0LL;" in codigo or "rc = 0LL;" in codigo, (
             "asignacion a variable rc presente")
 
 

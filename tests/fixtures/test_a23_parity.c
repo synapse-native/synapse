@@ -623,16 +623,16 @@ void _G_vest(struct DefinicionEstructura* n);
 #define TAG_NINGUNO 1
 
 // --- Helpers de serialización primitiva ---
-static inline void* _synapse_box_int(int v) { return (void*)(intptr_t)v; }
-static inline int _synapse_unbox_int(void* p) { return (int)(intptr_t)p; }
-static inline void* _synapse_box_float(float v) {
-    float* _p = (float*)malloc(sizeof(float));
+static inline void* _synapse_box_int(int64_t v) { return (void*)(intptr_t)v; }
+static inline int64_t _synapse_unbox_int(void* p) { return (int64_t)(intptr_t)p; }
+static inline void* _synapse_box_float(double v) {
+    double* _p = (double*)malloc(sizeof(double));
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo\\n"); exit(1); }
     *_p = v;
     return (void*)_p;
 }
-static inline float _synapse_unbox_float(void* p) {
-    float _v = *(float*)p;
+static inline double _synapse_unbox_float(void* p) {
+    double _v = *(double*)p;
     free(p);
     return _v;
 }
@@ -655,8 +655,8 @@ extern Tensor reserva(int tamano);
 extern void libera(Tensor bloque);
 extern Tensor suma(Tensor a, Tensor b);
 extern Tensor producto(Tensor a, Tensor b);
-extern int texto_a_entero(CadenaSegura str);
-extern float texto_a_decimal(CadenaSegura str);
+extern int64_t texto_a_entero(CadenaSegura str);
+extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
@@ -757,21 +757,21 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
 struct NodoLista;
 
 typedef struct NodoLista {
-    int valor;
+    int64_t valor;
     void* siguiente;
 } NodoLista;
 
-typedef int Edad;
+typedef int64_t Edad;
 
 void principal(void);
 
 void principal(void) {
     _simd_detectar();
-    int x = 5;
-    int edad = 10;
+    int64_t x = 5LL;
+    int64_t edad = 10LL;
     CadenaSegura s = (CadenaSegura){ .longitud = (int)strlen("hola"), .datos = "hola" };
     void* ref = nulo;
-    Tensor t = crear_tensor(2, 3);
+    Tensor t = crear_tensor(2LL, 3LL);
     escribir_linea(entero_a_texto((x + edad)));
     escribir_linea(s);
     escribir_linea(entero_a_texto(t.filas));

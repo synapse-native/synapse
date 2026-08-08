@@ -202,13 +202,13 @@ funcion puente_nodo(idx: entero) -> puntero:
         inseguro:
             asm("{ struct LiteralNumero* _p = (struct LiteralNumero*)calloc(1, sizeof(struct LiteralNumero));")
             asm("  _p->tipo = puente_cs_str((void*)\"LiteralNumero\");")
-            asm("  _p->valor = atoi((const char*)puente_str(idx));")
+            asm("  _p->valor = atoll((const char*)puente_str(idx));")
             asm("  r = (void*)_p; }")
     si t == NODO_DECIMAL:
         inseguro:
             asm("{ struct LiteralDecimal* _p = (struct LiteralDecimal*)calloc(1, sizeof(struct LiteralDecimal));")
             asm("  _p->tipo = puente_cs_str((void*)\"LiteralDecimal\");")
-            asm("  _p->valor = (float)atof((const char*)puente_str(idx));")
+            asm("  _p->valor = atof((const char*)puente_str(idx));")
             asm("  r = (void*)_p; }")
     si t == NODO_CADENA_LIT:
         inseguro:

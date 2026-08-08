@@ -146,10 +146,18 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return ""
 
     if isinstance(nodo, LiteralNumero):
-        return str(nodo.valor)
+        # A5.3 D-7: sufijo LL para aritmetica int64 en C; INT64_MIN via
+        # unario menos emite la magnitud como (-9223372036854775807LL - 1)
+        if nodo.valor == 9223372036854775808:
+            return '(-9223372036854775807LL - 1)'
+        return f'{nodo.valor}LL'
 
     if isinstance(nodo, LiteralDecimal):
-        return f"{nodo.valor}f"
+        # A5.3: decimal -> double (sin sufijo f); agregar .0 si falta
+        v = str(nodo.valor)
+        if "." not in v and "e" not in v and "E" not in v:
+            v += ".0"
+        return v
 
     if isinstance(nodo, LiteralBooleano):
         return "1" if nodo.valor else "0"
