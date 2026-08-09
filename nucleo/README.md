@@ -37,11 +37,32 @@ implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
    (`parsear_tipo_retorno` fallaba y el INDENTAR quedaba sin consumir → giro en
    `T_INDENTAR`). **RESUELTO (R2, 2026-08-09):** error limpio en `parsear_funcion`
    + fallback anti-cuelgue `sino: token_avanzar(est)` en los 7 bucles de cuerpo
-   del parser. Ambos frontends rechazan; ninguno cuelga. No usar instanciaciones
-   anidadas (soportadas solo a 1 nivel de anidamiento).
+   del parser. **R5 (2026-08-09):** ahora aborta con `rc=8` y mensaje
+   `[Synapse] Error de sintaxis (linea L, columna C): ...` (paridad S1). No usar
+   instanciaciones anidadas (soportadas solo a 1 nivel de anidamiento).
 3. **Errores semánticos clásicos** (p. ej. variable no declarada en pasada 3): el
    nativo sigue lenient por diseño (los falsos positivos pre-existentes romperían
    el bootstrap); solo la validación 2.4 aborta (`hay_error_2_4`).
+
+## ✅ Errores de parseo nativos (R5) — RESUELTO
+
+**Estado (2026-08-09):** el pipeline nativo **aborta limpiamente en errores de
+sintaxis** con `rc=8` y mensaje + línea/columna, con paridad S1:
+
+- El wrapper `parsear()` (`frontend_nativo.syn`, empaquetado en `generator.syn`)
+  y su espejo S1 (`emit_declarations.py`) imprimen
+  `[Synapse] Error de sintaxis (linea L, columna C): mensaje` y marcan el global
+  `_G_parse_error = 1` (early return; no construye AST sobre stream roto).
+- Los 3 call-sites del pipeline (`principal.syn`) abortan con `{1,8}`.
+- Definición única de `_G_parse_error` en: cabecera S1 (`generator.py`, común +
+  branch módulo) y encabezado del codegen nativo (`orquestador.syn` →
+  `generator.syn`).
+- **IMPORTANTE para el mantenimiento:** `nucleo/generator.syn` es el unity
+  REGENERADO por `nucleo/_rebuild_generator.py` desde `nucleo/generador/*.syn`.
+  Editar `orquestador.syn`/`frontend_nativo.syn` sin regenerar → bootstrap roto.
+  El fprintf del wrapper se emite como array C: requiere `\\\\n` (4 BS en el
+  .syn) para que el C emitido tenga `\n` válido (2 BS → newline real → literal
+  roto; hallazgo del cierre R5).
 
 **Tests de paridad:** `tests/test_fase2_nativa_hm.py` (**7 tests**) — válido compila;
 aridad/base fallan con `rc=7`; tipo simple lenient; regresión anti-cuelgue de

@@ -43,10 +43,11 @@ paridad de comportamiento con el S1 y sin romper el bootstrap (S2==S3).
 
 | Criterio | Resultado |
 |---|---|
-| Bootstrap S1→S2→S3 | ✅ S2==S3 **byte-idénticos** (1061150 → 1061662 bytes con anti-cuelgue) |
+| Bootstrap S1→S2→S3 | ✅ S2==S3 **byte-idénticos** (1061150 → 1061662 → **1065100** bytes con R5) |
 | Tests de paridad (`tests/test_fase2_nativa_hm.py`) | ✅ **7/7 PASS** (6 + regresión anti-cuelgue R2) |
 | Comportamiento | ✅ válido compila (rc=0); aridad/base fallan con rc=7 y mensaje claro |
-| Anti-cuelgue R2 (tipos anidados `A<B<C>,D>`) | ✅ antes: colgado (rc=124 timeout); ahora: rc=5 sin colgar |
+| Anti-cuelgue R2 (tipos anidados `A<B<C>,D>`) | ✅ antes: colgado (rc=124 timeout); ahora: **rc=8 con mensaje** «Se esperaba ':' tras el tipo de retorno» (línea/columna) |
+| **Error de sintaxis clásico** (`funcion f( -> nulo:`) | ✅ **rc=8 con mensaje + línea/columna** (antes: rc=5 sin diagnóstico) |
 | Regresión — paridades nativas | ✅ RC 0 (lexer/parser/puente) |
 | Regresión — semántica + inferencia (S1) | ✅ 71 passed |
 | Regresión — D-6 / a23 | ✅ 5 passed / 10 passed |
@@ -68,10 +69,10 @@ Puntos revisados y resueltos:
 | # | Riesgo | Estado |
 |---|---|---|
 | R1 | **Unificación de TVars de función** (`identidad(x: T) -> T`, occurs check, `ERR_SEM_TYPE_AMBIGUOUS`) sigue siendo solo S1 | ⚠️ pendiente en el nativo (fase 2 del port) |
-| R2 | **Tipos anidados** (`A<B<C>,D>`): el parser nativo **se colgaba** en bucle infinito (`parsear_tipo_retorno` fallaba y el INDENTAR quedaba sin consumir → `T_INDENTAR` en `parsear_cuerpo_funcion` sin avance) | ✅ **RESUELTA** — error limpio en `parsear_funcion` + fallback anti-cuelgue en 7 bucles de cuerpo; el S1 sigue dando error de sintaxis; ambos rechazan, ninguno cuelga |
+| R2 | **Tipos anidados** (`A<B<C>,D>`): el parser nativo **se colgaba** en bucle infinito (`parsear_tipo_retorno` fallaba y el INDENTAR quedaba sin consumir → `T_INDENTAR` en `parsear_cuerpo_funcion` sin avance) | ✅ **RESUELTA** — error limpio en `parsear_funcion` + fallback anti-cuelgue en 7 bucles de cuerpo; con R5, además: **rc=8 con mensaje** (paridad S1) |
 | R3 | **Codegen con parámetros ADT**: emite `Resultado_T x` (tipo indefinido, rc=5 GCC) — limitación del codegen, idéntica en S1 y nativo | ⚠️ pendiente (deuda D-2: expansión estática por especialización, Opción A del Arquitecto) |
 | R4 | `nucleo/analizador_semantico.c` (artefacto histórico sin referencias, sin sync desde `e693dbe`) fue sobreescrito por compilaciones de depuración | ✅ revertido (no es insumo de build) |
-| R5 | **El pipeline nativo no aborta en errores de parseo** (pre-existente, afecta a TODOS los errores de sintaxis): el wrapper ME-B7 ignora `_pe.hay_error` y el codegen corre con programa vacío → rc=5 (link GCC) en lugar de mensaje limpio rc≠0; el S1 sí aborta con mensaje (rc=1). R2 quedó en este camino estándar | ⚠️ registrado — resolución: en el wrapper ME-B7 (`frontend_nativo.syn`) chequear `_pe.hay_error` y abortar con mensaje (paridad S1); requiere paridad S1 del generador del wrapper + bootstrap |
+| R5 | **El pipeline nativo no aborta en errores de parseo** (pre-existente, afecta a TODOS los errores de sintaxis): el wrapper ME-B7 ignoraba `_pe.hay_error` y el codegen corría con programa vacío → rc=5 (link GCC) en lugar de mensaje limpio; el S1 sí abortaba con mensaje | ✅ **RESUELTA** — el wrapper (nativo `frontend_nativo.syn` + espejo S1 `emit_declarations.py`) imprime `[Synapse] Error de sintaxis (linea L, columna C): mensaje` y marca `_G_parse_error = 1`; los 3 call-sites del pipeline (`principal.syn`) abortan con `{1,8}`; definición única del global en cabecera S1 (`generator.py`: común + branch módulo) y codegen nativo (`orquestador.syn`/`generator.syn`). **Hallazgo crítico del cierre:** `nucleo/generator.syn` es el unity REGENERADO por `_rebuild_generator.py` desde `nucleo/generador/*.syn` — editar solo `orquestador.syn` sin regenerar producía un bootstrap sin la definición (link error). Segundo hallazgo: el fprintf emitido como array C necesita `\\\\n` (4 BS en el .syn) — con 2 BS el array contenía un newline real y rompía el literal C emitido |
 | R6 | **Líneas fusionadas pre-existentes en `parser.syn`** (`ultimo = stmt                    siguiente`, mientras/para) — el S1 las tolera como dos sentencias (generan `stmt; continue;`); separadas en el fix R2 (higiene, sin cambio semántico) | ✅ resuelto (separadas) |
 | R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (nombres de campos/nodos) silenciados por diseño — el aborto global rompería el bootstrap | ⚠️ registrado — resolución: auditar la resolución de símbolos de la pasada 3 en `nucleo/analizador_semantico.syn` |
 
@@ -85,6 +86,13 @@ Docs con hash en bitácora: commit de cierre.
 bitácora): error limpio en `parsear_funcion` + fallback `sino: token_avanzar` en 7 bucles de cuerpo;
 bootstrap S2==S3 byte-idéntico (1061662 bytes); 7/7 tests de paridad; paridades RC 0;
 semántica+inferencia 71; D-6 5; a23 10.
+
+**Cierre R5 (commit `54f5ee7`)** — `compilador/generator/emit_declarations.py`, `compilador/generator/generator.py`,
+`nucleo/generador/frontend_nativo.syn`, `nucleo/generador/orquestador.syn`, `nucleo/generator.syn` (regenerado),
+`nucleo/principal.syn`, `nucleo/principal.syn.json`, `tests/fixtures/test_a23_parity.c` (regenerado) + docs:
+errores de sintaxis abortan con **rc=8 y mensaje+posición** (paridad S1); bootstrap S2==S3 byte-idéntico
+(1065100 bytes); 7/7 tests de paridad; regresión verde. Código de salida **{1,8} = error de sintaxis**
+(nuevo; sin colisión con {1,2}=archivo, {1,3}=lexer, {1,6}=tamaño, rc=7=semántico 2.4).
 
 ---
 
