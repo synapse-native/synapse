@@ -25,7 +25,7 @@ MANUAL REFERENCIADO: Manual 2 §4.2 L279-280 (ADT genericos); Manual 3 §5.4
      (Resultado<T,E>/Opcion<T>); Manual 3 §7 (operador '?' D-6); Manual 9 §9.1/§9.7
      (bootstrap y determinismo). Decision de diseno: Opcion A (expansion estatica por
      especializacion = monomorfizacion, como Rust/C++) — registrada en la bitacora.
-HASH COMMIT: pendiente (se anota al cierre).
+HASH COMMIT: b88e37b (24 archivos, +2951/-149).
 COMPILACION: bootstrap S1 (python main.py) rc 0; unity S1->S2->S3 rc 0 en las 3 etapas
      con C identico S2==S3 (SHA256 2aabca3486b06f3ad1dd3aeca1f18a5bff38189047a389b29bf1c3dc6371822c).
 TESTS: tests/test_codegen_d2_genericos.py 4/4 PASS (canonico serializable con
@@ -271,7 +271,7 @@ monomorfización). Queda pendiente de la Etapa A5: **D-5** (cobertura del genera
 
 ## 8. Commits
 
-- **pendiente** — se anota el hash al cierre (implementación D-2 + docs).
+- **b88e37b** — `auditoria(FASE_A-A5): cierre de la deuda D-2 - instanciacion ADT genericos T/E (monomorfizacion, Opcion A del Arquitecto, Manual 2 S4.2 L279-280) en S1/S2/S3` (24 archivos, +2951/−149). HEAD base `3ef4deb` (D-6).
 
 ---
 
