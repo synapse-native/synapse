@@ -17,6 +17,8 @@ constante NODO_UNARIA = 13
 constante NODO_LLAMADA = 14
 constante NODO_PARAMETRO = 15
 constante NODO_ESTRUCTURA = 16
+constante NODO_DECLARACION_TIPO = 51
+constante NODO_CONSTRUCTOR = 52
 constante NODO_IMPORTAR = 17
 constante NODO_LANZAR = 18
 constante NODO_ESCUCHAR = 19
@@ -63,6 +65,7 @@ constante ERR_SEM_CONSTANTE_INMUTABLE = 32
 constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 constante ERR_MEM_LIFETIME_MISMATCH = 34
 constante ERR_MEM_LIFETIME_CYCLE = 35
+constante ERR_SEM_TYPE_AMBIGUOUS = 40  // 2.4 nativa (paridad diagnostics.py)
 
 // --- Property constants ---
 constante PROPIEDAD_VIVO = 1
@@ -103,6 +106,10 @@ estructura SemEstructuraInfo:
     campos_tipo: cadena
     total_campos: entero
 
+estructura SemAdtInfo:
+    nombre: cadena
+    num_parametros: entero
+
 // M21.4: Borrow tracking entries (Manual 4 S4.2)
 estructura SemPrestamo:
     idx_simbolo: entero
@@ -118,8 +125,17 @@ estructura AnalizadorSemanticoEst:
     en_coincidir: booleano
     dentro_de_inseguro: booleano
     hay_error: booleano
+    // 2.4 nativa (Fase 2): flag especifico de la validacion de instanciaciones
+    // de ADT (aridad/base/argumentos). Separa la validacion 2.4 del flag global
+    // hay_error (que el pipeline nativo pre-existente no aborta, paridad S1).
+    hay_error_2_4: booleano
     info_estructuras: SemEstructuraInfo
     total_estructuras: entero
+    // 2.4 nativa (Fase 2): registro de ADTs (tipo X<T,E>) y cadenas de
+    // retorno/parametros guardadas por el flatten F8 (paridad S1 tipos.py)
+    info_adts: SemAdtInfo
+    total_adts: entero
+    asignaciones_retorno_campo: cadena
     asignaciones_campos_var: cadena
     asignaciones_campos_campo: cadena
     asignaciones_campos_tipo: cadena
@@ -457,6 +473,14 @@ funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].valor_int : 0")
     retornar r
 
+funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
+    // 2.4 nativa: cadena guardada por el flatten F8 en ptr_extra +
+    // asignaciones_retorno_campo (tipo_retorno de funcion o tipo de parametro).
+    r = ""
+    inseguro:
+        asm("{ int* _phi=(int*)est->asignaciones_retorno_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_extra; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; r=_cs; } }")
+    retornar r
+
 // --- M21.4: Borrow tracking (Manual 4 S4.2) ---
 funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
     // Conflicto si: hay mutable y pedimos inmutable, o hay cualquier prestamo y pedimos mutable
@@ -559,6 +583,69 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
         asm("est->info_estructuras[est->total_estructuras].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost}")
         asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
         asm("est->total_estructuras = est->total_estructuras + 1")
+
+// --- 2.4 nativa: registro de ADTs (tipo X<T,E>) y validacion de
+// instanciaciones (aridad + base + argumentos conocidos). Port de
+// compilador/tipos.py (es_tipo_conocido) + semantic_types.py
+// (_validar_aridad_instanciaciones). Manual 2 §8.2. ---
+funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametros: entero, idx_nodo: entero) -> nulo:
+    i = 0
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("r = (i < est->total_adts) ? 1 : 0")
+            si r == 0:
+                romper
+            asm("{ int _eq = 1; const char* _a = est->info_adts[i].nombre.datos; const char* _b = nombre.datos; for (int _si = 0; _si < 256; _si++) { if (_a[_si] != _b[_si]) { _eq = 0; break; } if (_a[_si] == 0) break; } if (_eq) { sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, nombre); return; } }")
+            asm("i = i + 1")
+    inseguro:
+        asm("char* _nmost = nombre.datos ? strdup(nombre.datos) : (char*)\"\";")
+        asm("est->info_adts[est->total_adts].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost};")
+        asm("est->info_adts[est->total_adts].num_parametros = num_parametros;")
+        asm("est->total_adts = est->total_adts + 1;")
+
+funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, idx_nodo: entero) -> nulo:
+    // Valida instanciaciones de ADT en firmas: `Base<A,B>` con Base registrada
+    // (aridad contra tipo X<T,E>), base conocida (no typo) y argumentos
+    // conocidos (recursivo para anidados). Tipos simples: lenient (Etapa 1).
+    inseguro:
+        asm("")
+        asm("void _f8_tipo_instanciacion_2_4(struct AnalizadorSemanticoEst* e, const char* s0, int idx) {")
+        asm("    char base[512]; const char* s; char* lt;")
+        asm("    if (!s0 || !s0[0]) return;")
+        asm("    s = s0;")
+        asm("    if (strncmp(s, \"&mut \", 5) == 0) s += 5; else if (s[0] == '&') s += 1;")
+        asm("    if (strlen(s) >= 512) return;")
+        asm("    strcpy(base, s);")
+        asm("    while (base[0] && base[strlen(base)-1] == '*') base[strlen(base)-1] = 0;")
+        asm("    lt = strchr(base, '<');")
+        asm("    if (!(lt && base[strlen(base)-1] == '>')) return; /* tipo simple: lenient Etapa 1 */")
+        asm("    {")
+        asm("        char nom[128]; int nl, profundidad, nargs, i, es_adt, es_estructura, base_conocida, adt_np; const char* p;")
+        asm("        nl = (int)(lt - base); if (nl > 127) nl = 127;")
+        asm("        memcpy(nom, base, nl); nom[nl] = 0;")
+        asm("        profundidad = 0; nargs = 1; p = lt + 1;")
+        asm("        for (; *p && *p != '>'; p++) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; else if (*p == ',' && profundidad == 0) nargs++; }")
+        asm("                es_adt = 0; adt_np = 0;")
+        asm("        base_conocida = 0; { static const char* const _prim[] = {\"int\",\"entero\",\"int64_t\",\"long\",\"float\",\"decimal\",\"double\",\"real\",\"flotante\",\"texto\",\"cadena\",\"CadenaSegura\",\"string\",\"booleano\",\"logico\",\"bool\",\"nulo\",\"vacio\",\"void\",\"puntero\",\"void*\",\"rc\",\"arc\",\"debil\",\"débil\",\"weak\",\"faible\",\"fraco\",\"tensor\",\"CanalConcurrencia\",0}; int _pi; for (_pi = 0; _prim[_pi]; _pi++) if (strcmp(nom, _prim[_pi]) == 0) { base_conocida = 1; break; } }")
+        asm("                for (i = 0; i < e->total_adts; i++) if (e->info_adts[i].nombre.datos && strcmp(e->info_adts[i].nombre.datos, nom) == 0) { es_adt = 1; adt_np = e->info_adts[i].num_parametros; break; }")
+        asm("        es_estructura = 0;")
+        asm("        for (i = 0; i < e->total_estructuras; i++) if (e->info_estructuras[i].nombre.datos && strcmp(e->info_estructuras[i].nombre.datos, nom) == 0) { es_estructura = 1; break; }")
+        asm("        base_conocida = es_adt || es_estructura || base_conocida; /* base conocida ya calculada arriba */")
+        asm("        if (es_adt && nargs != adt_np) { char _ma[256]; snprintf(_ma, 256, \"[Synapse] Error semantico (linea %lld, columna %lld): ADT '%s' instanciado con %d argumento(s); se esperaban %d (Manual 2 seccion 8.2)\", (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0), (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0), nom, nargs, adt_np); fprintf(stderr, \"%s\\n\", _ma); e->hay_error_2_4 = 1; }")
+        asm("                else if (!es_adt && !base_conocida) { char _mb[256]; snprintf(_mb, 256, \"[Synapse] Error semantico (linea %lld, columna %lld): tipo base '%s' no definido en este programa (instanciacion '%s')\", (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0), (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0), nom, s0); fprintf(stderr, \"%s\\n\", _mb); e->hay_error_2_4 = 1; }")
+        asm("        p = lt + 1; profundidad = 0;")
+        asm("        while (*p && *p != '>') {")
+        asm("            const char* ini = p;")
+        asm("            while (*p && *p != '>' && !(*p == ',' && profundidad == 0)) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; p++; }")
+        asm("            { char arg[256]; int al = (int)(p - ini); if (al > 255) al = 255; memcpy(arg, ini, al); arg[al] = 0;")
+        asm("              while (arg[0] == ' ') memmove(arg, arg+1, strlen(arg)); while (arg[0] && arg[strlen(arg)-1] == ' ') arg[strlen(arg)-1] = 0;")
+        asm("              _f8_tipo_instanciacion_2_4(e, arg, idx); }")
+        asm("            if (*p == ',') p++; else break;")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("if (tipo.datos != NULL && tipo.datos[0] != 0) { _f8_tipo_instanciacion_2_4(est, tipo.datos, idx_nodo); }")
 
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
@@ -763,6 +850,18 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
             inseguro:
                 asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             registrar_estructura(est, nombre, stmt)
+        // 2.4 nativa: registrar los ADTs (tipo X<T,E>) con su aridad
+        si tipo == NODO_DECLARACION_TIPO:
+            nombre = ""
+            inseguro:
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
+            nparams = 0
+            tp = nodo_expr(est, stmt)
+            mientras tp > 0:
+                nparams = nparams + 1
+                inseguro:
+                    asm("tp = est->nodos[tp].hermano")
+            registrar_adt(est, nombre, nparams, stmt)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 
@@ -786,6 +885,15 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 ok = tabla_declarar(est, nombre, "int", stmt, falso)
                 si ok == falso:
                     sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
+            // 2.4 nativa: validar la firma (tipo de retorno y parametros)
+            retorno = nodo_cadena_retorno(est, stmt)
+            validar_tipo_instanciacion(est, retorno, stmt)
+            p = nodo_expr(est, stmt)
+            mientras p > 0:
+                tparam = nodo_cadena_retorno(est, p)
+                validar_tipo_instanciacion(est, tparam, p)
+                inseguro:
+                    asm("p = est->nodos[p].hermano")
         si tipo == NODO_EXTERNO:
             nombre = ""
             inseguro:
