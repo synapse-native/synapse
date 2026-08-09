@@ -75,4 +75,4 @@ con la máquina Hindley-Milner del Manual 2 §8.2.
 
 ## 7. HASH COMMIT
 
-*(se anota al cierre)*
+**`15ba9fa`** — implementación (8 archivos, +911/−2).
