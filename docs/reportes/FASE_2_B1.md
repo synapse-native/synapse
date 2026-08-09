@@ -28,7 +28,7 @@ MANUAL REFERENCIADO: Manual 2, Seccion 8 (análisis semántico y sistema de tipo
        §9.1 reglas de posesión, §9.2 préstamo, §9.3 análisis de lifetimes), Seccion 10
        (manejo de errores y taxonomía ERR_LEX_*/ERR_SYNTAX_*/ERR_SEM_*/ERR_MEM_*),
        Seccion 12 (pruebas obligatorias de la etapa); Manual 9, Seccion 9.7 (determinismo).
-HASH COMMIT: pendiente (bitácora se actualiza al commitear; convención
+HASH COMMIT: **a44cc16** (bitácora se actualiza al commitear; convención
        'auditoria(FASE_2-B1): inventario de brechas analisis semantico').
 COMPILACION: sin cambios de codigo en esta etapa (entregable documental puro).
 TESTS: no aplica (ningun cambio de codigo). Se ejecutaron greps/lecturas de evidencia
