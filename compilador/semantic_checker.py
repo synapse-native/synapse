@@ -333,6 +333,9 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 self._hay_error = True
 
     def _analizar_funcion(self, nodo: DefinicionFuncion):
+        # 2.4: Hindley-Milner (Manual 2 §8.2) — validar la firma (parámetros y
+        # retorno): aridad de instanciaciones de ADT y argumentos conocidos.
+        self._validar_firma_funcion(nodo)
         self.tabla.entrar_scope()
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre

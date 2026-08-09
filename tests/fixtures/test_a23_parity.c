@@ -576,6 +576,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef ERR_MEM_BORROW_CONFLICT
 #define ERR_MEM_BORROW_CONFLICT (39)
 #endif
+#ifndef ERR_SEM_TYPE_AMBIGUOUS
+#define ERR_SEM_TYPE_AMBIGUOUS (40)
+#endif
 #ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
 #define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
 #endif

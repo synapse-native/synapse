@@ -46,6 +46,7 @@ class ErrorCodes(Enum):
     ERR_VER_CONTRATO_INVALIDO = auto()
     ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = auto()
     ERR_MEM_BORROW_CONFLICT = auto()
+    ERR_SEM_TYPE_AMBIGUOUS = auto()  # 2.4: Hindley-Milner (Manual 2 §8.2)
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -85,6 +86,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acceso a variable '{nombre}' despues de move por lanzar/concurrencia (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Expresion con tipo ambiguo: no se puede inferir '{tipo}'",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Bucle 'mientras' sin cota estatica comprobable en modo --safe (E-700). Use 'para' con rango fijo.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Mutacion de variable global '{nombre}' prohibida en modo --safe (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Funcion '{nombre}' recursiva sin convergencia estructural comprobable en modo --safe (E-702)",
@@ -126,6 +128,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Access to variable '{nombre}' after move by lanzar/concurrency (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Ambiguous expression type: cannot infer '{tipo}'",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Unbounded 'while' loop without static bound in --safe mode (E-700). Use 'for' with fixed range.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Global variable '{nombre}' mutation forbidden in --safe mode (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Recursive function '{nombre}' without structural convergence in --safe mode (E-702)",
@@ -167,6 +170,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() ne peut etre utilise qu'a l'interieur d'un bloc 'dangereux:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossible de reassigner la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acces a la variable '{nombre}' apres deplacement par lancer/concurrence (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Type d'expression ambigu: impossible de deduire '{tipo}'",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -204,6 +208,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() so pode ser usado dentro de um bloco 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Nao e possivel reatribuir a constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acesso a variavel '{nombre}' apos move por lancar/concorrencia (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Tipo de expressao ambiguo: nao e possivel inferir '{tipo}'",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -241,6 +246,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() kann nur innerhalb eines 'unsicher:' Blocks verwendet werden",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Konstante '{nombre}' kann nicht neu zugewiesen werden",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Zugriff auf Variable '{nombre}' nach Verschiebung durch lanzar/Nebenlaufigkeit (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Mehrdeutiger Ausdruckstyp: '{tipo}' kann nicht abgeleitet werden",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -278,6 +284,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() puo essere usato solo all'interno di un blocco 'non_sicuro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossibile riassegnare la costante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Accesso alla variabile '{nombre}' dopo spostamento da lanciare/concorrenza (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Tipo di espressione ambiguo: impossibile dedurre '{tipo}'",
     },
 }
 

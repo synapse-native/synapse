@@ -1,4 +1,5 @@
-from typing import Optional
+import re
+from typing import Dict, Optional, Set
 
 from compilador.ast_nodes import (
     Nodo, LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
@@ -9,6 +10,12 @@ from compilador.ast_nodes import (
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
+# 2.4: Hindley-Milner (Manual 2 §8.2) — representación estructurada de tipos
+# (TipoKind) y unificación con occurs check para validar argumentos de tipo.
+from compilador.tipos import (
+    ContadorTVar, UnificadorHM, tipo_desde_cadena, tipo_a_cadena,
+    es_tipo_conocido, _dividir_argumentos,
+)
 
 # M21.3: Lifetime constants for constraint generation (Manual 4.3)
 LT_ESTATICO = 0
@@ -302,6 +309,11 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         # Las funciones definidas por el usuario tienen precedencia sobre los builtins
         if sim is not None and isinstance(sim.nodo, DefinicionFuncion):
             def_func = sim.nodo
+            # 2.4: Hindley-Milner (Manual 2 §8.2) — si la firma usa parámetros
+            # de tipo (T/E) o instanciaciones de ADT genéricos, validar con
+            # unificación de TVar y occurs check.
+            if self._firma_generica(def_func):
+                return self._inferir_llamada_hm(nodo, def_func)
             if len(nodo.argumentos) != len(def_func.parametros):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
@@ -375,3 +387,181 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             return None
 
         return sim.tipo
+
+    # ------------------------------------------------------------------
+    # 2.4: Hindley-Milner (Manual 2 §8.2) — TVar, unificación con occurs
+    # check, validación de aridad de ADT y ERR_SEM_TYPE_AMBIGUOUS.
+    # ------------------------------------------------------------------
+
+    def _recolectar_tvars_firma(self, def_func: DefinicionFuncion) -> Set[str]:
+        """Identifica los parámetros de tipo (T/E) de una firma de función.
+
+        Regla (Manual 2 §8.2 + fixtures D-2): solo un identificador en
+        mayúscula que aparece como TIPO DESNUDO en la firma (parámetro o
+        retorno exacto, tras quitar &/*) es una variable de tipo TVar.
+        Los identificadores dentro de `<...>` son SIEMPRE tipos concretos de
+        una instanciación de ADT y deben ser conocidos (se validan en
+        `_validar_aridad_instanciaciones`); no se promueven a TVar."""
+        nombres: Set[str] = set()
+        conocidos = set(self._estructuras) | set(self._adt_parametros)
+        cadenas = [p.tipo for p in def_func.parametros] + [def_func.tipo_retorno]
+        for c in cadenas:
+            s = (c or '').strip()
+            if s.startswith('&mut '):
+                s = s[5:].strip()
+            elif s.startswith('&'):
+                s = s[1:].strip()
+            if s.endswith('*') and s != 'void*':
+                s = s[:-1].strip()
+            if (s and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', s)
+                    and s[0].isupper() and s not in conocidos
+                    and not es_tipo_conocido(s, conocidos, self._adt_parametros)):
+                nombres.add(s)
+        return nombres
+
+    def _firma_generica(self, def_func: DefinicionFuncion) -> bool:
+        """True si la firma usa parámetros de tipo desnudos (T/E) — solo
+        entonces la llamada requiere unificación Hindley-Milner. Las firmas
+        con instanciaciones CONCRETAS de ADT (`Resultado<entero,texto>`) se
+        validan en pasada 2 (`_validar_firma_funcion`) y se tratan como
+        monomórficas (Opción A del Arquitecto, D-2)."""
+        return bool(self._recolectar_tvars_firma(def_func))
+
+    def _validar_aridad_instanciaciones(self, cadena: str, linea: int,
+                                        tvars: Set[str]) -> None:
+        """Valida las instanciaciones de ADT genéricos de un tipo (Manual 2
+        §8.2/§4.2): aridad contra los parámetros declarados del ADT y
+        argumentos de tipo conocidos. Recursivo para tipos anidados
+        (p. ej. `Resultado<Resultado<int,texto>,float>`)."""
+        if not cadena or not cadena.strip():
+            return
+        s = cadena.strip()
+        if s.startswith('&mut ') or s.startswith('&'):
+            self._validar_aridad_instanciaciones(
+                s[5:].strip() if s.startswith('&mut ') else s[1:].strip(),
+                linea, tvars)
+            return
+        if s.endswith('*') and s != 'void*':
+            self._validar_aridad_instanciaciones(s[:-1].strip(), linea, tvars)
+            return
+        if '<' in s and s.endswith('>'):
+            nombre = s.split('<')[0].strip()
+            cuerpo = s[len(nombre) + 1:-1]
+            args = _dividir_argumentos(cuerpo)
+            if nombre in self._adt_parametros:
+                esperados = len(self._adt_parametros[nombre])
+                if len(args) != esperados:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(linea, 0),
+                        tipo1=s, tipo2=f"{nombre} con {esperados} argumento(s) de tipo",
+                        operacion='instanciacion'
+                    )
+            elif not es_tipo_conocido(nombre, set(self._estructuras),
+                                      self._adt_parametros):
+                # Base no registrada (typo, p. ej. 'Resultados' en vez de
+                # 'Resultado'): la instanciación completa es inválida.
+                self.diag.reportar(
+                    ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                    self._token(linea, 0),
+                    tipo1=nombre, tipo2='tipo conocido',
+                    operacion='instanciacion'
+                )
+            for a in args:
+                if a not in tvars and not es_tipo_conocido(
+                        a, set(self._estructuras), self._adt_parametros):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(linea, 0),
+                        tipo1=a, tipo2='tipo conocido',
+                        operacion='instanciacion'
+                    )
+                self._validar_aridad_instanciaciones(a, linea, tvars)
+
+    def _validar_firma_funcion(self, def_func: DefinicionFuncion) -> None:
+        """2.4: valida la firma de una función (parámetros y retorno): aridad
+        de las instanciaciones de ADT y argumentos de tipo conocidos."""
+        tvars = self._recolectar_tvars_firma(def_func)
+        cadenas = [p.tipo for p in def_func.parametros] + [def_func.tipo_retorno]
+        for c in cadenas:
+            self._validar_aridad_instanciaciones(c, def_func.linea, tvars)
+
+    def _inferir_llamada_hm(self, nodo: LlamadaFuncion,
+                            def_func: DefinicionFuncion) -> Optional[str]:
+        """2.4: llamada a función con parámetros de tipo (T/E) o ADT
+        genérico — algoritmo W: TVar frescos por llamada, unificación de los
+        argumentos reales contra los parámetros (con occurs check) e
+        instanciación del tipo de retorno. Si el retorno queda con un TVar
+        sin resolver se emite ERR_SEM_TYPE_AMBIGUOUS (Manual 2 §8.2)."""
+        tvars = self._recolectar_tvars_firma(def_func)
+        contador = ContadorTVar()
+        uf = UnificadorHM()
+        tvar_cache: Dict[str, int] = {}  # mismo nombre -> mismo TVar (algoritmo W)
+        # La firma ya se validó en pasada 2 (_analizar_funcion ->
+        # _validar_firma_funcion); no repetir aquí para evitar duplicados.
+        conocidos = set(self._estructuras) | set(self._adt_parametros)
+        if len(nodo.argumentos) != len(def_func.parametros):
+            self.diag.reportar(
+                ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
+                self._token(nodo.linea, nodo.columna),
+                nombre=nodo.nombre, esperados=len(def_func.parametros)
+            )
+            return self._instanciar_retorno(def_func, uf, contador, tvars,
+                                            tvar_cache, conocidos,
+                                            nodo.linea, nodo.columna)
+        for arg, param in zip(nodo.argumentos, def_func.parametros):
+            tipo_arg = self._inferir_tipo(arg)
+            if tipo_arg is None:
+                continue
+            tipo_param = tipo_desde_cadena(param.tipo, contador, tvars,
+                                           tvar_cache, conocidos)
+            if tipo_param is None:
+                continue
+            tipo_arg_t = tipo_desde_cadena(_tipo_normalizado(tipo_arg),
+                                           contador, tvars, tvar_cache,
+                                           conocidos)
+            if not uf.unificar(tipo_arg_t, tipo_param):
+                # Exenciones de compatibilidad del flujo clásico (ABI void*,
+                # concatenación texto) — paridad con _inferir_tipo_llamada.
+                norm_param = _tipo_normalizado(param.tipo)
+                norm_arg = _tipo_normalizado(tipo_arg)
+                exento = (
+                    (norm_param == 'void*' and norm_arg in ('int', 'float'))
+                    or (norm_param == 'void*' and norm_arg in ('texto', 'CadenaSegura'))
+                    or (norm_param == 'texto' and norm_arg in ('int', 'float')
+                        and nodo.nombre == 'concat')
+                )
+                if not exento:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(getattr(arg, 'linea', nodo.linea),
+                                    getattr(arg, 'columna', 0)),
+                        tipo1=tipo_arg, tipo2=param.tipo, operacion=nodo.nombre
+                    )
+        return self._instanciar_retorno(def_func, uf, contador, tvars,
+                                        tvar_cache, conocidos,
+                                        nodo.linea, nodo.columna)
+
+    def _instanciar_retorno(self, def_func: DefinicionFuncion, uf: UnificadorHM,
+                            contador: ContadorTVar, tvars: Set[str],
+                            tvar_cache: Dict[str, int],
+                            conocidos: Set[str],
+                            linea: int = 0, columna: int = 0) -> Optional[str]:
+        """Instancia el tipo de retorno con la sustitución HM acumulada. Para
+        firmas concretas (sin TVar) se preserva la cadena original; si un TVar
+        queda sin resolver se reporta ERR_SEM_TYPE_AMBIGUOUS en el sitio de
+        llamada (la expresión ambigua, Manual 2 §8.2)."""
+        if not tvars:
+            return def_func.tipo_retorno
+        ret_t = tipo_desde_cadena(def_func.tipo_retorno, contador, tvars,
+                                  tvar_cache, conocidos)
+        inst = uf.instanciar(ret_t)
+        cadena = tipo_a_cadena(inst)
+        if 'TVar(' in cadena:
+            self.diag.reportar(
+                ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS,
+                self._token(linea or def_func.linea, columna or def_func.columna),
+                tipo=cadena
+            )
+            return None
+        return cadena
