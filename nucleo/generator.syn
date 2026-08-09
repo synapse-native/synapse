@@ -1420,6 +1420,33 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
         asm("gen_emitir_str(est, _G_fnn3);")
         asm("static char _G_fnn3a[] = \"    parsear_nativo(&_pe);\";")
         asm("gen_emitir_str(est, _G_fnn3a);")
+        // R5 (F2-2.4c): si el parser nativo marco _pe.hay_error, imprimir el
+        // diagnostico y senalizar _G_parse_error (paridad emit_declarations.py
+        // _emitir_parsear_nativo). El pipeline de principal.syn aborta con rc=8.
+        // NOTA escape: el fprintf se emite como array C (_G_fnn3i), por lo que
+        // \\\\n en este .syn = \\n en el literal C = backslash+n en el array = \\n
+        // valido en el C emitido. Con \\n (2 BS) el array contenia un newline REAL
+        // y rompia el literal (hallazgo R5, bootstrap E2). No simplificar.
+        asm("static char _G_fnn3b[] = \"    if (_pe.hay_error) {\";")
+        asm("gen_emitir_str(est, _G_fnn3b);")
+        asm("static char _G_fnn3c[] = \"        int64_t _ln = _pe.error_linea, _co = _pe.error_columna;\";")
+        asm("gen_emitir_str(est, _G_fnn3c);")
+        asm("static char _G_fnn3d[] = \"        if (!_ln && _pe.posicion >= 0 && _pe.posicion < _pe.total_tokens) {\";")
+        asm("gen_emitir_str(est, _G_fnn3d);")
+        asm("static char _G_fnn3e[] = \"            _ln = _pe.tokens[_pe.posicion].linea;\";")
+        asm("gen_emitir_str(est, _G_fnn3e);")
+        asm("static char _G_fnn3f[] = \"            _co = _pe.tokens[_pe.posicion].columna;\";")
+        asm("gen_emitir_str(est, _G_fnn3f);")
+        asm("static char _G_fnn3g[] = \"        }\";")
+        asm("gen_emitir_str(est, _G_fnn3g);")
+        asm("static char _G_fnn3h[] = \"        const char* _msg = (_pe.error_mensaje.datos && _pe.error_mensaje.datos[0]) ? _pe.error_mensaje.datos : \\\"Error de sintaxis\\\";\";")
+        asm("gen_emitir_str(est, _G_fnn3h);")
+        asm("static char _G_fnn3i[] = \"        fprintf(stderr, \\\"[Synapse] Error de sintaxis (linea %lld, columna %lld): %s\\\\n\\\", (long long)_ln, (long long)_co, _msg);\";")
+        asm("gen_emitir_str(est, _G_fnn3i);")
+        asm("static char _G_fnn3j[] = \"        _G_parse_error = 1; struct Programa _e2 = {0}; return _e2;\";")
+        asm("gen_emitir_str(est, _G_fnn3j);")
+        asm("static char _G_fnn3k[] = \"    }\";")
+        asm("gen_emitir_str(est, _G_fnn3k);")
         asm("static char _G_fnn4[] = \"    struct Programa* _pr = (struct Programa*)puente_construir_programa();\";")
         asm("gen_emitir_str(est, _G_fnn4);")
         asm("static char _G_fnn5[] = \"    if (!_pr) { struct Programa _e = {0}; return _e; }\";")
@@ -1656,6 +1683,8 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_tipo_aliases[128][64];")
     gen_emitir_linea(est, "char _G_tipo_aliases_base[128][64];")
     gen_emitir_linea(est, "int _G_tipo_aliases_count;")
+    // R5 (F2-2.4c): senal de error de parseo del wrapper parsear() -> pipeline aborte (paridad generator.py)
+    gen_emitir_linea(est, "int _G_parse_error = 0;")
     gen_emitir_linea(est, "")
     // ME-B7: variables declaradas por funcion (hoisting: primera declaracion gana)
     gen_emitir_linea(est, "char _G_fn_vars[2048][64];")

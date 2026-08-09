@@ -38,13 +38,28 @@ from .emit_selfhost import (
 # I/O y tensor functions están en synapse_rt.o y se linkean.
 # (No incluirlas aquí causa multiple-definition linker errors)
 def _emitir_parsear_nativo(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo)."""
+    """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo).
+    R5 (F2-2.4c): si el parser nativo marca `_pe.hay_error`, imprime el
+    diagnostico (mensaje + linea/columna, derivados del token actual si el
+    error no trae posicion) y senaliza `_G_parse_error` para que el pipeline
+    de principal.syn aborte con rc=8 (antes: el error de sintaxis caia al
+    codegen y fallaba en el linker con rc=5)."""
     ctx.write_line("int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;")
     ctx.write_line("struct Programa parsear(CadenaSegura fuente) {")
     ctx.write_line("    int _nt = tokenizar(fuente);")
     ctx.write_line("    if (_nt < 0) { struct Programa _e = {0}; return _e; }")
     ctx.write_line("    struct ParserEst _pe = {0};")
     ctx.write_line("    parsear_nativo(&_pe);")
+    ctx.write_line("    if (_pe.hay_error) {")
+    ctx.write_line("        int64_t _ln = _pe.error_linea, _co = _pe.error_columna;")
+    ctx.write_line("        if (!_ln && _pe.posicion >= 0 && _pe.posicion < _pe.total_tokens) {")
+    ctx.write_line("            _ln = _pe.tokens[_pe.posicion].linea;")
+    ctx.write_line("            _co = _pe.tokens[_pe.posicion].columna;")
+    ctx.write_line("        }")
+    ctx.write_line('        const char* _msg = (_pe.error_mensaje.datos && _pe.error_mensaje.datos[0]) ? _pe.error_mensaje.datos : "Error de sintaxis";')
+    ctx.write_line('        fprintf(stderr, "[Synapse] Error de sintaxis (linea %lld, columna %lld): %s\\n", (long long)_ln, (long long)_co, _msg);')
+    ctx.write_line("        _G_parse_error = 1; struct Programa _e2 = {0}; return _e2;")
+    ctx.write_line("    }")
     ctx.write_line("    struct Programa* _pr = (struct Programa*)puente_construir_programa();")
     ctx.write_line("    if (!_pr) { struct Programa _e = {0}; return _e; }")
     ctx.write_line("    return *_pr;")

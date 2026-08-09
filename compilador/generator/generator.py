@@ -622,6 +622,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_tipo_aliases[128][64];")
     ctx.write_line("extern char _G_tipo_aliases_base[128][64];")
     ctx.write_line("extern int _G_tipo_aliases_count;")
+    # R5 (F2-2.4c): senal de error de parseo del wrapper parsear() -> pipeline aborte
+    ctx.write_line("extern int _G_parse_error;")
     ctx.write_line("")
     ctx.write_line("extern int _G_indent;")
     ctx.write_line("")
@@ -907,6 +909,8 @@ class GeneradorC:
             ctx.write_line("char _G_tipo_aliases[128][64];")
             ctx.write_line("char _G_tipo_aliases_base[128][64];")
             ctx.write_line("int _G_tipo_aliases_count;")
+            # R5 (F2-2.4c): definicion de la senal de error de parseo
+            ctx.write_line("int _G_parse_error = 0;")
             ctx.write_line("")
             ctx.write_line("")
             ctx.write_line("int _g_argc;")
@@ -1374,6 +1378,8 @@ class GeneradorC:
                 ctx.write_line("char _G_tipo_aliases[128][64];")
                 ctx.write_line("char _G_tipo_aliases_base[128][64];")
                 ctx.write_line("int _G_tipo_aliases_count;")
+                # R5 (F2-2.4c): senal de error de parseo (definicion en el modulo principal)
+                ctx.write_line("int _G_parse_error = 0;")
                 ctx.write_line("")
                 ctx.write_line("")
                 ctx.write_line("int _g_argc;")

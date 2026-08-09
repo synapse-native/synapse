@@ -222,6 +222,8 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_tipo_aliases[128][64];")
     gen_emitir_linea(est, "char _G_tipo_aliases_base[128][64];")
     gen_emitir_linea(est, "int _G_tipo_aliases_count;")
+    // R5 (F2-2.4c): senal de error de parseo del wrapper parsear() -> pipeline aborte (paridad generator.py)
+    gen_emitir_linea(est, "int _G_parse_error = 0;")
     gen_emitir_linea(est, "")
     // ME-B7: variables declaradas por funcion (hoisting: primera declaracion gana)
     gen_emitir_linea(est, "char _G_fn_vars[2048][64];")
