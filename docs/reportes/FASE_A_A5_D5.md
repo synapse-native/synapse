@@ -29,7 +29,7 @@ FASE: FASE A (Etapa A5 - cierre de deudas D-6/D-7/D-2/D-3/D-5). Este reporte cie
 MANUAL REFERENCIADO: Manual 2 §2 (control de flujo: si/mientras/para/coincidir,
        canales, contratos requiere/garantiza), §4.2 (ADT, alias de tipo), Manual 3 §7
        (operador '?' y delegar); Manual 9 §9.1/§9.7 (bootstrap y determinismo).
-HASH COMMIT: <pendiente> (tests NUEVOS: tests/test_cobertura_d5.py +
+HASH COMMIT: df13af6 (4 archivos, +711) (tests NUEVOS: tests/test_cobertura_d5.py +
        tests/fixtures/test_d5_cobertura.syn).
 COMPILACION: bootstrap S1 (python main.py) rc 0; unity S1->S2->S3 rc 0 en las 3
        etapas con C identico S2==S3 (SHA256 2aabca3486b06f3ad1dd3aeca1f18a5bff38189047a389b29bf1c3dc6371822c —
@@ -259,7 +259,7 @@ Sin deuda nueva. D-5 queda **CERRADA** y con ella la **Etapa A5 completa**: D-6
 
 ## 8. Commits
 
-- **<pendiente>** — `auditoria(FASE_A-A5): cierre de la deuda D-5 - cobertura del generador >=70% (harness test_cobertura_d5 + fixture, generator.py 58%->95%, suite completa 785 passed)`.
+- **df13af6** — `auditoria(FASE_A-A5): cierre de la deuda D-5 - cobertura del generador >=70% (harness test_cobertura_d5 + fixture, generator.py 58%->95%, suite completa 785 passed)`.
 
 ---
 
