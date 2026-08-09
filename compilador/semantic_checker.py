@@ -249,6 +249,13 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     t_campo = c.tipos[0] if c.tipos else 'entero'
                     campos.append(Parametro(nombre=c.nombre, tipo=t_campo))
                     self._constructores_adt[c.nombre] = s.nombre
+                # D-2: registro de parámetros de tipo y constructores originales
+                # de ADT genéricos (para la sustitución en la monomorfización).
+                self._adt_parametros[s.nombre] = list(s.parametros_tipo)
+                self._adt_constructores[s.nombre] = [
+                    (c.nombre, c.tipos[0] if c.tipos else 'entero')
+                    for c in s.constructores
+                ]
                 if s.nombre not in self._estructuras:
                     self._estructuras[s.nombre] = DefinicionEstructura(
                         nombre=s.nombre, campos=campos,

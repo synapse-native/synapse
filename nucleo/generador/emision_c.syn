@@ -17,6 +17,16 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         // (void*) hasta la Fase 23 (runtime real de rc/arc/debil, ROADMAP Fase 23).
         // F1.4 anade 'rc<' (Manual 2 sec. 4 L151: "rc" tipo).
         asm("if (strncmp(_t, \"rc<\", 3)==0 || strncmp(_t, \"arc<\", 4)==0 || strncmp(_t, \"weak<\", 5)==0 || strncmp(_t, \"faible<\", 7)==0 || strncmp(_t, \"fraco<\", 6)==0 || strncmp(_t, \"d\u00e9bil<\", 6)==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        // D-2: instanciaciones de ADT genéricos registradas (monomorfización).
+        // `Resultado<entero,texto>` -> struct especializado `Resultado_entero_texto`
+        // (Manual 2 §4.2 L279-280). Paridad context.py traducir_tipo_c.
+        asm("extern char _G_native_adt_inst_type[64][64]; extern char _G_native_adt_inst_c[64][64]; extern int _G_native_adt_inst_count;")
+        asm("if (strchr(_t, '<')) {")
+        asm("    char _d2t[128]; int _d2w = 0; for (int _d2c = 0; _t[_d2c] && _d2w < 120; _d2c++) { if (_t[_d2c] != ' ') _d2t[_d2w++] = _t[_d2c]; } _d2t[_d2w] = 0;")
+        asm("    for (int _d2i = 0; _d2i < _G_native_adt_inst_count; _d2i++) {")
+        asm("        if (strcmp(_G_native_adt_inst_type[_d2i], _d2t) == 0) { strcpy(_gen_tmp_buf, _G_native_adt_inst_c[_d2i]); return; }")
+        asm("    }")
+        asm("}")
         asm("if (_len > 10 && _t[0]=='R' && _t[1]=='e' && _t[2]=='s' && _t[3]=='u' && _t[4]=='l' && _t[5]=='t' && _t[6]=='a' && _t[7]=='d' && _t[8]=='o' && _t[9]=='<') { strcpy(_gen_tmp_buf, \"Resultado_T\"); return; }")
         asm("if (strcmp(_t, \"entero\")==0 || strcmp(_t, \"int\")==0) { strcpy(_gen_tmp_buf, \"int64_t\"); return; }")  // A5.2 D-7: entero -> int64_t (Manual 2 S4.1 L267-268)
         asm("if (strcmp(_t, \"vacio\")==0 || strcmp(_t, \"nulo\")==0 || strcmp(_t, \"void\")==0) { strcpy(_gen_tmp_buf, \"void\"); return; }")

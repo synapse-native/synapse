@@ -70,6 +70,11 @@ def _tipo_normalizado(tipo: str) -> str:
         return 'int'
     if t == 'double':
         return 'float'
+    # D-2: reducir instanciaciones de ADT genéricos a su base para comparación
+    # de compatibilidad (`Resultado<entero,texto>` == `Resultado`). La
+    # validación de argumentos de tipo (Hindley-Milner) es Fase 2, no FASE A.
+    if '<' in t and t.endswith('>'):
+        return _tipo_normalizado(t.split('<')[0])
     return t
 
 
@@ -83,6 +88,11 @@ class AnalizadorSemanticoScope:
         self._estructuras: Dict[str, DefinicionEstructura] = {}
         # D-6: constructores ADT (ok/err/algun/ninguno) -> nombre del ADT
         self._constructores_adt: Dict[str, str] = {}
+        # D-2: parámetros de tipo y constructores originales de ADT genéricos
+        # (base -> [T, E] / base -> [(ctor, tipo_syn), ...]) para la resolución
+        # de instanciaciones en la inferencia de tipos.
+        self._adt_parametros: Dict[str, list] = {}
+        self._adt_constructores: Dict[str, list] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False
         self._inicializar_estructuras_nativas()

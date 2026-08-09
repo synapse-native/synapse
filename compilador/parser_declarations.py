@@ -64,7 +64,12 @@ class ParserDeclarationsMixin(ParserBase):
             while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF,
                                              TokenID.NEWLINE, TokenID.RPAREN):
                 t = self._avanzar()
-                partes.append(t.valor or '')
+                # D-2: el token COMMA no lleva valor -> conservar la coma para
+                # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
+                if t.tipo == TokenID.COMMA:
+                    partes.append(',')
+                else:
+                    partes.append(t.valor or '')
             if self._mirar().tipo == TokenID.GREATER:
                 self._avanzar()
             partes.append('>')

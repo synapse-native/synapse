@@ -155,7 +155,14 @@ class ParserBase:
             self._avanzar()
             partes = [tipo, '<']
             while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
-                partes.append(str(self._avanzar().valor or ''))
+                t_parte = self._avanzar()
+                # D-2: el token COMMA no lleva valor -> conservar la coma para
+                # que `Resultado<entero,texto>` (paridad con el span nativo S2/S3)
+                # sea parseable por el recolector de instanciaciones de ADT.
+                if t_parte.tipo == TokenID.COMMA:
+                    partes.append(',')
+                else:
+                    partes.append(str(t_parte.valor or ''))
             if self._mirar().tipo == TokenID.GREATER:
                 self._avanzar()
             partes.append('>')

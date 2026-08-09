@@ -619,6 +619,18 @@ extern int _G_native_es_adt_ctr(const char* c);
 extern int _G_native_adt_ctr_info(const char* c, char* adt_out, int* tag_out, char* tipo_out);
 extern int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out);
 extern int _G_native_adt_unwrap_field(const char* adt, char* field_out);
+extern char _G_native_adt_gen[64][64];
+extern int _G_native_adt_gen_nparams[64];
+extern char _G_native_adt_gen_params[64][8][64];
+extern int _G_native_adt_gen_count;
+extern int _G_native_adt_gen_es(const char* n);
+extern char _G_native_adt_inst_type[64][64];
+extern char _G_native_adt_inst_c[64][64];
+extern char _G_native_adt_inst_base[64][64];
+extern char _G_native_adt_inst_fields_c[64][8][64];
+extern int _G_native_adt_inst_nfields[64];
+extern int _G_native_adt_inst_count;
+extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);
 
 // ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)
 extern char _G_emit_func_names[2048][64];

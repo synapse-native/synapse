@@ -71,17 +71,31 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         obj_tipo = tipo_de_expr(ctx, nodo.objeto).rstrip('*')
         if obj_tipo.startswith('struct '):
             nombre_struct = obj_tipo[7:]
-            info = ctx._estructuras.get(nombre_struct)
-            if info:
-                for c_nombre, c_tipo in info.get('campos', []):
-                    if c_nombre == nodo.nombre_campo:
-                        es_pointer_field = (
-                            c_nombre in info.get('campos_pointer', set())
-                        )
-                        base_tipo = ctx.traducir_tipo_c(c_tipo)
-                        if es_pointer_field:
-                            return f"{base_tipo}*"
-                        return base_tipo
+        elif '<' in obj_tipo:
+            # D-2: instanciación de ADT genérico — los campos del struct
+            # especializado tienen los tipos concretos sustituidos.
+            nombre_struct = obj_tipo.split('<')[0]
+        else:
+            return 'int'
+        info = ctx._estructuras.get(nombre_struct)
+        if info:
+            # D-2: para una instanciación registrada usar sus campos tipados.
+            campos = info.get('campos', [])
+            if '<' in obj_tipo and obj_tipo.endswith('>'):
+                _b, _, _r = obj_tipo.partition('<')
+                args = tuple(a.strip() for a in _r[:-1].split(','))
+                inst = ctx._instancias_adt.get((_b, args))
+                if inst and inst.get('campos'):
+                    campos = inst['campos']
+            for c_nombre, c_tipo in campos:
+                if c_nombre == nodo.nombre_campo:
+                    es_pointer_field = (
+                        c_nombre in info.get('campos_pointer', set())
+                    )
+                    base_tipo = ctx.traducir_tipo_c(c_tipo)
+                    if es_pointer_field:
+                        return f"{base_tipo}*"
+                    return base_tipo
         return 'int'
 
     if isinstance(nodo, OpBinaria):
@@ -112,10 +126,18 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, ExprPropagar):
         # D-6: `expr?` desempaqueta el campo del primer constructor (ok) del ADT
         # (Manual 3 §7). Se devuelve el tipo SINAPSE (p.ej. 'entero'); el C se
-        # traduce al emitir la declaracion. Con el placeholder de D-2 (genéricos
-        # T/E) el campo es 'puntero'.
+        # traduce al emitir la declaracion.
         inner_tipo = tipo_de_expr(ctx, nodo.expresion)
-        info = ctx._estructuras.get(inner_tipo)
+        # D-2: si es una instanciación de ADT genérico (Resultado<entero,texto>),
+        # el campo ok tiene el tipo concreto sustituido (monomorfización).
+        if '<' in inner_tipo and inner_tipo.endswith('>'):
+            base, _, resto = inner_tipo.partition('<')
+            args = tuple(a.strip() for a in resto[:-1].split(','))
+            inst = ctx._instancias_adt.get((base, args))
+            if inst and inst.get('campos'):
+                return inst['campos'][0][1]
+        base = inner_tipo.split('<')[0] if '<' in inner_tipo else inner_tipo
+        info = ctx._estructuras.get(base)
         if info and info.get('es_adt') and len(info.get('campos', [])) > 1:
             return info['campos'][1][1]
         return 'puntero'
@@ -145,6 +167,43 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return 'void'
 
     return 'int'
+
+
+def _resolver_instancia_adt(ctx: GeneratorContext, adt: str, tag: int,
+                            nodo_llamada: Optional[Nodo]) -> Optional[str]:
+    """D-2 (FASE A/A5): resuelve el struct especializado de un constructor de
+    ADT genérico (monomorfización, Opción A del Arquitecto).
+
+    `adt` = ADT base (p.ej. 'Resultado'), `tag` = índice del constructor,
+    `nodo_llamada` = LlamadaFuncion del ctor (ok/err/algun/ninguno). Devuelve
+    el nombre C del struct instanciado (p.ej. 'Resultado_entero_texto') o None
+    si no hay instanciación resoluble.
+
+    Estrategia: si el ADT tiene UNA sola instanciación registrada se usa
+    directamente (sin ambigüedad); si tiene varias, se resuelve por el tipo del
+    argumento contra el tipo concreto del ctor en cada instanciación (Manual 2
+    §4.2 L279-280)."""
+    candidatas = [
+        (args, inst)
+        for (base, args), inst in ctx._instancias_adt.items()
+        if base == adt
+    ]
+    if not candidatas:
+        return None
+    arg_tipo_c = ''
+    if getattr(nodo_llamada, 'argumentos', None):
+        arg0 = nodo_llamada.argumentos[0]
+        arg_tipo_syn = tipo_de_expr(ctx, arg0)
+        arg_tipo_c = ctx.traducir_tipo_c(arg_tipo_syn)
+    if len(candidatas) == 1:
+        return candidatas[0][1]['nombre_c']
+    # múltiples instanciaciones: resolver por tipo del argumento
+    for _args, inst in candidatas:
+        if tag < len(inst['campos']):
+            _ctor, tipo_concreto = inst['campos'][tag]
+            if arg_tipo_c and ctx.traducir_tipo_c(tipo_concreto) == arg_tipo_c:
+                return inst['nombre_c']
+    return None
 
 
 # ================================================================
@@ -268,6 +327,15 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # 'implementados nativamente en el compilador').
         if nombre in ctx._constructores_adt:
             adt, tag, _tipo_syn = ctx._constructores_adt[nombre]
+            # D-2: si el ADT es genérico y tiene instanciaciones registradas,
+            # resolver el struct especializado por el tipo del argumento
+            # (monomorfización, Opción A).
+            if adt in ctx._adt_parametros:
+                nombre_inst = _resolver_instancia_adt(ctx, adt, tag, nodo)
+                if nombre_inst is not None:
+                    if not args:
+                        return f"({nombre_inst}){{.tag={tag}}}"
+                    return f"({nombre_inst}){{.tag={tag}, .dato.{nombre}={args[0]}}}"
             if not args:
                 return f"({adt}){{.tag={tag}}}"
             return f"({adt}){{.tag={tag}, .dato.{nombre}={args[0]}}}"
@@ -354,6 +422,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         sep = '->' if es_puntero else '.'
         nombre_struct = ''
         base_tipo = obj_tipo.rstrip('*')
+        # D-2: normalizar la base de una instanciación (Resultado<entero,texto>
+        # -> Resultado) para localizar el ADT genérico en _estructuras.
+        if '<' in base_tipo:
+            base_tipo = base_tipo.split('<')[0]
         if not es_puntero and base_tipo.startswith('struct '):
             nombre_struct = base_tipo[7:]
         elif not es_puntero and base_tipo in ctx._estructuras:
@@ -387,7 +459,8 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if tipo_c in ('void*', 'puntero'):
             tipo_c = 'Resultado'
         campo = 'ok'
-        info = ctx._estructuras.get(inner_tipo)
+        base = inner_tipo.split('<')[0] if '<' in inner_tipo else inner_tipo
+        info = ctx._estructuras.get(base)
         if info and info.get('es_adt') and len(info.get('campos', [])) > 1:
             campo = info['campos'][1][0]
         return (

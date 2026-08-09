@@ -69,11 +69,40 @@ int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out) {
 }
 int _G_native_adt_unwrap_field(const char* adt, char* field_out) {
     if (!adt || !field_out) return 0;
+    // D-2: normalizar la base de una instanciacion (Resultado<entero,texto> -> Resultado)
+    char _ab[64]; int _ai = 0; for (; adt[_ai] && adt[_ai] != '<' && _ai < 62; _ai++) _ab[_ai] = adt[_ai]; _ab[_ai] = 0;
     for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {
-        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {
+        if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], _ab) == 0) {
             strcpy(field_out, _G_native_adt_ctrs[_i]);
             return 1;
         }
+    }
+    return 0;
+}
+
+char _G_native_adt_gen[64][64];
+int _G_native_adt_gen_nparams[64];
+char _G_native_adt_gen_params[64][8][64];
+int _G_native_adt_gen_count;
+int _G_native_adt_gen_es(const char* n) {
+    if (!n) return 0;
+    for (int _i = 0; _i < _G_native_adt_gen_count; _i++) { if (strcmp(_G_native_adt_gen[_i], n) == 0) return 1; }
+    return 0;
+}
+char _G_native_adt_inst_type[64][64];
+char _G_native_adt_inst_c[64][64];
+char _G_native_adt_inst_base[64][64];
+char _G_native_adt_inst_fields_c[64][8][64];
+int _G_native_adt_inst_nfields[64];
+int _G_native_adt_inst_count;
+int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out) {
+    if (!base || !out) return 0;
+    int _solo = 1; int _ns = 0; for (int _j = 0; _j < _G_native_adt_inst_count; _j++) { if (strcmp(_G_native_adt_inst_base[_j], base) == 0) { _ns++; } }
+    if (_ns == 1) _solo = 1; else _solo = 0;
+    for (int _i = 0; _i < _G_native_adt_inst_count; _i++) {
+        if (strcmp(_G_native_adt_inst_base[_i], base) != 0) continue;
+        if (_solo) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }
+        if (tag < _G_native_adt_inst_nfields[_i] && tipo_c && _G_native_adt_inst_fields_c[_i][tag][0] && strcmp(_G_native_adt_inst_fields_c[_i][tag], tipo_c) == 0) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }
     }
     return 0;
 }

@@ -229,6 +229,26 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             ctx._emitted_typedefs.add(td)
             ctx.write_line(td)
             ctx.write_line("")
+        # D-2 (monomorfización): emitir structs especializados por cada
+        # instanciación concreta de este ADT genérico (Manual 2 §4.2 L279-280).
+        # Campos T/E sustituidos por los tipos reales — cero void* (Opción A).
+        for (base, args), inst in sorted(ctx._instancias_adt.items()):
+            if base != nodo.nombre:
+                continue
+            partes_i = []
+            for ctor, t_syn in inst['campos']:
+                t_c = ctx.traducir_tipo_c(t_syn)
+                if t_c.startswith('struct '):
+                    t_c += '*'
+                partes_i.append(f"{t_c} {ctor};")
+            if not partes_i:
+                partes_i.append("int _unidad;")
+            td_i = (f"typedef struct {inst['nombre_c']} {{ int64_t tag; "
+                    f"union {{ {' '.join(partes_i)} }} dato; }} {inst['nombre_c']};")
+            if td_i not in ctx._emitted_typedefs:
+                ctx._emitted_typedefs.add(td_i)
+                ctx.write_line(td_i)
+                ctx.write_line("")
     elif nodo.tipo_base:
         td = f"typedef {ctx.traducir_tipo_c(nodo.tipo_base)} {nodo.nombre};"
         if td not in ctx._emitted_typedefs:

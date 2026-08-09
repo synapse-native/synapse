@@ -32,6 +32,86 @@ from .emit_expressions import (
 from .emit_contracts import emit_contract_header
 
 
+def _recolectar_instancias_adt(ctx: GeneratorContext):
+    """D-2 (FASE A/A5): monomorfización de ADT genéricos (Opción A del
+    Arquitecto, Manual 2 §4.2 L279-280 `tipo Resultado<T, E> = ok(T) | err(E)`).
+
+    Escanea el AST por tipos instanciados `Base<A,B>` (retornos, parámetros,
+    declaraciones `let x: Base<A,B>`, campos) y registra en ctx._instancias_adt
+    cada instanciación única: (base, args) -> {'nombre_c': struct especializado,
+    'campos': [(ctor, tipo_concreto), ...]}. El codegen emite un struct C tipado
+    por instanciación (nada de void*) y traducir_tipo_c/constructores/`?`/coincidir
+    resuelven contra él.
+    """
+    from compilador.ast_nodes import (
+        DefinicionFuncion, DeclaracionVariable, DefinicionEstructura,
+        DeclaracionExterna, DeclaracionExport, BloqueInseguro,
+    )
+
+    def _sane(a: str) -> str:
+        return ''.join(ch if ch.isalnum() or ch == '_' else '_' for ch in a)
+
+    def _registrar(tipo_syn: str):
+        if not tipo_syn or '<' not in tipo_syn or not tipo_syn.endswith('>'):
+            return
+        base, _, resto = tipo_syn.partition('<')
+        if base not in ctx._adt_parametros:
+            return
+        params = ctx._adt_parametros[base]
+        args = tuple(a.strip() for a in resto[:-1].split(','))
+        if len(args) != len(params):
+            return
+        clave = (base, args)
+        if clave in ctx._instancias_adt:
+            return
+        nombre_c = base + '_' + '_'.join(_sane(a) for a in args)
+        campos = []
+        for ctor, t_syn in ctx._adt_constructores.get(base, []):
+            t_conc = args[params.index(t_syn)] if t_syn in params else t_syn
+            campos.append((ctor, t_conc))
+        ctx._instancias_adt[clave] = {'nombre_c': nombre_c, 'campos': campos}
+
+    def _walk(nodo):
+        if isinstance(nodo, DefinicionFuncion):
+            _registrar(nodo.tipo_retorno)
+            for p in nodo.parametros:
+                _registrar(p.tipo)
+            if getattr(nodo, 'cuerpo', None):
+                for s in nodo.cuerpo:
+                    _walk(s)
+        elif isinstance(nodo, DeclaracionVariable):
+            _registrar(nodo.tipo)
+            if nodo.expresion:
+                _walk(nodo.expresion)
+        elif isinstance(nodo, DefinicionEstructura):
+            for c in nodo.campos:
+                _registrar(c.tipo)
+        elif isinstance(nodo, DeclaracionExterna):
+            _registrar(nodo.tipo_retorno)
+            for p in nodo.parametros:
+                _registrar(p.tipo)
+        elif isinstance(nodo, DeclaracionExport):
+            if nodo.funcion is not None:
+                _walk(nodo.funcion)
+        else:
+            for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                         'expresion', 'objeto', 'condicion', 'accion_critica',
+                         'plan_b', 'inicializacion', 'incremento', 'casos',
+                         'valor', 'canal'):
+                hijo = getattr(nodo, attr, None)
+                if hijo is None:
+                    continue
+                if isinstance(hijo, list):
+                    for h in hijo:
+                        if hasattr(h, '__dict__'):
+                            _walk(h)
+                elif hasattr(hijo, '__dict__'):
+                    _walk(hijo)
+
+    for s in ctx.programa.sentencias:
+        _walk(s)
+
+
 def _preprocess_lanzar(ctx: GeneratorContext):
     """Pre-scan: recorre el AST en busca de SentenciaLanzar con LlamadaFuncion y args,
     pre-poblando _deferred_typedefs y _deferred_wrap_decls usando el MISMO contador
@@ -513,6 +593,19 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern int _G_native_adt_ctr_info(const char* c, char* adt_out, int* tag_out, char* tipo_out);")
     ctx.write_line("extern int _G_native_adt_unwrap_tipo(const char* adt, char* tipo_out);")
     ctx.write_line("extern int _G_native_adt_unwrap_field(const char* adt, char* field_out);")
+    # ME-D2: instanciaciones de ADT genéricos (monomorfización, Opción A)
+    ctx.write_line("extern char _G_native_adt_gen[64][64];")
+    ctx.write_line("extern int _G_native_adt_gen_nparams[64];")
+    ctx.write_line("extern char _G_native_adt_gen_params[64][8][64];")
+    ctx.write_line("extern int _G_native_adt_gen_count;")
+    ctx.write_line("extern int _G_native_adt_gen_es(const char* n);")
+    ctx.write_line("extern char _G_native_adt_inst_type[64][64];")
+    ctx.write_line("extern char _G_native_adt_inst_c[64][64];")
+    ctx.write_line("extern char _G_native_adt_inst_base[64][64];")
+    ctx.write_line("extern char _G_native_adt_inst_fields_c[64][8][64];")
+    ctx.write_line("extern int _G_native_adt_inst_nfields[64];")
+    ctx.write_line("extern int _G_native_adt_inst_count;")
+    ctx.write_line("extern int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out);")
     ctx.write_line("")
     ctx.write_line("// ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)")
     ctx.write_line("extern char _G_emit_func_names[2048][64];")
@@ -749,14 +842,50 @@ class GeneradorC:
             ctx.write_line("int _G_native_adt_unwrap_field(const char* adt, char* field_out) {")
             ctx.inc_indent()
             ctx.write_line("if (!adt || !field_out) return 0;")
+            ctx.write_line("// D-2: normalizar la base de una instanciacion (Resultado<entero,texto> -> Resultado)")
+            ctx.write_line("char _ab[64]; int _ai = 0; for (; adt[_ai] && adt[_ai] != '<' && _ai < 62; _ai++) _ab[_ai] = adt[_ai]; _ab[_ai] = 0;")
             ctx.write_line("for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {")
             ctx.inc_indent()
-            ctx.write_line("if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {")
+            ctx.write_line("if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], _ab) == 0) {")
             ctx.inc_indent()
             ctx.write_line("strcpy(field_out, _G_native_adt_ctrs[_i]);")
             ctx.write_line("return 1;")
             ctx.dec_indent()
             ctx.write_line("}")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("")
+            # ME-D2: instanciaciones de ADT genericos (definiciones; paridad orquestador.syn)
+            ctx.write_line("char _G_native_adt_gen[64][64];")
+            ctx.write_line("int _G_native_adt_gen_nparams[64];")
+            ctx.write_line("char _G_native_adt_gen_params[64][8][64];")
+            ctx.write_line("int _G_native_adt_gen_count;")
+            ctx.write_line("int _G_native_adt_gen_es(const char* n) {")
+            ctx.inc_indent()
+            ctx.write_line("if (!n) return 0;")
+            ctx.write_line("for (int _i = 0; _i < _G_native_adt_gen_count; _i++) { if (strcmp(_G_native_adt_gen[_i], n) == 0) return 1; }")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
+            ctx.write_line("char _G_native_adt_inst_type[64][64];")
+            ctx.write_line("char _G_native_adt_inst_c[64][64];")
+            ctx.write_line("char _G_native_adt_inst_base[64][64];")
+            ctx.write_line("char _G_native_adt_inst_fields_c[64][8][64];")
+            ctx.write_line("int _G_native_adt_inst_nfields[64];")
+            ctx.write_line("int _G_native_adt_inst_count;")
+            ctx.write_line("int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out) {")
+            ctx.inc_indent()
+            ctx.write_line("if (!base || !out) return 0;")
+            ctx.write_line("int _solo = 1; int _ns = 0; for (int _j = 0; _j < _G_native_adt_inst_count; _j++) { if (strcmp(_G_native_adt_inst_base[_j], base) == 0) { _ns++; } }")
+            ctx.write_line("if (_ns == 1) _solo = 1; else _solo = 0;")
+            ctx.write_line("for (int _i = 0; _i < _G_native_adt_inst_count; _i++) {")
+            ctx.inc_indent()
+            ctx.write_line("if (strcmp(_G_native_adt_inst_base[_i], base) != 0) continue;")
+            ctx.write_line("if (_solo) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }")
+            ctx.write_line("if (tag < _G_native_adt_inst_nfields[_i] && tipo_c && _G_native_adt_inst_fields_c[_i][tag][0] && strcmp(_G_native_adt_inst_fields_c[_i][tag], tipo_c) == 0) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }")
             ctx.dec_indent()
             ctx.write_line("}")
             ctx.write_line("return 0;")
@@ -1007,6 +1136,20 @@ class GeneradorC:
             elif s.tipo_base and s.nombre not in ctx._tipo_aliases:
                 ctx._tipo_aliases[s.nombre] = s.tipo_base
 
+        # D-2: registro de parámetros de tipo y constructores originales de ADT
+        # genéricos (para la sustitución en la monomorfización).
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DeclaracionTipo) and s.constructores:
+                ctx._adt_parametros[s.nombre] = list(s.parametros_tipo)
+                ctx._adt_constructores[s.nombre] = [
+                    (c.nombre, c.tipos[0] if c.tipos else 'entero')
+                    for c in s.constructores
+                ]
+        # D-2: monomorfización — recolectar instanciaciones `Base<A,B>` de ADT
+        # genéricos en todo el programa (retornos, params, let, campos) y registrar
+        # un struct C especializado por cada instanciación concreta.
+        _recolectar_instancias_adt(ctx)
+
         if modo == 'header':
             # Solo cabecera: #includes, tipos, prototipos + extern declarations
             # IMPORTANTE: NO llamar _emit_cabecera_comun (emite DEFINICIONES _g_argc/_argc/salir/concat)
@@ -1166,14 +1309,50 @@ class GeneradorC:
                 ctx.write_line("int _G_native_adt_unwrap_field(const char* adt, char* field_out) {")
                 ctx.inc_indent()
                 ctx.write_line("if (!adt || !field_out) return 0;")
+                ctx.write_line("// D-2: normalizar la base de una instanciacion (Resultado<entero,texto> -> Resultado)")
+                ctx.write_line("char _ab[64]; int _ai = 0; for (; adt[_ai] && adt[_ai] != '<' && _ai < 62; _ai++) _ab[_ai] = adt[_ai]; _ab[_ai] = 0;")
                 ctx.write_line("for (int _i = 0; _i < _G_native_adt_ctrs_count; _i++) {")
                 ctx.inc_indent()
-                ctx.write_line("if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], adt) == 0) {")
+                ctx.write_line("if (_G_native_adt_ctrs_tag[_i] == 0 && strcmp(_G_native_adt_ctrs_adt[_i], _ab) == 0) {")
                 ctx.inc_indent()
                 ctx.write_line("strcpy(field_out, _G_native_adt_ctrs[_i]);")
                 ctx.write_line("return 1;")
                 ctx.dec_indent()
                 ctx.write_line("}")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("return 0;")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("")
+                # ME-D2: instanciaciones de ADT genericos (definiciones; paridad orquestador.syn)
+                ctx.write_line("char _G_native_adt_gen[64][64];")
+                ctx.write_line("int _G_native_adt_gen_nparams[64];")
+                ctx.write_line("char _G_native_adt_gen_params[64][8][64];")
+                ctx.write_line("int _G_native_adt_gen_count;")
+                ctx.write_line("int _G_native_adt_gen_es(const char* n) {")
+                ctx.inc_indent()
+                ctx.write_line("if (!n) return 0;")
+                ctx.write_line("for (int _i = 0; _i < _G_native_adt_gen_count; _i++) { if (strcmp(_G_native_adt_gen[_i], n) == 0) return 1; }")
+                ctx.write_line("return 0;")
+                ctx.dec_indent()
+                ctx.write_line("}")
+                ctx.write_line("char _G_native_adt_inst_type[64][64];")
+                ctx.write_line("char _G_native_adt_inst_c[64][64];")
+                ctx.write_line("char _G_native_adt_inst_base[64][64];")
+                ctx.write_line("char _G_native_adt_inst_fields_c[64][8][64];")
+                ctx.write_line("int _G_native_adt_inst_nfields[64];")
+                ctx.write_line("int _G_native_adt_inst_count;")
+                ctx.write_line("int _G_native_adt_inst_ctr(const char* base, int tag, const char* tipo_c, char* out) {")
+                ctx.inc_indent()
+                ctx.write_line("if (!base || !out) return 0;")
+                ctx.write_line("int _solo = 1; int _ns = 0; for (int _j = 0; _j < _G_native_adt_inst_count; _j++) { if (strcmp(_G_native_adt_inst_base[_j], base) == 0) { _ns++; } }")
+                ctx.write_line("if (_ns == 1) _solo = 1; else _solo = 0;")
+                ctx.write_line("for (int _i = 0; _i < _G_native_adt_inst_count; _i++) {")
+                ctx.inc_indent()
+                ctx.write_line("if (strcmp(_G_native_adt_inst_base[_i], base) != 0) continue;")
+                ctx.write_line("if (_solo) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }")
+                ctx.write_line("if (tag < _G_native_adt_inst_nfields[_i] && tipo_c && _G_native_adt_inst_fields_c[_i][tag][0] && strcmp(_G_native_adt_inst_fields_c[_i][tag], tipo_c) == 0) { strcpy(out, _G_native_adt_inst_c[_i]); return 1; }")
                 ctx.dec_indent()
                 ctx.write_line("}")
                 ctx.write_line("return 0;")

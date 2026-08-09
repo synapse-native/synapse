@@ -120,8 +120,19 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
             bound_type = 'int'  # fallback
             campo_dato = 'valor'  # default fallback field name
             adt_name = tipo_syn.replace("struct ", "") if tipo_syn.startswith("struct ") else ""
-            if adt_name in ctx._estructuras:
-                for cname, ctype in ctx._estructuras[adt_name].get('campos', []):
+            # D-2: normalizar la base de una instanciación (Resultado<entero,texto>
+            # -> Resultado) para localizar el ADT genérico en _estructuras y usar
+            # los tipos concretos sustituidos (monomorfización).
+            adt_base = adt_name.split('<')[0] if '<' in adt_name else adt_name
+            inst_campos = None
+            if '<' in adt_name and adt_name.endswith('>'):
+                _b, _, _r = adt_name.partition('<')
+                args = tuple(a.strip() for a in _r[:-1].split(','))
+                inst = ctx._instancias_adt.get((_b, args))
+                if inst:
+                    inst_campos = inst.get('campos')
+            if adt_base in ctx._estructuras:
+                for cname, ctype in (inst_campos or ctx._estructuras[adt_base].get('campos', [])):
                     if cname != 'tag':
                         if campo_dato == 'valor':
                             campo_dato = cname  # first non-tag field as default

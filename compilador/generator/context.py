@@ -213,6 +213,15 @@ class GeneratorContext:
         self._tipo_aliases: Dict[str, str] = {}
         # D-6: constructores ADT (ok/err/algun/ninguno) -> (ADT, tag, tipo_campo)
         self._constructores_adt: Dict[str, tuple] = {}
+        # D-2: instanciaciones de ADT genéricos (monomorfización, Opción A).
+        # Clave: (base, tuple(args)) -> {'nombre_c': str, 'campos': [(ctor, tipo_syn), ...]}
+        # p.ej. ('Resultado', ('entero','texto')) -> 'Resultado_entero_texto' con
+        # campos [('ok','entero'), ('err','texto')] — tipos SUSTITUIDOS (Manual 2 §4.2).
+        self._instancias_adt: Dict[tuple, dict] = {}
+        # D-2: parámetros de tipo declarados por ADT (base -> [T, E]) y sus
+        # constructores originales (base -> [(ctor, tipo_syn), ...]).
+        self._adt_parametros: Dict[str, list] = {}
+        self._adt_constructores: Dict[str, list] = {}
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()
@@ -401,6 +410,15 @@ class GeneratorContext:
             return 'void*'
         if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
             return 'CanalConcurrencia*'
+        # D-2: instanciación de ADT genérico registrada (monomorfización).
+        # `Resultado<entero,texto>` -> struct especializado `Resultado_entero_texto`
+        # (Manual 2 §4.2 L279-280; Manual 3 §5.4). Solo si el pre-pass la registró;
+        # si no (ADT sin instanciar), cae al fallback histórico (Resultado_T / void*).
+        if '<' in tipo_synapse and tipo_synapse.endswith('>'):
+            base, _, resto = tipo_synapse.partition('<')
+            args = tuple(a.strip() for a in resto[:-1].split(','))
+            if (base, args) in self._instancias_adt:
+                return self._instancias_adt[(base, args)]['nombre_c']
         if tipo_synapse.startswith('Resultado<'):
             return 'Resultado_T'
         # M22.6: Handle pointer types (e.g. int* -> int*, not struct int*)

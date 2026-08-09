@@ -200,12 +200,10 @@ funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
         si token_mirar(est) == T_MENOR:
             token_avanzar(est)
             mientras token_mirar(est) != T_MAYOR:
-                si token_es_nombre(token_mirar(est)) == 1:
+                si token_mirar(est) != T_FIN:
                     token_avanzar(est)
-                si token_mirar(est) == T_COMA:
-                    token_avanzar(est)
-                si token_es_nombre(token_mirar(est)) != 1 y token_mirar(est) != T_COMA:
-                    token_avanzar(est)
+                sino:
+                    romper
             token_esperar(est, T_MAYOR)
     pos_fin = est.posicion - 1
     si pos_fin >= pos_ini:

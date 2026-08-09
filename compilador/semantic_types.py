@@ -5,7 +5,7 @@ from compilador.ast_nodes import (
     LiteralNulo, Identificador, OpBinaria, OpUnaria, LlamadaFuncion, ExprTensor,
     ArgumentoTransferido, ExprAsm, ExprObtenerDireccion, ExprDereferencia,
     ExprAccesoCampo, ExprCrearCanal, ExprRecibirCanal, ExprIndice,
-    ExprPropagar, DefinicionFuncion,
+    ExprPropagar, DefinicionFuncion, Parametro,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
@@ -189,6 +189,21 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             if tipo_obj is None:
                 return None
             base_tipo = tipo_obj.rstrip('*')
+            # D-2: normalizar la base de una instanciación de ADT genérico
+            # (Resultado<entero,texto> -> Resultado) y usar sus campos concretos.
+            inst_campos = None
+            if '<' in base_tipo and base_tipo.endswith('>'):
+                _b, _, _r = base_tipo.partition('<')
+                args = tuple(a.strip() for a in _r[:-1].split(','))
+                if hasattr(self, '_adt_parametros') and _b in self._adt_parametros:
+                    params = self._adt_parametros[_b]
+                    ctors = self._adt_constructores.get(_b, [])
+                    if len(args) == len(params):
+                        inst_campos = [Parametro(nombre='tag', tipo='entero')]
+                        for c_nombre, c_tipo in ctors:
+                            t_conc = args[params.index(c_tipo)] if c_tipo in params else c_tipo
+                            inst_campos.append(Parametro(nombre=c_nombre, tipo=t_conc))
+                base_tipo = _b
             struct = self._estructuras.get(base_tipo)
             if struct is None:
                 self.diag.reportar(
@@ -197,7 +212,8 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     nombre=base_tipo
                 )
                 return None
-            campo = next((c for c in struct.campos if c.nombre == nodo.nombre_campo), None)
+            campos = inst_campos or struct.campos
+            campo = next((c for c in campos if c.nombre == nodo.nombre_campo), None)
             if campo is None:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_CAMPO_NO_EXISTE,
@@ -228,7 +244,20 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             tipo_inner = self._inferir_tipo(nodo.expresion)
             if not tipo_inner:
                 return None
-            struct = self._estructuras.get(tipo_inner.rstrip('*'))
+            base_tipo = tipo_inner.rstrip('*')
+            # D-2: si es una instanciación de ADT genérico (Resultado<entero,texto>),
+            # el campo ok tiene el tipo concreto sustituido (monomorfización).
+            if '<' in base_tipo and base_tipo.endswith('>'):
+                _b, _, _r = base_tipo.partition('<')
+                args = tuple(a.strip() for a in _r[:-1].split(','))
+                if hasattr(self, '_adt_parametros') and _b in self._adt_parametros:
+                    params = self._adt_parametros[_b]
+                    ctors = self._adt_constructores.get(_b, [])
+                    if len(args) == len(params) and ctors:
+                        c_nombre, c_tipo = ctors[0]
+                        return args[params.index(c_tipo)] if c_tipo in params else c_tipo
+                base_tipo = _b
+            struct = self._estructuras.get(base_tipo)
             if struct is not None:
                 for campo in struct.campos[1:]:  # saltar el campo tag
                     return campo.tipo
