@@ -101,3 +101,5 @@ aridad es O(firmas x profundidad de tipos). El propio compilador se analiza en m
 
 **Conclusion:** sin regresiones significativas; el coste HM es O(firmas genericas),
 no O(codigo total), por lo que escala linealmente y es despreciable en cargas reales.
+
+**Hash del seguimiento:** `5350927` (5 archivos, +100).
