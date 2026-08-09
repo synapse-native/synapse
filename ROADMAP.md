@@ -66,10 +66,15 @@ Estas fases establecen el compilador de Synapse, el runtime, el sistema de tipos
   - Implementación del algoritmo Hindley-Milner (unificación, occurs check) para inferencia de tipos.
   - Verificación de ownership y borrowing (use-after-move, préstamos).
   - Verificación de exhaustividad en `coincidir` para tipos algebraicos.
-  - **Fase 2 nativa (P1) — pendiente:** validación de aridad/base/argumentos de instanciaciones de ADT
-    (`Resultado<entero,texto>` vs `Resultado<T,E>`) y unificación HM en `nucleo/analizador_semantico.syn`,
-    con paridad al S1 (ref. de implementación `compilador/tipos.py` + `compilador/semantic_types.py`;
-    divergencia documentada en `nucleo/README.md` y `docs/reportes/FASE_2_2.4.md` §6).
+  - **Fase 2 nativa (P1) — ✅ completada (2026-08-09, rama `feature/fase2-nativa-hm`):**
+    validación de aridad/base/argumentos de instanciaciones de ADT (`Resultado<entero,texto>` vs
+    `Resultado<T,E>`) portada a `nucleo/analizador_semantico.syn` (`registrar_adt` + `validar_tipo_instanciacion`,
+    flag `hay_error_2_4` que aborta el pipeline) con paridad al S1; 6 tests de paridad
+    (`tests/test_fase2_nativa_hm.py`), bootstrap S2==S3 byte-idéntico, regresión completa verde.
+    **Pendiente residual:** unificación HM de TVars de función (`identidad(x: T) -> T`) en el nativo
+    y tipos anidados (`A<B<C>,D>`, sin soporte en ningún frontend). Divergencias documentadas en
+    `nucleo/README.md`; reporte `docs/reportes/FASE_2_2.4_NATIVA.md` (ref. S1: `compilador/tipos.py` +
+    `compilador/semantic_types.py`, `docs/reportes/FASE_2_2.4.md` §6).
 - **Criterios de Aceptación:** El compilador detecta variables no declaradas, tipos incompatibles, usos después de movimiento, y falta de casos en match. Todos los tests de integración de la Fase 1 siguen pasando.
 - **Dependencias:** Fase 1.
 - **Riesgos y Mitigaciones:** Alto. El algoritmo Hindley-Milner debe implementarse con cuidado para evitar falsos positivos. Se recomienda empezar con un subconjunto de tipos y expandir gradualmente.

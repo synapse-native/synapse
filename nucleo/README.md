@@ -5,38 +5,44 @@ Este directorio contiene el compilador Synapse escrito **en el propio Synapse**
 puente). Es el frontend **nativo** que ejecutan los binarios `synapse_stage2.exe`
 / `synapse_stage3.exe` del bootstrap (S1 → S2 → S3 con C idéntico).
 
-## ⚠️ Divergencia documentada: validación de tipos (Fase 2, brecha 2.4)
+## ✅ Validación de tipos nativa (Fase 2, brecha 2.4) — PORTADA
 
-**Estado (2026-08-09):** el analizador semántico S1 (`compilador/`) implementa la
-validación Hindley-Milner del Manual 2 §8.2 (brecha 2.4 P0, cerrada en
-`docs/reportes/FASE_2_2.4.md`):
+**Estado (2026-08-09):** el frontend nativo (`nucleo/analizador_semantico.syn`)
+implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
+(Hindley-Milner, Manual 2 §8.2), con paridad de comportamiento con el S1
+(`compilador/`):
 
-- **Aridad** de instanciaciones de ADT: `Resultado<entero>` con `tipo Resultado<T,E>`
-  → error `ERR_SEM_TIPO_INCOMPATIBLE`.
-- **Base conocida**: typo `Resultados<...>` → error.
-- **Argumentos conocidos**: `Resultado<entero,NoExiste>` → error (anidados ok).
-- **TVar desnudo** en funciones genéricas (`identidad(x: T) -> T`) con unificación
-  y *occurs check*; `ERR_SEM_TYPE_AMBIGUOUS` para TVar sin resolver.
-
-**El frontend nativo (`nucleo/analizador_semantico.syn`) NO valida todavía** la
-aridad ni los argumentos de las instanciaciones de ADT: un programa inválido
-(`Resultado<entero>`) que el S1 rechaza, el nativo lo acepta (comportamiento
-lenient). **NO asumas que existe la validación al trabajar en el nativo.**
+- **Aridad**: `Resultado<entero>` con `tipo Resultado<T,E>` → error y aborto
+  (`rc=7`) con mensaje descriptivo (línea/columna, aridad esperada/recibida).
+- **Base conocida**: typo `Resultados<...>` → error y aborto (`rc=7`).
+- **Argumentos conocidos**: `Resultado<entero,NoExiste>` → error (recursivo).
+- Mecanismo: `registrar_adt` (pasada 1) + `validar_tipo_instanciacion` (pasada 2,
+  retorno y parámetros; nested function GNU única, bucles acotados, bounds
+  512/128/256); flag dedicado **`hay_error_2_4`** que el pipeline (`principal.syn`)
+  chequea tras `analizar()` — no aborta por el ruido pre-existente de la pasada 3.
 
 | Criterio | S1 (`compilador/`) | Nativo (`nucleo/`) |
 |---|---|---|
-| Aridad de ADT en firmas | ✅ `semantic_types.py` | ❌ pendiente (P1) |
-| Base / argumentos conocidos | ✅ `semantic_types.py` | ❌ pendiente (P1) |
-| Unificación HM + occurs check | ✅ `tipos.py` + `semantic_types.py` | ❌ pendiente (P1) |
-| `ERR_SEM_TYPE_AMBIGUOUS` | ✅ `diagnostics.py` | ⚠️ código `ERR_SEM_*` existe en `errores.syn`, la validación no |
+| Aridad de ADT en firmas | ✅ `semantic_types.py` | ✅ `validar_tipo_instanciacion` |
+| Base / argumentos conocidos | ✅ `semantic_types.py` | ✅ idem (recursivo) |
+| Unificación HM + occurs check (TVars de función `identidad(x: T) -> T`) | ✅ `tipos.py` + `semantic_types.py` | ⚠️ pendiente |
+| `ERR_SEM_TYPE_AMBIGUOUS` (TVar sin resolver) | ✅ `diagnostics.py` | ⚠️ sin unificación nativa |
 
-**Referencia de implementación:** la lógica de referencia está en
-`compilador/tipos.py` (`tipo_desde_cadena`, `es_tipo_conocido`, `UnificadorHM`)
-y `compilador/semantic_types.py` (`_validar_firma_funcion`,
-`_validar_aridad_instanciaciones`, `_inferir_llamada_hm`) — probada con
-`tests/unit/test_type_inference.py` (28 tests, Manual 2 §12).
+**Divergencias residuales documentadas:**
+1. **Unificación de TVars** (funciones genéricas con `T`/`E` en la firma): solo
+   S1. El nativo valida instanciaciones de ADT concretas pero no infiere/unifica
+   TVars de función.
+2. **Tipos anidados** (`A<B<C>,D>`): **ningún** frontend los soporta — el S1
+   falla con error de sintaxis y el parser nativo se colgaba en el parseo (bug de
+   robustez pre-existente, NO tocado en 2.4 nativa). No usar instanciaciones anidadas.
+3. **Errores semánticos clásicos** (p. ej. variable no declarada en pasada 3): el
+   nativo sigue lenient por diseño (los falsos positivos pre-existentes romperían
+   el bootstrap); solo la validación 2.4 aborta (`hay_error_2_4`).
 
-**Tarea de roadmap:** ver ROADMAP.md → FASE 2 (tarea "Fase 2 nativa (P1)").
+**Tests de paridad:** `tests/test_fase2_nativa_hm.py` (6 tests) — válido compila;
+aridad/base fallan con `rc=7`; tipo simple lenient. Reporte formal:
+`docs/reportes/FASE_2_2.4_NATIVA.md`. Ref. S1: `compilador/tipos.py` +
+`compilador/semantic_types.py` (28 tests, `tests/unit/test_type_inference.py`).
 
 ## Arquitectura
 
