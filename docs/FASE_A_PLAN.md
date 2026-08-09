@@ -1,8 +1,10 @@
 # PLAN FASE A — Migración del frontend embebido `_P_*` al frontend nativo Synapse (`lexer.syn`/`parser*.syn`)
 
 > Documento de planificación de la auditoría de alineación a Manuales v8.1.0.
-> Fecha: 2026-08-06. Estado: **EN EJECUCIÓN — Etapas A1 ✅, A2 ✅ (A2.1/A2.2/A2.3/A2.4 ✅),
-> A3 ✅ (A3.0/A3.1/A3.2 ✅) y A4 ✅ (retirada del espejo) completadas** (matriz de brechas en
+> Fecha: 2026-08-06. Estado: **COMPLETADA (2026-08-09) — Etapas A1 ✅, A2 ✅
+> (A2.1/A2.2/A2.3/A2.4 ✅), A3 ✅ (A3.0/A3.1/A3.2 ✅), A4 ✅ (retirada del espejo) y
+> A5 ✅ (cierre de deudas D-6/D-7/D-2/D-3/D-5) completadas** — cierre formal en
+> `docs/reportes/FASE_A.md`; checklist 1.3/1.4 y 3.6 → ✅ en la bitácora (matriz de brechas en
 > `docs/reportes/FASE_A_A1.md`; plan aprobado tras F1.4, que cerró el mapeo de keywords
 > del Manual 2 §3). **Etapa A2.1 completada** (tokenizador nativo con paridad UTF-8/keywords/`.`).
 > **Etapa A2.2 completada** (port del parser tipado nativo con structs tipados y todos los
