@@ -66,6 +66,10 @@ Estas fases establecen el compilador de Synapse, el runtime, el sistema de tipos
   - Implementación del algoritmo Hindley-Milner (unificación, occurs check) para inferencia de tipos.
   - Verificación de ownership y borrowing (use-after-move, préstamos).
   - Verificación de exhaustividad en `coincidir` para tipos algebraicos.
+  - **Fase 2 nativa (P1) — pendiente:** validación de aridad/base/argumentos de instanciaciones de ADT
+    (`Resultado<entero,texto>` vs `Resultado<T,E>`) y unificación HM en `nucleo/analizador_semantico.syn`,
+    con paridad al S1 (ref. de implementación `compilador/tipos.py` + `compilador/semantic_types.py`;
+    divergencia documentada en `nucleo/README.md` y `docs/reportes/FASE_2_2.4.md` §6).
 - **Criterios de Aceptación:** El compilador detecta variables no declaradas, tipos incompatibles, usos después de movimiento, y falta de casos en match. Todos los tests de integración de la Fase 1 siguen pasando.
 - **Dependencias:** Fase 1.
 - **Riesgos y Mitigaciones:** Alto. El algoritmo Hindley-Milner debe implementarse con cuidado para evitar falsos positivos. Se recomienda empezar con un subconjunto de tipos y expandir gradualmente.

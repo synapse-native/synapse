@@ -9,6 +9,8 @@ representación estructurada `TipoKind` (Opción B del Arquitecto, Fase 2):
   3. Validación de aridad de ADT y argumentos de tipo conocidos
   4. ERR_SEM_TYPE_AMBIGUOUS para TVar sin resolver (Manual 2 §8.2)
 """
+from pathlib import Path
+
 from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico
@@ -251,3 +253,22 @@ class TestChecadorHindleyMilner:
         assert diag.hay_errores()
         assert any(e['codigo'] == ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE
                    for e in diag.errores)
+
+    def test_integracion_fixture_d2(self):
+        # Prioridad 3 del Arquitecto: el sistema de tipos 2.4 debe integrarse
+        # con la instanciación genérica (D-2: Resultado<T,E> -> Resultado<entero,
+        # texto>), los constructores ok/err, el operador '?' (D-6) y el acceso
+        # .tag sin romper programas reales del fixture D-2.
+        ruta = Path(__file__).resolve().parent.parent / 'fixtures' \
+            / 'test_d2_genericos.syn'
+        diag = _analizar(ruta.read_text(encoding='utf-8'))
+        assert not diag.hay_errores(), [e for e in diag.errores]
+
+    def test_integracion_fixture_d6(self):
+        # Prioridad 3 del Arquitecto: el ADT concreto del fixture D-6
+        # (Resultado = ok(entero) | err(texto), sin genéricos) con '?' y
+        # coincidir implícito también debe pasar la validación 2.4.
+        ruta = Path(__file__).resolve().parent.parent / 'fixtures' \
+            / 'test_d6_propagar.syn'
+        diag = _analizar(ruta.read_text(encoding='utf-8'))
+        assert not diag.hay_errores(), [e for e in diag.errores]
