@@ -33,14 +33,19 @@ implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
    S1. El nativo valida instanciaciones de ADT concretas pero no infiere/unifica
    TVars de función.
 2. **Tipos anidados** (`A<B<C>,D>`): **ningún** frontend los soporta — el S1
-   falla con error de sintaxis y el parser nativo se colgaba en el parseo (bug de
-   robustez pre-existente, NO tocado en 2.4 nativa). No usar instanciaciones anidadas.
+   falla con error de sintaxis; el parser nativo se colgaba en bucle infinito
+   (`parsear_tipo_retorno` fallaba y el INDENTAR quedaba sin consumir → giro en
+   `T_INDENTAR`). **RESUELTO (R2, 2026-08-09):** error limpio en `parsear_funcion`
+   + fallback anti-cuelgue `sino: token_avanzar(est)` en los 7 bucles de cuerpo
+   del parser. Ambos frontends rechazan; ninguno cuelga. No usar instanciaciones
+   anidadas (soportadas solo a 1 nivel de anidamiento).
 3. **Errores semánticos clásicos** (p. ej. variable no declarada en pasada 3): el
    nativo sigue lenient por diseño (los falsos positivos pre-existentes romperían
    el bootstrap); solo la validación 2.4 aborta (`hay_error_2_4`).
 
-**Tests de paridad:** `tests/test_fase2_nativa_hm.py` (6 tests) — válido compila;
-aridad/base fallan con `rc=7`; tipo simple lenient. Reporte formal:
+**Tests de paridad:** `tests/test_fase2_nativa_hm.py` (**7 tests**) — válido compila;
+aridad/base fallan con `rc=7`; tipo simple lenient; regresión anti-cuelgue de
+`nucleo/parser.syn` (tipos anidados no cuelgan). Reporte formal:
 `docs/reportes/FASE_2_2.4_NATIVA.md`. Ref. S1: `compilador/tipos.py` +
 `compilador/semantic_types.py` (28 tests, `tests/unit/test_type_inference.py`).
 
