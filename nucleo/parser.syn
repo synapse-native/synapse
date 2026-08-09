@@ -303,6 +303,11 @@ funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
                 inseguro:
                     asm("est->nodos[ultimo].hermano = stmt")
             ultimo = stmt
+        sino:
+            // Anti-cuelgue (paridad parsear_nativo / A3.1): si el token no
+            // produce sentencia, avanzar (repro: T_INDENTAR huerfano tras un
+            // tipo de retorno invalido A<B<C>,D> -> bucle infinito del cuerpo).
+            token_avanzar(est)
         siguiente
     retornar primero
 
@@ -337,7 +342,13 @@ funcion parsear_funcion(est: ParserEst) -> entero:
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0
     // tipo retorno — FASE A (A3.1): span completo (DefinicionFuncion.tipo_retorno)
-    parsear_tipo_retorno(est, nodo_func)
+    // F2-2.4c (anti-cuelgue R2): si el tipo no termina en ':' (p.ej. tipos
+    // anidados A<B<C>,D> que el parser no soporta), el fallo se ignoraba y el
+    // INDENTAR quedaba sin consumir -> bucle infinito del cuerpo en T_INDENTAR.
+    // Reportar error limpio (paridad S1, que da error de sintaxis).
+    si parsear_tipo_retorno(est, nodo_func) == 0:
+        parser_error(est, "Se esperaba ':' tras el tipo de retorno", linea, col)
+        retornar 0
     // FASE A (A4.5): consumir INDENTAR ANTES de parsear_contratos, paridad con
     // Python parser (compilador/parser_declarations.py L79-80). Si hay NL antes
     // de INDENTAR, saltarlas (caso firma en linea y bloque en siguiente).
@@ -412,6 +423,9 @@ funcion parsear_si(est: ParserEst) -> entero:
                         inseguro:
                             asm("est->nodos[ultimo_si].hermano = stmt")
                     ultimo_si = stmt
+                sino:
+                    // Anti-cuelgue (paridad A3.1): avanza si el token no produce sentencia
+                    token_avanzar(est)
                 siguiente
     sino:
         // FASE A (A4.5): cuerpo inline 'si cond: stmt' en una sola linea
@@ -462,6 +476,9 @@ funcion parsear_si(est: ParserEst) -> entero:
                             inseguro:
                                 asm("est->nodos[ultimo_sino].hermano = stmt")
                         ultimo_sino = stmt
+                    sino:
+                        // Anti-cuelgue (paridad A3.1)
+                        token_avanzar(est)
                     siguiente
         sino:
             // FASE A (A4.5): cuerpo inline del sino (paridad _P_si).
@@ -517,7 +534,11 @@ funcion parsear_mientras(est: ParserEst) -> entero:
                     sino:
                         inseguro:
                             asm("est->nodos[ultimo].hermano = stmt")
-                    ultimo = stmt                    siguiente
+                    ultimo = stmt
+                sino:
+                    // Anti-cuelgue (paridad A3.1): avanza si el token no produce sentencia
+                    token_avanzar(est)
+                siguiente
     sino:
         // FASE A (A4.5): cuerpo inline 'mientras cond: stmt' (paridad _P_*
         // T_WHILE: 'else { _P_sentencia(); }').
@@ -590,7 +611,11 @@ funcion parsear_para(est: ParserEst) -> entero:
                     sino:
                         inseguro:
                             asm("est->nodos[ultimo].hermano = stmt")
-                    ultimo = stmt                    siguiente
+                    ultimo = stmt
+                sino:
+                    // Anti-cuelgue (paridad A3.1): avanza si el token no produce sentencia
+                    token_avanzar(est)
+                siguiente
     sino:
         // FASE A (A4.5): cuerpo inline 'para ...: stmt' (paridad _P_* T_PARA).
         stmt = parsear_sentencia(est)
@@ -827,6 +852,9 @@ funcion parsear_inseguro(est: ParserEst) -> entero:
                         inseguro:
                             asm("est->nodos[ultimo].hermano = stmt")
                     ultimo = stmt
+                sino:
+                    // Anti-cuelgue (paridad A3.1)
+                    token_avanzar(est)
                 siguiente
     si primero > 0:
         inseguro:
@@ -967,6 +995,8 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
                             r2 = 0
                             romper
                         stmt = parsear_sentencia(est)
+                        si stmt == 0:
+                            token_avanzar(est)
                         siguiente
                 siguiente
     retornar nodo

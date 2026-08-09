@@ -155,3 +155,29 @@ funcion principal() -> nulo:
     assert "Analisis semantico fallido (validacion 2.4)" not in proc.stderr, (
         "un error ajeno a 2.4 no debe abortar la validacion 2.4:\n"
         + proc.stderr[-1200:])
+
+
+def test_2_4_tipos_anidados_no_cuelgan(stage, tmp_path):
+    """Regresion R2 (anti-cuelgue): tipos anidados `A<B<C>,D>` (no soportados
+    por el parser) NO deben colgar el pipeline nativo (antes: bucle infinito en
+    T_INDENTAR tras el fallo de parsear_tipo_retorno -> timeout). Ahora fallan
+    con rc!=0 sin agotar el timeout corto del test."""
+    prog = """#lang: es
+funcion f() -> A<B<C>,D>:
+    retornar
+funcion principal() -> nulo:
+    retornar
+"""
+    src = os.path.join(str(tmp_path), "anidado.syn")
+    exe = os.path.join(str(tmp_path), "anidado.exe")
+    with open(src, "w", encoding="utf-8") as f:
+        f.write(prog)
+    try:
+        proc = subprocess.run(
+            [stage, src, exe], cwd=RAIZ,
+            capture_output=True, text=True, timeout=45,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail("R2: el parser nativo se colgo con tipos anidados A<B<C>,D>")
+    assert proc.returncode != 0, (
+        "los tipos anidados A<B<C>,D> no son validos y no deben compilar")

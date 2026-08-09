@@ -29883,6 +29883,21 @@
                       "nombre": "stmt"
                     }
                   }
+                ],
+                "cuerpo_sino": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  }
                 ]
               },
               {
@@ -30346,21 +30361,64 @@
             ]
           },
           {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parsear_tipo_retorno",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "nodo_func"
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "parsear_tipo_retorno",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "nodo_func"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "parser_error",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    {
+                      "_tipo": "LiteralCadena",
+                      "valor": "Se esperaba ':' tras el tipo de retorno"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "linea"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "col"
+                    }
+                  ]
                 }
-              ]
-            }
+              },
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
           },
           {
             "_tipo": "SentenciaSi",
@@ -31140,6 +31198,21 @@
                               "nombre": "stmt"
                             }
                           }
+                        ],
+                        "cuerpo_sino": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
+                          }
                         ]
                       },
                       {
@@ -31631,6 +31704,21 @@
                                 "expresion": {
                                   "_tipo": "Identificador",
                                   "nombre": "stmt"
+                                }
+                              }
+                            ],
+                            "cuerpo_sino": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "token_avanzar",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "est"
+                                    }
+                                  ]
                                 }
                               }
                             ]
@@ -32247,11 +32335,26 @@
                               "_tipo": "Identificador",
                               "nombre": "stmt"
                             }
-                          },
+                          }
+                        ],
+                        "cuerpo_sino": [
                           {
-                            "_tipo": "SentenciaSiguiente"
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
                           }
                         ]
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
                       }
                     ]
                   }
@@ -33092,11 +33195,26 @@
                               "_tipo": "Identificador",
                               "nombre": "stmt"
                             }
-                          },
+                          }
+                        ],
+                        "cuerpo_sino": [
                           {
-                            "_tipo": "SentenciaSiguiente"
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
                           }
                         ]
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
                       }
                     ]
                   }
@@ -35983,6 +36101,21 @@
                               "nombre": "stmt"
                             }
                           }
+                        ],
+                        "cuerpo_sino": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
+                          }
                         ]
                       },
                       {
@@ -37883,6 +38016,36 @@
                                     }
                                   ]
                                 }
+                              },
+                              {
+                                "_tipo": "SentenciaSi",
+                                "condicion": {
+                                  "_tipo": "OpBinaria",
+                                  "izquierdo": {
+                                    "_tipo": "Identificador",
+                                    "nombre": "stmt"
+                                  },
+                                  "operador": "==",
+                                  "derecho": {
+                                    "_tipo": "LiteralNumero",
+                                    "valor": 0
+                                  }
+                                },
+                                "cuerpo": [
+                                  {
+                                    "_tipo": "SentenciaExpr",
+                                    "expr": {
+                                      "_tipo": "LlamadaFuncion",
+                                      "nombre": "token_avanzar",
+                                      "argumentos": [
+                                        {
+                                          "_tipo": "Identificador",
+                                          "nombre": "est"
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
                               },
                               {
                                 "_tipo": "SentenciaSiguiente"
