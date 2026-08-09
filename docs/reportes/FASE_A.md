@@ -25,7 +25,7 @@ MANUAL REFERENCIADO: Manual 2 §2 (EBNF L36-200), §3 (keywords L205-260), §4.1
        (ABI de tipos), §4.2 L279-280 (ADT genericos), §4.3 L290-292 (rc/arc/débil);
        Manual 3 §5.4 (Resultado<T,E>/Opcion<T>), §7 L331-342 (operador '?');
        Manual 9 §9.1 (bootstrap) y §9.7 (determinismo diff 0 bytes).
-HASH COMMIT: <pendiente> (cierre formal FASE A: reporte + bitacora + plan).
+HASH COMMIT: ec3e9be (cierre formal FASE A: reporte + bitacora + plan, 3 archivos, +191/-5).
 COMPILACION (criterio 1): bootstrap S1->S2->S3 rc 0 en las 3 etapas con C identico
        S2==S3 (SHA256 2aabca3486b06f3ad1dd3aeca1f18a5bff38189047a389b29bf1c3dc6371822c —
        verificado en el cierre de D-5, 2026-08-09, con el frontend nativo en las 3).
