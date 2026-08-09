@@ -25,7 +25,7 @@ MANUAL REFERENCIADO: Manual 2 §1 (L13-17: '#lang:' obligatorio en línea 1),
        es/en/fr/pt, L90-94), §3 (tabla de palabras reservadas L205-260),
        §4.1/§4.2/§5.2 (ejemplos tokenizables), §12 (pruebas obligatorias:
        lexer/parser 100% pass, >95% cobertura).
-HASH COMMIT: pendiente (bitácora se actualiza al commitear; convención FASE 2-B1).
+HASH COMMIT: **7cece3f** (bitácora se actualiza al commitear; convención FASE 2-B1).
 ENTREGABLES (5/5, ROADMAP L47-51):
    1. nucleo/lexer.syn (45 KB, 30 funciones): #lang, INDENT/DEDENT, comentarios,
       cadenas con escapes, números/flotantes, operadores — 1.1 ✅ (F1.1_1.2.md).
@@ -127,5 +127,5 @@ la bitácora se actualiza a **FASE 1 COMPLETADA**.
   (tests unitarios), `docs/reportes/FASE_A.md` (precedente de cierre formal).
 - `docs/AUDITORIA_ALINEACION_MANUALES.md` — checklist 1.1-1.6 (bitácora).
 
-HASH COMMIT: **pendiente** (bitácora se actualiza al commitear; convención
+HASH COMMIT: **7cece3f** (bitácora se actualiza al commitear; convención
 FASE 2-B1).
