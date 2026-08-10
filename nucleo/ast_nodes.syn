@@ -62,6 +62,11 @@ estructura AsignacionVariable:
     tipo: texto
     nombre: texto
     expresion: Nodo
+    // R9: marcador StmtConstante (1 si el puente la creo desde
+    // NODO_CONSTANTE). El flatten F8 lo copia a SemNodo.valor_int y la pasada
+    // 2 / analizar_sentencia registran la constante con es_constante=1
+    // (inmutabilidad real, paridad S1 semantic_checker.py StmtConstante).
+    es_constante: booleano
 
 estructura DeclaracionVariable:
     tipo: texto

@@ -320,3 +320,69 @@ def test_r8_log_decimal_imprime(stage, tmp_path):
         f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
     assert run is not None and run.stdout.splitlines() == ["3.500000"], (
         f"salida inesperada: {run.stdout if run else None}")
+
+
+# --- R9 (deuda FASE_2_2.4_NATIVA.md): inmutabilidad REAL de constantes ---
+# Antes: StmtConstante no se registraba (es_constante siempre falso -> la rama
+# ERR_SEM_CONSTANTE_INMUTABLE estaba inerte) y tabla_buscar era first-match
+# (un parametro que sombreaba una constante global encontraba la constante ->
+# falso positivo). Fix: marcador es_constante en el flatten F8 (puente
+# NODO_CONSTANTE -> AsignacionVariable.es_constante=1 -> SemNodo.valor_int),
+# registro en pasada 2 (globales) y analizar_sentencia (locales), y
+# tabla_buscar innermost-first (paridad S1 symbol_table.py buscar:
+# reversed(self._scopes)). El nativo no aborta (hay_error no aborta; solo
+# hay_error_2_4) pero emite el diagnostico observable en formato 2.4
+# "[Synapse] Error semantico ..." (paridad diagnostics.py).
+
+_PROG_R9_CONST_GLOBAL = """#lang: es
+constante MAXIMO = 5
+funcion principal() -> nulo:
+    MAXIMO = 9
+"""
+
+_PROG_R9_SOMBRA_PARAM = """#lang: es
+constante X = 5
+funcion calcular(X: entero) -> entero:
+    X = X + 1
+    retornar X
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(calcular(3)))
+"""
+
+_PROG_R9_CONST_LOCAL = """#lang: es
+funcion principal() -> nulo:
+    constante Y = 3
+    Y = 4
+"""
+
+
+def test_r9_constante_global_inmutable(stage, tmp_path):
+    """R9: reasignar una constante global emite el diagnostico
+    ERR_SEM_CONSTANTE_INMUTABLE (antes: rama inerte, sin diagnostico). El
+    nativo no aborta (hay_error no aborta; paridad de diseno del pipeline)
+    pero el diagnostico es observable en stderr."""
+    proc = _compilar_con_stage(stage, _PROG_R9_CONST_GLOBAL, str(tmp_path))
+    assert "No se puede reasignar la constante 'MAXIMO'" in proc.stderr, (
+        f"diagnostico ausente:\n{proc.stderr[-1500:]}")
+
+
+def test_r9_parametro_sombra_constante_global(stage, tmp_path):
+    """R9: tabla_buscar innermost-first — el parametro X sombrea la constante
+    global X, por lo que asignarle NO es inmutable (antes: first-match
+    encontraba la constante -> falso positivo ERR_SEM_CONSTANTE_INMUTABLE).
+    Compila y ejecuta con el valor correcto."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R9_SOMBRA_PARAM, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert "No se puede reasignar la constante" not in proc.stderr, (
+        f"falso positivo de inmutabilidad:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["4"], (
+        f"salida inesperada: {run.stdout if run else None}")
+
+
+def test_r9_constante_local_inmutable(stage, tmp_path):
+    """R9: constante LOCAL (StmtConstante dentro de una funcion) tambien es
+    inmutable (paridad S1 L446-458)."""
+    proc = _compilar_con_stage(stage, _PROG_R9_CONST_LOCAL, str(tmp_path))
+    assert "No se puede reasignar la constante 'Y'" in proc.stderr, (
+        f"diagnostico ausente:\n{proc.stderr[-1500:]}")

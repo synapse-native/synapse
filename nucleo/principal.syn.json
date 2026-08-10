@@ -12446,6 +12446,10 @@
           {
             "nombre": "expresion",
             "tipo": "Nodo"
+          },
+          {
+            "nombre": "es_constante",
+            "tipo": "booleano"
           }
         ]
       },
@@ -44239,6 +44243,13 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  _p->es_constante = 1;  // R9: marcador de constante para el analizador (flatten -> valor_int)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -46701,6 +46712,13 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "int _idx = est->tabla->total_entradas - 1 - i;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "for (int _si = 0; _si < 256; _si++) {"
                     }
                   },
@@ -46715,7 +46733,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    char _b = est->tabla->entradas[i].nombre.datos[_si];"
+                      "instruccion": "    char _b = est->tabla->entradas[_idx].nombre.datos[_si];"
                     }
                   },
                   {
@@ -46743,7 +46761,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "if (_eq) { return i; }"
+                      "instruccion": "if (_eq) { return _idx; }"
                     }
                   },
                   {
@@ -51907,6 +51925,181 @@
             "cuerpo": [
               {
                 "_tipo": "AsignacionVariable",
+                "nombre": "esconstdecl",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "nodo_valor_int",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "idx_nodo"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "esconstdecl"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "cnom",
+                    "expresion": {
+                      "_tipo": "LiteralCadena",
+                      "valor": ""
+                    }
+                  },
+                  {
+                    "_tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; cnom=_cs; } }"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "cnom"
+                      },
+                      "operador": "!=",
+                      "derecho": {
+                        "_tipo": "LiteralCadena",
+                        "valor": ""
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "ok_c",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "tabla_declarar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "cnom"
+                            },
+                            {
+                              "_tipo": "LiteralCadena",
+                              "valor": "entero"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "idx_nodo"
+                            },
+                            {
+                              "_tipo": "LiteralBooleano",
+                              "valor": true
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "ok_c"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "LiteralBooleano",
+                            "valor": false
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "sem_error",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                },
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "ERR_SEM_REDEFINICION"
+                                },
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "idx_nodo"
+                                },
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "cnom"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "analizar_expr",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "nodo_expr",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "idx_nodo"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
                 "nombre": "varnombre",
                 "expresion": {
                   "_tipo": "LiteralCadena",
@@ -52041,6 +52234,18 @@
                       }
                     },
                     "cuerpo": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);"
+                            }
+                          }
+                        ]
+                      },
                       {
                         "_tipo": "SentenciaExpr",
                         "expr": {
@@ -54517,6 +54722,167 @@
                             }
                           ]
                         }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "tipo"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "NODO_ASIGNACION"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "esconst",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "nodo_valor_int",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "stmt"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "esconst"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "cnombre",
+                        "expresion": {
+                          "_tipo": "LiteralCadena",
+                          "valor": ""
+                        }
+                      },
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; cnombre=_cs; } }"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "cnombre"
+                          },
+                          "operador": "!=",
+                          "derecho": {
+                            "_tipo": "LiteralCadena",
+                            "valor": ""
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "ok_c",
+                            "expresion": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "tabla_declarar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                },
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "cnombre"
+                                },
+                                {
+                                  "_tipo": "LiteralCadena",
+                                  "valor": "entero"
+                                },
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "stmt"
+                                },
+                                {
+                                  "_tipo": "LiteralBooleano",
+                                  "valor": true
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaSi",
+                            "condicion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "ok_c"
+                              },
+                              "operador": "==",
+                              "derecho": {
+                                "_tipo": "LiteralBooleano",
+                                "valor": false
+                              }
+                            },
+                            "cuerpo": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "sem_error",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "est"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "ERR_SEM_REDEFINICION"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "stmt"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "cnombre"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   }
@@ -82862,6 +83228,34 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        if(_a->expresion){ int _ci=_f8_flatten(_a->expresion); ((int*)&_f8_nodos[idx])[6]=_ci; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R9: marcador StmtConstante (puente AsignacionVariable.es_constante=1)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // -> SemNodo.valor_int para que la pasada 2 y analizar_sentencia"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // registren la constante con es_constante=verdadero."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].valor_int=_a->es_constante;"
                 }
               },
               {

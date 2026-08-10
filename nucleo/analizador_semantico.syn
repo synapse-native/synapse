@@ -206,6 +206,13 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
+    // R9: precedencia de ambito innermost-first (paridad S1 symbol_table.py
+    // buscar: for scope in reversed(self._scopes)). La tabla es lineal con
+    // niveles de ambito y tabla_salir_scope hace pop de las entradas del
+    // scope saliente, por lo que recorrer desde el final encuentra la
+    // vinculacion del ambito mas interno. Antes (first-match desde el indice
+    // 0) un parametro o variable local que sombreaba una constante global
+    // encontraba la constante -> falso positivo ERR_SEM_CONSTANTE_INMUTABLE.
     i = 0
     r = 1
     mientras r == 1:
@@ -214,13 +221,14 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
             si r == 0:
                 romper
             asm("int _eq = 1;")
+            asm("int _idx = est->tabla->total_entradas - 1 - i;")
             asm("for (int _si = 0; _si < 256; _si++) {")
             asm("    char _a = nombre.datos[_si];")
-            asm("    char _b = est->tabla->entradas[i].nombre.datos[_si];")
+            asm("    char _b = est->tabla->entradas[_idx].nombre.datos[_si];")
             asm("    if (_a != _b) { _eq = 0; break; }")
             asm("    if (_a == 0) break;")
             asm("}")
-            asm("if (_eq) { return i; }")
+            asm("if (_eq) { return _idx; }")
             asm("i = i + 1")
     retornar -1
 
@@ -680,6 +688,20 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
+        // R9: constantes LOCALES (StmtConstante aplanado con marcador
+        // es_constante en valor_int; paridad S1 L446-458): se declaran como
+        // constantes, no como asignaciones.
+        esconstdecl = nodo_valor_int(est, idx_nodo)
+        si esconstdecl == 1:
+            cnom = ""
+            inseguro:
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; cnom=_cs; } }")
+            si cnom != "":
+                ok_c = tabla_declarar(est, cnom, "entero", idx_nodo, verdadero)
+                si ok_c == falso:
+                    sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, cnom)
+            analizar_expr(est, nodo_expr(est, idx_nodo))
+            retornar
         // R7: resolucion de simbolos de la pasada 3 (paridad S1
         // semantic_checker.py _analizar_sentencia -> AsignacionVariable): si el
         // nombre no esta en la tabla se declara implicitamente en el scope
@@ -688,13 +710,6 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
         // ERR_SEM_VAR_NO_DECLARADA para parametros y asignaciones implicitas
         // (653 falsos positivos en el bootstrap del propio compilador; deuda R7
         // de docs/reportes/FASE_2_2.4_NATIVA.md).
-        // NOTA: la rama esconst esta INERTE por diseno — ninguna pasada registra
-        // aun constantes globales (StmtConstante no tiene rama en el flatten F8
-        // ni registro en la pasada 2), por lo que es_constante siempre es falso.
-        // Activar el chequeo requiere registrar StmtConstante con es_constante=1
-        // Y una tabla_buscar con precedencia de ambito (la tabla lineal actual
-        // es first-match: un parametro que sombrea una constante global
-        // encontraria la constante y generaria un falso positivo). Deuda R9.
         varnombre = ""
         inseguro:
             asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
@@ -708,6 +723,14 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             inseguro:
                 asm("if (est->tabla->entradas[idx_sim].es_constante) { esconst = verdadero; }")
             si esconst == verdadero:
+                // R9: inmutabilidad REAL (paridad S1 L367-372). La rama estaba
+                // inerte (ninguna pasada registraba constantes). Diagnostico
+                // observable en formato 2.4 "[Synapse] Error semantico ..."
+                // (paridad diagnostics.py: "No se puede reasignar la constante
+                // '{nombre}'") para tests de paridad; sem_error marca hay_error
+                // (no aborta: solo hay_error_2_4 aborta el pipeline).
+                inseguro:
+                    asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);")
                 sem_error(est, ERR_SEM_CONSTANTE_INMUTABLE, idx_nodo, varnombre)
         // M21.4: analizar RHS para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
@@ -942,6 +965,21 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
             ok = tabla_declarar(est, nombre, "int", stmt, falso)
             si ok == falso:
                 sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
+        // R9: constantes globales (StmtConstante aplanado como NODO_ASIGNACION
+        // con marcador es_constante en valor_int; paridad S1
+        // semantic_checker.py L286-299: cur[s.nombre] = Simbolo(..., True)).
+        // Solo las marcadas: las asignaciones globales planas NO se registran
+        // (paridad S1, que tampoco registra AsignacionVariable top-level).
+        si tipo == NODO_ASIGNACION:
+            esconst = nodo_valor_int(est, stmt)
+            si esconst == 1:
+                cnombre = ""
+                inseguro:
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; cnombre=_cs; } }")
+                si cnombre != "":
+                    ok_c = tabla_declarar(est, cnombre, "entero", stmt, verdadero)
+                    si ok_c == falso:
+                        sem_error(est, ERR_SEM_REDEFINICION, stmt, cnombre)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 

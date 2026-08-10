@@ -332,6 +332,7 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->es_constante = 1;  // R9: marcador de constante para el analizador (flatten -> valor_int)")
             asm("  r = (void*)_p; }")
     si t == NODO_FUNCION:
         inseguro:
