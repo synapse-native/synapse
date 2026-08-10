@@ -199,6 +199,8 @@ estructura ExprObtenerDireccion:
     tipo: texto
     expr: Nodo
     es_mutable: booleano
+    linea: entero
+    columna: entero
 
 estructura ExprDereferencia:
     tipo: texto

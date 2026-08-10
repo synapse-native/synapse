@@ -12958,6 +12958,14 @@
           {
             "nombre": "es_mutable",
             "tipo": "booleano"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -44083,6 +44091,13 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -51991,7 +52006,7 @@
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_cs); } } } }"
+                              "instruccion": "{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ char _mm[256]; snprintf(_mm,256,\"Conflicto de prestamo sobre '%s': prestamo %s incompatible con prestamos activos (Manual 4 S4.2)\",_cs.datos,es_mut?\"&mut\":\"&\"); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_msg); } } } }"
                             }
                           }
                         ]
@@ -56583,7 +56598,7 @@
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "est->proximo_lifetime = 0;"
+                              "instruccion": "est->proximo_lifetime = 1;"
                             }
                           },
                           {
@@ -85735,6 +85750,34 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct ExprObtenerDireccion* _eod=(struct ExprObtenerDireccion*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R12: linea/columna reales para el diagnostico de conflicto de prestamo"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // (antes todos los nodos aplanados nacian con 0 -> sem_error salia con linea 0)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_eod->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_eod->columna;"
                 }
               },
               {

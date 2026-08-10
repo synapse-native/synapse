@@ -249,6 +249,7 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"ExprObtenerDireccion\");")
             asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->es_mutable = val;")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_DEREF:
         inseguro:

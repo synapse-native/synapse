@@ -682,3 +682,119 @@ def test_r1_argumentos_incompatibles(stage, tmp_path):
     assert "Error semantico" in proc.stderr, (
         f"diagnostico INCOMPATIBLE ausente:\n{proc.stderr[-1200:]}")
     assert "incompatibles" in proc.stderr
+
+
+# --- R12: prestamos M21.4 nativos (Manual 4 §4.2) ---------------------------
+# Paridad tests/integration/test_borrowing.py (6 casos): inmutable simple,
+# multiples inmutables, mutable simple, inmutable-luego-mutable,
+# mutable-luego-inmutable, dos mutables. Los conflictos emiten el diagnostico
+# observable 'Conflicto de prestamo sobre X: prestamo T incompatible...'
+# (paridad diagnostics.py ERR_MEM_BORROW_CONFLICT) con linea/columna reales.
+# El pipeline no aborta con hay_error (lenient por diseno, igual que R9/R11).
+
+_PROG_R12_INMUTABLE = '''#lang: es
+funcion leer(datos: &entero) -> entero:
+    retornar datos + 1
+funcion principal() -> entero:
+    x = 10
+    retornar leer(&x)
+'''
+
+_PROG_R12_MULTI_INMUTABLE = '''#lang: es
+funcion leer(a: &entero, b: &entero) -> entero:
+    retornar a + b
+funcion principal() -> entero:
+    x = 10
+    z = 20
+    retornar leer(&x, &z)
+'''
+
+_PROG_R12_MUTABLE = '''#lang: es
+funcion modificar(datos: &mut entero) -> nulo:
+    datos = 99
+funcion principal() -> nulo:
+    x = 10
+    modificar(&mut x)
+'''
+
+_PROG_R12_CONF_INM_LUEGO_MUT = '''#lang: es
+funcion principal() -> entero:
+    x = 10
+    a = &x
+    b = &mut x
+    retornar 0
+'''
+
+_PROG_R12_CONF_MUT_LUEGO_INM = '''#lang: es
+funcion principal() -> entero:
+    x = 10
+    a = &mut x
+    b = &x
+    retornar 0
+'''
+
+_PROG_R12_CONF_DOS_MUT = '''#lang: es
+funcion principal() -> entero:
+    x = 10
+    a = &mut x
+    b = &mut x
+    retornar 0
+'''
+
+
+def test_r12_borrow_inmutable_valido(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_borrow_inmutable_simple): un solo
+    prestamo inmutable (&x) en una llamada NO emite diagnostico. Antes del fix
+    emitia el falso positivo 'Ciclo de dependencia de lifetimes' (self-loop
+    OUTLIVES 0->0: proximo_lifetime arrancaba en 0 colisionando con el
+    lifetime original)."""
+    proc = _compilar_con_stage(stage, _PROG_R12_INMUTABLE, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"falso positivo de prestamo/lifetime:\n{proc.stderr[-1200:]}")
+    assert "Ciclo de dependencia" not in proc.stderr
+
+
+def test_r12_borrow_multiples_inmutables(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_multiples_borrow_inmutables):
+    multiples prestamos inmutables sobre variables DISTINTAS (&x, &z) son
+    validos (los inmutables pueden coexistir; el conflicto es por variable)."""
+    proc = _compilar_con_stage(stage, _PROG_R12_MULTI_INMUTABLE, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"falso positivo:\n{proc.stderr[-1200:]}")
+
+
+def test_r12_borrow_mutable_valido(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_borrow_mutable): un solo prestamo
+    mutable (&mut x) en una llamada NO emite diagnostico."""
+    proc = _compilar_con_stage(stage, _PROG_R12_MUTABLE, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"falso positivo:\n{proc.stderr[-1200:]}")
+
+
+def test_r12_conflicto_inmutable_luego_mutable(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_borrow_conflicto_inmutable_luego_mutable):
+    &x activo + &mut x -> ERR_MEM_BORROW_CONFLICT observable formateado
+    (antes: diagnostico malformado ': x' sin plantilla y sin linea)."""
+    proc = _compilar_con_stage(stage, _PROG_R12_CONF_INM_LUEGO_MUT, str(tmp_path))
+    assert "Conflicto de prestamo" in proc.stderr, (
+        f"diagnostico de conflicto ausente:\n{proc.stderr[-1200:]}")
+    assert "&mut" in proc.stderr
+    assert "linea 5" in proc.stderr  # linea real (antes 0)
+
+
+def test_r12_conflicto_mutable_luego_inmutable(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_borrow_conflicto_mutable_luego_inmutable):
+    &mut x activo + &x -> conflicto con tipo '&'."""
+    proc = _compilar_con_stage(stage, _PROG_R12_CONF_MUT_LUEGO_INM, str(tmp_path))
+    assert "Conflicto de prestamo" in proc.stderr, (
+        f"diagnostico de conflicto ausente:\n{proc.stderr[-1200:]}")
+    assert "prestamo & incompatible" in proc.stderr
+
+
+def test_r12_conflicto_dos_mutables(stage, tmp_path):
+    """R12 (paridad test_borrowing.py::test_borrow_conflicto_dos_mutables):
+    dos prestamos mutables simultaneos -> conflicto."""
+    proc = _compilar_con_stage(stage, _PROG_R12_CONF_DOS_MUT, str(tmp_path))
+    assert "Conflicto de prestamo" in proc.stderr, (
+        f"diagnostico de conflicto ausente:\n{proc.stderr[-1200:]}")
+    assert "&mut" in proc.stderr

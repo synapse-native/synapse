@@ -657,7 +657,7 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
             h_tipo = nodo_tipo(est, hijo)
             si h_tipo == NODO_IDENTIFICADOR:
                 inseguro:
-                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_cs); } } } }")
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ char _mm[256]; snprintf(_mm,256,\"Conflicto de prestamo sobre '%s': prestamo %s incompatible con prestamos activos (Manual 4 S4.2)\",_cs.datos,es_mut?\"&mut\":\"&\"); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_msg); } } } }")
                 // M21.4: restriccion OUTLIVES (paridad _inferir_tipo Manual 4.3)
                 inseguro:
                     asm("{ int _lt = est->proximo_lifetime;")
@@ -1185,7 +1185,12 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
                         asm("p = est->nodos[p].hermano")
                 // M21.4: Initialize lifetime tracking for this function scope (Manual 4.3)
                 inseguro:
-                    asm("est->proximo_lifetime = 0;")
+                    // R12: proximo_lifetime arranca en 1 — el indice 0 es el lifetime
+                    // original de la funcion (lt_kind[0]/lt_ambito[0]); si arranca en 0,
+                    // el primer prestamo crea OUTLIVES(0->0) (self-loop) y el DFS de
+                    // detectar_ciclo_outlives marca un ciclo FALSO (paridad S1: los
+                    // Lifetime son objetos con identidad, el nativo indices enteros).
+                    asm("est->proximo_lifetime = 1;")
                     asm("est->region_graph->total_constraints = 0;")
                     asm("for (int _ui = 0; _ui < est->uf->max; _ui++) { ((int*)est->uf->parent.datos)[_ui] = -1; ((int*)est->uf->rank.datos)[_ui] = 0; }")
                     asm("((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;")
