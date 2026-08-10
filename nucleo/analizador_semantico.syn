@@ -680,23 +680,64 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
+        // R7: resolucion de simbolos de la pasada 3 (paridad S1
+        // semantic_checker.py _analizar_sentencia -> AsignacionVariable): si el
+        // nombre no esta en la tabla se declara implicitamente en el scope
+        // actual ("primera declaracion de este scope"); si existe y es
+        // constante -> ERR_SEM_CONSTANTE_INMUTABLE. Antes se reportaba
+        // ERR_SEM_VAR_NO_DECLARADA para parametros y asignaciones implicitas
+        // (653 falsos positivos en el bootstrap del propio compilador; deuda R7
+        // de docs/reportes/FASE_2_2.4_NATIVA.md).
+        // NOTA: la rama esconst esta INERTE por diseno — ninguna pasada registra
+        // aun constantes globales (StmtConstante no tiene rama en el flatten F8
+        // ni registro en la pasada 2), por lo que es_constante siempre es falso.
+        // Activar el chequeo requiere registrar StmtConstante con es_constante=1
+        // Y una tabla_buscar con precedencia de ambito (la tabla lineal actual
+        // es first-match: un parametro que sombrea una constante global
+        // encontraria la constante y generaria un falso positivo). Deuda R9.
+        varnombre = ""
         inseguro:
-            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        idx_sim = tabla_buscar(est, varnombre)
+        si idx_sim < 0:
+            si varnombre != "":
+                // S1: primera declaracion en este scope (declaracion implicita)
+                tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+        sino:
+            esconst = falso
+            inseguro:
+                asm("if (est->tabla->entradas[idx_sim].es_constante) { esconst = verdadero; }")
+            si esconst == verdadero:
+                sem_error(est, ERR_SEM_CONSTANTE_INMUTABLE, idx_nodo, varnombre)
         // M21.4: analizar RHS para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
-
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
+        varnombre = ""
         inseguro:
-            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0);")
-            asm("    // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)")
-            asm("    est->proximo_lifetime = est->proximo_lifetime + 1;")
-            asm("} } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        // R7: REDEFINICION solo para duplicados en el MISMO scope (paridad S1
+        // SymbolTable.declarar / tabla_declarar nativa). Antes se usaba
+        // tabla_buscar (todos los scopes), que reportaba falsos positivos al
+        // sombrear parametros o variables de scopes externos con declaraciones
+        // anidadas (relevante tras declarar los parametros en la pasada 3).
+        si varnombre != "":
+            ok_decl = tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+            si ok_decl == falso:
+                sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, varnombre)
+            sino:
+                // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)
+                // R7: nota — antes se incrementaba solo si tabla_buscar < 0 (no
+                // encontrado en NINGUN scope); ahora se incrementa cuando
+                // tabla_declarar tiene exito (no duplicado del scope ACTUAL), por
+                // lo que en casos de sombra de un scope externo el contador avanza
+                // (indices internos de M21.4; sin impacto en el codegen).
+                inseguro:
+                    asm("est->proximo_lifetime = est->proximo_lifetime + 1;")
         // M21.4: analizar inicializador para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
-
     // SentenciaSi
     si tipo == NODO_SI:
         // M21.4: analizar condicion para prestamos (Manual 4 S4.2, slot [6])
@@ -920,6 +961,22 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
+                // R7: declarar los parametros en el scope de la funcion (paridad
+                // S1 semantic_checker.py _analizar_funcion: for p in nodo.parametros:
+                // self.tabla.declarar(p.nombre, p.tipo, nodo)). Sin esto, toda
+                // asignacion a un parametro en el cuerpo reportaba
+                // ERR_SEM_VAR_NO_DECLARADA (clase dominante de los 653 falsos
+                // positivos de la deuda R7).
+                p = nodo_expr(est, stmt)
+                mientras p > 0:
+                    pnombre = ""
+                    inseguro:
+                        asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[p].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[p])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; pnombre=_cs; } }")
+                    si pnombre != "":
+                        ptipo = nodo_cadena_retorno(est, p)
+                        tabla_declarar(est, pnombre, ptipo, p, falso)
+                    inseguro:
+                        asm("p = est->nodos[p].hermano")
                 // M21.4: Initialize lifetime tracking for this function scope (Manual 4.3)
                 inseguro:
                     asm("est->proximo_lifetime = 0;")

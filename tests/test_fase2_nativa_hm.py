@@ -181,3 +181,91 @@ funcion principal() -> nulo:
         pytest.fail("R2: el parser nativo se colgo con tipos anidados A<B<C>,D>")
     assert proc.returncode != 0, (
         "los tipos anidados A<B<C>,D> no son validos y no deben compilar")
+
+
+# --- R7 (deuda FASE_2_2.4_NATIVA.md): resolucion de simbolos de la pasada 3 ---
+# Antes: 653 falsos positivos «variable no declarada» en el bootstrap del propio
+# compilador (parametros NO declarados en el scope de la funcion + asignaciones
+# implicitas reportadas como error). Paridad S1 semantic_checker.py:
+# _analizar_funcion declara los parametros; _analizar_sentencia (AsignacionVariable)
+# declara implicitamente si el nombre no existe ("primera declaracion del scope")
+# y NODO_DECLARACION solo reporta REDEFINICION para duplicados del mismo scope.
+
+_PROG_R7_PARAM = """#lang: es
+funcion cuadruplicar(x: entero) -> entero:
+    x = x * 2
+    retornar x * 2
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(cuadruplicar(5)))
+"""
+
+_PROG_R7_IMPLICITA = """#lang: es
+funcion principal() -> nulo:
+    r = 0
+    i = 1
+    si i == 1:
+        t = r + 40
+        r = t
+    escribir_linea(entero_a_texto(r + 20))
+"""
+
+_PROG_R7_SOMBRA = """#lang: es
+funcion f(x: entero) -> entero:
+    si x > 0:
+        let x: entero = 3
+        x = x + 1
+        retornar x
+    retornar 0
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(f(9)))
+"""
+
+
+def _compilar_y_ejecutar(stage: str, prog: str, tmp: str):
+    """Compila `prog` con `stage`; si rc=0 ejecuta el binario y devuelve
+    (proc, run); si falla la compilacion devuelve (proc, None)."""
+    src = os.path.join(tmp, "r7.syn")
+    exe = os.path.join(tmp, "r7.exe")
+    with open(src, "w", encoding="utf-8") as f:
+        f.write(prog)
+    proc = subprocess.run(
+        [stage, src, exe], cwd=RAIZ,
+        capture_output=True, text=True, timeout=600,
+    )
+    if proc.returncode != 0:
+        return proc, None
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    return proc, run
+
+
+def test_r7_parametro_asignado_compila_y_corre(stage, tmp_path):
+    """R7: asignar a un parametro en el cuerpo compila y ejecuta (antes:
+    ERR_SEM_VAR_NO_DECLARADA falso positivo: los parametros no se declaraban
+    en el scope de la funcion en la pasada 3)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R7_PARAM, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["20"], (
+        f"salida inesperada: {run.stdout if run else None}")
+
+
+def test_r7_declaracion_implicita_compila_y_corre(stage, tmp_path):
+    """R7: asignacion a variable no declarada = primera declaracion del scope
+    (paridad S1): compila y ejecuta (antes: falso positivo 'no declarada')."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R7_IMPLICITA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["60"], (
+        f"salida inesperada: {run.stdout if run else None}")
+
+
+def test_r7_sombra_de_parametro_no_es_redefinicion(stage, tmp_path):
+    """R7: `let` que sombrea un parametro en un scope anidado NO es
+    REDEFINICION (duplicado solo del MISMO scope; paridad S1): compila y el
+    valor del scope interno gana (antes: tabla_buscar en todos los scopes
+    reportaba redefinicion al sombrear el parametro declarado)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R7_SOMBRA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["4"], (
+        f"salida inesperada: {run.stdout if run else None}")
