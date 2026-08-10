@@ -1,7 +1,7 @@
 # MEMORIA DEL PROYECTO SYNAPSE
 
 > **Sistema de memoria persistente del agente.** Leer al inicio de cada sesión ANTES de programar.
-> Última actualización: 2026-08-10 (sesión R8 + auditoría 2.4).
+> Última actualización: 2026-08-10 (sesión R9 — constantes + scoping; siguiente: checklist 2.x).
 
 ---
 
@@ -9,18 +9,17 @@
 
 - **Fase del roadmap:** Fase 2 — Tabla de símbolos y análisis semántico (brecha 2.4 P0 Hindley-Milner portada al nativo; rama `feature/fase2-nativa-hm`).
 - **Objetivo actual:** Cerrar la auditoría de alineación con los manuales del analizador nativo (`nucleo/analizador_semantico.syn`): checklist 2.1/2.2/2.3/2.5/2.6 (scopes, taxonomía `ERR_SEM_*`, ownership, exhaustividad) — ver `docs/AUDITORIA_ALINEACION_MANUALES.md`.
-- **Estado R8 (en working tree, SIN commitear):** `log(...)` en programas de usuario nativos ahora emite `printf` (antes `0;` sin salida). Implementado y VALIDADO:
-  - Bootstrap S1→S2→S3: **S2==S3 byte-idénticos** (1067694 bytes, md5 `7f9020f9`).
-  - Regresión: paridades nativas + semántica **81 passed**; codegen e2e con binarios S2/S3 **45 passed**; 3 tests R8 nuevos en `tests/test_fase2_nativa_hm.py`.
-- **Dependencias bloqueantes:** ninguna técnica; pendiente solo el commit de R8 (protocolo de entrega exige hash — el usuario debe confirmar antes de commitear).
-- **Próximo paso:** commit del cierre R8 (fix + docs + bitácora) y, a continuación, activar la deuda **R9** (constantes `StmtConstante` + `tabla_buscar` con precedencia de ámbito) — el usuario ya lo solicitó.
+- **Estado R9:** ✅ **IMPLEMENTADA y VALIDADA** (commits pendientes de esta sesión) — inmutabilidad REAL de constantes: marcador `es_constante` en `AsignacionVariable` (puente→flatten→`valor_int`), registro en pasada 2 (globales) y pasada 3 (locales), `tabla_buscar` innermost-first. Bootstrap S2==S3 byte-idénticos (1068718 bytes, md5 `3862049e`); regresión 129 passed; 3 tests R9 nuevos (16/16 HM).
+- **Dependencias bloqueantes:** ninguna técnica.
+- **Próximo paso:** **Checklist 2.1/2.2/2.3/2.5/2.6** de la auditoría (scopes, taxonomía `ERR_SEM_*`, ownership, exhaustividad) — ver `docs/AUDITORIA_ALINEACION_MANUALES.md`; deuda R10 (RAII `_syn_texto_liberar` sobre literales estáticos) y R1 (TVars nativo) siguen abiertas.
 
 ---
 
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 
 - **2026-08-10 — R7 (fix `3e9cb84`):** la pasada 3 del analizador nativo declara los parámetros en el scope de la función; `NODO_ASIGNACION` hace declaración implícita ("primera declaración del scope", paridad S1) y chequea `ERR_SEM_CONSTANTE_INMUTABLE`; `NODO_DECLARACION` reporta REDEFINICIÓN solo del MISMO scope (vía retorno de `tabla_declarar`). **653 falsos positivos «variable no declarada» → 0.**
-- **2026-08-10 — R8 (working tree):** `log(...)` → puente crea `LogLlamada` → el generador nativo no lo manejaba → fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`): `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` para el resto; dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`. **Regenerar `nucleo/generator.syn` con `_rebuild_generator.py` SIEMPRE después de editar módulos de `nucleo/generador/`.**
+- **2026-08-10 — R9 (working tree):** inmutabilidad REAL de constantes + scoping. Marcador `es_constante` en `estructura AsignacionVariable` (el puente lo pone a 1 en `NODO_CONSTANTE`; el flatten F8 lo copia a `SemNodo.valor_int`); pasada 2 registra las globales marcadas (las asignaciones globales planas NO, paridad S1); pasada 3 declara las locales y ACTIVA el chequeo `ERR_SEM_CONSTANTE_INMUTABLE` con diagnóstico observable `[Synapse] Error semantico ... No se puede reasignar la constante 'X'` (no aborta: solo `hay_error_2_4`); `tabla_buscar` innermost-first (recorre desde el final; la tabla conserva solo la cadena de scopes — paridad `reversed(_scopes)`). **Lección reaplicada: builds S1 de `nucleo/principal.syn` necesitan timeout ≥ 900s** — el build matado a los 30s dejó un `synapse_stage1.exe` stale (los `_*.c` sí se escribieron, el exe no) que no emitía el diagnóstico; el bootstrap (stage1 viejo compilando los fuentes R9) sí salió correcto. El S1 rechaza un parámetro llamado igual que una constante global por limitación pre-existente de su codegen (macros C `#define X (5)`).
+- **2026-08-10 — R8 (commits `8136fd8` + `4adbee7`):** `log(...)` → puente crea `LogLlamada` → el generador nativo no lo manejaba → fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`): `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` para el resto; dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`. **Regenerar `nucleo/generator.syn` con `_rebuild_generator.py` SIEMPRE después de editar módulos de `nucleo/generador/`.**
 - **2026-08-09 — R5 (fix `54f5ee7`):** el pipeline nativo aborta con `{1,8}` (rc=8) en errores de parseo (paridad S1), vía wrapper `parsear()` + global `_G_parse_error`.
 - **2026-08-09 — R2 (fix `8f9dc54`):** anti-cuelgue del parser nativo ante tipos anidados (`A<B<C>,D>`): `parsear_funcion` verifica el retorno de `parsear_tipo_retorno` + fallback `token_avanzar` en los 7 bucles de cuerpo.
 - **2026-08-09 — Port nativo 2.4 (fix `b7cd505`):** validación Hindley-Milner (aridad/base/argumentos de ADT) en `nucleo/analizador_semantico.syn` con flag dedicado **`hay_error_2_4`** (aborta rc=7; el aborto global `hay_error` rompía el bootstrap). Flatten F8: **root reservado en idx 0**; `Parametro.tipo_param` se lee vía `ptr_extra` (el puente llena `tipo_param`, NO `tipo` — causa raíz de los 653 falsos positivos originales); `nodo_cadena_retorno` usa `strdup` (fix del free sobre buffer estático).
@@ -34,6 +33,9 @@
 - **Error:** `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED redefined` (warning GCC) en `_principal.c`, `_lexer.c`, `_diagnostics.c` de la compilación modular.
   - **Contexto:** `_etapa1.log`; macros ERR_* emitidas en varios módulos con `#ifndef` incompleto en compilación modular histórica.
   - **Solución aplicada:** el emisor S1 emite los ERR_* con guards `#ifndef` (`generator.py` `_emitir_error_defines`); es un warning pre-existente, no bloqueante. Verificar que no reaparezca como error al tocar la taxonomía.
+- **Error (R9):** el build de `synapse_stage1.exe` vía S1 fue matado por el timeout de 30s del basher → quedó un stage1 STALE (timestamp antiguo) que no emitía el diagnóstico R9 aunque los `_*.c` intermedios (escritos antes del kill) sí tenían el fix. Síntoma: stage2/3 correctos (el stage1 viejo los compiló desde los fuentes R9) pero stage1 roto.
+  - **Contexto:** sesión R9; `python main.py nucleo/principal.syn -o synapse_stage1.exe` tarda 2-5 min.
+  - **Solución aplicada:** relanzar el build con `timeout_seconds: 900`; verificar con `ls -la --time-style=full-iso synapse_stage1.exe` (timestamp NUEVO) + prueba de comportamiento. **Regla: NUNCA asumir que un build S1 terminó solo por `tail` del log; comprobar timestamp y comportamiento.**
 - **Error:** `warning: argument 1 range [18446744056529682440, ...] exceeds maximum object size [-Walloc-size-larger-than=]` en `synapse_rt.c:3393` (`malloc((size_t)vs * sizeof(PV))`).
   - **Contexto:** aparece en CADA build de stage1 (warnings del runtime, no de nuestro código). No bloqueante.
   - **Solución aplicada:** ignorar; no modificar `synapse_rt.c`.
@@ -65,8 +67,11 @@
 - [x] R2 — anti-cuelgue parser nativo (tipos anidados) — commit `8f9dc54`
 - [x] R5 — pipeline nativo aborta en errores de parseo (rc=8) — commit `54f5ee7`
 - [x] R7 — 653 falsos positivos «variable no declarada» → 0 — commit `3e9cb84`
-- [x] R8 — `log(...)` emite `printf` (implementado y validado; bootstrap S2==S3 `7f9020f9`) — **PENDIENTE DE COMMIT**
-- [ ] R9 — activar constantes `StmtConstante`: registrar en flatten F8 + pasada 2 + `tabla_buscar` con precedencia de ámbito (innermost-first) para que `ERR_SEM_CONSTANTE_INMUTABLE` sea real (solicitado por el usuario)
+- [x] R8 — `log(...)` emite `printf` — commits `8136fd8` + `4adbee7` (2026-08-10)
+- [x] R9 — constantes `StmtConstante` reales: marcador `es_constante` (puente→flatten→`valor_int`), pasada 2/3 con `es_constante=verdadero`, `tabla_buscar` innermost-first — bootstrap S2==S3 `3862049e`, 129 tests (commits pendientes)
+- [ ] R10 — RAII nativo sobre literales estáticos (0xC0000374 en variables texto): auditar `_syn_texto_liberar` en `nucleo/generador/orquestador.syn`
+- [ ] R1 — TVars nativo (residual de la divergencia 2.4)
+- [ ] Checklist auditoría 2.1/2.2/2.3/2.5/2.6 (scopes, taxonomía `ERR_SEM_*`, ownership, exhaustividad)
 - [ ] R10 (provisional) — RAII nativo `_syn_texto_liberar` sobre literales estáticos (heap corruption 0xC0000374) — registrar en el reporte
 - [ ] R1 — unificación de TVars de función en el nativo (fase 2 del port)
 - [ ] R3 / D-2 — codegen con parámetros ADT (expansión estática por especialización, Opción A)

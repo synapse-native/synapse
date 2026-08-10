@@ -122,6 +122,35 @@ byte-idénticos** (1065612 bytes, md5 `17affe72…`); 3 tests R7 nuevos en
 S1, codegen e2e con los binarios S2/S3). La instrumentación temporal de conteo
 fue retirada; el flag `hay_error` sigue sin abortar el pipeline por diseño.
 
+## ✅ Constantes e inmutabilidad (R9) — RESUELTO
+
+**Estado (2026-08-10):** deuda R9 del reporte `FASE_2_2.4_NATIVA.md` (la rama
+`ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 quedaba inerte: ninguna pasada
+registraba `es_constante=1`) **resuelta** con paridad de comportamiento con el
+S1 (`semantic_checker.py` + `symbol_table.py`):
+
+- **Marcador `es_constante`**: nuevo campo en `estructura AsignacionVariable`
+  (`ast_nodes.syn`); el puente lo pone a 1 en su rama `NODO_CONSTANTE`
+  (`puente_ast.syn`); el flatten F8 lo copia a `SemNodo.valor_int`
+  (`principal.syn`). Así `StmtConstante` (global o local) es distinguible del
+  `AsignacionVariable` plano.
+- **Pasada 2**: registra las constantes globales con `es_constante=verdadero`
+  (las asignaciones globales planas NO, paridad S1).
+- **Pasada 3**: los nodos marcados se declaran como constantes locales;
+  reasignar una constante (global o local) emite el diagnóstico observable
+  `[Synapse] Error semantico (linea L, columna C): No se puede reasignar la
+  constante 'X'` (paridad `diagnostics.py`) y marca `hay_error` (no aborta el
+  pipeline: solo `hay_error_2_4` aborta, por diseño).
+- **`tabla_buscar` innermost-first**: recorre la tabla desde el final (la tabla
+  solo conserva la cadena de scopes actuales, `tabla_salir_scope` hace pop) —
+  paridad con `symbol_table.py` `buscar` (`reversed(self._scopes)`). Un
+  parámetro que sombrea una constante global ya no produce falso positivo.
+
+Evidencia: `constante MAXIMO = 5` + `MAXIMO = 9` → diagnóstico; parámetro `X`
+sombreando `constante X = 5` → sin diagnóstico y ejecuta correcto; bootstrap
+S1→S2→S3 con **S2==S3 byte-idénticos** (1068718 bytes, md5 `3862049e`); 3 tests
+R9 nuevos en `tests/test_fase2_nativa_hm.py`; regresión verde (129 passed).
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.

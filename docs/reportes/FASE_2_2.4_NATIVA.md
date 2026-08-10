@@ -79,7 +79,7 @@ Puntos revisados y resueltos:
 | R6 | **Líneas fusionadas pre-existentes en `parser.syn`** (`ultimo = stmt                    siguiente`, mientras/para) — el S1 las tolera como dos sentencias (generan `stmt; continue;`); separadas en el fix R2 (higiene, sin cambio semántico) | ✅ resuelto (separadas) |
 | R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (parametros no declarados + asignaciones implicitas) silenciados por diseño — el aborto global rompería el bootstrap | ✅ **RESUELTA (2026-08-10)** — resolución de símbolos de la pasada 3 con paridad S1: parámetros declarados en el scope de la función + declaración implícita en asignación + REDEFINICIÓN solo del mismo scope (ver §9); 653 → 0; bootstrap S2==S3 byte-idéntico (1065612 bytes) |
 | R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ✅ **RESUELTA (2026-08-10)** — el puente crea `LogLlamada` (puente_ast.syn) pero el generador nativo no lo manejaba → `_oo_expr_a_c` caía al fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`: `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` resto) + dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`; unity `generator.syn` regenerado con `_rebuild_generator.py`. `log("hola mundo")` nativo imprime (antes `0;`); bootstrap S2==S3 byte-idéntico (1067694 bytes, md5 `7f9020f9`); 3 tests R8 nuevos (10/10 HM); regresión 81 + 45 passed (ver §10) |
-| R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ⚠️ registrado — resolución: Fase 2 (scopes con precedencia de ámbito en `tabla_buscar` + registro de constantes) |
+| R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ✅ **RESUELTA (2026-08-10)** — marcador `es_constante` en `AsignacionVariable` (puente `NODO_CONSTANTE` → `AsignacionVariable.es_constante=1` → flatten F8 → `SemNodo.valor_int`), registro en pasada 2 (globales) y `analizar_sentencia` (locales); `tabla_buscar` con precedencia de ámbito innermost-first (paridad S1 `symbol_table.py` `buscar`: `reversed(self._scopes)`); diagnóstico observable `[Synapse] Error semantico ... No se puede reasignar la constante 'X'` (paridad `diagnostics.py`); bootstrap S2==S3 byte-idéntico (1068718 bytes, md5 `3862049e`); 3 tests R9 nuevos (16/16 HM PASS); regresión 129 passed (ver §11) |
 | R10 | **RAII nativo sobre literales estáticos**: programa de usuario con variable texto (`saludo = "hola"`) crashea al salir (0xC0000374 heap corruption; `_syn_texto_liberar(saludo)` libera un literal estático; exit 127 en git-bash). Hallazgo PRE-EXISTENTE (afecta igual a `escribir_linea`, detectado durante la validación R8); los tests e2e usan literales/enteros para evitarlo | ⚠️ registrado — resolución: auditar el RAII/hoisting de `CadenaSegura` en `nucleo/generador/orquestador.syn` (evitar `_syn_texto_liberar` sobre `.datos` de literales) |
 
 ## 7. HASH COMMIT
@@ -229,3 +229,72 @@ heap) → `free()` inválido. Exit 127 en git-bash. Afecta igual a `escribir_lin
 `nucleo/principal.syn.json` (AST regenerado por el bootstrap), `tests/test_fase2_nativa_hm.py`
 (+3 tests R8), docs (este reporte §6/§10, `nucleo/README.md`, bitácora AUDITORIA).
 **HASH COMMIT: `8136fd8`** (rama `feature/fase2-nativa-hm`).
+
+---
+
+## 11. CIERRE R9 — inmutabilidad REAL de constantes + scoping (2026-08-10)
+
+### 11.1 Síntoma
+
+La rama `ERR_SEM_CONSTANTE_INMUTABLE` introducida por el fix R7 quedaba
+**inerte**: ninguna pasada registraba símbolos con `es_constante=1`, por lo que
+reasignar una constante global (`constante X = 1` + `X = 2`) no reportaba nada
+(el S1 sí: "No se puede reasignar la constante 'X'"). Además `tabla_buscar` era
+first-match (desde el índice 0 = scope global), de modo que un parámetro que
+sombreara una constante global encontraría la constante → falso positivo al
+activar el chequeo.
+
+### 11.2 Causa raíz
+
+1. `StmtConstante` no tenía representación distinguible para el analizador: el
+   puente (A4.5) lo convierte a `AsignacionVariable` sin marcador → el flatten
+   F8 lo aplanaba idéntico a una asignación real.
+2. La pasada 2 solo registraba funciones y externs; nadie registraba constantes.
+3. `tabla_buscar` recorría la tabla lineal de 0..n (first-match, scope global
+   primero) — el S1 recorre `reversed(self._scopes)` (innermost-first).
+
+### 11.3 Fix (paridad S1)
+
+- **Marcador `es_constante`** en `estructura AsignacionVariable`
+  (`nucleo/ast_nodes.syn`): el puente lo pone a 1 en la rama `NODO_CONSTANTE`
+  (`nucleo/puente_ast.syn`); el flatten F8 (`nucleo/principal.syn`) lo copia a
+  `SemNodo.valor_int` (campo libre del `NODO_ASIGNACION` aplanado).
+- **Pasada 2** (`analizar_paso_funciones`): registra los `NODO_ASIGNACION`
+  top-level con marcador==1 como constantes (`tabla_declarar(..., verdadero)`)
+  — paridad `semantic_checker.py` L286-299. Las asignaciones globales planas NO
+  se registran (paridad S1).
+- **Pasada 3** (`analizar_sentencia`): si el nodo es `NODO_ASIGNACION` con
+  marcador==1 → constante LOCAL (declaración con `es_constante=verdadero`,
+  paridad L446-458); si no, la lógica R7 con el chequeo de inmutabilidad AHORA
+  activo (paridad L367-372) más un **diagnóstico observable** en stderr con el
+  formato 2.4: `[Synapse] Error semantico (linea L, columna C): No se puede
+  reasignar la constante 'X'` (paridad `diagnostics.py`).
+- **`tabla_buscar` innermost-first**: recorre desde el final de la tabla (la
+  tabla solo contiene la cadena de scopes actuales; `tabla_salir_scope` hace
+  pop) — paridad `symbol_table.py` `buscar` (`reversed(self._scopes)`).
+
+### 11.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Reasignación de constante global (`_r9a`) | Diagnóstico `No se puede reasignar la constante 'MAXIMO'`; S1 rechaza con el mismo mensaje |
+| Parámetro que sombrea constante global (`_r9b`) | SIN diagnóstico; compila y ejecuta → `4` (antes: falso positivo inmutable con first-match) |
+| Constante local reasignada (`_r9c`) | Diagnóstico `No se puede reasignar la constante 'Y'` |
+| Uso válido de constante global (`_r9d`) | Compila y ejecuta → `2` |
+| Bootstrap S1→S2→S3 | **S2==S3 byte-idénticos (1068718 bytes, md5 `3862049e`)** |
+| Tests R9 nuevos (`tests/test_fase2_nativa_hm.py`) | **3/3 PASS** (16/16 HM PASS) |
+| Regresión | 68 paridades nativas/semántica + 45 codegen e2e → **129 passed** |
+
+Nota: el S1 (Python) rechaza `_r9b` por una limitación pre-existente de su
+codegen (emite las constantes globales como macros C `#define X (5)` → un
+parámetro llamado `X` rompe el C); ortogonal a R9. El pipeline nativo no aborta
+con `hay_error` (solo `hay_error_2_4`), por diseño — el diagnóstico es
+observable en stderr.
+
+### 11.5 Archivos
+
+`nucleo/ast_nodes.syn`, `nucleo/puente_ast.syn`, `nucleo/principal.syn`
+(flatten), `nucleo/analizador_semantico.syn` (tabla_buscar + pasadas 2/3),
+`nucleo/principal.syn.json` (AST regenerado), `tests/test_fase2_nativa_hm.py`
+(+3 tests R9), docs (este reporte §6/§11, `nucleo/README.md`, bitácora
+AUDITORIA). **HASH COMMIT: `d36dcac`** (rama `feature/fase2-nativa-hm`).
