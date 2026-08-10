@@ -19,7 +19,8 @@ implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
 - Mecanismo: `registrar_adt` (pasada 1) + `validar_tipo_instanciacion` (pasada 2,
   retorno y parámetros; nested function GNU única, bucles acotados, bounds
   512/128/256); flag dedicado **`hay_error_2_4`** que el pipeline (`principal.syn`)
-  chequea tras `analizar()` — no aborta por el ruido pre-existente de la pasada 3.
+  chequea tras `analizar()` — no aborta por errores semánticos ajenos a la
+  validación 2.4 (deuda R7 resuelta, ver sección R7 abajo).
 
 | Criterio | S1 (`compilador/`) | Nativo (`nucleo/`) |
 |---|---|---|
@@ -40,9 +41,14 @@ implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
    del parser. **R5 (2026-08-09):** ahora aborta con `rc=8` y mensaje
    `[Synapse] Error de sintaxis (linea L, columna C): ...` (paridad S1). No usar
    instanciaciones anidadas (soportadas solo a 1 nivel de anidamiento).
-3. **Errores semánticos clásicos** (p. ej. variable no declarada en pasada 3): el
-   nativo sigue lenient por diseño (los falsos positivos pre-existentes romperían
-   el bootstrap); solo la validación 2.4 aborta (`hay_error_2_4`).
+3. **Errores semánticos clásicos de la pasada 3** (p. ej. variable no declarada):
+   **R7 RESUELTO (2026-08-10)** — la resolución de símbolos de la pasada 3 tiene
+   ahora paridad con el S1: los parámetros se declaran en el scope de la función
+   y la asignación a una variable no declarada la declara implícitamente
+   ("primera declaración de este scope", `semantic_checker.py`); desaparecieron
+   los 653 falsos positivos del bootstrap. El pipeline nativo sigue sin abortar
+   con `hay_error` global (lenient por diseño): solo la validación 2.4 aborta
+   (`hay_error_2_4`).
 
 ## ✅ Errores de parseo nativos (R5) — RESUELTO
 
@@ -64,11 +70,38 @@ sintaxis** con `rc=8` y mensaje + línea/columna, con paridad S1:
   .syn) para que el C emitido tenga `\n` válido (2 BS → newline real → literal
   roto; hallazgo del cierre R5).
 
-**Tests de paridad:** `tests/test_fase2_nativa_hm.py` (**7 tests**) — válido compila;
+**Tests de paridad:** `tests/test_fase2_nativa_hm.py` (**10 tests**) — válido compila;
 aridad/base fallan con `rc=7`; tipo simple lenient; regresión anti-cuelgue de
-`nucleo/parser.syn` (tipos anidados no cuelgan). Reporte formal:
+`nucleo/parser.syn` (tipos anidados no cuelgan); **R7 (3 tests nuevos)**: asignación
+a parámetro, declaración implícita en asignación y sombra de parámetro con `let`
+(no-REDEFINICIÓN), compilando y ejecutando con salida verificada. Reporte formal:
 `docs/reportes/FASE_2_2.4_NATIVA.md`. Ref. S1: `compilador/tipos.py` +
 `compilador/semantic_types.py` (28 tests, `tests/unit/test_type_inference.py`).
+
+## ✅ Resolución de símbolos de la pasada 3 (R7) — RESUELTO
+
+**Estado (2026-08-10):** deuda R7 del reporte `FASE_2_2.4_NATIVA.md` (653 falsos
+positivos «variable no declarada» en el bootstrap del propio compilador)
+**resuelta** con paridad de comportamiento con el S1 (`semantic_checker.py`):
+
+- **Parámetros declarados en la pasada 3** (`analizar_paso_cuerpos`): al entrar
+  en el scope de cada función se recorren los parámetros (slot[6], hermanos
+  encadenados) y se declaran con su tipo real (`nodo_cadena_retorno`) — paridad
+  con `for p in nodo.parametros: self.tabla.declarar(p.nombre, p.tipo, nodo)`.
+- **Asignación con declaración implícita** (`NODO_ASIGNACION`): si el nombre no
+  está en la tabla se declara en el scope actual ("primera declaración de este
+  scope") en lugar de reportar `ERR_SEM_VAR_NO_DECLARADA`; si existe y es
+  constante → `ERR_SEM_CONSTANTE_INMUTABLE` (paridad S1).
+- **REDEFINICIÓN solo del mismo scope** (`NODO_DECLARACION`): se usa el retorno
+  de `tabla_declarar` (duplicado del MISMO nivel) en lugar de `tabla_buscar`
+  (todos los scopes), que reportaba falsos positivos al sombrear parámetros o
+  variables externas con `let` anidados.
+
+Evidencia: 653 → 0 (`grep SEM-NODECLARADA`); bootstrap S1→S2→S3 con **S2==S3
+byte-idénticos** (1065612 bytes, md5 `17affe72…`); 3 tests R7 nuevos en
+`tests/test_fase2_nativa_hm.py`; regresión verde (paridades nativas, semántica
+S1, codegen e2e con los binarios S2/S3). La instrumentación temporal de conteo
+fue retirada; el flag `hay_error` sigue sin abortar el pipeline por diseño.
 
 ## Arquitectura
 

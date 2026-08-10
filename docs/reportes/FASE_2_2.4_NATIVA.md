@@ -35,9 +35,12 @@ paridad de comportamiento con el S1 y sin romper el bootstrap (S2==S3).
   soportado por el parser; ver riesgo R2).
 - **Tipo simple** (`entero`, `texto`, `int64_t`, `CadenaSegura`, `nulo`, `tensor`, …):
   comportamiento lenient (sin error), por diseño de la Etapa 1.
-- El flag **`hay_error_2_4`** es independiente de `hay_error` global: los errores
-  semánticos clásicos pre-existentes de la pasada 3 (falsos positivos «variable no
-  declarada») NO abortan (romperían el bootstrap); solo la validación 2.4 aborta.
+- El flag **`hay_error_2_4`** es independiente de `hay_error` global: solo la
+  validación 2.4 aborta. Los errores semánticos clásicos de la pasada 3 NO
+  abortan por diseño (el pipeline nativo es lenient con `hay_error` global); con
+  la **deuda R7 resuelta (2026-08-10)** los 653 falsos positivos «variable no
+  declarada» desaparecieron y la resolución de símbolos de la pasada 3 tiene
+  paridad con el S1 (ver §9).
 
 ## 4. Validación
 
@@ -74,7 +77,9 @@ Puntos revisados y resueltos:
 | R4 | `nucleo/analizador_semantico.c` (artefacto histórico sin referencias, sin sync desde `e693dbe`) fue sobreescrito por compilaciones de depuración | ✅ revertido (no es insumo de build) |
 | R5 | **El pipeline nativo no aborta en errores de parseo** (pre-existente, afecta a TODOS los errores de sintaxis): el wrapper ME-B7 ignoraba `_pe.hay_error` y el codegen corría con programa vacío → rc=5 (link GCC) en lugar de mensaje limpio; el S1 sí abortaba con mensaje | ✅ **RESUELTA** — el wrapper (nativo `frontend_nativo.syn` + espejo S1 `emit_declarations.py`) imprime `[Synapse] Error de sintaxis (linea L, columna C): mensaje` y marca `_G_parse_error = 1`; los 3 call-sites del pipeline (`principal.syn`) abortan con `{1,8}`; definición única del global en cabecera S1 (`generator.py`: común + branch módulo) y codegen nativo (`orquestador.syn`/`generator.syn`). **Hallazgo crítico del cierre:** `nucleo/generator.syn` es el unity REGENERADO por `_rebuild_generator.py` desde `nucleo/generador/*.syn` — editar solo `orquestador.syn` sin regenerar producía un bootstrap sin la definición (link error). Segundo hallazgo: el fprintf emitido como array C necesita `\\\\n` (4 BS en el .syn) — con 2 BS el array contenía un newline real y rompía el literal C emitido |
 | R6 | **Líneas fusionadas pre-existentes en `parser.syn`** (`ultimo = stmt                    siguiente`, mientras/para) — el S1 las tolera como dos sentencias (generan `stmt; continue;`); separadas en el fix R2 (higiene, sin cambio semántico) | ✅ resuelto (separadas) |
-| R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (nombres de campos/nodos) silenciados por diseño — el aborto global rompería el bootstrap | ⚠️ registrado — resolución: auditar la resolución de símbolos de la pasada 3 en `nucleo/analizador_semantico.syn` |
+| R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (parametros no declarados + asignaciones implicitas) silenciados por diseño — el aborto global rompería el bootstrap | ✅ **RESUELTA (2026-08-10)** — resolución de símbolos de la pasada 3 con paridad S1: parámetros declarados en el scope de la función + declaración implícita en asignación + REDEFINICIÓN solo del mismo scope (ver §9); 653 → 0; bootstrap S2==S3 byte-idéntico (1065612 bytes) |
+| R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ⚠️ registrado — resolución: auditar el codegen de `LogLlamada`/`log` en `nucleo/generador/*.syn` (Fase 2/3) |
+| R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ⚠️ registrado — resolución: Fase 2 (scopes con precedencia de ámbito en `tabla_buscar` + registro de constantes) |
 
 ## 7. HASH COMMIT
 
@@ -100,4 +105,64 @@ errores de sintaxis abortan con **rc=8 y mensaje+posición** (paridad S1); boots
 
 Cerrar el checklist 2.1/2.2/2.3/2.5/2.6 de la Fase 2 (validación formal de las 3 pasadas,
 scopes, taxonomía ERR_SEM_*, ownership y exhaustividad `coincidir` — inventario B1: de facto
-implementados, falta validación y documentación formal).
+implementados, falta validación y documentación formal). Con R7 resuelto, la resolución de
+símbolos de la pasada 3 ya tiene paridad con el S1 (ver §9).
+
+---
+
+## 9. CIERRE R7 — Resolución de símbolos de la pasada 3 (2026-08-10)
+
+**Deuda registrada en §6 (R7):** 653 falsos positivos «variable no declarada» del
+analizador nativo, silenciados por diseño (el aborto global rompería el bootstrap).
+
+### 9.1 Reproducción y clasificación
+
+Instrumentación temporal `SEM-NODECLARADA var=<nombre>` en `analizar_sentencia`
+(NODO_ASIGNACION) y conteo al compilar `nucleo/principal.syn` con el propio
+pipeline nativo: **653** (coincide con el número registrado). Clasificación
+(nombres únicos más frecuentes): `r` (98), `nodo` (70), `linea` (66), `col` (63),
+`t` (31), `expr` (23), `izq` (17), `der` (17), `stmt` (15), `r2` (14),
+`ultimo`/`primero` (10), `i` (10)… Dos clases dominantes:
+1. **Asignaciones a parámetros** (`nodo`, `linea`, `col`, `stmt`, `expr`, `izq`, `der`…)
+   — la pasada 3 no declaraba los parámetros en el scope de la función.
+2. **Asignaciones a variables no declaradas** (`r`, `i`, `t`, `ultimo`, `primero`…)
+   — el S1 las declara implícitamente ("primera declaración del scope"); el nativo
+   las reportaba como error.
+
+### 9.2 Cambios (`nucleo/analizador_semantico.syn`)
+
+| # | Cambio | Paridad S1 |
+|---|---|---|
+| 1 | **Pasada 3** (`analizar_paso_cuerpos`): al entrar al scope de cada función se recorren los parámetros (slot[6] + hermanos) y se declaran con su tipo real (`nodo_cadena_retorno`) | `_analizar_funcion`: `for p in nodo.parametros: self.tabla.declarar(p.nombre, p.tipo, nodo)` |
+| 2 | **NODO_ASIGNACION**: si el nombre no está en la tabla → declaración implícita en el scope actual; si existe y es constante → `ERR_SEM_CONSTANTE_INMUTABLE`. Se eliminó el `sem_error(ERR_SEM_VAR_NO_DECLARADA)` | `_analizar_sentencia` (AsignacionVariable): "First declaration in this scope" + chequeo `es_constante` |
+| 3 | **NODO_DECLARACION**: REDEFINICIÓN solo para duplicados del MISMO scope (vía el retorno de `tabla_declarar`) en lugar de `tabla_buscar` (todos los scopes) | `SymbolTable.declarar` (False solo si existe en el scope actual) |
+
+Nota: el tipo de las declaraciones implícitas/`let` sigue siendo `entero`
+hardcodeado en el nativo (sin inferencia de tipos en la pasada 3); divergencia
+aceptada y documentada (el S1 infiere).
+
+### 9.3 Validación
+
+| Criterio | Resultado |
+|---|---|
+| Conteo de falsos positivos | ✅ **653 → 0** (instrumentación temporal; retirada tras el fix) |
+| Bootstrap S1→S2→S3 | ✅ **S2==S3 byte-idénticos** (1065612 bytes, md5 `17affe72…`) |
+| Tests R7 nuevos (`test_fase2_nativa_hm.py`) | ✅ **3/3 PASS**: asignación a parámetro, declaración implícita (scope anidado), sombra de parámetro con `let` (no-REDEFINICIÓN); compilan y ejecutan con salida verificada (`20`/`60`/`4`) |
+| Regresión — paridades nativas + semántica S1 | ✅ 75 passed |
+| Regresión — codegen e2e con binarios S2/S3 (d_f1/d_f1c/d_f1d/d_f1_4/a23/d2/d6) | ✅ 45 passed |
+| Determinismo del C generado (programas de usuario) | ✅ C byte-idéntico antes/después del fix (el analizador no altera el codegen) |
+| Hallazgo R8 (nuevo) | `log(...)` en programas de usuario nativos emite `0;` (sin salida); pre-existente, registrado en §6 |
+
+### 9.4 Bloqueante encontrado y resuelto durante la reproducción
+
+La instrumentación dejada en el working tree por la sesión anterior tenía comillas
+sin escapar dentro del `asm("...")` → el S1 no lexeaba `nucleo/analizador_semantico.syn`
+(`Carácter inesperado '"'`). Corregido con el doble-escapado canónico del repo
+(`\\"` en el .syn → `"` en el C emitido; lección R5). El fix R7 elimina esa
+instrumentación de forma definitiva.
+
+### 9.5 Archivos
+
+`nucleo/analizador_semantico.syn` (fix), `nucleo/principal.syn.json` (regenerado por el
+bootstrap), `tests/test_fase2_nativa_hm.py` (+3 tests R7), docs (este reporte §6/§9,
+`nucleo/README.md`, bitácora AUDITORIA). **HASH COMMIT: `3e9cb84`** (rama `feature/fase2-nativa-hm`).
