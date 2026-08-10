@@ -489,3 +489,97 @@ def test_ck_2_2_pasadas_estructura_antes_de_definirse(stage, tmp_path):
     assert proc.returncode == 0, (
         f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
     assert "Error semantico" not in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# R11 (deuda FASE_2_2.4_NATIVA.md): exhaustividad nativa cableada — paridad
+# con tests/integration/test_match.py (Manual 2 §2.4). El flatten F8 no
+# aplanaba NodoCoincidir -> la validacion nativa (ERR_SEM_EXHAUSTIVE_MATCH_
+# REQUIRED) quedaba INERTE. Cableado completo: parser (patron+cuerpo+casos) ->
+# puente (NodoCoincidir/NodoCaso) -> flatten F8 -> analizador (marcado de
+# variantes) -> generador (switch sobre .tag) -> lexer (lexema de parens para
+# spans multi-token) -> D-2 (instancias ADT desde parametros) -> hoisting
+# (tipo ADT en declaraciones).
+# ---------------------------------------------------------------------------
+
+_PROG_R11_EXHAUSTIVO_ERR = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R11_EXHAUSTIVO_OK = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar 0
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R11_WILDCARD = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        _ => retornar 0
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R11_EJECUTAR = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion doble(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor * 2
+        err(e) => retornar 0
+funcion principal() -> nulo:
+    a = ok(21)
+    escribir_linea(entero_a_texto(doble(a)))
+    b = err("x")
+    escribir_linea(entero_a_texto(doble(b)))
+'''
+
+
+def test_r11_exhaustivo_emite_error_si_falta_variante(stage, tmp_path):
+    """Checklist 2.6/R11 (paridad test_match.py L41): coincidir con solo
+    `ok(valor)` emite ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED observable."""
+    proc = _compilar_con_stage(stage, _PROG_R11_EXHAUSTIVO_ERR, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico exhaustividad ausente:\n{proc.stderr[-1200:]}")
+    assert "ok/err" in proc.stderr
+
+
+def test_r11_exhaustivo_ok_err_limpio(stage, tmp_path):
+    """Checklist 2.6/R11 (paridad test_match.py L10): ok+err completo no
+    emite diagnostico."""
+    proc = _compilar_con_stage(stage, _PROG_R11_EXHAUSTIVO_OK, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert "Error semantico" not in proc.stderr
+
+
+def test_r11_wildcard_limpio(stage, tmp_path):
+    """Checklist 2.6/R11: wildcard `_` cubre las variantes restantes sin
+    diagnostico."""
+    proc = _compilar_con_stage(stage, _PROG_R11_WILDCARD, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert "Error semantico" not in proc.stderr
+
+
+def test_r11_ejecucion_switch_adt(stage, tmp_path):
+    """R11: el switch nativo sobre .tag ejecuta el cuerpo correcto —
+    ok(21) -> 42 y err("x") -> 0 (paridad test_match.py L10 + codegen
+    S1 visitar_coincidir)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R11_EJECUTAR, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    salida = run.stdout.split()
+    assert "42" in salida, f"switch ok() no ejecuto: {run.stdout!r}"
+    assert "0" in salida, f"switch err() no ejecuto: {run.stdout!r}"

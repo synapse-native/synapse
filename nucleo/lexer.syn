@@ -926,11 +926,16 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 asm("i = i + 1")
                 siguiente
             si c == 40:
-                lexer_push_token(T_PAREN_IZQ, lexer_linea_actual(), i + 1)
+                // R11: lexema real (patron A3.1) — necesario para que
+                // nodo_guardar_span reconstruya spans multi-token como
+                // 'ok(valor)': con datos="" la aritmetica de punteros
+                // (t1.datos - t0.datos) mezclaba buffer de fuente y literal
+                // "" -> len_str basura (0x6B2D736D) -> segfault en puente_str.
+                lexer_push_token_punt(T_PAREN_IZQ, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 41:
-                lexer_push_token(T_PAREN_DER, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_PAREN_DER, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 58:

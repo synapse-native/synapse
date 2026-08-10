@@ -663,25 +663,36 @@ funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, id
 
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
-funcion parsear_patron_coincidir(patron: cadena, tag_nombre: cadena, var_nombre: cadena) -> entero:
+funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: puntero) -> entero:
     // Returns 0 = wildcard, 1 = tag(var), -1 = error
-    // First check if wildcard "_"
+    // R11: paridad S1 regex (\w+)(?:\((\w+)\))? — acepta tags SIN parentesis
+    // (ej. 'ninguno') como tag con variable vacia (semantic_checker.py L619).
+    // Escribe en buffers C (char[64]) pasados por puntero: los parametros
+    // CadenaSegura por valor NO propagan las asignaciones al caller (bug R11
+    // de paridad: tag_nombre/var_nombre se quedaban vacios y la exhaustividad
+    // nativa no marcaba variantes).
     inseguro:
         asm("if (patron.datos[0] == '_' && patron.datos[1] == 0) { return 0; }")
+        asm("char* _tbo = (char*)tag_buf; char* _vbo = (char*)var_buf;")
+        asm("if (!_tbo || !_vbo) return -1;")
         asm("// Extract tag name before '('")
         asm("int _i = 0;")
         asm("char _tag[64]; int _tp = 0;")
         asm("while (patron.datos[_i] != 0 && patron.datos[_i] != '(') { _tag[_tp++] = patron.datos[_i]; _i++; }")
         asm("_tag[_tp] = 0;")
-        asm("if (patron.datos[_i] != '(') { return -1; }")
+        asm("if (patron.datos[_i] != '(') {")
+        asm("    // R11: tag sin payload (ej. 'ninguno') -> var vacia, res=1")
+        asm("    strcpy(_tbo, _tag); _vbo[0] = 0;")
+        asm("    return 1;")
+        asm("}")
         asm("_i++; // skip '('")
         asm("char _var[64]; int _vp = 0;")
         asm("while (patron.datos[_i] != 0 && patron.datos[_i] != ')') { _var[_vp++] = patron.datos[_i]; _i++; }")
         asm("_var[_vp] = 0;")
         asm("if (patron.datos[_i] != ')') { return -1; }")
-        asm("// Copy results using strdup to own memory")
-        asm("tag_nombre = (CadenaSegura){ .longitud = _tp, .datos = strdup(_tag) };")
-        asm("var_nombre = (CadenaSegura){ .longitud = _vp, .datos = strdup(_var) };")
+        asm("// Copy results into caller buffers (strcpy, no strdup: buffers estaticos")
+        asm("// del caller, vida de proceso; RAII pool_free no-op con R10)")
+        asm("strcpy(_tbo, _tag); strcpy(_vbo, _var);")
     retornar 1
 
 // --- Main analysis functions ---
@@ -844,7 +855,9 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             res = 0
             inseguro:
                 asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
-                asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
+                asm("static char _tb_r11[64]; static char _vb_r11[64]; _tb_r11[0]=0; _vb_r11[0]=0;")
+                asm("res = parsear_patron_coincidir(_patron_s, _tb_r11, _vb_r11);")
+                asm("if (res == 1) { tag_nombre = (CadenaSegura){ .longitud = (int)strlen(_tb_r11), .datos = _tb_r11 }; var_nombre = (CadenaSegura){ .longitud = (int)strlen(_vb_r11), .datos = _vb_r11 }; }")
                 asm("// Manual 2 S2.4: marcar variantes para validacion de exhaustividad")
                 asm("if(res==1){ if(tag_nombre.datos){ if(strcmp(tag_nombre.datos,\"ok\")==0) tiene_ok=1; if(strcmp(tag_nombre.datos,\"err\")==0) tiene_err=1; if(strcmp(tag_nombre.datos,\"algun\")==0) tiene_algun=1; if(strcmp(tag_nombre.datos,\"ninguno\")==0) tiene_ninguno=1; } }")
             si res == 0:
@@ -863,8 +876,11 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                         asm("stmt_c = est->nodos[stmt_c].hermano")
                 tabla_salir_scope(est)
             si res == 1:
-                // tag(var) pattern
-                tabla_declarar(est, var_nombre, "int", idx_caso, falso)
+                // tag(var) pattern — R11: si el tag no tiene variable (ej.
+                // 'ninguno'), NO declarar (paridad S1 semantic_checker.py L625:
+                // 'if var_nombre: self.tabla.declarar(...)').
+                si var_nombre != "":
+                    tabla_declarar(est, var_nombre, "int", idx_caso, falso)
                 tabla_entrar_scope(est)
                 cuerpo_caso = nodo_hijo_izq(est, idx_caso)
                 stmt_c = cuerpo_caso

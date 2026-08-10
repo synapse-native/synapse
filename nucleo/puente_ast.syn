@@ -300,6 +300,27 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
             asm("  r = (void*)_p; }")
+    // R11 (deuda FASE_2_2.4_NATIVA.md): NODO_COINCIDIR/NODO_CASO -> structs
+    // NodoCoincidir{expresion, casos} / NodoCaso{patron, cuerpo} (paridad S1
+    // ast_nodes.py). El parser plano guarda: expr en hijo_izq del COINCIDIR,
+    // casos encadenados en hijo_der (cadena hermano); patron en payload
+    // primario del CASO y cuerpo en hijo_izq (cadena hermano). Sin estas ramas
+    // el nodo caia en el default (r=nulo) y la exhaustividad nativa quedaba
+    // inerte (hallazgo checklist 2.6 / deuda R11).
+    si t == NODO_COINCIDIR:
+        inseguro:
+            asm("{ struct NodoCoincidir* _p = (struct NodoCoincidir*)calloc(1, sizeof(struct NodoCoincidir));")
+            asm("  _p->tipo = puente_cs_str((void*)\"NodoCoincidir\");")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->casos = (struct ListaNodo*)puente_lista(hd);")
+            asm("  r = (void*)_p; }")
+    si t == NODO_CASO:
+        inseguro:
+            asm("{ struct NodoCaso* _p = (struct NodoCaso*)calloc(1, sizeof(struct NodoCaso));")
+            asm("  _p->tipo = puente_cs_str((void*)\"NodoCaso\");")
+            asm("  _p->patron = puente_cs_str(puente_str(idx));")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  r = (void*)_p; }")
     si t == NODO_PARAMETRO:
         inseguro:
             asm("{ struct Parametro* _p = (struct Parametro*)calloc(1, sizeof(struct Parametro));")

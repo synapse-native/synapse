@@ -243,3 +243,19 @@ estructura DeclaracionTipo:
     parametros_tipo: ListaNodo
     tipo_base: texto
     constructores: ListaNodo
+
+// R11 (deuda FASE_2_2.4_NATIVA.md): NodoCoincidir/NodoCaso — el coincidir de
+// patrones (Manual 2 S2.4). Paridad S1 ast_nodes.py NodoCoincidir{expresion,
+// casos} / NodoCaso{patron, cuerpo}. El puente plano->tipado (puente_ast.syn)
+// los construye desde NODO_COINCIDIR/NODO_CASO (parser.syn parsear_coincidir),
+// el flatten F8 los aplana a SemNodo[38]/[39] y el analizador valida la
+// exhaustividad (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED).
+estructura NodoCoincidir:
+    tipo: texto
+    expresion: Nodo
+    casos: ListaNodo
+
+estructura NodoCaso:
+    tipo: texto
+    patron: texto
+    cuerpo: ListaNodo
