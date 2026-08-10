@@ -65,9 +65,10 @@ salida). Paridad S1 (`visitar_log` de `emit_expressions.py`):
 - **Mantenimiento:** regenerar `nucleo/generator.syn` con
   `python nucleo/_rebuild_generator.py` tras editar `nucleo/generador/*.syn`.
   El `\n` del `printf` requiere `\\\\n` (4 BS en el .syn; lección R5).
-- **Hallazgo R10 (pre-existente):** variable texto (`saludo = "hola"`) crashea
-  al salir (0xC0000374 — el RAII `_syn_texto_liberar` libera un literal
-  estático; afecta igual a `escribir_linea`; los tests e2e usan literales).
+- **Hallazgo R10 (pre-existente, RESUELTO 2026-08-10):** variable texto
+  (`saludo = "hola"`) crasheaba al salir (0xC0000374 — el RAII
+  `_syn_texto_liberar` liberaba un literal estático; afectaba igual a
+  `escribir_linea`). Ver sección R10 abajo.
 
 ## ✅ Errores de parseo nativos (R5) — RESUELTO
 
@@ -150,6 +151,34 @@ Evidencia: `constante MAXIMO = 5` + `MAXIMO = 9` → diagnóstico; parámetro `X
 sombreando `constante X = 5` → sin diagnóstico y ejecuta correcto; bootstrap
 S1→S2→S3 con **S2==S3 byte-idénticos** (1068718 bytes, md5 `3862049e`); 3 tests
 R9 nuevos en `tests/test_fase2_nativa_hm.py`; regresión verde (129 passed).
+
+## ✅ RAII y literales estáticos (R10) — RESUELTO
+
+**Estado (2026-08-10):** deuda R10 del reporte `FASE_2_2.4_NATIVA.md` (variable
+texto con literal estático `saludo = "hola"` crasheaba al salir con
+0xC0000374) **resuelta** en el **runtime** (`runtime/core/memory.c`), único
+punto que arregla S1, nativo, bootstrap y programas de usuario:
+
+- **Causa raíz**: `_syn_texto_liberar(s) → pool_free(s.datos)`; el fallback de
+  `pool_free` para punteros fuera de slabs/pool era `free(ptr)` — legítimo para
+  los mallocs de escape de `pool_alloc` pero fatal para literales estáticos
+  (`.rodata`). El Manual 4 §2.1 (arenas por ámbito) prohíbe liberar lo que no
+  se asignó vía el allocator.
+- **Fix**: registro `_g_extra_ptrs[]` de los punteros que `pool_alloc` devuelve
+  vía malloc de escape (3 rutas, `_extra_registrar`); `pool_free` solo llama
+  `free()` a punteros registrados (y los consume); **literal estático / puntero
+  ajeno → no-op**. El scan es inline bajo el mutex ya tomado (la primera versión
+  re-tomaba `_g_pool_mutex` → deadlock; corregido). `pool_destroy` libera el
+  registro.
+- El código de los generadores no cambió: el RAII nativo (liberar al cierre de
+  scope) y el del S1 (liberar antes de reasignar) son seguros porque el runtime
+  ignora punteros ajenos.
+
+Evidencia: nativo `saludo = "hola"` → rc=0 imprime `hola` (antes 0xC0000374);
+nativo y S1 en reasignación `s = "a"; s = entero_a_texto(7)` → rc=0 imprime
+`7` (el S1 también crasheaba); estrés 100 iteraciones → rc=0; bootstrap
+S1→S2→S3 con **S2==S3 byte-idénticos** (1068856 bytes, md5 `fcb2651c`); 2 tests
+R10 nuevos en `tests/test_fase2_nativa_hm.py`; regresión verde (122 passed).
 
 ## Arquitectura
 

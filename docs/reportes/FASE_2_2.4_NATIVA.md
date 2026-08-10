@@ -80,7 +80,7 @@ Puntos revisados y resueltos:
 | R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (parametros no declarados + asignaciones implicitas) silenciados por diseño — el aborto global rompería el bootstrap | ✅ **RESUELTA (2026-08-10)** — resolución de símbolos de la pasada 3 con paridad S1: parámetros declarados en el scope de la función + declaración implícita en asignación + REDEFINICIÓN solo del mismo scope (ver §9); 653 → 0; bootstrap S2==S3 byte-idéntico (1065612 bytes) |
 | R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ✅ **RESUELTA (2026-08-10)** — el puente crea `LogLlamada` (puente_ast.syn) pero el generador nativo no lo manejaba → `_oo_expr_a_c` caía al fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`: `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` resto) + dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`; unity `generator.syn` regenerado con `_rebuild_generator.py`. `log("hola mundo")` nativo imprime (antes `0;`); bootstrap S2==S3 byte-idéntico (1067694 bytes, md5 `7f9020f9`); 3 tests R8 nuevos (10/10 HM); regresión 81 + 45 passed (ver §10) |
 | R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ✅ **RESUELTA (2026-08-10)** — marcador `es_constante` en `AsignacionVariable` (puente `NODO_CONSTANTE` → `AsignacionVariable.es_constante=1` → flatten F8 → `SemNodo.valor_int`), registro en pasada 2 (globales) y `analizar_sentencia` (locales); `tabla_buscar` con precedencia de ámbito innermost-first (paridad S1 `symbol_table.py` `buscar`: `reversed(self._scopes)`); diagnóstico observable `[Synapse] Error semantico ... No se puede reasignar la constante 'X'` (paridad `diagnostics.py`); bootstrap S2==S3 byte-idéntico (1068718 bytes, md5 `3862049e`); 3 tests R9 nuevos (16/16 HM PASS); regresión 129 passed (ver §11) |
-| R10 | **RAII nativo sobre literales estáticos**: programa de usuario con variable texto (`saludo = "hola"`) crashea al salir (0xC0000374 heap corruption; `_syn_texto_liberar(saludo)` libera un literal estático; exit 127 en git-bash). Hallazgo PRE-EXISTENTE (afecta igual a `escribir_linea`, detectado durante la validación R8); los tests e2e usan literales/enteros para evitarlo | ⚠️ registrado — resolución: auditar el RAII/hoisting de `CadenaSegura` en `nucleo/generador/orquestador.syn` (evitar `_syn_texto_liberar` sobre `.datos` de literales) |
+| R10 | **RAII nativo sobre literales estáticos**: programa de usuario con variable texto (`saludo = "hola"`) crashea al salir (0xC0000374 heap corruption; `_syn_texto_liberar(saludo)` libera un literal estático; exit 127 en git-bash). Hallazgo PRE-EXISTENTE (afecta igual a `escribir_linea`, detectado durante la validación R8); los tests e2e usan literales/enteros para evitarlo | ✅ **RESUELTA (2026-08-10)** — fix en el RUNTIME (único punto que arregla S1 y nativo): `pool_free` solo llama `free()` a punteros registrados por `pool_alloc` (registro `_g_extra_ptrs` de sus mallocs de escape); literales estáticos/punteros ajenos → no-op (Manual 4 §2.1: nunca liberar lo que no se asignó vía el allocator); bootstrap S2==S3 byte-idéntico (1068856 bytes, md5 `fcb2651c`); 2 tests R10 nuevos (18/18 HM); regresión 122 passed (ver §12) |
 
 ## 7. HASH COMMIT
 
@@ -298,3 +298,76 @@ observable en stderr.
 `nucleo/principal.syn.json` (AST regenerado), `tests/test_fase2_nativa_hm.py`
 (+3 tests R9), docs (este reporte §6/§11, `nucleo/README.md`, bitácora
 AUDITORIA). **HASH COMMIT: `d36dcac`** (rama `feature/fase2-nativa-hm`).
+
+---
+
+## 12. CIERRE R10 — RAII sobre literales estáticos (2026-08-10)
+
+### 12.1 Síntoma
+
+Un programa de usuario válido con variable texto (`saludo = "hola"`) crasheaba al
+salir con **0xC0000374 (heap corruption)** / exit 127 en git-bash: el destructor
+RAII emitía `_syn_texto_liberar(saludo)` y `saludo.datos` apuntaba a un literal
+estático (`.rodata`), no a heap → `free()` inválido. Afectaba al generador nativo
+(libera al cierre de scope) **y** al S1 (libera el valor previo antes de
+reasignar: `s = "a"; s = entero_a_texto(7)` crasheaba en el S1 también).
+
+### 12.2 Causa raíz
+
+El runtime compartido (`runtime/core/memory.c`) define
+`_syn_texto_liberar(s) → pool_free(s.datos)`. `pool_free` recorre slabs y el
+bloque grande del pool; si el puntero no está en ninguno de los dos, el fallback
+era `free(ptr)` — legítimo para los mallocs de escape de `pool_alloc` (pool
+agotado / tamaño > bloque) pero **fatídico para literales estáticos**, que no
+fueron asignados por el runtime. El Manual 4 §2.1 (arenas por ámbito) prohíbe
+liberar lo que no se asignó vía el allocator.
+
+### 12.3 Fix (`runtime/core/memory.c`, paridad Manual 4 §2.1)
+
+Fix en el **runtime** (único punto que arregla S1, nativo, bootstrap y
+programas de usuario — se enlaza como `synapse_rt_memory.o` en todos):
+
+- **Registro `_g_extra_ptrs[]`** (protegido por `_g_pool_mutex`): `pool_alloc`
+  registra cada puntero devuelto por sus 3 rutas de malloc de escape
+  (`_extra_registrar`). Solo se toca en el camino lento — la ruta rápida slab
+  (lock-free) no cambia.
+- **`pool_free`**: en el fallback (puntero fuera de slabs y del pool) solo llama
+  `free()` si el puntero está registrado (y lo consume); **literal estático /
+  puntero ajeno → no-op** (cero crash, cero UB, cero doble-free). El scan del
+  registro se hace inline bajo el mutex ya tomado (el helper `_extra_consumir`
+  inicial re-tomaba el mutex → deadlock; corregido y eliminado — código muerto).
+- **`pool_destroy`** libera el registro.
+
+### 12.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Nativo: `saludo = "hola"` + `escribir_linea` | antes 0xC0000374 → ahora **rc=0, imprime `hola`** |
+| Nativo: reasignación `s = "a"; s = entero_a_texto(7)` | **rc=0, imprime `7`** |
+| Nativo: estrés 100 iteraciones literal+runtime | **rc=0, imprime `fin`** |
+| S1: mismo programa simple | antes OK → ahora **rc=0, imprime `hola`** |
+| S1: reasignación (antes 0xC0000374) | **rc=0, imprime `7`** |
+| Bootstrap S1→S2→S3 | **S2==S3 byte-idénticos (1068856 bytes, md5 `fcb2651c`)** |
+| Tests R10 nuevos (`tests/test_fase2_nativa_hm.py`) | **2/2 PASS** (18/18 HM PASS) |
+| Regresión | 68 paridades nativas/semántica + 36 codegen e2e → **122 passed** |
+
+### 12.5 Alcance y deuda residual
+
+- El registro cubre **todas** las rutas de asignación del runtime: slabs (pool),
+  bloque grande (pool) y mallocs de escape (registro). Cero fugas nuevas: todo
+  `malloc` de `pool_alloc` queda registrado y se libera; los literales nunca
+  entran en el registro (no-op).
+- El código de los generadores NO cambió: el RAII nativo (liberar al cierre de
+  scope) y el S1 (liberar antes de reasignar) son seguros ahora porque el
+  runtime ignora punteros ajenos.
+- Lección R10 reaplicada (cronología): un primer intento del fix produjo un
+  deadlock (`_extra_consumir` re-tomaba `_g_pool_mutex`) que colgaba los
+  programas compilados — detectado por timeout en los probes; corregido con
+  scan inline bajo el mutex ya tomado y `free()` tras liberarlo.
+
+### 12.6 Archivos
+
+`runtime/core/memory.c` (fix), `tests/test_fase2_nativa_hm.py` (+2 tests R10),
+docs (este reporte §6/§12, `nucleo/README.md`, bitácora AUDITORIA,
+`MEMORIA_PROYECTO.md`). **HASH COMMIT: `d233ee0`** (rama
+`feature/fase2-nativa-hm`).
