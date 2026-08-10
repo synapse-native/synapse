@@ -110,6 +110,13 @@ estructura SemAdtInfo:
     nombre: cadena
     num_parametros: entero
 
+// R1: registro de funciones de usuario (nombre -> nodo aplanado F8). Lo
+// consume la validacion de llamadas genericas (TVars, Manual 2 §8.2, paridad
+// S1 semantic_types.py _inferir_llamada_hm).
+estructura SemFuncionInfo:
+    nombre: cadena
+    nodo: entero
+
 // M21.4: Borrow tracking entries (Manual 4 S4.2)
 estructura SemPrestamo:
     idx_simbolo: entero
@@ -135,6 +142,10 @@ estructura AnalizadorSemanticoEst:
     // retorno/parametros guardadas por el flatten F8 (paridad S1 tipos.py)
     info_adts: SemAdtInfo
     total_adts: entero
+    // R1: registro de funciones (nombre -> nodo aplanado) para la validacion
+    // de llamadas genericas en la pasada 3 (paridad S1 _inferir_llamada_hm)
+    info_funciones: SemFuncionInfo
+    total_funciones: entero
     asignaciones_retorno_campo: cadena
     asignaciones_campos_var: cadena
     asignaciones_campos_campo: cadena
@@ -525,6 +536,114 @@ funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_
         asm("}")
     retornar verdadero
 
+// --- R1: validacion de llamadas a funciones genericas (Manual 2 §8.2) ---
+// Paridad S1: semantic_types.py _inferir_llamada_hm (algoritmo W simplificado:
+// TVars frescos por llamada, unificacion con occurs check, aridad y
+// ERR_SEM_TYPE_AMBIGUOUS si el retorno queda con un TVar sin resolver).
+// Patron nested C unico auto-contenido (sin referencias cruzadas, leccion 2.4).
+funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: entero) -> nulo:
+    inseguro:
+        asm("void _f8_r1_llamada_generica(struct AnalizadorSemanticoEst* e, int idx) {")
+        asm("    int* _phi=(int*)e->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)e->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _callee=(const char*)_bp;")
+        asm("    if(!_callee||!_callee[0]) return;")
+        asm("    int _fn=-1; for(int _i=0;_i<e->total_funciones;_i++){ if(e->info_funciones[_i].nombre.datos && strcmp(e->info_funciones[_i].nombre.datos,_callee)==0){ _fn=_i; break; } }")
+        asm("    if(_fn<0) return; int _fnod=e->info_funciones[_fn].nodo;")
+        asm("    char _ret[256]; _ret[0]=0;")
+        asm("    { int* _phr=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _br=(uintptr_t)(unsigned)e->nodos[_fnod].ptr_extra; if(_phr){ _br|=((uintptr_t)(unsigned)_phr[_fnod])<<32; } const char* _vr=(const char*)_br; if(_vr){ int _l=(int)strlen(_vr); if(_l>255)_l=255; memcpy(_ret,_vr,_l); _ret[_l]=0; } }")
+        asm("    char _pars[8][256]; int _np=0; int _pr=((int*)&e->nodos[_fnod])[6];")
+        asm("    while(_pr>0 && _np<8){")
+        asm("        char _pt[256]; _pt[0]=0;")
+        asm("        { int* _php=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _bpr=(uintptr_t)(unsigned)e->nodos[_pr].ptr_extra; if(_php){ _bpr|=((uintptr_t)(unsigned)_php[_pr])<<32; } const char* _vp=(const char*)_bpr; if(_vp){ int _l=(int)strlen(_vp); if(_l>255)_l=255; memcpy(_pt,_vp,_l); _pt[_l]=0; } }")
+        asm("        memcpy(_pars[_np],_pt,256); _np++; _pr=e->nodos[_pr].hermano;")
+        asm("    }")
+        asm("    // TVars: tipo desnudo en mayuscula y desconocido (paridad S1 _recolectar_tvars_firma)")
+        asm("    char _tvn[8][64]; int _ntv=0;")
+        asm("    { const char* _srcs[9]; int _ns=0; if(_ret[0]){ _srcs[_ns++]=_ret; } for(int _i=0;_i<_np;_i++){ if(_pars[_i][0]){ _srcs[_ns++]=_pars[_i]; } }")
+        asm("        for(int _s=0;_s<_ns;_s++){ const char* _c=_srcs[_s]; while(*_c==' '){ _c++; }")
+        asm("            while(*_c=='&'){ if(strncmp(_c,\"&mut \",5)==0){ _c+=5; } else { _c++; } while(*_c==' '){ _c++; } }")
+        asm("            int _len=(int)strlen(_c); while(_len>0 && (_c[_len-1]=='*'||_c[_len-1]==' ')){ _len--; }")
+        asm("            if(_len==0) continue; if(!(_c[0]>='A'&&_c[0]<='Z')) continue;")
+        asm("            int _ok=1; for(int _j=0;_j<_len;_j++){ char _ch=_c[_j]; if(_ch=='<'||_ch=='>'||_ch=='('||_ch==')'||_ch=='['||_ch==']'||_ch==','||_ch==' '||_ch=='&'||_ch=='*'){ _ok=0; break; } } if(!_ok) continue;")
+        asm("            char _nm[64]; int _nl=_len; if(_nl>63){ _nl=63; } memcpy(_nm,_c,_nl); _nm[_nl]=0;")
+        asm("            if(strcmp(_nm,\"entero\")==0||strcmp(_nm,\"decimal\")==0||strcmp(_nm,\"texto\")==0||strcmp(_nm,\"booleano\")==0||strcmp(_nm,\"nulo\")==0||strcmp(_nm,\"void\")==0) continue;")
+        asm("            int _con=0; for(int _i=0;_i<e->total_estructuras;_i++){ if(e->info_estructuras[_i].nombre.datos&&strcmp(e->info_estructuras[_i].nombre.datos,_nm)==0){ _con=1; break; } } if(_con) continue;")
+        asm("            for(int _i=0;_i<e->total_adts;_i++){ if(e->info_adts[_i].nombre.datos&&strcmp(e->info_adts[_i].nombre.datos,_nm)==0){ _con=1; break; } } if(_con) continue;")
+        asm("            int _dup=0; for(int _i=0;_i<_ntv;_i++){ if(strcmp(_tvn[_i],_nm)==0){ _dup=1; break; } } if(_dup) continue;")
+        asm("            if(_ntv<8){ memcpy(_tvn[_ntv],_nm,64); _ntv++; }")
+        asm("        }")
+        asm("    }")
+        asm("    if(_ntv==0) return;")
+        asm("    char _sub[8][256]; int _sb[8]; for(int _i=0;_i<8;_i++){ _sb[_i]=0; _sub[_i][0]=0; }")
+        asm("    // tipos de argumentos (inferencia minima de expresion)")
+        asm("    char _args[8][256]; int _na=0; int _argn=((int*)&e->nodos[idx])[6];")
+        asm("    while(_argn>0 && _na<8){")
+        asm("        char _ab[256]; _ab[0]=0; int _at=e->nodos[_argn].tipo_nodo;")
+        asm("        if(_at==9){ strcpy(_ab,\"entero\"); }")
+        asm("        else if(_at==10){ strcpy(_ab,\"decimal\"); }")
+        asm("        else if(_at==11){ strcpy(_ab,\"texto\"); }")
+        asm("        else if(_at==22){ strcpy(_ab,\"booleano\"); }")
+        asm("        else if(_at==8){")
+        asm("            int* _pa=(int*)e->asignaciones_campos_campo.datos; uintptr_t _ba=(uintptr_t)(unsigned)e->nodos[_argn].ptr_str; if(_pa){ _ba|=((uintptr_t)(unsigned)_pa[_argn])<<32; } const char* _va=(const char*)_ba;")
+        asm("            if(_va&&_va[0]){ int _ti=-1; for(int _s=e->tabla->total_entradas-1;_s>=0;_s--){ if(!e->tabla->entradas[_s].nombre.datos) continue; int _eq=1; for(int _k=0;_k<256;_k++){ if(_va[_k]!=e->tabla->entradas[_s].nombre.datos[_k]){ _eq=0; break; } if(_va[_k]==0) break; } if(_eq){ _ti=_s; break; } }")
+        asm("                if(_ti>=0&&e->tabla->entradas[_ti].tipo.datos){ int _l=(int)strlen(e->tabla->entradas[_ti].tipo.datos); if(_l>255)_l=255; memcpy(_ab,e->tabla->entradas[_ti].tipo.datos,_l); _ab[_l]=0; } }")
+        asm("        }")
+        asm("        else if(_at==14){")
+        asm("            int* _pa=(int*)e->asignaciones_campos_campo.datos; uintptr_t _ba=(uintptr_t)(unsigned)e->nodos[_argn].ptr_str; if(_pa){ _ba|=((uintptr_t)(unsigned)_pa[_argn])<<32; } const char* _va=(const char*)_ba;")
+        asm("            if(_va&&_va[0]){ int _ci=-1; for(int _i=0;_i<e->total_funciones;_i++){ if(e->info_funciones[_i].nombre.datos&&strcmp(e->info_funciones[_i].nombre.datos,_va)==0){ _ci=_i; break; } }")
+        asm("                if(_ci>=0){ int _no=e->info_funciones[_ci].nodo; int* _phr=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _br=(uintptr_t)(unsigned)e->nodos[_no].ptr_extra; if(_phr){ _br|=((uintptr_t)(unsigned)_phr[_no])<<32; } const char* _vr=(const char*)_br; if(_vr){ int _l=(int)strlen(_vr); if(_l>255)_l=255; memcpy(_ab,_vr,_l); _ab[_l]=0; } }")
+        asm("                if(_ci<0){ int _sc=0; for(int _i=0;_i<e->total_estructuras;_i++){ if(e->info_estructuras[_i].nombre.datos&&strcmp(e->info_estructuras[_i].nombre.datos,_va)==0){ _sc=1; break; } } if(_sc){ strcpy(_ab,_va); } } }")
+        asm("        }")
+        asm("        memcpy(_args[_na],_ab,256); _na++; _argn=e->nodos[_argn].hermano;")
+        asm("    }")
+        asm("    if(_na!=_np){ char _mm[256]; snprintf(_mm,256,\"Cantidad de argumentos invalida para '%s': se esperaban %d (Manual 2 seccion 8.2)\",_callee,_np);")
+        asm("        fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; return; }")
+        asm("    // unificador iterativo (worklist de pares) con sustitucion de TVars y occurs check")
+        asm("    for(int _pari=0;_pari<_np;_pari++){")
+        asm("        char _a[256]; char _b[256]; strcpy(_a,_pars[_pari]); strcpy(_b,_args[_pari]); if(!_b[0]) continue;")
+        asm("        char _q1[8][256]; char _q2[8][256]; int _qh=0; int _fails=0; if(_qh<8){ strcpy(_q1[_qh],_a); strcpy(_q2[_qh],_b); _qh++; }")
+        asm("        while(_qh>0 && !_fails){")
+        asm("            _qh--; strcpy(_a,_q1[_qh]); strcpy(_b,_q2[_qh]);")
+        asm("            char _ta[256]; char _tb[256]; strcpy(_ta,_a); strcpy(_tb,_b);")
+        asm("            for(int _it=0;_it<8;_it++){ int _changed=0; for(int _t=0;_t<_ntv;_t++){ if(_sb[_t] && strcmp(_ta,_tvn[_t])==0){ strcpy(_ta,_sub[_t]); _changed=1; } if(_sb[_t] && strcmp(_tb,_tvn[_t])==0){ strcpy(_tb,_sub[_t]); _changed=1; } } if(!_changed) break; }")
+        asm("            if(strcmp(_ta,_tb)==0) continue;")
+        asm("            int _ia=-1,_ib=-1; for(int _t=0;_t<_ntv;_t++){ if(strcmp(_ta,_tvn[_t])==0){ _ia=_t; } if(strcmp(_tb,_tvn[_t])==0){ _ib=_t; } }")
+        asm("            if(_ia>=0 && !_sb[_ia]){")
+        asm("                if(_ib>=0){ strcpy(_sub[_ia],_tb); _sb[_ia]=1; }")
+        asm("                else { int _occ=0; for(int _k=0;_k<(int)strlen(_tb);_k++){ if((_tb[_k]>='A'&&_tb[_k]<='Z')||(_tb[_k]>='a'&&_tb[_k]<='z')||(_tb[_k]>='0'&&_tb[_k]<='9')||_tb[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_tb)&&((_tb[_k2]>='A'&&_tb[_k2]<='Z')||(_tb[_k2]>='a'&&_tb[_k2]<='z')||(_tb[_k2]>='0'&&_tb[_k2]<='9')||_tb[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_tb+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_ia])==0){ _occ=1; } _k=_k2-1; } }")
+        asm("                    if(_occ){ _fails=1; } else { strcpy(_sub[_ia],_tb); _sb[_ia]=1; } }")
+        asm("                continue;")
+        asm("            }")
+        asm("            if(_ib>=0 && !_sb[_ib]){")
+        asm("                int _occ=0; for(int _k=0;_k<(int)strlen(_ta);_k++){ if((_ta[_k]>='A'&&_ta[_k]<='Z')||(_ta[_k]>='a'&&_ta[_k]<='z')||(_ta[_k]>='0'&&_ta[_k]<='9')||_ta[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_ta)&&((_ta[_k2]>='A'&&_ta[_k2]<='Z')||(_ta[_k2]>='a'&&_ta[_k2]<='z')||(_ta[_k2]>='0'&&_ta[_k2]<='9')||_ta[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_ta+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_ib])==0){ _occ=1; } _k=_k2-1; } }")
+        asm("                if(_occ){ _fails=1; } else { strcpy(_sub[_ib],_ta); _sb[_ib]=1; } continue;")
+        asm("            }")
+        asm("            { int _la=(int)strlen(_ta); int _lb=(int)strlen(_tb); int _a1=-1,_b1=-1;")
+        asm("                for(int _k=0;_k<_la;_k++){ if(_ta[_k]=='<'){ _a1=_k; break; } } for(int _k=0;_k<_lb;_k++){ if(_tb[_k]=='<'){ _b1=_k; break; } }")
+        asm("                if(_a1>=0&&_b1>=0&&_ta[_la-1]=='>'&&_tb[_lb-1]=='>'){")
+        asm("                    char _ba0[64]; char _bb0[64]; int _la0=_a1; if(_la0>63)_la0=63; memcpy(_ba0,_ta,_la0); _ba0[_la0]=0; int _lb0=_b1; if(_lb0>63)_lb0=63; memcpy(_bb0,_tb,_lb0); _bb0[_lb0]=0;")
+        asm("                    if(strcmp(_ba0,_bb0)==0){")
+        asm("                        char _aa[4][256]; char _bb[4][256]; int _ana=0,_bna=0;")
+        asm("                        { int _prof=0; int _in=0; for(int _k=_a1+1;_k<_la-1;_k++){ char _ch=_ta[_k]; if(_ch=='<'||_ch=='('){ _prof++; } if(_ch=='>'||_ch==')'){ _prof--; } if(_ch==','&&_prof==0){ if(_ana<4){ _aa[_ana][_in]=0; _ana++; _in=0; } } else if(_ch!=' '){ if(_ana<4&&_in<255){ _aa[_ana][_in++]=_ch; } } } if(_ana<4){ _aa[_ana][_in]=0; _ana++; } }")
+        asm("                        { int _prof=0; int _in=0; for(int _k=_b1+1;_k<_lb-1;_k++){ char _ch=_tb[_k]; if(_ch=='<'||_ch=='('){ _prof++; } if(_ch=='>'||_ch==')'){ _prof--; } if(_ch==','&&_prof==0){ if(_bna<4){ _bb[_bna][_in]=0; _bna++; _in=0; } } else if(_ch!=' '){ if(_bna<4&&_in<255){ _bb[_bna][_in++]=_ch; } } } if(_bna<4){ _bb[_bna][_in]=0; _bna++; } }")
+        asm("                        if(_ana==_bna){ for(int _k=0;_k<_ana;_k++){ if(_qh<8){ strcpy(_q1[_qh],_aa[_k]); strcpy(_q2[_qh],_bb[_k]); _qh++; } } } else { _fails=1; }")
+        asm("                    } else { _fails=1; }")
+        asm("                } else { _fails=1; }")
+        asm("            }")
+        asm("        }")
+        asm("        if(_fails){ char _mm[256]; snprintf(_mm,256,\"Tipos incompatibles: no se puede usar '%s' con '%s' al instanciar '%s' (Manual 2 seccion 8.2)\",_a,_b,_callee);")
+        asm("            fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; break; }")
+        asm("    }")
+        asm("    // retorno: resolver y chequear TVar libre -> ERR_SEM_TYPE_AMBIGUOUS")
+        asm("    { char _rr[256]; strcpy(_rr,_ret);")
+        asm("        for(int _it=0;_it<8;_it++){ int _changed=0; for(int _t=0;_t<_ntv;_t++){ if(_sb[_t]&&strcmp(_rr,_tvn[_t])==0){ strcpy(_rr,_sub[_t]); _changed=1; } } if(!_changed) break; }")
+        asm("        int _libre=0; for(int _t=0;_t<_ntv && !_libre;_t++){ if(_sb[_t]) continue; for(int _k=0;_k<(int)strlen(_rr);_k++){ if((_rr[_k]>='A'&&_rr[_k]<='Z')||(_rr[_k]>='a'&&_rr[_k]<='z')||(_rr[_k]>='0'&&_rr[_k]<='9')||_rr[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_rr)&&((_rr[_k2]>='A'&&_rr[_k2]<='Z')||(_rr[_k2]>='a'&&_rr[_k2]<='z')||(_rr[_k2]>='0'&&_rr[_k2]<='9')||_rr[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_rr+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_t])==0){ _libre=1; } _k=_k2-1; } } }")
+        asm("        if(_libre){ char _mm[256]; snprintf(_mm,256,\"Expresion con tipo ambiguo: no se puede inferir '%s' (Manual 2 seccion 8.2)\",_rr);")
+        asm("            fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; }")
+        asm("    }")
+        asm("}")
+        asm("_f8_r1_llamada_generica(est, idx_llamada);")
+    retornar
+
 // --- M21.4: Expression traversal to register borrows (Manual 4 S4.2) ---
 funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
     si idx <= 0:
@@ -558,6 +677,9 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         retornar
     // NODO_LLAMADA (14): argumentos en cadena desde slot [6]
     si tipo == NODO_LLAMADA:
+        // R1: validar llamada a funcion generica (TVars, Manual 2 §8.2;
+        // paridad S1 _inferir_llamada_hm). No aborta: diagnostico observable.
+        validar_llamada_generica(est, idx)
         arg = nodo_expr(est, idx)
         r2 = 1
         mientras r2 == 1:
@@ -708,9 +830,10 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
         // R9: constantes LOCALES (StmtConstante aplanado con marcador
-        // es_constante en valor_int; paridad S1 L446-458): se declaran como
-        // constantes, no como asignaciones.
-        esconstdecl = nodo_valor_int(est, idx_nodo)
+        // es_constante en hijo_der; paridad S1 L446-458): se declaran como
+        // constantes, no como asignaciones. (R1 fix: el marcador via valor_int
+        // colisionaba con slot[6]/expresion y anulaba el RHS de la asignacion.)
+        esconstdecl = nodo_hijo_der(est, idx_nodo)
         si esconstdecl == 1:
             cnom = ""
             inseguro:
@@ -982,6 +1105,20 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 validar_tipo_instanciacion(est, tparam, p)
                 inseguro:
                     asm("p = est->nodos[p].hermano")
+            // R1: registrar la funcion (nombre -> nodo aplanado) para validar
+            // llamadas genericas en la pasada 3 (Manual 2 §8.2; paridad S1
+            // semantic_checker.py L264-265: TODAS las DefinicionFuncion se
+            // declaran; la precedencia de usuario sobre builtins es del S1
+            // semantic_types.py L309-310). NO filtrar por es_builtin: si el
+            // usuario define 'funcion generar() -> T', el S1 la valida como
+            // generica (la definicion del usuario precede al builtin); bounds 256.
+            inseguro:
+                asm("if (est->total_funciones < 256 && nombre.datos) {")
+                asm("    char* _nmost = strdup(nombre.datos); // R1: copia propia (el nombre local se libera en la siguiente iteracion; paridad S1 registrar_funcion)")
+                asm("    est->info_funciones[est->total_funciones].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost};")
+                asm("    est->info_funciones[est->total_funciones].nodo = stmt;")
+                asm("    est->total_funciones = est->total_funciones + 1;")
+                asm("}")
         si tipo == NODO_EXTERNO:
             nombre = ""
             inseguro:
@@ -990,12 +1127,12 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
             si ok == falso:
                 sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
         // R9: constantes globales (StmtConstante aplanado como NODO_ASIGNACION
-        // con marcador es_constante en valor_int; paridad S1
+        // con marcador es_constante en hijo_der; paridad S1
         // semantic_checker.py L286-299: cur[s.nombre] = Simbolo(..., True)).
         // Solo las marcadas: las asignaciones globales planas NO se registran
         // (paridad S1, que tampoco registra AsignacionVariable top-level).
         si tipo == NODO_ASIGNACION:
-            esconst = nodo_valor_int(est, stmt)
+            esconst = nodo_hijo_der(est, stmt)
             si esconst == 1:
                 cnombre = ""
                 inseguro:

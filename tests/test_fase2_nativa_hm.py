@@ -603,3 +603,82 @@ def test_r11_patron_literal_no_cuelga(stage, tmp_path):
     assert proc.returncode == 5, (
         f"rc={proc.returncode} (esperado 5 = termina, sin cuelgue;"
         f" TimeoutExpired del helper = cuelgue):\n{proc.stderr[-800:]}")
+
+
+# --- R1: unificacion HM de TVars en llamadas genericas (Manual 2 §8.2) -------
+# Paridad tests/unit/test_type_inference.py (L200-245): identidad(5) unifica,
+# generar() -> T sin resolver emite AMBIGUOUS, Persona (struct mayuscula) NO es
+# TVar, f(5,"hola") con f(a:T,b:T) emite INCOMPATIBLE. Los diagnósticos son
+# observables (no abortan: el pipeline solo aborta con hay_error_2_4).
+
+_PROG_R1_UNIFICA = '''#lang: es
+funcion identidad(x: T) -> T:
+    retornar x
+funcion principal() -> nulo:
+    z = identidad(5)
+    retornar
+'''
+
+_PROG_R1_AMBIGUO = '''#lang: es
+funcion generar() -> T:
+    retornar 5
+funcion principal() -> nulo:
+    z = generar()
+    retornar
+'''
+
+_PROG_R1_STRUCT_NO_TVAR = '''#lang: es
+estructura Persona:
+    nombre: texto
+funcion empaquetar(x: T, p: Persona) -> T:
+    retornar x
+funcion principal() -> nulo:
+    z = empaquetar(5, Persona())
+    retornar
+'''
+
+_PROG_R1_INCOMPATIBLE = '''#lang: es
+funcion f(a: T, b: T) -> entero:
+    retornar 1
+funcion principal() -> nulo:
+    z = f(5, "hola")
+    retornar
+'''
+
+
+def test_r1_llamada_generica_unifica(stage, tmp_path):
+    """R1 (paridad test_type_inference.py L205): id(x:T)->T con llamada
+    identidad(5) infiere T=entero y NO emite diagnostico. rc=5 = GCC sin
+    codegen para TVars (igual que S1), lo importante es 0 errores semanticos."""
+    proc = _compilar_con_stage(stage, _PROG_R1_UNIFICA, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"unificacion fallo con diagnostico:\n{proc.stderr[-1200:]}")
+
+
+def test_r1_tvar_sin_resolver_ambiguo(stage, tmp_path):
+    """R1 (paridad test_type_inference.py L220): T declarado SOLO en el retorno
+    no se puede inferir -> diagnostico observable con 'ambiguo' (paridad
+    diagnostics.py ERR_SEM_TYPE_AMBIGUOUS)."""
+    proc = _compilar_con_stage(stage, _PROG_R1_AMBIGUO, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico AMBIGUOUS ausente:\n{proc.stderr[-1200:]}")
+    assert "ambiguo" in proc.stderr
+
+
+def test_r1_struct_mayuscula_no_es_tvar(stage, tmp_path):
+    """R1 (paridad test_type_inference.py L231): 'Persona' (struct en mayuscula)
+    NO es un TVar: no debe unificar con T ni emitir AMBIGUOUS (revision
+    code-reviewer 2.4)."""
+    proc = _compilar_con_stage(stage, _PROG_R1_STRUCT_NO_TVAR, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"struct mayuscula tratada como TVar:\n{proc.stderr[-1200:]}")
+
+
+def test_r1_argumentos_incompatibles(stage, tmp_path):
+    """R1 (paridad test_type_inference.py): f(a:T,b:T) con f(5,"hola") unifica
+    T=entero y luego texto -> INCOMPATIBLE observable. (Nombres 'a'/'b' no
+    reservados: 'y' es la palabra clave del AND logico y el parser falla.)"""
+    proc = _compilar_con_stage(stage, _PROG_R1_INCOMPATIBLE, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico INCOMPATIBLE ausente:\n{proc.stderr[-1200:]}")
+    assert "incompatibles" in proc.stderr
