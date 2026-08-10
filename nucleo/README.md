@@ -213,10 +213,13 @@ en el nativo mientras el S1 reportaba `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`, Manua
 Evidencia: probe 2.6a (solo `ok`) → diagnóstico (antes: compilaba mudo);
 ok+err / algun+ninguno / wildcard → RC=0; patrón literal `1 =>` → RC=5 sin
 cuelgue; **ejecución real del switch** (`a = ok(21)` → 42, `b = err("x")` → 0);
-bootstrap S1→S2→S3 con **S2==S3 byte-idénticos (md5 `c17e4658`)**, ruido 0; 4
-tests R11 nuevos en `tests/test_fase2_nativa_hm.py` (25/25 HM PASS); regresión
-verde (176 passed). **Pendiente residual:** patrones literales sin codegen
-(RC=5 al ejecutar, sin cuelgue) — mejora futura.
+bootstrap S1→S2→S3 con **S2==S3 byte-idénticos (md5 `d78eabac`
+post-hardening)**, ruido 0; 4 tests R11 + 1 anti-cuelgue en
+`tests/test_fase2_nativa_hm.py` (26/26 HM PASS); regresión verde (176
+passed). **Hardening post-revisión (`695aa57`):** bounds `_tp < 63`/`_vp < 63`
+en `parsear_patron_coincidir` (un tag de >63 chars no desborda el stack del
+compilador) + test `test_r11_patron_literal_no_cuelga`. **Pendiente residual:**
+patrones literales sin codegen (RC=5 al ejecutar, sin cuelgue) — mejora futura.
 
 ## Arquitectura
 
