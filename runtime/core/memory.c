@@ -136,6 +136,41 @@ static uint8_t* g_slab_bases[SLAB_COUNT];
 static volatile MemoryPool _g_pool;
 static pthread_mutex_t _g_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* --- R10: registro de punteros fuera-del-pool -------------------------
+ * pool_alloc usa malloc de escape cuando el pool esta agotado o el tamano
+ * excede el bloque. pool_free solo debe llamar free() a esos punteros.
+ * Cualquier otro puntero (literal estatico ".rodata", memoria ajena) se
+ * IGNORA: free() sobre un literal = 0xC0000374 / SEGV (Manual 4 S2.1:
+ * nunca liberar lo que no se asigno via el allocator).
+ * Protegido por _g_pool_mutex; solo se toca en el camino lento de
+ * pool_free (punteros fuera del pool), nunca en la ruta rapida slab.
+ */
+static void** _g_extra_ptrs = NULL;
+static size_t _g_extra_count = 0;
+static size_t _g_extra_cap = 0;
+
+static void _extra_registrar(void* p) {
+    if (!p) return;
+    pthread_mutex_lock(&_g_pool_mutex);
+    if (_g_extra_count == _g_extra_cap) {
+        size_t ncap = _g_extra_cap ? _g_extra_cap * 2 : 16;
+        void** nptrs = (void**)realloc(_g_extra_ptrs, ncap * sizeof(void*));
+        if (!nptrs) {
+            /* No registrado: pool_free lo ignorara (leak controlado y
+             * documentado; nunca un free() ilegal). */
+            pthread_mutex_unlock(&_g_pool_mutex);
+            return;
+        }
+        _g_extra_ptrs = nptrs;
+        _g_extra_cap = ncap;
+    }
+    _g_extra_ptrs[_g_extra_count++] = p;
+    pthread_mutex_unlock(&_g_pool_mutex);
+}
+
+/* El scan del registro se hace INLINE bajo _g_pool_mutex (ver pool_free):
+ * nunca re-tomar el mutex ya tomado (R10 fix 2, deadlock). */
+
 void pool_init(uint32_t total_blocks, uint32_t block_size) {
     pthread_mutex_lock(&_g_pool_mutex);
     _g_pool.total_blocks = total_blocks;
@@ -220,6 +255,7 @@ void* pool_alloc(size_t size) {
                     pthread_mutex_unlock(&_g_pool_mutex);
                     void* _p = malloc(size);
                     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+                    _extra_registrar(_p);
                     return _p;
                 }
             }
@@ -251,6 +287,7 @@ void* pool_alloc(size_t size) {
             /* Cache no pudo llenarse: malloc directo */
             void* _p = malloc(size);
             if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+            _extra_registrar(_p);
             return _p;
         }
     }
@@ -275,6 +312,7 @@ void* pool_alloc(size_t size) {
     pthread_mutex_unlock(&_g_pool_mutex);
     void* _p = malloc(size);
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc malloc fallo\n"); exit(1); }
+    _extra_registrar(_p);
     return _p;
 }
 
@@ -325,10 +363,27 @@ void pool_free(void* ptr) {
         uint32_t _w = _index / 32;
         uint32_t _b = _index % 32;
         _g_pool.bitmap[_w] &= ~(1u << _b);
-    } else {
-        free(ptr);
+        pthread_mutex_unlock(&_g_pool_mutex);
+        return;
     }
-    pthread_mutex_unlock(&_g_pool_mutex);
+    /* Puntero fuera del pool: solo liberar si pool_alloc lo asigno via
+     * malloc de escape (registrado). Scan INLINE bajo el mutex tomado
+     * (R10 fix 2: _extra_consumir re-tomaba el mutex -> deadlock).
+     * Literales estaticos (.rodata) / punteros ajenos: no-op (Manual 4
+     * S2.1: nunca liberar lo que no se asigno via el allocator). */
+    {
+        int es_nuestro = 0;
+        for (size_t i = 0; i < _g_extra_count; i++) {
+            if (_g_extra_ptrs[i] == ptr) {
+                _g_extra_ptrs[i] = _g_extra_ptrs[_g_extra_count - 1];
+                _g_extra_count--;
+                es_nuestro = 1;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&_g_pool_mutex);
+        if (es_nuestro) free(ptr);
+    }
 }
 
 void pool_destroy(void) {
@@ -349,6 +404,12 @@ void pool_destroy(void) {
         free(_g_pool.bitmap);
         _g_pool.bitmap = NULL;
     }
+    if (_g_extra_ptrs) {
+        free(_g_extra_ptrs);
+        _g_extra_ptrs = NULL;
+    }
+    _g_extra_count = 0;
+    _g_extra_cap = 0;
     pthread_mutex_unlock(&_g_pool_mutex);
 }
 

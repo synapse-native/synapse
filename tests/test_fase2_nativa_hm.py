@@ -386,3 +386,44 @@ def test_r9_constante_local_inmutable(stage, tmp_path):
     proc = _compilar_con_stage(stage, _PROG_R9_CONST_LOCAL, str(tmp_path))
     assert "No se puede reasignar la constante 'Y'" in proc.stderr, (
         f"diagnostico ausente:\n{proc.stderr[-1500:]}")
+
+
+# --- R10: RAII sobre literales estaticos (0xC0000374) -----------------------
+
+_PROG_R10_LITERAL = """#lang: es
+funcion principal() -> nulo:
+    saludo = "hola"
+    escribir_linea(saludo)
+"""
+
+_PROG_R10_REASIGNACION = """#lang: es
+funcion principal() -> nulo:
+    s = "a"
+    s = entero_a_texto(7)
+    escribir_linea(s)
+"""
+
+
+def test_r10_literal_no_crash(stage, tmp_path):
+    """R10: variable texto con literal estatico `saludo = "hola"` NO crashea
+    (antes: _syn_texto_liberar -> pool_free -> free("hola") = 0xC0000374 al
+    cierre de scope en el generador nativo). El runtime ahora ignora los
+    punteros que no asigno pool_alloc (Manual 4 S2.1)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R10_LITERAL, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0, (
+        f"crash/heap corruption al ejecutar: rc={getattr(run, 'returncode', None)}")
+    assert "hola" in run.stdout
+
+
+def test_r10_reasignacion_no_crash(stage, tmp_path):
+    """R10: reasignar una variable texto que apuntaba a un literal estatico
+    (`s = "a"; s = entero_a_texto(7)`) NO crashea (antes: el destructor
+    liberaba el literal antes de reasignar; afectaba al S1 y al nativo)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R10_REASIGNACION, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0, (
+        f"crash/heap corruption al ejecutar: rc={getattr(run, 'returncode', None)}")
+    assert "7" in run.stdout
