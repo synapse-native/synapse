@@ -1,7 +1,7 @@
 # MEMORIA DEL PROYECTO SYNAPSE
 
 > **Sistema de memoria persistente del agente.** Leer al inicio de cada sesión ANTES de programar.
-> Última actualización: 2026-08-10 (sesión R10 — RAII sobre literales estáticos; siguiente: checklist 2.x).
+> Última actualización: 2026-08-10 (sesión checklist 2.x — 2.1-2.3 cerrados, 2.5/2.6 parciales con deuda R11/R12; siguiente: R11 exhaustividad nativa).
 
 ---
 
@@ -12,7 +12,8 @@
 - **Estado R9:** ✅ **CERRADA** (fix `d36dcac` + docs `f0d1d00`) — inmutabilidad REAL de constantes: marcador `es_constante` en `AsignacionVariable` (puente→flatten→`valor_int`), registro en pasada 2 (globales) y pasada 3 (locales), `tabla_buscar` innermost-first. Bootstrap S2==S3 (1068718 bytes, md5 `3862049e`); 129 passed.
 - **Estado R10:** ✅ **CERRADA** (fix `d233ee0` + docs `82b6dc5` + hardening `16322da`) — fix en el RUNTIME (`runtime/core/memory.c`): registro `_g_extra_ptrs[]` de los mallocs de escape de `pool_alloc`; `pool_free` solo libera punteros registrados, literales estáticos → no-op (Manual 4 §2.1). Arregla S1 Y nativo. Bootstrap S2==S3 (fix: `fcb2651c`; post-hardening: `1b1cacb0`); 122 passed; 2 tests R10 (18/18 HM).
 - **Dependencias bloqueantes:** ninguna técnica.
-- **Próximo paso:** **Checklist 2.1/2.2/2.3/2.5/2.6** de la auditoría (scopes, taxonomía `ERR_SEM_*`, ownership, exhaustividad) — ver `docs/AUDITORIA_ALINEACION_MANUALES.md`; deuda R1 (TVars nativo) sigue abierta.
+- **Estado checklist 2.x:** ✅ **2.1/2.2/2.3 CERRADOS** (2026-08-10) — `sem_error` observable (Manual 2 §10.1), fix de falsos REDEFINICION de constantes espejo entre módulos (concatenación nativa vs scopes separados S1), newline 2 BS; ⚠️ **2.5/2.6 PARCIALES** — deudas **R11** (exhaustividad nativa INERTE: flatten F8 sin `NodoCoincidir`) y **R12** (préstamos M21.4 sin diagnóstico en probe), ambas con resolución asignada; ver `docs/reportes/FASE_2_CHECKLIST.md`.
+- **Próximo paso:** **R11** — cablear `NodoCoincidir` en el flatten F8 para activar la exhaustividad nativa (patrón R9; prioridad P1); luego R12 (préstamos) y R1 (TVars nativo).
 
 ---
 
@@ -20,6 +21,7 @@
 
 - **2026-08-10 — R7 (fix `3e9cb84`):** la pasada 3 del analizador nativo declara los parámetros en el scope de la función; `NODO_ASIGNACION` hace declaración implícita ("primera declaración del scope", paridad S1) y chequea `ERR_SEM_CONSTANTE_INMUTABLE`; `NODO_DECLARACION` reporta REDEFINICIÓN solo del MISMO scope (vía retorno de `tabla_declarar`). **653 falsos positivos «variable no declarada» → 0.**
 - **2026-08-10 — R9 (working tree):** inmutabilidad REAL de constantes + scoping. Marcador `es_constante` en `estructura AsignacionVariable` (el puente lo pone a 1 en `NODO_CONSTANTE`; el flatten F8 lo copia a `SemNodo.valor_int`); pasada 2 registra las globales marcadas (las asignaciones globales planas NO, paridad S1); pasada 3 declara las locales y ACTIVA el chequeo `ERR_SEM_CONSTANTE_INMUTABLE` con diagnóstico observable `[Synapse] Error semantico ... No se puede reasignar la constante 'X'` (no aborta: solo `hay_error_2_4`); `tabla_buscar` innermost-first (recorre desde el final; la tabla conserva solo la cadena de scopes — paridad `reversed(_scopes)`). **Lección reaplicada: builds S1 de `nucleo/principal.syn` necesitan timeout ≥ 900s** — el build matado a los 30s dejó un `synapse_stage1.exe` stale (los `_*.c` sí se escribieron, el exe no) que no emitía el diagnóstico; el bootstrap (stage1 viejo compilando los fuentes R9) sí salió correcto. El S1 rechaza un parámetro llamado igual que una constante global por limitación pre-existente de su codegen (macros C `#define X (5)`).
+- **2026-08-10 — Checklist 2.x (working tree):** cierre formal 2.1/2.2/2.3. `sem_error` del analizador nativo ahora EMITE el diagnóstico `[Synapse] Error semantico (linea L, columna C): mensaje` (antes mudo; paridad S1 Manual 2 §10.1; excluye CONSTANTE_INMUTABLE con su fprintf propio del R9). **Hallazgo:** el bootstrap emitía ~110 REDEFINICION falsos — las constantes espejo entre módulos del compilador (tokens/lexer/parser_constantes/diagnostics/errores.syn) se concatenan en un solo scope global nativo, mientras el S1 las ve en scopes de módulo separados → fix: duplicado de constante global = lenient (primera gana, sigue inmutable). Newline de los fprintf asm corregido (4 BS→2 BS; lección R5 refinada: en asm normal del analizador 2 BS producen `\n` real en C). **Deudas:** R11 (exhaustividad nativa INERTE — flatten F8 sin `NodoCoincidir`; P1) y R12 (préstamos M21.4 sin diagnóstico en probe; P2).
 - **2026-08-10 — R10 (fix `d233ee0` + docs `82b6dc5` + hardening `16322da`):** RAII sobre literales estáticos (0xC0000374). Causa raíz: `_syn_texto_liberar(s) → pool_free(s.datos)` y el fallback de `pool_free` para punteros fuera de slabs/pool era `free(ptr)` — legítimo para los mallocs de escape de `pool_alloc` pero fatal para literales estáticos (`.rodata`). Fix en el RUNTIME (único punto para S1, nativo, bootstrap y programas de usuario): registro `_g_extra_ptrs[]` (protegido por `_g_pool_mutex`) donde `pool_alloc` registra cada puntero de sus 3 rutas de malloc de escape; `pool_free` solo `free()` a punteros registrados (los consume) — **literal estático / puntero ajeno → no-op** (Manual 4 §2.1: nunca liberar lo que no se asignó vía el allocator); `pool_destroy` libera el registro. **Lección R10 (deadlock):** la primera versión usaba un helper `_extra_consumir` que re-tomaba `_g_pool_mutex` (ya tomado en `pool_free`) → los probes colgaban (timeout); corregido con scan INLINE bajo el mutex ya tomado y `free()` tras liberarlo; helper eliminado (código muerto). **Hardening post-revisión (`16322da`):** `pool_init` resetea `_g_extra_count=0` (re-init sin destroy no conserva entradas stale) + contrato de ownership documentado en `pool_free`; bootstrap post-hardening S2==S3 `1b1cacb0`.
 - **2026-08-10 — R8 (commits `8136fd8` + `4adbee7`):** `log(...)` → puente crea `LogLlamada` → el generador nativo no lo manejaba → fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`): `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` para el resto; dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`. **Regenerar `nucleo/generator.syn` con `_rebuild_generator.py` SIEMPRE después de editar módulos de `nucleo/generador/`.**
 - **2026-08-09 — R5 (fix `54f5ee7`):** el pipeline nativo aborta con `{1,8}` (rc=8) en errores de parseo (paridad S1), vía wrapper `parsear()` + global `_G_parse_error`.
@@ -72,8 +74,10 @@
 - [x] R8 — `log(...)` emite `printf` — commits `8136fd8` + `4adbee7` (2026-08-10)
 - [x] R9 — constantes `StmtConstante` reales: marcador `es_constante` (puente→flatten→`valor_int`), pasada 2/3 con `es_constante=verdadero`, `tabla_buscar` innermost-first — bootstrap S2==S3 `3862049e`, 129 tests (fix `d36dcac` + docs `f0d1d00`)
 - [x] R10 — RAII sobre literales estáticos (0xC0000374): fix en `runtime/core/memory.c` (registro de punteros fuera-del-pool; literales → no-op) + hardening `pool_init`/contrato ownership — bootstrap S2==S3 (`fcb2651c` → post-hardening `1b1cacb0`), 122 tests (fix `d233ee0`, docs `82b6dc5`, harden `16322da`)
+- [x] Checklist 2.x — 2.1 scopes / 2.2 pasadas / 2.3 taxonomía CERRADOS (sem_error observable + fix constantes espejo lenient; 3 tests; bootstrap `6814fddc`); 2.5/2.6 PARCIALES (deudas R11/R12)
+- [ ] R11 — exhaustividad nativa INERTE: cablear `NodoCoincidir` en el flatten F8 (activar `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` nativo; prioridad P1)
+- [ ] R12 — préstamos M21.4 nativos: verificar cableado NODO_PUNTERO flatten→analizador + fixture de paridad (prioridad P2)
 - [ ] R1 — TVars nativo (residual de la divergencia 2.4)
-- [ ] Checklist auditoría 2.1/2.2/2.3/2.5/2.6 (scopes, taxonomía `ERR_SEM_*`, ownership, exhaustividad)
 - [ ] R3 / D-2 — codegen con parámetros ADT (expansión estática por especialización, Opción A)
 - [ ] R3 / D-2 — codegen con parámetros ADT (expansión estática por especialización, Opción A)
 - [ ] Checklist auditoría 2.1/2.2/2.3/2.5/2.6 (scopes, taxonomía ERR_SEM_*, ownership, exhaustividad) — `docs/AUDITORIA_ALINEACION_MANUALES.md` sección 3
@@ -82,6 +86,7 @@
 
 ## 6. PRÓXIMOS PASOS CONCRETOS
 
-1. **Commit R10** (protocolo de entrega de esta sesión): fix `runtime/core/memory.c` + tests `tests/test_fase2_nativa_hm.py` (+2 R10) en un commit; luego docs (reporte `FASE_2_2.4_NATIVA.md` §6 R10→✅ + §12, `nucleo/README.md`, bitácora fila F2-2.4d-R10, `MEMORIA_PROYECTO.md`) con los hashes reales en otro commit. Convención de la bitácora.
-2. **Auditoría checklist 2.x** (lo de mayor importancia técnica pendiente): revisar scopes (`tabla_entrar_scope`/`tabla_salir_scope`), taxonomía `ERR_SEM_*` vs manuales, ownership/movimiento M21, exhaustividad de `coincidir` — contra `docs/AUDITORIA_ALINEACION_MANUALES.md` sección 3.
-3. **R1 — TVars nativo** (residual 2.4): unificación de TVars de función (`identidad(x: T) -> T`) con occurs check; deuda registrada, sin prioridad técnica sobre el checklist.
+1. **Commit del checklist 2.x** (protocolo de esta sesión): fix `nucleo/analizador_semantico.syn` + tests `tests/test_fase2_nativa_hm.py` (+3) en un commit; luego docs (reporte `FASE_2_CHECKLIST.md`, checklist AUDITORIA 2.1-2.6, bitácora fila F2-2.4d-CK, memoria) con el hash real en otro commit.
+2. **R11 — exhaustividad nativa** (prioridad P1): cablear `NodoCoincidir` en el flatten F8 de `nucleo/principal.syn` (rama con casos/patrones/cuerpos, patrón del marcador R9) para activar `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` nativo; tests de paridad con `test_match.py`; bootstrap S2==S3.
+3. **R12 — préstamos M21.4 nativos** (P2): verificar el cableado de NODO_PUNTERO (flatten→analizador) con el patrón de `tests/integration/test_borrowing.py` (parámetros `&entero` + llamadas `&x`).
+4. **R1 — TVars nativo** (residual 2.4): unificación de TVars de función con occurs check.
