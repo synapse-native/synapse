@@ -544,6 +544,14 @@ funcion principal() -> nulo:
     escribir_linea(entero_a_texto(doble(b)))
 '''
 
+_PROG_R11_PATRON_LITERAL = '''#lang: es
+funcion f(x: entero) -> entero:
+    coincidir x:
+        1 => retornar 10
+funcion principal() -> nulo:
+    retornar
+'''
+
 
 def test_r11_exhaustivo_emite_error_si_falta_variante(stage, tmp_path):
     """Checklist 2.6/R11 (paridad test_match.py L41): coincidir con solo
@@ -583,3 +591,15 @@ def test_r11_ejecucion_switch_adt(stage, tmp_path):
     salida = run.stdout.split()
     assert "42" in salida, f"switch ok() no ejecuto: {run.stdout!r}"
     assert "0" in salida, f"switch err() no ejecuto: {run.stdout!r}"
+
+
+def test_r11_patron_literal_no_cuelga(stage, tmp_path):
+    """Anti-cuelgue R11 (revision code-reviewer): un patron literal (`1 =>`)
+    NO puede colgar el compilador — antes, el bucle de casos no avanzaba si el
+    token no era nombre y giraba en infinito (RC=124). Un cuelgue re-lanzado
+    haria TimeoutExpired y este test fallaria. rc=5 esperado hoy: GCC sin
+    codegen para patrones literales (pendiente residual, reporte §13.5)."""
+    proc = _compilar_con_stage(stage, _PROG_R11_PATRON_LITERAL, str(tmp_path))
+    assert proc.returncode == 5, (
+        f"rc={proc.returncode} (esperado 5 = termina, sin cuelgue;"
+        f" TimeoutExpired del helper = cuelgue):\n{proc.stderr[-800:]}")
