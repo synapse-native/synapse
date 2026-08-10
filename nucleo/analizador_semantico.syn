@@ -160,8 +160,14 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
         asm("linea = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].linea : 0")
         asm("columna = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].columna : 0")
     est.hay_error = verdadero
-    inseguro:
-        asm("// sem_error: reportado")
+    // Checklist 2.3 (Manual 2 §10.1): diagnostico observable con paridad S1
+    // ("[Synapse] Error semantico (linea L, columna C): mensaje"). El S1 los
+    // imprime; el nativo los tragaba (solo marcaba hay_error). Se excluye
+    // ERR_SEM_CONSTANTE_INMUTABLE: su call-site (R9) ya imprime el
+    // diagnostico especifico con el nombre formateado.
+    si codigo != ERR_SEM_CONSTANTE_INMUTABLE:
+        inseguro:
+            asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
@@ -730,7 +736,7 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                 // '{nombre}'") para tests de paridad; sem_error marca hay_error
                 // (no aborta: solo hay_error_2_4 aborta el pipeline).
                 inseguro:
-                    asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);")
+                    asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);")
                 sem_error(est, ERR_SEM_CONSTANTE_INMUTABLE, idx_nodo, varnombre)
         // M21.4: analizar RHS para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
@@ -977,9 +983,16 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 inseguro:
                     asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; cnombre=_cs; } }")
                 si cnombre != "":
+                    // Checklist 2.1/2.3: constantes espejo entre MODULOS del
+                    // compilador self-hosted (tokens.syn/lexer.syn/
+                    // parser_constantes.syn/diagnostics.syn/errores.syn definen
+                    // los mismos T_*/NODO_*/ERR_*) se concatenan en un solo
+                    // scope global nativo; el S1 las ve en scopes de modulo
+                    // separados (importar) y NO reporta redefinicion. Paridad
+                    // observable: duplicado de constante global = ignorado
+                    // (la primera gana y sigue siendo inmutable). Las funciones
+                    // y constantes LOCALES duplicadas SI reportan (paridad S1).
                     ok_c = tabla_declarar(est, cnombre, "entero", stmt, verdadero)
-                    si ok_c == falso:
-                        sem_error(est, ERR_SEM_REDEFINICION, stmt, cnombre)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 

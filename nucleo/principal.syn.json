@@ -46309,14 +46309,31 @@
             }
           },
           {
-            "_tipo": "BloqueInseguro",
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "codigo"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "ERR_SEM_CONSTANTE_INMUTABLE"
+              }
+            },
             "cuerpo": [
               {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "// sem_error: reportado"
-                }
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);"
+                    }
+                  }
+                ]
               }
             ]
           }
@@ -52241,7 +52258,7 @@
                             "_tipo": "SentenciaExpr",
                             "expr": {
                               "_tipo": "ExprAsm",
-                              "instruccion": "    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);"
+                              "instruccion": "    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);"
                             }
                           }
                         ]
@@ -54839,48 +54856,6 @@
                                 }
                               ]
                             }
-                          },
-                          {
-                            "_tipo": "SentenciaSi",
-                            "condicion": {
-                              "_tipo": "OpBinaria",
-                              "izquierdo": {
-                                "_tipo": "Identificador",
-                                "nombre": "ok_c"
-                              },
-                              "operador": "==",
-                              "derecho": {
-                                "_tipo": "LiteralBooleano",
-                                "valor": false
-                              }
-                            },
-                            "cuerpo": [
-                              {
-                                "_tipo": "SentenciaExpr",
-                                "expr": {
-                                  "_tipo": "LlamadaFuncion",
-                                  "nombre": "sem_error",
-                                  "argumentos": [
-                                    {
-                                      "_tipo": "Identificador",
-                                      "nombre": "est"
-                                    },
-                                    {
-                                      "_tipo": "Identificador",
-                                      "nombre": "ERR_SEM_REDEFINICION"
-                                    },
-                                    {
-                                      "_tipo": "Identificador",
-                                      "nombre": "stmt"
-                                    },
-                                    {
-                                      "_tipo": "Identificador",
-                                      "nombre": "cnombre"
-                                    }
-                                  ]
-                                }
-                              }
-                            ]
                           }
                         ]
                       }

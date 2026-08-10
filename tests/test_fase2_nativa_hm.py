@@ -427,3 +427,65 @@ def test_r10_reasignacion_no_crash(stage, tmp_path):
     assert run is not None and run.returncode == 0, (
         f"crash/heap corruption al ejecutar: rc={getattr(run, 'returncode', None)}")
     assert "7" in run.stdout
+
+
+# --- Checklist 2.x: scopes, pasadas, taxonomia observable (2026-08-10) ------
+
+_PROG_CK_REDEFINICION = """#lang: es
+funcion principal() -> nulo:
+    let a = 1
+    let a = 2
+"""
+
+_PROG_CK_SOMBRA = """#lang: es
+funcion f() -> entero:
+    x = 1
+    si verdadero:
+        let x = 9
+        retornar x
+    retornar x
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(f()))
+"""
+
+_PROG_CK_PASADAS = """#lang: es
+funcion crear() -> entero:
+    p = Punto()
+    retornar 1
+estructura Punto:
+    x: entero
+funcion principal() -> nulo:
+    retornar
+"""
+
+
+def test_ck_2_1_redefinicion_mismo_scope_observable(stage, tmp_path):
+    """Checklist 2.1/2.3: `let a` duplicado en el MISMO scope emite el
+    diagnostico REDEFINICION observable (antes sem_error solo marcaba
+    hay_error; el S1 los imprime — Manual 2 §10.1). El nativo no aborta
+    (hay_error no aborta, por diseno), rc=0."""
+    proc = _compilar_con_stage(stage, _PROG_CK_REDEFINICION, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico REDEFINICION ausente:\n{proc.stderr[-1200:]}")
+
+
+def test_ck_2_1_sombra_scope_anidado(stage, tmp_path):
+    """Checklist 2.1: variable de scope interno sombrea la externa sin
+    diagnostico (scopes anidados con tabla_entrar_scope/salir_scope) y el
+    programa ejecuta con el valor del scope interno."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_CK_SOMBRA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "9" in run.stdout
+
+
+def test_ck_2_2_pasadas_estructura_antes_de_definirse(stage, tmp_path):
+    """Checklist 2.2: la funcion `crear` usa la estructura `Punto` definida
+    DESPUES en el archivo — compila sin diagnostico porque la pasada 1
+    (estructuras) registra antes que la pasada 3 (cuerpos). Evidencia
+    funcional de las 3 pasadas (Estructuras->Firmas->Cuerpos)."""
+    proc = _compilar_con_stage(stage, _PROG_CK_PASADAS, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert "Error semantico" not in proc.stderr
