@@ -545,3 +545,82 @@ iteración liberaba el buffer compartido → **use-after-free** (paridad `regist
 checklist AUDITORIA 2.4, bitácora, `MEMORIA_PROYECTO.md`).
 
 **HASH COMMIT: `d001141`** — rama `feature/fase2-nativa-hm`.
+
+## 15. CIERRE R12 — Préstamos M21.4 nativos activados (2026-08-10)
+
+### 15.1 Síntoma
+
+Deuda del cierre del checklist 2.5 (`docs/reportes/FASE_2_CHECKLIST.md`): el borrow
+checker M21.4 (Manual 4 §4.2, `prestamo_activo`/`registrar_prestamo` →
+`ERR_MEM_BORROW_CONFLICT`) estaba implementado de facto en el nativo, pero el fixture
+de doble préstamo mutable **no disparaba el diagnóstico** — y al instrumentar los
+probes de paridad contra `tests/integration/test_borrowing.py` (6 casos), los
+programas VÁLIDOS emitían un falso positivo «Ciclo de dependencia de lifetimes».
+
+### 15.2 Causa raíz (dos bugs independientes)
+
+1. **Ciclo falso de lifetimes**: la pasada 3 inicializaba `est->proximo_lifetime = 0`;
+   la rama NODO_PUNTERO crea `OUTLIVES(0 → _lt)` con `_lt = proximo_lifetime` → el
+   PRIMER préstamo de cada función usaba `_lt=0`, produciendo la restricción
+   `OUTLIVES(0→0)` (**self-loop**) — el DFS de `detectar_ciclo_outlives` marca ciclo
+   al ver `_estado[_dst_root]==1` con el propio nodo en el stack → falso positivo en
+   TODO programa con un solo préstamo. El índice 0 es el **lifetime original** de la
+   función (`lt_kind[0]=LT_LOCAL, lt_ambito[0]=0`); en el S1 los `Lifetime` son
+   objetos con identidad (el borrow con índice 0 no colisiona), en el nativo son
+   índices enteros en arrays compartidos → colisión.
+2. **Diagnóstico malformado del conflicto**: el call-site pasaba `_cs` (el NOMBRE de
+   la variable, p. ej. `x`) como `mensaje` a `sem_error` → se imprimía
+   `Error semantico (linea 0, columna 0): x` en vez de la plantilla. Además los nodos
+   aplanados nacían con `linea=columna=0` (el flatten nunca copiaba línea) → TODOS
+   los diagnósticos semánticos salían con `(linea 0, columna 0)`.
+
+### 15.3 Cambios (paridad S1)
+
+| Archivo | Cambio |
+|---|---|
+| `nucleo/analizador_semantico.syn` | **`proximo_lifetime` arranca en 1** en la init de la pasada 3 (el 0 es el lifetime original; el primer préstamo usa `_lt=1` → `OUTLIVES(0→1)` sin self-loop; paridad S1: objetos con identidad vs índices); **snprintf con la plantilla S1** `Conflicto de prestamo sobre '{nombre}': prestamo {tipo} incompatible con prestamos activos (Manual 4 S4.2)` (`diagnostics.py` L79; `tipo` = `&mut`/`&` según `es_mut`) |
+| `nucleo/ast_nodes.syn` | `ExprObtenerDireccion` ahora lleva `linea`/`columna` (patrón `DeclaracionVariable`/`SentenciaPara`) |
+| `nucleo/puente_ast.syn` | La rama NODO_PUNTERO propaga `linea_n`/`col_n` al struct tipado |
+| `nucleo/principal.syn` | El flatten copia `linea`/`columna` del `ExprObtenerDireccion` (los demás nodos siguen naciendo con 0 — residual documentado) + `principal.syn.json` |
+| `tests/test_fase2_nativa_hm.py` | **6 tests R12** (paridad `test_borrowing.py`): 3 válidos sin diagnóstico + 3 conflictos con plantilla y línea real |
+
+### 15.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Probe válido: `leer(&x)` | ✅ SIN diagnóstico (antes: falso «Ciclo de dependencia de lifetimes») |
+| Probe válido: `leer(&x, &z)` múltiples inmutables | ✅ SIN diagnóstico |
+| Probe válido: `modificar(&mut x)` | ✅ SIN diagnóstico |
+| Conflicto `&x` + `&mut x` | ✅ **`Conflicto de prestamo sobre 'x': prestamo &mut incompatible...`** en `(linea 5, columna 9)` |
+| Conflicto `&mut x` + `&x` | ✅ `prestamo & incompatible...` con línea real |
+| Conflicto `&mut x` + `&mut x` | ✅ `prestamo &mut incompatible...` con línea real |
+| Bootstrap S1→S2→S3 | ✅ **S2==S3 byte-idénticos (md5 `ce247ef6`)**, ruido 0 |
+| Tests R12 nuevos | ✅ **6/6 PASS** → **36/36 HM PASS** (30 previos + 6) |
+| Regresión | ✅ paridades nativas/semántica/S1 = **176 passed** |
+
+### 15.5 Alcance y deuda residual
+
+- **Revisión de código (code-reviewer): APROBADO** con notas menores registradas:
+  (1) la plantilla nativa de `diagnostics.syn` L171 (`Conflicto de prestamo: la
+  variable '{nombre}'...`) queda **divergente y sin uso** — el call-site la bypasea
+  con su snprintf (paridad S1); alinear en una limpieza futura; (2) la propagación de
+  `linea`/`columna` es solo para `ExprObtenerDireccion` — el resto de diagnósticos
+  semánticos (REDEFINICION, AMBIGUOUS…) siguen saliendo con línea 0 (mejora futura:
+  propagar en los demás structs del puente/flatten); (3) preexistente: el guard de
+  préstamos es `< 4096` frente al array de 65536 (cap silencioso) y la rama de
+  préstamo no tiene guard `_lt < F8_MAX_SYMS` — riesgo bajo, ambos patrones existentes.
+- **Cableado end-to-end demostrado**: los conflictos se emiten desde RHS de
+  asignaciones (`a = &x; b = &mut x`), confirmando que el fix de slot6 del R1 + el
+  `proximo_lifetime=1` de R12 hacen los préstamos realmente alcanzables en la pasada 3.
+- El diagnóstico es **observable pero no aborta** (lenient por diseño, igual que
+  R9/R11/R1). El S1 además valida `test_borrow_checker.py` (5) + `test_lifetimes.py`
+  (7) + `test_ownership.py` (3) — fuera del alcance del port nativo actual.
+
+### 15.6 Archivos
+
+`nucleo/analizador_semantico.syn`, `nucleo/ast_nodes.syn`, `nucleo/puente_ast.syn`,
+`nucleo/principal.syn` (+`principal.syn.json`), `tests/test_fase2_nativa_hm.py`
+(+6 tests R12), docs (este reporte §15, `nucleo/README.md`, checklist AUDITORIA 2.5,
+bitácora, `MEMORIA_PROYECTO.md`).
+
+**HASH COMMIT: `a568600`** — rama `feature/fase2-nativa-hm`.

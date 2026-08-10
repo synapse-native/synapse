@@ -260,6 +260,43 @@ passed). Revisión code-reviewer **APROBADA**: límites silenciosos del
 unificador documentados (8 params / 8 TVars / worklist 8 — firmas mayores
 divergen del S1 de forma muda; `principal.syn` está bajo los límites).
 
+## ✅ Préstamos M21.4 nativos (R12) — RESUELTO
+
+**Estado (2026-08-10):** deuda R12 del checklist 2.5 (borrow checker M21.4,
+Manual 4 §4.2: `prestamo_activo`/`registrar_prestamo` →
+`ERR_MEM_BORROW_CONFLICT` implementados de facto pero sin diagnóstico en el
+fixture de doble mutable) **resuelta** con paridad de comportamiento con el
+S1 (`test_borrowing.py` 6 casos):
+
+- **Bug 1 — ciclo falso de lifetimes**: la pasada 3 inicializaba
+  `proximo_lifetime = 0` y la rama NODO_PUNTERO crea `OUTLIVES(0 → _lt)` con
+  `_lt = proximo_lifetime` → el PRIMER préstamo usaba `_lt=0` → **self-loop
+  OUTLIVES(0→0)** → `detectar_ciclo_outlives` marcaba «Ciclo de dependencia de
+  lifetimes» en TODO programa con un préstamo. El índice 0 es el **lifetime
+  original** de la función (`lt_kind[0]`/`lt_ambito[0]`); en el S1 los
+  `Lifetime` son objetos con identidad, en el nativo índices enteros →
+  colisión. Fix: **`proximo_lifetime` arranca en 1** (primer préstamo →
+  `OUTLIVES(0→1)`).
+- **Bug 2 — diagnóstico malformado**: el call-site pasaba el NOMBRE crudo a
+  `sem_error` → `Error semantico (linea 0, columna 0): x`. Fix: snprintf con la
+  plantilla S1 (`diagnostics.py` L79) `Conflicto de prestamo sobre 'x':
+  prestamo &mut incompatible con prestamos activos (Manual 4 S4.2)` + **línea/
+  columna reales**: `ExprObtenerDireccion` ahora lleva `linea`/`columna` en
+  `ast_nodes.syn`, el puente las propaga y el flatten las copia (antes TODOS
+  los nodos aplanados nacían con 0 → todos los diagnósticos semánticos salían
+  con `(linea 0, columna 0)`; la propagación por ahora cubre solo este nodo —
+  residual: el resto de diagnósticos siguen con línea 0).
+
+Evidencia: 6 probes de paridad `test_borrowing.py` — `leer(&x)`, `leer(&x, &z)`
+y `modificar(&mut x)` SIN diagnóstico (antes ciclo falso); `&x`+`&mut x`,
+`&mut x`+`&x` y `&mut x`+`&mut x` con **conflicto formateado y `(linea 5,
+columna 9)` reales**; bootstrap S1→S2→S3 con **S2==S3 byte-idénticos (md5
+`ce247ef6`)**, ruido 0; 6 tests R12 en `tests/test_fase2_nativa_hm.py`
+(**36/36 HM PASS**); regresión verde (176 passed). Revisión code-reviewer
+**APROBADA** (plantilla de `diagnostics.syn` L171 divergente sin uso — alinear
+en limpieza futura). El diagnóstico es observable pero no aborta (lenient por
+diseño, igual que R9/R11/R1).
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.
