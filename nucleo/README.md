@@ -221,6 +221,45 @@ en `parsear_patron_coincidir` (un tag de >63 chars no desborda el stack del
 compilador) + test `test_r11_patron_literal_no_cuelga`. **Pendiente residual:**
 patrones literales sin codegen (RC=5 al ejecutar, sin cuelgue) — mejora futura.
 
+## ✅ Unificación HM de TVars en llamadas genéricas (R1) — RESUELTO
+
+**Estado (2026-08-10):** deuda R1 del residual de la divergencia 2.4 (el nativo
+validaba aridad/base/argumentos de ADT pero **no unificaba las TVars de
+función**: una llamada a `funcion generar<T>() -> T` con inferencia ambigua o
+incompatible compilaba sin diagnóstico, mientras el S1 emitía
+`ERR_SEM_TYPE_AMBIGUOUS`/`ERR_SEM_TYPE_INCOMPATIBLE`, Manual 2 §8.2) **resuelta**
+con paridad de comportamiento con el S1 (`_inferir_llamada_hm`, 28 tests
+`test_type_inference.py`):
+
+- **Registro de firmas (pasada 2)**: `struct SemFuncionInfo` + `info_funciones`
+  en el estado, cableado a `_f8_funciones` del flatten; se registran TODAS las
+  `DefinicionFuncion` — la **precedencia de usuario sobre builtins** hace que
+  `funcion generar() -> T` se valide aunque "generar" sea builtin (paridad S1
+  L264-265/L309-310; el filtro `es_builtin` anterior dejaba `total_fns=1` y la
+  validación nunca disparaba).
+- **`validar_llamada_generica`** (nested C en `analizar_expr` NODO_LLAMADA):
+  TVars de firma retorno+parámetros con **occurs check**, inferencia de
+  argumentos por literal/identificador/llamada, **unificador iterativo W**,
+  aridad, y diagnósticos observables `AMBIGUOUS`/`INCOMPATIBLE`. `analizar_expr`
+  recursa en `NODO_BINARIA`/`NODO_UNARIA`/argumentos → las llamadas anidadas en
+  expresiones compuestas también se validan.
+- **Fix de raíz (bug latente)**: el marcador R9 `es_constante` vivía en
+  `SemNodo.valor_int`, que en little-endian es la **parte baja de `slot[6]`**
+  (donde el flatten guarda la expresión de `AsignacionVariable`) → el RHS de
+  TODA asignación se anulaba (`expr_slot=0`) y `analizar_expr` nunca lo
+  analizaba. Movido a `hijo_der` (libre en `AsignacionVariable`).
+- **strdup** del nombre en `info_funciones` (la siguiente iteración liberaba el
+  buffer → use-after-free; paridad `registrar_estructura`/`adt`).
+
+Evidencia: probes A `identidad(5)` sin diagnóstico / B `generar()`
+**AMBIGUOUS** / C `empaquetar(5, Persona())` sin diagnóstico (struct en
+mayúscula no es TVar) / D `f(5, "hola")` **INCOMPATIBLE**; bootstrap S1→S2→S3
+con **S2==S3 byte-idénticos (md5 `7228b678`)**, ruido 0; 4 tests R1 en
+`tests/test_fase2_nativa_hm.py` (**30/30 HM PASS**); regresión verde (176
+passed). Revisión code-reviewer **APROBADA**: límites silenciosos del
+unificador documentados (8 params / 8 TVars / worklist 8 — firmas mayores
+divergen del S1 de forma muda; `principal.syn` está bajo los límites).
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.

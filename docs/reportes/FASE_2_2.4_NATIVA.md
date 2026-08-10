@@ -462,3 +462,86 @@ seguridad real; paridad `tests/integration/test_match.py`).
 `_tp < 63`/`_vp < 63` en `parsear_patron_coincidir` — un tag de >63 chars no
 desborda el stack del compilador; test anti-cuelgue `test_r11_patron_literal_no_cuelga`;
 bootstrap md5 `d78eabac`; 26/26 HM) — rama `feature/fase2-nativa-hm`.
+
+## 14. CIERRE R1 — Unificación HM de TVars en llamadas genéricas nativas (2026-08-10)
+
+### 14.1 Síntoma
+
+Residual de la divergencia 2.4 documentada en `nucleo/README.md` y en la fila 2.4 del
+checklist AUDITORIA: el nativo validaba la **aridad/base/argumentos** de las instanciaciones
+ADT (`validar_tipo_instanciacion`, `hay_error_2_4`, rc=7) pero **NO unificaba las TVars de
+función** (`funcion generar<T>() -> T`). Una llamada a una función genérica con inferencia
+ambigua o incompatible compilaba **sin diagnóstico** en el nativo, mientras el S1 la reportaba
+con `ERR_SEM_TYPE_AMBIGUOUS` / `ERR_SEM_TYPE_INCOMPATIBLE` (Manual 2 §8.2, paridad
+`tests/unit/test_type_inference.py` + `_inferir_llamada_hm`).
+
+### 14.2 Causa raíz (doble)
+
+1. **Ningún registro de firmas de función**: la pasada 2 no guardaba nombre/retorno/parámetros
+   de las `DefinicionFuncion` en ningún lado consumible en la pasada 3 → no había firma contra
+   la que unificar los argumentos de una llamada. Además el registro filtraba `es_builtin`:
+   `funcion generar() -> T` definida por el usuario **no se registraba** ("generar" es builtin
+   del compilador) y `total_fns` quedaba en 1 (solo `principal`) — `_fn=-1` → la validación
+   nunca disparaba.
+2. **El RHS de TODA asignación desaparecía del flatten** (bug latente que destapó la
+   instrumentación): en `SemNodo` (int64 por campo), `((int*)&nodo)[6]` = bytes 24-27 =
+   **parte baja de `valor_int`** (little-endian). El flatten de `AsignacionVariable` escribía
+   `slot6=expresión` (vía `((int*)&_f8_nodos[idx])[6]`) y LUEGO el marcador R9
+   `_f8_nodos[idx].valor_int=_a->es_constante` sobreescribía el int64 completo → `slot6=0` →
+   `analizar_expr(est, nodo_expr(est, idx_nodo))` recibía `idx=0` y el RHS nunca se analizaba
+   (afectaba también al chequeo de préstamos M21.4 sobre RHS de asignaciones).
+
+### 14.3 Cambios (paridad S1)
+
+| Archivo | Cambio |
+|---|---|
+| `nucleo/analizador_semantico.syn` | `struct SemFuncionInfo` (nombre/retorno/parámetros) + `info_funciones` en el estado; **registro en pasada 2 de TODAS las `DefinicionFuncion`** (paridad S1 L264-265 — la precedencia de usuario sobre builtins hace que `funcion generar() -> T` se registre y valide aunque "generar" sea builtin); `validar_llamada_generica` (nested C): TVars de firma retorno+parámetros con **occurs check**, inferencia de argumentos por literal/identificador/llamada, **unificador iterativo W**, aridad, `ERR_SEM_TYPE_AMBIGUOUS`/`ERR_SEM_TYPE_INCOMPATIBLE` observables; **hook en `analizar_expr` NODO_LLAMADA** (que además ya recursa en `NODO_BINARIA`/`NODO_UNARIA`/argumentos → las llamadas anidadas en expresiones compuestas también se validan) |
+| `nucleo/principal.syn` | Flatten F8: cableado `_f8_funciones` → `info_funciones`; **marcador R9 `es_constante` movido de `valor_int` a `hijo_der`** (libre en `AsignacionVariable`; el flatten de `NODO_SI` usa `hijo_der` pero es otro tipo de nodo) + `principal.syn.json` |
+| `tests/test_fase2_nativa_hm.py` | **4 tests R1** (paridad `test_type_inference.py`): unifica, AMBIGUOUS, struct en mayúscula NO es TVar (sin diagnóstico), INCOMPATIBLE |
+
+**Fixes de raíz adicionales:** (1) `strdup` del nombre en `info_funciones` — la siguiente
+iteración liberaba el buffer compartido → **use-after-free** (paridad `registrar_estructura`/`adt`);
+(2) el dump de nodos (instrumentación temporal `DBG-R1`, retirada) reveló la colisión
+`slot[6]`/`valor_int` descrita arriba.
+
+### 14.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Probe A: `identidad(5)` (unifica `T=entero`) | ✅ SIN diagnóstico, RC=0 |
+| Probe B: `generar()` sin tipo inferible | ✅ **Diagnóstico AMBIGUOUS** (antes: compilaba mudo; `total_fns` era 1) |
+| Probe C: `empaquetar(5, Persona())` (struct en mayúscula no es TVar) | ✅ SIN diagnóstico |
+| Probe D: `f(5, "hola")` con `f(a: T, b: T)` | ✅ **Diagnóstico INCOMPATIBLE** |
+| Bootstrap S1→S2→S3 | ✅ **S2==S3 byte-idénticos (md5 `7228b678`)**, ruido 0 |
+| Tests R1 nuevos | ✅ **4/4 PASS** → **30/30 HM PASS** (26 previos + 4) |
+| Regresión | ✅ paridades nativas/semántica/S1 = **176 passed** |
+
+### 14.5 Alcance y deuda residual
+
+- **Revisión de código (code-reviewer): APROBADO** con notas menores registradas:
+  (1) **capacidades silenciosas del unificador** — `_tvn[8][64]`, `_pars[8][256]`, `_sub[8]`,
+  worklist cap 8: firmas >8 parámetros reportan "esperaba 8" (aridad con `_np` recortado) y
+  >8 TVars no se unifican silenciosamente; `principal.syn` está bajo los límites, pero es
+  divergencia muda con el S1 para firmas grandes — documentado en el código; (2) **gap de
+  paridad VERIFICADO**: `analizar_expr` recursa en operadores y argumentos → llamadas
+  anidadas en expresiones compuestas (`x = 1 + f(5)`) se validan ✓; (3) **lectores residuales
+  VERIFICADOS**: los 2 lectores de `hijo_der` (L836/L1135) son el marcador `es_constante` y
+  el lector de `valor_int` (L654) es el flag `es_mutable` del `NODO_PUNTERO` (flatten L375) —
+  otro tipo de nodo, sin colisión ✓; (4) asimetría preexistente: la pasada 3 puede saltarse el
+  cuerpo de una función de usuario cuyo nombre colisiona con builtin (filtro `es_builtin`);
+  (5) leaks de `strdup` consistentes con el patrón existente (`info_estructuras`/`adt`),
+  deuda menor (liberar al final de `analizar()`); (6) performance: escaneo lineal de
+  `info_funciones` (≤256) por sitio de llamada — determinista (S2==S3 lo confirma).
+- **Nueva deuda detectada durante la investigación (R12, ya registrada):** el marcador
+  `es_mutable` del `NODO_PUNTERO` vive en `valor_int` (flatten L375) — mismo riesgo de
+  colisión con `slot[6]` si el flatten escribiera expresión en ese nodo; el cableado de
+  préstamos M21.4 está pendiente de verificación (próximo paso P2).
+- El diagnóstico es **observable pero no aborta** (lenient por diseño, igual que R9/R11).
+
+### 14.6 Archivos
+
+`nucleo/analizador_semantico.syn`, `nucleo/principal.syn` (+`principal.syn.json`),
+`tests/test_fase2_nativa_hm.py` (+4 tests R1), docs (este reporte §14, `nucleo/README.md`,
+checklist AUDITORIA 2.4, bitácora, `MEMORIA_PROYECTO.md`).
+
+**HASH COMMIT: `d001141`** — rama `feature/fase2-nativa-hm`.
