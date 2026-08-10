@@ -46330,7 +46330,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);"
+                      "instruccion": "    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);"
                     }
                   }
                 ]

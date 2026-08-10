@@ -167,7 +167,7 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
     // diagnostico especifico con el nombre formateado.
     si codigo != ERR_SEM_CONSTANTE_INMUTABLE:
         inseguro:
-            asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
+            asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
