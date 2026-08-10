@@ -269,3 +269,54 @@ def test_r7_sombra_de_parametro_no_es_redefinicion(stage, tmp_path):
         f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
     assert run is not None and run.stdout.splitlines() == ["4"], (
         f"salida inesperada: {run.stdout if run else None}")
+
+
+# --- R8 (hallazgo FASE_2_2.4_NATIVA.md): log(...) en programas de usuario ---
+# Antes: el puente crea `LogLlamada` (puente_ast.syn) pero el generador nativo
+# no lo maneja -> _oo_expr_a_c caia al fallback "0" -> emitia `0;` sin salida.
+# Fix: gen_visitar_log (paridad S1 visitar_log de emit_expressions.py: printf
+# con formato por tipo: %s/.datos para texto, %f para decimal, %d resto).
+
+_PROG_R8_LOG_LITERAL = """#lang: es
+funcion principal() -> nulo:
+    log("hola mundo")
+"""
+
+_PROG_R8_LOG_MIXTO = """#lang: es
+funcion principal() -> nulo:
+    n = 7
+    log("n es", n)
+"""
+
+_PROG_R8_LOG_DECIMAL = """#lang: es
+funcion principal() -> nulo:
+    dec = 3.5
+    log(dec)
+"""
+
+
+def test_r8_log_literal_imprime(stage, tmp_path):
+    """R8: log("hola mundo") emite printf (antes: 0; sin salida)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R8_LOG_LITERAL, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["hola mundo"], (
+        f"salida inesperada: {run.stdout if run else None}")
+
+
+def test_r8_log_mixto_imprime(stage, tmp_path):
+    """R8: log con literal texto + variable entera -> "%s %d" (paridad S1)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R8_LOG_MIXTO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["n es 7"], (
+        f"salida inesperada: {run.stdout if run else None}")
+
+
+def test_r8_log_decimal_imprime(stage, tmp_path):
+    """R8: log de variable decimal -> "%f" (paridad S1 tipo float)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R8_LOG_DECIMAL, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["3.500000"], (
+        f"salida inesperada: {run.stdout if run else None}")
