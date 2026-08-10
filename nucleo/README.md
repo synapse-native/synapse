@@ -50,6 +50,25 @@ implementa la validación de instanciaciones de ADT de la brecha 2.4 P0
    con `hay_error` global (lenient por diseño): solo la validación 2.4 aborta
    (`hay_error_2_4`).
 
+## ✅ `log(...)` nativo (R8) — RESUELTO
+
+**Estado (2026-08-10):** `log(...)` en programas de usuario compilados por el
+pipeline nativo ahora emite `printf` y muestra la salida (antes emitía `0;` sin
+salida). Paridad S1 (`visitar_log` de `emit_expressions.py`):
+
+- El puente (`nucleo/puente_ast.syn`) convierte `log(...)` en un nodo
+  `LogLlamada`; el generador nativo lo maneja con `gen_visitar_log`
+  (`nucleo/generador/nodos_flujo.syn`): formato por tipo de argumento — texto
+  `%s` con `.datos` (literales, variables `CadenaSegura` vía `_G_fn_var_tipos`,
+  funciones que retornan cadena vía `_G_native_tipo_retorno`, concat y
+  similares, OpBinaria `+` con operando cadena), decimal `%f`, resto `%d`.
+- **Mantenimiento:** regenerar `nucleo/generator.syn` con
+  `python nucleo/_rebuild_generator.py` tras editar `nucleo/generador/*.syn`.
+  El `\n` del `printf` requiere `\\\\n` (4 BS en el .syn; lección R5).
+- **Hallazgo R10 (pre-existente):** variable texto (`saludo = "hola"`) crashea
+  al salir (0xC0000374 — el RAII `_syn_texto_liberar` libera un literal
+  estático; afecta igual a `escribir_linea`; los tests e2e usan literales).
+
 ## ✅ Errores de parseo nativos (R5) — RESUELTO
 
 **Estado (2026-08-09):** el pipeline nativo **aborta limpiamente en errores de

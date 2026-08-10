@@ -78,8 +78,9 @@ Puntos revisados y resueltos:
 | R5 | **El pipeline nativo no aborta en errores de parseo** (pre-existente, afecta a TODOS los errores de sintaxis): el wrapper ME-B7 ignoraba `_pe.hay_error` y el codegen corría con programa vacío → rc=5 (link GCC) en lugar de mensaje limpio; el S1 sí abortaba con mensaje | ✅ **RESUELTA** — el wrapper (nativo `frontend_nativo.syn` + espejo S1 `emit_declarations.py`) imprime `[Synapse] Error de sintaxis (linea L, columna C): mensaje` y marca `_G_parse_error = 1`; los 3 call-sites del pipeline (`principal.syn`) abortan con `{1,8}`; definición única del global en cabecera S1 (`generator.py`: común + branch módulo) y codegen nativo (`orquestador.syn`/`generator.syn`). **Hallazgo crítico del cierre:** `nucleo/generator.syn` es el unity REGENERADO por `_rebuild_generator.py` desde `nucleo/generador/*.syn` — editar solo `orquestador.syn` sin regenerar producía un bootstrap sin la definición (link error). Segundo hallazgo: el fprintf emitido como array C necesita `\\\\n` (4 BS en el .syn) — con 2 BS el array contenía un newline real y rompía el literal C emitido |
 | R6 | **Líneas fusionadas pre-existentes en `parser.syn`** (`ultimo = stmt                    siguiente`, mientras/para) — el S1 las tolera como dos sentencias (generan `stmt; continue;`); separadas en el fix R2 (higiene, sin cambio semántico) | ✅ resuelto (separadas) |
 | R7 | **Pasada 3 del analizador nativo**: 653 falsos positivos «variable no declarada» (parametros no declarados + asignaciones implicitas) silenciados por diseño — el aborto global rompería el bootstrap | ✅ **RESUELTA (2026-08-10)** — resolución de símbolos de la pasada 3 con paridad S1: parámetros declarados en el scope de la función + declaración implícita en asignación + REDEFINICIÓN solo del mismo scope (ver §9); 653 → 0; bootstrap S2==S3 byte-idéntico (1065612 bytes) |
-| R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ⚠️ registrado — resolución: auditar el codegen de `LogLlamada`/`log` en `nucleo/generador/*.syn` (Fase 2/3) |
+| R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ✅ **RESUELTA (2026-08-10)** — el puente crea `LogLlamada` (puente_ast.syn) pero el generador nativo no lo manejaba → `_oo_expr_a_c` caía al fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`: `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` resto) + dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`; unity `generator.syn` regenerado con `_rebuild_generator.py`. `log("hola mundo")` nativo imprime (antes `0;`); bootstrap S2==S3 byte-idéntico (1067694 bytes, md5 `7f9020f9`); 3 tests R8 nuevos (10/10 HM); regresión 81 + 45 passed (ver §10) |
 | R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ⚠️ registrado — resolución: Fase 2 (scopes con precedencia de ámbito en `tabla_buscar` + registro de constantes) |
+| R10 | **RAII nativo sobre literales estáticos**: programa de usuario con variable texto (`saludo = "hola"`) crashea al salir (0xC0000374 heap corruption; `_syn_texto_liberar(saludo)` libera un literal estático; exit 127 en git-bash). Hallazgo PRE-EXISTENTE (afecta igual a `escribir_linea`, detectado durante la validación R8); los tests e2e usan literales/enteros para evitarlo | ⚠️ registrado — resolución: auditar el RAII/hoisting de `CadenaSegura` en `nucleo/generador/orquestador.syn` (evitar `_syn_texto_liberar` sobre `.datos` de literales) |
 
 ## 7. HASH COMMIT
 
@@ -166,3 +167,65 @@ instrumentación de forma definitiva.
 `nucleo/analizador_semantico.syn` (fix), `nucleo/principal.syn.json` (regenerado por el
 bootstrap), `tests/test_fase2_nativa_hm.py` (+3 tests R7), docs (este reporte §6/§9,
 `nucleo/README.md`, bitácora AUDITORIA). **HASH COMMIT: `3e9cb84`** (rama `feature/fase2-nativa-hm`).
+
+---
+
+## 10. CIERRE R8 — codegen nativo de `log(...)` (2026-08-10)
+
+### 10.1 Síntoma
+
+`log("hola mundo")` en un programa de usuario compilado por el pipeline nativo
+(`synapse_stage*.exe`) no emitía salida: el C generado contenía `0;` como cuerpo de
+`principal()`. El S1 sí imprimía (emite `printf` vía `visitar_log`). Hallazgo
+pre-existente registrado en §6 (R8), no relacionado con el analizador (el C emitido
+era byte-idéntico antes/después del fix R7).
+
+### 10.2 Causa raíz
+
+El parser nativo parsea `log(...)` como llamada genérica; el puente
+(`nucleo/puente_ast.syn` NODO_LLAMADA) lo convierte en un nodo `LogLlamada` con
+`argumentos` (lista). Pero el generador nativo NO tenía visitante para `LogLlamada`:
+`gen_visitar_expr` (SentenciaExpr) llegaba a `_oo_expr_a_c(est, _s->expr, ...)` cuyo
+fallback final es `strcpy(_b, "0")` → se emitía `0;` sin salida. Los tests e2e
+existentes usaban `escribir_linea` (runtime externo), por eso nunca se detectó.
+
+### 10.3 Fix (`nucleo/generador/nodos_flujo.syn`, paridad S1 `visitar_log`)
+
+- **`gen_visitar_log(est, nodo_log)`**: recorre `LogLlamada.argumentos`, traduce cada
+  argumento con `_oo_expr_a_c` y elige formato según el tipo del nodo:
+  - texto (LiteralCadena, variable `CadenaSegura` vía `_G_fn_var_tipos`, función que
+    retorna cadena vía `_G_native_tipo_retorno`, concat/entero_a_texto/leer_linea…,
+    OpBinaria `+` con operando cadena) → `%s` con `.datos`;
+  - decimal (LiteralDecimal, variable `double`, función que retorna `decimal`) → `%f`;
+  - resto → `%d`.
+  Emite `printf("%s %d %f\n", ...);` con `gen_emitir_str`. Escapado del `\n`:
+  4 BS en el `.syn` (lección R5).
+- **Dispatch** en `gen_visitar_expr`: `LogLlamada` → `gen_visitar_log` (antes del
+  `_oo_expr_a_c` genérico) + rama defensiva en `gen_visitar_stmt_generico`
+  (paridad `generator.py` `elif isinstance(nodo, LogLlamada)`).
+- **Unity regenerado**: `python nucleo/_rebuild_generator.py` (lección R5).
+
+### 10.4 Validación
+
+| Criterio | Resultado |
+|---|---|
+| `log("hola mundo")` nativo | imprime `hola mundo` (antes `0;` sin salida) |
+| `log(saludo, numero, decimal)` | `hola 42 3.500000` (formato `%s %d %f`) |
+| Bootstrap S1→S2→S3 | **S2==S3 byte-idénticos** (1067694 bytes, md5 `7f9020f9`) |
+| Tests R8 nuevos (3) | `tests/test_fase2_nativa_hm.py` **10/10 PASS** (7 R7 + 3 R8) |
+| Regresión | paridades nativas + semántica **81 passed**; codegen e2e con binarios S2/S3 **45 passed** |
+
+### 10.5 Hallazgo nuevo (R10, pre-existente)
+
+Programa de usuario con variable texto (`saludo = "hola"`) crashea al salir con
+**0xC0000374 (heap corruption)**: el RAII/hoisting del generador nativo emite
+`_syn_texto_liberar(saludo)` y `saludo.datos` apunta a un literal estático (no a
+heap) → `free()` inválido. Exit 127 en git-bash. Afecta igual a `escribir_linea`
+(verificado) → **pre-existente**, no causado por R8. Registrado en §6 (R10).
+
+### 10.6 Archivos
+
+`nucleo/generador/nodos_flujo.syn` (fix), `nucleo/generator.syn` (unity regenerado),
+`nucleo/principal.syn.json` (AST regenerado por el bootstrap), `tests/test_fase2_nativa_hm.py`
+(+3 tests R8), docs (este reporte §6/§10, `nucleo/README.md`, bitácora AUDITORIA).
+**HASH COMMIT: `8136fd8`** (rama `feature/fase2-nativa-hm`).
