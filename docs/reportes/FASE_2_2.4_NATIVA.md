@@ -81,6 +81,7 @@ Puntos revisados y resueltos:
 | R8 | **`log(...)` en programas de usuario compilados por el nativo no emite salida** (el codegen emite `0;` como sentencia; el S1 sí imprime vía runtime). Hallazgo PRE-EXISTENTE (C emitido byte-idéntico antes/después del fix R7), no relacionado con el analizador; los tests e2e usan `escribir_linea` | ✅ **RESUELTA (2026-08-10)** — el puente crea `LogLlamada` (puente_ast.syn) pero el generador nativo no lo manejaba → `_oo_expr_a_c` caía al fallback `0;`. Fix: `gen_visitar_log` en `nucleo/generador/nodos_flujo.syn` (paridad S1 `visitar_log` de `emit_expressions.py`: `printf` con `%s`+`.datos` para texto, `%f` para decimal, `%d` resto) + dispatch en `gen_visitar_expr` + rama defensiva en `gen_visitar_stmt_generico`; unity `generator.syn` regenerado con `_rebuild_generator.py`. `log("hola mundo")` nativo imprime (antes `0;`); bootstrap S2==S3 byte-idéntico (1067694 bytes, md5 `7f9020f9`); 3 tests R8 nuevos (10/10 HM); regresión 81 + 45 passed (ver §10) |
 | R9 | **Constantes globales (`StmtConstante`) no registradas en el analizador nativo**: la rama `ERR_SEM_CONSTANTE_INMUTABLE` del fix R7 queda INERTE (ninguna pasada registra símbolos con `es_constante=1`) y una asignación a una constante global (`X = 2` con `constante X = 1`) crearía una declaración implícita local (el S1 reporta CONSTANTE_INMUTABLE). Activar requiere registrar `StmtConstante` (rama en flatten F8 + pasada 2) **y** una `tabla_buscar` con precedencia de ámbito (la tabla lineal actual es first-match: un parámetro que sombrea una constante global encontraría la constante → falso positivo) | ✅ **RESUELTA (2026-08-10)** — marcador `es_constante` en `AsignacionVariable` (puente `NODO_CONSTANTE` → `AsignacionVariable.es_constante=1` → flatten F8 → `SemNodo.valor_int`), registro en pasada 2 (globales) y `analizar_sentencia` (locales); `tabla_buscar` con precedencia de ámbito innermost-first (paridad S1 `symbol_table.py` `buscar`: `reversed(self._scopes)`); diagnóstico observable `[Synapse] Error semantico ... No se puede reasignar la constante 'X'` (paridad `diagnostics.py`); bootstrap S2==S3 byte-idéntico (1068718 bytes, md5 `3862049e`); 3 tests R9 nuevos (16/16 HM PASS); regresión 129 passed (ver §11) |
 | R10 | **RAII nativo sobre literales estáticos**: programa de usuario con variable texto (`saludo = "hola"`) crashea al salir (0xC0000374 heap corruption; `_syn_texto_liberar(saludo)` libera un literal estático; exit 127 en git-bash). Hallazgo PRE-EXISTENTE (afecta igual a `escribir_linea`, detectado durante la validación R8); los tests e2e usan literales/enteros para evitarlo | ✅ **RESUELTA (2026-08-10)** — fix en el RUNTIME (único punto que arregla S1 y nativo): `pool_free` solo llama `free()` a punteros registrados por `pool_alloc` (registro `_g_extra_ptrs` de sus mallocs de escape); literales estáticos/punteros ajenos → no-op (Manual 4 §2.1: nunca liberar lo que no se asignó vía el allocator); bootstrap S2==S3 byte-idéntico (1068856 bytes, md5 `fcb2651c`); 2 tests R10 nuevos (18/18 HM); regresión 122 passed (ver §12) |
+| R11 | **Exhaustividad `coincidir` nativa INERTE** (deuda del cierre del checklist 2.6): el flatten F8 (`nucleo/principal.syn`) no aplanaba `NodoCoincidir` (0 refs) aunque el parser lo produce (`parsear_coincidir` L938 → NODO_COINCIDIR 38) y el analizador lo consume (L826-881, flags ok/err/algun/ninguno + `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`); programas de usuario con `coincidir` no exhaustivo compilaban sin diagnóstico en el nativo (el S1 sí reporta, `test_match.py`) | ✅ **RESUELTA (2026-08-10)** — cableado completo por capas (ver §13): parser (patrón+cuerpo+casos en NODO_CASO + anti-cuelgue patrón no-nombre), `ast_nodes.syn` (NodoCoincidir/NodoCaso), puente (NODO_COINCIDIR/NODO_CASO tipados), flatten F8 (`_f8_tipo` 38/39 + ramas), analizador (`parsear_patron_coincidir` con buffers por puntero: antes tag/var por valor no propagaban y el marcado de variantes quedaba inerte), generador (`gen_visitar_coincidir` → switch sobre `.tag`, paridad S1 `visitar_coincidir`), lexer (paréntesis con lexema real: spans multi-token `ok(valor)` daban `len_str` basura 0x6B2D736D → segfault en `puente_str`), D-2 (instancias ADT desde parámetros: `Resultado<T,E>` como param no se registraba y `traducir_tipo_c` emitía el placeholder `Resultado_T`), hoisting+asignación (tipo ADT en declaraciones: `a = ok(21)` declaraba `int64_t` y gcc fallaba). Diagnóstico observable `coincidir no exhaustivo: faltan variantes ok/err`; ejecución real del switch 42/0; bootstrap S2==S3 byte-idéntico (md5 `c17e4658`); 4 tests R11 nuevos (25/25 HM); regresión 176 passed (ver §13) |
 
 ## 7. HASH COMMIT
 
@@ -100,14 +101,23 @@ errores de sintaxis abortan con **rc=8 y mensaje+posición** (paridad S1); boots
 (1065100 bytes); 7/7 tests de paridad; regresión verde. Código de salida **{1,8} = error de sintaxis**
 (nuevo; sin colisión con {1,2}=archivo, {1,3}=lexer, {1,6}=tamaño, rc=7=semántico 2.4).
 
+**Cierre R11 (commit `fe5e7aa`)** — cableado completo del `coincidir` nativo (ver §13):
+`nucleo/lexer.syn`, `nucleo/parser.syn`, `nucleo/ast_nodes.syn`, `nucleo/puente_ast.syn`,
+`nucleo/principal.syn` (+`principal.syn.json`), `nucleo/analizador_semantico.syn`,
+`nucleo/generador/nodos_flujo.syn`, `nucleo/generador/orquestador.syn`, `nucleo/generator.syn` (regenerado),
+`tests/test_fase2_nativa_hm.py` (+4 tests R11). Bootstrap S2==S3 byte-idéntico (md5 `c17e4658`);
+exhaustividad diagnostica `faltan variantes ok/err`; ejecución real del switch 42/0;
+25/25 HM PASS; regresión 176 passed.
+
 ---
 
 ## 8. Próximo paso
 
-Cerrar el checklist 2.1/2.2/2.3/2.5/2.6 de la Fase 2 (validación formal de las 3 pasadas,
-scopes, taxonomía ERR_SEM_*, ownership y exhaustividad `coincidir` — inventario B1: de facto
-implementados, falta validación y documentación formal). Con R7 resuelto, la resolución de
-símbolos de la pasada 3 ya tiene paridad con el S1 (ver §9).
+Con R11 resuelto (ver §13), la **exhaustividad `coincidir` nativa ya tiene paridad con el S1**
+(checklist 2.6 CERRADO). Siguiente: **R12** — préstamos M21.4 nativos sin diagnóstico observable
+en probe (verificar el cableado de NODO_PUNTERO flatten→analizador con el patrón de
+`tests/integration/test_borrowing.py`, prioridad P2); después **R1** — unificación de TVars de
+función en el nativo (residual de la divergencia 2.4).
 
 ---
 
@@ -371,3 +381,81 @@ programas de usuario — se enlaza como `synapse_rt_memory.o` en todos):
 docs (este reporte §6/§12, `nucleo/README.md`, bitácora AUDITORIA,
 `MEMORIA_PROYECTO.md`). **HASH COMMIT: `d233ee0`** (rama
 `feature/fase2-nativa-hm`).
+
+---
+
+## 13. CIERRE R11 — Exhaustividad `coincidir` nativa cableada (2026-08-10)
+
+### 13.1 Síntoma
+
+Deuda del cierre del checklist 2.6 (`docs/reportes/FASE_2_CHECKLIST.md`): la validación de
+exhaustividad NATIVA estaba **INERTE** — el flatten F8 (`nucleo/principal.syn`) no aplanaba
+`NodoCoincidir` (0 refs), así que la rama `NODO_COINCIDIR` del analizador nunca se ejecutaba y un
+`coincidir` no exhaustivo (p. ej. solo `ok` sobre `Resultado<T,E>`) compilaba sin diagnóstico en
+el nativo mientras el S1 reportaba `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` (Manual 2 §8.3, chequeo de
+seguridad real; paridad `tests/integration/test_match.py`).
+
+### 13.2 Causa raíz (en cascada, por capa)
+
+1. **flatten F8 sin `NodoCoincidir`** → el analizador nunca veía NODO_COINCIDIR (la deuda original).
+2. **Spans multi-token rotos**: al cablear el patrón, `nodo_guardar_span` reconstruye el lexema por
+   resta de punteros entre tokens; los paréntesis se creaban con `lexer_push_token` (valor `""` =
+   literal estático) → la resta contra el buffer de la fuente daba `len_str` basura (0x6B2D736D)
+   → **segfault en `puente_str`** al convertir el patrón `ok(valor)`.
+3. **`parsear_patron_coincidir` pasaba `tag_nombre`/`var_nombre` por valor** (CadenaSegura): los
+   `strdup` internos no propagaban al caller → el marcado de variantes (ok/err/algun/ninguno)
+   quedaba inerte incluso con el flatten correcto.
+4. **D-2 (scan de instancias ADT) solo miraba `tipo_retorno`**: el ADT en el parámetro
+   (`r: Resultado<entero,texto>`) no se registraba → `traducir_tipo_c` emitía el placeholder
+   `Resultado_T` (tipo indefinido, rc=5 GCC).
+5. **Codegen de constructores en declaraciones**: `a = ok(21)` declaraba `int64_t a` (el hoisting
+   ME-B7 y `gen_visitar_asignacion` no infieren el tipo ADT de la RHS) → gcc "incompatible types".
+6. **Patrón literal (`1 =>`) colgaba el bucle de casos** (no avanzaba si el token no es nombre).
+
+### 13.3 Cambios (paridad S1)
+
+| Archivo | Cambio |
+|---|---|
+| `nucleo/lexer.syn` | **Paréntesis con lexema real** (`lexer_push_token_punt`, patrón A3.1): los tokens `(`/`)` conservan el span del buffer de la fuente → `nodo_guardar_span` reconstruye spans multi-token (`ok(valor)`) correctamente (antes `len_str` basura y segfault) |
+| `nucleo/parser.syn` | `parsear_coincidir` guarda el **patrón** (span en payload primario), el **cuerpo** (hijo_izq, cadena de hermanos) y **encadena los casos** (hijo_der) en `NODO_CASO`; **anti-cuelgue** cuando el token del caso no es nombre (el `siguiente` ahora avanza siempre) |
+| `nucleo/ast_nodes.syn` | `NodoCoincidir`/`NodoCaso` (structs del AST tipado) |
+| `nucleo/puente_ast.syn` | Ramas `NODO_COINCIDIR`/`NODO_CASO` → `NodoCoincidir`/`NodoCaso` tipados |
+| `nucleo/principal.syn` | Flatten F8: `_f8_tipo` 38/39 + ramas `NodoCoincidir`/`NodoCaso` (+ `principal.syn.json`) |
+| `nucleo/analizador_semantico.syn` | `parsear_patron_coincidir` refactorizada a **buffers C por puntero** (`char*` estáticos): `tag_nombre`/`var_nombre` ahora propagan al caller → el marcado de variantes es real → `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` con diagnóstico observable (paridad S1 L594-660) |
+| `nucleo/generador/nodos_flujo.syn` | **`gen_visitar_coincidir`** → switch sobre `.tag` de la instanciación monomórfica (paridad S1 `visitar_coincidir`); dispatch en `gen_visitar_stmt_generico`; **inferencia de tipo ADT en `gen_visitar_asignacion`** para constructores (`ok(21)`) |
+| `nucleo/generador/orquestador.syn` | **D-2 escanea retorno + parámetros** (la instancia ADT en parámetros se registra; refactor: recolector de tipos de firma); **hoisting ME-B7** infiere el tipo ADT para declaraciones con constructor en la RHS |
+| `nucleo/generator.syn` | Unity REGENERADO con `nucleo/_rebuild_generator.py` (lección R5/R8) |
+| `tests/test_fase2_nativa_hm.py` | **4 tests R11** (paridad `test_match.py`): no exhaustivo diagnostica, exhaustivo compila, wildcard, ejecución real del switch (salida 42/0) |
+
+### 13.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Probe 2.6a: `coincidir` sobre `Resultado` solo `ok` | ✅ **Diagnóstico** `[Synapse] Error semantico ... coincidir no exhaustivo: faltan variantes ok/err` (antes: compilaba mudo) |
+| Probe 2.6b: `ok(valor)` + `err(e)` | ✅ RC=0 limpio |
+| Probe 2.6c: `algun(v)` + `ninguno` | ✅ RC=0 limpio |
+| Wildcard `_` | ✅ RC=0 limpio |
+| Patrón literal (`1 =>`) | ✅ RC=5 sin cuelgue (anti-cuelgue; patrón literal sin codegen aún) |
+| **Ejecución real** del switch ADT (`a = ok(21)` → `doble(a)`; `b = err("x")`) | ✅ Imprime **42 y 0** (antes `int64_t a` + gcc incompatible types) |
+| Bootstrap S1→S2→S3 | ✅ **S2==S3 byte-idénticos (md5 `c17e4658`)**, ruido 0 |
+| Tests R11 nuevos | ✅ **4/4 PASS** → 25/25 HM PASS |
+| Regresión | ✅ paridades nativas/semántica/S1 = **176 passed** |
+
+### 13.5 Alcance y deuda residual
+
+- El diagnóstico de exhaustividad es **observable pero no aborta** el pipeline (lenient por diseño,
+  solo `hay_error_2_4` aborta) — paridad de comportamiento con el S1 en el diagnóstico.
+- **Patrones literales** (`1 =>`) y patrones sin constructor no tienen codegen aún (RC=5 GCC al
+  ejecutar, sin cuelgue) — mejora futura registrada (el parser ya los acepta y el anti-cuelgue
+  los maneja).
+- El switch emitido usa el **`.tag` de la instanciación monomórfica** (D-2): requiere que la
+  instancia ADT esté registrada (retorno o parámetro — el scan ahora cubre ambos).
+
+### 13.6 Archivos
+
+`nucleo/lexer.syn`, `nucleo/parser.syn`, `nucleo/ast_nodes.syn`, `nucleo/puente_ast.syn`,
+`nucleo/principal.syn` (+`principal.syn.json`), `nucleo/analizador_semantico.syn`,
+`nucleo/generador/nodos_flujo.syn`, `nucleo/generador/orquestador.syn`, `nucleo/generator.syn`
+(regenerado), `tests/test_fase2_nativa_hm.py` (+4 tests R11), docs (este reporte §6/§13,
+`nucleo/README.md`, checklist AUDITORIA 2.6, bitácora, `MEMORIA_PROYECTO.md`).
+**HASH COMMIT: `fe5e7aa`** (rama `feature/fase2-nativa-hm`).

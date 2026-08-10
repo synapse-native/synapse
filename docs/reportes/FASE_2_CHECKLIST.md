@@ -1,6 +1,6 @@
 # FASE 2 — CIERRE DEL CHECKLIST 2.1-2.6 (scopes, pasadas, taxonomía, ownership, exhaustividad)
 
-**Fecha:** 2026-08-10 · **Rama:** `feature/fase2-nativa-hm` · **Estado:** ✅ 2.1-2.3 CERRADOS / ⚠️ 2.5-2.6 PARCIALES con deuda R11/R12 registrada
+**Fecha:** 2026-08-10 · **Rama:** `feature/fase2-nativa-hm` · **Estado:** ✅ 2.1-2.3 CERRADOS / ⚠️ 2.5 PARCIAL (R12) / ✅ **2.6 CERRADO (R11 resuelto)**
 **Manual referenciado:** Manual 2 §8 (tabla de símbolos y scopes), §10.1 (taxonomía y diagnóstico de errores),
 §8.3/§2.4 (exhaustividad `coincidir`), §9 (ownership/borrowing); Manual 4 §4.2 (M21.4 préstamos);
 Manual 2 §12 (tests obligatorios).
@@ -26,7 +26,7 @@ resolución asignada.
 | 2.3 | Taxonomía ERR_SEM_* | `errores.syn` 14-24/31-32/34-35; `diagnostics.syn` 33/39; `analizador` 33/40 (`ERR_SEM_TYPE_AMBIGUOUS`, port 2.4c) | `diagnostics.py` `ErrorCodes` (14-24/31-33/39/40) | ✅ CERRADO |
 | 2.4 | Hindley-Milner | ✅ port 2.4c/d (`hay_error_2_4`, rc=7) | ✅ S1 (commit `15ba9fa`) | ✅ (ya cerrado) |
 | 2.5 | Ownership/borrowing | `lifetimes.syn` M21.1/21.2 (`uf_*`, `detectar_ciclo_outlives`) + M21.4 (`prestamo_activo`/`registrar_prestamo` L499-541 → `ERR_MEM_BORROW_CONFLICT`) | `Lifetime`/`UnionFind`/`RegionGraph` (L43-227) + `_verificar_prestamo` | ⚠️ PARCIAL (R12) |
-| 2.6 | Exhaustividad `coincidir` | Analizador NODO_COINCIDIR L826-881 (flags ok/err/algun/ninguno/wildcard → `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`) — **INERTE** (el flatten F8 no aplanaba `NodoCoincidir`) | `semantic_checker.py` L594-660 → `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` | ⚠️ PARCIAL (R11) |
+| 2.6 | Exhaustividad `coincidir` | Analizador NODO_COINCIDIR L826-881 (flags ok/err/algun/ninguno/wildcard → `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`) — **ACTIVO desde R11** (flatten F8 `_f8_tipo` 38/39 + `parsear_patron_coincidir` con buffers por puntero) | `semantic_checker.py` L594-660 → `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED` | ✅ **CERRADO (R11)** |
 
 **Tests del Manual 2 §12 (estado actual):** `test_type_inference.py` ✅ (28, S1 HM),
 `test_match.py` ✅ (4), `test_ownership.py` ✅ (3), `test_borrowing.py` ✅ (6),
@@ -50,7 +50,7 @@ Solo falta `test_ast_serialization.py` (P1, contenido propio de Fase 2).
 | Probe 2.1: `let a = 1` + `let a = 2` (mismo scope) | ✅ Diagnóstico `[Synapse] Error semantico ... a` observable (antes: mudo) |
 | Probe 2.1b: `let x` en `si` sombrea `x` externa | ✅ 0 diagnósticos; ejecuta e imprime `9` |
 | Probe 2.2: función usa `Punto()` definida después | ✅ RC=0 sin diagnósticos (pasada 1 registra antes que la 3) |
-| Probe 2.6: `coincidir` sobre `Resultado` con solo `ok` | ⚠️ Sin diagnóstico — **confirma R11** (exhaustividad nativa inerte) |
+| Probe 2.6: `coincidir` sobre `Resultado` con solo `ok` | ✅ **Diagnóstico** `[Synapse] Error semantico ... coincidir no exhaustivo: faltan variantes ok/err` (R11 resuelto — antes inerte; paridad S1 `test_match.py`) |
 | Probe 2.5: doble préstamo mutable `&mut x` | ⚠️ Sin diagnóstico — **confirma R12** (cableado de préstamos a verificar) |
 | Tests checklist nuevos (`test_fase2_nativa_hm.py`) | ✅ **3/3 PASS** (redefinición observable, sombra, pasadas) → 21/21 HM |
 | Regresión | ✅ 68 paridades/semántica + 21 HM = 89 passed |
@@ -59,7 +59,7 @@ Solo falta `test_ast_serialization.py` (P1, contenido propio de Fase 2).
 
 | # | Deuda | Evidencia | Resolución asignada |
 |---|---|---|---|
-| R11 | **Exhaustividad nativa INERTE**: el flatten F8 (`nucleo/principal.syn`) no aplanaba `NodoCoincidir` (0 refs) aunque el parser lo produce (`parser.syn` `parsear_coincidir` L938 → NODO_COINCIDIR 38) y el analizador lo consume (L826-881). Programas de usuario con `coincidir` no exhaustivo compilan sin diagnóstico en el nativo; el S1 sí reporta | grep `NODO_COINCIDIR` en `principal.syn` = 0 | Cablear `NodoCoincidir` en el flatten F8 (rama con casos/patrones/cuerpos/linea/columna, patrón R9 del marcador `es_constante`) + tests de paridad con el S1. Prioridad **P1** (Manual 2 §8.3, chequeo de seguridad real) |
+| R11 | **Exhaustividad nativa INERTE**: el flatten F8 (`nucleo/principal.syn`) no aplanaba `NodoCoincidir` (0 refs) aunque el parser lo produce (`parser.syn` `parsear_coincidir` L938 → NODO_COINCIDIR 38) y el analizador lo consume (L826-881). Programas de usuario con `coincidir` no exhaustivo compilaban sin diagnóstico en el nativo; el S1 sí reporta | grep `NODO_COINCIDIR` en `principal.syn` = 0 | ✅ **RESUELTA (2026-08-10, commit `fe5e7aa`)** — cableado completo por capas (lexer paréntesis con lexema real → spans multi-token; parser patrón+cuerpo+casos en NODO_CASO + anti-cuelgue; ast_nodes/puente/flatten F8; analizador `parsear_patron_coincidir` con buffers por puntero; generador `gen_visitar_coincidir` switch sobre `.tag`; D-2 instancias desde parámetros; hoisting+asignación con tipo ADT). Diagnóstico observable `faltan variantes ok/err`; ejecución real 42/0; bootstrap S2==S3 (md5 `c17e4658`); 4 tests R11 (25/25 HM); regresión 176 passed. Detalle: `docs/reportes/FASE_2_2.4_NATIVA.md` §13 |
 | R12 | **Préstamos M21.4 nativos sin diagnóstico observable en probe**: el código existe (`prestamo_activo`/`registrar_prestamo` L499-541, registro en `analizar_expr` NODO_PUNTERO) pero el fixture de doble préstamo mutable no disparó `ERR_MEM_BORROW_CONFLICT` | Probe `a = &mut x; b = &mut x` sin diagnóstico | Verificar el cableado de NODO_PUNTERO (flatten→analizador: `es_mut`, símbolo) y el fixture correcto (parámetros `&entero` + llamadas `&x`, patrón `test_borrowing.py`) + tests de paridad. Prioridad **P2** |
 
 ## 6. Archivos
@@ -68,3 +68,10 @@ Solo falta `test_ast_serialization.py` (P1, contenido propio de Fase 2).
 + newline 2 BS), `tests/test_fase2_nativa_hm.py` (+3 tests checklist), docs (este
 reporte, `docs/AUDITORIA_ALINEACION_MANUALES.md` checklist 2.1-2.6, bitácora,
 `MEMORIA_PROYECTO.md`). **HASH COMMIT: `288ec67`** (rama `feature/fase2-nativa-hm`).
+
+**Cierre R11 (commit `fe5e7aa`)** — checklist 2.6 → ✅ CERRADO: cableado completo del
+`coincidir` nativo (lexer/parser/ast_nodes/puente/flatten F8/analizador/generador/D-2),
+diagnóstico de exhaustividad observable, ejecución real del switch, bootstrap S2==S3
+(md5 `c17e4658`), 4 tests R11 (25/25 HM), regresión 176 passed. Ver §4/§5 y
+`docs/reportes/FASE_2_2.4_NATIVA.md` §13. La deuda R12 (préstamos M21.4, P2) sigue
+pendiente.

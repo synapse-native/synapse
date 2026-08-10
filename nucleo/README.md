@@ -180,6 +180,44 @@ nativo y S1 en reasignación `s = "a"; s = entero_a_texto(7)` → rc=0 imprime
 S1→S2→S3 con **S2==S3 byte-idénticos** (1068856 bytes, md5 `fcb2651c`); 2 tests
 R10 nuevos en `tests/test_fase2_nativa_hm.py`; regresión verde (122 passed).
 
+## ✅ Exhaustividad `coincidir` nativa (R11) — RESUELTO
+
+**Estado (2026-08-10):** deuda R11 del cierre del checklist 2.6 (la validación
+de exhaustividad NATIVA estaba **INERTE**: el flatten F8 no aplanaba
+`NodoCoincidir`, así que un `coincidir` no exhaustivo compilaba sin diagnóstico
+en el nativo mientras el S1 reportaba `ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED`, Manual
+2 §8.3) **resuelta** con paridad de comportamiento con el S1
+(`semantic_checker.py` L594-660 + `visitar_coincidir`):
+
+- **Cableado completo por capas**: `nucleo/lexer.syn` (paréntesis con **lexema
+  real**, patrón A3.1 — antes con valor `""`, los spans multi-token `ok(valor)`
+  daban `len_str` basura 0x6B2D736D y **segfault** en `puente_str`);
+  `nucleo/parser.syn` (`parsear_coincidir` guarda patrón+cuerpo+casos en
+  `NODO_CASO` + anti-cuelgue de patrones no-nombre); `nucleo/ast_nodes.syn`
+  (`NodoCoincidir`/`NodoCaso`); `nucleo/puente_ast.syn` (ramas tipadas);
+  `nucleo/principal.syn` (flatten F8 `_f8_tipo` 38/39);
+  `nucleo/analizador_semantico.syn` (`parsear_patron_coincidir` con **buffers C
+  por puntero** — antes tag/var por valor no propagaban y el marcado de
+  variantes quedaba inerte); `nucleo/generador/nodos_flujo.syn`
+  (`gen_visitar_coincidir` → switch sobre `.tag` + inferencia de tipo ADT en
+  asignaciones); `nucleo/generador/orquestador.syn` (**D-2 escanea retorno +
+  parámetros** — el ADT en un parámetro no se registraba y `traducir_tipo_c`
+  emitía el placeholder `Resultado_T`; hoisting ME-B7 con tipo ADT para
+  constructores como `ok(21)`).
+- **Diagnóstico observable**: `[Synapse] Error semantico (linea L, columna C):
+  coincidir no exhaustivo: faltan variantes ok/err` (no aborta el pipeline,
+  lenient por diseño).
+- **Mantenimiento**: regenerar `nucleo/generator.syn` con
+  `python nucleo/_rebuild_generator.py` tras editar `nucleo/generador/*.syn`.
+
+Evidencia: probe 2.6a (solo `ok`) → diagnóstico (antes: compilaba mudo);
+ok+err / algun+ninguno / wildcard → RC=0; patrón literal `1 =>` → RC=5 sin
+cuelgue; **ejecución real del switch** (`a = ok(21)` → 42, `b = err("x")` → 0);
+bootstrap S1→S2→S3 con **S2==S3 byte-idénticos (md5 `c17e4658`)**, ruido 0; 4
+tests R11 nuevos en `tests/test_fase2_nativa_hm.py` (25/25 HM PASS); regresión
+verde (176 passed). **Pendiente residual:** patrones literales sin codegen
+(RC=5 al ejecutar, sin cuelgue) — mejora futura.
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.
