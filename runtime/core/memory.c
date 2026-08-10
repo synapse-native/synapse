@@ -173,6 +173,10 @@ static void _extra_registrar(void* p) {
 
 void pool_init(uint32_t total_blocks, uint32_t block_size) {
     pthread_mutex_lock(&_g_pool_mutex);
+    /* R10 (hardening): re-inicializacion sin pool_destroy previo no debe
+     * conservar entradas stale del registro fuera-del-pool (un puntero
+     * ajeno que colisionara con una entrada vieja seria liberado). */
+    _g_extra_count = 0;
     _g_pool.total_blocks = total_blocks;
     _g_pool.block_size = block_size;
     _g_pool.pool_base = (uint8_t*)malloc(total_blocks * block_size);
@@ -316,6 +320,10 @@ void* pool_alloc(size_t size) {
     return _p;
 }
 
+/* CONTRATO DE OWNERSHIP (R10, Manual 4 S2.1): pool_free solo es valido para
+ * punteros devueltos por pool_alloc (slab / bloque grande del pool / malloc de
+ * escape registrado). Literales estaticos (.rodata) y memoria ajena se IGNORAN
+ * (no-op): nunca liberar lo que no se asigno via el allocator. */
 void pool_free(void* ptr) {
     if (!ptr) return;
     /* Determinar clase slab via atomic reads de g_slab_bases (lock-free) */
