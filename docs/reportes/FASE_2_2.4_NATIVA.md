@@ -801,3 +801,23 @@ espurio — no cubierto por probes); el nativo no reporta "variable no declarada
 
 **HASH COMMIT: `68cf9a5`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## 20. R17 — Scan nativo D-2 extendido a `let`/campos/externos (Manual 2 §4.2 L279-280)
+
+**Deuda:** el scan de monomorfización D-2 del nativo (`orquestador.syn`) solo cubría firmas de funciones (retorno + parámetros). Una instancia ADT usada solo en `let r: Resultado<entero,texto>` local o en campos de estructura (`estructura Caja: contenido: Resultado<...>`) no se registraba → `traducir_tipo_c` caía al placeholder `Resultado_T` sin typedef → **gcc rc=5** (el S1 sí registraba el `let` pero fallaba en campos por el ORDEN de emisión).
+
+**Causa raíz (3 capas):**
+1. **Scan nativo parcial**: solo firmas top-level.
+2. **Orden de emisión (S1 y nativo)**: los typedefs de instancias se emitían en la visita de `DeclaracionTipo` (orden alfabético) DESPUÉS de los structs de usuario que los referenciaban como campo → C inválido (`unknown type name Resultado_entero_texto` en el header compartido `_synapse_shared.h`).
+3. **Campo ADT por valor (nativo)**: `struct Caja campo` por valor antes de la definición de `Caja` → `field has incomplete type` (el S1 usa punteros `struct Caja*`, que declaran el tag implícitamente).
+
+**Fix (S1 + nativo, paridad):**
+- **Nativo** (`nucleo/generador/orquestador.syn`): el scan se reestructuró a una **colección única `_d2all`** (firmas retorno+params, `let` locales con walk recursivo por si/mientras/para/inseguro/coincidir-casos, campos de `DefinicionEstructura`, `DeclaracionExterna`) + **cola FIFO `_d2pend[128]`** con post-orden y guard 124; la emisión de typedefs de instancias se movió a un **pre-bloque** ANTES del recorrido top-level (los structs alfabéticos ya no preceden a las instancias) y los campos de tipo struct se emiten por **puntero** (`struct Caja*`, paridad S1 `campos_pointer`).
+- **S1** (`compilador/generator/generator.py` + `emit_declarations.py`): nuevo helper `_emitir_typedefs_instancias` invocado en modos `header` y `completo` ANTES de las estructuras; loop de instancias eliminado de `visitar_declaracion_tipo`.
+- **Hallazgo del code-reviewer** (`compilador/generator/emit_control.py` `visitar_coincidir`): el ternario devolvía `''` si el tipo no empezaba con `"struct "` (todos los tipos Synapse) → el binding de TODO `coincidir` sobre ADT emitía `.dato.valor` inválido (nunca detectado: `test_match.py` valida solo diagnóstico, sin gcc). Fix: miembro del union = nombre del constructor del tag + `_dividir_args_tipo` (split depth-aware) para resolver la instancia anidada.
+
+**Validación:** probes `let`/`campo`/`mix`/`struct-arg` rc=0 en S1 y nativo (runtime 7 / 42+7), bootstrap S2==S3 (md5 `b56c9b82`), **55/55 HM** (51+4 R17), regresión **211 + 21** (match+embebido). Residual R18: binding del `coincidir` nativo con multi-instancia (heurística "primera instancia") y constructores anidados (`ok(ok(42))`).
+
+**HASH COMMIT: `115f6df`** — rama `feature/fase2-nativa-hm`.
+

@@ -387,3 +387,36 @@ solo en `let` sin firma aún emite `Resultado_T`; el S1 la registra), constructo
 anidados (`ok(ok(42))` falla igual en S1 y nativo), anidamiento cross-base
 `A<B<...>>` con base padre declarada primero, overflow de cola nativa (descarte
 silencioso, guard anti-cuelgue). Detalle: `docs/reportes/FASE_2_2.4_NATIVA.md` §19.
+
+## ✅ Scan D-2 completo: `let` locales, campos y externos (R17) — RESUELTO
+
+**Deuda FASE_2_2.4_NATIVA.md:** el scan de monomorfización nativo solo cubría
+firmas — una instancia ADT usada solo en `let r: Resultado<entero,texto>` local o
+en campos de estructura emitía el placeholder `Resultado_T` sin typedef
+(rc=5); el S1 registraba el `let` pero fallaba en campos por el ORDEN de
+emisión. Tras R17 (commit `115f6df`, Manual 2 §4.2 L279-280):
+
+- **Colección única `_d2all`** en `orquestador.syn`: firmas retorno+params,
+  `let` locales (walk recursivo por si/mientras/para/inseguro/coincidir-casos),
+  campos de `DefinicionEstructura` y `DeclaracionExterna`, con cola FIFO
+  `_d2pend[128]` (post-orden, guard 124).
+- **Pre-bloque de typedefs de instancias**: emitidos ANTES del recorrido
+top-level (S1: helper `_emitir_typedefs_instancias` en modos `header` y
+`completo`; nativo: pre-bloque propio) — antes se emitían en la visita de
+`DeclaracionTipo` (orden alfabético), DESPUÉS de los structs que los
+referencian como campo.
+- **Campos de tipo struct por puntero** (`struct Caja*`, paridad S1
+  `campos_pointer`) — por valor daba `field has incomplete type` antes de la
+definición.
+- **Fix del binding del `coincidir` S1** (`emit_control.py` `visitar_coincidir`,
+  hallazgo del code-reviewer): el ternario devolvía `''` si el tipo no empezaba
+  con `"struct "` (todos los tipos Synapse) → `.dato.valor` inválido en todo
+  match sobre ADT (nunca detectado: `test_match.py` no compila con gcc); ahora
+  el miembro del union es el nombre del ctor del tag y la resolución de la
+  instancia usa `_dividir_args_tipo` (split depth-aware).
+
+Validación: probes let/campo/mix/struct-arg rc=0 en S1 y nativo (runtime 7 /
+42+7), bootstrap S2==S3 (md5 `b56c9b82`), **55/55 HM**, regresión **211+21**.
+Residual R18: binding del `coincidir` nativo con multi-instancia (heurística
+"primera instancia") y constructores anidados. Detalle:
+`docs/reportes/FASE_2_2.4_NATIVA.md` §20.
