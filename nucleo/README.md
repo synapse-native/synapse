@@ -359,3 +359,31 @@ D-4; `ArgumentoTransferido` en `_oo_expr_a_c`). Validado: 5 probes de paridad, b
   (lifetimes) + exhaustividad `coincidir`.
 - `generator.syn` / `generador/*.syn` — emisión de C.
 - `tabla_simbolos.syn` / `errores.syn` / `diagnostics.syn` — símbolos y taxonomía `ERR_*`.
+
+## ✅ Codegen de ADTs anidados (R16 / D-2) — RESUELTO
+
+**Deuda FASE_2_2.4_NATIVA.md:** los ADT genéricos anidados en firmas
+(`Resultado<Resultado<entero,texto>,texto>`) generaban C inválido en el nativo
+(campo `Resultado_T` placeholder sin typedef → gcc rc=5) y semántica degradada
+en el S1 (fallback `Resultado_T`). Tras R16 (commit `68cf9a5`, Manual 2 §4.2
+L279-280):
+
+- **Split de argumentos con profundidad** (`_dividir_args_tipo` en
+  `compilador/generator/context.py`; el scan nativo de `orquestador.syn` usa
+  contador de profundidad `<`/`>`).
+- **Registro recursivo post-orden**: la instancia interna
+  `Resultado<entero,texto>` se registra ANTES que el contenedor (recursión en
+  `generator.py` `_registrar`; cola FIFO con re-encolado en el nativo).
+- **Orden de emisión por profundidad** (`emit_declarations.py`) y **mangle
+  por-arg** sin el `>` de cierre.
+- El C generado es idéntico entre S1 y nativo: `Resultado_entero_texto` +
+  `Resultado_Resultado_entero_texto_texto { Resultado_entero_texto ok; ... }`
+  (cero placeholders), instancia interna primero.
+- **Bonus**: ADTs builtin `Resultado`/`Opcion` registrados en `_adt_parametros`
+  (fix de regresión preexistente de `15ba9fa` en `test_match.py`).
+
+**Residuales:** R17 (el scan nativo cubre solo firmas — una instancia usada
+solo en `let` sin firma aún emite `Resultado_T`; el S1 la registra), constructores
+anidados (`ok(ok(42))` falla igual en S1 y nativo), anidamiento cross-base
+`A<B<...>>` con base padre declarada primero, overflow de cola nativa (descarte
+silencioso, guard anti-cuelgue). Detalle: `docs/reportes/FASE_2_2.4_NATIVA.md` §19.

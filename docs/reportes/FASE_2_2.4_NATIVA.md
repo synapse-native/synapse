@@ -774,3 +774,30 @@ espurio — no cubierto por probes); el nativo no reporta "variable no declarada
 (`lanzar foo(->no_existe)` — divergencia preexistente heredada de `analizar_expr`).
 
 **HASH COMMIT: `762cf81`** — rama `feature/fase2-nativa-hm`.
+
+---
+
+## 19. R16 — Codegen de ADTs anidados (D-2, Manual 2 §4.2 L279-280)
+
+**Deuda:** el codegen de instanciaciones ADT anidadas (`Resultado<Resultado<entero,texto>,texto>`) era un eslabón roto en AMBOS generadores. El scan de monomorfización nativo (`orquestador.syn` D-2) registraba solo tipos de firma con split NAIVE de argumentos (se detenía en el primer `>`) → la instancia externa se registraba con campos basura y el campo del contenedor caía a `traducir_tipo_c` → placeholder `Resultado_T` SIN typedef emitido → **gcc rc=5**. El S1 (`generator.py` `_recolectar_instancias_adt`) tampoco registraba la instancia interna (`split(',')` naive → 3 args ≠ 2 params → `_registrar` descartaba) y el `traducir_tipo_c` de `context.py` caía al fallback `Resultado_T` (que SÍ emite como typedef — por eso S1 compilaba rc=0 pero con semántica degradada).
+
+**Causa raíz (2 capas):**
+1. **Split de argumentos naive** (S1 y nativo): `Resultado<Resultado<entero,texto>,texto>`.split(',') = 3 elementos; el scan nativo paraba en el primer `>` (el interno).
+2. **Sin registro recursivo** de las instancias anidadas + **orden de emisión** (el sort lexicográfico del S1 emitía el contenedor ANTES que la instancia interna → C inválido `unknown type name`).
+
+**Fix (S1 + nativo, paridad completa):**
+- **S1** (`compilador/generator/context.py`): helper `_dividir_args_tipo` — split con profundidad `<`/`>` (la coma separa solo a nivel 0); usado en `traducir_tipo_c`. `generator.py` `_registrar`: split anidado + **registro recursivo post-orden** (`for a in args: _registrar(a)` — la instancia interna se registra ANTES que el contenedor) + `_mangle_arg` (quita el `>` de cierre del arg anidado para evitar el `_` final espurio en el mangle). `emit_declarations.py`: la emisión de typedefs de instancias se ordena por **profundidad** primero (`(sum(a.count('<')), base, args)`) — antes el sort lexicográfico invertía inner/outer.
+- **Nativo** (`nucleo/generador/orquestador.syn`): el scan D-2 se reescribió como **cola FIFO de tipos pendientes con post-orden** — cuando un tipo tiene dependencias anidadas ADT-genéricas sin registrar, se encolan las dependencias y se re-encola el contenedor (registro post-orden, `_d2pops < 4096` anti-cuelgue); aridad con split depth-aware; mangle por-arg (sin `>` de cierre); campos C resueltos contra las instancias internas ya registradas.
+- **Hallazgo del emisor S1** (debug costoso): el heurístico `needs_semi` de `generator.py` L318-324 añade `;` a toda línea `asm()` que termina en `}` con un `{` interno → rompía la cadena `else if` en el C generado (`else without a previous if`). Fix: el `else if (*_d2p == '>')` se parte en 3 líneas `asm()` (NOTA documentada en el código para no re-fusionar).
+- **Bonus — regresión preexistente resuelta** (`compilador/semantic_scope.py`): los ADT genéricos BUILTIN `Resultado<T,E>`/`Opcion<T>` se registran en `_adt_parametros` (el checker los conocía para `coincidir` pero no para la validación de aridad 2.4 de `15ba9fa`) → `tests/integration/test_match.py` 2 fallos "no se puede usar 'Opcion' con 'tipo conocido'" → **4/4**.
+
+**Validación:** probe p2 anidado rc=0 (antes rc=5) con structs idénticos entre S1 y nativo — `typedef struct Resultado_entero_texto { int64_t tag; union { int64_t ok; CadenaSegura err; } dato; }` y `Resultado_Resultado_entero_texto_texto { ... Resultado_entero_texto ok; ... }` (instancia interna emitida PRIMERO); bootstrap **S2==S3 (md5 `a18a7ce2`)** ruido 0; **51/51 HM** (47+4 R16); regresión **215 passed** (incluye test_match 4/4); 4 tests R16 nuevos (firma/retorno/triple anidado rc=0 + `test_r16_c_structs_orden`).
+
+**Residuales registrados (R17 y menores):**
+- **R17**: el scan nativo D-2 solo cubre **firmas** (retorno+params); el S1 recorre todo el AST. `let r: Resultado<entero,texto> = ok(1)` (sin uso en firma) → nativo no registra → `Resultado_T` → rc=5; S1 rc=0 (probe p5 reproducido).
+- Codegen de **constructores anidados** (`ok(ok(42))`): falla igual en S1 y nativo (resolución ambigua de instancia por tipo de campo en `_G_native_adt_inst_ctr`); patrón variable de `coincidir` sobre anidado: el checker S1 tipa el patrón como `int` (inferencia de constructor sin instancia) — mismo bloque.
+- Anidamiento **cross-base** `A<B<entero>>` con base padre declarada primero: la emisión por profundidad solo ordena instancias de la MISMA base (la emisión ocurre en el visit de cada `DeclaracionTipo`) → C inválido posible (S1 y nativo, preexistente).
+- Overflow de cola nativa (60 tipos pendientes): el contenedor re-encolado se descarta silenciosamente → error GCC confuso (guard `_d2pops` evita el cuelgue; bajo impacto práctico).
+
+**HASH COMMIT: `68cf9a5`** — rama `feature/fase2-nativa-hm`.
+
