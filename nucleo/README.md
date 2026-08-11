@@ -313,6 +313,31 @@ primer `>`). Validación: 7 probes de paridad, bootstrap S2==S3 (md5 `fab5a61a`)
 de ADTs anidados (D-2, `Resultado_T` en C), TVar-en-ADT sin TVar desnudo (S1
 estricto, nativo lenient).
 
+## ✅ Use-after-move por envío de canal (R14) — RESUELTO
+
+**Estado (2026-08-11):** checklist 2.5 ownership COMPLETO (R12 préstamos +
+R14 movimiento). La validación `ch <- dato` invalida el origen y leerlo
+después es `ERR_SEM_VAR_MOVIDA` E-501 (Manual 4 §3.3) estaba **INERTE**
+(`tabla_marcar_movido`/`tabla_esta_movido` sin call-sites). Tres eslabones
+rotos: (1) **lexer**: producía `T_FLECHA_IZQ` para `-<` (orden invertido; la
+sintaxis real es `<-`, paridad S1 `lexer.py:326`) → `ch <- dato` se parseaba
+como `ch < -dato` y el nodo 42 nunca nacía; (2) flatten F8 sin mapeo
+`SentenciaEnviarCanal`=42 ni rama (canal→ptr_str/ptr_hi, valor→slot[6]);
+(3) analizador sin ramas `NODO_ENVIAR_CANAL`/`NODO_IDENTIFICADOR`. Fix:
+lexer `<-` (bloque `-<` muerto eliminado); flatten con línea/columna reales
+(`Identificador` y `SentenciaEnviarCanal` en ast_nodes→puente, patrón R12);
+analizador (envío: analiza valor luego marca movido → doble envío E-501;
+identificador: `esta_movido` → E-501); codegen `canal_enviar(canal,
+(void*)(valor))` (`nodos_flujo.syn` + `generator.syn` regenerado); **aborto
+global `hay_error` ACTIVADO** (paridad S1 rc=1 — R7 eliminó los 653 falsos
+positivos «no declarada», compilar `principal.syn` da 0 errores). Validación:
+6 probes de paridad (envío válido rc0; uso-despues-move / doble-envío /
+uso-en-retorno / reasignación-persiste → E-501 con línea real; sin-move rc0),
+bootstrap S2==S3 (md5 `fa5bdb9e`), **46/46 HM** (41+5 R14), regresión 206.
+Hash: `38f8100` (§17 del reporte). Residuales: boxeo de primitivos en
+`canal_enviar` (`_synapse_box_int/float` del S1 — deuda D-4), ambigüedad
+léxica `x<-5` (compartida con S1).
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.

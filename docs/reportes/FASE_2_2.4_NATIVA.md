@@ -681,3 +681,55 @@ marca «tipo no conocido», el nativo es lenient — divergencia permisiva segur
 portar el chequeo necesita contexto de tvars de la función).
 
 **HASH COMMIT: `ee7fbb1`** — rama `feature/fase2-nativa-hm`.
+
+---
+
+## 17. R14 — use-after-move por envío de canal (Manual 4 §3.3) RESUELTO
+
+**Deuda:** la validación de movimiento por envío de canal (`ch <- dato` invalida
+el origen; leerlo después es `ERR_SEM_VAR_MOVIDA` E-501) estaba **INERTE** en el
+analizador nativo: `tabla_marcar_movido`/`tabla_esta_movido` existían sin ningún
+call-site (patrón R11/R12). Paridad S1: `semantic_checker.py`
+`SentenciaEnviarCanal` (marca movido) + `semantic_types.py` `_inferir_tipo`
+(`tabla.esta_movido` → E-501); tests `test_borrow_checker.py` 5 + `test_ownership.py` 3.
+
+**Causa raíz — 3 eslabones rotos:**
+
+1. **Lexer (hallazgo mayor):** `nucleo/lexer.syn` producía `T_FLECHA_IZQ` para
+   `-<` (orden INVERTIDO); la sintaxis real es `<-` (paridad S1 `lexer.py:326
+   '<-': ARROW_LEFT`). Consecuencia: `ch <- dato` se parseaba como
+   `ch < -dato` (comparación con unario), el nodo 42 nunca nacía y el envío
+   era invisible al analizador. Fix: detectar `<` seguido de `-` en la rama
+   del `<` (60) + eliminar el bloque muerto `-<`.
+2. **Flatten F8:** `_f8_tipo` no mapeaba `SentenciaEnviarCanal`=42 y no había
+   rama de flatten (canal `Identificador` → ptr_str/ptr_hi; valor → slot[6]).
+3. **Analizador:** sin ramas `NODO_ENVIAR_CANAL`/`NODO_IDENTIFICADOR`.
+
+**Fix:** (1) lexer `<-`; (2) flatten F8 (`SentenciaEnviarCanal`=42 + rama con
+canal/valor/linea/columna; `Identificador` también propaga línea/columna vía
+ast_nodes→puente — patrón R12); (3) analizador: `NODO_ENVIAR_CANAL` analiza
+el valor (detecta lectura de variable ya movida, p. ej. doble envío) y luego
+marca movido; `NODO_IDENTIFICADOR` en `analizar_expr` chequea `tabla_esta_movido`
+→ `ERR_SEM_VAR_MOVIDA` E-501; (4) codegen: rama `SentenciaEnviarCanal` en
+`nodos_flujo.syn` (y `generator.syn` regenerado) emite
+`canal_enviar(canal, (void*)(valor));` (paridad S1 `visitar_enviar_canal`);
+(5) **aborto global `hay_error` activado** (paridad S1 rc=1): antes solo
+`hay_error_2_4` abortaba; la deuda R7 eliminó los 653 falsos positivos
+«no declarada» → compilar `principal.syn` da 0 errores y el aborto es seguro
+(verificado: bootstrap ruido 0).
+
+**Validación:** 6 probes de paridad — envío válido rc=0 sin diagnóstico en
+ambos; uso-despues-move / doble-envío / uso-en-retorno / reasignación-persiste
+→ E-501 con **línea real** en ambos (S1 `6:4`, nativo `linea 6` apuntando al
+token — columna más precisa); sin-move rc=0. **Bootstrap S2==S3 md5
+`fa5bdb9e`** ruido 0; **46/46 HM PASS** (41+5 R14); regresión **206 passed**;
+fixtures de error del std sin «Error semantico» espurio (el aborto global no
+rompe programas válidos). Revisión code-reviewer APROBADA (terminación del
+bucle del lexer, canal no chequeado como movido, ambigüedad `x<-5` compartida
+con S1 y documentada).
+
+**Residuales:** codegen de envío sin boxeo de primitivos (`_synapse_box_int/
+_float` del S1; el nativo emite `(void*)(valor)` — deuda D-4); ambigüedad
+léxica `x<-5` (compartida con el S1, inherente al dialecto).
+
+**HASH COMMIT: `38f8100`** — rama `feature/fase2-nativa-hm`.
