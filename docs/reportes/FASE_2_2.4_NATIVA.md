@@ -821,3 +821,41 @@ espurio — no cubierto por probes); el nativo no reporta "variable no declarada
 
 **HASH COMMIT: `115f6df`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## 21. R18 — Binding del `coincidir` nativo con multi-instancia del mismo base (Manual 2 §4.2) + Modularización M
+
+**Deuda R18:** el generador nativo resolvía el binding del `coincidir` con la
+heurística "primera instancia del base": con dos instancias del mismo base
+(`Resultado<entero,texto>` y `Resultado<texto,entero>`) el binding del match
+usaba la instancia equivocada y el C resultante no compilaba. **Fix (3 puntos
+en el generador nativo):** (1) `orquestador.syn` registra el tipo C de los
+**parámetros** en `_G_fn_var_tipos` (antes solo el nombre); (2) `nodos_flujo.syn`
+registra el tipo C de los `let` explícitos en `gen_visitar_declaracion` (paridad
+S1 `visitar_declaracion` L127 `_variables[nombre] = tipo_syn`); (3) el binding
+del `coincidir` resuelve la instancia **EXACTA** por el tipo C de la variable
+de la expresión (paridad S1 `tipo_de_expr` + `_instancias_adt`) con fallback a
+la heurística. **Validación:** probe multi-instancia rc=0 nativo, el C emite
+`int64_t v = (r).dato.ok;` para `Resultado<entero,texto>` y
+`CadenaSegura s = (r).dato.ok;` para `Resultado<texto,entero>` (instancia
+exacta por tag), runtime 7+1=8, bootstrap S2==S3 (md5 `f804c52e`), suite
+`test_fase2_nativa_hm` **62/62**. Hallazgos del build: el parser S1 exige
+paréntesis balanceados por línea en los comentarios `asm` (análisis
+acumulativo) y el em dash UTF-8 `—` rompe el lexer S1 (bug H26 conocido).
+Residual: constructores anidados `ok(ok(42))` (deuda separada del R16).
+Hash: 75c6000.
+
+**Modularización M (AUDITORIA regla 13):** `nucleo/generador/orquestador.syn`
+pasó de 101KB/1350 líneas (con `generar()` como monolito de 932 líneas) a **754
+líneas** con **3 módulos nuevos**, división MECÁNICA (asm textual intacto):
+`escaneo.syn` (`gen_escanear_estructuras`/`retornos`/`aliases`/`constructores`
+— bloques ME-B4/ME-B6/ME-F1.2b/ME-D6), `monomorfizacion.syn`
+(`gen_escanear_adt_instancias` — bloque ME-D2, scan D-2 R16/R17/R18) y
+`recorrido.syn` (`gen_recorrer_toplevel` — WALK). `_rebuild_generator.py`
+concatena los 3 módulos antes de `orquestador.syn`. **Validación de
+transparencia:** C generado **byte-idéntico** al baseline pre-división (md5
+`fb17775c` antes y después del probe estructura+ADT+match), bootstrap S2==S3
+estable (md5 `f8205fcb`), suite `test_fase2_nativa_hm` **62/62** (completa),
+runtime del probe 7. Code-reviewer: riesgo de mutación de `est` por valor
+descartado (0 escrituras `est->`/`est.` en los módulos extraídos). Hash: 4edc7ff.
+

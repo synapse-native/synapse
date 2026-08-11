@@ -417,6 +417,29 @@ definición.
 
 Validación: probes let/campo/mix/struct-arg rc=0 en S1 y nativo (runtime 7 /
 42+7), bootstrap S2==S3 (md5 `b56c9b82`), **55/55 HM**, regresión **211+21**.
-Residual R18: binding del `coincidir` nativo con multi-instancia (heurística
-"primera instancia") y constructores anidados. Detalle:
-`docs/reportes/FASE_2_2.4_NATIVA.md` §20.
+Detalle: `docs/reportes/FASE_2_2.4_NATIVA.md` §20.
+
+### R18 — Binding del `coincidir` nativo con multi-instancia (CERRADA `75c6000`)
+
+El binding del match nativo resolvía con la heurística "primera instancia del
+base": con dos instancias del mismo base (`Resultado<entero,texto>` y
+`Resultado<texto,entero>`) usaba la instancia equivocada y el C no compilaba.
+Fix: `_G_fn_var_tipos` ahora registra el tipo C de **parámetros**
+(`orquestador.syn`) y de los `let` explícitos (`nodos_flujo.syn`
+`gen_visitar_declaracion`), y el binding resuelve la instancia EXACTA por el
+tipo de la variable (paridad S1 `tipo_de_expr` + `_instancias_adt`). Validación:
+probe multi-instancia rc=0 (C con `int64_t v`/`CadenaSegura s` por tag),
+runtime 7+1=8, bootstrap S2==S3 (`f804c52e`), **62/62 HM**. Residual:
+constructores anidados `ok(ok(42))`. Detalle: reporte §21.
+
+### M — Modularización de `orquestador.syn` (CERRADA `4edc7ff`, AUDITORIA 13)
+
+`orquestador.syn` pasó de 101KB/1350 líneas (con `generar()` monolito de 932
+líneas) a **754 líneas** + 3 módulos nuevos: `escaneo.syn`
+(`gen_escanear_estructuras`/`retornos`/`aliases`/`constructores`),
+`monomorfizacion.syn` (`gen_escanear_adt_instancias`, scan D-2 R16/R17/R18) y
+`recorrido.syn` (`gen_recorrer_toplevel`, WALK). División mecánica con el asm
+textual intacto; `_rebuild_generator.py` concatena los 3 antes de
+`orquestador.syn`. Validación de transparencia: C generado **byte-idéntico** al
+baseline (md5 `fb17775c` antes y después), bootstrap S2==S3 (`f8205fcb`),
+**62/62 HM**.
