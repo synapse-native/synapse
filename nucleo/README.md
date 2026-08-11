@@ -432,6 +432,19 @@ probe multi-instancia rc=0 (C con `int64_t v`/`CadenaSegura s` por tag),
 runtime 7+1=8, bootstrap S2==S3 (`f804c52e`), **62/62 HM**. Residual:
 constructores anidados `ok(ok(42))`. Detalle: reporte §21.
 
+### R19 — TVars desde el argumento transferido `->expr` (CERRADA `9155120`)
+
+`validar_llamada_generica` no tenía rama para `NODO_TRANSFERIDO` (30) en la
+inferencia de tipos de argumentos: el `->expr` no aportaba su tipo a la
+unificación → TVar libre → `ERR_SEM_TYPE_AMBIGUOUS` espurio en
+`identidad(->n)`. Fix: desenrollado del transferido a su expr envuelta
+(`hijo_izq`, guard `_g<8`) antes del dispatch (paridad S1 `semantic_types.py`
+L167-168) + guardado previo de `_her` (hermano del argumento real) para
+conservar la cadena de la llamada. Validación: `identidad(->n)` rc=7→rc=5 con
+0 errores semánticos (codegen de TVars falla igual en S1, R1); AMBIGUOUS
+legítimo sigue diagnosticándose; bootstrap S2==S3 (`07b3bbe0`); **65/65 HM**.
+Detalle: reporte §22.
+
 ### M — Modularización de `orquestador.syn` (CERRADA `4edc7ff`, AUDITORIA 13)
 
 `orquestador.syn` pasó de 101KB/1350 líneas (con `generar()` monolito de 932

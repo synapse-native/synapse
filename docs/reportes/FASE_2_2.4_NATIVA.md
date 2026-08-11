@@ -859,3 +859,29 @@ estable (md5 `f8205fcb`), suite `test_fase2_nativa_hm` **62/62** (completa),
 runtime del probe 7. Code-reviewer: riesgo de mutación de `est` por valor
 descartado (0 escrituras `est->`/`est.` en los módulos extraídos). Hash: 4edc7ff.
 
+---
+
+## 22. R19 — TVars resueltos desde el argumento transferido `->expr` (Manual 2 §8.2 + Manual 4 §3.3)
+
+**Deuda (divergencia genérico+transferencia):** `validar_llamada_generica` no
+tenía rama para `NODO_TRANSFERIDO` (30) en la inferencia de tipos de
+argumentos: el argumento transferido `->expr` no aportaba su tipo a la
+unificación → el TVar del parámetro quedaba libre → `ERR_SEM_TYPE_AMBIGUOUS`
+espurio (`Expresion con tipo ambiguo: no se puede inferir 'T'`) al compilar
+`identidad(->n)` con `identidad(x: T) -> T` (rc=7). El S1 no emite ningún
+error (paridad `semantic_types.py` L167-168: `ArgumentoTransferido` →
+`_inferir_tipo(expr)`). **Fix:** desenrollado del `NODO_TRANSFERIDO` a su expr
+envuelta (`hijo_izq`) con guard `_g<8` antes del dispatch de inferencia
+(paridad S1) y guardado previo de `_her = e->nodos[_argn].hermano` para
+conservar la cadena de argumentos de la llamada (el `memcpy` final avanza con
+`_argn = _her`). **Validación:** probe `identidad(->n)` antes rc=7 con
+AMBIGUOUS espurio → después rc=5 con **0 errores semánticos** (el codegen de
+TVars falla igual en S1, documentado en R1); caso mixto `envolver(->n)` /
+`envolver("hola")` sin errores; el AMBIGUOUS **legítimo** (`generar() -> T`
+sin argumentos) sigue diagnosticándose; bootstrap S2==S3 (md5 `07b3bbe0`);
+suite `test_fase2_nativa_hm` **65/65** (3 tests R19 nuevos). Code-reviewer:
+verificados los 4 puntos (avance por hermanos de no-transferidos intacto,
+guard de anidamiento, sin colisión de locales C `_her`/`_g`/`_hx`, caso
+`hijo_izq<=0` → tipo vacío → argumento omitido como antes) — sin cambios
+necesarios. Hash: 9155120.
+
