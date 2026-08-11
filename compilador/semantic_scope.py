@@ -92,6 +92,14 @@ class AnalizadorSemanticoScope:
         # (base -> [T, E] / base -> [(ctor, tipo_syn), ...]) para la resolución
         # de instanciaciones en la inferencia de tipos.
         self._adt_parametros: Dict[str, list] = {}
+        # ADT genericos BUILTIN (Manual 2 §4.2 / Manual 3 §7): Resultado<T,E> y
+        # Opcion<T> se usan en firmas SIN declaracion (`Resultado<entero,texto>`)
+        # — el checker los conoce para `coincidir` (semantic_checker L644-652),
+        # asi que la validacion de aridad 2.4 debe conocerlos tambien (regresion
+        # preexistente desde 15ba9fa: test_match.py 2 fallos). Los constructores
+        # builtin NO se registran en _adt_constructores (solo los declarados).
+        self._adt_parametros['Resultado'] = ['T', 'E']
+        self._adt_parametros['Opcion'] = ['T']
         self._adt_constructores: Dict[str, list] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False

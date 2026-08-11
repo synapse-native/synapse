@@ -12,6 +12,33 @@ from compilador.ast_nodes import (
 )
 
 
+def _dividir_args_tipo(resto: str) -> List[str]:
+    """Divide los argumentos de una instanciación ADT respetando el anidamiento
+    (D-2): `Resultado<Resultado<entero,texto>,texto>` ->
+    ['Resultado<entero,texto>', 'texto']. El separador es la coma a nivel 0
+    (fuera de los `<...>` internos). Paridad con el scan nativo
+    (orquestador.syn _d2pend). Manual 2 §4.2 L279-280.
+    """
+    args: List[str] = []
+    actual: List[str] = []
+    prof = 0
+    for ch in resto:
+        if ch == '<':
+            prof += 1
+            actual.append(ch)
+        elif ch == '>':
+            prof -= 1
+            actual.append(ch)
+        elif ch == ',' and prof == 0:
+            args.append(''.join(actual).strip())
+            actual = []
+        else:
+            actual.append(ch)
+    if actual:
+        args.append(''.join(actual).strip())
+    return args
+
+
 # ================================================================
 # Module-level constants (backward-compatible with old generator.py)
 # ================================================================
@@ -416,7 +443,7 @@ class GeneratorContext:
         # si no (ADT sin instanciar), cae al fallback histórico (Resultado_T / void*).
         if '<' in tipo_synapse and tipo_synapse.endswith('>'):
             base, _, resto = tipo_synapse.partition('<')
-            args = tuple(a.strip() for a in resto[:-1].split(','))
+            args = tuple(_dividir_args_tipo(resto[:-1]))
             if (base, args) in self._instancias_adt:
                 return self._instancias_adt[(base, args)]['nombre_c']
         if tipo_synapse.startswith('Resultado<'):

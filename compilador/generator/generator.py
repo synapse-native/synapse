@@ -15,7 +15,7 @@ from compilador.ast_nodes import (
     SentenciaEnviarCanal, DeclaracionTipo,
     ExprAsm,
 )
-from .context import GeneratorContext
+from .context import GeneratorContext, _dividir_args_tipo
 from .emit_control import visitar_si, visitar_mientras, visitar_para, visitar_coincidir
 from .emit_declarations import (
     visitar_funcion, visitar_estructura,
@@ -58,13 +58,27 @@ def _recolectar_instancias_adt(ctx: GeneratorContext):
         if base not in ctx._adt_parametros:
             return
         params = ctx._adt_parametros[base]
-        args = tuple(a.strip() for a in resto[:-1].split(','))
+        args = tuple(_dividir_args_tipo(resto[:-1]))
         if len(args) != len(params):
             return
+        # D-2: registrar PRIMERO las instanciaciones anidadas de los argumentos
+        # (`Resultado<Resultado<entero,texto>,texto>` registra antes
+        # `Resultado<entero,texto>` para que el campo C del contenedor resuelva
+        # contra el struct especializado — cero placeholders, Manual 2 §4.2
+        # L279-280). Paridad con el scan nativo (orquestador.syn, cola FIFO
+        # con post-orden). El split de args respeta el anidamiento.
+        for a in args:
+            _registrar(a)
         clave = (base, args)
         if clave in ctx._instancias_adt:
             return
-        nombre_c = base + '_' + '_'.join(_sane(a) for a in args)
+
+        def _mangle_arg(a: str) -> str:
+            # D-2: un arg anidado termina en '>' (Resultado<entero,texto>);
+            # _sane lo convierte en '_' final -> artefacto de doble guion bajo.
+            return _sane(a[:-1] if a.endswith('>') else a)
+
+        nombre_c = base + '_' + '_'.join(_mangle_arg(a) for a in args)
         campos = []
         for ctor, t_syn in ctx._adt_constructores.get(base, []):
             t_conc = args[params.index(t_syn)] if t_syn in params else t_syn

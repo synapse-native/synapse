@@ -8,10 +8,10 @@ aridad/base/argumentos en firmas (retorno y parametros), tipos simples
 lenient, y aborto con 'Analisis semantico fallido (validacion 2.4)' solo
 para errores 2.4 (flag propio hay_error_2_4, no el global).
 
-NOTA: el caso 'parametro con instanciacion valida' (p.ej. `x: Resultado<entero,texto>`)
-queda fuera de estos tests: la validacion 2.4 lo acepta, pero el CODEGEN nativo
-y el S1 emiten `Resultado_T x` (tipo no definido en C) — limitacion del codegen
-de ADTs (deuda D-2, expansion estatica), no de la validacion semantica 2.4.
+NOTA: el codegen de instanciaciones ADT (`x: Resultado<entero,texto>`) se
+cubre en los tests R16 (D-2): tras el fix, el generador (S1 y nativo) registra
+las instanciaciones de ADT genericos con monomorfizacion real (structs
+especializados, cero placeholders) y las firmas compilan rc=0.
 
 Requiere el bootstrap (synapse_stage*.exe); se salta si no esta disponible.
 """
@@ -807,9 +807,11 @@ def test_r12_conflicto_dos_mutables(stage, tmp_path):
 # el contador de aridad nativo contaba 1 argumento (falso positivo) y
 # es_tipo_conocido S1 devolvía False para todo ADT registrado (falsos
 # positivos en argumentos anidados). Tras R13: parseo balanceado + aridad
-# recursiva con paridad. La validación semántica del caso válido es limpia
-# (el codegen de ADTs anidados sigue siendo deuda D-2: 'Resultado_T' en C,
-# rc=5 — no es error semántico).
+# recursiva con paridad. La validación semántica del caso válido es limpia;
+# el CODEGEN de ADTs anidados se resuelve en R16 (D-2): split de argumentos
+# depth-aware + registro recursivo post-orden de instancias anidadas (S1
+# generator.py y scan nativo orquestador.syn) -> rc=0 con structs
+# especializados (tests R16).
 
 _PROG_R13_ANIDADO_VALIDO = '''#lang: es
 tipo Resultado<T, E> = ok(T) | err(E)
@@ -1110,3 +1112,91 @@ def test_r15_reasignacion_despues_lanzar(stage, tmp_path):
         f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
     assert "linea 9" in proc.stderr, (
         f"la linea del uso debe ser 9 (paridad S1):\n{proc.stderr[-1200:]}")
+
+
+# --- R16: codegen de ADTs anidados (D-2, Manual 2 §4.2 L279-280) ------------
+# Antes: el scan de monomorfización nativo (orquestador.syn D-2) registraba
+# solo tipos de firma con split NAIVE de argumentos (se detenía en el primer
+# '>') -> `Resultado<Resultado<entero,texto>,texto>` emitía el campo C
+# 'Resultado_T' (placeholder SIN typedef) -> gcc rc=5. El S1 (generator.py
+# _recolectar_instancias_adt) tampoco registraba la instancia interna
+# (split(',') naive -> 3 args != 2 params) y caía al fallback 'Resultado_T'.
+# Tras R16 (S1 + nativo): split de args depth-aware + registro recursivo
+# post-orden (la instancia interna se registra ANTES que el contenedor) +
+# mangle por-arg + orden de emisión por profundidad -> el caso válido compila
+# rc=0 con structs especializados y el C es idéntico entre S1 y nativo.
+
+_PROG_R16_ANIDADO_FIRMA = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear(r: Resultado<Resultado<entero,texto>,texto>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R16_ANIDADO_RETORNO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear() -> Resultado<Resultado<entero,texto>,texto>:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R16_TRIPLE_ANIDADO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear(r: Resultado<Resultado<Resultado<entero,texto>,texto>,texto>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+
+def test_r16_anidado_firma_compila(stage, tmp_path):
+    """R16 (D-2): ADT anidado en parámetro compila rc=0 con el generador
+    nativo (antes rc=5 por el placeholder 'Resultado_T' sin typedef)."""
+    proc = _compilar_con_stage(stage, _PROG_R16_ANIDADO_FIRMA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"ADT anidado deberia compilar rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r16_anidado_retorno_compila(stage, tmp_path):
+    """R16 (D-2): ADT anidado en RETORNO compila rc=0 (el scan de firmas
+    cubre retorno y parámetros, paridad S1 _recolectar_instancias_adt)."""
+    proc = _compilar_con_stage(stage, _PROG_R16_ANIDADO_RETORNO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"retorno ADT anidado deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+
+
+def test_r16_triple_anidado_compila(stage, tmp_path):
+    """R16 (D-2): anidamiento de 3 niveles (recursión post-orden de la cola
+    FIFO del scan nativo) compila rc=0."""
+    proc = _compilar_con_stage(stage, _PROG_R16_TRIPLE_ANIDADO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"triple anidado deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+
+
+def test_r16_c_structs_orden(stage, tmp_path):
+    """R16 (D-2): el C generado por el NATIVO para el ADT anidado contiene los
+    mismos nombres de struct que el S1 (Resultado_entero_texto + contenedor
+    con campo tipado), en el orden correcto (instancia interna primero)."""
+    proc = _compilar_con_stage(stage, _PROG_R16_ANIDADO_FIRMA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}: {proc.stderr[-1000:]}")
+    c_archivo = os.path.join(RAIZ, "synapse_unity.c")
+    if not os.path.isfile(c_archivo):
+        pytest.skip("synapse_unity.c no disponible")
+    with open(c_archivo, "r", encoding="utf-8", errors="replace") as f:
+        c = f.read()
+    i_interno = c.find("typedef struct Resultado_entero_texto")
+    i_cont = c.find("typedef struct Resultado_Resultado_entero_texto_texto")
+    assert i_interno >= 0 and i_cont >= 0, (
+        "el C del nativo no contiene ambos structs especializados")
+    assert i_interno < i_cont, (
+        "la instancia interna debe emitirse ANTES que el contenedor (orden C)")
+    assert "Resultado_entero_texto ok;" in c, (
+        "el campo del contenedor debe ser el struct interno tipado"
+        " (cero placeholder)")

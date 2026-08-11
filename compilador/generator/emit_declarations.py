@@ -247,7 +247,15 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
         # D-2 (monomorfización): emitir structs especializados por cada
         # instanciación concreta de este ADT genérico (Manual 2 §4.2 L279-280).
         # Campos T/E sustituidos por los tipos reales — cero void* (Opción A).
-        for (base, args), inst in sorted(ctx._instancias_adt.items()):
+        # D-2: ordenar por PROFUNDIDAD de anidamiento primero (las instancias
+        # internas `Resultado<entero,texto>` deben emitirse ANTES que el
+        # contenedor `Resultado<Resultado<entero,texto>,texto>` que las
+        # referencia como campo; el sort lexicográfico previo lo invertía).
+        def _prof_inst(kv):
+            return (sum(a.count('<') for a in kv[0][1]), kv[0][0], kv[0][1])
+
+        for (base, args), inst in sorted(ctx._instancias_adt.items(),
+                                         key=_prof_inst):
             if base != nodo.nombre:
                 continue
             partes_i = []
