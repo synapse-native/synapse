@@ -624,3 +624,60 @@ programas VÁLIDOS emitían un falso positivo «Ciclo de dependencia de lifetime
 bitácora, `MEMORIA_PROYECTO.md`).
 
 **HASH COMMIT: `a568600`** — rama `feature/fase2-nativa-hm`.
+
+---
+
+## 16. R13 — Tipos ADT anidados en firmas (Manual 2 §8.2) — RESUELTO (2026-08-11)
+
+**Deuda:** residual del checklist 2.4: «tipos anidados en el nativo (TVars de tipo
+en ADT anidado)» — el caso `A<B<C>,D>` anti-cuelga desde R2 pero NO se parseaba.
+
+**Causa raíz (hallazgo de la auditoría):** el bloqueador era un **bug de PARSEO
+compartido S1+nativo**, no solo del nativo. Los 4 parsers de tipos consumían
+hasta el PRIMER `>` sin profundidad:
+
+- `compilador/parser_base.py::_parsear_tipo_parametro` y el `tipo_retorno` de
+  `compilador/parser_declarations.py` (S1): el bucle `while ... not GREATER` salía
+  en el `>` interno → `Resultado<Resultado<entero,texto>,texto>` fallaba con
+  «Se esperaba COLON, se encontró COMMA».
+- `nucleo/parser.syn::parsear_tipo_compuesto` / `parsear_tipo_retorno` / campos
+  de constructor / alias (nativo): `mientras token_mirar != T_MAYOR` → rc=8
+  «Se esperaba ':' tras el tipo de retorno».
+
+**Dos bugs adicionales destapados al desbloquear el parseo:**
+
+1. **S1 `es_tipo_conocido`** (`compilador/tipos.py`): comparaba `len(args) !=
+   adt_parametros[nombre]` donde `adt_parametros[nombre]` es la LISTA de nombres
+   de parámetros (`['T','E']`) → `2 != ['T','E']` → devolvía `False` para TODO
+   ADT registrado → falsos positivos «no se puede usar 'Resultado<entero,texto>'
+   con 'tipo conocido'» en argumentos ADT anidados. Fix: soporta lista y conteo
+   entero (los tests unitarios usan `{'Resultado': 2}`).
+2. **Nativo `validar_tipo_instanciacion`** (`nucleo/analizador_semantico.syn`):
+   el contador `nargs` y el divisor de argumentos se detenían en el primer `>`
+   → falso «ADT 'Resultado' instanciado con 1 argumento(s)» en anidados. Fix:
+   consumo con profundidad (solo el `>` de nivel 0 cierra/divide).
+
+**Fix (paridad S1 `test_type_inference.py::test_adt_anidado` y Manual 2 §8.2):**
+consumo balanceado `<...>` en los 4 sitios S1+nativo (los tokens `<`/`>` se
+añaden explícitamente porque no llevan valor; en el nativo variables únicas por
+sitio para evitar redeclaración). El RHS de declaraciones del S1 (`_parsear_constructores`
+y alias) usa `_parsear_tipo_parametro` → cubierto por el mismo fix (sin asimetría).
+
+**Validación:** 7 probes de paridad — `Resultado<Resultado<entero,texto>,texto>`
+válido (param y retorno): parsea y valida sin falsos positivos en AMBOS (el
+codegen de ADTs anidados sigue siendo deuda D-2: `Resultado_T` en C, rc=5 — no
+es error semántico); aridad interna (`Resultado<entero>` dentro) con diagnóstico
+«se esperaban 2» en ambos; base desconocida anidada (`Resultados`) con «no
+definido» en ambos; TVar dentro de ADT (`Resultado<T,texto>`) con T desnudo en
+el retorno: ambos emiten diagnóstico (S1: incompatible+ambiguo; nativo: ambiguo
+— divergencia de mensaje documentada, no de presencia). Bootstrap **S2==S3
+(md5 `fab5a61a`)**, ruido 0; **41/41 HM PASS** (36+5); regresión **206 passed**
+(176 + `test_type_inference.py` 30). Revisión code-reviewer APROBADA (verificado:
+terminación del bucle S1 en EOF/NEWLINE/RPAREN/>-nivel-0, anti-cuelgue nativo
+con `T_FIN`, comas tras `>` las consume el caller, sin asimetría S1 en RHS de
+`tipo`; fix del type hint `es_tipo_conocido`). Residuales: codegen de ADTs
+anidados (D-2, expansión estática), TVar-en-ADT sin TVar desnudo (p4/p6: S1 los
+marca «tipo no conocido», el nativo es lenient — divergencia permisiva segura,
+portar el chequeo necesita contexto de tvars de la función).
+
+**HASH COMMIT: `ee7fbb1`** — rama `feature/fase2-nativa-hm`.

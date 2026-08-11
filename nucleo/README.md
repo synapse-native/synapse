@@ -297,6 +297,22 @@ columna 9)` reales**; bootstrap S1→S2→S3 con **S2==S3 byte-idénticos (md5
 en limpieza futura). El diagnóstico es observable pero no aborta (lenient por
 diseño, igual que R9/R11/R1).
 
+## ✅ Tipos ADT anidados en firmas (R13) — RESUELTO
+
+**Estado (2026-08-11):** residual 2.4 «tipos anidados (A<B<C>,D>)» CERRADO. El
+bloqueador era un bug de **parseo compartido S1+nativo**: los parsers de tipos
+consumían hasta el primer `>` sin profundidad (`Resultado<Resultado<entero,texto>,texto>`
+→ «Se esperaba COLON» en S1, rc=8 en el nativo). Fix de profundidad en los 4
+sitios (S1 `_parsear_tipo_parametro` + `tipo_retorno`; nativo
+`parsear_tipo_compuesto`/`parsear_tipo_retorno`/campos de constructor/alias).
+Destapó 2 bugs: S1 `es_tipo_conocido` comparaba `len(args)` contra la LISTA de
+parámetros → falsos positivos en argumentos anidados; nativo
+`validar_tipo_instanciacion` contaba 1 argumento (contador y divisor hasta el
+primer `>`). Validación: 7 probes de paridad, bootstrap S2==S3 (md5 `fab5a61a`),
+41/41 HM, regresión 206. Hash: `ee7fbb1` (§16 del reporte). Residuales: codegen
+de ADTs anidados (D-2, `Resultado_T` en C), TVar-en-ADT sin TVar desnudo (S1
+estricto, nativo lenient).
+
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.
