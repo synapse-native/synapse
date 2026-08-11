@@ -372,10 +372,25 @@ funcion parsear_primario(est: ParserEst) -> entero:
             r = 1
             primer_arg = 0
             ultimo_arg = 0
+            arg = 0
             mientras r == 1:
                 si token_mirar(est) == T_PAREN_DER:
                     romper
-                arg = parsear_expresion(est)
+                // R15: argumento transferido ->expr (Manual 4 S3.3, paridad S1
+                // parser_expressions.py _parsear_llamada: ARROW ->
+                // ArgumentoTransferido). El envio de ownership por lanzar
+                // invalida el origen; NODO_TRANSFERIDO lo conserva para que el
+                // analizador marque movido (solo dentro de SentenciaLanzar).
+                si token_mirar(est) == T_FLECHA:
+                    linea_tr = token_linea(est, est.posicion)
+                    col_tr = token_columna(est, est.posicion)
+                    token_avanzar(est)
+                    arg_expr = parsear_expresion(est)
+                    arg = parser_nuevo_nodo(est, NODO_TRANSFERIDO, linea_tr, col_tr)
+                    inseguro:
+                        asm("est->nodos[arg].hijo_izq = arg_expr")
+                sino:
+                    arg = parsear_expresion(est)
                 si arg != 0:
                     si primer_arg == 0:
                         primer_arg = arg

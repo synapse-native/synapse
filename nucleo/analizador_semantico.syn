@@ -663,6 +663,13 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
                 inseguro:
                     asm("{ char _mm[256]; snprintf(_mm,256,\"Uso ilegal de variable ya movida '%s' (E-501)\", nombre.datos); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_SEM_VAR_MOVIDA,idx,_msg); }")
         retornar
+    // R15: NODO_TRANSFERIDO (30) — argumento ->expr (paridad S1
+    // semantic_types.py L167-168: _inferir_tipo infiere el expr, que LEE la
+    // variable -> detecta uso de movida en doble transferencia). El MARCADO
+    // como movido ocurre solo en la rama NODO_LANZAR de analizar_sentencia.
+    si tipo == NODO_TRANSFERIDO:
+        analizar_expr(est, nodo_hijo_izq(est, idx))
+        retornar
     // NODO_PUNTERO (36): &x / &mut x
     si tipo == NODO_PUNTERO:
         es_mut = nodo_valor_int(est, idx)
@@ -1073,6 +1080,36 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                     asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[v].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[v])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; vnombre=_cs; } }")
                 si vnombre != "":
                     tabla_marcar_movido(est, vnombre)
+        retornar
+
+    // R15: SentenciaLanzar (18) — transferencia por argumento ->expr
+    // (Manual 4 S3.3, paridad S1 semantic_checker.py SentenciaLanzar
+    // L565-568: se analiza la llamada — lectura que detecta E-501 si el origen
+    // ya estaba movido — y luego se marcan movidos los ArgumentoTransferido
+    // con Identificador). NODO_TRANSFERIDO se parsea dentro de los argumentos
+    // (parser_expr.syn) y se aplana con expr en hijo_izq.
+    si tipo == NODO_LANZAR:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        llamada_t = nodo_expr(est, idx_nodo)
+        si llamada_t > 0:
+            arg_t = nodo_expr(est, llamada_t)
+            r3_t = 1
+            mientras r3_t == 1:
+                si arg_t <= 0:
+                    r3_t = 0
+                    romper
+                si nodo_tipo(est, arg_t) == NODO_TRANSFERIDO:
+                    hijo_t = nodo_hijo_izq(est, arg_t)
+                    si hijo_t > 0:
+                        ht = nodo_tipo(est, hijo_t)
+                        si ht == NODO_IDENTIFICADOR:
+                            t_nombre = ""
+                            inseguro:
+                                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo_t].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo_t])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; t_nombre=_cs; } }")
+                            si t_nombre != "":
+                                tabla_marcar_movido(est, t_nombre)
+                inseguro:
+                    asm("arg_t = est->nodos[arg_t].hermano")
         retornar
 
     // SentenciaRetornar - analizar expr para prestamos (Manual 4 S4.2)

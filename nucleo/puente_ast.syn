@@ -434,6 +434,15 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaLanzar\");")
             asm("  _p->llamada = (struct Nodo*)puente_nodo(hi);")
             asm("  r = (void*)_p; }")
+    // R15: argumento transferido ->expr (Manual 4 S3.3, paridad S1
+    // ast_nodes.ArgumentoTransferido). El puente convierte NODO_TRANSFERIDO
+    // del parser al nodo tipado que consume el flatten F8.
+    si t == NODO_TRANSFERIDO:
+        inseguro:
+            asm("{ struct ArgumentoTransferido* _p = (struct ArgumentoTransferido*)calloc(1, sizeof(struct ArgumentoTransferido));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ArgumentoTransferido\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
     si t == NODO_ESCUCHAR:
         inseguro:
             asm("{ struct SentenciaEscuchar* _p = (struct SentenciaEscuchar*)calloc(1, sizeof(struct SentenciaEscuchar));")

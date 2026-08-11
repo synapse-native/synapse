@@ -1001,3 +1001,112 @@ def test_r14_reasignacion_despues_move(stage, tmp_path):
                                str(tmp_path))
     assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
         f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+
+
+# --- R15: transferencia por argumento ->expr en lanzar (Manual 4 S3.3) ---
+_PROG_R15_LANZAR_VALIDO = '''#lang: es
+funcion foo(x: entero) -> nulo:
+    nulo
+
+funcion principal() -> nulo:
+    dato = 42
+    lanzar foo(->dato)
+    retornar
+'''
+
+_PROG_R15_USO_DESPUES_LANZAR = '''#lang: es
+funcion foo(x: entero) -> nulo:
+    nulo
+
+funcion principal() -> nulo:
+    dato = 42
+    lanzar foo(->dato)
+    x = dato
+    retornar
+'''
+
+_PROG_R15_LLAMADA_NORMAL_CON_FLECHA = '''#lang: es
+funcion foo(x: entero) -> nulo:
+    nulo
+
+funcion principal() -> nulo:
+    dato = 42
+    foo(->dato)
+    x = dato
+    retornar
+'''
+
+_PROG_R15_DOBLE_LANZAR = '''#lang: es
+funcion foo(x: entero) -> nulo:
+    nulo
+
+funcion principal() -> nulo:
+    dato = 42
+    lanzar foo(->dato)
+    lanzar foo(->dato)
+    retornar
+'''
+
+_PROG_R15_REASIGNACION_DESPUES_LANZAR = '''#lang: es
+funcion foo(x: entero) -> nulo:
+    nulo
+
+funcion principal() -> nulo:
+    dato = 42
+    lanzar foo(->dato)
+    dato = 7
+    x = dato
+    retornar
+'''
+
+
+def test_r15_lanzar_valido_compila(stage, tmp_path):
+    """R15: lanzar foo(->dato) sin uso posterior -> rc=0 sin diagnostico
+    (paridad S1 p1; el codegen nativo emite la llamada directa)."""
+    proc = _compilar_con_stage(stage, _PROG_R15_LANZAR_VALIDO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"lanzar valido deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}")
+    assert "Uso ilegal de variable ya movida" not in proc.stderr
+
+
+def test_r15_uso_despues_lanzar_falla(stage, tmp_path):
+    """R15: leer una variable tras transferirla con lanzar -> E-501 con linea
+    real (paridad S1 8:4, Manual 4 S3.3)."""
+    proc = _compilar_con_stage(stage, _PROG_R15_USO_DESPUES_LANZAR,
+                               str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "linea 8" in proc.stderr, (
+        f"la linea del uso debe ser 8 (paridad S1):\n{proc.stderr[-1200:]}")
+
+
+def test_r15_llamada_normal_con_flecha_no_marca(stage, tmp_path):
+    """R15: foo(->dato) en una llamada NORMAL no transfiere ownership (solo
+    lanzar lo hace, paridad S1 L565-568) -> rc=0 y la lectura posterior es
+    valida."""
+    proc = _compilar_con_stage(stage, _PROG_R15_LLAMADA_NORMAL_CON_FLECHA,
+                               str(tmp_path))
+    assert proc.returncode == 0, (
+        f"llamada normal deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Uso ilegal de variable ya movida" not in proc.stderr
+
+
+def test_r15_doble_lanzar_falla(stage, tmp_path):
+    """R15: el segundo lanzar lee la variable ya movida -> E-501 (el
+    analizador infiere el expr del ArgumentoTransferido antes de marcar)."""
+    proc = _compilar_con_stage(stage, _PROG_R15_DOBLE_LANZAR, str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+
+
+def test_r15_reasignacion_despues_lanzar(stage, tmp_path):
+    """R15: tras el lanzar, REASIGNAR no limpia el flag (paridad S1) -> E-501
+    en la lectura posterior."""
+    proc = _compilar_con_stage(stage, _PROG_R15_REASIGNACION_DESPUES_LANZAR,
+                               str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "linea 9" in proc.stderr, (
+        f"la linea del uso debe ser 9 (paridad S1):\n{proc.stderr[-1200:]}")
