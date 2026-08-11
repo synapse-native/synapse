@@ -863,10 +863,6 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         lexer_push_token(T_FLECHA, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                    si c == 60:
-                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), i + 1)
-                        asm("i = i + 2")
-                        siguiente
                 lexer_push_token(T_MENOS, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
@@ -898,6 +894,14 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 61:
                         lexer_push_token(T_MENOR_IGUAL, lexer_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                    // R14: '<-' es el envio de canal (paridad S1 lexer.py:326
+                    // '<-': ARROW_LEFT). Antes el lexer nativo solo producia
+                    // '-<' (orden invertido) -> 'ch <- dato' se parseaba como
+                    // 'ch < -dato' (OpBinaria) y el nodo 42 nunca nacía.
+                    si c == 45:
+                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
                 lexer_push_token_punt(T_MENOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)

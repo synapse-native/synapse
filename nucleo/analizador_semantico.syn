@@ -649,6 +649,20 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
     si idx <= 0:
         retornar
     tipo = nodo_tipo(est, idx)
+    // R14: NODO_IDENTIFICADOR (8) — use-after-move (Manual 4 §3.3, paridad S1
+    // semantic_types.py _inferir_tipo: tabla.esta_movido -> ERR_SEM_VAR_MOVIDA).
+    // Cualquier LECTURA de una variable marcada como movida por un envio de
+    // canal emite el diagnostico E-501. Las escrituras (NODO_ASIGNACION) no se
+    // chequean (paridad S1: la reasignacion no limpia el flag).
+    si tipo == NODO_IDENTIFICADOR:
+        nombre = ""
+        inseguro:
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+        si nombre != "":
+            si tabla_esta_movido(est, nombre):
+                inseguro:
+                    asm("{ char _mm[256]; snprintf(_mm,256,\"Uso ilegal de variable ya movida '%s' (E-501)\", nombre.datos); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_SEM_VAR_MOVIDA,idx,_msg); }")
+        retornar
     // NODO_PUNTERO (36): &x / &mut x
     si tipo == NODO_PUNTERO:
         es_mut = nodo_valor_int(est, idx)
@@ -1042,6 +1056,23 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
     // LogLlamada
     si tipo == NODO_LOG:
+        retornar
+
+    // R14: SentenciaEnviarCanal (42) — use-after-move (Manual 4 §3.3, paridad
+    // S1 semantic_checker.py SentenciaEnviarCanal): se analiza el VALOR (si era
+    // un identificador ya movido -> ERR_SEM_VAR_MOVIDA, p. ej. doble envio) y
+    // luego se MARCA como movido (el origen queda invalido).
+    si tipo == NODO_ENVIAR_CANAL:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        v = nodo_expr(est, idx_nodo)
+        si v > 0:
+            vt = nodo_tipo(est, v)
+            si vt == NODO_IDENTIFICADOR:
+                vnombre = ""
+                inseguro:
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[v].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[v])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; vnombre=_cs; } }")
+                si vnombre != "":
+                    tabla_marcar_movido(est, vnombre)
         retornar
 
     // SentenciaRetornar - analizar expr para prestamos (Manual 4 S4.2)

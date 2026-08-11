@@ -903,3 +903,101 @@ def test_r13_tvar_en_adt_emite_diagnostico(stage, tmp_path):
     assert "Error semantico" in proc.stderr, (
         f"diagnostico AMBIGUOUS ausente:\n{proc.stderr[-1200:]}")
     assert "ambiguo" in proc.stderr
+
+
+# ---------------------------------------------------------------------------
+# R14: use-after-move por envio de canal (Manual 4 §3.3) — paridad S1
+# semantic_checker.py SentenciaEnviarCanal (tabla.esta_movido -> E-501).
+# El lexer nativo tokenizaba '-<' (orden invertido); el fix produce '<-' y
+# el nodo 42 nace: flatten F8 + analizador NODO_ENVIAR_CANAL marca movido y
+# NODO_IDENTIFICADOR emite ERR_SEM_VAR_MOVIDA en la lectura posterior.
+# ---------------------------------------------------------------------------
+
+_PROG_R14_ENVIO_VALIDO = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    ch <- dato
+    retornar
+'''
+
+_PROG_R14_USO_DESPUES_MOVE = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    ch <- dato
+    x = dato
+    retornar
+'''
+
+_PROG_R14_DOBLE_ENVIO = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    ch <- dato
+    ch <- dato
+    retornar
+'''
+
+_PROG_R14_USO_EN_RETORNO = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    ch <- dato
+    retornar dato
+'''
+
+_PROG_R14_REASIGNACION_DESPUES_MOVE = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    ch <- dato
+    dato = 7
+    x = dato
+    retornar
+'''
+
+
+def test_r14_envio_valido_compila(stage, tmp_path):
+    """R14: envio de canal sin uso posterior -> rc=0 sin diagnostico (paridad
+    S1 p1; el codegen nativo de SentenciaEnviarCanal emite canal_enviar)."""
+    proc = _compilar_con_stage(stage, _PROG_R14_ENVIO_VALIDO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"envio valido deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stdout[-1500:]}\n{proc.stderr[-1500:]}")
+    assert "Uso ilegal de variable ya movida" not in proc.stderr
+
+
+def test_r14_uso_despues_move_falla(stage, tmp_path):
+    """R14: leer una variable tras enviarla por canal -> ERR_SEM_VAR_MOVIDA
+    (E-501) con linea real (paridad S1 6:4, Manual 4 §3.3)."""
+    proc = _compilar_con_stage(stage, _PROG_R14_USO_DESPUES_MOVE, str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "linea 6" in proc.stderr, (
+        f"la linea del uso debe ser 6 (paridad S1):\n{proc.stderr[-1200:]}")
+
+
+def test_r14_doble_envio_falla(stage, tmp_path):
+    """R14: el segundo envio lee la variable ya movida -> E-501 (el analizador
+    analiza el valor del envio antes de marcar movido)."""
+    proc = _compilar_con_stage(stage, _PROG_R14_DOBLE_ENVIO, str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+
+
+def test_r14_uso_en_retorno_falla(stage, tmp_path):
+    """R14: usar la variable movida en el retorno -> E-501 (paridad S1 p5:
+    el retorno analiza la expresion, que lee el identificador movido)."""
+    proc = _compilar_con_stage(stage, _PROG_R14_USO_EN_RETORNO, str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+
+
+def test_r14_reasignacion_despues_move(stage, tmp_path):
+    """R14: tras el envio, REASIGNAR no limpia el flag (paridad S1: el error
+    persiste en la lectura posterior) -> E-501 en la lectura."""
+    proc = _compilar_con_stage(stage, _PROG_R14_REASIGNACION_DESPUES_MOVE,
+                               str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")

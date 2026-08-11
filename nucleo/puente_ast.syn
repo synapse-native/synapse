@@ -197,6 +197,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("{ struct Identificador* _p = (struct Identificador*)calloc(1, sizeof(struct Identificador));")
             asm("  _p->tipo = puente_cs_str((void*)\"Identificador\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  // R14: linea/columna reales (diagnostico de use-after-move con paridad S1)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_NUMERO:
         inseguro:
@@ -448,6 +450,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEnviarCanal\");")
             asm("  _p->canal = (struct Nodo*)_cid;")
             asm("  _p->valor = (struct Nodo*)puente_nodo(hd);")
+            asm("  // R14: linea/columna reales (paridad S1 diagnostico 6:4, no 0:0)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_RECIBIR_CANAL:
         inseguro:

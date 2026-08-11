@@ -24,6 +24,8 @@ estructura Programa:
 estructura Identificador:
     tipo: texto
     nombre: texto
+    linea: entero
+    columna: entero
 
 estructura LiteralNumero:
     tipo: texto
@@ -226,6 +228,8 @@ estructura SentenciaEnviarCanal:
     tipo: texto
     canal: Nodo
     valor: Nodo
+    linea: entero
+    columna: entero
 
 estructura ExprRecibirCanal:
     tipo: texto
