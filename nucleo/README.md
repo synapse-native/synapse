@@ -338,6 +338,18 @@ Hash: `38f8100` (§17 del reporte). Residuales: boxeo de primitivos en
 `canal_enviar` (`_synapse_box_int/float` del S1 — deuda D-4), ambigüedad
 léxica `x<-5` (compartida con S1).
 
+
+## ✅ Transferencia de ownership por argumento `->expr` en `lanzar` (R15) — RESUELTO
+
+Manual 4 §3.3 (paridad S1 `semantic_checker.py` L565-568). El S1 marca movido los
+`ArgumentoTransferido` (`->expr`) de `lanzar`; el nativo tenía `NODO_TRANSFERIDO`=30 definido
+sin uso. Fix en 5 eslabones: parser (`T_FLECHA` → `NODO_TRANSFERIDO` con expr en `hijo_izq`),
+puente (`ArgumentoTransferido(expr)`), flatten (`_f8_tipo` mapea 30/18 + ramas: llamada en
+`slot[6]`), analizador (`NODO_LANZAR` marca movido los transferidos; `NODO_TRANSFERIDO` en
+`analizar_expr` lee el expr → E-501 en doble transferencia; solo `lanzar` marca, no llamadas
+normales), generador (`SentenciaLanzar` emite la llamada directa — thread real del S1 = deuda
+D-4; `ArgumentoTransferido` en `_oo_expr_a_c`). Validado: 5 probes de paridad, bootstrap S2==S3
+(md5 `31cd1a85`), **51/51 HM** (46+5 R15), regresión 206.
 ## Arquitectura
 
 - `principal.syn` — orquestador: `tokenizar → parsear → (F8) analizar → generar → GCC`.

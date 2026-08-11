@@ -733,3 +733,44 @@ _float` del S1; el nativo emite `(void*)(valor)` — deuda D-4); ambigüedad
 léxica `x<-5` (compartida con el S1, inherente al dialecto).
 
 **HASH COMMIT: `38f8100`** — rama `feature/fase2-nativa-hm`.
+---
+
+## 18. R15 — Transferencia de ownership por argumento `->expr` en `lanzar` (Manual 4 §3.3)
+
+**Deuda:** el borrow checker S1 marca movido en 2 sitios: envío de canal (R14, §17) y los
+`ArgumentoTransferido` (`->expr`) de `lanzar` (S1 `semantic_checker.py` L565-568: se infiere la
+llamada y luego `tabla.marcar_movido(nombre)`). El nativo tenía `NODO_TRANSFERIDO=30` **definido
+sin ningún uso** — el parser nunca producía `ArgumentoTransferido` y el cableado estaba INERTE.
+
+**Causa raíz (5 eslabones):**
+1. **parser** (`parser_expr.syn` `parsear_primario`): el bucle de argumentos de la llamada no
+   detectaba `T_FLECHA` (`->`) antes de un argumento → `lanzar foo(->x)` perdía la transferencia.
+2. **puente** (`puente_ast.syn`): sin rama `NODO_TRANSFERIDO` → `ArgumentoTransferido`.
+3. **flatten F8** (`principal.syn`): `_f8_tipo` sin mapeo `ArgumentoTransferido`=30 ni
+   `SentenciaLanzar`=18, y sin ramas de aplanado.
+4. **analizador** (`analizador_semantico.syn`): sin rama `NODO_LANZAR` (no marcaba movido) ni
+   `NODO_TRANSFERIDO` en `analizar_expr` (paridad S1 `semantic_types.py` L167-168: infiere el expr
+   → detecta E-501 en doble transferencia).
+5. **generador** (`nodos_flujo.syn` + `expr_eval.syn` + `generator.syn`): sin rama `SentenciaLanzar`
+   (error fatal) y sin rama `ArgumentoTransferido` en `_oo_expr_a_c`.
+
+**Fix (paridad S1):** parser (`T_FLECHA` → `NODO_TRANSFERIDO` con expr en `hijo_izq`; `arg=0`
+pre-inicializado por el definite-assignment del S1); puente (`ArgumentoTransferido(expr=hi)`);
+flatten (mapeos + ramas: expr→`hijo_izq`, llamada→`slot[6]`); analizador (rama `NODO_LANZAR`:
+analiza la llamada — lectura que detecta E-501 en doble transferencia — y luego marca movido los
+`ArgumentoTransferido` con Identificador; **solo `lanzar` marca, las llamadas normales no**, paridad);
+generador (rama `SentenciaLanzar` emite la llamada directa — el thread real del S1 `visitar_lanzar`
+requiere runtime de hilos no portado, deuda D-4; rama `ArgumentoTransferido` en `_oo_expr_a_c` —
+hallazgo del code-reviewer: sin ella `foo(->dato)` normal emitía `foo(0)` por el default L342).
+
+**Validación:** 5 probes de paridad (lanzar válido rc0; uso-despues-move/doble-lanzar/reasignación →
+E-501 con línea real; llamada normal con `->` sin marca — paridad); bootstrap S2==S3
+**md5 31cd1a85** ruido 0; **51/51 HM** (46+5 R15); regresión 206.
+
+**Residuales:** codegen de `lanzar` como llamada directa sin thread (deuda D-4); divergencia
+potencial genérica+transferencia (`validar_llamada_generica` ignora el tipo de los `NODO_TRANSFERIDO`
+→ `lanzar foo(->x)` con `foo<T>` y T solo inferible desde x podría dar `ERR_SEM_TYPE_AMBIGUOUS`
+espurio — no cubierto por probes); el nativo no reporta "variable no declarada" en lecturas
+(`lanzar foo(->no_existe)` — divergencia preexistente heredada de `analizar_expr`).
+
+**HASH COMMIT: `762cf81`** — rama `feature/fase2-nativa-hm`.
