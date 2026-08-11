@@ -74909,7 +74909,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// scan de firmas: retornos y parametros de funciones"
+                  "instruccion": "// R17: scan de tipos instanciados Base<A,B> en TODO el programa (paridad"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// pre-pass generator.py _recolectar_instancias_adt): firmas (retorno+params),"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// let x: Base<A,B> locales (walk recursivo si/mientras/para/inseguro/coincidir),"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// campos de estructura y externos. Cola FIFO unica (R16) con post-orden."
                 }
               },
               {
@@ -74923,7 +74944,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "while (_d2fd && _G_native_adt_inst_count < 64) {"
+                  "instruccion": "char _d2all[256][128]; int _d2nall = 0; int _d2w = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "while (_d2fd && _G_native_adt_inst_count < 64 && _d2nall < 256) {"
                 }
               },
               {
@@ -74937,105 +74965,56 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if (_d2fn && _d2fn->tipo.datos && strcmp(_d2fn->tipo.datos, \"DefinicionFuncion\") == 0) {"
+                  "instruccion": "    if (_d2fn && _d2fn->tipo.datos) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        struct DefinicionFuncion* _d2f = (struct DefinicionFuncion*)_d2fn;"
+                  "instruccion": "        const char* _d2tcf = _d2fn->tipo.datos;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        // R11: escanear retorno Y parametros (antes solo retorno: un ADT"
+                  "instruccion": "        if (strcmp(_d2tcf, \"DefinicionFuncion\") == 0) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        // como PARAMETRO no se registraba -> traducir_tipo_c emitia el"
+                  "instruccion": "            struct DefinicionFuncion* _d2f = (struct DefinicionFuncion*)_d2fn;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        // placeholder 'Resultado_T' y gcc fallaba). Paridad pre-pass"
+                  "instruccion": "            // R11: retorno Y parametros (un ADT como parametro no se"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        // generator.py _recolectar_instancias_adt que tambien cubre params."
+                  "instruccion": "            // registraba -> placeholder \"Resultado_T\" y gcc fallaba)."
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        char _d2tipos[8][128]; int _d2nt = 0; int _d2w = 0;"
+                  "instruccion": "            if (_d2f->tipo_retorno.datos && strchr(_d2f->tipo_retorno.datos, '<')) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if (_d2f->tipo_retorno.datos && strchr(_d2f->tipo_retorno.datos, '<') && _d2nt < 8) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            _d2w = 0; for (int _d2c = 0; _d2f->tipo_retorno.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2f->tipo_retorno.datos[_d2c] != ' ') _d2tipos[_d2nt][_d2w++] = _d2f->tipo_retorno.datos[_d2c]; } _d2tipos[_d2nt][_d2w] = 0; _d2nt++;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        struct ListaParametro* _d2plp = _d2f->parametros;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        while (_d2plp && _d2nt < 8) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            struct Parametro* _d2par = (struct Parametro*)_d2plp->cabeza;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            if (_d2par && _d2par->tipo_param.datos && strchr(_d2par->tipo_param.datos, '<')) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                _d2w = 0; for (int _d2c = 0; _d2par->tipo_param.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2par->tipo_param.datos[_d2c] != ' ') _d2tipos[_d2nt][_d2w++] = _d2par->tipo_param.datos[_d2c]; } _d2tipos[_d2nt][_d2w] = 0; _d2nt++;"
+                  "instruccion": "                _d2w = 0; for (int _d2c = 0; _d2f->tipo_retorno.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2f->tipo_retorno.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2f->tipo_retorno.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
                 }
               },
               {
@@ -75049,7 +75028,315 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            _d2plp = _d2plp->cola;"
+                  "instruccion": "            struct ListaParametro* _d2plp = _d2f->parametros;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while (_d2plp && _d2nall < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                struct Parametro* _d2par = (struct Parametro*)_d2plp->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_d2par && _d2par->tipo_param.datos && strchr(_d2par->tipo_param.datos, '<')) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _d2w = 0; for (int _d2c = 0; _d2par->tipo_param.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2par->tipo_param.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2par->tipo_param.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _d2plp = _d2plp->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            // R17: `let x: Base<A,B>` del cuerpo (walk FIFO recursivo)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct Nodo* _d2ws[4096]; int _d2wh = 0; int _d2wt = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct ListaNodo* _d2b0 = _d2f->cuerpo;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while (_d2b0) { if (_d2b0->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2b0->cabeza; } _d2b0 = _d2b0->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while (_d2wh < _d2wt && _d2nall < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                struct Nodo* _d2wn = _d2ws[_d2wh++];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (!_d2wn || !_d2wn->tipo.datos) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                const char* _d2wt2 = _d2wn->tipo.datos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"DeclaracionVariable\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct DeclaracionVariable* _d2dv = (struct DeclaracionVariable*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_d2dv->tipo_param.datos && strchr(_d2dv->tipo_param.datos, '<')) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        _d2w = 0; for (int _d2c = 0; _d2dv->tipo_param.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2dv->tipo_param.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2dv->tipo_param.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"SentenciaSi\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct SentenciaSi* _d2si = (struct SentenciaSi*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ListaNodo* _d2l1 = _d2si->cuerpo; while (_d2l1) { if (_d2l1->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2l1->cabeza; } _d2l1 = _d2l1->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ListaNodo* _d2l2 = _d2si->cuerpo_sino; while (_d2l2) { if (_d2l2->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2l2->cabeza; } _d2l2 = _d2l2->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"SentenciaMientras\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct SentenciaMientras* _d2wm = (struct SentenciaMientras*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ListaNodo* _d2l3 = _d2wm->cuerpo; while (_d2l3) { if (_d2l3->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2l3->cabeza; } _d2l3 = _d2l3->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"BloqueInseguro\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct BloqueInseguro* _d2bi = (struct BloqueInseguro*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ListaNodo* _d2l4 = _d2bi->cuerpo; while (_d2l4) { if (_d2l4->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2l4->cabeza; } _d2l4 = _d2l4->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"SentenciaPara\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct SentenciaPara* _d2pa = (struct SentenciaPara*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_d2pa->cuerpo && _d2wt < 4096) { _d2ws[_d2wt++] = _d2pa->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strcmp(_d2wt2, \"NodoCoincidir\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct NodoCoincidir* _d2mc = (struct NodoCoincidir*)_d2wn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct ListaNodo* _d2cl = _d2mc->casos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    while (_d2cl) { struct NodoCaso* _d2ca = (struct NodoCaso*)_d2cl->cabeza; if (_d2ca && _d2ca->cuerpo) { struct ListaNodo* _d2bl = _d2ca->cuerpo; while (_d2bl) { if (_d2bl->cabeza && _d2wt < 4096) { _d2ws[_d2wt++] = _d2bl->cabeza; } _d2bl = _d2bl->cola; } } _d2cl = _d2cl->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
                 }
               },
               {
@@ -75063,28 +75350,70 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        // D-2 (R16): cola FIFO de tipos pendientes (firma + anidadas)"
+                  "instruccion": "        else if (strcmp(_d2tcf, \"DefinicionEstructura\") == 0) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        char _d2pend[64][128]; int _d2npend = 0;"
+                  "instruccion": "            struct DefinicionEstructura* _d2e = (struct DefinicionEstructura*)_d2fn;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        for (int _d2t = 0; _d2t < _d2nt && _d2npend < 64; _d2t++) {"
+                  "instruccion": "            struct ListaParametro* _d2fl = _d2e->campos;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            strncpy(_d2pend[_d2npend], _d2tipos[_d2t], 127); _d2pend[_d2npend][127] = 0; _d2npend++;"
+                  "instruccion": "            while (_d2fl && _d2nall < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                struct Parametro* _d2cp = (struct Parametro*)_d2fl->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_d2cp && _d2cp->tipo_param.datos && strchr(_d2cp->tipo_param.datos, '<')) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _d2w = 0; for (int _d2c = 0; _d2cp->tipo_param.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2cp->tipo_param.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2cp->tipo_param.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _d2fl = _d2fl->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
                 }
               },
               {
@@ -75092,6 +75421,167 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        else if (strcmp(_d2tcf, \"DeclaracionExterna\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct DeclaracionExterna* _d2x = (struct DeclaracionExterna*)_d2fn;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_d2x->tipo_retorno.datos && strchr(_d2x->tipo_retorno.datos, '<')) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _d2w = 0; for (int _d2c = 0; _d2x->tipo_retorno.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2x->tipo_retorno.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2x->tipo_retorno.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct ListaParametro* _d2xp = _d2x->parametros;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while (_d2xp && _d2nall < 256) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                struct Parametro* _d2xpa = (struct Parametro*)_d2xp->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_d2xpa && _d2xpa->tipo_param.datos && strchr(_d2xpa->tipo_param.datos, '<')) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _d2w = 0; for (int _d2c = 0; _d2xpa->tipo_param.datos[_d2c] && _d2w < 120; _d2c++) { if (_d2xpa->tipo_param.datos[_d2c] != ' ') _d2all[_d2nall][_d2w++] = _d2xpa->tipo_param.datos[_d2c]; } _d2all[_d2nall][_d2w] = 0; _d2nall++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _d2xp = _d2xp->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _d2fd = _d2fd->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// D-2 (R16): cola FIFO unica de tipos pendientes — post-orden: las"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// dependencias anidadas se encolan antes que el contenedor."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "char _d2pend[128][128]; int _d2npend = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _d2t = 0; _d2t < _d2nall && _d2npend < 128; _d2t++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncpy(_d2pend[_d2npend], _d2all[_d2t], 127); _d2pend[_d2npend][127] = 0; _d2npend++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
                 }
               },
               {
@@ -75427,7 +75917,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                for (int _d2a = 0; _d2a < _d2na && _d2npend < 60; _d2a++) {"
+                  "instruccion": "                for (int _d2a = 0; _d2a < _d2na && _d2npend < 124; _d2a++) {"
                 }
               },
               {
@@ -75497,7 +75987,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if (_d2npend < 60) { strncpy(_d2pend[_d2npend], _d2src, 127); _d2pend[_d2npend][127] = 0; _d2npend++; }"
+                  "instruccion": "                if (_d2npend < 124) { strncpy(_d2pend[_d2npend], _d2src, 127); _d2pend[_d2npend][127] = 0; _d2npend++; }"
                 }
               },
               {
@@ -75735,6 +76225,34 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "                // R18 (revision): campos de tipo struct por PUNTERO (paridad S1"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // campos_pointer) — el pre-bloque de typedefs va ANTES de la"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // definicion del struct; por valor daba 'field has incomplete type'."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (strncmp(_gen_tmp_buf, \"struct \", 7) == 0) { strcat(_gen_tmp_buf, \"*\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "                strncpy(_G_native_adt_inst_fields_c[_d2i][_d2fi], _gen_tmp_buf, 63); _G_native_adt_inst_fields_c[_d2i][_d2fi][63] = 0;"
                 }
               },
@@ -75770,6 +76288,167 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "fprintf(stderr, \"[Orquestador] D-2: %d instanciaciones de ADT registradas\\n\", _G_native_adt_inst_count); fflush(stderr);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// R17: typedefs de TODAS las instanciaciones ANTES del recorrido"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// top-level (los structs de usuario se emiten en orden alfabetico;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// un campo que referencia una instancia emitida en la visita de"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// DeclaracionTipo, despues, rompia el C). El orden del registro es"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// post-orden (inner primero) -> anidados y cross-base correctos."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern char _G_native_adt_inst_base[64][64]; extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _d2e = 0; _d2e < _G_native_adt_inst_count; _d2e++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _d2h[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_d2h, 4096, \"typedef struct %s { int64_t tag; union {\", _G_native_adt_inst_c[_d2e]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    gen_emitir_str(est, _d2h);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _d2c0 = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0) _d2c0++; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_d2c0 > 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _d2order[8]; int _d2no = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        for (int _d2ti = 0; _d2ti < 8 && _d2no < _d2c0; _d2ti++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _G_native_adt_inst_base[_d2e]) == 0 && _G_native_adt_ctrs_tag[_d2ci] == _d2ti) { _d2order[_d2no++] = _d2ci; break; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        for (int _d2k = 0; _d2k < _d2no && _d2k < _G_native_adt_inst_nfields[_d2e] && _d2k < 8; _d2k++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _d2fld[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_d2fld, 4096, \" %s %s;\", _G_native_adt_inst_fields_c[_d2e][_d2k], _G_native_adt_ctrs[_d2order[_d2k]]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            gen_emitir_str(est, _d2fld);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    }"
                 }
               },
@@ -75777,7 +76456,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    _d2fd = _d2fd->cola;"
+                  "instruccion": "    if (_G_native_adt_inst_nfields[_d2e] == 0) { gen_emitir_str(est, \" int _unidad;\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _d2cl[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_d2cl, 4096, \" } dato; } %s;\", _G_native_adt_inst_c[_d2e]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    gen_emitir_str(est, _d2cl);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    gen_emitir_str(est, \"\");"
                 }
               },
               {
@@ -75785,13 +76492,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "}"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "fprintf(stderr, \"[Orquestador] D-2: %d instanciaciones de ADT registradas\\n\", _G_native_adt_inst_count); fflush(stderr);"
                 }
               }
             ]
@@ -79835,217 +80535,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            // D-2 (monomorfizacion): emitir structs especializados por cada"
+                  "instruccion": "            // R17: los typedefs de instanciaciones se emiten en el"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            // instanciacion concreta de este ADT generico (Manual 2 §4.2"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            // L279-280). Campos T/E sustituidos — cero void* (Opcion A)."
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            extern char _G_native_adt_inst_base[64][64]; extern char _G_native_adt_inst_c[64][64]; extern char _G_native_adt_inst_fields_c[64][8][64]; extern int _G_native_adt_inst_nfields[64]; extern int _G_native_adt_inst_count;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            for (int _d2e = 0; _d2e < _G_native_adt_inst_count; _d2e++) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if (strcmp(_G_native_adt_inst_base[_d2e], _dtx->nombre.datos) != 0) continue;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                char _d2h[4096];"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_d2h, 4096, \"typedef struct %s { int64_t tag; union {\", _G_native_adt_inst_c[_d2e]);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                gen_emitir_str(est, _d2h);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                int _d2f = 0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                // reconstruir nombres de ctr para este ADT (orden por tag)"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                int _d2c0 = 0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _dtx->nombre.datos) == 0) _d2c0++; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if (_d2c0 > 0) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    // ordenar ctres por tag para mapear campos"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    int _d2order[8]; int _d2no = 0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    for (int _d2ti = 0; _d2ti < 8 && _d2no < _d2c0; _d2ti++) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        for (int _d2ci = 0; _d2ci < _G_native_adt_ctrs_count; _d2ci++) { if (strcmp(_G_native_adt_ctrs_adt[_d2ci], _dtx->nombre.datos) == 0 && _G_native_adt_ctrs_tag[_d2ci] == _d2ti) { _d2order[_d2no++] = _d2ci; break; } }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    for (int _d2k = 0; _d2k < _d2no && _d2k < _G_native_adt_inst_nfields[_d2e] && _d2k < 8; _d2k++) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        char _d2fld[4096];"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        snprintf(_d2fld, 4096, \" %s %s;\", _G_native_adt_inst_fields_c[_d2e][_d2k], _G_native_adt_ctrs[_d2order[_d2k]]);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                        gen_emitir_str(est, _d2fld);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                if (_G_native_adt_inst_nfields[_d2e] == 0) { gen_emitir_str(est, \" int _unidad;\"); }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                char _d2cl[4096];"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_d2cl, 4096, \" } dato; } %s;\", _G_native_adt_inst_c[_d2e]);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                gen_emitir_str(est, _d2cl);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "                gen_emitir_str(est, \"\");"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "            }"
+                  "instruccion": "            // PRE-BLOQUE (antes del recorrido top-level)."
                 }
               },
               {

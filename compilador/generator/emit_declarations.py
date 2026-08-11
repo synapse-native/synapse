@@ -214,6 +214,43 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
 # Type declaration (Manual 2 §2 declaracion_tipo / §4.2)
 # ================================================================
 
+def _emitir_typedefs_instancias(ctx: GeneratorContext):
+    """R17 (D-2): emite los typedefs de TODAS las instanciaciones de ADT
+    genéricos en un pre-bloque ANTES de estructuras/funciones.
+
+    Antes se emitían dentro de visitar_declaracion_tipo (por base, en el
+    punto alfabético del ADT genérico) — un campo de estructura que
+    referencia una instancia emitida después rompía el C (`Resultado_T` /
+    unknown type). Al emitirlas primero, ordenadas por PROFUNDIDAD de
+    anidamiento (las internas `Resultado<entero,texto>` antes que el
+    contenedor anidado que las referencia como campo), cualquier
+    struct/función las ve ya resueltas. Paridad con el scan nativo
+    (orquestador.syn, registro post-orden + pre-bloque).
+    """
+    if not ctx._instancias_adt:
+        return
+
+    def _prof_inst(kv):
+        return (sum(a.count('<') for a in kv[0][1]), kv[0][0], kv[0][1])
+
+    for (base, args), inst in sorted(ctx._instancias_adt.items(),
+                                     key=_prof_inst):
+        partes_i = []
+        for ctor, t_syn in inst['campos']:
+            t_c = ctx.traducir_tipo_c(t_syn)
+            if t_c.startswith('struct '):
+                t_c += '*'
+            partes_i.append(f"{t_c} {ctor};")
+        if not partes_i:
+            partes_i.append("int _unidad;")
+        td_i = (f"typedef struct {inst['nombre_c']} {{ int64_t tag; "
+                f"union {{ {' '.join(partes_i)} }} dato; }} {inst['nombre_c']};")
+        if td_i not in ctx._emitted_typedefs:
+            ctx._emitted_typedefs.add(td_i)
+            ctx.write_line(td_i)
+            ctx.write_line("")
+
+
 def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
     """F1.2: emite el typedef de una declaración de tipo.
     - Alias simple (`tipo X = entero`): `typedef <c> X;`
@@ -244,34 +281,10 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             ctx._emitted_typedefs.add(td)
             ctx.write_line(td)
             ctx.write_line("")
-        # D-2 (monomorfización): emitir structs especializados por cada
-        # instanciación concreta de este ADT genérico (Manual 2 §4.2 L279-280).
-        # Campos T/E sustituidos por los tipos reales — cero void* (Opción A).
-        # D-2: ordenar por PROFUNDIDAD de anidamiento primero (las instancias
-        # internas `Resultado<entero,texto>` deben emitirse ANTES que el
-        # contenedor `Resultado<Resultado<entero,texto>,texto>` que las
-        # referencia como campo; el sort lexicográfico previo lo invertía).
-        def _prof_inst(kv):
-            return (sum(a.count('<') for a in kv[0][1]), kv[0][0], kv[0][1])
-
-        for (base, args), inst in sorted(ctx._instancias_adt.items(),
-                                         key=_prof_inst):
-            if base != nodo.nombre:
-                continue
-            partes_i = []
-            for ctor, t_syn in inst['campos']:
-                t_c = ctx.traducir_tipo_c(t_syn)
-                if t_c.startswith('struct '):
-                    t_c += '*'
-                partes_i.append(f"{t_c} {ctor};")
-            if not partes_i:
-                partes_i.append("int _unidad;")
-            td_i = (f"typedef struct {inst['nombre_c']} {{ int64_t tag; "
-                    f"union {{ {' '.join(partes_i)} }} dato; }} {inst['nombre_c']};")
-            if td_i not in ctx._emitted_typedefs:
-                ctx._emitted_typedefs.add(td_i)
-                ctx.write_line(td_i)
-                ctx.write_line("")
+        # R17 (D-2): los typedefs de instanciaciones `Base<A,B>` se emiten en
+        # un PRE-BLOQUE (ver _emitir_typedefs_instancias) ANTES de las
+        # estructuras: un campo de estructura que referencia una instancia
+        # emitida aquí (orden alfabético del ADT genérico) rompía el C.
     elif nodo.tipo_base:
         td = f"typedef {ctx.traducir_tipo_c(nodo.tipo_base)} {nodo.nombre};"
         if td not in ctx._emitted_typedefs:

@@ -8,7 +8,7 @@ from compilador.ast_nodes import (
     SentenciaSi, SentenciaMientras, SentenciaPara,
     NodoCoincidir, NodoCaso,
 )
-from .context import GeneratorContext
+from .context import GeneratorContext, _dividir_args_tipo
 from .emit_expressions import expr_a_c, tipo_de_expr
 
 
@@ -116,10 +116,16 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
         ctx.push_scope()
         if "(" in patron and ")" in patron:
             var_name = patron.split("(")[1].rstrip(")")
-            # Look up field type + actual union field name from ADT struct
-            bound_type = 'int'  # fallback
-            campo_dato = 'valor'  # default fallback field name
-            adt_name = tipo_syn.replace("struct ", "") if tipo_syn.startswith("struct ") else ""
+            # R17: el miembro del union es el nombre del CONSTRUCTOR del tag
+            # (ok/err/algun) y el tipo ligado se resuelve con la instancia
+            # (campos sustituidos) o el ADT genérico. Paridad con el codegen
+            # nativo (nodos_flujo.syn NodoCoincidir: `.dato.<tag>`).
+            bound_type = 'int64_t'  # fallback
+            campo_dato = 'valor'  # fallback (solo si no hay campos resolubles)
+            # FIX R17: el ternario previo devolvía '' cuando tipo_syn no
+            # empezaba con 'struct ' (todos los tipos Synapse) -> lookup
+            # muerto -> `.dato.valor` en C inválido para todo match sobre ADT.
+            adt_name = tipo_syn.replace("struct ", "")
             # D-2: normalizar la base de una instanciación (Resultado<entero,texto>
             # -> Resultado) para localizar el ADT genérico en _estructuras y usar
             # los tipos concretos sustituidos (monomorfización).
@@ -127,19 +133,25 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
             inst_campos = None
             if '<' in adt_name and adt_name.endswith('>'):
                 _b, _, _r = adt_name.partition('<')
-                args = tuple(a.strip() for a in _r[:-1].split(','))
+                # R17: usar _dividir_args_tipo (split depth-aware, R16) y NO
+                # split(',') naive — rompia los anidados
+                # (Resultado<Resultado<entero,texto>,texto> -> 3 args) y la
+                # instancia no resolvia -> binding del generico (void*).
+                args = tuple(_dividir_args_tipo(_r[:-1]))
                 inst = ctx._instancias_adt.get((_b, args))
                 if inst:
                     inst_campos = inst.get('campos')
-            if adt_base in ctx._estructuras:
-                for cname, ctype in (inst_campos or ctx._estructuras[adt_base].get('campos', [])):
-                    if cname != 'tag':
-                        if campo_dato == 'valor':
-                            campo_dato = cname  # first non-tag field as default
-                        if cname == var_name:
-                            campo_dato = cname
-                            bound_type = ctx.traducir_tipo_c(ctype)
-                            break
+            campos_adt = (inst_campos or
+                          ctx._estructuras.get(adt_base, {}).get('campos', []))
+            for cname, ctype in campos_adt:
+                if cname == 'tag':
+                    continue
+                if campo_dato == 'valor':
+                    campo_dato = cname  # default: primer campo no-tag
+                if cname == tag:
+                    campo_dato = cname  # campo correcto del tag (ok/err/algun)
+                    bound_type = ctx.traducir_tipo_c(ctype)
+                    break
             ctx.write_line(f"{bound_type} {var_name} = {var_temp}.dato.{campo_dato};")
         if hasattr(caso, 'cuerpo') and caso.cuerpo:
             for s in caso.cuerpo:

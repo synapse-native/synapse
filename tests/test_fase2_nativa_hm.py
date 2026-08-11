@@ -9,9 +9,13 @@ lenient, y aborto con 'Analisis semantico fallido (validacion 2.4)' solo
 para errores 2.4 (flag propio hay_error_2_4, no el global).
 
 NOTA: el codegen de instanciaciones ADT (`x: Resultado<entero,texto>`) se
-cubre en los tests R16 (D-2): tras el fix, el generador (S1 y nativo) registra
-las instanciaciones de ADT genericos con monomorfizacion real (structs
-especializados, cero placeholders) y las firmas compilan rc=0.
+cubre en los tests R16/R17 (D-2): tras el fix, el generador (S1 y nativo)
+registra las instanciaciones de ADT genericos con monomorfizacion real
+(structs especializados, cero placeholders). R16: firmas (retorno/params,
+incluido anidamiento). R17: `let` locales, campos de estructura y externos
+(scan nativo extendido, paridad total con el S1) + orden de emision de los
+typedefs de instancias en un pre-bloque (antes de los structs alfabeticos) y
+binding del `coincidir` sobre instancias (.dato.<tag>).
 
 Requiere el bootstrap (synapse_stage*.exe); se salta si no esta disponible.
 """
@@ -1200,3 +1204,106 @@ def test_r16_c_structs_orden(stage, tmp_path):
     assert "Resultado_entero_texto ok;" in c, (
         "el campo del contenedor debe ser el struct interno tipado"
         " (cero placeholder)")
+
+
+# ---------------------------------------------------------------------------
+# R17 (D-2): scan nativo extendido a `let` locales, campos de estructura y
+# externos (deuda FASE_2_2.4_NATIVA.md R17, paridad total con el S1
+# _recolectar_instancias_adt). Antes solo cubría firmas de funciones:
+#   - `let r: Resultado<entero,texto>` -> rc=5 nativo (placeholder 'Resultado_T')
+#   - campo de estructura -> rc=5 nativo Y rc=1 S1 (orden de emisión: los
+#     typedefs de instancias se emitían DESPUÉS de los structs alfabéticos)
+# ---------------------------------------------------------------------------
+
+_PROG_R17_LET = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion principal() -> nulo:
+    let r: Resultado<entero,texto> = ok(7)
+    retornar
+'''
+
+_PROG_R17_CAMPO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+estructura Caja:
+    contenido: Resultado<entero,texto>
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R17_MIX = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+externo funcion ayuda_externa(r: Resultado<entero,texto>) -> entero
+estructura Caja:
+    contenido: Resultado<entero,texto>
+funcion extraer(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(n) => retornar n
+        err(_) => retornar -1
+funcion principal() -> nulo:
+    let r: Resultado<entero,texto> = ok(7)
+    si 1 == 1:
+        let r2: Resultado<entero,texto> = ok(42)
+        coincidir r2:
+            ok(n2) => log(entero_a_texto(n2))
+            err(_) => log("err")
+    n = extraer(r)
+    log(entero_a_texto(n))
+    retornar
+'''
+
+
+def test_r17_let_local_compila(stage, tmp_path):
+    """R17 (D-2): `let r: Resultado<entero,texto>` (instancia SOLO en una
+    declaración local, sin firma) compila rc=0 en el nativo — antes el scan
+    D-2 no cubría los cuerpos y traducir_tipo_c emitía 'Resultado_T'."""
+    proc = _compilar_con_stage(stage, _PROG_R17_LET, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let local ADT deberia compilar rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r17_campo_estructura_compila(stage, tmp_path):
+    """R17 (D-2): campo de estructura de tipo instanciado compila rc=0.
+    Regresión del S1: los typedefs de instancias se emiten ahora en un
+    pre-bloque ANTES de los structs (un campo emitido antes rompía el C)."""
+    proc = _compilar_con_stage(stage, _PROG_R17_CAMPO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"campo de estructura ADT deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r17_mezcla_con_match_compila(stage, tmp_path):
+    """R17 (D-2): caso mixto (let top + let en `si` + `coincidir` sobre
+    instancia + campo de estructura + externo) compila rc=0 en el nativo,
+    con el binding del match sobre la instancia (dato.<tag>, paridad S1
+    emit_control.py visitar_coincidir)."""
+    proc = _compilar_con_stage(stage, _PROG_R17_MIX, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"caso mixto R17 deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r17_c_orden_instancia_antes_struct(stage, tmp_path):
+    """R17 (D-2): el C generado por el NATIVO emite el typedef de la
+    instancia ANTES del struct que la referencia (paridad S1, pre-bloque);
+    antes el orden alfabético emitía `Caja` (con el campo) antes que
+    `Resultado_entero_texto` y gcc fallaba."""
+    proc = _compilar_con_stage(stage, _PROG_R17_CAMPO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}: {proc.stderr[-1000:]}")
+    c_archivo = os.path.join(RAIZ, "synapse_unity.c")
+    if not os.path.isfile(c_archivo):
+        pytest.skip("synapse_unity.c no disponible")
+    with open(c_archivo, "r", encoding="utf-8", errors="replace") as f:
+        c = f.read()
+    i_inst = c.find("typedef struct Resultado_entero_texto")
+    i_caja = c.find("typedef struct Caja")
+    assert i_inst >= 0 and i_caja >= 0, (
+        "el C del nativo debe contener el typedef de la instancia y el struct")
+    assert i_inst < i_caja, (
+        "la instancia debe emitirse ANTES que el struct que la referencia")
+    assert "Resultado_entero_texto contenido;" in c, (
+        "el campo del struct debe ser el tipo especializado (cero placeholder)")

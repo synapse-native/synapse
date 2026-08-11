@@ -25,6 +25,7 @@ from .emit_declarations import (
     visitar_retornar, visitar_lanzar, visitar_recuperar, visitar_escuchar,
     visitar_delegar,
     visitar_declaracion_tipo,
+    _emitir_typedefs_instancias,
 )
 from .emit_expressions import (
     expr_a_c, tipo_de_expr, visitar_log,
@@ -1189,6 +1190,9 @@ class GeneradorC:
                 ctx.write_line("extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);")
                 ctx.write_line("")
             # Estructuras: forward declarations + definiciones completas (Manual 8 §8.2: orden alfabético)
+            # R17: typedefs de instanciaciones de ADT ANTES de los structs
+            # (un campo que referencia una instancia emitida después rompía el C)
+            _emitir_typedefs_instancias(ctx)
             estructuras = sorted(
                 [s for s in ctx.programa.sentencias if isinstance(s, DefinicionEstructura)],
                 key=lambda e: e.nombre
@@ -1448,6 +1452,10 @@ class GeneradorC:
 
         # modo == 'completo' (comportamiento original)
         self._emit_cabecera_comun(ctx)
+
+        # R17: typedefs de instanciaciones de ADT ANTES de los structs
+        # (un campo que referencia una instancia emitida después rompía el C)
+        _emitir_typedefs_instancias(ctx)
 
         # Manual 8 §8.2: orden alfabético estricto para estructuras
         estructuras = sorted(
