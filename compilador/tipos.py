@@ -22,7 +22,7 @@ del compilador (parser, codegen, puente).
 """
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +241,7 @@ def tipo_a_cadena(tipo: Optional['Tipo']) -> str:
 
 
 def es_tipo_conocido(cadena: str, estructuras: Optional[Set[str]] = None,
-                     adt_parametros: Optional[Dict[str, List[str]]] = None) -> bool:
+                     adt_parametros: Optional[Dict[str, Union[int, List[str]]]] = None) -> bool:
     """Valida que una cadena de tipo sea un tipo CONOCIDO: primitivo lógico,
     struct registrado, ADT registrado, rc/arc/débil, tensor, canal, puntero o
     referencia de un tipo conocido. Manual 2 §8.2 (argumentos de tipo válidos)."""
