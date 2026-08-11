@@ -15,7 +15,10 @@ registra las instanciaciones de ADT genericos con monomorfizacion real
 incluido anidamiento). R17: `let` locales, campos de estructura y externos
 (scan nativo extendido, paridad total con el S1) + orden de emision de los
 typedefs de instancias en un pre-bloque (antes de los structs alfabeticos) y
-binding del `coincidir` sobre instancias (.dato.<tag>).
+binding del `coincidir` sobre instancias (.dato.<tag>). R18: el binding del
+`coincidir` con MULTI-instancia del mismo base resuelve la instancia EXACTA
+por el tipo C de la variable (parametros y `let` explicitos registrados en
+_G_fn_var_tipos; antes heuristica 'primera instancia').
 
 Requiere el bootstrap (synapse_stage*.exe); se salta si no esta disponible.
 """
@@ -1307,3 +1310,78 @@ def test_r17_c_orden_instancia_antes_struct(stage, tmp_path):
         "la instancia debe emitirse ANTES que el struct que la referencia")
     assert "Resultado_entero_texto contenido;" in c, (
         "el campo del struct debe ser el tipo especializado (cero placeholder)")
+
+
+# --- R18: binding del coincidir con multi-instancia del mismo base ----------
+# El generador nativo resolvia el binding del match con la heuristica
+# 'primera instancia del base'; con dos instancias del mismo base
+# (Resultado<entero,texto> y Resultado<texto,entero>) el binding usaba la
+# instancia equivocada. R18: se registra el tipo C de parametros y de los
+# `let` explicitos (_G_fn_var_tipos) y el binding resuelve la instancia
+# EXACTA por el tipo de la variable (paridad S1 tipo_de_expr +
+# _instancias_adt).
+
+_PROG_R18_DOS_INSTANCIAS = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion extraer_entero(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(v) => retornar v
+        err(_) => retornar -1
+
+funcion extraer_texto(r: Resultado<texto,entero>) -> entero:
+    coincidir r:
+        ok(s) => retornar 1
+        err(_) => retornar -1
+
+funcion principal() -> nulo:
+    let a: Resultado<entero,texto> = ok(7)
+    let b: Resultado<texto,entero> = ok("hola")
+    n = extraer_entero(a)
+    m = extraer_texto(b)
+    log(entero_a_texto(n + m))
+    retornar
+'''
+
+
+def test_r18_match_binding_multi_instancia_compila(stage, tmp_path):
+    """R18: dos instancias del mismo base con `coincidir` sobre PARAMETROS
+    compila rc=0 en el nativo (antes el binding usaba la primera instancia
+    del base y el C no compilaba para la segunda)."""
+    proc = _compilar_con_stage(stage, _PROG_R18_DOS_INSTANCIAS, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"multi-instancia deberia rc=0, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r18_match_binding_c_instancia_exacta(stage, tmp_path):
+    """R18: el C del nativo resuelve el binding del match por la instancia
+    EXACTA del tipo de la variable: `int64_t v` en extraer_entero (tag ok de
+    Resultado<entero,texto>) y `CadenaSegura s` en extraer_texto (tag ok de
+    Resultado<texto,entero>)."""
+    proc = _compilar_con_stage(stage, _PROG_R18_DOS_INSTANCIAS, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}: {proc.stderr[-1000:]}")
+    c_archivo = os.path.join(RAIZ, "synapse_unity.c")
+    if not os.path.isfile(c_archivo):
+        pytest.skip("synapse_unity.c no disponible")
+    with open(c_archivo, "r", encoding="utf-8", errors="replace") as f:
+        c = f.read()
+    assert "int64_t v = (r).dato.ok;" in c, (
+        "el binding del match sobre Resultado<entero,texto> debe leer .dato.ok "
+        "como int64_t")
+    assert "CadenaSegura s = (r).dato.ok;" in c, (
+        "el binding del match sobre Resultado<texto,entero> debe leer .dato.ok "
+        "como CadenaSegura (instancia exacta, no la primera del base)")
+
+
+def test_r18_match_binding_runtime(stage, tmp_path):
+    """R18: el binario ejecuta y devuelve 8 (7 del entero + 1 del texto),
+    probando que ambos matches despachan por su instancia correcta."""
+    proc, run = _compilar_y_ejecutar(
+        stage, _PROG_R18_DOS_INSTANCIAS, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.stdout.splitlines() == ["8"], (
+        f"salida esperada '8', obtuvo {run.stdout!r}")

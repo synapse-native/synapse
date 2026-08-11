@@ -64995,6 +64995,97 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "// R18: registrar el tipo C de la variable local - paridad S1"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// visitar_declaracion L127 _variables; necesario para el binding del"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// coincidir con multi-instancia del mismo base R18."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _dvi = 0; _dvi < _G_fn_vars_count; _dvi++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (strcmp(_G_fn_vars[_dvi], _dv->nombre.datos) == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _dvlen = (int)strlen(_var_type);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_dvlen > 0 && _var_type[_dvlen-1] == ' ') _dvlen--;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _dvmax = (_dvlen < 63) ? _dvlen : 63;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        memcpy(_G_fn_var_tipos[_dvi], _var_type, _dvmax); _G_fn_var_tipos[_dvi][_dvmax] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        break;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "strcat(_buf, \"    \");"
                 }
               },
@@ -65128,7 +65219,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // Literal string — siempre texto al heap"
+                  "instruccion": "    // Literal string - siempre texto al heap"
                 }
               },
               {
@@ -68585,7 +68676,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// inline (sin variable temporal tipada — divergencia: si la expr tiene"
+                  "instruccion": "// inline (sin variable temporal tipada - divergencia: si la expr tiene"
                 }
               },
               {
@@ -68760,7 +68851,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    // tipo C del campo: primera instancia del base"
+                  "instruccion": "                    // R18: resolver la instancia EXACTA por el tipo de la variable"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // de la expresion - paridad S1 tipo_de_expr e instancias ADT."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // La heuristica de la primera instancia del base falla con"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // multi-instancia del mismo base Resultado-entero-texto y"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // Resultado anidado."
                 }
               },
               {
@@ -68781,7 +68900,119 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "                    extern char _G_native_adt_inst_c[64][64];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    extern char _G_fn_vars[2048][64]; extern char _G_fn_var_tipos[2048][64]; extern int _G_fn_vars_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "                    char _ft[64]; _ft[0]=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_mc->expresion && _mc->expresion->tipo.datos && strcmp(_mc->expresion->tipo.datos, \"Identificador\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        struct Identificador* _mie = (struct Identificador*)_mc->expresion;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        if (_mie->nombre.datos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                            for (int _vi2 = 0; _vi2 < _G_fn_vars_count && _ft[0]==0; _vi2++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                if (strcmp(_G_fn_vars[_vi2], _mie->nombre.datos) == 0 && _G_fn_var_tipos[_vi2][0]) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                    for (int _xi2 = 0; _xi2 < _G_native_adt_inst_count && _ft[0]==0; _xi2++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                        if (strcmp(_G_native_adt_inst_c[_xi2], _G_fn_var_tipos[_vi2]) == 0 && _tagn < _G_native_adt_inst_nfields[_xi2] && _G_native_adt_inst_fields_c[_xi2][_tagn][0]) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                            strcpy(_ft, _G_native_adt_inst_fields_c[_xi2][_tagn]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
                 }
               },
               {
@@ -75546,7 +75777,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// D-2 (R16): cola FIFO unica de tipos pendientes — post-orden: las"
+                  "instruccion": "// D-2 (R16): cola FIFO unica de tipos pendientes - post-orden: las"
                 }
               },
               {
@@ -76232,7 +76463,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // campos_pointer) — el pre-bloque de typedefs va ANTES de la"
+                  "instruccion": "                // campos_pointer) - el pre-bloque de typedefs va ANTES de la"
                 }
               },
               {
@@ -77343,7 +77574,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // usa _funciones_emitidas — paridad: primer prototipo gana)."
+                  "instruccion": "    // usa _funciones_emitidas - paridad: primer prototipo gana)."
                 }
               },
               {
@@ -77504,7 +77735,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // FASE A (A2.3): ParserEst (parser.syn) — mismo mecanismo que AnalizadorSemanticoEst"
+                  "instruccion": "                // FASE A (A2.3): ParserEst (parser.syn) - mismo mecanismo que AnalizadorSemanticoEst"
                 }
               },
               {
@@ -77630,7 +77861,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// imports) en orden de parse — requisito de C: las constantes deben existir antes"
+                  "instruccion": "// imports) en orden de parse - requisito de C: las constantes deben existir antes"
                 }
               },
               {
@@ -78169,7 +78400,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // ME-B7: dedup de DEFINICIONES (paridad _funciones_emitidas) — primer cuerpo gana"
+                  "instruccion": "    // ME-B7: dedup de DEFINICIONES (paridad _funciones_emitidas) - primer cuerpo gana"
                 }
               },
               {
@@ -78204,7 +78435,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // ME-B7: reset del registro de variables por funcion (hoisting — primera declaracion gana)"
+                  "instruccion": "    // ME-B7: reset del registro de variables por funcion (hoisting - primera declaracion gana)"
                 }
               },
               {
@@ -78281,7 +78512,77 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            strncpy(_G_fn_vars[_G_fn_vars_count], _ppv->nombre.datos, 63); _G_fn_vars[_G_fn_vars_count][63] = 0; _G_fn_vars_count++;"
+                  "instruccion": "            strncpy(_G_fn_vars[_G_fn_vars_count], _ppv->nombre.datos, 63); _G_fn_vars[_G_fn_vars_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            // R18: registrar el tipo C del parametro - paridad S1"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            // emit_declarations.py L426-428 _variables; necesario para el binding"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            // del coincidir con multi-instancia del mismo base R18."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            extern char _G_fn_var_tipos[2048][64];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_ppv->tipo_param.datos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                traducir_tipo_c((void*)_ppv->tipo_param.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                extern char _gen_tmp_buf[4096];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strncpy(_G_fn_var_tipos[_G_fn_vars_count], _gen_tmp_buf, 63); _G_fn_var_tipos[_G_fn_vars_count][63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _G_fn_vars_count++;"
                 }
               },
               {
@@ -78323,7 +78624,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // D-3: recorrido FIFO (orden de aparicion) — paridad _collect_vars de S1"
+                  "instruccion": "    // D-3: recorrido FIFO (orden de aparicion) - paridad _collect_vars de S1"
                 }
               },
               {
@@ -78365,7 +78666,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // fuera), que Synapse no permite — aceptada."
+                  "instruccion": "    // fuera), que Synapse no permite - aceptada."
                 }
               },
               {
@@ -78848,7 +79149,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // A4: el frontend nativo es el UNICO frontend — el espejo frontend_p.syn (_P_*)"
+                  "instruccion": "    // A4: el frontend nativo es el UNICO frontend - el espejo frontend_p.syn (_P_*)"
                 }
               },
               {
@@ -78869,7 +79170,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    //   tokenizar: NO se intercepta — se emite el cuerpo nativo de lexer.syn."
+                  "instruccion": "    //   tokenizar: NO se intercepta - se emite el cuerpo nativo de lexer.syn."
                 }
               },
               {
@@ -79009,7 +79310,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            // FASE A (A2.3): ParserEst (parser.syn) — mismo mecanismo que AnalizadorSemanticoEst"
+                  "instruccion": "            // FASE A (A2.3): ParserEst (parser.syn) - mismo mecanismo que AnalizadorSemanticoEst"
                 }
               },
               {
@@ -79912,7 +80213,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // ME-C1: guard de overflow (deuda #4) — paridad con el patron _ep < 4095"
+                  "instruccion": "    // ME-C1: guard de overflow (deuda #4) - paridad con el patron _ep < 4095"
                 }
               },
               {
