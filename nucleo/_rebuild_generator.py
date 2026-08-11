@@ -35,6 +35,8 @@ SUB_MODULOS = [
                           # (extraido de orquestador.syn; bloque ME-D2, R16/R17/R18)
     "recorrido.syn",       # Modularizacion: walk top-level del AST en orden alfabetico
                           # (extraido de orquestador.syn; bloque WALK)
+    "funciones.syn",       # Modularizacion (AUDITORIA 13): emision de funciones de usuario
+                          # (extraido de la rama DefinicionFuncion de gen_visitar_top_level)
     "orquestador.syn",     # Debe ir DESPUES de frontend_nativo.syn (hook ME-B7 lo invoca) y de
                           # los modulos extraidos en la modularizacion (los invoca en orden)
 ]
