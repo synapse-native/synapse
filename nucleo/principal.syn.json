@@ -28085,23 +28085,55 @@
                 }
               },
               {
+                "_tipo": "AsignacionVariable",
+                "nombre": "profundidad",
+                "expresion": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "t",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_mirar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
                 "_tipo": "SentenciaMientras",
                 "condicion": {
                   "_tipo": "OpBinaria",
                   "izquierdo": {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "t"
+                    },
+                    "operador": "!=",
+                    "derecho": {
+                      "_tipo": "Identificador",
+                      "nombre": "T_MAYOR"
+                    }
                   },
-                  "operador": "!=",
+                  "operador": "||",
                   "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_MAYOR"
+                    "_tipo": "OpBinaria",
+                    "izquierdo": {
+                      "_tipo": "Identificador",
+                      "nombre": "profundidad"
+                    },
+                    "operador": ">",
+                    "derecho": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
                   }
                 },
                 "cuerpo": [
@@ -28110,16 +28142,76 @@
                     "condicion": {
                       "_tipo": "OpBinaria",
                       "izquierdo": {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          }
-                        ]
+                        "_tipo": "Identificador",
+                        "nombre": "t"
                       },
-                      "operador": "!=",
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "T_MENOR"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "profundidad",
+                        "expresion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "profundidad"
+                          },
+                          "operador": "+",
+                          "derecho": {
+                            "_tipo": "LiteralNumero",
+                            "valor": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "t"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "T_MAYOR"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "profundidad",
+                        "expresion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "profundidad"
+                          },
+                          "operador": "-",
+                          "derecho": {
+                            "_tipo": "LiteralNumero",
+                            "valor": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "t"
+                      },
+                      "operador": "==",
                       "derecho": {
                         "_tipo": "Identificador",
                         "nombre": "T_FIN"
@@ -28127,24 +28219,36 @@
                     },
                     "cuerpo": [
                       {
-                        "_tipo": "SentenciaExpr",
-                        "expr": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_avanzar",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "cuerpo_sino": [
-                      {
                         "_tipo": "SentenciaRomper"
                       }
                     ]
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "t",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_mirar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
                   }
                 ]
               },
@@ -28917,23 +29021,55 @@
                     }
                   },
                   {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "prof13",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "t13",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_mirar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
                     "_tipo": "SentenciaMientras",
                     "condicion": {
                       "_tipo": "OpBinaria",
                       "izquierdo": {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          }
-                        ]
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "Identificador",
+                          "nombre": "t13"
+                        },
+                        "operador": "!=",
+                        "derecho": {
+                          "_tipo": "Identificador",
+                          "nombre": "T_MAYOR"
+                        }
                       },
-                      "operador": "!=",
+                      "operador": "||",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_MAYOR"
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "Identificador",
+                          "nombre": "prof13"
+                        },
+                        "operador": ">",
+                        "derecho": {
+                          "_tipo": "LiteralNumero",
+                          "valor": 0
+                        }
                       }
                     },
                     "cuerpo": [
@@ -28942,16 +29078,76 @@
                         "condicion": {
                           "_tipo": "OpBinaria",
                           "izquierdo": {
-                            "_tipo": "LlamadaFuncion",
-                            "nombre": "token_mirar",
-                            "argumentos": [
-                              {
-                                "_tipo": "Identificador",
-                                "nombre": "est"
-                              }
-                            ]
+                            "_tipo": "Identificador",
+                            "nombre": "t13"
                           },
-                          "operador": "!=",
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_MENOR"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "prof13",
+                            "expresion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "prof13"
+                              },
+                              "operador": "+",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t13"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_MAYOR"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "prof13",
+                            "expresion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "prof13"
+                              },
+                              "operador": "-",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t13"
+                          },
+                          "operador": "==",
                           "derecho": {
                             "_tipo": "Identificador",
                             "nombre": "T_FIN"
@@ -28959,24 +29155,36 @@
                         },
                         "cuerpo": [
                           {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "LlamadaFuncion",
-                              "nombre": "token_avanzar",
-                              "argumentos": [
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "est"
-                                }
-                              ]
-                            }
-                          }
-                        ],
-                        "cuerpo_sino": [
-                          {
                             "_tipo": "SentenciaRomper"
                           }
                         ]
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_avanzar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "t13",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_mirar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
                       }
                     ]
                   },
@@ -40659,23 +40867,55 @@
                                     }
                                   },
                                   {
+                                    "_tipo": "AsignacionVariable",
+                                    "nombre": "prof13a",
+                                    "expresion": {
+                                      "_tipo": "LiteralNumero",
+                                      "valor": 0
+                                    }
+                                  },
+                                  {
+                                    "_tipo": "AsignacionVariable",
+                                    "nombre": "t13a",
+                                    "expresion": {
+                                      "_tipo": "LlamadaFuncion",
+                                      "nombre": "token_mirar",
+                                      "argumentos": [
+                                        {
+                                          "_tipo": "Identificador",
+                                          "nombre": "est"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
                                     "_tipo": "SentenciaMientras",
                                     "condicion": {
                                       "_tipo": "OpBinaria",
                                       "izquierdo": {
-                                        "_tipo": "LlamadaFuncion",
-                                        "nombre": "token_mirar",
-                                        "argumentos": [
-                                          {
-                                            "_tipo": "Identificador",
-                                            "nombre": "est"
-                                          }
-                                        ]
+                                        "_tipo": "OpBinaria",
+                                        "izquierdo": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "t13a"
+                                        },
+                                        "operador": "!=",
+                                        "derecho": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "T_MAYOR"
+                                        }
                                       },
-                                      "operador": "!=",
+                                      "operador": "||",
                                       "derecho": {
-                                        "_tipo": "Identificador",
-                                        "nombre": "T_MAYOR"
+                                        "_tipo": "OpBinaria",
+                                        "izquierdo": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "prof13a"
+                                        },
+                                        "operador": ">",
+                                        "derecho": {
+                                          "_tipo": "LiteralNumero",
+                                          "valor": 0
+                                        }
                                       }
                                     },
                                     "cuerpo": [
@@ -40684,16 +40924,76 @@
                                         "condicion": {
                                           "_tipo": "OpBinaria",
                                           "izquierdo": {
-                                            "_tipo": "LlamadaFuncion",
-                                            "nombre": "token_mirar",
-                                            "argumentos": [
-                                              {
-                                                "_tipo": "Identificador",
-                                                "nombre": "est"
-                                              }
-                                            ]
+                                            "_tipo": "Identificador",
+                                            "nombre": "t13a"
                                           },
-                                          "operador": "!=",
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_MENOR"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "prof13a",
+                                            "expresion": {
+                                              "_tipo": "OpBinaria",
+                                              "izquierdo": {
+                                                "_tipo": "Identificador",
+                                                "nombre": "prof13a"
+                                              },
+                                              "operador": "+",
+                                              "derecho": {
+                                                "_tipo": "LiteralNumero",
+                                                "valor": 1
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "t13a"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_MAYOR"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "prof13a",
+                                            "expresion": {
+                                              "_tipo": "OpBinaria",
+                                              "izquierdo": {
+                                                "_tipo": "Identificador",
+                                                "nombre": "prof13a"
+                                              },
+                                              "operador": "-",
+                                              "derecho": {
+                                                "_tipo": "LiteralNumero",
+                                                "valor": 1
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "t13a"
+                                          },
+                                          "operador": "==",
                                           "derecho": {
                                             "_tipo": "Identificador",
                                             "nombre": "T_FIN"
@@ -40701,24 +41001,36 @@
                                         },
                                         "cuerpo": [
                                           {
-                                            "_tipo": "SentenciaExpr",
-                                            "expr": {
-                                              "_tipo": "LlamadaFuncion",
-                                              "nombre": "token_avanzar",
-                                              "argumentos": [
-                                                {
-                                                  "_tipo": "Identificador",
-                                                  "nombre": "est"
-                                                }
-                                              ]
-                                            }
-                                          }
-                                        ],
-                                        "cuerpo_sino": [
-                                          {
                                             "_tipo": "SentenciaRomper"
                                           }
                                         ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaExpr",
+                                        "expr": {
+                                          "_tipo": "LlamadaFuncion",
+                                          "nombre": "token_avanzar",
+                                          "argumentos": [
+                                            {
+                                              "_tipo": "Identificador",
+                                              "nombre": "est"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "t13a",
+                                        "expresion": {
+                                          "_tipo": "LlamadaFuncion",
+                                          "nombre": "token_mirar",
+                                          "argumentos": [
+                                            {
+                                              "_tipo": "Identificador",
+                                              "nombre": "est"
+                                            }
+                                          ]
+                                        }
                                       }
                                     ]
                                   },
@@ -41439,23 +41751,55 @@
                     }
                   },
                   {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "prof13b",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "t13b",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_mirar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
                     "_tipo": "SentenciaMientras",
                     "condicion": {
                       "_tipo": "OpBinaria",
                       "izquierdo": {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          }
-                        ]
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "Identificador",
+                          "nombre": "t13b"
+                        },
+                        "operador": "!=",
+                        "derecho": {
+                          "_tipo": "Identificador",
+                          "nombre": "T_MAYOR"
+                        }
                       },
-                      "operador": "!=",
+                      "operador": "||",
                       "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_MAYOR"
+                        "_tipo": "OpBinaria",
+                        "izquierdo": {
+                          "_tipo": "Identificador",
+                          "nombre": "prof13b"
+                        },
+                        "operador": ">",
+                        "derecho": {
+                          "_tipo": "LiteralNumero",
+                          "valor": 0
+                        }
                       }
                     },
                     "cuerpo": [
@@ -41464,16 +41808,76 @@
                         "condicion": {
                           "_tipo": "OpBinaria",
                           "izquierdo": {
-                            "_tipo": "LlamadaFuncion",
-                            "nombre": "token_mirar",
-                            "argumentos": [
-                              {
-                                "_tipo": "Identificador",
-                                "nombre": "est"
-                              }
-                            ]
+                            "_tipo": "Identificador",
+                            "nombre": "t13b"
                           },
-                          "operador": "!=",
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_MENOR"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "prof13b",
+                            "expresion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "prof13b"
+                              },
+                              "operador": "+",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t13b"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_MAYOR"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "prof13b",
+                            "expresion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "prof13b"
+                              },
+                              "operador": "-",
+                              "derecho": {
+                                "_tipo": "LiteralNumero",
+                                "valor": 1
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t13b"
+                          },
+                          "operador": "==",
                           "derecho": {
                             "_tipo": "Identificador",
                             "nombre": "T_FIN"
@@ -41481,24 +41885,36 @@
                         },
                         "cuerpo": [
                           {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "LlamadaFuncion",
-                              "nombre": "token_avanzar",
-                              "argumentos": [
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "est"
-                                }
-                              ]
-                            }
-                          }
-                        ],
-                        "cuerpo_sino": [
-                          {
                             "_tipo": "SentenciaRomper"
                           }
                         ]
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_avanzar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "t13b",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_mirar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
                       }
                     ]
                   },
@@ -52825,7 +53241,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        for (; *p && *p != '>'; p++) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; else if (*p == ',' && profundidad == 0) nargs++; }"
+                  "instruccion": "        // R13: contar argumentos con profundidad (solo el '>' de nivel 0 cierra);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // antes el bucle se detenia en el PRIMER '>' y un ADT anidado"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // (Resultado<Resultado<entero,texto>,texto>) contaba 1 argumento."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        for (; *p; p++) { if (*p == '<') profundidad++; else if (*p == '>') { if (profundidad == 0) break; profundidad--; } else if (*p == ',' && profundidad == 0) nargs++; }"
                 }
               },
               {
@@ -52895,7 +53332,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        while (*p && *p != '>') {"
+                  "instruccion": "        // R13: dividir argumentos con profundidad (solo '>' de nivel 0 separa);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // antes el bucle se detenia en el primer '>' y los argumentos tras un"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // ADT anidado no se validaban recursivamente."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        while (*p && !(*p == '>' && profundidad == 0)) {"
                 }
               },
               {
@@ -52909,7 +53367,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            while (*p && *p != '>' && !(*p == ',' && profundidad == 0)) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; p++; }"
+                  "instruccion": "            while (*p && !(*p == '>' && profundidad == 0) && !(*p == ',' && profundidad == 0)) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; p++; }"
                 }
               },
               {

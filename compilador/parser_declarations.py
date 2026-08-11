@@ -61,12 +61,26 @@ class ParserDeclarationsMixin(ParserBase):
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo_retorno, '<']
-            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF,
-                                             TokenID.NEWLINE, TokenID.RPAREN):
+            profundidad = 0
+            while True:
+                t_actual = self._mirar()
+                if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                    break
+                if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                    break
                 t = self._avanzar()
-                # D-2: el token COMMA no lleva valor -> conservar la coma para
-                # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
-                if t.tipo == TokenID.COMMA:
+                # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                # Manual 2 §8.2): consumir '<'/'<' con profundidad y solo cerrar
+                # en el '>' de nivel 0.
+                if t.tipo == TokenID.LESS:
+                    profundidad += 1
+                    partes.append('<')
+                elif t.tipo == TokenID.GREATER:
+                    profundidad -= 1
+                    partes.append('>')
+                elif t.tipo == TokenID.COMMA:
+                    # D-2: el token COMMA no lleva valor -> conservar la coma para
+                    # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
                     partes.append(',')
                 else:
                     partes.append(t.valor or '')

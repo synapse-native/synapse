@@ -112,12 +112,21 @@ funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
         si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN y token_mirar(est) != T_COMA y token_mirar(est) != T_PAREN_DER:
             token_avanzar(est)
     si token_mirar(est) == T_MENOR:
+        // R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+        // Manual 2 §8.2 ALGEBRAICO con argumentos): consumir con profundidad;
+        // solo el '>' de nivel 0 cierra la instanciacion.
         token_avanzar(est)
-        mientras token_mirar(est) != T_MAYOR:
-            si token_mirar(est) != T_FIN:
-                token_avanzar(est)
-            sino:
+        profundidad = 0
+        t = token_mirar(est)
+        mientras t != T_MAYOR o profundidad > 0:
+            si t == T_MENOR:
+                profundidad = profundidad + 1
+            si t == T_MAYOR:
+                profundidad = profundidad - 1
+            si t == T_FIN:
                 romper
+            token_avanzar(est)
+            t = token_mirar(est)
         token_esperar(est, T_MAYOR)
     si token_mirar(est) == T_POR:
         token_avanzar(est)
@@ -198,12 +207,20 @@ funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
         // (ej: '<' malformado), ninguna rama avanzaba -> bucle infinito (misma
         // clase de bug que A2.3 arregla en otros puntos del parser).
         si token_mirar(est) == T_MENOR:
+            // R13: tipos ADT anidados en el retorno (`-> Resultado<Resultado<entero,texto>,texto>`,
+            // Manual 2 §8.2): consumir con profundidad; solo el '>' de nivel 0 cierra.
             token_avanzar(est)
-            mientras token_mirar(est) != T_MAYOR:
-                si token_mirar(est) != T_FIN:
-                    token_avanzar(est)
-                sino:
+            prof13 = 0
+            t13 = token_mirar(est)
+            mientras t13 != T_MAYOR o prof13 > 0:
+                si t13 == T_MENOR:
+                    prof13 = prof13 + 1
+                si t13 == T_MAYOR:
+                    prof13 = prof13 - 1
+                si t13 == T_FIN:
                     romper
+                token_avanzar(est)
+                t13 = token_mirar(est)
             token_esperar(est, T_MAYOR)
     pos_fin = est.posicion - 1
     si pos_fin >= pos_ini:
@@ -1210,12 +1227,20 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
                             si token_mirar(est) != T_COMA y token_mirar(est) != T_PAREN_DER y token_mirar(est) != T_FIN:
                                 token_avanzar(est)
                         si token_mirar(est) == T_MENOR:
+                            // R13: tipos ADT anidados en campos de constructor
+                            // (Manual 2 §8.2): consumir con profundidad.
                             token_avanzar(est)
-                            mientras token_mirar(est) != T_MAYOR:
-                                si token_mirar(est) != T_FIN:
-                                    token_avanzar(est)
-                                sino:
+                            prof13a = 0
+                            t13a = token_mirar(est)
+                            mientras t13a != T_MAYOR o prof13a > 0:
+                                si t13a == T_MENOR:
+                                    prof13a = prof13a + 1
+                                si t13a == T_MAYOR:
+                                    prof13a = prof13a - 1
+                                si t13a == T_FIN:
                                     romper
+                                token_avanzar(est)
+                                t13a = token_mirar(est)
                             token_esperar(est, T_MAYOR)
                         si token_mirar(est) == T_POR:
                             token_avanzar(est)
@@ -1266,16 +1291,23 @@ funcion parsear_declaracion_tipo(est: ParserEst) -> entero:
                     asm("}")
         si token_es_nombre(token_mirar(est)) == 1:
             token_avanzar(est)
-        sino:
-            si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN:
-                token_avanzar(est)
-        si token_mirar(est) == T_MENOR:
+        sino:        si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN:
             token_avanzar(est)
-            mientras token_mirar(est) != T_MAYOR:
-                si token_mirar(est) != T_FIN:
-                    token_avanzar(est)
-                sino:
+        si token_mirar(est) == T_MENOR:
+            // R13: tipos ADT anidados en alias simple (`tipo X = Resultado<Resultado<entero,texto>,texto>`,
+            // Manual 2 §8.2): consumir con profundidad; solo el '>' de nivel 0 cierra.
+            token_avanzar(est)
+            prof13b = 0
+            t13b = token_mirar(est)
+            mientras t13b != T_MAYOR o prof13b > 0:
+                si t13b == T_MENOR:
+                    prof13b = prof13b + 1
+                si t13b == T_MAYOR:
+                    prof13b = prof13b - 1
+                si t13b == T_FIN:
                     romper
+                token_avanzar(est)
+                t13b = token_mirar(est)
             token_esperar(est, T_MAYOR)
         si token_mirar(est) == T_POR:
             token_avanzar(est)

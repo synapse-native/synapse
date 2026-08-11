@@ -798,3 +798,108 @@ def test_r12_conflicto_dos_mutables(stage, tmp_path):
     assert "Conflicto de prestamo" in proc.stderr, (
         f"diagnostico de conflicto ausente:\n{proc.stderr[-1200:]}")
     assert "&mut" in proc.stderr
+
+
+# --- R13: tipos ADT anidados en firmas (Manual 2 §8.2) ----------------------
+# Paridad S1 (test_type_inference.py test_adt_anidado + parser): el tipo
+# `Resultado<Resultado<entero,texto>,texto>` en firmas (parametros y retorno).
+# Antes el parser (S1 y nativo) fallaba al parsear ("Se esperaba COLON/':'"),
+# el contador de aridad nativo contaba 1 argumento (falso positivo) y
+# es_tipo_conocido S1 devolvía False para todo ADT registrado (falsos
+# positivos en argumentos anidados). Tras R13: parseo balanceado + aridad
+# recursiva con paridad. La validación semántica del caso válido es limpia
+# (el codegen de ADTs anidados sigue siendo deuda D-2: 'Resultado_T' en C,
+# rc=5 — no es error semántico).
+
+_PROG_R13_ANIDADO_VALIDO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear(r: Resultado<Resultado<entero,texto>,texto>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R13_ANIDADO_ARIDAD = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear(r: Resultado<Resultado<entero>,texto>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R13_ANIDADO_BASE_DESCONOCIDA = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear(r: Resultado<Resultados<entero,texto>,texto>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R13_RETORNO_ANIDADO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion crear() -> Resultado<Resultado<entero,texto>,texto>:
+    retornar
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R13_TVAR_EN_ADT = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion f(c: Resultado<T,texto>) -> T:
+    retornar
+funcion principal() -> nulo:
+    z = f(ok(5))
+    retornar
+'''
+
+
+def test_r13_anidado_valido_sin_diagnostico(stage, tmp_path):
+    """R13 (paridad test_type_inference.py test_adt_anidado): un ADT anidado
+    valido en parametro (Resultado<Resultado<entero,texto>,texto>) se parsea y
+    valida sin falsos positivos. (Antes: error de sintaxis rc=8 en el nativo y
+    'Se esperaba COLON' en S1; tras el fix de aridad: '1 argumento(s)' falso.)"""
+    proc = _compilar_con_stage(stage, _PROG_R13_ANIDADO_VALIDO, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"falso positivo en ADT anidado valido:\n{proc.stderr[-1200:]}")
+    assert "Error de sintaxis" not in proc.stderr
+
+
+def test_r13_anidado_aridad_interna(stage, tmp_path):
+    """R13 (paridad _validar_aridad_instanciaciones): el argumento anidado
+    `Resultado<entero>` tiene 1 argumento y Resultado espera 2 -> diagnostico
+    de aridad observable (el contador nativo ya no se detiene en el primer '>')."""
+    proc = _compilar_con_stage(stage, _PROG_R13_ANIDADO_ARIDAD, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico de aridad ausente:\n{proc.stderr[-1200:]}")
+    assert "se esperaban 2" in proc.stderr
+
+
+def test_r13_anidado_base_desconocida(stage, tmp_path):
+    """R13 (paridad _validar_aridad_instanciaciones): base desconocida en el
+    argumento anidado (`Resultados`) -> diagnostico 'no definido'."""
+    proc = _compilar_con_stage(stage, _PROG_R13_ANIDADO_BASE_DESCONOCIDA,
+                               str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico de base desconocida ausente:\n{proc.stderr[-1200:]}")
+    assert "Resultados" in proc.stderr
+
+
+def test_r13_retorno_anidado_parsea(stage, tmp_path):
+    """R13: el tipo ADT anidado en RETORNO (`-> Resultado<Resultado<entero,texto>,texto>`)
+    se parsea sin error de sintaxis (antes rc=8 'Se esperaba ':' tras el tipo
+    de retorno'). El body-check del retorno es divergencia pre-existente
+    (S1 valida retornos, el nativo no); lo que se verifica es el PARSEO."""
+    proc = _compilar_con_stage(stage, _PROG_R13_RETORNO_ANIDADO, str(tmp_path))
+    assert "Error de sintaxis" not in proc.stderr, (
+        f"el retorno anidado no parsea:\n{proc.stderr[-1200:]}")
+
+
+def test_r13_tvar_en_adt_emite_diagnostico(stage, tmp_path):
+    """R13 (divergencia documentada p3): TVar dentro de ADT con T desnudo en el
+    retorno — el call-site no puede inferir T (la inferencia de constructores
+    da la base sin argumentos, limitacion S1) -> ambos emiten diagnostico
+    (S1: incompatible+ambiguo; nativo: ambiguo). Verifica el del nativo."""
+    proc = _compilar_con_stage(stage, _PROG_R13_TVAR_EN_ADT, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico AMBIGUOUS ausente:\n{proc.stderr[-1200:]}")
+    assert "ambiguo" in proc.stderr
