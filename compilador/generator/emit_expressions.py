@@ -121,6 +121,31 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # Struct constructor call
         if nombre in ctx._estructuras:
             return nombre
+        # R20: ctor ADT (ok/err/algun/ninguno) -> resolver la instanciación por
+        # el tipo del argumento (recursivo para ctors anidados ok(ok(42))).
+        # Paridad nativa _syn_expr_tipo_c. Antes caía al fallback 'int' y
+        # _resolver_instancia_adt elegía la instancia equivocada con 2 del base.
+        if nombre in ctx._constructores_adt:
+            adt, tag, _tipo_syn = ctx._constructores_adt[nombre]
+            if adt in ctx._adt_parametros:
+                arg_tipo = ''
+                if nodo.argumentos:
+                    arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+                for (base, args), inst in ctx._instancias_adt.items():
+                    if base == adt and tag < len(inst['campos']):
+                        tipo_concreto = inst['campos'][tag][1]
+                        if (arg_tipo and
+                                ctx.traducir_tipo_c(tipo_concreto) ==
+                                ctx.traducir_tipo_c(arg_tipo)):
+                            return f"{adt}<{', '.join(args)}>"
+                candidatas = [
+                    (a, i) for (b, a), i in ctx._instancias_adt.items()
+                    if b == adt
+                ]
+                if len(candidatas) == 1:
+                    return f"{adt}<{', '.join(candidatas[0][0])}>"
+                # genérico sin instancias resolubles -> comportamiento previo
+            return 'int'
         return 'int'
 
     if isinstance(nodo, ExprPropagar):

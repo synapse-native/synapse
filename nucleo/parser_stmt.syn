@@ -250,9 +250,21 @@ funcion parsear_sentencia(est: ParserEst) -> entero:
             mientras token_es_nombre(token_mirar(est)) == 1:
                 token_avanzar(est)
             si token_mirar(est) == T_MENOR:
+                // R20: tipos ADT anidados en el tipo del let (`let r: Resultado<Resultado<entero,texto>,texto>`)
+                // - consumir con profundidad; solo el '>' de nivel 0 cierra la
+                // instanciacion (paridad parsear_tipo_compuesto R13 + anti-cuelgue).
                 token_avanzar(est)
-                mientras token_mirar(est) != T_MAYOR:
+                prof_tipo = 0
+                t_tipo = token_mirar(est)
+                mientras t_tipo != T_MAYOR o prof_tipo > 0:
+                    si t_tipo == T_MENOR:
+                        prof_tipo = prof_tipo + 1
+                    si t_tipo == T_MAYOR:
+                        prof_tipo = prof_tipo - 1
+                    si t_tipo == T_FIN:
+                        romper
                     token_avanzar(est)
+                    t_tipo = token_mirar(est)
                 token_esperar(est, T_MAYOR)
             pos_tipo_fin = est.posicion - 1
             si pos_tipo_fin >= pos_tipo_ini:

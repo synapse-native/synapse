@@ -21,7 +21,12 @@ _G_fn_var_tipos; antes heuristica 'primera instancia'). R19: el argumento
 transferido `->expr` (Manual 4 §3.3) aporta el tipo de su expr envuelta a la
 unificacion de TVars de llamadas genericas (desenrollado del NODO_TRANSFERIDO
 en validar_llamada_generica; antes quedaba el TVar libre -> ERR_SEM_TYPE_AMBIGUOUS
-espurio).
+espurio). R20: constructores anidados `ok(ok(42))` (deuda del reporte R16) -
+el ctor como argumento aporta el tipo de su instancia exacta (helper del
+compilador `_syn_nativo_expr_tipo_c` + resolucion por tipo del argumento en
+el hoisting y el compound literal); el parser nativo del tipo del `let`
+escanea con profundidad `< >` (antes se cortaba en el primer '>' y el span
+quedaba truncado). S1: tipo_de_expr resuelve ctors por el tipo del argumento.
 
 Requiere el bootstrap (synapse_stage*.exe); se salta si no esta disponible.
 """
@@ -1448,3 +1453,105 @@ def test_r19_ambiguo_legitimo_se_mantiene(stage, tmp_path):
     assert "Error semantico" in proc.stderr, (
         f"diagnostico AMBIGUOUS ausente tras el fix:\n{proc.stderr[-1200:]}")
     assert "ambiguo" in proc.stderr
+
+
+# --- R20: constructores anidados ok(ok(42)) (Manual 2 §4.2 L279-280) --------
+# Deuda del reporte R16: el codegen de ctors anidados (`ok(ok(42))`) fallaba
+# en AMBOS generadores - el ctor como argumento no aportaba su tipo, la
+# resolucion de la instancia (hoisting + compound literal) elegia la
+# equivocada o caia al placeholder `Resultado_T`. Fix R20 en 4 puntos:
+#   (1) parser.nativo del tipo del `let`: scan con profundidad < > (paridad
+#       parsear_tipo_compuesto R13) - antes se cortaba en el primer '>' y el
+#       span quedaba truncado (`Resultado<Resultado<entero,texto`);
+#   (2) helper del compilador `_syn_nativo_expr_tipo_c` (orquestador.syn):
+#       tipo C de un nodo recursivo (ctors anidados -> instancia exacta);
+#   (3) compound literal del ctor (expr_eval.syn): el tipo del argumento se
+#       resuelve con el helper (antes solo literales);
+#   (4) hoisting ME-B7 (orquestador.syn): resolucion por tipo del argumento
+#       via _G_native_adt_inst_ctr (antes heuristica tag<nfields ambigua).
+# S1 (emit_expressions.py tipo_de_expr): branch de ctor ADT con resolucion de
+# la instancia por el tipo del argumento (recursivo).
+
+_PROG_R20_LET = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion principal() -> nulo:
+    let r: Resultado<Resultado<entero,texto>,texto> = ok(ok(42))
+    log(entero_a_texto(5))
+    retornar
+'''
+
+_PROG_R20_MATCH = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion principal() -> nulo:
+    let r: Resultado<Resultado<entero,texto>,texto> = ok(ok(42))
+    coincidir r:
+        ok(inner) => log(entero_a_texto(42))
+        err(_) => log(entero_a_texto(-1))
+    retornar
+'''
+
+_PROG_R20_AUTO = '''#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion principal() -> nulo:
+    r = ok(ok(42))
+    retornar
+'''
+
+
+def _compilar_con_s1(prog: str, tmp: str):
+    src = os.path.join(tmp, "prog_s1.syn")
+    exe = os.path.join(tmp, "prog_s1.exe")
+    with open(src, "w", encoding="utf-8") as f:
+        f.write(prog)
+    return subprocess.run(
+        [sys.executable, "main.py", src, exe], cwd=RAIZ,
+        capture_output=True, text=True, timeout=600,
+    )
+
+
+def test_r20_let_ctor_anidado_compila(stage, tmp_path):
+    """R20: `let r: Resultado<Resultado<entero,texto>,texto> = ok(ok(42))`
+    compila rc=0 en el nativo — antes el span del tipo del let se cortaba en
+    el primer '>' (Resultado_T) y el ctor anidado caia al fallback."""
+    proc = _compilar_con_stage(stage, _PROG_R20_LET, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let con ctor anidado deberia compilar rc=0, obtuvo "
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    assert "Resultado_T" not in proc.stderr
+
+
+def test_r20_let_ctor_anidado_s1_paridad(tmp_path):
+    """R20: el S1 tambien compila el let con ctor anidado rc=0 (paridad
+    nativa) — antes el ctor anidado elegia la instancia equivocada
+    (incompatible types 'long long int' vs 'Resultado_entero_texto')."""
+    proc = _compilar_con_s1(_PROG_R20_LET, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: let ctor anidado deberia compilar rc=0, obtuvo "
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+
+
+def test_r20_ctor_anidado_match_runtime(stage, tmp_path):
+    """R20: el valor anidado se construye y se hace coincidir sobre la
+    instancia EXTERNA (tag ok -> 42) con runtime correcto."""
+    proc = _compilar_con_stage(stage, _PROG_R20_MATCH, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"match sobre anidada deberia compilar rc=0, obtuvo "
+        f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
+    exe = os.path.join(str(tmp_path), "programa.exe")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    assert run.returncode == 0
+    assert "42" in run.stdout
+
+
+def test_r20_auto_sin_tipo_paridad(stage, tmp_path):
+    """R20: `r = ok(ok(42))` sin tipo declarado NO es tipable (T sin
+    contexto; ninguna instancia registrada) — falla en el nativo Y en el S1
+    (divergencia aceptada y documentada, paridad de fallo)."""
+    proc_n = _compilar_con_stage(stage, _PROG_R20_AUTO, str(tmp_path))
+    proc_s1 = _compilar_con_s1(_PROG_R20_AUTO, str(tmp_path))
+    assert proc_n.returncode != 0 and proc_s1.returncode != 0, (
+        f"auto sin contexto deberia fallar en ambos; nativo rc="
+        f"{proc_n.returncode} s1 rc={proc_s1.returncode}")
