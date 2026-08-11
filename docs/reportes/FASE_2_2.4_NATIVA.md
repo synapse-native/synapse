@@ -885,3 +885,67 @@ guard de anidamiento, sin colisión de locales C `_her`/`_g`/`_hx`, caso
 `hijo_izq<=0` → tipo vacío → argumento omitido como antes) — sin cambios
 necesarios. Hash: 9155120.
 
+---
+
+## 23. R20 — Constructores anidados `ok(ok(42))` (Manual 2 §4.2 L279-280)
+
+**Deuda (registrada en §19 R16):** el codegen de constructores anidados
+(`ok(ok(42))`) fallaba en AMBOS generadores — `Resultado_T` en el hoisting del
+`let` ADT anidado y el compound literal del ctor anidado con la instancia
+equivocada (resolución ambigua por tipo de campo).
+
+**Causa raíz (2 capas, reproducible con probes de paridad):**
+1. **Parser nativo del tipo del `let`** (`parser_stmt.syn`): el scan de los
+genéricos consumía hasta el PRIMER `>` (`mientras token != T_MAYOR`) → el span
+quedaba truncado (`Resultado<Resultado<entero,texto` sin `,texto>`) → el scan
+D-2 registraba basura, `traducir_tipo_c` caía a `Resultado_T` y el RHS del let
+se perdía (el parser esperaba `=` tras un span mal cerrado). El S1 tenía el
+mismo bug en la cadena `tipo_de_expr`→`_resolver_instancia_adt`: un ctor como
+argumento tipaba como `'int'` (fallback de `LlamadaFuncion`) → con 2
+instancias del base elegía la equivocada (`Resultado_entero_texto` en vez de
+`Resultado_Resultado_entero_texto_texto`).
+2. **Resolución de instancia sin el tipo del argumento** (nativo): el hoisting
+ME-B7 usaba la heurística `_hans == 1 || _hag < _G_native_adt_inst_nfields`
+(ambigua con 2 instancias del base) y el compound literal del ctor
+(`expr_eval.syn`) solo infería tipos de literales (`LiteralNumero`/`Decimal`/
+`Cadena`) → un ctor anidado dejaba el tipo vacío → `_G_native_adt_inst_ctr` no
+matcheaba → fallback `(Resultado){...}` → gcc rc=5.
+
+**Fix (4 puntos nativos + S1):**
+- **`parser_stmt.syn`**: scan del tipo del `let` con **profundidad `< >`**
+(paridad `parsear_tipo_compuesto` R13, anti-cuelgue `T_FIN → romper`; vars
+`prof_tipo`/`t_tipo` para no chocar con el parámetro `t` de
+`parsear_sentencia_decl`). **Hallazgo de build**: el str_replace inicial puso
+el bloque a 8 espacios (fuera del `si T_DOSPUNTOS`) → `pos_tipo_ini` "no
+declarada" (scope) — se corrigió la indentación a 12 (el error del analizador
+del S1 se reporta con la línea del flatten de `principal.syn`, offset erróneo
+por imports).
+- **`orquestador.syn`**: nueva función del **COMPILADOR**
+`_syn_nativo_expr_tipo_c(n, out)` (tipo C de un nodo recursivo: literales,
+ctors anidados → instancia exacta vía `_G_native_adt_inst_ctr`, estructuras,
+identificadores vía `_G_fn_var_tipos`). **Hallazgo de build crítico**: el
+helper NO puede emitirse al C del programa de usuario (allí no existen los
+structs del AST — `invalid use of undefined type 'struct LlamadaFuncion'`);
+es función Synapse del generador (el S1 la compila en el C del compilador; el
+preámbulo S1 de `generator.py` se añadió y se REVIRTIÓ).
+- **`expr_eval.syn`**: el compound literal del ctor resuelve el tipo del
+argumento con `_syn_nativo_expr_tipo_c` (antes solo literales).
+- **Hoisting ME-B7** (`orquestador.syn`): resolución por tipo del argumento vía
+`_G_native_adt_inst_ctr` (reutilizado) con fallback a instancia única.
+- **S1** (`emit_expressions.py` `tipo_de_expr`): branch de ctor ADT que
+resuelve la instancia por el tipo del argumento (recursivo, comparación por
+C-traducido como `_resolver_instancia_adt`); fallback `'int'` preservado para
+ADTs no genéricos y casos sin resolver.
+
+**Validación:** probe `p1_let` (`let r: Resultado<Resultado<entero,texto>,texto> = ok(ok(42))`) antes rc=5 (`Resultado_T`) → **rc=0**; `p4` (coincidir sobre la
+instancia externa) rc=0 con **runtime 42**; `p2` (auto sin tipo — no tipable
+sin contexto, ninguna instancia registrada) falla en ambos — paridad aceptada;
+S1 `p1` rc=0 (antes rc=1 con instancia equivocada `long long int`); bootstrap
+**S2==S3 (md5 `925b9046`)**; suite **69/69 HM** (65+4 R20). Code-reviewer:
+aprobado sin bloqueantes (notas: recursión del helper sin guard de profundidad
+— riesgo bajo por AST finito, R19 usaba `_g<8` para el desenrollado; orden de
+llenado de `_G_fn_var_tipos` para identificadores — un ctor arg que referencia
+una variable no hoisteada aún degrada al fallback, sin crash).
+
+**HASH COMMIT: `6e903b8`** — rama `feature/fase2-nativa-hm`.
+

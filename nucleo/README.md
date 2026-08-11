@@ -445,6 +445,24 @@ conservar la cadena de la llamada. Validación: `identidad(->n)` rc=7→rc=5 con
 legítimo sigue diagnosticándose; bootstrap S2==S3 (`07b3bbe0`); **65/65 HM**.
 Detalle: reporte §22.
 
+### R20 — Constructores anidados `ok(ok(42))` (CERRADA `6e903b8`)
+
+El codegen de ctors anidados fallaba en AMBOS generadores (deuda del reporte
+R16): `Resultado_T` en el hoisting del `let` ADT anidado y compound literal con
+la instancia equivocada. Causa raíz doble: (1) el parser nativo del tipo del
+`let` consumía hasta el primer `>` → span truncado (el S1 tipaba un ctor como
+`'int'` → instancia equivocada con 2 del base); (2) el hoisting ME-B7 usaba la
+heurística `tag<nfields` ambigua y el compound literal solo infería literales.
+Fix en 4 puntos: parser del let con profundidad `< >` (paridad
+`parsear_tipo_compuesto` R13, anti-cuelgue `T_FIN`); nueva función del
+COMPILADOR `_syn_nativo_expr_tipo_c` (`orquestador.syn` — tipo C de un nodo
+recursivo; NO se emite al C del usuario donde no existen los structs AST);
+compound literal y hoisting resuelven por tipo del argumento vía
+`_G_native_adt_inst_ctr`; S1 `tipo_de_expr` con branch de ctor ADT (fallback
+`'int'` preservado). Validación: `p1_let` rc=5→rc=0, `p4` runtime 42, auto sin
+tipo falla en ambos (paridad), bootstrap S2==S3 (`925b9046`), **69/69 HM**.
+Detalle: reporte §23.
+
 ### M — Modularización de `orquestador.syn` (CERRADA `4edc7ff`, AUDITORIA 13)
 
 `orquestador.syn` pasó de 101KB/1350 líneas (con `generar()` monolito de 932
