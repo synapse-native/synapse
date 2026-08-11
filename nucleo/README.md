@@ -474,3 +474,17 @@ textual intacto; `_rebuild_generator.py` concatena los 3 antes de
 `orquestador.syn`. Validación de transparencia: C generado **byte-idéntico** al
 baseline (md5 `fb17775c` antes y después), bootstrap S2==S3 (`f8205fcb`),
 **62/62 HM**.
+
+### M2 — Modularización F: rama `DefinicionFuncion` (CERRADA `36ce8aa`, AUDITORIA 13)
+
+La rama `DefinicionFuncion` de `gen_visitar_top_level` (242 líneas asm) se
+extrajo a la función `gen_visitar_funcion` en el módulo nuevo
+`funciones.syn` (253 líneas), registrado en `_rebuild_generator.py`.
+`orquestador.syn` bajó de 807 a **566 líneas**. Extracción mecánica con la
+misma semántica (`exit(1)` del aborto global preservado); call-site
+`if/else if` partido en 3 líneas (regla R18 del emisor S1: añade `;` a líneas
+asm que terminan en `}` con `{` interno — un cierre extra duplicado rompía la
+cadena `else if`); el extern de `_es_builtin_runtime` documentado como
+dependencia del módulo posterior. Validación de transparencia: C generado
+**byte-idéntico** al baseline (md5 `2379e59d`), bootstrap S2==S3
+(`13cf8ee0`), **69/69 HM**, probe runtime 7.
