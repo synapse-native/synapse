@@ -15,10 +15,13 @@ registra las instanciaciones de ADT genericos con monomorfizacion real
 incluido anidamiento). R17: `let` locales, campos de estructura y externos
 (scan nativo extendido, paridad total con el S1) + orden de emision de los
 typedefs de instancias en un pre-bloque (antes de los structs alfabeticos) y
-binding del `coincidir` sobre instancias (.dato.<tag>). R18: el binding del
-`coincidir` con MULTI-instancia del mismo base resuelve la instancia EXACTA
+binding del `coincidir` sobre instancias (.dato.<tag>). R18: elbinding del `coincidir` con MULTI-instancia del mismo base resuelve la instancia EXACTA
 por el tipo C de la variable (parametros y `let` explicitos registrados en
-_G_fn_var_tipos; antes heuristica 'primera instancia').
+_G_fn_var_tipos; antes heuristica 'primera instancia'). R19: el argumento
+transferido `->expr` (Manual 4 §3.3) aporta el tipo de su expr envuelta a la
+unificacion de TVars de llamadas genericas (desenrollado del NODO_TRANSFERIDO
+en validar_llamada_generica; antes quedaba el TVar libre -> ERR_SEM_TYPE_AMBIGUOUS
+espurio).
 
 Requiere el bootstrap (synapse_stage*.exe); se salta si no esta disponible.
 """
@@ -1385,3 +1388,63 @@ def test_r18_match_binding_runtime(stage, tmp_path):
         f"rc={proc.returncode}:\n{proc.stderr[-1500:]}")
     assert run is not None and run.stdout.splitlines() == ["8"], (
         f"salida esperada '8', obtuvo {run.stdout!r}")
+
+
+# --- R19: genérico+transferencia (->expr) — TVar resuelto desde el argumento --
+# transferido (Manual 2 §8.2 + Manual 4 §3.3). Paridad S1 semantic_types.py
+# L167-168: ArgumentoTransferido -> _inferir_tipo(expr). El nativo NO tenia
+# rama para NODO_TRANSFERIDO (30) en la inferencia de argumentos de
+# validar_llamada_generica -> el argumento transferido no aportaba su tipo a
+# la unificacion -> el TVar del parametro quedaba libre -> ERR_SEM_TYPE_AMBIGUOUS
+# espurio ("Expresion con tipo ambiguo: no se puede inferir 'T'").
+
+_PROG_R19_TRANSFERIDO = '''#lang: es
+funcion identidad(x: T) -> T:
+    retornar x
+funcion principal() -> nulo:
+    n = 7
+    m = identidad(->n)
+    log(entero_a_texto(m))
+    retornar
+'''
+
+_PROG_R19_MIX = '''#lang: es
+funcion envolver(x: T) -> T:
+    retornar x
+funcion principal() -> nulo:
+    n = 7
+    a = envolver(->n)
+    b = envolver("hola")
+    log(entero_a_texto(a))
+    escribir_linea(b)
+    retornar
+'''
+
+
+def test_r19_transferido_no_ambiguo(stage, tmp_path):
+    """R19: `identidad(->n)` con `n: entero` NO emite AMBIGUOUS (antes:
+    ERR_SEM_TYPE_AMBIGUOUS espurio porque el argumento transferido no
+    participaba en la unificacion). El codegen de TVars falla igual que en el
+    S1 (rc de GCC), pero debe haber CERO errores semanticos."""
+    proc = _compilar_con_stage(stage, _PROG_R19_TRANSFERIDO, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"AMBIGUOUS espurio por transferencia:\n{proc.stderr[-1200:]}")
+
+
+def test_r19_mix_transferido_y_literal_sin_errores(stage, tmp_path):
+    """R19: mezcla de instancias `envolver(->n)` (T=entero) y
+    `envolver("hola")` (T=texto) no emite errores semanticos (paridad S1,
+    que tampoco emite ninguno)."""
+    proc = _compilar_con_stage(stage, _PROG_R19_MIX, str(tmp_path))
+    assert "Error semantico" not in proc.stderr, (
+        f"errores semanticos en el caso mixto:\n{proc.stderr[-1200:]}")
+
+
+def test_r19_ambiguo_legitimo_se_mantiene(stage, tmp_path):
+    """R19: el AMBIGUOUS LEGITIMO (T declarado solo en el retorno, sin
+    argumentos que lo resuelvan) sigue diagnosticandose — el fix solo desenrolla
+    el NODO_TRANSFERIDO, no desactiva la validacion."""
+    proc = _compilar_con_stage(stage, _PROG_R1_AMBIGUO, str(tmp_path))
+    assert "Error semantico" in proc.stderr, (
+        f"diagnostico AMBIGUOUS ausente tras el fix:\n{proc.stderr[-1200:]}")
+    assert "ambiguo" in proc.stderr

@@ -52044,6 +52044,20 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        int _her=e->nodos[_argn].hermano;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        int _g=0; while(_at==30 && _g<8){ int _hx=e->nodos[_argn].hijo_izq; if(_hx<=0){ _at=0; break; } _argn=_hx; _at=e->nodos[_argn].tipo_nodo; _g++; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        if(_at==9){ strcpy(_ab,\"entero\"); }"
                 }
               },
@@ -52149,7 +52163,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        memcpy(_args[_na],_ab,256); _na++; _argn=e->nodos[_argn].hermano;"
+                  "instruccion": "        memcpy(_args[_na],_ab,256); _na++; _argn=_her;"
                 }
               },
               {

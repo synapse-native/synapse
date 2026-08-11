@@ -578,6 +578,12 @@ funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: enter
         asm("    char _args[8][256]; int _na=0; int _argn=((int*)&e->nodos[idx])[6];")
         asm("    while(_argn>0 && _na<8){")
         asm("        char _ab[256]; _ab[0]=0; int _at=e->nodos[_argn].tipo_nodo;")
+        // R19: NODO_TRANSFERIDO (30) ->expr (paridad S1 semantic_types.py L167:
+        // ArgumentoTransferido -> _inferir_tipo(expr)). El argumento transferido
+        // aporta el tipo de su expr envuelta (hijo_izq) a la unificacion; se
+        // guarda el hermano del argumento real para no perder la cadena.
+        asm("        int _her=e->nodos[_argn].hermano;")
+        asm("        int _g=0; while(_at==30 && _g<8){ int _hx=e->nodos[_argn].hijo_izq; if(_hx<=0){ _at=0; break; } _argn=_hx; _at=e->nodos[_argn].tipo_nodo; _g++; }")
         asm("        if(_at==9){ strcpy(_ab,\"entero\"); }")
         asm("        else if(_at==10){ strcpy(_ab,\"decimal\"); }")
         asm("        else if(_at==11){ strcpy(_ab,\"texto\"); }")
@@ -593,7 +599,7 @@ funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: enter
         asm("                if(_ci>=0){ int _no=e->info_funciones[_ci].nodo; int* _phr=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _br=(uintptr_t)(unsigned)e->nodos[_no].ptr_extra; if(_phr){ _br|=((uintptr_t)(unsigned)_phr[_no])<<32; } const char* _vr=(const char*)_br; if(_vr){ int _l=(int)strlen(_vr); if(_l>255)_l=255; memcpy(_ab,_vr,_l); _ab[_l]=0; } }")
         asm("                if(_ci<0){ int _sc=0; for(int _i=0;_i<e->total_estructuras;_i++){ if(e->info_estructuras[_i].nombre.datos&&strcmp(e->info_estructuras[_i].nombre.datos,_va)==0){ _sc=1; break; } } if(_sc){ strcpy(_ab,_va); } } }")
         asm("        }")
-        asm("        memcpy(_args[_na],_ab,256); _na++; _argn=e->nodos[_argn].hermano;")
+        asm("        memcpy(_args[_na],_ab,256); _na++; _argn=_her;")
         asm("    }")
         asm("    if(_na!=_np){ char _mm[256]; snprintf(_mm,256,\"Cantidad de argumentos invalida para '%s': se esperaban %d (Manual 2 seccion 8.2)\",_callee,_np);")
         asm("        fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; return; }")
