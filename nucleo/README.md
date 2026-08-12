@@ -605,6 +605,21 @@ Validación: probe `-> pos: entero` rc=0 (antes rc=8); bootstrap S2==S3
 ESTRUCTURA en `let` sin anotación (divergencia, con anotación funciona).
 Detalle: reporte §29.
 
+### R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (CERRADA)
+
+`let r = ok(ok(42))` (Manual 2 §4.2 L279-280) sin anotación, con solo la
+instancia SIMPLE registrada por firma, emitía C basura en ambos compiladores
+(nativo rc=5 `struct Resultado` base; S1 rc=1 `int64_t r = (Resultado){...}`)
+porque los scans de monomorfización (D-2 / `_recolectar_instancias_adt` S1)
+ignoraban ctors en EXPRESIONES. Fix: fixpoint en ambos scans (derivan la
+instancia anidada desde cadenas de ctors ancladas en instancias registradas,
+post-orden) + registro de la variable ligada del caso `ok(inner)` en el
+`coincidir` (S1 `ctx._variables` / nativo `_G_fn_vars`) — el probe TRIPLE
+`ok(ok(ok(42)))` delató que el binding del nivel 2 caía al fallback de la
+primera instancia del base. Caso sin ninguna firma sigue fallando en ambos
+(paridad R20). Bootstrap S2==S3 `e580ffcf…`, 101/101 HM, S1 196 passed.
+Detalle: reporte §31.
+
 ### R27 — Ctor de estructura en `let` sin anotación (CERRADA, hallazgo R26)
 
 `let p = Punto()` (Manual 2 L67, `declaracion_estructura` — ctor de struct sin

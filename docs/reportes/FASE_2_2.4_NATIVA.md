@@ -1386,3 +1386,75 @@ R27), docs (este reporte §30, `nucleo/README.md`, bitácora AUDITORIA,
 `MEMORIA_PROYECTO.md`). **HASH COMMIT: `08c4d70`** — rama
 `feature/fase2-nativa-hm`.
 
+---
+
+## 31. R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (2026-08-12)
+
+**Referencia:** Manual 2, §4.2, L279-280 (`tipo Resultado<T, E> = ok(T) | err(E)` —
+el ctor como argumento aporta su tipo; paridad S1 `semantic_types.py` / `generator.py`
+`_recolectar_instancias_adt`). Cierra la prioridad registrada en R25: la inferencia
+de la instancia **anidada** en `let ok(ok(42))` sin anotación.
+
+### Diagnóstico (4 caminos, secuencial — sin razas)
+
+| Caso | Nativo | S1 |
+|---|---|---|
+| `let r = ok(7)` (instancia simple) | ✓ rc=0 (R25) | ✓ rc=0 |
+| `let r = ok(ok(42))` + instancia anidada en FIRMA | ✓ rc=0 | ✓ rc=0 |
+| `let r = ok(ok(42))` + solo instancia SIMPLE registrada (forma natural) | ✗ rc=5 `struct Resultado` base | ✗ rc=1 `int64_t r = (Resultado){...}` |
+| `r = ok(ok(42))` (auto) + solo instancia simple | ✗ rc=5 base | ✗ rc=1 base |
+| Sin NINGUNA firma (T sin contexto) | ✗ rc=5 | ✗ rc=1 (paridad R20 intacta) |
+
+**Causa raíz (ambos compiladores):** los scans de monomorfización (D-2 nativo /
+`_recolectar_instancias_adt` S1) solo registran instancias nombradas en firmas,
+parámetros, `let` ANOTADOS y campos — **nunca ctors en expresiones**. Con solo la
+instancia simple registrada, `ok(ok(42))` no derivaba la anidada
+`Resultado<Resultado<entero,texto>,texto>` y el tipo de la variable caía a
+`int64_t`/base → C inválido. La doc R25/R20 que daba por fallido el caso "con
+firma simple" estaba stale: solo se había probado sin contexto (paridad de fallo
+R20, que sigue intacta).
+
+### Fix (paridad S1, 2 frentes)
+
+1. **S1 (`generator.py`):** fixpoint en `_recolectar_instancias_adt` — tras
+   recoger instancias de firmas, un scan de cadenas de ctors (`ok/err/algun/ninguno`)
+   en los cuerpos deriva las instancias anidadas ancladas en las ya registradas
+   (registro post-orden del arg anidado primero, paridad FIFO D-2; `','.join` sin
+   espacio → mangling limpio `Resultado_Resultado_entero_texto_texto`).
+2. **S1 (`emit_control.py`):** `visitar_coincidir` registra la variable ligada
+   del caso (`ok(inner)` → `ctx._variables[var_name] = bound_syn`, solo instancias
+   concretas) — antes el `coincidir` ANIDADO sobre la variable ligada caía a
+   `int64_t` (C inválido).
+3. **Nativo (`monomorfizacion.syn`):** 3 helpers Synapse nuevas
+   (`_G_native_adt_registrar_syn` post-orden / `_G_native_adt_resolver_ctor`
+   recursivo / `_G_native_scan_ctor_exprs` fixpoint ≤4 pasos con corte si no hay
+   registros nuevos), invocadas en el scan D-2 antes del pre-bloque de typedefs
+   (R17). SólO se emiten en el bootstrap (funciones del compilador, no del
+   programa de usuario — lección R5: el cambio no surte efecto hasta regenerar
+   `generator.syn` con `_rebuild_generator.py`).
+4. **Nativo (`nodos_flujo.syn`):** `gen_visitar_coincidir` registra el binding
+   del caso en `_G_fn_vars`/`_G_fn_var_tipos` (dedup por nombre, memcpy acotado
+   63) — hallazgo del probe TRIPLE `ok(ok(ok(42)))`: el coincidir del nivel 2
+   caía al fallback de la PRIMERA instancia del base y emitía
+   `int64_t b = (a).dato.ok;` (C inválido; el doble pasaba por casualidad).
+
+### Validación
+
+- Probes (secuencial, sin raza sobre `synapse_unity.c`): `r25shape` (let anidado
+  con firma simple), `auto_con_firma` (auto), `nested_con_firma`, `triple`
+  `ok(ok(ok(42)))` — todos nativo rc=0 + runtime 42 con la instancia anidada
+  completa en el C; S1 rc=0 en let/anidado y auto (paridad).
+- Caso sin firma sigue rc=5/rc=1 en ambos (paridad, test R20 intacto).
+- Bootstrap **S2==S3** (sha256 `e580ffcf…`); suite **101/101 HM** (96+5 R28);
+  S1 **196 passed** (test_borrow_checker + ownership + borrowing + unit).
+- Code review: scoping del binding (tabla plana por función, reset en
+  `funciones.syn`; overwrite de nombre homónimo = limitación DOCUMENTADA de
+  shadowing, paridad S1 — `ctx._variables` no restaura tampoco), bounds 63
+  verificados, sin código muerto.
+- Archivos: `compilador/generator/generator.py`, `compilador/generator/emit_control.py`,
+  `nucleo/generador/monomorfizacion.syn`, `nucleo/generador/nodos_flujo.syn`,
+  `nucleo/generator.syn` (regenerado), `nucleo/principal.syn.json`,
+  `tests/test_fase2_nativa_hm.py` (+5 tests R28), docs (este reporte §31,
+  `nucleo/README.md`, bitácora AUDITORIA, `MEMORIA_PROYECTO.md`). **HASH
+  COMMIT: `7f8bdff`** — rama `feature/fase2-nativa-hm`.
+
