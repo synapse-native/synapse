@@ -1077,3 +1077,62 @@ regresión — la gramática dice `sentencia` en singular).
 
 **HASH COMMIT: `6f6e5a6`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## §26 — R23: REDEFINICION de función/estructura/externa/constante OBSERVABLE (cierre del hallazgo R21; Manual 3 §3.1, Manual 2 §10.1)
+
+**Causa raíz (hallazgo R21):** el unity merge deduplicaba los símbolos top-level
+con `_seen_sym` first-wins (paridad `pipeline.py:374`) y SILENCIABA la
+REDEFINICION de función/estructura/externa del archivo del usuario: los
+checks de las pasadas 1/2 del analizador nativo quedaban como defensa
+redundante (nunca se ejercitaban). La leniency R9 de constantes globales
+(`ok_c` descartado, L1247) tapaba además los espejos de constantes entre
+módulos del compilador.
+
+**Fix (paridad S1+nativo, Manual 3 §3.1 orden inline / Manual 2 §10.1
+ubicación precisa):**
+
+1. **Dedup por PROFUNDIDAD (nativo `principal.syn` ME-B9.z):** `_desde_modulo
+   = (_stk_n > 1)` — el dedup first-wins SOLO aplica a símbolos de módulos
+   importados (espejos legítimos de tokens/lexer/parser_constantes/
+   diagnostics/errores); los duplicados del PROPIO archivo del usuario llegan
+   al analizador y la REDEFINICION los reporta con línea/columna reales.
+2. **Dedup por proveniencia (S1 `pipeline.py`):** `_origenes` marca cada
+   sentencia fusionada como `de_importacion`; el bucle de dedup solo descarta
+   duplicados importados, los del propio archivo sobreviven al checker.
+3. **Ruta Unity Build del self-hosted (nativo):** el `_files[]` merge
+   concatena TODOS los módulos del compilador SIN dedup — con la leniency R9
+   retirada el stage2 daba ~110 REDEFINICION falsos de espejos. Fix: pasada
+   first-wins post-merge (`_seen_sym2`/`_nd2`) sobre el AST fusionado
+   (todo lo del unity build es de módulos → dedup total).
+4. **Plantilla REDEFINICION en `sem_error`** (`analizador_semantico.syn`):
+   los 7 call-sites pasan el nombre CRUDO; ahora se interpola en
+   `Redefinicion de '%s' en el mismo ambito` (paridad S1).
+5. **Constante global ESTRICTA:** la leniency R9 retirada (los espejos ya los
+   protege el merge) — paridad S1 (que ya reportaba `Redefinición`).
+6. **`NODO_CONSTANTE` con línea/columna** (`puente_ast.syn`): las constantes
+   globales top-level reportaban `(linea 0, columna 0)` — se copia
+   `linea_n`/`col_n` (patrón R21).
+7. **Paridad S1 del checker** (`semantic_checker.py`): la rama `DeclaracionTipo`
+   registraba ADTs con `if not in` SILENCIOSO (ADT duplicado rc=0) y la rama
+   `DeclaracionVariable` llamaba `tabla.declarar` sin comprobar el retorno
+   (variable local duplicada pasaba a gcc `redefinition of 'x'`). Ambos ahora
+   reportan REDEFINICION (declarar retorna False solo en el MISMO ámbito — el
+   shadowing anidado sigue válido).
+
+**Validación:** probes nativos r1/r2/r3/c1 rc=7 con línea real de la SEGUNDA
+definición (f 4:9, Punto 4:12, ayuda 3:17, MAXIMO 3:11) + control r4 rc=0;
+probes de paridad S1 (a1 ADT `Redefinición de 'Color'` 3:0, v1 variable
+`Redefinición de 'x'` 4:0); m23 imports de módulos con espejo rc=0 (el dedup
+por profundidad SÍ elimina espejos); **bootstrap S2==S3 byte-idénticos**
+(sha256 `ddf2e0bf…`, 1.093.651 bytes); suite **87/87 HM** (82+5 R23);
+regresión S1 **212 passed** (unit+match+e2e+examples); tests R23 nuevos en
+`tests/test_fase2_nativa_hm.py` (5) + `test_type_inference.py` (3).
+
+**Residual:** asimetría de orden first-wins (un import visitado antes que la
+definición del usuario gana) — inherente al diseño, paridad S1 `vistos`;
+el dedup del unity build también cubre función/estructura/externa (rama
+defensiva — hoy solo hay espejos de constantes en `_files[]`).
+
+**HASH COMMIT: `603c754`** — rama `feature/fase2-nativa-hm`.
+

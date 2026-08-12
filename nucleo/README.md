@@ -531,3 +531,28 @@ anidado no exhaustivo con línea real 6:23, bloque vacío rc=0); bootstrap
 R22); S1 parser/match/tipos 69 passed. Hallazgo S1 registrado: codegen de
 `coincidir` en funciones NO genéricas emite `Resultado_T` (preexistente;
 `test_match.py` solo valida semántica). Detalle: reporte §25.
+
+### R23 — REDEFINICION observable por profundidad (CERRADA `603c754`)
+
+Cierre del hallazgo R21: el dedup `_seen_sym` first-wins del unity merge
+deduplicaba los símbolos top-level sin distinguir origen y SILENCIABA la
+REDEFINICION de función/estructura/externa del archivo del usuario (paridad
+`pipeline.py:374`). Fix por PROFUNDIDAD en `principal.syn` ME-B9.z:
+`_desde_modulo = (_stk_n > 1)` — el dedup solo aplica a símbolos de MODULOS
+importados (espejos legítimos de tokens/lexer/parser_constantes/
+diagnostics/errores); los duplicados del propio archivo llegan al analizador
+y REDEFINICION los reporta con línea/columna reales (pasadas 1/2). La ruta
+Unity Build del self-hosted (concatena `_files[]` sin dedup) recibió la
+misma pasada first-wins post-merge (`_seen_sym2`/`_nd2`) — sin ella, la
+leniency R9 de constantes retirada destapaba ~110 espejos falsos en el
+stage2. Paridad S1: `pipeline.py` `_origenes` (`de_importacion`) + checker
+(`semantic_checker.py`): ADT duplicado (rama `DeclaracionTipo`) y variable
+local duplicada (`declarar` sin retorno) ahora reportan REDEFINICION — el
+shadowing en ámbito anidado sigue válido (`declarar` retorna False solo en el
+mismo scope). `sem_error` interpola la plantilla `Redefinicion de '%s' en el
+mismo ambito` (7 call-sites con nombre crudo); `NODO_CONSTANTE` con
+línea/columna reales en `puente_ast.syn` (las constantes globales reportaban
+0,0). Validación: probes nativos r1/r2/r3/c1 rc=7 con línea real de la 2.ª
+definición + control rc=0; imports m23 con espejo rc=0; bootstrap **S2==S3**
+(sha256 `ddf2e0bf…`, 1.093.651 bytes); suite **87/87 HM** (82+5 R23);
+regresión S1 212 passed. Detalle: reporte §26.
