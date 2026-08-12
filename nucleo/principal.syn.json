@@ -38634,34 +38634,31 @@
                             }
                           },
                           {
-                            "_tipo": "AsignacionVariable",
-                            "nombre": "r2",
-                            "expresion": {
-                              "_tipo": "LiteralNumero",
-                              "valor": 1
-                            }
-                          },
-                          {
-                            "_tipo": "SentenciaMientras",
+                            "_tipo": "SentenciaSi",
                             "condicion": {
                               "_tipo": "OpBinaria",
                               "izquierdo": {
-                                "_tipo": "Identificador",
-                                "nombre": "r2"
+                                "_tipo": "LlamadaFuncion",
+                                "nombre": "token_mirar",
+                                "argumentos": [
+                                  {
+                                    "_tipo": "Identificador",
+                                    "nombre": "est"
+                                  }
+                                ]
                               },
                               "operador": "==",
                               "derecho": {
-                                "_tipo": "LiteralNumero",
-                                "valor": 1
+                                "_tipo": "Identificador",
+                                "nombre": "T_NUEVALINEA"
                               }
                             },
                             "cuerpo": [
                               {
-                                "_tipo": "AsignacionVariable",
-                                "nombre": "t",
-                                "expresion": {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
                                   "_tipo": "LlamadaFuncion",
-                                  "nombre": "token_mirar",
+                                  "nombre": "token_avanzar",
                                   "argumentos": [
                                     {
                                       "_tipo": "Identificador",
@@ -38671,12 +38668,18 @@
                                 }
                               },
                               {
-                                "_tipo": "SentenciaSi",
+                                "_tipo": "SentenciaMientras",
                                 "condicion": {
                                   "_tipo": "OpBinaria",
                                   "izquierdo": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "t"
+                                    "_tipo": "LlamadaFuncion",
+                                    "nombre": "token_mirar",
+                                    "argumentos": [
+                                      {
+                                        "_tipo": "Identificador",
+                                        "nombre": "est"
+                                      }
+                                    ]
                                   },
                                   "operador": "==",
                                   "derecho": {
@@ -38685,153 +38688,6 @@
                                   }
                                 },
                                 "cuerpo": [
-                                  {
-                                    "_tipo": "AsignacionVariable",
-                                    "nombre": "r2",
-                                    "expresion": {
-                                      "_tipo": "LiteralNumero",
-                                      "valor": 0
-                                    }
-                                  },
-                                  {
-                                    "_tipo": "SentenciaRomper"
-                                  }
-                                ]
-                              },
-                              {
-                                "_tipo": "SentenciaSi",
-                                "condicion": {
-                                  "_tipo": "OpBinaria",
-                                  "izquierdo": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "t"
-                                  },
-                                  "operador": "==",
-                                  "derecho": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "T_DESINDENTAR"
-                                  }
-                                },
-                                "cuerpo": [
-                                  {
-                                    "_tipo": "AsignacionVariable",
-                                    "nombre": "r2",
-                                    "expresion": {
-                                      "_tipo": "LiteralNumero",
-                                      "valor": 0
-                                    }
-                                  },
-                                  {
-                                    "_tipo": "SentenciaRomper"
-                                  }
-                                ]
-                              },
-                              {
-                                "_tipo": "SentenciaSi",
-                                "condicion": {
-                                  "_tipo": "OpBinaria",
-                                  "izquierdo": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "t"
-                                  },
-                                  "operador": "==",
-                                  "derecho": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "T_FIN"
-                                  }
-                                },
-                                "cuerpo": [
-                                  {
-                                    "_tipo": "AsignacionVariable",
-                                    "nombre": "r2",
-                                    "expresion": {
-                                      "_tipo": "LiteralNumero",
-                                      "valor": 0
-                                    }
-                                  },
-                                  {
-                                    "_tipo": "SentenciaRomper"
-                                  }
-                                ]
-                              },
-                              {
-                                "_tipo": "AsignacionVariable",
-                                "nombre": "stmt",
-                                "expresion": {
-                                  "_tipo": "LlamadaFuncion",
-                                  "nombre": "parsear_sentencia",
-                                  "argumentos": [
-                                    {
-                                      "_tipo": "Identificador",
-                                      "nombre": "est"
-                                    }
-                                  ]
-                                }
-                              },
-                              {
-                                "_tipo": "SentenciaSi",
-                                "condicion": {
-                                  "_tipo": "OpBinaria",
-                                  "izquierdo": {
-                                    "_tipo": "Identificador",
-                                    "nombre": "stmt"
-                                  },
-                                  "operador": "!=",
-                                  "derecho": {
-                                    "_tipo": "LiteralNumero",
-                                    "valor": 0
-                                  }
-                                },
-                                "cuerpo": [
-                                  {
-                                    "_tipo": "SentenciaSi",
-                                    "condicion": {
-                                      "_tipo": "OpBinaria",
-                                      "izquierdo": {
-                                        "_tipo": "Identificador",
-                                        "nombre": "primero_cuerpo"
-                                      },
-                                      "operador": "==",
-                                      "derecho": {
-                                        "_tipo": "LiteralNumero",
-                                        "valor": 0
-                                      }
-                                    },
-                                    "cuerpo": [
-                                      {
-                                        "_tipo": "AsignacionVariable",
-                                        "nombre": "primero_cuerpo",
-                                        "expresion": {
-                                          "_tipo": "Identificador",
-                                          "nombre": "stmt"
-                                        }
-                                      }
-                                    ],
-                                    "cuerpo_sino": [
-                                      {
-                                        "_tipo": "BloqueInseguro",
-                                        "cuerpo": [
-                                          {
-                                            "_tipo": "SentenciaExpr",
-                                            "expr": {
-                                              "_tipo": "ExprAsm",
-                                              "instruccion": "est->nodos[ultimo_cuerpo].hermano = stmt"
-                                            }
-                                          }
-                                        ]
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "_tipo": "AsignacionVariable",
-                                    "nombre": "ultimo_cuerpo",
-                                    "expresion": {
-                                      "_tipo": "Identificador",
-                                      "nombre": "stmt"
-                                    }
-                                  }
-                                ],
-                                "cuerpo_sino": [
                                   {
                                     "_tipo": "SentenciaExpr",
                                     "expr": {
@@ -38848,7 +38704,557 @@
                                 ]
                               },
                               {
-                                "_tipo": "SentenciaSiguiente"
+                                "_tipo": "SentenciaSi",
+                                "condicion": {
+                                  "_tipo": "OpBinaria",
+                                  "izquierdo": {
+                                    "_tipo": "LlamadaFuncion",
+                                    "nombre": "token_mirar",
+                                    "argumentos": [
+                                      {
+                                        "_tipo": "Identificador",
+                                        "nombre": "est"
+                                      }
+                                    ]
+                                  },
+                                  "operador": "==",
+                                  "derecho": {
+                                    "_tipo": "Identificador",
+                                    "nombre": "T_INDENTAR"
+                                  }
+                                },
+                                "cuerpo": [
+                                  {
+                                    "_tipo": "SentenciaExpr",
+                                    "expr": {
+                                      "_tipo": "LlamadaFuncion",
+                                      "nombre": "token_avanzar",
+                                      "argumentos": [
+                                        {
+                                          "_tipo": "Identificador",
+                                          "nombre": "est"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "_tipo": "AsignacionVariable",
+                                    "nombre": "r22a",
+                                    "expresion": {
+                                      "_tipo": "LiteralNumero",
+                                      "valor": 1
+                                    }
+                                  },
+                                  {
+                                    "_tipo": "SentenciaMientras",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "r22a"
+                                      },
+                                      "operador": "==",
+                                      "derecho": {
+                                        "_tipo": "LiteralNumero",
+                                        "valor": 1
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "t",
+                                        "expresion": {
+                                          "_tipo": "LlamadaFuncion",
+                                          "nombre": "token_mirar",
+                                          "argumentos": [
+                                            {
+                                              "_tipo": "Identificador",
+                                              "nombre": "est"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "t"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_NUEVALINEA"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "SentenciaExpr",
+                                            "expr": {
+                                              "_tipo": "LlamadaFuncion",
+                                              "nombre": "token_avanzar",
+                                              "argumentos": [
+                                                {
+                                                  "_tipo": "Identificador",
+                                                  "nombre": "est"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          {
+                                            "_tipo": "SentenciaSiguiente"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "t"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_DESINDENTAR"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "SentenciaExpr",
+                                            "expr": {
+                                              "_tipo": "LlamadaFuncion",
+                                              "nombre": "token_avanzar",
+                                              "argumentos": [
+                                                {
+                                                  "_tipo": "Identificador",
+                                                  "nombre": "est"
+                                                }
+                                              ]
+                                            }
+                                          },
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "r22a",
+                                            "expresion": {
+                                              "_tipo": "LiteralNumero",
+                                              "valor": 0
+                                            }
+                                          },
+                                          {
+                                            "_tipo": "SentenciaRomper"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "t"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "T_FIN"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "r22a",
+                                            "expresion": {
+                                              "_tipo": "LiteralNumero",
+                                              "valor": 0
+                                            }
+                                          },
+                                          {
+                                            "_tipo": "SentenciaRomper"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "stmt",
+                                        "expresion": {
+                                          "_tipo": "LlamadaFuncion",
+                                          "nombre": "parsear_sentencia",
+                                          "argumentos": [
+                                            {
+                                              "_tipo": "Identificador",
+                                              "nombre": "est"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "stmt"
+                                          },
+                                          "operador": "!=",
+                                          "derecho": {
+                                            "_tipo": "LiteralNumero",
+                                            "valor": 0
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "SentenciaSi",
+                                            "condicion": {
+                                              "_tipo": "OpBinaria",
+                                              "izquierdo": {
+                                                "_tipo": "Identificador",
+                                                "nombre": "primero_cuerpo"
+                                              },
+                                              "operador": "==",
+                                              "derecho": {
+                                                "_tipo": "LiteralNumero",
+                                                "valor": 0
+                                              }
+                                            },
+                                            "cuerpo": [
+                                              {
+                                                "_tipo": "AsignacionVariable",
+                                                "nombre": "primero_cuerpo",
+                                                "expresion": {
+                                                  "_tipo": "Identificador",
+                                                  "nombre": "stmt"
+                                                }
+                                              }
+                                            ],
+                                            "cuerpo_sino": [
+                                              {
+                                                "_tipo": "BloqueInseguro",
+                                                "cuerpo": [
+                                                  {
+                                                    "_tipo": "SentenciaExpr",
+                                                    "expr": {
+                                                      "_tipo": "ExprAsm",
+                                                      "instruccion": "est->nodos[ultimo_cuerpo].hermano = stmt"
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "ultimo_cuerpo",
+                                            "expresion": {
+                                              "_tipo": "Identificador",
+                                              "nombre": "stmt"
+                                            }
+                                          }
+                                        ],
+                                        "cuerpo_sino": [
+                                          {
+                                            "_tipo": "SentenciaExpr",
+                                            "expr": {
+                                              "_tipo": "LlamadaFuncion",
+                                              "nombre": "token_avanzar",
+                                              "argumentos": [
+                                                {
+                                                  "_tipo": "Identificador",
+                                                  "nombre": "est"
+                                                }
+                                              ]
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "SentenciaSiguiente"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ],
+                            "cuerpo_sino": [
+                              {
+                                "_tipo": "AsignacionVariable",
+                                "nombre": "r22b",
+                                "expresion": {
+                                  "_tipo": "LiteralNumero",
+                                  "valor": 1
+                                }
+                              },
+                              {
+                                "_tipo": "SentenciaMientras",
+                                "condicion": {
+                                  "_tipo": "OpBinaria",
+                                  "izquierdo": {
+                                    "_tipo": "Identificador",
+                                    "nombre": "r22b"
+                                  },
+                                  "operador": "==",
+                                  "derecho": {
+                                    "_tipo": "LiteralNumero",
+                                    "valor": 1
+                                  }
+                                },
+                                "cuerpo": [
+                                  {
+                                    "_tipo": "AsignacionVariable",
+                                    "nombre": "t",
+                                    "expresion": {
+                                      "_tipo": "LlamadaFuncion",
+                                      "nombre": "token_mirar",
+                                      "argumentos": [
+                                        {
+                                          "_tipo": "Identificador",
+                                          "nombre": "est"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSi",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "t"
+                                      },
+                                      "operador": "==",
+                                      "derecho": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "T_NUEVALINEA"
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "r22b",
+                                        "expresion": {
+                                          "_tipo": "LiteralNumero",
+                                          "valor": 0
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "SentenciaRomper"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSi",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "t"
+                                      },
+                                      "operador": "==",
+                                      "derecho": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "T_DESINDENTAR"
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "r22b",
+                                        "expresion": {
+                                          "_tipo": "LiteralNumero",
+                                          "valor": 0
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "SentenciaRomper"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSi",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "t"
+                                      },
+                                      "operador": "==",
+                                      "derecho": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "T_FIN"
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "r22b",
+                                        "expresion": {
+                                          "_tipo": "LiteralNumero",
+                                          "valor": 0
+                                        }
+                                      },
+                                      {
+                                        "_tipo": "SentenciaRomper"
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSi",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "col_c"
+                                      },
+                                      "operador": ">",
+                                      "derecho": {
+                                        "_tipo": "LiteralNumero",
+                                        "valor": 0
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "LlamadaFuncion",
+                                            "nombre": "token_columna",
+                                            "argumentos": [
+                                              {
+                                                "_tipo": "Identificador",
+                                                "nombre": "est"
+                                              },
+                                              {
+                                                "_tipo": "ExprAccesoCampo",
+                                                "objeto": {
+                                                  "_tipo": "Identificador",
+                                                  "nombre": "est"
+                                                },
+                                                "nombre_campo": "posicion"
+                                              }
+                                            ]
+                                          },
+                                          "operador": "<=",
+                                          "derecho": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "col_c"
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "r22b",
+                                            "expresion": {
+                                              "_tipo": "LiteralNumero",
+                                              "valor": 0
+                                            }
+                                          },
+                                          {
+                                            "_tipo": "SentenciaRomper"
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "_tipo": "AsignacionVariable",
+                                    "nombre": "stmt",
+                                    "expresion": {
+                                      "_tipo": "LlamadaFuncion",
+                                      "nombre": "parsear_sentencia",
+                                      "argumentos": [
+                                        {
+                                          "_tipo": "Identificador",
+                                          "nombre": "est"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSi",
+                                    "condicion": {
+                                      "_tipo": "OpBinaria",
+                                      "izquierdo": {
+                                        "_tipo": "Identificador",
+                                        "nombre": "stmt"
+                                      },
+                                      "operador": "!=",
+                                      "derecho": {
+                                        "_tipo": "LiteralNumero",
+                                        "valor": 0
+                                      }
+                                    },
+                                    "cuerpo": [
+                                      {
+                                        "_tipo": "SentenciaSi",
+                                        "condicion": {
+                                          "_tipo": "OpBinaria",
+                                          "izquierdo": {
+                                            "_tipo": "Identificador",
+                                            "nombre": "primero_cuerpo"
+                                          },
+                                          "operador": "==",
+                                          "derecho": {
+                                            "_tipo": "LiteralNumero",
+                                            "valor": 0
+                                          }
+                                        },
+                                        "cuerpo": [
+                                          {
+                                            "_tipo": "AsignacionVariable",
+                                            "nombre": "primero_cuerpo",
+                                            "expresion": {
+                                              "_tipo": "Identificador",
+                                              "nombre": "stmt"
+                                            }
+                                          }
+                                        ],
+                                        "cuerpo_sino": [
+                                          {
+                                            "_tipo": "BloqueInseguro",
+                                            "cuerpo": [
+                                              {
+                                                "_tipo": "SentenciaExpr",
+                                                "expr": {
+                                                  "_tipo": "ExprAsm",
+                                                  "instruccion": "est->nodos[ultimo_cuerpo].hermano = stmt"
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "_tipo": "AsignacionVariable",
+                                        "nombre": "ultimo_cuerpo",
+                                        "expresion": {
+                                          "_tipo": "Identificador",
+                                          "nombre": "stmt"
+                                        }
+                                      }
+                                    ],
+                                    "cuerpo_sino": [
+                                      {
+                                        "_tipo": "SentenciaExpr",
+                                        "expr": {
+                                          "_tipo": "LlamadaFuncion",
+                                          "nombre": "token_avanzar",
+                                          "argumentos": [
+                                            {
+                                              "_tipo": "Identificador",
+                                              "nombre": "est"
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "_tipo": "SentenciaSiguiente"
+                                  }
+                                ]
                               }
                             ]
                           },

@@ -232,12 +232,31 @@ class ParserControlMixin(ParserBase):
                 break
 
             cuerpo_caso: List[Nodo] = []
-            while self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
-                stmt = self._parsear_sentencia()
-                if stmt is not None:
-                    cuerpo_caso.append(stmt)
-                else:
-                    self._avanzar()
+            if self._mirar().tipo == TokenID.NEWLINE:
+                # R22 (Manual 2 §2.4 L124 / Manual 3 L140): caso_coincidir ::=
+                # patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT ) — el
+                # cuerpo del caso puede ser un bloque indentado en la línea
+                # siguiente (ej. MANUAL 5 §7). Antes solo se aceptaba la forma
+                # de una línea y un coincidir anidado daba error de sintaxis
+                # (rc=8 nativo / ARROW_RIGHT tras expresión en S1).
+                cuerpo_caso = self._parsear_bloque() or []
+            else:
+                # R22: la forma de una línea termina en NEWLINE/DEDENT/EOF o en
+                # el borde del siguiente caso (columna del patrón) — sin el
+                # guard, un coincidir anidado de una línea se tragaba el caso
+                # siguiente (Token inesperado 'ARROW_RIGHT' tras expresión).
+                # NOTA (revisión code-reviewer): el guard de columna es una
+                # HEURÍSTICA de indentación (los bloques anidados consumen su
+                # propio DEDENT; el borde del caso siguiente se detecta por
+                # columna) — asume columnas consistentes (espacios). Paridad
+                # con el nativo (nucleo/parser.syn, guard token_columna <= col_c).
+                while (self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF)
+                       and self._mirar().columna > tok_patron.columna):
+                    stmt = self._parsear_sentencia()
+                    if stmt is not None:
+                        cuerpo_caso.append(stmt)
+                    else:
+                        self._avanzar()
 
             caso = NodoCaso(
                 patron=patron_completo,

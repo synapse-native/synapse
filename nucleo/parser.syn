@@ -1018,35 +1018,87 @@ funcion parsear_coincidir(est: ParserEst) -> entero:
                     nodo_guardar_span(est, nodo_caso, pos_pat_ini, pos_pat_fin, 1)
                     si token_esperar(est, T_FLECHA_DER) == 0:
                         retornar 0
-                    // R11: enlazar el cuerpo del caso (primera sentencia en
-                    // hijo_izq del NODO_CASO, cadena hermano) — antes se
-                    // parseaba y se DESCARTABA (NodoCaso.cuerpo vacio).
+                    // R22 (Manual 2 L124 / Manual 3 L140): caso_coincidir ::=
+                    // patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT ).
+                    // El cuerpo del caso puede ser un BLOQUE indentado en la
+                    // linea siguiente (ej. MANUAL 5 §7: ok(valor) => + bloque);
+                    // antes solo se aceptaba la forma de una linea y un
+                    // coincidir anidado en el cuerpo daba rc=8 (probe R20 p3).
                     primero_cuerpo = 0
                     ultimo_cuerpo = 0
-                    r2 = 1
-                    mientras r2 == 1:
-                        t = token_mirar(est)
-                        si t == T_NUEVALINEA:
-                            r2 = 0
-                            romper
-                        si t == T_DESINDENTAR:
-                            r2 = 0
-                            romper
-                        si t == T_FIN:
-                            r2 = 0
-                            romper
-                        stmt = parsear_sentencia(est)
-                        si stmt != 0:
-                            si primero_cuerpo == 0:
-                                primero_cuerpo = stmt
-                            sino:
-                                inseguro:
-                                    asm("est->nodos[ultimo_cuerpo].hermano = stmt")
-                            ultimo_cuerpo = stmt
-                        sino:
-                            // Anti-cuelgue (paridad A3.1)
+                    si token_mirar(est) == T_NUEVALINEA:
+                        token_avanzar(est)
+                        // R22: saltar TODAS las NL (lineas vacias/comentarios)
+                        // antes del INDENTAR del bloque (paridad A4.5).
+                        mientras token_mirar(est) == T_NUEVALINEA:
                             token_avanzar(est)
-                        siguiente
+                        si token_mirar(est) == T_INDENTAR:
+                            token_avanzar(est)
+                            r22a = 1
+                            mientras r22a == 1:
+                                t = token_mirar(est)
+                                si t == T_NUEVALINEA:
+                                    token_avanzar(est)
+                                    siguiente
+                                si t == T_DESINDENTAR:
+                                    token_avanzar(est)
+                                    r22a = 0
+                                    romper
+                                si t == T_FIN:
+                                    r22a = 0
+                                    romper
+                                stmt = parsear_sentencia(est)
+                                si stmt != 0:
+                                    si primero_cuerpo == 0:
+                                        primero_cuerpo = stmt
+                                    sino:
+                                        inseguro:
+                                            asm("est->nodos[ultimo_cuerpo].hermano = stmt")
+                                    ultimo_cuerpo = stmt
+                                sino:
+                                    // Anti-cuelgue (paridad A3.1)
+                                    token_avanzar(est)
+                                siguiente
+                    sino:
+                        // R22: forma de una linea — termina en NL/DESINDENTAR o
+                        // en el borde del siguiente caso (columna del patron).
+                        // Sin el guard, un coincidir anidado de una linea se
+                        // tragaba el caso siguiente (AST corrupto: 'Nodo tipo
+                        // DefinicionFuncion no reconocido' en el generador).
+                        // NOTA (revision code-reviewer): el guard de columna es
+                        // una HEURISTICA de indentacion (los bloques anidados
+                        // consumen su propio DESINDENTAR, asi que el borde del
+                        // caso siguiente se detecta por columna) — asume
+                        // columnas consistentes (espacios); con tabs mixtos la
+                        // comparacion podria enganar (documentado, reporte §25).
+                        r22b = 1
+                        mientras r22b == 1:
+                            t = token_mirar(est)
+                            si t == T_NUEVALINEA:
+                                r22b = 0
+                                romper
+                            si t == T_DESINDENTAR:
+                                r22b = 0
+                                romper
+                            si t == T_FIN:
+                                r22b = 0
+                                romper
+                            si col_c > 0:
+                                si token_columna(est, est.posicion) <= col_c:
+                                    r22b = 0
+                                    romper
+                            stmt = parsear_sentencia(est)
+                            si stmt != 0:
+                                si primero_cuerpo == 0:
+                                    primero_cuerpo = stmt
+                                sino:
+                                    inseguro:
+                                        asm("est->nodos[ultimo_cuerpo].hermano = stmt")
+                                ultimo_cuerpo = stmt
+                            sino:
+                                // Anti-cuelgue (paridad A3.1)
+                                token_avanzar(est)
+                            siguiente
                     si primero_cuerpo > 0:
                         inseguro:
                             asm("est->nodos[nodo_caso].hijo_izq = primero_cuerpo")

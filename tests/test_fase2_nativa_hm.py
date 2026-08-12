@@ -1701,3 +1701,143 @@ def test_r21_aridad_parametro_linea_real(stage, tmp_path):
     assert "linea 3" in proc.stderr, (
         f"aridad en parametro debe llevar la linea real:\n"
         f"{proc.stderr[-1200:]}")
+
+
+# --- R22: cuerpo de caso en BLOQUE + coincidir ANIDADO (Manual 2 §2.4 L124) --
+# La gramatica del manual (caso_coincidir ::= patron "=>" ( sentencia |
+# NEWLINE INDENT bloque DEDENT )) NO estaba implementada en ningun parser:
+# el probe R20 p3 (coincidir dentro de un caso, cuerpo en bloque) daba rc=8
+# de sintaxis en el nativo y 'ARROW_RIGHT tras expresion' / 'Se esperaba
+# IDENTIFICADOR, se encontro INDENT' en el S1. R22: soporte en ambos parsers
+# (nativo nucleo/parser.syn + S1 compilador/parser_control.py).
+
+_PROG_R22_BLOQUE = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) =>
+            let d = valor + 1
+            retornar d
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R22_ANIDADO_BLOQUE = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<Resultado<entero,texto>,texto>) -> entero:
+    coincidir r:
+        ok(inner) =>
+            coincidir inner:
+                ok(valor) => retornar valor
+                err(e) => retornar -1
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R22_ANIDADO_LINEA = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<Resultado<entero,texto>,texto>) -> entero:
+    coincidir r:
+        ok(inner) => coincidir inner:
+            ok(valor) => retornar valor
+            err(e) => retornar -1
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R22_EJECUTAR = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion principal() -> nulo:
+    let r: Resultado<Resultado<entero,texto>,texto> = ok(ok(42))
+    coincidir r:
+        ok(inner) =>
+            coincidir inner:
+                ok(valor) => escribir_linea(entero_a_texto(valor))
+                err(e) => escribir_linea(entero_a_texto(-1))
+        err(e) => escribir_linea(entero_a_texto(-2))
+'''
+
+_PROG_R22_ANIDADO_NO_EXHAUSTIVO = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<Resultado<entero,texto>,texto>) -> entero:
+    coincidir r:
+        ok(inner) =>
+            coincidir inner:
+                ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+
+def test_r22_cuerpo_caso_en_bloque(stage, tmp_path):
+    """R22: caso_coincidir ::= patron "=>" NEWLINE INDENT bloque DEDENT
+    (Manual 2 §2.4 L124, ejemplo MANUAL 5 §7) — cuerpo multi-sentencia en
+    bloque indentado; antes rc=8 (probe R20 p3)."""
+    proc = _compilar_con_stage(stage, _PROG_R22_BLOQUE, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"cuerpo de caso en bloque fallo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r22_coincidir_anidado_en_bloque(stage, tmp_path):
+    """R22: coincidir ANIDADO dentro de un caso (cuerpo en bloque) — la deuda
+    de la memoria (probe R20 p3 con rc=8 de sintaxis)."""
+    proc = _compilar_con_stage(stage, _PROG_R22_ANIDADO_BLOQUE, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"coincidir anidado en bloque fallo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r22_coincidir_anidado_de_una_linea(stage, tmp_path):
+    """R22: coincidir anidado en la forma de UNA linea (cuerpo = sentencia
+    coincidir) — antes el bucle del cuerpo se tragaba el caso siguiente (AST
+    corrupto: 'Nodo tipo DefinicionFuncion no reconocido' en el generador)."""
+    proc = _compilar_con_stage(stage, _PROG_R22_ANIDADO_LINEA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"coincidir anidado de una linea fallo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r22_ejecucion_switch_anidado(stage, tmp_path):
+    """R22: el switch ANIDADO ejecuta el cuerpo correcto — ok(ok(42)) ->
+    coincide externo ok(inner) -> coincide interno ok(valor) -> 42."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R22_EJECUTAR, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"rc={proc.returncode}:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "42" in run.stdout.split(), (
+        f"switch anidado no ejecuto el cuerpo interno: {run.stdout!r}")
+
+
+def test_r22_anidado_no_exhaustivo_linea_interna(stage, tmp_path):
+    """R22+R21: EXHAUSTIVE_MATCH del coincidir INTERNO con su linea real
+    (linea 6 — el NodoCoincidir anidado lleva linea propia via R21)."""
+    proc = _compilar_con_stage(stage, _PROG_R22_ANIDADO_NO_EXHAUSTIVO, str(tmp_path))
+    assert "coincidir no exhaustivo" in proc.stderr
+    assert "linea 6" in proc.stderr, (
+        f"el coincidir interno (linea 6) debe reportar su linea real:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+_PROG_R22_BLOQUE_VACIO = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) =>
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+
+def test_r22_bloque_vacio_no_cuelga(stage, tmp_path):
+    """R22 (revision code-reviewer): un cuerpo de caso en bloque VACIO
+    (ok => NEWLINE INDENT DEDENT) es lenient (sin sentencias, sin cuelgue)."""
+    proc = _compilar_con_stage(stage, _PROG_R22_BLOQUE_VACIO, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"bloque vacio fallo rc={proc.returncode} (TimeoutExpired = cuelgue):\n"
+        f"{proc.stderr[-800:]}")
