@@ -1316,3 +1316,73 @@ al ctor de estructura y paridad del checker S1 (aceptar el ctor de struct en
 
 **HASH COMMIT: `3b5ba0a`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## 30. CIERRE R27 — Ctor de estructura en `let` sin anotación (2026-08-12)
+
+### 30.1 Síntoma
+
+Hallazgo registrado en R26: `let p = Punto()` (forma documentada, Manual 2 L67
+`declaracion_estructura ::= "estructura" IDENTIFICADOR ... ":" NEWLINE INDENT { campo } DEDENT`)
+fallaba en el codegen nativo — el branch R25 solo cubría ctors ADT, así que el
+nombre de struct caía al default `int64_t` y el C quedaba
+`int64_t p = (struct Punto){0};` (**C inválido**, rc=5 GCC silencioso), mientras
+el S1 lo compilaba rc=0. Peor aún: `Punto(1,2)` (forma NO documentada en el
+Manual — el ctor de struct es `Punto()` sin argumentos) **se aceptaba mudo** y
+emitía `int64_t p = (struct Punto){1,2};` (C inválido) cuando el S1 lo rechaza
+en el checker con `ERR_SEM_ARGUMENTOS_INVALIDOS` esperados=0.
+
+### 30.2 Causa raíz
+
+1. **Generador** (`gen_visitar_declaracion`): la cadena de inferencia de tipo para
+   `let` sin anotación solo distinguía ADT ctors (R25); los ctors de struct caían
+   al fallback `int64_t` (paridad S1 `tipo_de_expr` rama struct y helper nativo
+   `_syn_nativo_expr_tipo_c` generator.syn L3239 ya devolvían `struct Punto`).
+2. **Analizador**: la pasada 3 no validaba llamadas a nombres de struct (el
+   `ERR_SEM_ARGUMENTOS_INVALIDOS` = 19 existía como constante pero no se emitía
+   en ningún call-site), por lo que la aridad no documentada pasaba mudo.
+
+### 30.3 Cambios (paridad S1)
+
+| Archivo | Cambio |
+|---|---|
+| `nucleo/generador/nodos_flujo.syn` | Rama `else if (_lf->nombre.datos && _G_native_es_estructura(...))` tras el branch R25: `let p = Punto()` infiere `struct Punto` vía `snprintf(_var_type_buf, 127, "struct %s ", ...)` (paridad `_syn_nativo_expr_tipo_c` L3239; acotado tras la revisión) |
+| `nucleo/analizador_semantico.syn` | Check en la rama NODO_LLAMADA: si el callee es un nombre de struct **con argumentos** → `sem_error(ERR_SEM_ARGUMENTOS_INVALIDOS, esperados=0)` con plantilla S1 `Cantidad de argumentos invalida para '<nombre>': se esperaban 0` y línea/columna reales (R21); guard `_fn27<0`: si el callee es función de usuario se salta el check (paridad S1 — precedencia `tabla.buscar` → DefinicionFuncion antes del check de `_estructuras`; el caso struct+funcion homónimos es inviable en ambos por colisión de símbolo C, defensa en profundidad) |
+| `nucleo/generator.syn` | Unity REGENERADO con `nucleo/_rebuild_generator.py` (lección R5/R8/R11) |
+| `tests/test_fase2_nativa_hm.py` | **2 tests R27**: `let p = Punto()` compila+ejecuta (salida `00`); `Punto(1,2)` rc=7 con el mensaje de aridad (campo `z` — `y` es palabra reservada del lexer, operador AND) |
+
+### 30.4 Validación
+
+| Ítem | Resultado |
+|---|---|
+| Probe `let p = Punto()` nativo | ✅ antes rc=5 (`int64_t p = (struct Punto){0}`) → **rc=0, runtime 0**, C `struct Punto p = (struct Punto){0};` |
+| Paridad S1 `let p = Punto()` | ✅ S1 rc=0 (ya funcionaba) |
+| Probe `Punto(1,2)` nativo | ✅ antes rc=0 mudo con C inválido → **rc=7** `[Synapse] Error semantico (linea 6, columna 13): Cantidad de argumentos invalida para 'Punto': se esperaban 0` |
+| Paridad S1 `Punto(1,2)` | ✅ S1 rc=1 `ERR_SEM_ARGUMENTOS_INVALIDOS` (misma plantilla) |
+| Bootstrap S1→S2→S3 | ✅ **S2==S3 byte-idénticos (sha256 `538516a6…`)** |
+| Tests R27 nuevos | ✅ **2/2 PASS** → **96/96 HM PASS** (94 previos + 2) |
+| Regresión S1 | ✅ **196 passed** (unit + ownership/borrowing + borrow_checker) |
+| Code review | ✅ Shadowing de funciones (guard `_fn27<0`) y `snprintf` acotado aplicados |
+
+### 30.5 Alcance y deuda residual
+
+- El ctor de struct con argumentos (`Punto(1,2)`) queda **rechazado** por diseño
+  (paridad S1 y Manual 2 L67 — la gramática no define argumentos de
+  construcción). La forma documentada es `Punto()` (compound literal `{0}`) y,
+  con anotación explícita, el ctor posicional sigue funcionando como antes
+  (`let p: Punto = Punto(1,2)` → C `(struct Punto){1,2}` vía ME-B4) — el check
+  de aridad solo aplica a llamadas SIN anotación de tipo en `let`.
+- El diagnóstico de aridad es **observable pero no aborta** la pasada 3 (lenient
+  por diseño; solo `hay_error_2_4` aborta) — sin embargo rc=7 por el pipeline
+  (el C inválido ya no se emite, no hay fase GCC que fallar).
+- Nota: `y` es palabra reservada del lexer (operador AND) — los probes/tests
+  usan `z` como segundo campo.
+
+### 30.6 Archivos
+
+`nucleo/generador/nodos_flujo.syn`, `nucleo/analizador_semantico.syn`,
+`nucleo/generator.syn` (regenerado), `tests/test_fase2_nativa_hm.py` (+2 tests
+R27), docs (este reporte §30, `nucleo/README.md`, bitácora AUDITORIA,
+`MEMORIA_PROYECTO.md`). **HASH COMMIT: `08c4d70`** — rama
+`feature/fase2-nativa-hm`.
+

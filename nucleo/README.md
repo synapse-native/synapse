@@ -604,3 +604,21 @@ Validación: probe `-> pos: entero` rc=0 (antes rc=8); bootstrap S2==S3
 (`d0cc550d…`); suite **94/94 HM**; S1 221 passed. Hallazgo registrado: ctor de
 ESTRUCTURA en `let` sin anotación (divergencia, con anotación funciona).
 Detalle: reporte §29.
+
+### R27 — Ctor de estructura en `let` sin anotación (CERRADA, hallazgo R26)
+
+`let p = Punto()` (Manual 2 L67, `declaracion_estructura` — ctor de struct sin
+argumentos) fallaba en el codegen nativo: el branch R25 solo cubría ctors ADT,
+el nombre de struct caía al default `int64_t` y el C quedaba
+`int64_t p = (struct Punto){0};` (invalido, rc=5) mientras el S1 lo compilaba
+rc=0. Además `Punto(1,2)` (forma NO documentada) se aceptaba mudo y emitía C
+inválido — el S1 lo rechaza con `ERR_SEM_ARGUMENTOS_INVALIDOS` esperados=0
+(paridad `semantic_types.py` L355-360). Fix en 2 frentes:
+`nodos_flujo.syn` infiere `struct Punto` vía `_G_native_es_estructura` (rama
+R25 extendida, snprintf acotado, paridad `_syn_nativo_expr_tipo_c` L3239) y
+`analizador_semantico.syn` rechaza llamadas a nombres de struct con argumentos
+(error 19, plantilla S1, línea/columna reales) con guard de precedencia de
+funciones (`_fn27<0` — paridad S1 `tabla.buscar`). Validación: `Punto()` rc=0
+(antes rc=5) + runtime 0; `Punto(1,2)` rc=7 con mensaje (antes rc=0 mudo);
+bootstrap S2==S3 (`538516a6…`); suite **96/96 HM**; S1 196 passed.
+Detalle: reporte §30.
