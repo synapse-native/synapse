@@ -2008,3 +2008,82 @@ def test_r24_parametro_adt_no_generico_ejecuta(stage, tmp_path):
     assert run is not None and run.returncode == 0
     assert "7" in run.stdout.split(), (
         f"procesar(ok(7)) debe imprimir 7: {run.stdout!r}")
+
+
+_PROG_R25_LET_CTOR_SIN_ANOTACION = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    let r = ok(7)
+    escribir(entero_a_texto(procesar(r)))
+    retornar
+'''
+
+_PROG_R25_ASIG_IMPLICITA_CTOR = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    r = ok(7)
+    escribir(entero_a_texto(procesar(r)))
+    retornar
+'''
+
+
+# R25 (hallazgo R24 registrado): `let r = ok(7)` SIN anotacion infiere la
+# instancia monomorfizada del ctor ADT en el codegen nativo (paridad S1
+# tipo_de_expr rama R20). Antes caia al default int64_t ->
+# `int64_t r = (Resultado_entero_texto){...}` -> gcc incompatible types.
+# El anidado `let r = ok(ok(42))` sin anotacion queda como caso ambiguo
+# (paridad: ambos compiladores fallan igual; con anotacion funciona).
+
+
+def test_r25_let_ctor_sin_anotacion_compila_y_ejecuta(stage, tmp_path):
+    """R25: `let r = ok(7)` sin anotacion compila rc=0 y ejecuta imprimiendo 7
+    (la variable se tipa con la instancia Resultado_entero_texto, no int64_t)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R25_LET_CTOR_SIN_ANOTACION,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let r = ok(7) sin anotacion debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "7" in run.stdout.split(), (
+        f"procesar(r) con r=ok(7) debe imprimir 7: {run.stdout!r}")
+
+
+def test_r25_asignacion_implicita_ctor_sin_anotacion(stage, tmp_path):
+    """R25: `r = ok(7)` (asignacion implicita, hoisting) tambien resuelve la
+    instancia ADT — el hoisting ya usa _syn_nativo_expr_tipo_c (R20)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R25_ASIG_IMPLICITA_CTOR,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"asignacion implicita r = ok(7) debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "7" in run.stdout.split(), (
+        f"procesar(r) con r=ok(7) implicito debe imprimir 7: {run.stdout!r}")
+
+
+_PROG_R25_ADT_SIMPLE_CTOR_CAMPO = '''#lang: es
+tipo Punto = punto(entero, entero)
+funcion principal() -> nulo:
+    let p = punto(3, 4)
+    escribir(entero_a_texto(p.tag))
+    retornar
+'''
+
+
+def test_r25_adt_simple_ctor_con_campo(stage, tmp_path):
+    """R25 fallback: ADT simple con ctor de campo (`let p = punto(3,4)`) tipa
+    la variable con el nombre del ADT (typedef struct Punto {...} Punto) —
+    rama else del fix (no generico)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R25_ADT_SIMPLE_CTOR_CAMPO,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let p = punto(3,4) debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "0" in run.stdout.split(), (
+        f"p.tag (ok=0) debe imprimir 0: {run.stdout!r}")
