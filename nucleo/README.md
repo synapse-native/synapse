@@ -509,3 +509,25 @@ función/estructura/externa no es observable porque el unity merge deduplica
 los símbolos top-level (`_seen_sym` en `principal.syn`, paridad S1
 `pipeline.py:374` — rc=0 verificado en ambos); los checks del analizador
 quedan como defensa redundante. Detalle: reporte §24.
+
+### R22 — Cuerpo de caso en bloque + coincidir anidado (CERRADA `6f6e5a6`)
+
+La gramática del manual `caso_coincidir ::= patron "=>" ( sentencia |
+NEWLINE INDENT bloque DEDENT )` (Manual 2 §2.4 L124) no estaba implementada
+en ningún parser: el probe R20 p3 (coincidir DENTRO de un caso) daba **rc=8 de
+sintaxis** en el nativo y errores de parseo en el S1. R22 implementa la forma
+BLOQUE (`=>` + NEWLINE + INDENT + cuerpo + DEDENT, idioma `parsear_inseguro`)
+**y** un guard de columna en la forma de una línea (el cuerpo termina en el
+borde del caso siguiente — sin él, un coincidir anidado de una línea se tragaba
+el caso siguiente y producía un AST corrupto). Fix en AMBOS parsers:
+`nucleo/parser.syn` `parsear_coincidir` (r22a/r22b) y S1
+`compilador/parser_control.py` `_parsear_coincidir` (`_parsear_bloque` +
+`columna > tok_patron.columna`). Nota: el guard de columna es una heurística
+de indentación (asume espacios consistentes; documentado en el código y en el
+reporte §25). Validación: 6 probes nativos (bloque rc=0, anidado-en-bloque
+rc=0 — antes rc=8, anidado-una-línea rc=0, switch anidado ejecuta → 42,
+anidado no exhaustivo con línea real 6:23, bloque vacío rc=0); bootstrap
+**S2==S3** (sha256 `96f7f21e…`, 1.093.109 bytes); suite **82/82 HM** (76+6
+R22); S1 parser/match/tipos 69 passed. Hallazgo S1 registrado: codegen de
+`coincidir` en funciones NO genéricas emite `Resultado_T` (preexistente;
+`test_match.py` solo valida semántica). Detalle: reporte §25.

@@ -1010,3 +1010,70 @@ diagnóstico; el resto se completará si un diagnóstico futuro los referencia.
 
 **HASH COMMIT: `26987fe`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## 25. R22 — Cuerpo de caso en bloque + coincidir ANIDADO en el parser nativo (Manual 2 §2.4 L124)
+
+**Deuda (memoria — prioridad técnica tras R21):** el probe R20 p3 con un
+`coincidir` DENTRO de un caso daba **rc=8 de sintaxis** en el nativo. Causa
+raíz: una desviación S1+nativa de la GRAMÁTICA del manual
+
+```
+caso_coincidir ::= patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT )   (Manual 2 L124 / Manual 3 L140)
+```
+
+El cuerpo del caso en **bloque indentado** (ej. MANUAL 5 §7: `ok(valor) =>` +
+bloque con varias sentencias) no estaba implementado en NINGÚN parser: el
+bucle del cuerpo (`r2`) terminaba en la primera NL y el INDENTAR del bloque
+confundía el bucle de casos (rc=8 nativo / «Se esperaba IDENTIFICADOR, se
+encontró INDENT» S1); y la forma de una línea con un `coincidir` anidado se
+tragaba el caso siguiente (AST corrupto: `Nodo tipo [DefinicionFuncion] no
+reconocido` en el generador nativo / «Token inesperado ARROW_RIGHT tras
+expresión» S1).
+
+**Fix (ambos parsers, paridad):**
+- **Nativo** (`nucleo/parser.syn` `parsear_coincidir`): tras `=>`, si el token
+  es `T_NUEVALINEA` → forma BLOQUE (saltar NLs — patrón A4.5 —, esperar
+  `T_INDENTAR`, parsear sentencias hasta `T_DESINDENTAR`/`T_FIN`, consumir el
+  DESINDENTAR; mismo idioma que `parsear_inseguro`). Si no → forma de una
+  línea con **guard de columna** (`token_columna(est, posicion) <= col_c` del
+  patrón): el cuerpo termina en el borde del caso siguiente. Variables de
+  bucle únicas por rama (`r22a`/`r22b` — scoping de `si/sino`, lección R13).
+- **S1** (`compilador/parser_control.py` `_parsear_coincidir`): `NEWLINE` →
+  `_parsear_bloque()` (idioma de `_parsear_si`); forma de una línea con guard
+  `columna > tok_patron.columna`.
+- **NOTA (code-reviewer):** el guard de columna es una HEURÍSTICA de
+  indentación — los bloques anidados consumen su propio DESINDENTAR, así que
+  el borde del caso siguiente se detecta por columna. Asume columnas
+  consistentes (espacios); con tabs mixtos la comparación podría engañar
+  (documentado en ambos parsers).
+
+**Validación (6 probes nativos + bootstrap + suites):**
+- q1 cuerpo en bloque (`let` + `retornar`, forma MANUAL 5): **rc=0**
+- q2 coincidir ANIDADO en bloque (el probe R20 p3): **rc=0** (antes rc=8)
+- q3 coincidir anidado de UNA línea (AST corrupto previo): **rc=0**
+- q4 ejecución real del switch anidado: salida **42** (`ok(ok(42))` →
+  externo `ok(inner)` → interno `ok(valor)` → 42)
+- q5 coincidir interno NO exhaustivo: `(linea 6, columna 23)` — el
+  EXHAUSTIVE_MATCH del coincidir ANIDADO lleva su línea real (R21 + R22)
+- q6 cuerpo de caso en bloque VACÍO: **rc=0** (lenient, sin cuelgue)
+- Bootstrap **S2==S3 byte-idénticos** (sha256 `96f7f21e…`, 1.093.109 bytes);
+  suite `test_fase2_nativa_hm` **82/82** (76 + 6 R22); S1
+  parser/match/tipos **69 passed** (sin regresión del cambio en `parser_control.py`).
+
+**Hallazgo registrado (regla 9/11 AUDITORIA):** el codegen del S1 para
+`coincidir` en funciones NO genéricas emite `Resultado_T` (placeholder sin
+monomorfizar — `'Resultado_T' has no member named 'tag'`). PREEXISTENTE
+(verificado: falla también con la forma canónica de una línea de
+`test_match.py`, que nunca lo detectó porque solo valida SEMÁNTICA sin generar
+C). Resolución asignada: registrar las instancias de ADT de parámetros de
+funciones no genéricas en el S1 (`_registrar`/`_instancias_adt`), revalidando
+la regresión del S1. El nativo no tiene el problema (el scan D-2 registra los
+parámetros desde R16/R17).
+
+**Residual R22:** la heurística de columna asume espacios consistentes; el
+bucle de una línea conserva la tolerancia multi-sentencia previa (lenient, sin
+regresión — la gramática dice `sentencia` en singular).
+
+**HASH COMMIT: `6f6e5a6`** — rama `feature/fase2-nativa-hm`.
+
