@@ -1136,3 +1136,65 @@ defensiva — hoy solo hay espejos de constantes en `_files[]`).
 
 **HASH COMMIT: `603c754`** — rama `feature/fase2-nativa-hm`.
 
+## §27 — R24: ADT builtin implícito materializa su instancia monomorfizada en firmas NO genéricas del S1 (hallazgo R22; Manual 2 §4.2 L279-280, paridad semantic_scope.py L101-102)
+
+### 27.1 Síntoma
+
+El S1 compila `funcion f(r: Resultado<entero,texto>)` **sin declarar** el ADT
+(Resultado/Opcion son builtins implícitos del checker) y emite C inválido:
+`'Resultado_T' has no member named 'tag'` en gcc. El checker acepta el programa
+(conoce los builtins para aridad/exhaustividad) pero el generador no
+materializaba la instancia `Resultado_entero_texto`.
+
+### 27.2 Causa raíz
+
+- `GeneratorContext.__init__` (context.py:250) inicia `_adt_parametros` vacío y
+  solo lo llena con `DeclaracionTipo` del usuario (generator.py:1161-1166).
+- Con `Resultado` builtin implícito, `_recolectar_instancias_adt._registrar`
+  retorna temprano (`base not in ctx._adt_parametros`) → la instancia del
+  parámetro nunca se registra → `traducir_tipo_c` cae al placeholder
+  `Resultado_T` (nombre base + `_T` crudo).
+- Paridad asimétrica: `semantic_scope.py:101-102` PRECARGA los builtins en el
+  checker (el `coincidir` sobre el parámetro valida aridad y exhaustividad
+  correctamente) pero el generador no.
+
+### 27.3 Fix (S1)
+
+Precarga de los builtins en `GeneratorContext.__init__`:
+
+- `_adt_parametros['Resultado'] = ['T','E']`, `_adt_parametros['Opcion']=['T']`
+- `_adt_constructores['Resultado'] = [('ok','T'),('err','E')]`,
+  `_adt_constructores['Opcion'] = [('algun','T'),('ninguno','entero')]`
+
+Regla **declaración del usuario gana**: una `DeclaracionTipo` del usuario
+sobreescribe los valores pre-cargados (mismo comportamiento que el checker).
+Nota (code-review): fuente hermana duplicada con `semantic_scope.py` — si se
+añade un tercer ADT builtin, actualizar AMBOS lados.
+
+### 27.4 Validación
+
+- Probe p2 (builtin implícito, sin declaración): S1 rc=0, C con typedef
+  `Resultado_entero_texto` tipado (`int64_t ok; CadenaSegura err;`) —
+  placeholder `Resultado_T` ausente como tipo de parámetro.
+- Ejecución real S1: `procesar(ok(7))` → runtime rc=7.
+- El NATIVO sigue estricto (exige declarar el ADT — Manual 2 §4.2): p2 rc=5
+  `tipo base 'Resultado' no definido`; p1 con declaración rc=0.
+- Bootstrap **S2==S3 sin cambios** (sha256 `ddf2e0bf…` — el self-hosted no usa
+  `Resultado<` en firmas).
+- Suite **89/89 HM** (87+2 R24); regresión S1 **216 passed** (incluye
+  `test_match_builtin_implicito_codegen_valido`).
+- Tests: `tests/integration/test_match.py` (1: asserts `Resultado_entero_texto`
+  presente y `Resultado_T r` ausente) + `tests/test_fase2_nativa_hm.py` (2:
+  parámetro ADT compila rc=0 y ejecuta imprime 7).
+
+### 27.5 Hallazgo registrado (resolución asignada)
+
+`let r = ok(7)` **sin anotación** de tipo infiere `int64_t` en el codegen nativo
+(`int64_t r = (Resultado_entero_texto){...}` → gcc `incompatible types`): el
+constructor no resuelve la instancia sin anotación. La forma anotada
+(`let r: Resultado<entero,texto> = ok(7)`) o la llamada directa
+(`procesar(ok(7))`) funcionan. Pendiente: inferencia de la instancia desde el
+constructor en `let` sin anotación (paridad S1 vs nativo).
+
+**HASH COMMIT: `d5baf31`** — rama `feature/fase2-nativa-hm`.
+

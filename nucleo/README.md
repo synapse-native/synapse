@@ -556,3 +556,20 @@ línea/columna reales en `puente_ast.syn` (las constantes globales reportaban
 definición + control rc=0; imports m23 con espejo rc=0; bootstrap **S2==S3**
 (sha256 `ddf2e0bf…`, 1.093.651 bytes); suite **87/87 HM** (82+5 R23);
 regresión S1 212 passed. Detalle: reporte §26.
+
+### R24 — ADT builtin implícito monomorfizado en el S1 (CERRADA `d5baf31`)
+
+Cierre del hallazgo R22: el S1 compilaba `funcion f(r: Resultado<entero,texto>)`
+sin declarar el ADT (Resultado/Opcion son builtins implícitos del checker,
+`semantic_scope.py` L101-102) pero el generador emitía el placeholder
+`Resultado_T` → C inválido en gcc (`'Resultado_T' has no member named 'tag'`).
+Causa: `GeneratorContext.__init__` inicia `_adt_parametros` vacío y solo lo
+llena con `DeclaracionTipo` del usuario. Fix en `context.py`: precarga de los
+builtins (`_adt_parametros` + `_adt_constructores` con ok/err y
+algun/ninguno→entero) con la regla **declaración del usuario gana**. El nativo
+sigue estricto (exige declarar el ADT, Manual 2 §4.2) — el S1 es lenient por
+paridad con `test_match.py`. Validación: probe p2 rc=0 con typedef
+`Resultado_entero_texto` tipado + ejecución `procesar(ok(7))` → rc=7; bootstrap
+S2==S3 sin cambios (`ddf2e0bf…`); suite **89/89 HM**; regresión S1 **216
+passed**. Hallazgo registrado: `let r = ok(7)` sin anotación infiere `int64_t`
+en el nativo (usar anotación o llamada directa). Detalle: reporte §27.
