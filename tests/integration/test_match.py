@@ -5,6 +5,7 @@ Valida coincidir de patrones (match exhaustivo) con Resultado<T,E> y Opcion<T>.
 import pytest
 from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
+from compilador.generator import GeneradorC
 
 
 def test_match_resultado_ok_y_err():
@@ -49,3 +50,29 @@ funcion obtener(opt: Opcion<entero>) -> entero:
     assert diag.codigo_salida() != 0
     codigos = [e.get('codigo') for e in diag.errores]
     assert ErrorCodes.ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED in codigos
+
+
+def test_match_builtin_implicito_codegen_valido():
+    """R24 (hallazgo R22): `coincidir` sobre un parámetro ADT BUILTIN implícito
+    (Resultado/Opcion SIN declaración — paridad checker semantic_scope.py
+    L101-102) debe emitir la instancia monomorfizada (Resultado_entero_texto)
+    y NO el placeholder Resultado_T ('Resultado_T' has no member named 'tag'
+    = C inválido en gcc). Manual 2 §4.2 L279-280.
+    """
+    fuente = '''#lang: es
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+    ast, diag = compilar_texto(fuente)
+    assert diag.codigo_salida() == 0, f"semantica fallo: {diag.errores}"
+    codigo_c = GeneradorC(ast).generar()
+    assert 'Resultado_entero_texto' in codigo_c, (
+        "falta el typedef de la instancia monomorfizada")
+    # El placeholder Resultado_T solo puede aparecer en el typedef de la
+    # runtime compartida (_synapse_shared.h), NUNCA como tipo de parámetro.
+    assert 'Resultado_T r' not in codigo_c, (
+        "el parametro sigue tipado con el placeholder Resultado_T")

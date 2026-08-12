@@ -249,6 +249,20 @@ class GeneratorContext:
         # constructores originales (base -> [(ctor, tipo_syn), ...]).
         self._adt_parametros: Dict[str, list] = {}
         self._adt_constructores: Dict[str, list] = {}
+        # R24 (hallazgo R22): los ADT genéricos BUILTIN Resultado<T,E>/Opcion<T>
+        # se usan en firmas SIN declaración (`funcion f(r: Resultado<entero,
+        # texto>)`) — el checker ya los conoce (semantic_scope.py L101-102,
+        # paridad de aridad/exhaustividad), así que el generador debe conocerlos
+        # también para materializar la instancia monomorfizada
+        # (Resultado_entero_texto) en vez del placeholder Resultado_T (C inválido:
+        # 'Resultado_T' has no member named 'tag'). Una DeclaracionTipo del
+        # usuario sobreescribe estos valores (declaración gana).
+        # NOTA (code-reviewer R24): fuente hermana duplicada con semantic_scope.py
+        # L101-102 — si se añade un tercer ADT builtin, actualizar AMBOS lados.
+        self._adt_parametros['Resultado'] = ['T', 'E']
+        self._adt_parametros['Opcion'] = ['T']
+        self._adt_constructores['Resultado'] = [('ok', 'T'), ('err', 'E')]
+        self._adt_constructores['Opcion'] = [('algun', 'T'), ('ninguno', 'entero')]
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
         self._strings_heap: set = set()

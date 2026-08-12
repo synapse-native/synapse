@@ -1956,3 +1956,55 @@ def test_r23_redefinicion_constante_global_observable(stage, tmp_path):
     assert "linea 3" in proc.stderr, (
         f"la SEGUNDA constante (linea 3) debe llevar su linea real:\n"
         f"{proc.stderr[-1200:]}")
+
+
+_PROG_R24_PARAM_ADT = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R24_PARAM_ADT_RUNTIME = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+funcion principal() -> nulo:
+    escribir(entero_a_texto(procesar(ok(7))))
+    retornar
+'''
+
+# R24 hallazgo nativo (resolucion asignada): `let r = ok(7)` SIN anotacion
+# de tipo infiere int64_t en el codegen nativo (`int64_t r =
+# (Resultado_entero_texto){...}` -> gcc error incompatible types) — el tipo
+# del constructor no resuelve la instancia sin anotacion. Registrado en la
+# bitacora; la forma anotada o la llamada directa funcionan.
+
+
+def test_r24_parametro_adt_no_generico_compila(stage, tmp_path):
+    """R24 (hallazgo R22): funcion NO generica con parametro ADT instanciado
+    + coincidir compila rc=0 en el nativo (el ADT se declara: Manual 2 §4.2).
+    Antes el S1 emitia el placeholder Resultado_T (C invalido en gcc) cuando
+    el ADT era builtin implicito; el nativo exige la declaracion."""
+    proc = _compilar_con_stage(stage, _PROG_R24_PARAM_ADT, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"parametro ADT + coincidir debe compilar rc=0:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r24_parametro_adt_no_generico_ejecuta(stage, tmp_path):
+    """R24: ejecucion real — procesar(ok(7)) sobre parametro ADT imprime 7
+    (switch .tag monomorfizado, Manual 2 §4.2). El runtime llama a principal
+    sin propagar el return, asi que la salida observable es stdout."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R24_PARAM_ADT_RUNTIME,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"programa R24 runtime debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "7" in run.stdout.split(), (
+        f"procesar(ok(7)) debe imprimir 7: {run.stdout!r}")
