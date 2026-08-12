@@ -176,9 +176,18 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
     // imprime; el nativo los tragaba (solo marcaba hay_error). Se excluye
     // ERR_SEM_CONSTANTE_INMUTABLE: su call-site (R9) ya imprime el
     // diagnostico especifico con el nombre formateado.
-    si codigo != ERR_SEM_CONSTANTE_INMUTABLE:
+    si codigo == ERR_SEM_REDEFINICION:
+        // R23: el call-site pasa el NOMBRE crudo; se interpola con la plantilla
+        // de diagnostics.syn L134 (paridad S1 diagnostics.py: "Redefinicion de
+        // '{nombre}' en el mismo ambito"). Antes el mensaje salia ": <nombre>".
         inseguro:
-            asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
+            asm("    static char _mre_buf[256]; _mre_buf[0]=0;")
+            asm("    if (mensaje.datos) snprintf(_mre_buf, 256, \"Redefinicion de '%s' en el mismo ambito\", mensaje.datos);")
+            asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, _mre_buf);")
+    sino:
+        si codigo != ERR_SEM_CONSTANTE_INMUTABLE:
+            inseguro:
+                asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
@@ -1218,16 +1227,21 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 inseguro:
                     asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; cnombre=_cs; } }")
                 si cnombre != "":
-                    // Checklist 2.1/2.3: constantes espejo entre MODULOS del
-                    // compilador self-hosted (tokens.syn/lexer.syn/
-                    // parser_constantes.syn/diagnostics.syn/errores.syn definen
-                    // los mismos T_*/NODO_*/ERR_*) se concatenan en un solo
-                    // scope global nativo; el S1 las ve en scopes de modulo
-                    // separados (importar) y NO reporta redefinicion. Paridad
-                    // observable: duplicado de constante global = ignorado
-                    // (la primera gana y sigue siendo inmutable). Las funciones
-                    // y constantes LOCALES duplicadas SI reportan (paridad S1).
+                    // R23 (hallazgo R21 + revision code-reviewer): los duplicados
+                    // de constantes globales del PROPIO archivo del usuario ahora
+                    // reportan REDEFINICION (paridad S1 semantic_checker.py
+                    // L286-299, estricto). La leniency anterior (checklist
+                    // 2.1/2.3: "duplicado de constante global = ignorado") era
+                    // para los ESPEJOS entre modulos del compilador
+                    // self-hosted (tokens/lexer/parser_constantes/diagnostics/
+                    // errores definen los mismos T_*/NODO_*/ERR_*) — pero R23
+                    // deduplica esos espejos en el merge del unity build
+                    // (_seen_sym, profundidad de modulo), asi que NUNCA llegan
+                    // al analizador y la leniency quedo obsoleta. Las funciones,
+                    // constantes locales y variables duplicadas ya reportaban.
                     ok_c = tabla_declarar(est, cnombre, "entero", stmt, verdadero)
+                    si ok_c == falso:
+                        sem_error(est, ERR_SEM_REDEFINICION, stmt, cnombre)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 

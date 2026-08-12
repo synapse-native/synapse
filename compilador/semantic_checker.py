@@ -244,6 +244,16 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         # §2 L75, Manual 3 §7).
         for s in self.programa.sentencias:
             if isinstance(s, DeclaracionTipo) and s.constructores:
+                # R23 (paridad nativo): la redefinicion de un ADT (mismo nombre
+                # que una estructura o un ADT anterior) es REDEFINICION — no se
+                # silencia con el `if not in` de registro.
+                if s.nombre in self._estructuras:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(s.linea, s.columna),
+                        nombre=s.nombre
+                    )
+                    continue
                 campos = [Parametro(nombre='tag', tipo='entero')]
                 for c in s.constructores:
                     t_campo = c.tipos[0] if c.tipos else 'entero'
@@ -434,15 +444,29 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         tipo1=tipo_expr, tipo2=tipo_decl, operacion='declaracion'
                     )
                 else:
-                    self.tabla.declarar(nodo.nombre, tipo_decl, nodo)
-                    # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
-                    if hasattr(self, '_region_graph'):
-                        lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
-                        scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
-                        self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
-                        self._proximo_lifetime += 1
+                    # R23 (paridad nativo): `let x` con el mismo nombre en el
+                    # mismo ambito es REDEFINICION (declarar retorna False).
+                    if not self.tabla.declarar(nodo.nombre, tipo_decl, nodo):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_REDEFINICION,
+                            self._token(nodo.linea, nodo.columna),
+                            nombre=nodo.nombre
+                        )
+                    else:
+                        # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
+                        if hasattr(self, '_region_graph'):
+                            lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+                            scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
+                            self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                            self._proximo_lifetime += 1
             else:
-                self.tabla.declarar(nodo.nombre, tipo_decl, nodo)
+                # R23 (paridad nativo): mismo ambito -> REDEFINICION
+                if not self.tabla.declarar(nodo.nombre, tipo_decl, nodo):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(nodo.linea, nodo.columna),
+                        nombre=nodo.nombre
+                    )
         elif isinstance(nodo, StmtConstante):
             tipo_const = self._inferir_tipo(nodo.valor)
             if tipo_const:

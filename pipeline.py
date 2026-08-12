@@ -388,6 +388,7 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
     _module_asts[ruta_abs] = copy.deepcopy(ast)
 
     nuevas_sentencias: List[Nodo] = []
+    _origenes: List[bool] = []  # R23: True = sentencia de un modulo importado
     for stmt in ast.sentencias:
         if isinstance(stmt, SentenciaImportar):
             _imports_usados.add(stmt.ruta)
@@ -428,16 +429,23 @@ def compilar_desde_texto(ruta_archivo: str, archivos_procesados: Set[str],
                 return ast, diag_import
             for s in ast_importado.sentencias:
                 nuevas_sentencias.append(s)
+                _origenes.append(True)   # R23: sentencia de un modulo importado
         else:
             nuevas_sentencias.append(stmt)
+            _origenes.append(False)      # R23: sentencia del propio archivo
 
+    # R23 (hallazgo R21): el dedup first-wins SOLO aplica a los simbolos de
+    # MODULOS importados (espejos de constantes/helpers entre modulos del
+    # compilador). Los duplicados del PROPIO archivo del usuario no se
+    # descartan: llegan al AnalizadorSemanticoChecker y ERR_SEM_REDEFINICION
+    # los reporta con linea/columna (paridad nativo principal.syn _seen_sym).
     vistos = set()
     sentencias_dedup = []
-    for s in nuevas_sentencias:
+    for s, de_importacion in zip(nuevas_sentencias, _origenes):
         if isinstance(s, (DefinicionEstructura, DefinicionFuncion, DeclaracionExterna, StmtConstante)):
             nombre = getattr(s, 'nombre', None)
             if nombre:
-                if nombre in vistos:
+                if de_importacion and nombre in vistos:
                     continue
                 vistos.add(nombre)
         sentencias_dedup.append(s)

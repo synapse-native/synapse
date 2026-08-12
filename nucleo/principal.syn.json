@@ -45998,6 +45998,34 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  // R23: linea/columna reales (REDEFINICION de constante GLOBAL —"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // paridad R21 en NODO_ASIGNACION; antes la redefinicion de una"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // constante global top-level salia con (linea 0, columna 0))."
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -48206,10 +48234,10 @@
                 "_tipo": "Identificador",
                 "nombre": "codigo"
               },
-              "operador": "!=",
+              "operador": "==",
               "derecho": {
                 "_tipo": "Identificador",
-                "nombre": "ERR_SEM_CONSTANTE_INMUTABLE"
+                "nombre": "ERR_SEM_REDEFINICION"
               }
             },
             "cuerpo": [
@@ -48220,8 +48248,53 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);"
+                      "instruccion": "    static char _mre_buf[256]; _mre_buf[0]=0;"
                     }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    if (mensaje.datos) snprintf(_mre_buf, 256, \"Redefinicion de '%s' en el mismo ambito\", mensaje.datos);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, _mre_buf);"
+                    }
+                  }
+                ]
+              }
+            ],
+            "cuerpo_sino": [
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "codigo"
+                  },
+                  "operador": "!=",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "ERR_SEM_CONSTANTE_INMUTABLE"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "ExprAsm",
+                          "instruccion": "    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);"
+                        }
+                      }
+                    ]
                   }
                 ]
               }
@@ -58300,6 +58373,48 @@
                                 }
                               ]
                             }
+                          },
+                          {
+                            "_tipo": "SentenciaSi",
+                            "condicion": {
+                              "_tipo": "OpBinaria",
+                              "izquierdo": {
+                                "_tipo": "Identificador",
+                                "nombre": "ok_c"
+                              },
+                              "operador": "==",
+                              "derecho": {
+                                "_tipo": "LiteralBooleano",
+                                "valor": false
+                              }
+                            },
+                            "cuerpo": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "LlamadaFuncion",
+                                  "nombre": "sem_error",
+                                  "argumentos": [
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "est"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "ERR_SEM_REDEFINICION"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "stmt"
+                                    },
+                                    {
+                                      "_tipo": "Identificador",
+                                      "nombre": "cnombre"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
                           }
                         ]
                       }
@@ -87945,6 +88060,209 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R23 (hallazgo R21): dedup first-wins del AST fusionado del"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // unity build — todos los simbolos son de MODULOS del compilador"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // (tokens/lexer/parser_constantes/diagnostics/errores) y sus espejos"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // son legitimos: primer-gana, igual que el dedup por profundidad de"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // ME-B9.z (paridad pipeline.py). La REDEFINICION del archivo del"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // usuario sigue siendo observable (ruta standalone)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _seen_sym2[2048][64]; int _seen_sym2_n = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct ListaNodo* _nd2 = NULL; struct ListaNodo** _nd2cur = &_nd2;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct ListaNodo* _cur2 = _merged;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        while(_cur2){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct Nodo* _h2 = _cur2->cabeza; struct ListaNodo* _nx2 = _cur2->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            int _keep2 = 1;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if(_h2 && _h2->tipo.datos){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                const char* _tt2 = _h2->tipo.datos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                const char* _nm2 = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(strcmp(_tt2,\"DefinicionFuncion\")==0){ struct DefinicionFuncion* _f3=(struct DefinicionFuncion*)_h2; _nm2=_f3->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                else if(strcmp(_tt2,\"DefinicionEstructura\")==0){ struct DefinicionEstructura* _d3=(struct DefinicionEstructura*)_h2; _nm2=_d3->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                else if(strcmp(_tt2,\"DeclaracionExterna\")==0){ struct DeclaracionExterna* _x3=(struct DeclaracionExterna*)_h2; _nm2=_x3->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                else if(strcmp(_tt2,\"AsignacionVariable\")==0){ struct AsignacionVariable* _av3=(struct AsignacionVariable*)_h2; _nm2=_av3->nombre.datos; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if(_nm2 && _nm2[0]){"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    int _dp2=0; for(int _s3=0;_s3<_seen_sym2_n;_s3++){ if(strcmp(_seen_sym2[_s3],_nm2)==0){_dp2=1;break;} }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if(_dp2){ _keep2=0; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    else if(_seen_sym2_n<2048){ strncpy(_seen_sym2[_seen_sym2_n],_nm2,63); _seen_sym2[_seen_sym2_n][63]=0; _seen_sym2_n++; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if(_keep2){ _cur2->cola = NULL; *_nd2cur = _cur2; _nd2cur = &(*_nd2cur)->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _cur2 = _nx2;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _merged = _nd2;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "} else {"
                 }
               },
@@ -88519,6 +88837,62 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    // R23 (hallazgo R21): el dedup first-wins SOLO aplica a los simbolos"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // de MODULOS importados (espejos de constantes/helpers entre modulos"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // del compilador: tokens/lexer/parser_constantes/diagnostics/errores)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Los duplicados del PROPIO archivo del usuario NO se descartan: llegan"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // al analizador y REDEFINICION (pasadas 1/2) los reporta con"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // linea/columna reales. Profundidad del stack: 1 = archivo principal,"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // >1 = modulo importado. Paridad S1 pipeline.py dedup (fix R23)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _desde_modulo = (_stk_n > 1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    int _aceptar=1;"
                 }
               },
@@ -88540,7 +88914,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if(_dup2){ _aceptar=0; }"
+                  "instruccion": "        if(_desde_modulo && _dup2){ _aceptar=0; }"
                 }
               },
               {

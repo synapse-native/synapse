@@ -1841,3 +1841,118 @@ def test_r22_bloque_vacio_no_cuelga(stage, tmp_path):
     assert proc.returncode == 0, (
         f"bloque vacio fallo rc={proc.returncode} (TimeoutExpired = cuelgue):\n"
         f"{proc.stderr[-800:]}")
+
+
+# --- R23: REDEFINICION de funcion/estructura/externa observable (hallazgo R21) --
+# El dedup `_seen_sym` del unity merge (nucleo/principal.syn, paridad
+# pipeline.py:374) descartaba los duplicados del PROPIO archivo del usuario
+# (rc=0 silencioso: p1/p2/p4 de R21). R23: el dedup first-wins solo aplica a
+# los simbolos de MODULOS importados (espejos de constantes/helpers del
+# compilador); los duplicados del archivo del usuario llegan al analizador y
+# REDEFINICION (pasadas 1/2) los reporta con linea/columna reales.
+
+_PROG_R23_REDEF_FUNC = '''#lang: es
+funcion f() -> entero:
+    retornar 1
+funcion f() -> entero:
+    retornar 2
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R23_REDEF_STRUCT = '''#lang: es
+estructura Punto:
+    x: entero
+estructura Punto:
+    x: entero
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R23_REDEF_EXTERNO = '''#lang: es
+externo funcion ayuda() -> entero
+externo funcion ayuda() -> entero
+funcion principal() -> nulo:
+    retornar
+'''
+
+_PROG_R23_SIN_REDEF = '''#lang: es
+funcion f() -> entero:
+    retornar 1
+estructura Punto:
+    x: entero
+externo funcion ayuda() -> entero
+funcion principal() -> nulo:
+    retornar
+'''
+
+
+def test_r23_redefinicion_funcion_observable(stage, tmp_path):
+    """R23 (hallazgo R21): REDEFINICION de FUNCION observable — antes el
+    dedup del unity merge descartaba el duplicado del propio archivo (rc=0
+    silencioso, paridad pipeline.py). Ahora llega al analizador (pasada 2)
+    con linea/columna reales (linea 4 = la SEGUNDA definicion)."""
+    proc = _compilar_con_stage(stage, _PROG_R23_REDEF_FUNC, str(tmp_path))
+    assert proc.returncode != 0, (
+        f"REDEFINICION de funcion debe abortar:\n{proc.stderr[-1200:]}")
+    assert "Redefinicion de 'f'" in proc.stderr, (
+        f"mensaje con plantilla (paridad S1):\n{proc.stderr[-1200:]}")
+    assert "linea 4" in proc.stderr, (
+        f"la SEGUNDA definicion (linea 4) debe llevar su linea real:\n"
+        f"{proc.stderr[-1200:]}")
+    assert "columna 9" in proc.stderr, (
+        f"la SEGUNDA definicion (linea 4, columna 9) debe llevar su columna:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r23_redefinicion_estructura_observable(stage, tmp_path):
+    """R23: REDEFINICION de ESTRUCTURA observable (pasada 1, linea 4)."""
+    proc = _compilar_con_stage(stage, _PROG_R23_REDEF_STRUCT, str(tmp_path))
+    assert proc.returncode != 0
+    assert "Redefinicion de 'Punto'" in proc.stderr
+    assert "linea 4" in proc.stderr, (
+        f"la SEGUNDA estructura (linea 4) debe llevar su linea real:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r23_redefinicion_externa_observable(stage, tmp_path):
+    """R23: REDEFINICION de EXTERNO observable (pasada 2, linea 3)."""
+    proc = _compilar_con_stage(stage, _PROG_R23_REDEF_EXTERNO, str(tmp_path))
+    assert proc.returncode != 0
+    assert "Redefinicion de 'ayuda'" in proc.stderr
+    assert "linea 3" in proc.stderr, (
+        f"la SEGUNDA declaracion externa (linea 3) debe llevar su linea real:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r23_sin_redefinicion_ok(stage, tmp_path):
+    """R23 (control): programa valido con funcion + estructura + externo
+    distintos NO reporta falsos REDEFINICION (rc=0)."""
+    proc = _compilar_con_stage(stage, _PROG_R23_SIN_REDEF, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"control sin duplicados fallo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+_PROG_R23_REDEF_CONST = '''#lang: es
+constante MAXIMO = 5
+constante MAXIMO = 9
+funcion principal() -> nulo:
+    retornar
+'''
+
+
+def test_r23_redefinicion_constante_global_observable(stage, tmp_path):
+    """R23 (revision code-reviewer): constante global duplicada del PROPIO
+    archivo reporta REDEFINICION (linea 3) — paridad S1 (estricto). La
+    leniency R9 era para los espejos entre modulos del compilador, que R23
+    deduplica en el merge (_seen_sym, profundidad de modulo) y nunca llegan
+    al analizador."""
+    proc = _compilar_con_stage(stage, _PROG_R23_REDEF_CONST, str(tmp_path))
+    assert proc.returncode != 0, (
+        f"constante global duplicada debe abortar:\n{proc.stderr[-1200:]}")
+    assert "Redefinicion de 'MAXIMO'" in proc.stderr, (
+        f"mensaje con plantilla (paridad S1):\n{proc.stderr[-1200:]}")
+    assert "linea 3" in proc.stderr, (
+        f"la SEGUNDA constante (linea 3) debe llevar su linea real:\n"
+        f"{proc.stderr[-1200:]}")

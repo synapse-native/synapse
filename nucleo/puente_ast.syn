@@ -365,6 +365,10 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->es_constante = 1;  // R9: marcador de constante para el analizador (flatten -> valor_int)")
+            asm("  // R23: linea/columna reales (REDEFINICION de constante GLOBAL —")
+            asm("  // paridad R21 en NODO_ASIGNACION; antes la redefinicion de una")
+            asm("  // constante global top-level salia con (linea 0, columna 0)).")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_FUNCION:
         inseguro:
