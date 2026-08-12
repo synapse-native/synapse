@@ -126,6 +126,92 @@ def _recolectar_instancias_adt(ctx: GeneratorContext):
     for s in ctx.programa.sentencias:
         _walk(s)
 
+    # R28: fixpoint — derivar instancias de ADT desde ctors en EXPRESIONES
+    # (`let r = ok(ok(42))` sin anotacion y `r = ok(ok(42))` implicita).
+    # El scan anterior solo registraba instancias nombradas en firmas/let
+    # anotados; un ctor puro en una expresion quedaba sin registrar -> el
+    # let sin anotacion caia a int64_t/base y el C quedaba invalido.
+    # Convencion R20/R25: los parametros no acotados del ctor (E en
+    # Resultado<T,E>) se rellenan con la PRIMERA instancia registrada del
+    # base; el arg 0 es concreto (literal o ctor anidado recursivo).
+    from compilador.ast_nodes import (
+        LlamadaFuncion, LiteralNumero, LiteralDecimal, LiteralCadena,
+        LiteralNulo, BloqueInseguro,
+    )
+
+    def _tipo_literal_syn(n):
+        if isinstance(n, LiteralNumero):
+            return 'entero'
+        if isinstance(n, LiteralDecimal):
+            return 'decimal'
+        if isinstance(n, LiteralCadena):
+            return 'texto'
+        if isinstance(n, LiteralNulo):
+            return 'puntero'
+        return None
+
+    def _resolver_ctor_syn(n, depth=0):
+        """Tipo Synapse de una cadena de ctors (ok(ok(42)) ->
+        Resultado<Resultado<entero,texto>,texto>) o None si no resoluble."""
+        if depth > 8 or not isinstance(n, LlamadaFuncion):
+            return None
+        nombre = n.nombre
+        if nombre not in ctx._constructores_adt:
+            return None
+        base, _tag, _tipo_syn = ctx._constructores_adt[nombre]
+        if base not in ctx._adt_parametros:
+            return None
+        params = ctx._adt_parametros[base]
+        if not params:
+            return base
+        if not getattr(n, 'argumentos', None):
+            return None
+        arg0 = n.argumentos[0]
+        arg_syn = _tipo_literal_syn(arg0)
+        if arg_syn is None:
+            arg_syn = _resolver_ctor_syn(arg0, depth + 1)
+        if arg_syn is None:
+            return None
+        resto = None
+        for (_b, args), _inst in ctx._instancias_adt.items():
+            if _b == base:
+                resto = list(args)[1:len(params)]
+                break
+        if resto is None:
+            return None
+        args_syn = [arg_syn] + resto
+        if len(args_syn) != len(params):
+            return None
+        # sin espacios: el AST escribe Resultado<A,B> sin espacio y el mangle
+        # C (nombre_c) no los tolera (doble guion bajo)
+        return f"{base}<{','.join(args_syn)}>"
+
+    def _scan_expr_ctors(stmts, out):
+        for st in stmts:
+            if isinstance(st, (DeclaracionVariable, AsignacionVariable)):
+                expr = getattr(st, 'expresion', None)
+                if expr is not None:
+                    t = _resolver_ctor_syn(expr)
+                    if t:
+                        out.append(t)
+            if isinstance(st, BloqueInseguro):
+                _scan_expr_ctors(getattr(st, 'cuerpo', []), out)
+            elif hasattr(st, 'cuerpo') and isinstance(getattr(st, 'cuerpo'), list):
+                _scan_expr_ctors(getattr(st, 'cuerpo'), out)
+            if hasattr(st, 'cuerpo_sino') and getattr(st, 'cuerpo_sino'):
+                _scan_expr_ctors(getattr(st, 'cuerpo_sino'), out)
+
+    for _paso in range(4):
+        _nuevos = []
+        for _s in ctx.programa.sentencias:
+            if isinstance(_s, DefinicionFuncion) and getattr(_s, 'cuerpo', None):
+                _scan_expr_ctors(_s.cuerpo, _nuevos)
+        _antes = len(ctx._instancias_adt)
+        for _t in _nuevos:
+            _registrar(_t)
+        if len(ctx._instancias_adt) == _antes:
+            break
+
 
 def _preprocess_lanzar(ctx: GeneratorContext):
     """Pre-scan: recorre el AST en busca de SentenciaLanzar con LlamadaFuncion y args,

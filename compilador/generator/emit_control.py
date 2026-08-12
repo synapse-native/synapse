@@ -143,6 +143,7 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
                     inst_campos = inst.get('campos')
             campos_adt = (inst_campos or
                           ctx._estructuras.get(adt_base, {}).get('campos', []))
+            bound_syn = None
             for cname, ctype in campos_adt:
                 if cname == 'tag':
                     continue
@@ -151,8 +152,15 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
                 if cname == tag:
                     campo_dato = cname  # campo correcto del tag (ok/err/algun)
                     bound_type = ctx.traducir_tipo_c(ctype)
+                    bound_syn = ctype
                     break
             ctx.write_line(f"{bound_type} {var_name} = {var_temp}.dato.{campo_dato};")
+            # R28: registrar la variable ligada del caso (paridad nativo
+            # nodos_flujo.syn — antes el S1 no la registraba en ctx._variables
+            # y un `coincidir` ANIDADO sobre la variable ligada (tipo ADT)
+            # caia a int64_t -> C invalido). Solo instancias concretas.
+            if inst_campos is not None and bound_syn is not None:
+                ctx._variables[var_name] = bound_syn
         if hasattr(caso, 'cuerpo') and caso.cuerpo:
             for s in caso.cuerpo:
                 _visitar_stmt(ctx, s)

@@ -2189,3 +2189,140 @@ def test_r27_struct_ctor_con_argumentos_rechazado(stage, tmp_path):
         f"{proc.stderr[-1500:]}")
     assert "Cantidad de argumentos invalida para 'Punto': se esperaban 0" in proc.stderr, (
         "falta el mensaje de aridad en stderr:\n" + proc.stderr[-1500:])
+
+
+# ---------------------------------------------------------------------------
+# R28 (2026-08-12): instancia ADT ANIDADA en ctors sin anotacion — derivacion
+# fixpoint (Manual 2 §4.2 L279-280: `ok(ok(42))`; paridad S1). R20 resolvio
+# el anidado SOLO con la instancia escrita en el `let` (Resultado<Resultado<...>>).
+# R25 resuelve el ctor simple sin anotacion (let/asignacion). Hallazgo R28:
+# con la instancia SIMPLE registrada por firma (`procesar(r: Resultado<entero,texto>)`)
+# pero el `let r = ok(ok(42))` sin anotacion, la instancia ANIDADA no se
+# registraba — los scans de monomorfizacion (D-2 nativo / _recolectar_instancias_adt
+# S1) solo miran firmas + lets ANOTADOS, nunca ctors en expresiones. Ambos
+# emitian C basura (nativo `struct Resultado` base rc=5; S1 `int64_t r =`
+# (Resultado){...} rc=1). Fix en 2 lados: (1) S1 — fixpoint en
+# _recolectar_instancias_adt que deriva la instancia anidada desde cadenas de
+# ctors ancladas en instancias registradas + registro de la variable ligada
+# del caso `ok(inner)` en visitar_coincidir (antes emitia int64_t);
+# (2) nativo — 3 helpers en monomorfizacion.syn (registrar post-orden /
+# resolver recursivo de ctors / scan fixpoint de expresiones) llamadas en el
+# scan D-2. El caso SIN ninguna firma sigue fallando en ambos (T sin contexto,
+# paridad R20 intacta).
+# ---------------------------------------------------------------------------
+
+_PROG_R28_LET_ANIDADO_CON_FIRMA = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+
+funcion principal() -> nulo:
+    let r = ok(ok(42))
+    coincidir r:
+        ok(inner) => coincidir inner:
+            ok(v) => escribir(entero_a_texto(v))
+            err(_) => escribir(entero_a_texto(-1))
+        err(_) => escribir(entero_a_texto(-2))
+    retornar
+'''
+
+_PROG_R28_AUTO_ANIDADO_CON_FIRMA = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+
+funcion principal() -> nulo:
+    r = ok(ok(42))
+    coincidir r:
+        ok(inner) => coincidir inner:
+            ok(v) => escribir(entero_a_texto(v))
+            err(_) => escribir(entero_a_texto(-1))
+        err(_) => escribir(entero_a_texto(-2))
+    retornar
+'''
+
+
+def test_r28_let_anidado_sin_anotacion_con_firma(stage, tmp_path):
+    """R28: `let r = ok(ok(42))` sin anotacion pero con la instancia SIMPLE
+    registrada por firma — la derivacion fixpoint registra la anidada desde la
+    cadena de ctors y el let infiere la instancia completa. Antes: int64_t /
+    struct base (C basura)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R28_LET_ANIDADO_CON_FIRMA,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let r = ok(ok(42)) con firma debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "42" in run.stdout.split(), (
+        f"coincidir anidado debe imprimir 42: {run.stdout!r}")
+
+
+def test_r28_let_anidado_sin_anotacion_s1_paridad(tmp_path):
+    """R28 paridad S1: el mismo programa compila rc=0 en el S1 (fixpoint en
+    _recolectar_instancias_adt + binding del caso ok(inner) en el coincidir)."""
+    proc = _compilar_con_s1(_PROG_R28_LET_ANIDADO_CON_FIRMA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: let r = ok(ok(42)) con firma debe compilar:\n{proc.stderr[-1500:]}")
+
+
+def test_r28_asignacion_implicita_anidada_con_firma(stage, tmp_path):
+    """R28: `r = ok(ok(42))` (asignacion implicita/hoisting) con la instancia
+    simple registrada — el scan fixpoint de expresiones resuelve la anidada
+    tambien en el camino hoisting. Antes: struct Resultado base rc=5."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R28_AUTO_ANIDADO_CON_FIRMA,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"r = ok(ok(42)) con firma debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "42" in run.stdout.split(), (
+        f"coincidir anidado sobre auto debe imprimir 42: {run.stdout!r}")
+
+
+_PROG_R28_TRIPLE_ANIDADO = '''#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+
+funcion procesar(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+        err(e) => retornar -1
+
+funcion principal() -> nulo:
+    let r = ok(ok(ok(42)))
+    coincidir r:
+        ok(a) => coincidir a:
+            ok(b) => coincidir b:
+                ok(v) => escribir(entero_a_texto(v))
+                err(_) => escribir(entero_a_texto(-1))
+            err(_) => escribir(entero_a_texto(-2))
+        err(_) => escribir(entero_a_texto(-3))
+    retornar
+'''
+
+
+def test_r28_triple_anidado_compila_y_ejecuta(stage, tmp_path):
+    """R28: triple anidacion `ok(ok(ok(42)))` — el binding del caso (`a`/`b`)
+    de cada nivel se registra como variable tipada (paridad S1
+    ctx._variables[var_name]); antes el coincidir del nivel 2 caia al
+    fallback de la primera instancia del base y emitia int64_t (C invalido).
+    El doble ok(ok(42)) pasaba por casualidad; el triple lo delato."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R28_TRIPLE_ANIDADO,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"triple ok(ok(ok(42))) debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "42" in run.stdout.split(), (
+        f"coincidir triple anidado debe imprimir 42: {run.stdout!r}")
+
+
+def test_r28_asignacion_implicita_anidada_s1_paridad(tmp_path):
+    """R28 paridad S1 del camino AUTO (hoisting): `r = ok(ok(42))` con la
+    instancia simple registrada compila rc=0 y emite la instancia anidada
+    correcta (Resultado_Resultado_entero_texto_texto r)."""
+    proc = _compilar_con_s1(_PROG_R28_AUTO_ANIDADO_CON_FIRMA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: r = ok(ok(42)) con firma debe compilar:\n{proc.stderr[-1500:]}")
