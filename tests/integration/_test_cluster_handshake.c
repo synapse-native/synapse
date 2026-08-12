@@ -119,6 +119,7 @@ int _G_fn_ptr_vars_count;
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
 int _G_tipo_aliases_count;
+int _G_parse_error = 0;
 
 
 int _g_argc;

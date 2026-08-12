@@ -576,6 +576,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #ifndef ERR_MEM_BORROW_CONFLICT
 #define ERR_MEM_BORROW_CONFLICT (39)
 #endif
+#ifndef ERR_SEM_TYPE_AMBIGUOUS
+#define ERR_SEM_TYPE_AMBIGUOUS (40)
+#endif
 #ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
 #define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
 #endif
@@ -639,6 +642,7 @@ extern int _G_fn_ptr_vars_count;
 extern char _G_tipo_aliases[128][64];
 extern char _G_tipo_aliases_base[128][64];
 extern int _G_tipo_aliases_count;
+extern int _G_parse_error;
 
 extern int _G_indent;
 
@@ -833,6 +837,7 @@ int _G_fn_ptr_vars_count;
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
 int _G_tipo_aliases_count;
+int _G_parse_error = 0;
 
 
 int _g_argc;
