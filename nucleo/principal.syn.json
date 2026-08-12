@@ -12458,6 +12458,14 @@
           {
             "nombre": "argumentos",
             "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -12498,6 +12506,14 @@
           {
             "nombre": "es_constante",
             "tipo": "booleano"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -12686,6 +12702,14 @@
           {
             "nombre": "es_transferencia",
             "tipo": "booleano"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -12734,6 +12758,14 @@
           {
             "nombre": "cuerpo",
             "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -12752,6 +12784,14 @@
           {
             "nombre": "campos",
             "tipo": "ListaParametro"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -13028,6 +13068,14 @@
           {
             "nombre": "tipo_retorno",
             "tipo": "texto"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -13140,6 +13188,14 @@
           {
             "nombre": "constructores",
             "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -13158,6 +13214,14 @@
           {
             "nombre": "casos",
             "tipo": "ListaNodo"
+          },
+          {
+            "nombre": "linea",
+            "tipo": "entero"
+          },
+          {
+            "nombre": "columna",
+            "tipo": "entero"
           }
         ]
       },
@@ -44974,6 +45038,20 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "    // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "    r = (void*)_p;"
                     }
                   },
@@ -45089,6 +45167,20 @@
                     "expr": {
                       "_tipo": "ExprAsm",
                       "instruccion": "  _p->expresion = (struct Nodo*)puente_nodo(hd);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_CONSTANTE_INMUTABLE / REDEFINICION)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
                     }
                   },
                   {
@@ -45216,6 +45308,20 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -45331,6 +45437,20 @@
                     "expr": {
                       "_tipo": "ExprAsm",
                       "instruccion": "  _p->es_transferencia = 0;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (validacion 2.4 aridad/base en parametros)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
                     }
                   },
                   {
@@ -45592,6 +45712,20 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -45643,6 +45777,20 @@
                     "expr": {
                       "_tipo": "ExprAsm",
                       "instruccion": "  _p->campos = (struct ListaParametro*)puente_lista_param(hi);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
                     }
                   },
                   {
@@ -46582,6 +46730,20 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
                       "instruccion": "  r = (void*)_p; }"
                     }
                   }
@@ -46917,6 +47079,20 @@
                     "expr": {
                       "_tipo": "ExprAsm",
                       "instruccion": "  _p->constructores = (struct ListaNodo*)puente_lista(hd);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT)"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->linea = linea_n; _p->columna = col_n;"
                     }
                   },
                   {
@@ -88511,6 +88687,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_f->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_f->columna;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        { uintptr_t _tp=(uintptr_t)_f->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
                 }
               },
@@ -88623,6 +88820,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_de->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_de->columna;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        { uintptr_t _tp=(uintptr_t)_de->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
                 }
               },
@@ -88693,6 +88911,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (validacion 2.4 aridad/base en parametros)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_pa->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_pa->columna;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        { uintptr_t _tp=(uintptr_t)_pa->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
                 }
               },
@@ -88742,6 +88981,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_dext->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_dext->columna;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        { uintptr_t _tp=(uintptr_t)_dext->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
                 }
               },
@@ -88778,6 +89038,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct DeclaracionTipo* _dt=(struct DeclaracionTipo*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_dt->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_dt->columna;"
                 }
               },
               {
@@ -89099,6 +89380,27 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_CONSTANTE_INMUTABLE / REDEFINICION)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_a->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_a->columna;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "        { uintptr_t _tp=(uintptr_t)_a->nombre.datos; _f8_nodos[idx].ptr_str=(int)(_tp&0xFFFFFFFFu); _f8_ptr_hi[idx]=(int)(_tp>>32); }"
                 }
               },
@@ -89170,6 +89472,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct DeclaracionVariable* _d=(struct DeclaracionVariable*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 3)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_d->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_d->columna;"
                 }
               },
               {
@@ -89338,6 +89661,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct LlamadaFuncion* _l=(struct LlamadaFuncion*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE del R1)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_l->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_l->columna;"
                 }
               },
               {
@@ -89625,6 +89969,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct NodoCoincidir* _nc=(struct NodoCoincidir*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].linea=_nc->linea;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].columna=_nc->columna;"
                 }
               },
               {

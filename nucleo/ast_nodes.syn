@@ -54,6 +54,10 @@ estructura LlamadaFuncion:
     tipo: texto
     nombre: texto
     argumentos: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE del R1 —
+    // validar_llamada_generica diagnostica sobre el nodo de la llamada).
+    linea: entero
+    columna: entero
 
 estructura ExprAccesoCampo:
     tipo: texto
@@ -69,6 +73,10 @@ estructura AsignacionVariable:
     // 2 / analizar_sentencia registran la constante con es_constante=1
     // (inmutabilidad real, paridad S1 semantic_checker.py StmtConstante).
     es_constante: booleano
+    // R21: linea/columna reales (calidad de diagnostico de la pasada 3:
+    // ERR_SEM_CONSTANTE_INMUTABLE y REDEFINICION — paridad S1 L367/L387).
+    linea: entero
+    columna: entero
 
 estructura DeclaracionVariable:
     tipo: texto
@@ -121,6 +129,9 @@ estructura Parametro:
     nombre: texto
     tipo_param: texto
     es_transferencia: booleano
+    // R21: linea/columna reales (validacion 2.4 de aridad/base en parametros).
+    linea: entero
+    columna: entero
 
 estructura ListaParametro:
     cabeza: Parametro
@@ -134,11 +145,17 @@ estructura DefinicionFuncion:
     requiere: ListaNodo
     garantiza: ListaNodo
     cuerpo: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura DefinicionEstructura:
     tipo: texto
     nombre: texto
     campos: ListaParametro
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura SentenciaRomper:
     tipo: texto
@@ -218,6 +235,9 @@ estructura DeclaracionExterna:
     nombre: texto
     parametros: ListaParametro
     tipo_retorno: texto
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura ExprCrearCanal:
     tipo: texto
@@ -249,6 +269,9 @@ estructura DeclaracionTipo:
     parametros_tipo: ListaNodo
     tipo_base: texto
     constructores: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT, paridad S1)
+    linea: entero
+    columna: entero
 
 // R11 (deuda FASE_2_2.4_NATIVA.md): NodoCoincidir/NodoCaso — el coincidir de
 // patrones (Manual 2 S2.4). Paridad S1 ast_nodes.py NodoCoincidir{expresion,
@@ -260,6 +283,9 @@ estructura NodoCoincidir:
     tipo: texto
     expresion: Nodo
     casos: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura NodoCaso:
     tipo: texto

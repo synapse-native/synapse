@@ -272,6 +272,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("    _p->tipo = puente_cs_str((void*)\"LlamadaFuncion\");")
             asm("    _p->nombre = puente_cs_str(_nm_ll);")
             asm("    _p->argumentos = (struct ListaNodo*)puente_lista(hd);")
+            asm("    // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE)")
+            asm("    _p->linea = linea_n; _p->columna = col_n;")
             asm("    r = (void*)_p;")
             asm("  } }")
     si t == NODO_ACCESO_CAMPO:
@@ -287,6 +289,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_CONSTANTE_INMUTABLE / REDEFINICION)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     // A4.5 fix (bootstrap S2/S3): `expr.campo = val` -> AsignacionCampo.
     // Paridad _P_sentencia del espejo (ExprAccesoCampo + T_ASSIGN ->
@@ -316,6 +320,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"NodoCoincidir\");")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->casos = (struct ListaNodo*)puente_lista(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_CASO:
         inseguro:
@@ -331,6 +337,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->tipo_param = puente_cs_str(puente_str2(idx));")
             asm("  _p->es_transferencia = 0;")
+            asm("  // R21: linea/columna reales (validacion 2.4 aridad/base en parametros)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     // let IDENT [: tipo] [= expr] -> DeclaracionVariable (paridad _P_let):
     // nombre (s1), tipo_param (s2, span completo), expresion (hijo_izq), linea/col.
@@ -373,6 +381,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("      _p->garantiza = (struct ListaNodo*)puente_lista(_ac_n[extra].hijo_der);")
             asm("    }")
             asm("  }")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_ESTRUCTURA:
         inseguro:
@@ -380,6 +390,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"DefinicionEstructura\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->campos = (struct ListaParametro*)puente_lista_param(hi);")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_SI:
         inseguro:
@@ -498,6 +510,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->parametros = (struct ListaParametro*)puente_lista_param(hd);")
             asm("  _p->tipo_retorno = puente_cs_str(puente_str2(idx));")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_EXPORT:
         inseguro:
@@ -548,6 +562,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->parametros_tipo = (struct ListaNodo*)puente_lista(hi);")
             asm("  _p->tipo_base = puente_cs_str(puente_str2(idx));")
             asm("  _p->constructores = (struct ListaNodo*)puente_lista(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_CONSTRUCTOR:
         inseguro:

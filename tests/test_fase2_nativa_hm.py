@@ -1555,3 +1555,149 @@ def test_r20_auto_sin_tipo_paridad(stage, tmp_path):
     assert proc_n.returncode != 0 and proc_s1.returncode != 0, (
         f"auto sin contexto deberia fallar en ambos; nativo rc="
         f"{proc_n.returncode} s1 rc={proc_s1.returncode}")
+
+
+# ---------------------------------------------------------------------------
+# R21 (2026-08-12): linea/columna reales en los diagnosticos semanticos
+# (Manual 2 §10.1: errores con ubicacion precisa). Antes solo
+# ExprObtenerDireccion (R12) e Identificador/SentenciaEnviarCanal (R14)
+# llevaban linea real en el flatten F8; el resto de nodos aplanados nacia con
+# linea 0 y los diagnosticos salian con (linea 0, columna 0). R21 propaga
+# linea/columna (ast_nodes -> puente -> flatten F8) a DefinicionFuncion,
+# DefinicionEstructura, DeclaracionExterna, DeclaracionTipo,
+# AsignacionVariable, DeclaracionVariable y NodoCoincidir (REDEFINICION,
+# CONSTANTE_INMUTABLE, EXHAUSTIVE_MATCH) y a LlamadaFuncion + Parametro
+# (R1 AMBIGUOUS/INCOMPATIBLE y validacion 2.4 de aridad/base en parametros).
+# Hallazgo registrado (paridad S1): la REDEFINICION de funcion/estructura/
+# externa NO es observable porque el unity merge deduplica los simbolos
+# top-level (solo la primera definicion sobrevive; pipeline.py:374) — los
+# checks del analizador quedan como defensa redundante (ver reporte R21).
+# ---------------------------------------------------------------------------
+
+_PROG_R21_REDEF_ADT = """#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion principal() -> nulo:
+    retornar
+"""
+
+_PROG_R21_CONST_INMUTABLE = """#lang: es
+constante MAXIMO = 5
+funcion principal() -> nulo:
+    MAXIMO = 9
+"""
+
+_PROG_R21_MATCH = """#lang: es
+tipo Resultado<T,E> = ok(T) | err(E)
+funcion f(r: Resultado<entero,texto>) -> entero:
+    coincidir r:
+        ok(valor) => retornar valor
+funcion principal() -> nulo:
+    retornar
+"""
+
+_PROG_R21_REDEF_VAR = """#lang: es
+funcion principal() -> nulo:
+    let a = 1
+    let a = 2
+"""
+
+_PROG_R21_AMBIGUO = """#lang: es
+funcion generar() -> T:
+    retornar 5
+funcion principal() -> nulo:
+    z = generar()
+    retornar
+"""
+
+_PROG_R21_INCOMPATIBLE = """#lang: es
+funcion f(a: T, b: T) -> entero:
+    retornar 1
+funcion principal() -> nulo:
+    z = f(5, "hola")
+"""
+
+_PROG_R21_ARIDAD_PARAM = """#lang: es
+tipo Resultado<T, E> = ok(T) | err(E)
+funcion procesar(x: Resultado<entero>) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    retornar
+"""
+
+
+def test_r21_redefinicion_adt_linea_real(stage, tmp_path):
+    """R21 (Manual 2 §10.1): REDEFINICION de ADT con linea real — la segunda
+    `tipo Resultado` (linea 3) reporta (linea 3, ...), no (linea 0, ...)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_REDEF_ADT, str(tmp_path))
+    assert "Error semantico" in proc.stderr
+    assert "linea 3" in proc.stderr, (
+        f"REDEFINICION ADT debe llevar la linea real (antes 0):\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_constante_inmutable_linea_real(stage, tmp_path):
+    """R21: CONSTANTE_INMUTABLE con linea real — la reasignacion de MAXIMO
+    (linea 4) reporta (linea 4, ...), no (linea 0, ...)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_CONST_INMUTABLE, str(tmp_path))
+    assert "No se puede reasignar la constante 'MAXIMO'" in proc.stderr
+    assert "linea 4" in proc.stderr, (
+        f"CONSTANTE_INMUTABLE debe llevar la linea real:\n"
+        f"{proc.stderr[-1200:]}")
+    assert "columna 5" in proc.stderr, (
+        f"CONSTANTE_INMUTABLE debe llevar la columna real del nombre (S1 4:5):\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_match_no_exhaustivo_linea_real(stage, tmp_path):
+    """R21: EXHAUSTIVE_MATCH con linea real — el coincidir (linea 4) reporta
+    (linea 4, ...), no (linea 0, ...)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_MATCH, str(tmp_path))
+    assert "coincidir no exhaustivo" in proc.stderr
+    assert "linea 4" in proc.stderr, (
+        f"EXHAUSTIVE_MATCH debe llevar la linea real:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_redefinicion_variable_linea_real(stage, tmp_path):
+    """R21: REDEFINICION de variable (let duplicado, linea 4) con linea real
+    (paridad S1 diagnostics.py; antes (linea 0, columna 0))."""
+    proc = _compilar_con_stage(stage, _PROG_R21_REDEF_VAR, str(tmp_path))
+    assert "Error semantico" in proc.stderr
+    assert "linea 4" in proc.stderr, (
+        f"REDEFINICION variable debe llevar la linea real:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_ambiguo_linea_real(stage, tmp_path):
+    """R21: R1 AMBIGUOUS con linea real — la llamada `generar()` (linea 5)
+    reporta (linea 5, columna 9) via el nodo LlamadaFuncion (antes linea 0)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_AMBIGUO, str(tmp_path))
+    assert "ambiguo" in proc.stderr
+    assert "linea 5" in proc.stderr, (
+        f"AMBIGUOUS debe llevar la linea de la llamada:\n"
+        f"{proc.stderr[-1200:]}")
+    assert "columna 9" in proc.stderr, (
+        f"AMBIGUOUS debe llevar la columna real del call-site (S1 5:9):\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_incompatible_linea_real(stage, tmp_path):
+    """R21: R1 INCOMPATIBLE con linea real — la llamada `f(5, "hola")`
+    (linea 5) reporta (linea 5, ...)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_INCOMPATIBLE, str(tmp_path))
+    assert "incompatibles" in proc.stderr
+    assert "linea 5" in proc.stderr, (
+        f"INCOMPATIBLE debe llevar la linea de la llamada:\n"
+        f"{proc.stderr[-1200:]}")
+
+
+def test_r21_aridad_parametro_linea_real(stage, tmp_path):
+    """R21: validacion 2.4 de aridad en PARAMETRO con linea real — el
+    parametro `x: Resultado<entero>` (linea 3) reporta (linea 3, ...) via el
+    nodo Parametro (antes linea 0)."""
+    proc = _compilar_con_stage(stage, _PROG_R21_ARIDAD_PARAM, str(tmp_path))
+    assert "se esperaban 2" in proc.stderr
+    assert "linea 3" in proc.stderr, (
+        f"aridad en parametro debe llevar la linea real:\n"
+        f"{proc.stderr[-1200:]}")
