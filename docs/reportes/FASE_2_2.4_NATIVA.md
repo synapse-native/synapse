@@ -1198,3 +1198,62 @@ constructor en `let` sin anotación (paridad S1 vs nativo).
 
 **HASH COMMIT: `d5baf31`** — rama `feature/fase2-nativa-hm`.
 
+## §28 — R25: `let` con ctor ADT sin anotación infiere la instancia monomorfizada en el codegen nativo (cierre del hallazgo R24; Manual 2 §4.2 L279-280)
+
+### 28.1 Síntoma
+
+`let r = ok(7)` **sin anotación** de tipo compilaba el ctor como compound literal
+tipado (`(Resultado_entero_texto){.tag=0,.dato.ok=7LL}`) pero declaraba la
+variable como `int64_t` → gcc `incompatible types when initializing type
+'int64_t' using type 'Resultado_entero_texto'`. La forma anotada
+(`let r: Resultado<entero,texto> = ok(7)`) y la llamada directa
+(`procesar(ok(7))`) ya funcionaban (R24); la asignación implícita
+(`r = ok(7)` con hoisting) también (el hoisting usa `_syn_nativo_expr_tipo_c`
+desde R20).
+
+### 28.2 Causa raíz
+
+`gen_visitar_declaracion` (nodos_flujo.syn) infiere el tipo del `let` sin
+anotación por el **tipo de NODO** de la expresión: LiteralCadena → CadenaSegura,
+LiteralDecimal → double, ExprTensor → Tensor, LiteralNulo → void*, y
+**default → int64_t**. `LlamadaFuncion` (el ctor ADT) caía al default — la
+instancia monomorfizada que el emisor de la expresión ya resolvía
+(`_G_native_adt_inst_ctr`) nunca llegaba al tipo de la variable.
+
+### 28.3 Fix (nativo)
+
+Rama `else if` en `gen_visitar_declaracion` para `LlamadaFuncion` que sea ctor
+ADT (`_G_native_es_adt_ctr`): resuelve la instancia vía
+`_G_native_adt_inst_ctr(base, tag, tipo_c_del_argumento)` con el tipo del
+argumento calculado recursivamente (`_syn_nativo_expr_tipo_c`, paridad R20 —
+soporta ctors anidados como argumento). Fallback al nombre del ADT para ADT
+simple (`typedef struct Punto {...} Punto;`). La cadena else-if mantiene el
+orden previo (las ramas de literales no se ven afectadas). El registro R18 de
+`_G_fn_var_tipos` toma el tipo resuelto (necesario para el binding del
+`coincidir` multi-instancia).
+
+### 28.4 Validación
+
+- Probe `let r = ok(7)`: C emitido `Resultado_entero_texto r =
+  (Resultado_entero_texto){.tag=0,.dato.ok=7LL}`; ejecución imprime **7**.
+- Asignación implícita `r = ok(7)`: `Resultado_entero_texto r = {0}; r =
+  (...){...}` → imprime 7 (regresión confirmada del hoisting).
+- ADT simple con campo `let p = punto(3,4)`: rc=0 (fallback rama else).
+- Literales (`let a = 5`, `let b = 2.5`, `let s = "hola"`): rc=0 (regresión).
+- **Bootstrap S2==S3 byte-idénticos** (sha256 `dd436c46…` — nuevo hash con la
+  rama R25).
+- Suite **91/91 HM** (89+2 R25); tests: 3 HM (let ctor sin anotación, asignación
+  implícita, ADT simple con campo).
+
+### 28.5 Caso ambiguo documentado (paridad)
+
+`let r = ok(ok(42))` sin anotación falla **en ambos compiladores por igual**
+(S1 rc=1 y nativo rc=5, mismo C inválido): la instancia anidada
+(`Resultado<Resultado<entero,texto>,?>`...`) no está registrada sin contexto de
+firma — es un caso semánticamente ambiguo sin anotación. Con anotación explícita
+compila y ejecuta (probe r25a rc=0). No es divergencia: el R20 cerró el anidado
+como ARGUMENTO de llamada (donde la firma del parámetro fija la instancia), no
+en `let` sin contexto.
+
+**HASH COMMIT: `dfe469e`** — rama `feature/fase2-nativa-hm`.
+

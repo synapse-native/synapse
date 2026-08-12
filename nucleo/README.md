@@ -573,3 +573,18 @@ paridad con `test_match.py`. Validación: probe p2 rc=0 con typedef
 S2==S3 sin cambios (`ddf2e0bf…`); suite **89/89 HM**; regresión S1 **216
 passed**. Hallazgo registrado: `let r = ok(7)` sin anotación infiere `int64_t`
 en el nativo (usar anotación o llamada directa). Detalle: reporte §27.
+
+### R25 — `let` con ctor ADT sin anotación monomorfizado en el nativo (CERRADA `dfe469e`)
+
+Cierre del hallazgo R24: `gen_visitar_declaracion` (nodos_flujo.syn) infiere el
+tipo del `let` sin anotación por el tipo de NODO de la expresión con default
+`int64_t` — `let r = ok(7)` emitía `int64_t r = (Resultado_entero_texto){...}`
+(gcc incompatible types). Fix: rama `else if` para `LlamadaFuncion` que sea
+ctor ADT (`_G_native_es_adt_ctr`) resolviendo la instancia vía
+`_G_native_adt_inst_ctr(base, tag, tipo_c_del_argumento)` con el tipo del
+argumento calculado recursivamente (`_syn_nativo_expr_tipo_c`, paridad R20) y
+fallback al nombre del ADT para ADT simple. La asignación implícita `r = ok(7)`
+ya funcionaba (el hoisting usa `_syn_nativo_expr_tipo_c`). Validación: probe
+`let r = ok(7)` imprime 7; bootstrap S2==S3 (`dd436c46…`); suite **91/91 HM**;
+3 tests HM. Caso ambiguo documentado (paridad): `ok(ok(42))` en `let` sin
+anotación falla en ambos compiladores (usar anotación). Detalle: reporte §28.
