@@ -53902,6 +53902,81 @@
                 }
               },
               {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    int* _phi27=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp27=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi27){ _bp27|=((uintptr_t)(unsigned)_phi27[idx])<<32; } const char* _cal27=(const char*)_bp27;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    if(_cal27 && _cal27[0]){"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _se27=0; for(int _i27=0;_i27<est->total_estructuras;_i27++){ if(est->info_estructuras[_i27].nombre.datos&&strcmp(est->info_estructuras[_i27].nombre.datos,_cal27)==0){ _se27=1; break; } }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        int _fn27=-1; for(int _j27=0;_j27<est->total_funciones;_j27++){ if(est->info_funciones[_j27].nombre.datos&&strcmp(est->info_funciones[_j27].nombre.datos,_cal27)==0){ _fn27=_j27; break; } }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        if(_se27 && _fn27<0 && ((int*)&est->nodos[idx])[6]!=0){"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "            static char _sebuf27[256]; _sebuf27[0]=0;"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "            snprintf(_sebuf27,256,\"Cantidad de argumentos invalida para '%s': se esperaban 0\", _cal27);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "            sem_error(est, ERR_SEM_ARGUMENTOS_INVALIDOS, idx, (CadenaSegura){.longitud=(int)strlen(_sebuf27),.datos=_sebuf27});"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "        }"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    }"
+                    }
+                  }
+                ]
+              },
+              {
                 "_tipo": "AsignacionVariable",
                 "nombre": "arg",
                 "expresion": {
@@ -66109,6 +66184,55 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        strcat(_var_type_buf, \" \");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _var_type = _var_type_buf;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    } else if (_lf->nombre.datos && _G_native_es_estructura(_lf->nombre.datos)) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R27: `let p = Punto()` sin anotacion -> el tipo de la variable"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // es `struct Punto` (paridad _syn_nativo_expr_tipo_c generator.syn"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // L3239 y S1 tipo_de_expr rama struct). Antes caia al default"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // int64_t y el C quedaba `int64_t p = (struct Punto){0}` (invalido)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        snprintf(_var_type_buf, 127, \"struct %s \", _lf->nombre.datos);"
                 }
               },
               {

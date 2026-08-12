@@ -2138,3 +2138,54 @@ def test_r26_call_site_argumento_transferido(stage, tmp_path):
     assert run is not None and run.returncode == 0
     assert "6" in run.stdout.split(), (
         f"tomar(->x)=5+1 debe imprimir 6: {run.stdout!r}")
+
+
+_PROG_R27_STRUCT_CTOR_LET = '''#lang: es
+estructura Punto:
+    x: entero
+    z: entero
+funcion principal() -> nulo:
+    let p = Punto()
+    escribir(entero_a_texto(p.x))
+    escribir(entero_a_texto(p.z))
+    retornar
+'''
+
+
+def test_r27_struct_ctor_let_sin_anotacion(stage, tmp_path):
+    """R27: `let p = Punto()` sin anotacion (forma documentada, Manual 2 L67)
+    infiere `struct Punto` en el codigo nativo. Antes caia al default int64_t
+    y el C quedaba `int64_t p = (struct Punto){0}` (invalido, rc=5).
+    (Campo `z`: `y` es palabra reservada del lexer — operador AND.)"""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R27_STRUCT_CTOR_LET,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"let p = Punto() debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert run.stdout.strip() == "00", (
+        f"p.x y p.z (inicializados a 0) deben imprimir 0: {run.stdout!r}")
+
+
+_PROG_R27_STRUCT_CTOR_CON_ARGS = '''#lang: es
+estructura Punto:
+    x: entero
+    z: entero
+funcion principal() -> nulo:
+    let p = Punto(1, 2)
+    escribir(entero_a_texto(p.x))
+    retornar
+'''
+
+
+def test_r27_struct_ctor_con_argumentos_rechazado(stage, tmp_path):
+    """R27: `Punto(1,2)` (constructor de struct con argumentos, forma NO
+    documentada en el Manual 2 L67) -> rc=7 con ERR_SEM_ARGUMENTOS_INVALIDOS
+    esperados=0. Paridad S1 semantic_types.py L355-360. Antes el nativo lo
+    aceptaba y emitia C invalido silenciosamente."""
+    proc = _compilar_con_stage(stage, _PROG_R27_STRUCT_CTOR_CON_ARGS,
+                               str(tmp_path))
+    assert proc.returncode == 7, (
+        f"Punto(1,2) deberia rc=7, obtuvo rc={proc.returncode}:\n"
+        f"{proc.stderr[-1500:]}")
+    assert "Cantidad de argumentos invalida para 'Punto': se esperaban 0" in proc.stderr, (
+        "falta el mensaje de aridad en stderr:\n" + proc.stderr[-1500:])

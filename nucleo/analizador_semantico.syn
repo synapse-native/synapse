@@ -716,6 +716,24 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         // R1: validar llamada a funcion generica (TVars, Manual 2 §8.2;
         // paridad S1 _inferir_llamada_hm). No aborta: diagnostico observable.
         validar_llamada_generica(est, idx)
+        // R27: llamada a nombre de estructura — el ctor de struct es `Punto()`
+        // sin argumentos (Manual 2 L67 declaracion_estructura; paridad S1
+        // semantic_types.py L355-360: esperados=0). Antes el nativo aceptaba
+        // `Punto(1,2)` y emitia C invalido `int64_t p = (struct Punto){...}`.
+        // Precedencia de funciones (paridad S1: tabla.buscar -> DefinicionFuncion
+        // se valida ANTES del check de _estructuras): si el callee es una funcion
+        // de usuario, se salta el check de aridad del struct.
+        inseguro:
+            asm("    int* _phi27=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp27=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi27){ _bp27|=((uintptr_t)(unsigned)_phi27[idx])<<32; } const char* _cal27=(const char*)_bp27;")
+            asm("    if(_cal27 && _cal27[0]){")
+            asm("        int _se27=0; for(int _i27=0;_i27<est->total_estructuras;_i27++){ if(est->info_estructuras[_i27].nombre.datos&&strcmp(est->info_estructuras[_i27].nombre.datos,_cal27)==0){ _se27=1; break; } }")
+            asm("        int _fn27=-1; for(int _j27=0;_j27<est->total_funciones;_j27++){ if(est->info_funciones[_j27].nombre.datos&&strcmp(est->info_funciones[_j27].nombre.datos,_cal27)==0){ _fn27=_j27; break; } }")
+            asm("        if(_se27 && _fn27<0 && ((int*)&est->nodos[idx])[6]!=0){")
+            asm("            static char _sebuf27[256]; _sebuf27[0]=0;")
+            asm("            snprintf(_sebuf27,256,\"Cantidad de argumentos invalida para '%s': se esperaban 0\", _cal27);")
+            asm("            sem_error(est, ERR_SEM_ARGUMENTOS_INVALIDOS, idx, (CadenaSegura){.longitud=(int)strlen(_sebuf27),.datos=_sebuf27});")
+            asm("        }")
+            asm("    }")
         arg = nodo_expr(est, idx)
         r2 = 1
         mientras r2 == 1:
