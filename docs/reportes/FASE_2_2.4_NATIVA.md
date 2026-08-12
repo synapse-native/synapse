@@ -949,3 +949,64 @@ una variable no hoisteada aún degrada al fallback, sin crash).
 
 **HASH COMMIT: `6e903b8`** — rama `feature/fase2-nativa-hm`.
 
+---
+
+## 24. R21 — Línea/columna reales en los diagnósticos del flatten F8 (2026-08-12)
+
+**Deuda (calidad de diagnósticos, Manual 2 §10.1: errores con ubicación
+precisa):** el flatten F8 solo propagaba `linea`/`columna` para
+`ExprObtenerDireccion` (R12), `Identificador` y `SentenciaEnviarCanal` (R14);
+TODOS los demás nodos aplanados nacían con `linea=0`/`columna=0` y los
+diagnósticos de la taxonomía (REDEFINICION, CONSTANTE_INMUTABLE,
+EXHAUSTIVE_MATCH, R1 AMBIGUOUS/INCOMPATIBLE, 2.4 aridad/base) salían con
+`(linea 0, columna 0)`.
+
+**Cambios (3 capas, patrón R12/R14 — sin tocar lexer/parser):** los campos
+`linea`/`columna` se copian en el puente desde el NodoAST plano del parser
+(`linea_n`/`col_n`, poblados por `nodo_guardar_span`) y el flatten F8 los
+vuelca al `SemNodo`:
+
+| Nodo | Diagnóstico que ancla |
+|------|----------------------|
+| `DefinicionFuncion` | REDEFINICION pasada 2 (analizar_paso_funciones) |
+| `DefinicionEstructura` | REDEFINICION pasada 1 (registrar_estructura) |
+| `DeclaracionExterna` | REDEFINICION pasada 2 |
+| `DeclaracionTipo` | REDEFINICION ADT (registrar_adt) |
+| `AsignacionVariable` | CONSTANTE_INMUTABLE / REDEFINICION implícita |
+| `DeclaracionVariable` | REDEFINICION pasada 3 y scopes anidados |
+| `NodoCoincidir` | EXHAUSTIVE_MATCH |
+| `LlamadaFuncion` | R1 AMBIGUOUS / INCOMPATIBLE (validar_llamada_generica) |
+| `Parametro` | 2.4 aridad / base desconocida en parámetros |
+
+**Validación (7 probes con línea/columna reales vs línea 0 previa):**
+- p3 REDEFINICION ADT → `(linea 3, columna 6)`
+- p5 CONSTANTE_INMUTABLE → `(linea 4, columna 5)`
+- p6 EXHAUSTIVE_MATCH → `(linea 4, columna 15)`
+- p7 AMBIGUOUS → `(linea 5, columna 9)` (LlamadaFuncion)
+- p8 aridad en parámetro → `(linea 3, columna 18)` (Parametro)
+- p9 REDEFINICION variable → `(linea 4, columna 5)`
+- p10 INCOMPATIBLE → `(linea 5, columna 9)` (LlamadaFuncion)
+- bootstrap **S2==S3 byte-idénticos** (sha256 `62e4647f…`, 1.093.109 bytes);
+  suite `test_fase2_nativa_hm` **76/76** (69 + 7 R21).
+
+**Hallazgo registrado (regla 9 AUDITORIA, paridad S1):** la REDEFINICION de
+función/estructura/externa NO es observable en el nativo: el unity merge de
+`principal.syn` deduplica los símbolos top-level (`_seen_sym[2048][64]` — solo
+sobrevive la PRIMERA definición de cada nombre; paridad `pipeline.py:374`;
+verificado empíricamente: p1/p2/p4 rc=0 tanto en el nativo como en el S1). Los
+checks de las pasadas 1/2 del analizador quedan como defensa redundante.
+Resolución asignada: entrega futura que distinga duplicados del propio archivo
+del usuario vs espejo entre módulos del compilador (requiere tocar S1 + nativo
+a la vez y revalidar el bootstrap).
+
+**Residual documentado:** los nodos que hoy NO anclan ningún diagnóstico
+siguen sin línea/columna en el flatten (`OpBinaria`, `OpUnaria`,
+`SentenciaSi/Mientras/Para`, `BloqueInseguro`, `SentenciaExpr`,
+`SentenciaRetornar`, `AsignacionCampo`, `ExprAccesoCampo`, `ExprDereferencia`,
+`NodoCaso`, `ArgumentoTransferido`, `SentenciaLanzar`, `ConstructorTipo`,
+`ExprCrearCanal`, `ExprRecibirCanal`…). La tarea de la memoria «propagar
+línea/columna al resto de nodos del flatten» queda CERRADA para los anclas de
+diagnóstico; el resto se completará si un diagnóstico futuro los referencia.
+
+**HASH COMMIT: `26987fe`** — rama `feature/fase2-nativa-hm`.
+

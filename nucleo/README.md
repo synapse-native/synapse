@@ -488,3 +488,24 @@ cadena `else if`); el extern de `_es_builtin_runtime` documentado como
 dependencia del módulo posterior. Validación de transparencia: C generado
 **byte-idéntico** al baseline (md5 `2379e59d`), bootstrap S2==S3
 (`13cf8ee0`), **69/69 HM**, probe runtime 7.
+
+### R21 — Línea/columna reales en los diagnósticos del flatten F8 (CERRADA `26987fe`)
+
+(Manual 2 §10.1: errores con ubicación precisa.) Los nodos aplanados por el
+flatten F8 nacían con `linea=0`/`columna=0` salvo `ExprObtenerDireccion`
+(R12), `Identificador` y `SentenciaEnviarCanal` (R14): los diagnósticos de la
+taxonomía salían con `(linea 0, columna 0)`. R21 propaga `linea`/`columna`
+reales (ast_nodes → puente → flatten F8, patrón R12/R14, sin tocar
+lexer/parser: el puente lee `linea_n`/`col_n` del NodoAST plano) a
+`DefinicionFuncion`, `DefinicionEstructura`, `DeclaracionExterna`,
+`DeclaracionTipo`, `AsignacionVariable`, `DeclaracionVariable`,
+`NodoCoincidir` (REDEFINICION / CONSTANTE_INMUTABLE / EXHAUSTIVE_MATCH) y a
+`LlamadaFuncion` + `Parametro` (R1 AMBIGUOUS/INCOMPATIBLE y validación 2.4 de
+aridad/base en parámetros). Validación: 7 probes con línea/columna reales (ADT
+3:6, const 4:5, match 4:15, AMBIGUOUS 5:9, aridad-param 3:18, var 4:5,
+INCOMPATIBLE 5:9); bootstrap **S2==S3** (sha256 `62e4647f…`, 1.093.109
+bytes); suite **76/76 HM** (69+7). Hallazgo registrado: la REDEFINICION de
+función/estructura/externa no es observable porque el unity merge deduplica
+los símbolos top-level (`_seen_sym` en `principal.syn`, paridad S1
+`pipeline.py:374` — rc=0 verificado en ambos); los checks del analizador
+quedan como defensa redundante. Detalle: reporte §24.
