@@ -142,6 +142,14 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     si token_mirar(est) != T_PAREN_DER:
         r = 1
         mientras r == 1:
+            // R26 (Manual 2 L59-60): `parametro ::= [ ">" ] IDENTIFICADOR ":" tipo`
+            // — el prefijo "->" marca transferencia de ownership (move). Paridad
+            // S1 parser_declarations.py L37-38 (es_transferencia). El flag viaja
+            // en valor_int del NODO_PARAMETRO (puente -> es_transferencia).
+            es_trans_p = 0
+            si token_mirar(est) == T_FLECHA:
+                token_avanzar(est)
+                es_trans_p = 1
             si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
@@ -177,6 +185,11 @@ funcion parsear_parametros(est: ParserEst) -> entero:
             // FASE A (A3.1): el nodo se crea ANTES de consumir el tipo para que
             // parsear_tipo_compuesto capture el span en su slot secundario.
             nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
+            // R26: flag de transferencia de ownership (->) en valor_int — el
+            // puente lo lee como Parametro.es_transferencia (paridad S1).
+            si es_trans_p == 1:
+                inseguro:
+                    asm("est->nodos[nodo_p].valor_int = 1")
             nodo_guardar_token(est, nodo_p, pos_nombre)
             parsear_tipo_compuesto(est, nodo_p)
             si primero == 0:

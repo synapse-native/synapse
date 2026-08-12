@@ -28811,6 +28811,58 @@
                 },
                 "cuerpo": [
                   {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "es_trans_p",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "token_mirar",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          }
+                        ]
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "T_FLECHA"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_avanzar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "es_trans_p",
+                        "expresion": {
+                          "_tipo": "LiteralNumero",
+                          "valor": 1
+                        }
+                      }
+                    ]
+                  },
+                  {
                     "_tipo": "SentenciaSi",
                     "condicion": {
                       "_tipo": "OpBinaria",
@@ -29122,6 +29174,35 @@
                         }
                       ]
                     }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "es_trans_p"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->nodos[nodo_p].valor_int = 1"
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   },
                   {
                     "_tipo": "SentenciaExpr",
@@ -45842,7 +45923,21 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "  _p->es_transferencia = 0;"
+                      "instruccion": "  // R26: flag de transferencia de ownership -> via valor_int del nodo"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  // plano (parser.syn parsear_parametros; Manual 2 L59-60, paridad S1)."
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  _p->es_transferencia = val;"
                     }
                   },
                   {
@@ -89874,6 +89969,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        struct Parametro* _pa=(struct Parametro*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // R26: flag de transferencia de ownership -> en valor_int (paridad S1"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // es_transferencia; Manual 2 L59-60). No afecta a campos de estructura."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _f8_nodos[idx].valor_int=_pa->es_transferencia;"
                 }
               },
               {

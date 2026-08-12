@@ -2087,3 +2087,54 @@ def test_r25_adt_simple_ctor_con_campo(stage, tmp_path):
     assert run is not None and run.returncode == 0
     assert "0" in run.stdout.split(), (
         f"p.tag (ok=0) debe imprimir 0: {run.stdout!r}")
+
+
+_PROG_R26_PARAMETRO_MOVE = '''#lang: es
+funcion tomar(-> pos: entero) -> entero:
+    retornar pos + 1
+funcion principal() -> nulo:
+    x = 5
+    escribir(entero_a_texto(tomar(x)))
+    retornar
+'''
+
+_PROG_R26_CALL_SITE_TRANSFERIDO = '''#lang: es
+funcion tomar(pos: entero) -> entero:
+    retornar pos + 1
+funcion principal() -> nulo:
+    x = 5
+    escribir(entero_a_texto(tomar(->x)))
+    retornar
+'''
+
+
+# R26 (resto del borrow checker S1): sintaxis de transferencia de ownership
+# (Manual 2 L59-60: `parametro ::= [ ">" ] IDENTIFICADOR ":" tipo`). El
+# prefijo -> en la firma viaja como Parametro.es_transferencia (parser ->
+# valor_int -> puente -> flatten); el call-site ->x (ArgumentoTransferido)
+# ya existia (R15). Paridad S1: la semantica es lenient (se parsea, no
+# invalida en el call-site).
+
+
+def test_r26_parametro_move_sintaxis_manual(stage, tmp_path):
+    """R26: `-> pos: entero` en la firma compila rc=0 (Manual 2 L59-60) y
+    ejecuta — antes el parser nativo daba rc=8 (sintaxis no soportada)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R26_PARAMETRO_MOVE,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"parametro -> pos: entero debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "6" in run.stdout.split(), (
+        f"tomar(x)=5+1 debe imprimir 6: {run.stdout!r}")
+
+
+def test_r26_call_site_argumento_transferido(stage, tmp_path):
+    """R26: call-site `tomar(->x)` (ArgumentoTransferido) compila rc=0 —
+    regresion de la sintaxis R15 (nativo) con el nuevo parser de parametros."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R26_CALL_SITE_TRANSFERIDO,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"tomar(->x) debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert "6" in run.stdout.split(), (
+        f"tomar(->x)=5+1 debe imprimir 6: {run.stdout!r}")
