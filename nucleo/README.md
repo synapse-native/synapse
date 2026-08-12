@@ -588,3 +588,19 @@ ya funcionaba (el hoisting usa `_syn_nativo_expr_tipo_c`). Validación: probe
 `let r = ok(7)` imprime 7; bootstrap S2==S3 (`dd436c46…`); suite **91/91 HM**;
 3 tests HM. Caso ambiguo documentado (paridad): `ok(ok(42))` en `let` sin
 anotación falla en ambos compiladores (usar anotación). Detalle: reporte §28.
+
+### R26 — Sintaxis de transferencia de ownership `->` en parámetros (CERRADA `3b5ba0a`)
+
+Resto del borrow checker S1 (Manual 2 L59-60): la gramática `parametro ::= [
+">" ] IDENTIFICADOR ":" tipo` no estaba implementada en NINGÚN parser (nativo
+rc=8; el test S1 xfail usaba la sintaxis invertida que el Manual no define).
+La DETECCIÓN de use-after-move ya estaba portada en R14/R15 (E-501 para
+canal/lanzar — regresión verificada rc=7 con línea real). Fix en 3 capas:
+`parser.syn` acepta el prefijo T_FLECHA opcional y marca `valor_int`;
+`puente_ast.syn` lee el flag en `Parametro.es_transferencia`; flatten F8 lo
+propaga. Test S1 corregido a la sintaxis del Manual (xfail eliminado, 3/3).
+Semántica lenient (paridad S1: se parsea, no invalida en call-site).
+Validación: probe `-> pos: entero` rc=0 (antes rc=8); bootstrap S2==S3
+(`d0cc550d…`); suite **94/94 HM**; S1 221 passed. Hallazgo registrado: ctor de
+ESTRUCTURA en `let` sin anotación (divergencia, con anotación funciona).
+Detalle: reporte §29.

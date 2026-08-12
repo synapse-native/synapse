@@ -1257,3 +1257,62 @@ en `let` sin contexto.
 
 **HASH COMMIT: `dfe469e`** — rama `feature/fase2-nativa-hm`.
 
+## §29 — R26: sintaxis de transferencia de ownership en parámetros (`->`) en el parser nativo (resto del borrow checker S1; Manual 2 L59-60)
+
+### 29.1 Contexto
+
+El pendiente "Uso-after-move / resto del borrow checker S1" de la MEMORIA se
+verificó así: la DETECCIÓN de use-after-move ya estaba portada al nativo en
+R14/R15 (`NODO_IDENTIFICADOR` → `ERR_SEM_VAR_MOVIDA` E-501; `SentenciaEnviarCanal`
+y `SentenciaLanzar` marcan movido — probes de regresión rc=7 con línea real).
+Lo que faltaba era la **gramática de parámetro por move** del Manual 2 L59-60:
+`parametro ::= [ ">" ] IDENTIFICADOR ":" tipo` (el prefijo `->` indica
+transferencia de ownership) — no implementada en NINGÚN parser (nativo rc=8;
+el test S1 xfail usaba además la sintaxis INVERTIDA `pos: -> entero` que el
+Manual no define).
+
+### 29.2 Fix (paridad S1+nativo)
+
+1. **Parser nativo** (`parser.syn` `parsear_parametros`): acepta el prefijo
+   `T_FLECHA` opcional antes del nombre (`es_trans_p`) y marca el flag en
+   `est->nodos[nodo_p].valor_int = 1`. El check no consume la flecha del
+   retorno (la flecha de retorno está FUERA del paréntesis, tras `)`).
+2. **Puente** (`puente_ast.syn` NODO_PARAMETRO): `_p->es_transferencia = val;`
+   (antes 0 fijo) — lee el flag del nodo plano.
+3. **Flatten F8** (`principal.syn` rama Parametro): copia
+   `_pa->es_transferencia` a `_f8_nodos[idx].valor_int` (slot libre — el
+   analizador solo lee `valor_int` en NODO_PUNTERO; verificado por code review).
+4. **Test S1** (`test_ownership.py`): corregido a la sintaxis del Manual
+   (`-> pos: entero`, que el S1 ya soportaba) y xfail eliminado → 3/3.
+5. **Tests HM**: 2 nuevos (parámetro move + call-site `->x` regresión R15).
+
+Semántica **lenient** (paridad S1): el flag se parsea y transporta
+(Parametro.es_transferencia) pero no invalida en el call-site — el UAF real se
+detecta por canal/lanzar (R14/R15) y el call-site `->x` (ArgumentoTransferido,
+R15). El flag queda disponible para semántica futura.
+
+### 29.3 Validación
+
+- Probe `funcion tomar(-> pos: entero)`: nativo rc=0 (antes rc=8), ejecución rc=0.
+- Regresión UAF: canal `c <- dato; escribir(dato)` rc=7 E-501 con línea real;
+  `lanzar trabajador(->m); escribir(m)` rc=7 E-501.
+- **Bootstrap S2==S3** (sha256 `d0cc550d…`).
+- Suite **94/94 HM** (92+2 R26); S1 **221 passed** (ownership 3/3 — incluye el
+test corregido — + borrow + unit + e2e).
+- Code review: sin colisión de `valor_int` en NODO_PARAMETRO (solo NODO_PUNTERO
+  lo lee); campos de estructura usan bloque separado (sin `->`); flag
+  write-only = paridad lenient.
+
+### 29.4 Hallazgo registrado (resolución asignada)
+
+`let p = Punto(1,2)` (ctor de ESTRUCTURA con campos) sin anotación: el nativo
+emite `int64_t p = (struct Punto){...}` (C inválido) mientras el S1 lo rechaza
+en el checker (`ERR_SEM_ARGUMENTOS_INVALIDOS` — espera 0 args, no conoce el
+ctor de struct en `let`). Divergencia preexistente (el R25 solo cubrió ctors
+ADT, no de estructura). Con anotación explícita (`let p: Punto = Punto(1,2)`)
+funciona rc=0 en el nativo. Resolución asignada: port de la rama R25 del ctor
+al ctor de estructura y paridad del checker S1 (aceptar el ctor de struct en
+`let` sin anotación).
+
+**HASH COMMIT: `3b5ba0a`** — rama `feature/fase2-nativa-hm`.
+
