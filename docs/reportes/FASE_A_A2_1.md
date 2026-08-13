@@ -30,7 +30,7 @@ MANUAL REFERENCIADO: Manual 2, Seccion 2 (EBNF: numero ::= DIGITO+ ['.' DIGITO+]
        de palabras reservadas multi-idioma es/en/fr/pt: T_LET, T_DELEGAR, T_RC, T_ARC,
        T_DEBIL, T_MODULO, T_EXPORT, T_TIPO, T_TENSOR, T_NULO, T_OK, T_ERR, T_ALGUN,
        T_NINGUNO); Manual 9, Seccion 9.7 (determinismo bootstrap diff 0 bytes).
-HASH COMMIT: pendiente (working tree; sin commit por regla del flujo FASE A).
+HASH COMMIT: **198707d** (tramo F1.3 — Etapa A2: lexer+parser+tokenizar+parsear; resuelto por el verificador de alineación).
 COMPILACION: build.sh bootstrap-full S1->S2->S3:
        - Etapa 1: python main.py nucleo/principal.syn -> synapse_stage1.exe OK
        - Etapa 2: synapse_stage1.exe -> synapse_stage2.exe OK (1269230 bytes)

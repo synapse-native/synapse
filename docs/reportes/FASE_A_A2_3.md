@@ -18,8 +18,7 @@ TAREA: FASE A - Etapa A2.3 — Paridad .c entre S2 (orquestador nativo) y S1 (Ge
 FASE: FASE A (migracion frontend embebido -> frontend nativo) - Etapa A2.3.
 MANUAL REFERENCIADO: Manual 2 §4.1 (nulo->void*), §4.3 (rc/arc/débil->void*);
      Manual 8 (tensor->Tensor, codegen C, indentacion); Manual 9 §9.1/§9.7.
-HASH COMMIT: pendiente (working tree; la bitácora se actualiza al commitear; convención
-     'auditoria(FASE_A-A2.3): paridad .c inferencia tipos S2 vs S1').
+HASH COMMIT: **198707d** (tramo F1.3 — Etapa A2: lexer+parser+tokenizar+parsear; resuelto por el verificador de alineación).
 COMPILACION: nucleo/generator.syn (unity amalgamation compilada por principal.syn _files[] L58)
      + nucleo/generador/*.syn (fuentes modulares extraídas en 9381389; sincronizadas a mano,
      sin automated merger - ver 06f3411).
@@ -203,7 +202,7 @@ Referencia S1: `compilador/generator/emit_expressions.py` (`expr_a_c` sangra 4 e
 | `nucleo/generator.syn` | gen_visitar_declaracion: `+ExprTensor→Tensor`, `+LiteralNulo→void*`; principal: `+_simd_detectar()`; gen_visitar_expr: buffer `_sbuf` + indentación SentenciaExpr |
 | `nucleo/generador/nodos_flujo.syn` | espejo de los 3 fixes anteriores |
 | `nucleo/generador/orquestador.syn` | espejo de la inyección `_simd_detectar()` |
-| `tests/test_a23_paridad.py` | **NUEVO** — 6 tests + 1 skip (reemplaza script `_a23_s1_rt_check.py` suprimido) |
+| `tests/test_a23_parity.py` | **NUEVO** — 6 tests + 1 skip (reemplaza script `_a23_s1_rt_check.py` suprimido; nombre corregido del typo 'paridad' por el verificador de alineación) |
 | `tests/fixtures/test_a23_parity.syn` | **NUEVO** — fixture UTF-8 con `débil` acentuado + constructos P0 |
 
 ---

@@ -29,8 +29,7 @@ MANUAL REFERENCIADO: Manual 2 §2 (EBNF completa L36-200; operadores de expresio
      genericos base<T,E> L144-153), Manual 3 §3.3 (el pipeline runtime consume struct Programa
      tipado; el puente es el eslabon que falta — brecha #2 de la matriz A1), Manual 9 §9.7
      (bootstrap deterministico diff 0 bytes tras cada etapa).
-HASH COMMIT: pendiente (working tree; convencion 'auditoria(FASE_A-A3.1): puente plano->tipado
-     con paridad _P_* campo a campo + fix anti-cuelgue let keyword').
+HASH COMMIT: **8930ec1** (tramo A2.3b→A3.2 — puente plano→tipado; resuelto por el verificador de alineación).
 COMPILACION: nucleo/puente_ast.syn + parser_constantes/parser_base/lexer/ast_nodes/parser_expr/
      parser_stmt/parser compilados via S1 (pipeline compilar_desde_texto + GeneradorC) en el
      harness; unity nucleo/principal.syn con puente_ast.syn agregado a _files[] (ultimo del

@@ -17,8 +17,7 @@ TAREA: FASE A - Etapa A2.4 — Cierre de la deuda `es_mapeado`/struct-Tensor S1 
 FASE: FASE A (migracion frontend embebido -> frontend nativo) - Etapa A2.4 (cierre A2.3).
 MANUAL REFERENCIADO: Manual 8 (tensor->Tensor; lifetimes pool_free sobre datos mapeados);
       Manual 9 §9.1/§9.7 (bootstrap determinismo S1->S2->S3).
-HASH COMMIT: pendiente (working tree; convencion 'auditoria(FASE_A-A2.4): cierre deuda
-      es_mapeado/struct-Tensor S1').
+HASH COMMIT: **198707d** (tramo F1.3 — D-7 struct-Tensor es_mapeado incluido en el tramo; resuelto por el verificador de alineación).
 COMPILACION: nucleo/generator.syn (unity) NO afectado (S2/S3 nativo ya emitia es_mapeado
       via generator.c:2501). S1 Python (compilador/generator/generator.py _emitir_encabezado)
       es el unico emisor con la Divergencia. principal.syn _files[] L58 (unity) no incluye

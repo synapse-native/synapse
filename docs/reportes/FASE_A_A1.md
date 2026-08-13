@@ -22,8 +22,7 @@ FASE: FASE A (migración frontend embebido -> frontend nativo) - Etapa A1.
 MANUAL REFERENCIADO: Manual 2, Seccion 2 (gramática EBNF completa, L36-200); Seccion 3
        (tabla de palabras reservadas multi-idioma, L205-260); Manual 9, Seccion 9.7
        (determinismo bootstrap diff 0); Manual 2 §1.2 (UTF-8 sin BOM) y §1.3 (comentarios).
-HASH COMMIT: pendiente (bitácora se actualiza al commitear; convención
-       'auditoria(FASE_A-A1): matriz de brechas frontend nativo vs _P_*').
+HASH COMMIT: **198707d** (tramo F1.3 — Etapa A2: lexer+parser+tokenizar+parsear; resuelto por el verificador de alineación, auditoria/verificar_alineacion.py).
 COMPILACION: sin cambios de codigo en esta etapa (entregable documental puro).
 TESTS: no aplica (ningun cambio de codigo). Se ejecutaron greps/lecturas de evidencia
        sobre ambos frontends y el unity build (ver DETALLE TECNICO).

@@ -21,8 +21,7 @@ TAREA: FASE A - Etapa A2.3b — Fix aislado del frontend nativo: cablear parsear
 FASE: FASE A (migración frontend embebido -> frontend nativo) - sub-etapa A2.3b (opción (a)).
 MANUAL REFERENCIADO: Manual 2 §2 (EBNF), Manual 3 §3.3 (patrón de estado por puntero,
      precedente AnalizadorSemanticoEst), Manual 9 §9.1/§9.7.
-HASH COMMIT: pendiente (working tree; convención 'auditoria(FASE_A-A2.3b): parsear nativo
-     cableado (BUGS 1-6) + harness paridad').
+HASH COMMIT: **8930ec1** (tramo A2.3b→A3.2 — parser nativo cableado; resuelto por el verificador de alineación).
 COMPILACION: nucleo/parser.syn + parser_base.syn + parser_expr.syn + parser_stmt.syn
      compilados vía S1 (pipeline compilar_desde_texto + GeneradorC) en el harness; unity
      nucleo/generator.syn con 2 líneas ParserEst aplicadas a mano (preservando
