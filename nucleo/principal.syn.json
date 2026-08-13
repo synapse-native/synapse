@@ -31409,6 +31409,440 @@
       },
       {
         "_tipo": "DefinicionFuncion",
+        "nombre": "parsear_nativo",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "ParserEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "est->tokens = (struct TokenExt*)lexer_obtener_tokens()"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "est->total_tokens = lexer_obtener_total()"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "est->nodos = (struct NodoAST*)parser_nodos()"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "est"
+            },
+            "nombre_campo": "posicion",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "est"
+            },
+            "nombre_campo": "total_nodos",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "est"
+            },
+            "nombre_campo": "hay_error",
+            "expresion": {
+              "_tipo": "LiteralBooleano",
+              "valor": false
+            }
+          },
+          {
+            "_tipo": "AsignacionCampo",
+            "objeto": {
+              "_tipo": "Identificador",
+              "nombre": "est"
+            },
+            "nombre_campo": "error_mensaje",
+            "expresion": {
+              "_tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "*((int*)parser_meta()) = 0"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "prog",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parser_nuevo_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "NODO_PROGRAMA"
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ultimo_stmt",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "r"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "t",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_mirar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "t"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_FIN"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "r",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaRomper"
+                  }
+                ]
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "stmt",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "parsear_sentencia",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "ExprAccesoCampo",
+                    "objeto": {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    "nombre_campo": "hay_error"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralBooleano",
+                    "valor": true
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "OpUnaria",
+                      "operador": "-",
+                      "expr": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "stmt"
+                  },
+                  "operador": "!=",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 0
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "ultimo_stmt"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->nodos[prog].hijo_izq = stmt"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "ultimo_stmt",
+                        "expresion": {
+                          "_tipo": "Identificador",
+                          "nombre": "stmt"
+                        }
+                      }
+                    ],
+                    "cuerpo_sino": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->nodos[ultimo_stmt].hermano = stmt"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "ultimo_stmt",
+                        "expresion": {
+                          "_tipo": "Identificador",
+                          "nombre": "stmt"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "cuerpo_sino": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "ExprAccesoCampo",
+                "objeto": {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                "nombre_campo": "hay_error"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralBooleano",
+                "valor": true
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "OpUnaria",
+                  "operador": "-",
+                  "expr": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "*((int*)parser_meta()) = est->total_nodos"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "prog"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "parsear",
+        "parametros": [],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct ParserEst _pe = {0};"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "return parsear_nativo(&_pe);"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpUnaria",
+              "operador": "-",
+              "expr": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
         "nombre": "parsear_si",
         "parametros": [
           {
@@ -34959,1126 +35393,6 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_estructura_def",
-        "parametros": [
-          {
-            "nombre": "est",
-            "tipo": "ParserEst"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_ESTRUCTURA"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "t",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_mirar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
-              },
-              "operador": "!=",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "linea",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_linea",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "col",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_columna",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "pos_nombre",
-            "expresion": {
-              "_tipo": "ExprAccesoCampo",
-              "objeto": {
-                "_tipo": "Identificador",
-                "nombre": "est"
-              },
-              "nombre_campo": "posicion"
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_avanzar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "nodo",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parser_nuevo_nodo",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "NODO_ESTRUCTURA"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "linea"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "col"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "nodo_guardar_token",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "nodo"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "pos_nombre"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_DOSPUNTOS"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_NUEVALINEA"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "SentenciaMientras",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_NUEVALINEA"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_avanzar",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              },
-              {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_INDENTAR"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_avanzar",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 1
-                    }
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "primer_campo",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "ultimo_campo",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaMientras",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
-                        "_tipo": "Identificador",
-                        "nombre": "r"
-                      },
-                      "operador": "==",
-                      "derecho": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 1
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "t",
-                        "expresion": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_mirar",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaSi",
-                        "condicion": {
-                          "_tipo": "OpBinaria",
-                          "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "t"
-                          },
-                          "operador": "==",
-                          "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_NUEVALINEA"
-                          }
-                        },
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "LlamadaFuncion",
-                              "nombre": "token_avanzar",
-                              "argumentos": [
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "est"
-                                }
-                              ]
-                            }
-                          },
-                          {
-                            "_tipo": "SentenciaSiguiente"
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "SentenciaSi",
-                        "condicion": {
-                          "_tipo": "OpBinaria",
-                          "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "t"
-                          },
-                          "operador": "==",
-                          "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_DESINDENTAR"
-                          }
-                        },
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "LlamadaFuncion",
-                              "nombre": "token_avanzar",
-                              "argumentos": [
-                                {
-                                  "_tipo": "Identificador",
-                                  "nombre": "est"
-                                }
-                              ]
-                            }
-                          },
-                          {
-                            "_tipo": "AsignacionVariable",
-                            "nombre": "r",
-                            "expresion": {
-                              "_tipo": "LiteralNumero",
-                              "valor": 0
-                            }
-                          },
-                          {
-                            "_tipo": "SentenciaRomper"
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "SentenciaSi",
-                        "condicion": {
-                          "_tipo": "OpBinaria",
-                          "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "t"
-                          },
-                          "operador": "==",
-                          "derecho": {
-                            "_tipo": "Identificador",
-                            "nombre": "T_FIN"
-                          }
-                        },
-                        "cuerpo": [
-                          {
-                            "_tipo": "AsignacionVariable",
-                            "nombre": "r",
-                            "expresion": {
-                              "_tipo": "LiteralNumero",
-                              "valor": 0
-                            }
-                          },
-                          {
-                            "_tipo": "SentenciaRomper"
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "pos_campo",
-                        "expresion": {
-                          "_tipo": "ExprAccesoCampo",
-                          "objeto": {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          },
-                          "nombre_campo": "posicion"
-                        }
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "linea_c",
-                        "expresion": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_linea",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            },
-                            {
-                              "_tipo": "ExprAccesoCampo",
-                              "objeto": {
-                                "_tipo": "Identificador",
-                                "nombre": "est"
-                              },
-                              "nombre_campo": "posicion"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "col_c",
-                        "expresion": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_columna",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            },
-                            {
-                              "_tipo": "ExprAccesoCampo",
-                              "objeto": {
-                                "_tipo": "Identificador",
-                                "nombre": "est"
-                              },
-                              "nombre_campo": "posicion"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaExpr",
-                        "expr": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_avanzar",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaSi",
-                        "condicion": {
-                          "_tipo": "OpBinaria",
-                          "izquierdo": {
-                            "_tipo": "LlamadaFuncion",
-                            "nombre": "token_esperar",
-                            "argumentos": [
-                              {
-                                "_tipo": "Identificador",
-                                "nombre": "est"
-                              },
-                              {
-                                "_tipo": "Identificador",
-                                "nombre": "T_DOSPUNTOS"
-                              }
-                            ]
-                          },
-                          "operador": "==",
-                          "derecho": {
-                            "_tipo": "LiteralNumero",
-                            "valor": 0
-                          }
-                        },
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaRetornar",
-                            "expr": {
-                              "_tipo": "LiteralNumero",
-                              "valor": 0
-                            },
-                            "es_transferencia": false
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "nodo_campo",
-                        "expresion": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "parser_nuevo_nodo",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "NODO_PARAMETRO"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "linea_c"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "col_c"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaExpr",
-                        "expr": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "nodo_guardar_token",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "nodo_campo"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "pos_campo"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaExpr",
-                        "expr": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "parsear_tipo_compuesto",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            },
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "nodo_campo"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaSi",
-                        "condicion": {
-                          "_tipo": "OpBinaria",
-                          "izquierdo": {
-                            "_tipo": "Identificador",
-                            "nombre": "primer_campo"
-                          },
-                          "operador": "==",
-                          "derecho": {
-                            "_tipo": "LiteralNumero",
-                            "valor": 0
-                          }
-                        },
-                        "cuerpo": [
-                          {
-                            "_tipo": "AsignacionVariable",
-                            "nombre": "primer_campo",
-                            "expresion": {
-                              "_tipo": "Identificador",
-                              "nombre": "nodo_campo"
-                            }
-                          }
-                        ],
-                        "cuerpo_sino": [
-                          {
-                            "_tipo": "BloqueInseguro",
-                            "cuerpo": [
-                              {
-                                "_tipo": "SentenciaExpr",
-                                "expr": {
-                                  "_tipo": "ExprAsm",
-                                  "instruccion": "est->nodos[ultimo_campo].hermano = nodo_campo"
-                                }
-                              }
-                            ]
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "ultimo_campo",
-                        "expresion": {
-                          "_tipo": "Identificador",
-                          "nombre": "nodo_campo"
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaSiguiente"
-                      }
-                    ]
-                  },
-                  {
-                    "_tipo": "SentenciaSi",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
-                        "_tipo": "Identificador",
-                        "nombre": "primer_campo"
-                      },
-                      "operador": ">",
-                      "derecho": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 0
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "BloqueInseguro",
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "ExprAsm",
-                              "instruccion": "est->nodos[nodo].hijo_izq = primer_campo"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo"
-                    },
-                    "es_transferencia": false
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nodo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_constante",
-        "parametros": [
-          {
-            "nombre": "est",
-            "tipo": "ParserEst"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_CONSTANTE"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "t",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_mirar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
-              },
-              "operador": "!=",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "linea",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_linea",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "col",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_columna",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "pos_nombre",
-            "expresion": {
-              "_tipo": "ExprAccesoCampo",
-              "objeto": {
-                "_tipo": "Identificador",
-                "nombre": "est"
-              },
-              "nombre_campo": "posicion"
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_avanzar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "nodo",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parser_nuevo_nodo",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "NODO_CONSTANTE"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "linea"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "col"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "nodo_guardar_token",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "nodo"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "pos_nombre"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_DOSPUNTOS"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_es_nombre",
-                    "argumentos": [
-                      {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "LiteralNumero",
-                    "valor": 1
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_avanzar",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_ASIGNAR"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "expr",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parsear_expresion",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "BloqueInseguro",
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "est->nodos[nodo].hijo_izq = expr"
-                }
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nodo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
         "nombre": "parsear_asm",
         "parametros": [
           {
@@ -36884,1048 +36198,6 @@
                     }
                   }
                 ]
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nodo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_importar_c",
-        "parametros": [
-          {
-            "nombre": "est",
-            "tipo": "ParserEst"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_IMPORTAR_C"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "linea",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_linea",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "col",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_columna",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "nodo",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parser_nuevo_nodo",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "NODO_IMPORTAR_C"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "linea"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "col"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_CADENA"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "pos_ruta",
-                "expresion": {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "nodo_guardar_token",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "pos_ruta"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nodo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_externo",
-        "parametros": [
-          {
-            "nombre": "est",
-            "tipo": "ParserEst"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_EXTERNO"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_FUNCION"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "t",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_mirar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "t"
-              },
-              "operador": "!=",
-              "derecho": {
-                "_tipo": "Identificador",
-                "nombre": "T_IDENTIFICADOR"
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "linea",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_linea",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "col",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_columna",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "pos_nombre",
-            "expresion": {
-              "_tipo": "ExprAccesoCampo",
-              "objeto": {
-                "_tipo": "Identificador",
-                "nombre": "est"
-              },
-              "nombre_campo": "posicion"
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_avanzar",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "nodo",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parser_nuevo_nodo",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "NODO_EXTERNO"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "linea"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "col"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaExpr",
-            "expr": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "nodo_guardar_token",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "nodo"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "pos_nombre"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_PAREN_IZQ"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "r",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 1
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "primer_param",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "ultimo_param",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "SentenciaMientras",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "r"
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 1
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "t",
-                "expresion": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_mirar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "Identificador",
-                    "nombre": "t"
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_PAREN_DER"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaRomper"
-                  }
-                ]
-              },
-              {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_es_nombre",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "t"
-                      }
-                    ]
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "LiteralNumero",
-                    "valor": 1
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "linea_p",
-                    "expresion": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_linea",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        },
-                        {
-                          "_tipo": "ExprAccesoCampo",
-                          "objeto": {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          },
-                          "nombre_campo": "posicion"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "col_p",
-                    "expresion": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_columna",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        },
-                        {
-                          "_tipo": "ExprAccesoCampo",
-                          "objeto": {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          },
-                          "nombre_campo": "posicion"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "pos_pn",
-                    "expresion": {
-                      "_tipo": "ExprAccesoCampo",
-                      "objeto": {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      },
-                      "nombre_campo": "posicion"
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_avanzar",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaSi",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_esperar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          },
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "T_DOSPUNTOS"
-                          }
-                        ]
-                      },
-                      "operador": "==",
-                      "derecho": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 0
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "SentenciaRetornar",
-                        "expr": {
-                          "_tipo": "LiteralNumero",
-                          "valor": 0
-                        },
-                        "es_transferencia": false
-                      }
-                    ]
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "nodo_p",
-                    "expresion": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "parser_nuevo_nodo",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "NODO_PARAMETRO"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "linea_p"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "col_p"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "nodo_guardar_token",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "nodo_p"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "pos_pn"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "parsear_tipo_compuesto",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        },
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "nodo_p"
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaSi",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
-                        "_tipo": "Identificador",
-                        "nombre": "primer_param"
-                      },
-                      "operador": "==",
-                      "derecho": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 0
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "primer_param",
-                        "expresion": {
-                          "_tipo": "Identificador",
-                          "nombre": "nodo_p"
-                        }
-                      }
-                    ],
-                    "cuerpo_sino": [
-                      {
-                        "_tipo": "BloqueInseguro",
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "ExprAsm",
-                              "instruccion": "est->nodos[ultimo_param].hermano = nodo_p"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "ultimo_param",
-                    "expresion": {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo_p"
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaSi",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
-                        "_tipo": "LlamadaFuncion",
-                        "nombre": "token_mirar",
-                        "argumentos": [
-                          {
-                            "_tipo": "Identificador",
-                            "nombre": "est"
-                          }
-                        ]
-                      },
-                      "operador": "==",
-                      "derecho": {
-                        "_tipo": "Identificador",
-                        "nombre": "T_COMA"
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "SentenciaExpr",
-                        "expr": {
-                          "_tipo": "LlamadaFuncion",
-                          "nombre": "token_avanzar",
-                          "argumentos": [
-                            {
-                              "_tipo": "Identificador",
-                              "nombre": "est"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "_tipo": "SentenciaSiguiente"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "primer_param"
-              },
-              "operador": ">",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "BloqueInseguro",
-                "cuerpo": [
-                  {
-                    "_tipo": "SentenciaExpr",
-                    "expr": {
-                      "_tipo": "ExprAsm",
-                      "instruccion": "est->nodos[nodo].hijo_der = primer_param"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_PAREN_DER"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_esperar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "T_FLECHA"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaRetornar",
-                "expr": {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
-                },
-                "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "pos_ret",
-            "expresion": {
-              "_tipo": "ExprAccesoCampo",
-              "objeto": {
-                "_tipo": "Identificador",
-                "nombre": "est"
-              },
-              "nombre_campo": "posicion"
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_es_nombre",
-                "argumentos": [
-                  {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 1
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "pos_ret_fin",
-                "expresion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "ExprAccesoCampo",
-                    "objeto": {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    "nombre_campo": "posicion"
-                  },
-                  "operador": "-",
-                  "derecho": {
-                    "_tipo": "LiteralNumero",
-                    "valor": 1
-                  }
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "nodo_guardar_span",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "pos_ret"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "pos_ret_fin"
-                    },
-                    {
-                      "_tipo": "LiteralNumero",
-                      "valor": 2
-                    }
-                  ]
-                }
               }
             ]
           },
@@ -39509,7 +37781,7 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_enviar_canal",
+        "nombre": "parsear_estructura_def",
         "parametros": [
           {
             "nombre": "est",
@@ -39520,6 +37792,80 @@
         "requiere": [],
         "garantiza": [],
         "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_ESTRUCTURA"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "t",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_mirar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_IDENTIFICADOR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
           {
             "_tipo": "AsignacionVariable",
             "nombre": "linea",
@@ -39566,6 +37912,31 @@
           },
           {
             "_tipo": "AsignacionVariable",
+            "nombre": "pos_nombre",
+            "expresion": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "est"
+              },
+              "nombre_campo": "posicion"
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_avanzar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
             "nombre": "nodo",
             "expresion": {
               "_tipo": "LlamadaFuncion",
@@ -39577,7 +37948,7 @@
                 },
                 {
                   "_tipo": "Identificador",
-                  "nombre": "NODO_ENVIAR_CANAL"
+                  "nombre": "NODO_ESTRUCTURA"
                 },
                 {
                   "_tipo": "Identificador",
@@ -39591,44 +37962,82 @@
             }
           },
           {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "nodo_guardar_token",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nodo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "pos_nombre"
+                }
+              ]
+            }
+          },
+          {
             "_tipo": "SentenciaSi",
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
                 "_tipo": "LlamadaFuncion",
-                "nombre": "token_es_nombre",
+                "nombre": "token_esperar",
                 "argumentos": [
                   {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_DOSPUNTOS"
                   }
                 ]
               },
               "operador": "==",
               "derecho": {
                 "_tipo": "LiteralNumero",
-                "valor": 1
+                "valor": 0
               }
             },
             "cuerpo": [
               {
-                "_tipo": "AsignacionVariable",
-                "nombre": "pos_canal",
-                "expresion": {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_mirar",
+                "argumentos": [
+                  {
                     "_tipo": "Identificador",
                     "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
+                  }
+                ]
               },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_NUEVALINEA"
+              }
+            },
+            "cuerpo": [
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
@@ -39643,25 +38052,779 @@
                 }
               },
               {
+                "_tipo": "SentenciaMientras",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_NUEVALINEA"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_INDENTAR"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "r",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "primer_campo",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "ultimo_campo",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaMientras",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "r"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "t",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_mirar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_NUEVALINEA"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaSiguiente"
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_DESINDENTAR"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "LlamadaFuncion",
+                              "nombre": "token_avanzar",
+                              "argumentos": [
+                                {
+                                  "_tipo": "Identificador",
+                                  "nombre": "est"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "r",
+                            "expresion": {
+                              "_tipo": "LiteralNumero",
+                              "valor": 0
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaRomper"
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "t"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "Identificador",
+                            "nombre": "T_FIN"
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "r",
+                            "expresion": {
+                              "_tipo": "LiteralNumero",
+                              "valor": 0
+                            }
+                          },
+                          {
+                            "_tipo": "SentenciaRomper"
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "pos_campo",
+                        "expresion": {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "linea_c",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_linea",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "ExprAccesoCampo",
+                              "objeto": {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              },
+                              "nombre_campo": "posicion"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "col_c",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_columna",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "ExprAccesoCampo",
+                              "objeto": {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              },
+                              "nombre_campo": "posicion"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_avanzar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "LlamadaFuncion",
+                            "nombre": "token_esperar",
+                            "argumentos": [
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "est"
+                              },
+                              {
+                                "_tipo": "Identificador",
+                                "nombre": "T_DOSPUNTOS"
+                              }
+                            ]
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "LiteralNumero",
+                            "valor": 0
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaRetornar",
+                            "expr": {
+                              "_tipo": "LiteralNumero",
+                              "valor": 0
+                            },
+                            "es_transferencia": false
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "nodo_campo",
+                        "expresion": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "parser_nuevo_nodo",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "NODO_PARAMETRO"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "linea_c"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "col_c"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "nodo_guardar_token",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "nodo_campo"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "pos_campo"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "parsear_tipo_compuesto",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            },
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "nodo_campo"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSi",
+                        "condicion": {
+                          "_tipo": "OpBinaria",
+                          "izquierdo": {
+                            "_tipo": "Identificador",
+                            "nombre": "primer_campo"
+                          },
+                          "operador": "==",
+                          "derecho": {
+                            "_tipo": "LiteralNumero",
+                            "valor": 0
+                          }
+                        },
+                        "cuerpo": [
+                          {
+                            "_tipo": "AsignacionVariable",
+                            "nombre": "primer_campo",
+                            "expresion": {
+                              "_tipo": "Identificador",
+                              "nombre": "nodo_campo"
+                            }
+                          }
+                        ],
+                        "cuerpo_sino": [
+                          {
+                            "_tipo": "BloqueInseguro",
+                            "cuerpo": [
+                              {
+                                "_tipo": "SentenciaExpr",
+                                "expr": {
+                                  "_tipo": "ExprAsm",
+                                  "instruccion": "est->nodos[ultimo_campo].hermano = nodo_campo"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "ultimo_campo",
+                        "expresion": {
+                          "_tipo": "Identificador",
+                          "nombre": "nodo_campo"
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "primer_campo"
+                      },
+                      "operador": ">",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->nodos[nodo].hijo_izq = primer_campo"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "SentenciaRetornar",
+                    "expr": {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "nodo"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "parsear_constante",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "ParserEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_CONSTANTE"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "t",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_mirar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_IDENTIFICADOR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "linea",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "col",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_columna",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "pos_nombre",
+            "expresion": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "est"
+              },
+              "nombre_campo": "posicion"
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_avanzar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nodo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parser_nuevo_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "NODO_CONSTANTE"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "linea"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "col"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "nodo_guardar_token",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nodo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "pos_nombre"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_mirar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_DOSPUNTOS"
+              }
+            },
+            "cuerpo": [
+              {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "LlamadaFuncion",
-                  "nombre": "nodo_guardar_token",
+                  "nombre": "token_avanzar",
                   "argumentos": [
                     {
                       "_tipo": "Identificador",
                       "nombre": "est"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "pos_canal"
                     }
                   ]
                 }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_es_nombre",
+                    "argumentos": [
+                      {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "token_mirar",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -39679,7 +38842,7 @@
                   },
                   {
                     "_tipo": "Identificador",
-                    "nombre": "T_FLECHA_IZQ"
+                    "nombre": "T_ASIGNAR"
                   }
                 ]
               },
@@ -39721,7 +38884,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "est->nodos[nodo].hijo_der = expr"
+                  "instruccion": "est->nodos[nodo].hijo_izq = expr"
                 }
               }
             ]
@@ -39738,7 +38901,7 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_crear_canal",
+        "nombre": "parsear_importar_c",
         "parametros": [
           {
             "nombre": "est",
@@ -39763,7 +38926,7 @@
                   },
                   {
                     "_tipo": "Identificador",
-                    "nombre": "T_CANAL"
+                    "nombre": "T_IMPORTAR_C"
                   }
                 ]
               },
@@ -39841,7 +39004,7 @@
                 },
                 {
                   "_tipo": "Identificador",
-                  "nombre": "NODO_CANAL_CREAR"
+                  "nombre": "NODO_IMPORTAR_C"
                 },
                 {
                   "_tipo": "Identificador",
@@ -39850,6 +39013,323 @@
                 {
                   "_tipo": "Identificador",
                   "nombre": "col"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_mirar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_CADENA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "pos_ruta",
+                "expresion": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_avanzar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "nodo_guardar_token",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "pos_ruta"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "nodo"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "parsear_externo",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "ParserEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_EXTERNO"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_FUNCION"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "t",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_mirar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "t"
+              },
+              "operador": "!=",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_IDENTIFICADOR"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "linea",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "col",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_columna",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "pos_nombre",
+            "expresion": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "est"
+              },
+              "nombre_campo": "posicion"
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_avanzar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nodo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parser_nuevo_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "NODO_EXTERNO"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "linea"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "col"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "nodo_guardar_token",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nodo"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "pos_nombre"
                 }
               ]
             }
@@ -39890,24 +39370,36 @@
             ]
           },
           {
-            "_tipo": "SentenciaSi",
+            "_tipo": "AsignacionVariable",
+            "nombre": "r",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 1
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "primer_param",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ultimo_param",
+            "expresion": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaMientras",
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_es_nombre",
-                "argumentos": [
-                  {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
-                  }
-                ]
+                "_tipo": "Identificador",
+                "nombre": "r"
               },
               "operador": "==",
               "derecho": {
@@ -39917,10 +39409,11 @@
             },
             "cuerpo": [
               {
-                "_tipo": "SentenciaExpr",
-                "expr": {
+                "_tipo": "AsignacionVariable",
+                "nombre": "t",
+                "expresion": {
                   "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
+                  "nombre": "token_mirar",
                   "argumentos": [
                     {
                       "_tipo": "Identificador",
@@ -39928,6 +39421,311 @@
                     }
                   ]
                 }
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "t"
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "Identificador",
+                    "nombre": "T_PAREN_DER"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "r",
+                    "expresion": {
+                      "_tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaRomper"
+                  }
+                ]
+              },
+              {
+                "_tipo": "SentenciaSi",
+                "condicion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_es_nombre",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "t"
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "linea_p",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_linea",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "col_p",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_columna",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "ExprAccesoCampo",
+                          "objeto": {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          "nombre_campo": "posicion"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "pos_pn",
+                    "expresion": {
+                      "_tipo": "ExprAccesoCampo",
+                      "objeto": {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      },
+                      "nombre_campo": "posicion"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "token_avanzar",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "token_esperar",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          },
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "T_DOSPUNTOS"
+                          }
+                        ]
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaRetornar",
+                        "expr": {
+                          "_tipo": "LiteralNumero",
+                          "valor": 0
+                        },
+                        "es_transferencia": false
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "nodo_p",
+                    "expresion": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "parser_nuevo_nodo",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "NODO_PARAMETRO"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "linea_p"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "col_p"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "nodo_guardar_token",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nodo_p"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "pos_pn"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "parsear_tipo_compuesto",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "est"
+                        },
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "nodo_p"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "Identificador",
+                        "nombre": "primer_param"
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "LiteralNumero",
+                        "valor": 0
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "AsignacionVariable",
+                        "nombre": "primer_param",
+                        "expresion": {
+                          "_tipo": "Identificador",
+                          "nombre": "nodo_p"
+                        }
+                      }
+                    ],
+                    "cuerpo_sino": [
+                      {
+                        "_tipo": "BloqueInseguro",
+                        "cuerpo": [
+                          {
+                            "_tipo": "SentenciaExpr",
+                            "expr": {
+                              "_tipo": "ExprAsm",
+                              "instruccion": "est->nodos[ultimo_param].hermano = nodo_p"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "_tipo": "AsignacionVariable",
+                    "nombre": "ultimo_param",
+                    "expresion": {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo_p"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaSi",
+                    "condicion": {
+                      "_tipo": "OpBinaria",
+                      "izquierdo": {
+                        "_tipo": "LlamadaFuncion",
+                        "nombre": "token_mirar",
+                        "argumentos": [
+                          {
+                            "_tipo": "Identificador",
+                            "nombre": "est"
+                          }
+                        ]
+                      },
+                      "operador": "==",
+                      "derecho": {
+                        "_tipo": "Identificador",
+                        "nombre": "T_COMA"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "_tipo": "SentenciaExpr",
+                        "expr": {
+                          "_tipo": "LlamadaFuncion",
+                          "nombre": "token_avanzar",
+                          "argumentos": [
+                            {
+                              "_tipo": "Identificador",
+                              "nombre": "est"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "_tipo": "SentenciaSiguiente"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
@@ -39936,49 +39734,16 @@
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_mirar",
-                "argumentos": [
-                  {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
                 "_tipo": "Identificador",
-                "nombre": "T_COMA"
+                "nombre": "primer_param"
+              },
+              "operador": ">",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
               }
             },
             "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "expr",
-                "expresion": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "parsear_expresion",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
               {
                 "_tipo": "BloqueInseguro",
                 "cuerpo": [
@@ -39986,7 +39751,7 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "est->nodos[nodo].hijo_izq = expr"
+                      "instruccion": "est->nodos[nodo].hijo_der = primer_param"
                     }
                   }
                 ]
@@ -40029,174 +39794,6 @@
             ]
           },
           {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "nodo"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_recibir_canal",
-        "parametros": [
-          {
-            "nombre": "est",
-            "tipo": "ParserEst"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "linea",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_linea",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "col",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "token_columna",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "nodo",
-            "expresion": {
-              "_tipo": "LlamadaFuncion",
-              "nombre": "parser_nuevo_nodo",
-              "argumentos": [
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "NODO_RECIBIR_CANAL"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "linea"
-                },
-                {
-                  "_tipo": "Identificador",
-                  "nombre": "col"
-                }
-              ]
-            }
-          },
-          {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "LlamadaFuncion",
-                "nombre": "token_es_nombre",
-                "argumentos": [
-                  {
-                    "_tipo": "LlamadaFuncion",
-                    "nombre": "token_mirar",
-                    "argumentos": [
-                      {
-                        "_tipo": "Identificador",
-                        "nombre": "est"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 1
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "pos_canal",
-                "expresion": {
-                  "_tipo": "ExprAccesoCampo",
-                  "objeto": {
-                    "_tipo": "Identificador",
-                    "nombre": "est"
-                  },
-                  "nombre_campo": "posicion"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "token_avanzar",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "nodo_guardar_token",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "nodo"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "pos_canal"
-                    }
-                  ]
-                }
-              }
-            ]
-          },
-          {
             "_tipo": "SentenciaSi",
             "condicion": {
               "_tipo": "OpBinaria",
@@ -40228,6 +39825,109 @@
                   "valor": 0
                 },
                 "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "pos_ret",
+            "expresion": {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "est"
+              },
+              "nombre_campo": "posicion"
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_avanzar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "pos_ret_fin",
+                "expresion": {
+                  "_tipo": "OpBinaria",
+                  "izquierdo": {
+                    "_tipo": "ExprAccesoCampo",
+                    "objeto": {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    "nombre_campo": "posicion"
+                  },
+                  "operador": "-",
+                  "derecho": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "nodo_guardar_span",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "pos_ret"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "pos_ret_fin"
+                    },
+                    {
+                      "_tipo": "LiteralNumero",
+                      "valor": 2
+                    }
+                  ]
+                }
               }
             ]
           },
@@ -43202,7 +42902,7 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear_nativo",
+        "nombre": "parsear_enviar_canal",
         "parametros": [
           {
             "nombre": "est",
@@ -43214,94 +42914,52 @@
         "garantiza": [],
         "cuerpo": [
           {
-            "_tipo": "BloqueInseguro",
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "est->tokens = (struct TokenExt*)lexer_obtener_tokens()"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "est->total_tokens = lexer_obtener_total()"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "est->nodos = (struct NodoAST*)parser_nodos()"
-                }
-              }
-            ]
-          },
-          {
-            "_tipo": "AsignacionCampo",
-            "objeto": {
-              "_tipo": "Identificador",
-              "nombre": "est"
-            },
-            "nombre_campo": "posicion",
+            "_tipo": "AsignacionVariable",
+            "nombre": "linea",
             "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "AsignacionCampo",
-            "objeto": {
-              "_tipo": "Identificador",
-              "nombre": "est"
-            },
-            "nombre_campo": "total_nodos",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "AsignacionCampo",
-            "objeto": {
-              "_tipo": "Identificador",
-              "nombre": "est"
-            },
-            "nombre_campo": "hay_error",
-            "expresion": {
-              "_tipo": "LiteralBooleano",
-              "valor": false
-            }
-          },
-          {
-            "_tipo": "AsignacionCampo",
-            "objeto": {
-              "_tipo": "Identificador",
-              "nombre": "est"
-            },
-            "nombre_campo": "error_mensaje",
-            "expresion": {
-              "_tipo": "LiteralCadena",
-              "valor": ""
-            }
-          },
-          {
-            "_tipo": "BloqueInseguro",
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "*((int*)parser_meta()) = 0"
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
                 }
-              }
-            ]
+              ]
+            }
           },
           {
             "_tipo": "AsignacionVariable",
-            "nombre": "prog",
+            "nombre": "col",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_columna",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nodo",
             "expresion": {
               "_tipo": "LlamadaFuncion",
               "nombre": "parser_nuevo_nodo",
@@ -43312,42 +42970,38 @@
                 },
                 {
                   "_tipo": "Identificador",
-                  "nombre": "NODO_PROGRAMA"
+                  "nombre": "NODO_ENVIAR_CANAL"
                 },
                 {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
+                  "_tipo": "Identificador",
+                  "nombre": "linea"
                 },
                 {
-                  "_tipo": "LiteralNumero",
-                  "valor": 0
+                  "_tipo": "Identificador",
+                  "nombre": "col"
                 }
               ]
             }
           },
           {
-            "_tipo": "AsignacionVariable",
-            "nombre": "ultimo_stmt",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "r",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 1
-            }
-          },
-          {
-            "_tipo": "SentenciaMientras",
+            "_tipo": "SentenciaSi",
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "r"
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  }
+                ]
               },
               "operador": "==",
               "derecho": {
@@ -43358,10 +43012,21 @@
             "cuerpo": [
               {
                 "_tipo": "AsignacionVariable",
-                "nombre": "t",
+                "nombre": "pos_canal",
                 "expresion": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
                   "_tipo": "LlamadaFuncion",
-                  "nombre": "token_mirar",
+                  "nombre": "token_avanzar",
                   "argumentos": [
                     {
                       "_tipo": "Identificador",
@@ -43371,167 +43036,350 @@
                 }
               },
               {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "Identificador",
-                    "nombre": "t"
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "Identificador",
-                    "nombre": "T_FIN"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "_tipo": "AsignacionVariable",
-                    "nombre": "r",
-                    "expresion": {
-                      "_tipo": "LiteralNumero",
-                      "valor": 0
-                    }
-                  },
-                  {
-                    "_tipo": "SentenciaRomper"
-                  }
-                ]
-              },
-              {
-                "_tipo": "AsignacionVariable",
-                "nombre": "stmt",
-                "expresion": {
+                "_tipo": "SentenciaExpr",
+                "expr": {
                   "_tipo": "LlamadaFuncion",
-                  "nombre": "parsear_sentencia",
+                  "nombre": "nodo_guardar_token",
                   "argumentos": [
                     {
                       "_tipo": "Identificador",
                       "nombre": "est"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "pos_canal"
                     }
                   ]
                 }
-              },
-              {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "ExprAccesoCampo",
-                    "objeto": {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    "nombre_campo": "hay_error"
-                  },
-                  "operador": "==",
-                  "derecho": {
-                    "_tipo": "LiteralBooleano",
-                    "valor": true
-                  }
-                },
-                "cuerpo": [
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
                   {
-                    "_tipo": "SentenciaRetornar",
-                    "expr": {
-                      "_tipo": "OpUnaria",
-                      "operador": "-",
-                      "expr": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 1
-                      }
-                    },
-                    "es_transferencia": false
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_FLECHA_IZQ"
                   }
                 ]
               },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
               {
-                "_tipo": "SentenciaSi",
-                "condicion": {
-                  "_tipo": "OpBinaria",
-                  "izquierdo": {
-                    "_tipo": "Identificador",
-                    "nombre": "stmt"
-                  },
-                  "operador": "!=",
-                  "derecho": {
-                    "_tipo": "LiteralNumero",
-                    "valor": 0
-                  }
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
                 },
-                "cuerpo": [
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "expr",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parsear_expresion",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "est->nodos[nodo].hijo_der = expr"
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "nodo"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "parsear_crear_canal",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "ParserEst"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
                   {
-                    "_tipo": "SentenciaSi",
-                    "condicion": {
-                      "_tipo": "OpBinaria",
-                      "izquierdo": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_CANAL"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "linea",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "col",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_columna",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nodo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parser_nuevo_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "NODO_CANAL_CREAR"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "linea"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "col"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_PAREN_IZQ"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
                         "_tipo": "Identificador",
-                        "nombre": "ultimo_stmt"
-                      },
-                      "operador": "==",
-                      "derecho": {
-                        "_tipo": "LiteralNumero",
-                        "valor": 0
-                      }
-                    },
-                    "cuerpo": [
-                      {
-                        "_tipo": "BloqueInseguro",
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "ExprAsm",
-                              "instruccion": "est->nodos[prog].hijo_izq = stmt"
-                            }
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "ultimo_stmt",
-                        "expresion": {
-                          "_tipo": "Identificador",
-                          "nombre": "stmt"
-                        }
-                      }
-                    ],
-                    "cuerpo_sino": [
-                      {
-                        "_tipo": "BloqueInseguro",
-                        "cuerpo": [
-                          {
-                            "_tipo": "SentenciaExpr",
-                            "expr": {
-                              "_tipo": "ExprAsm",
-                              "instruccion": "est->nodos[ultimo_stmt].hermano = stmt"
-                            }
-                          }
-                        ]
-                      },
-                      {
-                        "_tipo": "AsignacionVariable",
-                        "nombre": "ultimo_stmt",
-                        "expresion": {
-                          "_tipo": "Identificador",
-                          "nombre": "stmt"
-                        }
+                        "nombre": "est"
                       }
                     ]
                   }
-                ],
-                "cuerpo_sino": [
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_avanzar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_mirar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "Identificador",
+                "nombre": "T_COMA"
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_avanzar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "expr",
+                "expresion": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "parsear_expresion",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "BloqueInseguro",
+                "cuerpo": [
                   {
                     "_tipo": "SentenciaExpr",
                     "expr": {
-                      "_tipo": "LlamadaFuncion",
-                      "nombre": "token_avanzar",
-                      "argumentos": [
-                        {
-                          "_tipo": "Identificador",
-                          "nombre": "est"
-                        }
-                      ]
+                      "_tipo": "ExprAsm",
+                      "instruccion": "est->nodos[nodo].hijo_izq = expr"
                     }
                   }
                 ]
@@ -43543,43 +43391,33 @@
             "condicion": {
               "_tipo": "OpBinaria",
               "izquierdo": {
-                "_tipo": "ExprAccesoCampo",
-                "objeto": {
-                  "_tipo": "Identificador",
-                  "nombre": "est"
-                },
-                "nombre_campo": "hay_error"
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_PAREN_DER"
+                  }
+                ]
               },
               "operador": "==",
               "derecho": {
-                "_tipo": "LiteralBooleano",
-                "valor": true
+                "_tipo": "LiteralNumero",
+                "valor": 0
               }
             },
             "cuerpo": [
               {
                 "_tipo": "SentenciaRetornar",
                 "expr": {
-                  "_tipo": "OpUnaria",
-                  "operador": "-",
-                  "expr": {
-                    "_tipo": "LiteralNumero",
-                    "valor": 1
-                  }
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
                 },
                 "es_transferencia": false
-              }
-            ]
-          },
-          {
-            "_tipo": "BloqueInseguro",
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "*((int*)parser_meta()) = est->total_nodos"
-                }
               }
             ]
           },
@@ -43587,7 +43425,7 @@
             "_tipo": "SentenciaRetornar",
             "expr": {
               "_tipo": "Identificador",
-              "nombre": "prog"
+              "nombre": "nodo"
             },
             "es_transferencia": false
           }
@@ -43595,40 +43433,202 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "parsear",
-        "parametros": [],
+        "nombre": "parsear_recibir_canal",
+        "parametros": [
+          {
+            "nombre": "est",
+            "tipo": "ParserEst"
+          }
+        ],
         "tipo_retorno": "entero",
         "requiere": [],
         "garantiza": [],
         "cuerpo": [
           {
-            "_tipo": "BloqueInseguro",
+            "_tipo": "AsignacionVariable",
+            "nombre": "linea",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "col",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "token_columna",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "nodo",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "parser_nuevo_nodo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "NODO_RECIBIR_CANAL"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "linea"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "col"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_es_nombre",
+                "argumentos": [
+                  {
+                    "_tipo": "LlamadaFuncion",
+                    "nombre": "token_mirar",
+                    "argumentos": [
+                      {
+                        "_tipo": "Identificador",
+                        "nombre": "est"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
             "cuerpo": [
               {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "struct ParserEst _pe = {0};"
+                "_tipo": "AsignacionVariable",
+                "nombre": "pos_canal",
+                "expresion": {
+                  "_tipo": "ExprAccesoCampo",
+                  "objeto": {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  "nombre_campo": "posicion"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "return parsear_nativo(&_pe);"
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "token_avanzar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
                 }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "nodo_guardar_token",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "nodo"
+                    },
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "pos_canal"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "token_esperar",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "est"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "T_FLECHA"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
               }
             ]
           },
           {
             "_tipo": "SentenciaRetornar",
             "expr": {
-              "_tipo": "OpUnaria",
-              "operador": "-",
-              "expr": {
-                "_tipo": "LiteralNumero",
-                "valor": 1
-              }
+              "_tipo": "Identificador",
+              "nombre": "nodo"
             },
             "es_transferencia": false
           }
@@ -89754,7 +89754,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/principal.syn\",NULL};"
+                  "instruccion": "const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/principal.syn\",NULL};"
                 }
               },
               {
