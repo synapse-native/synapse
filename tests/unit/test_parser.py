@@ -142,8 +142,9 @@ funcion usar_control(n: entero) -> entero:
             siguiente
         si x == 8:
             romper
-    para i = 0; i < n; i = i + 1:
+    para i = 0 mientras i < n:
         x = x + i
+        i = i + 1
     retornar x
 
 funcion usar_canales() -> nulo:

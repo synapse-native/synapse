@@ -1,8 +1,9 @@
 #lang: es
 
 funcion productor(ch: CanalConcurrencia*, n: entero) -> nulo:
-    para i = 0; i < n; i = i + 1:
+    para i = 0 mientras i < n:
         canal_enviar(ch, i)
+        i = i + 1
     cerrar_canal(ch)
 
 funcion consumidor(ch: CanalConcurrencia*) -> nulo:

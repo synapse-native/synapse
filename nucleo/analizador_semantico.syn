@@ -999,6 +999,39 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
         tabla_salir_scope(est)
         retornar
 
+    // SentenciaPara (R30, Manual 2 §2.2 L108): `para i = 0 mientras i < 3:`
+    // Antes el flatten F8 no mapeaba NODO_PARA -> el cuerpo nunca se analizaba
+    // (variables no declaradas, use-after-move, prestamos: invisibles dentro
+    // del bucle). Paridad S1 semantic_checker.py SentenciaPara: entra scope,
+    // declara la variable de bucle (primera declaracion), analiza init/cond y
+    // el cuerpo, sale del scope.
+    si tipo == NODO_PARA:
+        tabla_entrar_scope(est)
+        varnombre = ""
+        inseguro:
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        si varnombre != "":
+            ok_para = tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+            si ok_para == falso:
+                sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, varnombre)
+        // inicializacion en slot[6], condicion en hijo_der (patron flatten R30)
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        cond_para = nodo_hijo_der(est, idx_nodo)
+        si cond_para > 0:
+            analizar_expr(est, cond_para)
+        cuerpo = nodo_hijo_izq(est, idx_nodo)
+        stmt = cuerpo
+        r = 1
+        mientras r == 1:
+            si stmt <= 0:
+                r = 0
+                romper
+            analizar_sentencia(est, stmt)
+            inseguro:
+                asm("stmt = est->nodos[stmt].hermano")
+        tabla_salir_scope(est)
+        retornar
+
     // BloqueInseguro
     si tipo == NODO_INSEGURO:
         tabla_entrar_scope(est)

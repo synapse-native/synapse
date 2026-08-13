@@ -54,14 +54,22 @@ def visitar_mientras(ctx: GeneratorContext, nodo: SentenciaMientras):
 
 
 def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
-    """Genera código C para for."""
+    """R30 (Manual 2 §2.2 L108): `para i = 0 mientras i < 3:` — la variable de
+    bucle se DECLARA en el C (`for (int64_t i = 0; ...)`) y se registra en
+    ctx._variables (paridad visitar_declaracion L97). Antes se emitia
+    `for (i = 0; ...)` sin declarar -> gcc 'i undeclared' (desvio H-R29-2)."""
     init_code = ""
+    var_name = None
+    var_tipo_syn = None
     if nodo.inicializacion:
         if hasattr(nodo.inicializacion, 'nombre'):
-            init_code = (
-                f"{nodo.inicializacion.nombre}"
-                f" = {expr_a_c(ctx, nodo.inicializacion.expresion)}"
-            )
+            var_name = nodo.inicializacion.nombre
+            expr_init = nodo.inicializacion.expresion
+            if expr_init is not None:
+                var_tipo_syn = tipo_de_expr(ctx, expr_init)
+                init_code = f"{var_name} = {expr_a_c(ctx, expr_init)}"
+            else:
+                init_code = f"{var_name} = 0"
         else:
             init_code = expr_a_c(ctx, nodo.inicializacion)
     cond_code = expr_a_c(ctx, nodo.condicion) if nodo.condicion else "1"
@@ -74,7 +82,13 @@ def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
             )
         else:
             inc_code = expr_a_c(ctx, nodo.incremento)
-    ctx.write_line(f"for ({init_code}; {cond_code}; {inc_code}) {{")
+    if var_name and var_tipo_syn:
+        ctx.write_line(f"for ({ctx.traducir_tipo_c(var_tipo_syn)} {init_code}; "
+                       f"{cond_code}; {inc_code}) {{")
+        if var_name not in ctx._variables:
+            ctx._variables[var_name] = var_tipo_syn
+    else:
+        ctx.write_line(f"for ({init_code}; {cond_code}; {inc_code}) {{")
     ctx.inc_indent()
     ctx.push_scope()
     for s in nodo.cuerpo:

@@ -167,10 +167,11 @@ estructura SentenciaPara:
     tipo: texto
     linea: entero
     columna: entero
+    nombre: texto
     inicializacion: Nodo
     condicion: Nodo
     incremento: Nodo
-    cuerpo: Nodo
+    cuerpo: ListaNodo
 
 estructura SentenciaLanzar:
     tipo: texto

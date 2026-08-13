@@ -118,18 +118,20 @@ class ParserControlMixin(ParserBase):
         )
 
     def _parsear_para(self) -> Optional[SentenciaPara]:
+        # R30 (Manual 2 §2.2 L108): bucle_para ::= "para" IDENTIFICADOR "="
+        # expresion "mientras" expresion ":" NEWLINE INDENT bloque DEDENT.
+        # La actualizacion del contador es responsabilidad del CUERPO
+        # (ej: `para i = 0 mientras i < 10: ... i = i + 1`). Antes se parseaba
+        # el dialecto C-style `para i = 0; i < n; i = i + 1:` que NO existe en
+        # el Manual (desvio H-R29-2 corregido en la auditoria).
         tok_para = self._esperar(TokenID.PARA)
         if tok_para is None:
             return None
         inicializacion = self._parsear_asignacion()
-        if self._esperar(TokenID.SEMICOLON) is None:
+        if self._esperar(TokenID.MIENTRAS) is None:
             self._sincronizar(_SYNC_STMT)
             return None
         condicion = self._parsear_expresion()
-        if self._esperar(TokenID.SEMICOLON) is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        incremento = self._parsear_asignacion()
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -143,7 +145,7 @@ class ParserControlMixin(ParserBase):
         return SentenciaPara(
             inicializacion=inicializacion,
             condicion=condicion,
-            incremento=incremento,
+            incremento=None,
             cuerpo=cuerpo,
             linea=tok_para.linea,
             columna=tok_para.columna,

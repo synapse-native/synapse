@@ -66,8 +66,9 @@ funcion usar_mientras(n: entero) -> entero:
 
 funcion usar_para(n: entero) -> entero:
     total = 0
-    para i = 0; i < n; i = i + 1:
+    para i = 0 mientras i < n:
         total = total + i
+        i = i + 1
     retornar total
 
 funcion dividir(a: entero, b: entero) -> Resultado<entero,texto>:

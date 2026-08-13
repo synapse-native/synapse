@@ -2326,3 +2326,99 @@ def test_r28_asignacion_implicita_anidada_s1_paridad(tmp_path):
     proc = _compilar_con_s1(_PROG_R28_AUTO_ANIDADO_CON_FIRMA, str(tmp_path))
     assert proc.returncode == 0, (
         f"S1: r = ok(ok(42)) con firma debe compilar:\n{proc.stderr[-1500:]}")
+
+
+# ---------------------------------------------------------------------------
+# R30 (hallazgos H-R29-1/H-R29-2, Manual 2 §2.2 L108): bucle `para` con el
+# dialecto del Manual + `siguiente`/`romper` end-to-end.
+#   - H-R29-2: el codegen nativo emitia `for (0LL; i < 3LL; )` sin declarar la
+#     variable de bucle (gcc rc=5); el S1 exigia el dialecto C-style `;` que NO
+#     existe en el Manual. Fix: declarar `<tipo> <var> = <init>` (nativo y S1,
+#     paridad R25/R27 de inferencia) + registrar en _G_fn_vars/ctx._variables.
+#   - H-R29-1: el flatten F8 no mapeaba NodoPara -> el CUERPO del para nunca se
+#     analizaba (use-after-move/prestamos invisibles). Fix: mapeo 45/20/21 +
+#     caso NODO_PARA en analizar_sentencia (paridad mientras R14).
+#   - `siguiente` (Manual 2 L116) / `romper` (L115) verificados end-to-end;
+#     la fixture smoke_backend.syn usaba la keyword PT `continuar` con #lang: es
+#     (identificador, nunca compilo) -> eliminada (regla 12).
+# ---------------------------------------------------------------------------
+
+_PROG_R30_PARA = '''#lang: es
+funcion principal() -> nulo:
+    para i = 0 mientras i < 3:
+        escribir_linea(entero_a_texto(i))
+        i = i + 1
+'''
+
+_PROG_R30_SIGUIENTE_ROMPER = '''#lang: es
+funcion principal() -> nulo:
+    i = 0
+    mientras verdadero:
+        i = i + 1
+        si i == 2:
+            siguiente
+        si i >= 4:
+            romper
+        escribir_linea(entero_a_texto(i))
+'''
+
+_PROG_R30_PARA_BODY_ANALIZADO = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    dato = 42
+    para i = 0 mientras i < 3:
+        ch <- dato
+    x = dato
+    retornar
+'''
+
+
+def test_r30_para_dialecto_manual_compila_y_ejecuta(stage, tmp_path):
+    """R30 (H-R29-2, Manual 2 §2.2 L108): `para i = 0 mientras i < 3:`
+    compila rc=0 y ejecuta imprimiendo 0,1,2 (antes: `for (0LL; i < 3LL; )`
+    sin declarar `i` -> gcc rc=5). La variable de bucle se declara e infiere
+    como int64_t en el C."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R30_PARA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"para Manual debe compilar rc=0:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert run.stdout.split() == ["0", "1", "2"], (
+        f"para debe imprimir 0,1,2: {run.stdout!r}")
+
+
+def test_r30_para_s1_paridad(tmp_path):
+    """R30 paridad S1: el mismo programa (dialecto Manual) compila y ejecuta
+    con el S1 (antes el S1 exigia el dialecto C-style `;` que NO existe en
+    el Manual -> 'Se esperaba SEMICOLON')."""
+    proc = _compilar_con_s1(_PROG_R30_PARA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: para Manual debe compilar:\n{proc.stderr[-1500:]}")
+    exe = os.path.join(tmp_path, "prog_s1.exe")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    assert run.stdout.split() == ["0", "1", "2"], (
+        f"S1: para debe imprimir 0,1,2: {run.stdout!r}")
+
+
+def test_r30_siguiente_romper(stage, tmp_path):
+    """R30 (H-R29-1): `siguiente` (Manual 2 L116) y `romper` (L115) funcionan
+    end-to-end en el nativo (continue;/break;) — salida 1,3 (i=2 saltado,
+    i=4 rompe el bucle)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_R30_SIGUIENTE_ROMPER,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"siguiente/romper debe compilar:\n{proc.stderr[-1200:]}")
+    assert run is not None and run.returncode == 0
+    assert run.stdout.split() == ["1", "3"], (
+        f"salida esperada 1,3: {run.stdout!r}")
+
+
+def test_r30_para_cuerpo_analizado_use_after_move(stage, tmp_path):
+    """R30: el cuerpo del `para` ahora se ANALIZA (flatten F8 + caso NODO_PARA
+    en analizar_sentencia; antes el nodo no se aplanaba y el cuerpo era
+    invisible) -> el envio de canal dentro del bucle marca la variable movida
+    y la lectura posterior emite E-501 (Manual 4 §3.3, paridad con el cuerpo
+    de `mientras` R14)."""
+    proc = _compilar_con_stage(stage, _PROG_R30_PARA_BODY_ANALIZADO,
+                               str(tmp_path))
+    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
+        f"E-501 ausente en el cuerpo del para:\n{proc.stderr[-1200:]}")

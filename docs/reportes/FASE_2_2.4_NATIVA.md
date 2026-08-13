@@ -1511,4 +1511,88 @@ conservadas + 1,101 movidas = 1,511 originales).
 `nucleo/principal.syn` (imports + `_files[]`), `nucleo/principal.syn.json`
 (regenerado), docs (este reporte §32, `nucleo/README.md`, bitácora AUDITORIA,
 `MEMORIA_PROYECTO.md`). **HASH COMMIT: `1511843`** — rama `feature/fase2-nativa-hm`.
+## 33. R30 — `para` alineado al Manual 2 §2.2 L108 + `siguiente`/`romper` + limpieza (2026-08-13)
+
+### Hallazgos R29 resueltos (regla 11 → resolución asignada)
+- **H-R29-2 — codegen `para` no declaraba la variable de bucle**: el emisor
+  nativo (`gen_visitar_para`) emitía `for (0LL; i < 3LL; )` — la inicialización
+  se evaluaba como expresión (`0`) y `i` quedaba sin declarar → gcc rc=5. El S1
+  exigía además el dialecto C-style `para i = 0; i < n; i = i + 1:` que **NO
+  existe en el Manual** — Manual 2, Sección 2.2, L108:
+  `bucle_para ::= "para" IDENTIFICADOR "=" expresion "mientras" expresion ":"
+  NEWLINE INDENT bloque DEDENT` (la actualización del contador es del cuerpo).
+- **H-R29-1 — keyword `siguiente`**: verificado END-TO-END en AMBOS
+  compiladores (lexer `siguiente`/`continue`/`continuer`/`continuar` →
+  T_SIGUIENTE, Manual 2 §3 L248; parser → `SentenciaSiguiente`; codegen →
+  `continue;`). La fixture `smoke_backend.syn` usaba la keyword PT `continuar`
+  con `#lang: es` (lexa como identificador — nunca compiló) y módulos std sin
+  la API invocada → eliminada (regla 12).
+
+### Fix (Manual 2 §2.2 L108 — 5 frentes, paridad S1+nativo)
+1. **AST** (`ast_nodes.syn`): `SentenciaPara.nombre: texto` + `cuerpo:
+   ListaNodo` (paridad `SentenciaSi`/`SentenciaMientras`; antes `cuerpo: Nodo`
+   guardaba solo la PRIMERA sentencia del bloque).
+2. **Puente** (`puente_ast.syn` NODO_PARA): lee el nombre de la variable de
+   bucle (payload `nodo_guardar_token`) y construye el cuerpo como ListaNodo
+   (`puente_lista(extra)`).
+3. **Codegen nativo** (`nodos_flujo.syn` `gen_visitar_para`): declara
+   `<tipo> <var> = <init>` (tipo inferido vía `_syn_nativo_expr_tipo_c`, paridad
+   R20/R25/R27; default `int64_t`), registra la variable en
+   `_G_fn_vars`/`_G_fn_var_tipos` (patrón R28 del let) e itera el cuerpo como
+   ListaNodo (antes solo la primera sentencia).
+4. **Flatten F8 + analizador** (`principal.syn` + `analizador_semantico.syn`):
+   mapeos `SentenciaPara`→45 / `SentenciaRomper`→20 / `SentenciaSiguiente`→21 +
+   ramas en `_f8_flatten`; caso `NODO_PARA` en `analizar_sentencia` (entra
+   scope, declara la variable de bucle, analiza init/cond/cuerpo, sale — paridad
+   S1 `semantic_checker.py`). Antes el cuerpo del `para` era INVISIBLE al
+   analizador (use-after-move/préstamos no se detectaban dentro del bucle).
+   Walkers de escaneo adaptados a ListaNodo (`monomorfizacion.syn` D-2 y scan de
+   ctors, `funciones.syn` hoisting).
+5. **S1** (`parser_control.py` `_parsear_para` + `emit_control.py`
+   `visitar_para`): parser alineado al dialecto del Manual (`mientras` en vez de
+   `;`, sin `incremento`) y codegen declara la variable con tipo inferido
+   (`tipo_de_expr` → `traducir_tipo_c`) + registro en `ctx._variables`.
+
+### Validación
+- Probes nativos (stage2 R30): `para i = 0 mientras i < 3:` → **rc=0**, ejecuta
+  `0 1 2` (antes rc=5); C emitido `for (int64_t i = 0LL; i < 3LL; ) { ... }`
+  con el cuerpo completo; `siguiente`/`romper` rc=0 con salida correcta
+  (`1 3 4 5` / `3`); **use-after-move DENTRO del cuerpo del `para`** → E-501
+  observable con línea real (antes el cuerpo no se analizaba).
+- Paridad S1: el mismo programa compila y ejecuta `0 1 2` (antes «Se esperaba
+  SEMICOLON»).
+- **Bootstrap S2==S3** (sha256 `e52818ac…`, 1.102.625 bytes) — Manual 9 §9.7.
+- **Suite HM: 105/105** (101+4 R30: para dialecto Manual nativo, para paridad
+  S1, siguiente/romper, cuerpo del para analizado E-501) · **S1: 197 passed**
+  (unit + D-5 con el dialecto corregido).
+
+### Limpieza (regla 12 — código muerto se elimina)
+- Fixtures muertas eliminadas: `tests/smoke_backend.syn` (keyword PT con
+  `#lang: es` + std sin API; sin referencia en tests) y
+  `tests/test_bucle_para.syn` (dialecto C-style + error de tipos; sin
+  referencia en tests).
+- 19 scripts de depuración de FASE A eliminados de la raíz (`_a51_boxing.py`,
+  `_a52_f8_fix.py`, `_a53_inferencia.py`, `_a53_literales.py`,
+  `_a53_sufijo_ll.py`, `_a54_aserciones.py`, `_a54_fixes2.py`,
+  `_a54_nodos_flujo.py`, `_a55_ffi.py`, `_a5_docs.py`, `_d3_docs.py`,
+  `_d3_fix.py`, `_d3_harden.py`, `_d3_show.py`, `_test_compile_debil.py`,
+  `_test_encoding.py`, `_test_f12d_manual.py`, `_test_gcc.py`,
+  `_test_lexer_debil.py`) — sin referencias en tests/docs/scripts (solo
+  auto-referencias en docstrings).
+- Dialecto corregido en código vivo: `tests/unit/test_parser.py`
+  (PROGRAMA_EXTENSO), `tests/fixtures/test_d5_cobertura.syn`,
+  `examples/synapse/03_concurrencia/main.syn`.
+
+### Archivos
+`nucleo/ast_nodes.syn`, `nucleo/puente_ast.syn`, `nucleo/principal.syn`
+(flatten), `nucleo/analizador_semantico.syn` (caso NODO_PARA),
+`nucleo/generador/nodos_flujo.syn` (`gen_visitar_para`),
+`nucleo/generador/monomorfizacion.syn` + `funciones.syn` (walkers ListaNodo),
+`nucleo/generator.syn` (regenerado con `_rebuild_generator.py`),
+`nucleo/principal.syn.json` (regenerado por el build S1),
+`compilador/parser_control.py`, `compilador/generator/emit_control.py`, tests
+(HM R30, fixtures corregidos, 21 archivos eliminados), docs (este reporte §33,
+`nucleo/README.md`, bitácora AUDITORIA, `MEMORIA_PROYECTO.md`), logs
+(`logs/build_stage1_r30.log`, `stage2_r30.log`, `stage3_r30.log`,
+`suite_hm_r30.log`, `regresion_s1_r30.log`).
 

@@ -621,6 +621,26 @@ codegen `para` nativo sin declarar la variable de bucle (`for (0LL; i < 3LL; )`;
 el dialecto nativo `mientras` es el del Manual 2 §2.2 L108, el C-style `;` del S1
 diverge). Detalle: reporte §32.
 
+
+### R30 — `para` alineado al Manual 2 §2.2 L108 + `siguiente`/`romper` + limpieza (CERRADA)
+
+Resolución de los hallazgos R29 (regla 11). El codegen nativo `gen_visitar_para`
+emitía `for (0LL; i < 3LL; )` sin declarar la variable de bucle (gcc rc=5) y el
+S1 exigía el dialecto C-style `;` que **no existe en el Manual**. Fix en 5
+frentes (paridad S1+nativo): `SentenciaPara.nombre` + `cuerpo: ListaNodo`
+(antes solo la primera sentencia del bloque); puente NODO_PARA; `gen_visitar_para`
+declara `<tipo> <var> = <init>` (tipo inferido vía `_syn_nativo_expr_tipo_c`) y
+registra en `_G_fn_vars`; flatten F8 mapea `SentenciaPara`→45/`Romper`→20/
+`Siguiente`→21 + caso `NODO_PARA` en el analizador (el cuerpo del `para` antes
+era invisible: use-after-move dentro del bucle ahora emite E-501 con línea
+real); S1 `_parsear_para` al dialecto `mientras` + `visitar_para` declara la
+variable. `siguiente`/`romper` (Manual 2 L115-116) verificados end-to-end en
+ambos compiladores. Limpieza regla 12: 21 archivos muertos eliminados (19
+scripts `_*.py` de FASE A + fixtures `smoke_backend.syn`/`test_bucle_para.syn`);
+dialecto corregido en `test_parser.py`, `test_d5_cobertura.syn` y
+`examples/synapse/03_concurrencia/main.syn`. Bootstrap S2==S3 `e52818ac…`,
+**105/105 HM** (101+4 R30), S1 197 passed. Detalle: reporte §33.
+
 ### R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (CERRADA)
 
 `let r = ok(ok(42))` (Manual 2 §4.2 L279-280) sin anotación, con solo la

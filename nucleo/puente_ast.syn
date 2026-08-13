@@ -419,10 +419,16 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("{ struct SentenciaPara* _p = (struct SentenciaPara*)calloc(1, sizeof(struct SentenciaPara));")
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaPara\");")
             asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  // R30: nombre de la variable de bucle (payload primario guardado por")
+            asm("  // parsear_para via nodo_guardar_token; Manual 2 §2.2 L108).")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->inicializacion = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->condicion = (struct Nodo*)puente_nodo(hd);")
             asm("  _p->incremento = 0;")
-            asm("  _p->cuerpo = (struct Nodo*)puente_nodo(extra);")
+            asm("  // R30: cuerpo como ListaNodo (paridad SentenciaSi/Mientras) — antes")
+            asm("  // puente_nodo(extra) guardaba SOLO la primera sentencia y el resto")
+            asm("  // del bloque se perdia en el codegen.")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(extra);")
             asm("  r = (void*)_p; }")
     si t == NODO_RETORNAR:
         inseguro:
