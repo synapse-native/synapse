@@ -398,6 +398,10 @@ def verificar_contratos_nuevos():
         return ["No se pudo calcular el diff de nucleo/*.syn vs HEAD"], []
     diff = out.stdout
     brechas, info = [], []
+    # Funciones definidas en HEAD (para distinguir MOVIMIENTO de código — p.ej.
+    # modularización mecánica tipo R29/R32 — de función realmente NUEVA: un split
+    # no crea funciones nuevas, el gate de contratos solo cubre código nuevo).
+    nombres_head = _funciones_en_head()
     # Por archivo del diff: recoger las líneas + de cada archivo
     lineas_por_archivo = {}
     archivo_actual = None
@@ -421,12 +425,49 @@ def verificar_contratos_nuevos():
             nombre = m.group(1)
             ventana = "\n".join(lineas[k + 1:k + 26])
             if "requiere:" in ventana or "garantiza:" in ventana:
-                info.append(f"CTR[{archivo}] función nueva '{nombre}' con requiere/garantiza ✓")
+                info.append(f"CTR[{archivo}] función '{nombre}' con requiere/garantiza ✓")
+            elif nombre in nombres_head:
+                info.append(
+                    f"CTR[{archivo}] función '{nombre}' MOVIDA (existía en HEAD, sin contrato "
+                    f"pre-existente — split mecánico, no aplica D-4)"
+                )
             else:
                 brechas.append(
                     f"CTR[{archivo}] función nueva '{nombre}' sin requiere/garantiza (Manual 2 §12)"
                 )
     return brechas, info
+
+
+def _funciones_en_head() -> set:
+    """Nombres de todas las funciones definidas en nucleo/*.syn en HEAD (git)."""
+    nombres: set = set()
+    try:
+        ls = subprocess.run(
+            # El pathspec glob no expande en todas las plataformas (Windows);
+            # listar nucleo/ completo y filtrar .syn en Python (más robusto).
+            ["git", "-C", str(RAIZ), "ls-tree", "-r", "--name-only", "HEAD", "--", "nucleo/"],
+            capture_output=True, text=True,
+        )
+        if ls.returncode != 0:
+            return nombres
+        for ruta in ls.stdout.splitlines():
+            if not ruta.endswith(".syn"):
+                continue
+            show = subprocess.run(
+                # encoding utf-8: los .syn del compilador contienen UTF-8 real
+                # (débil, déléguer, §) que cp1252 (Windows) no decodifica.
+                ["git", "-C", str(RAIZ), "show", f"HEAD:{ruta}"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+            )
+            if show.returncode != 0:
+                continue
+            for linea in show.stdout.splitlines():
+                m = re.match(r"^funcion\s+([A-Za-z_][A-Za-z0-9_]*)", linea)
+                if m:
+                    nombres.add(m.group(1))
+    except Exception:
+        pass
+    return nombres
 
 
 def main():

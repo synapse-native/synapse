@@ -641,6 +641,23 @@ dialecto corregido en `test_parser.py`, `test_d5_cobertura.syn` y
 `examples/synapse/03_concurrencia/main.syn`. Bootstrap S2==S3 `e52818ac…`,
 **105/105 HM** (101+4 R30), S1 197 passed. Detalle: reporte §33.
 
+### R32 — Modularización de `nucleo/lexer.syn` → `lexer_keywords.syn`: C byte-idéntico (CERRADA, D-9(b))
+
+Cierre de la deuda D-9(b) del diagnóstico FASE A (regla 13, patrón R29): las 4
+tablas keyword es/en/fr/pt (`keyword_token_es/en/fr/pt`, ~340 líneas de DATOS)
+se extrajeron con split MECÁNICO a `nucleo/lexer_keywords.syn` (339 líneas,
+texto byte-idéntico al HEAD verificado 336/336 líneas-no-blancas); el
+orquestador `keyword_token` y el resto del lexer quedan en `lexer.syn` (769
+líneas); `principal.syn` registra el módulo (import + `_files[]`). Como el
+emisor C ordena funciones alfabéticamente (Manual 8 §8.2), el C generado NO
+cambia al mover funciones entre archivos — verificado: 8/8 funciones del lexer
+byte-idénticas HEAD vs split (solo cambia el array `_files[]`). Harness
+`native_lexer_paridad.py` adaptado (compila el par lexer+keywords con import
+inline). Verificador: gate de contratos refinado (función MOVIDA ≠ nueva — no
+pide `requiere:`/`garantiza:` a las movidas). Bootstrap S2==S3 `423008d8…`,
+**105/105 HM**, S1 **530 passed**, probes multi-idioma es/en/fr/pt OK. Detalle:
+reporte §34.
+
 ### R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (CERRADA)
 
 `let r = ok(ok(42))` (Manual 2 §4.2 L279-280) sin anotación, con solo la

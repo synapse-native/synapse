@@ -242,7 +242,17 @@ def _generar_c_nativo() -> str:
         path = os.path.join(tmp, "lexer_nat.syn")
         with open(path, "w", encoding="utf-8") as f:
             f.write(renombrada)
-        ast, diag = compilar_desde_texto(path, set())
+        # R32 (D-9(b), regla 13): las tablas de keywords se modularizaron a
+        # nucleo/lexer_keywords.syn — el harness compila el par (mismo unity
+        # merge que el pipeline nativo): inyecta el import y copia el modulo
+        # al tmp para que compilar_desde_texto lo resuelva por dir_base.
+        import shutil
+        ruta_kw = os.path.join(RAIZ, "nucleo", "lexer_keywords.syn")
+        if os.path.exists(ruta_kw):
+            with open(path, "a", encoding="utf-8") as f:
+                f.write("\nimportar lexer_keywords\n")
+            shutil.copy2(ruta_kw, os.path.join(tmp, "lexer_keywords.syn"))
+        ast, diag = compilar_desde_texto(path, set(), dir_base=tmp)
         assert not diag.hay_errores(), f"S1 fallo compilando lexer.syn (A2.1): {diag}"
         return GeneradorC(ast).generar()
 

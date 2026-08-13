@@ -1596,3 +1596,100 @@ conservadas + 1,101 movidas = 1,511 originales).
 (`logs/build_stage1_r30.log`, `stage2_r30.log`, `stage3_r30.log`,
 `suite_hm_r30.log`, `regresion_s1_r30.log`).
 
+
+## 34. R32 — Modularización de `nucleo/lexer.syn` → `lexer_keywords.syn` (D-9(b), regla 13): C byte-idéntico (2026-08-13)
+
+**Manual referenciado:** Manual 2 §2.3 (diccionario multi-idioma es/en/fr/pt,
+L138-474); Manual 8 §8.2 (orden alfabético estricto del emisor C — base de la
+prueba de transparencia); Manual 9 §9.7 (determinismo S2==S3); AUDITORÍA regla 13
+(modularización) y deuda **D-9(b)** (canon: `nucleo/lexer.syn` 1,087 líneas → las
+4 tablas keyword es/en/fr/pt L135-470 → `lexer_keywords.syn`).
+
+### Objetivo
+
+Cerrar la deuda **D-9(b)** del diagnóstico FASE A (2026-08-07): `nucleo/lexer.syn`
+(1,104 líneas al momento) es el segundo módulo del compilador más grande tras el
+split R29 de `parser.syn`, y ~340 de sus líneas son **datos**: las 4 tablas de
+keywords multi-idioma (`keyword_token_es/en/fr/pt`). Se extraen a un módulo
+nuevo con split MECÁNICO (texto idéntico, cero cambios de lógica), mismo patrón
+que R29 (D-9(a)).
+
+### Split mecánico
+
+- **Extraído** a `nucleo/lexer_keywords.syn` (352 líneas: header 13 + bloque 339):
+  las 4 funciones `keyword_token_es/en/fr/pt` con sus comentarios AUDITORIA
+  (texto BYTE-IDENTICO al HEAD, verificado con diff de líneas-no-blancas: 336/336
+  iguales).
+- **Permanece en `lexer.syn`** (769 líneas, −335): el orquestador `keyword_token`
+  (delega por `IDIOMA_*`), constantes `T_*`/`IDIOMA_*`, `str_eq`, `es_digito`,
+  `es_letra`, `tokenizar` y el resto del lexer. Comentario de referencia al módulo
+  nuevo en lugar del bloque extraído.
+- **Registro en `principal.syn`**: `importar lexer_keywords` (después de
+  `importar lexer`) + entrada `"nucleo/lexer_keywords.syn"` en el array `_files[]`
+  (después de `"nucleo/lexer.syn"`) — paridad S1 (pipeline.py expande imports
+  inline) ↔ unity build nativo (recorre `_files[]`).
+
+### Prueba de transparencia (por qué el C no cambia)
+
+El emisor C ordena las funciones ALFABÉTICAMENTE por nombre (Manual 8 §8.2):
+nativo `recorrido.syn` (bubble sort de `_top_nodes`) y S1 `generator.py`
+(`sorted()` en `_emit_prototipos_funciones`/`_emit_cuerpos`). Por tanto mover
+funciones entre archivos NO altera el orden de emisión del C:
+
+- **C byte-idéntico**: las 8 funciones del lexer (`keyword_token`,
+  `keyword_token_es/en/fr/pt`, `es_digito`, `es_letra`) generadas por el S1 desde
+  HEAD vs desde el split son IDENTICAS byte a byte (verificado por extracción de
+  cuerpos C balanceados). El único cambio esperable en el C del compilador es el
+  array `_files[]` (una entrada más), igual que R29.
+
+### Validación
+
+| Criterio | Resultado |
+|---|---|
+| Bootstrap Etapa 1 (S1 → stage1) | ✅ EXIT:0 — `_lexer_keywords.c.o` compilado y linkeado; `principal.syn.json` regenerado |
+| Bootstrap Etapas 2/3 (self-hosted) | ✅ **S2==S3 sha256 `423008d8…`** (1,102,625 bytes) — Manual 9 §9.7 |
+| Transparencia del C | ✅ 8/8 funciones del lexer byte-idénticas HEAD vs split |
+| Paridad lexer (`native_lexer_paridad.py`) | ✅ **5/5** (harness adaptado: compila el par lexer.syn + lexer_keywords.syn con import inline + dir_base, patrón del unity build) |
+| Frontend embebido (`test_nativo_frontend_conmutacion.py`) | ✅ **3/3** (auto-compilación de principal.syn con stage1 nuevo) |
+| Probes multi-idioma con el compilador nuevo | ✅ es `si`→ok · en `if/true`→ok · fr `si/vrai`→ok · pt `se/verdadeiro`→ok (las 4 tablas movidas funcionan) |
+| Suite HM | ✅ **105/105** (misma que R30 — cero regresiones) |
+| Regresión S1 (unit + integration) | ✅ **530 passed, 9 skipped** |
+| Verificador de alineación | ✅ **0 brechas** (gate de contratos refinado: función MOVIDA ≠ función NUEVA) |
+
+### Harness de paridad (`native_lexer_paridad.py`)
+
+`_generar_c_nativo()` compilaba `lexer.syn` en solitario; tras el split, el
+orquestador `keyword_token` delega en funciones de otro módulo → gcc fallaba con
+`implicit declaration`. Adaptación técnica (no cambio de comportamiento): inyecta
+`importar lexer_keywords` y copia el módulo al tmp para que `compilar_desde_texto`
+lo resuelva por `dir_base` (mismo mecanismo del unity build nativo).
+
+### Verificador (R31+, gate regla 13 y contratos)
+
+- El gate de **contratos** (Manual 2 §12) marcaba las 4 funciones movidas como
+  "nuevas" (falso positivo de refactor mecánico). Refinado:
+  `_funciones_en_head()` enumera las funciones de `nucleo/*.syn` en HEAD
+  (`git ls-tree` + `git show`) y las clasifica como **MOVIDAS** (información, no
+  brecha) — el gate solo exige `requiere:`/`garantiza:` a funciones realmente
+  NUEVAS.
+- El gate de **modularización** (regla 13, ≤1200 líneas) queda satisfecho:
+  `lexer_keywords.syn` 352 líneas, `lexer.syn` 769.
+
+### Archivos
+
+`nucleo/lexer_keywords.syn` (NUEVO), `nucleo/lexer.syn` (−335),
+`nucleo/principal.syn` (import + `_files[]`), `nucleo/principal.syn.json`
+(regenerado por el build S1), `tests/native_lexer_paridad.py` (harness adaptado),
+`auditoria/verificar_alineacion.py` (gate contratos: funciones movidas), docs
+(este reporte §34, bitácora AUDITORIA fila R32, canon D-9(b) → CERRADA, README,
+`MEMORIA_PROYECTO.md`), logs (`logs/build_stage1_r32.log`,
+`build_stage1_r32b.log`, `stage2_r32.log`, `stage3_r32.log`,
+`suite_hm_r32.log`, `regresion_s1_r32.log`).
+
+### Cierre de deuda
+
+**D-9(b) CERRADA**: `nucleo/lexer.syn` modularizado en `lexer_keywords.syn`
+(texto idéntico, C byte-idéntico, bootstrap S2==S3, 105/105 HM, 530 S1). Queda
+de la D-9: (c) podar `emit_selfhost.py` (gen_parse/emitir_generar muertos) —
+siguiente ME de Fase 2; (d) `synapse_rt.c` Fase posterior; (e) registros R31
+cohesivos.
