@@ -605,6 +605,22 @@ Validación: probe `-> pos: entero` rc=0 (antes rc=8); bootstrap S2==S3
 ESTRUCTURA en `let` sin anotación (divergencia, con anotación funciona).
 Detalle: reporte §29.
 
+### R29 — Modularización de `nucleo/parser.syn`: C byte-idéntico (CERRADA)
+
+`nucleo/parser.syn` (1,511 líneas, 31 funciones top-level — diagnóstico FASE A)
+se dividió en 4 módulos con texto idéntico (regla 13): `parser.syn` (helpers +
+orquestador, 494), `parser_sentencias.syn` (control de flujo, 563),
+`parser_declaraciones.syn` (declaraciones top-level, 427) y `parser_canales.syn`
+(canales, 58); `principal.syn` registra los módulos (imports + `_files[]`). Como
+el emisor S1 ordena alfabéticamente (Manual 8 §8.2), el C generado quedó
+**byte-idéntico** (diff de solo 2 líneas: el array `_files[]` — prueba de
+transparencia, más fuerte que el bootstrap). Bootstrap S2==S3 `1f3be399…`,
+101/101 HM, S1 196 passed. Hallazgos registrados (regla 11): keyword
+`continuar` sin parser (`smoke_backend.syn` nunca compiló — fixture muerta) y
+codegen `para` nativo sin declarar la variable de bucle (`for (0LL; i < 3LL; )`;
+el dialecto nativo `mientras` es el del Manual 2 §2.2 L108, el C-style `;` del S1
+diverge). Detalle: reporte §32.
+
 ### R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (CERRADA)
 
 `let r = ok(ok(42))` (Manual 2 §4.2 L279-280) sin anotación, con solo la

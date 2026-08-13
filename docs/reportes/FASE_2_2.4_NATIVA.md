@@ -1458,3 +1458,57 @@ R20, que sigue intacta).
   `nucleo/README.md`, bitácora AUDITORIA, `MEMORIA_PROYECTO.md`). **HASH
   COMMIT: `7f8bdff`** — rama `feature/fase2-nativa-hm`.
 
+## 32. R29 — Modularización de `nucleo/parser.syn` (regla 13): C byte-idéntico (2026-08-12)
+
+### Diagnóstico (FASE A 2026-08-07 + regla 13)
+`nucleo/parser.syn` era el cajón de sastre del frontend nativo: 1,511 líneas y 31
+funciones top-level pese a existir `parser_base/parser_expr/parser_stmt/parser_constantes`.
+Precedente M (`orquestador.syn` → `funciones.syn`) validó el patrón: división
+mecánica con texto idéntico; el emisor S1 ordena funciones/estructuras
+alfabéticamente (Manual 8 §8.2) → el orden de módulos no afecta al C generado.
+
+### Split (texto idéntico, sin cambios de lógica)
+- **parser.syn** (queda): helpers L1-410 + `parsear`/`parsear_nativo` L1436-1511 → **494 líneas / 12 funciones**
+- **parser_sentencias.syn** (nuevo): si/mientras/para/retornar/lanzar/escuchar/asignacion/asm/inseguro/coincidir → **563 líneas**
+- **parser_declaraciones.syn** (nuevo): estructura_def/constante/importar_c/externo/declaracion_tipo/export → **427 líneas**
+- **parser_canales.syn** (nuevo): enviar/crear/recibir canal → **58 líneas**
+
+Registro en `principal.syn`: imports + `_files[]` (3 entradas insertadas entre
+`parser.syn` y `puente_ast.syn`, sed CRLF-safe). 1,025 líneas movidas (410
+conservadas + 1,101 movidas = 1,511 originales).
+
+### Validación (transparencia total)
+- **C byte-idéntico**: `synapse_unity.c` baseline `ad62151a…` vs reconstruido —
+  diff de SOLO 2 líneas (el array `_files[]` ampliado). Prueba más fuerte que el
+  bootstrap: ningún byte del compilador cambió.
+- **Bootstrap S2==S3**: sha256 `1f3be399…` idéntico.
+- **Suite HM**: 101/101 · **S1**: 196 passed.
+- Probe funcional: `para i = 0 mientras i < 3:` PARSEA correctamente en el parser
+  modularizado (rc=5 por bug pre-existente de codegen — hallazgo H-R29-2).
+
+### Hallazgos registrados (regla 11 — resolución asignada)
+- **H-R29-1 — keyword `continuar` sin parser**: el lexer reconoce `continuar`
+  (lexer.syn L410, `T_CONTINUE` generator.c L1668) pero NINGÚN parser lo consume
+  (ausente en HEAD y en todos los módulos). `tests/smoke_backend.syn` lo usa y
+  **nunca compiló** (S1 rc=1; ningún test lo referencia) → fixture muerta,
+  candidata a eliminación (regla 12). Resolución asignada: implementar
+  `parsear_continuar` o eliminar keyword + fixture.
+- **H-R29-2 — codegen `para` nativo no declara la variable de bucle**: emite
+  `for (0LL; i < 3LL; )` — identificador no declarado, gcc rc=5. El dialecto
+  nativo `para i = 0 mientras i < 3:` es el CORRECTO según **Manual 2, Sección
+  2.2, L108** (`bucle_para ::= "para" IDENTIFICADOR "=" expresion "mientras"
+  expresion ":"`); el dialecto C-style `;` del S1 **diverge del manual**.
+  Resolución asignada: declarar `<tipo> <var> = <init>` en el emisor NODO_PARA
+  (`nodos_flujo.syn` L103-104) + registrar la variable en `_G_fn_vars` (patrón
+  R28 del let) + revisar el dialecto del S1 contra el Manual.
+- **Fixtures muertas**: `tests/test_bucle_para.syn` (dialecto C-style + error de
+  tipos `escribir_linea(i)`) nunca compila en ninguno de los dos compiladores —
+  candidata a eliminación (regla 12) o corrección.
+
+### Archivos
+`nucleo/parser.syn` (reducido), `nucleo/parser_sentencias.syn` (nuevo),
+`nucleo/parser_declaraciones.syn` (nuevo), `nucleo/parser_canales.syn` (nuevo),
+`nucleo/principal.syn` (imports + `_files[]`), `nucleo/principal.syn.json`
+(regenerado), docs (este reporte §32, `nucleo/README.md`, bitácora AUDITORIA,
+`MEMORIA_PROYECTO.md`). **HASH COMMIT: `1511843`** — rama `feature/fase2-nativa-hm`.
+
