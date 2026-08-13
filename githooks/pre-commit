@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# ============================================================================
+# PRE-COMMIT HOOK — Gate de alineación con los manuales (auditoría R31)
+# ============================================================================
+# Bloquea el commit si el verificador mecánico detecta brechas:
+#   - Fila de bitácora sin reporte/hash o con hash inexistente en git
+#   - Reporte citado que no existe / sección §N ausente
+#   - Reporte con protocolo incompleto o HASH COMMIT pendiente
+#   - Deuda citada sin registrar en el canon (regla 11)
+#   - Scripts de depuración `_*.py` en la raíz (regla 12)
+#   - Módulos >1200 líneas sin registrar en D-9 (regla 13)
+#   - Funciones NUEVAS en nucleo/*.syn sin requiere/garantiza (Manual 2 §12)
+#
+# Instalación:  git config core.hooksPath githooks
+# Desinstalar:  git config --unset core.hooksPath
+# Saltar (NO recomendado — el CI lo bloquea igual): git commit --no-verify
+# ============================================================================
+
+RAIZ=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$RAIZ" ]; then
+    echo "pre-commit: no se pudo determinar la raíz del repo" >&2
+    exit 1
+fi
+
+VERIFICADOR="$RAIZ/auditoria/verificar_alineacion.py"
+if [ ! -f "$VERIFICADOR" ]; then
+    echo "pre-commit: verificador no encontrado ($VERIFICADOR)" >&2
+    exit 1
+fi
+
+# Resolver el intérprete Python (venv del repo, python, python3, py -3)
+PYTHON=""
+if [ -x "$RAIZ/.venv/Scripts/python.exe" ]; then
+    PYTHON="$RAIZ/.venv/Scripts/python.exe"
+elif [ -x "$RAIZ/.venv/bin/python" ]; then
+    PYTHON="$RAIZ/.venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v py >/dev/null 2>&1; then
+    PYTHON="py -3"
+else
+    echo "pre-commit: no se encontró un intérprete Python" >&2
+    exit 1
+fi
+
+echo "── Verificando alineación con los manuales (auditoria/verificar_alineacion.py) ──"
+
+if ! (cd "$RAIZ" && $PYTHON "$VERIFICADOR" --json > /tmp/auditoria_commit.json 2>&1); then
+    echo "❌ BREACHES DE ALINEACIÓN — commit bloqueado (regla 11)" >&2
+    echo "" >&2
+    (cd "$RAIZ" && $PYTHON "$VERIFICADOR") >&2
+    echo "" >&2
+    echo "Resuelve las brechas o regístralas con resolución asignada antes de commitear." >&2
+    echo "Para inspeccionar: python auditoria/verificar_alineacion.py" >&2
+    exit 1
+fi
+
+echo "✅ Alineación verificada: 0 brechas"
+exit 0

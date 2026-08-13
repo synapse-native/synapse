@@ -229,6 +229,40 @@ def verificar_bitacora(filas, hashes, reportes_texto, reportes_nombres):
 
 RE_REF_ARCHIVO = re.compile(r"`((?:nucleo|compilador|tests|examples|logs)/[^`]+)`")
 
+# ---------------------------------------------------------------------------
+# REGLA 11 — Registro canónico de deudas. Toda deuda debe estar registrada con
+# resolución asignada (estado PENDIENTE requiere fase/plan) y mencionada en el
+# doc de auditoría. Cualquier deuda nueva no registrada aquí es una brecha.
+# ---------------------------------------------------------------------------
+DEUDAS_CANONICAS = {
+    "D-F1": {"estado": "CERRADA", "resolucion": "F1.2c+F1.2d+F1.4 (keywords del Manual 2 §3)"},
+    "D-1":  {"estado": "PENDIENTE", "resolucion": "Fase 23 (modelo de memoria Syquex: arenas/RC/alcance)"},
+    "D-2":  {"estado": "CERRADA", "resolucion": "A5 monomorfización (Opción A del Arquitecto)"},
+    "D-3":  {"estado": "CERRADA", "resolucion": "A5 hoisting FIFO + = {0};"},
+    "D-4":  {"estado": "PENDIENTE", "resolucion": "Fase 5 (verificador_formal: requiere/garantiza → aserciones C)"},
+    "D-5":  {"estado": "CERRADA", "resolucion": "A5 cobertura generator.py 58%→95%"},
+    "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
+    "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
+    "D-8":  {"estado": "CERRADA", "resolucion": "sin acción (por diseño, Manual 2 §2: cadenas multi-línea)"},
+    "D-9":  {"estado": "PENDIENTE", "resolucion": "(a) parser.syn CERRADA en R29; (b) lexer_keywords.syn; (c) podar emit_selfhost.py; (d) synapse_rt.c Fase posterior"},
+    "H12":  {"estado": "PENDIENTE", "resolucion": "Fase 26 (opensyn stale)"},
+    "R3":   {"estado": "PENDIENTE", "resolucion": "codegen parámetros ADT (deuda D-2, expansión estática)"},
+}
+
+# ---------------------------------------------------------------------------
+# REGLA 13 — Convención ~1000 líneas/módulo. Los .syn del compilador (no
+# generator.syn, unity ensamblado) que superen LÍMITE_MODULO y no estén
+# registrados en D-9 son brechas (deuda sin registrar).
+# ---------------------------------------------------------------------------
+LIMITE_MODULO = 1200
+MODULOS_D9 = [
+    "nucleo/lexer.syn",            # D-9(b): extraer keywords
+    "nucleo/analizador_semantico.syn",  # D-9(e): cohesivo, vigilado
+    "compilador/generator/emit_selfhost.py",  # D-9(c): podar gen_parse/emitir_generar
+    "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado
+    "synapse_rt.c",                # D-9(d): Fase posterior
+]
+
 
 def limpiar_ref(ruta: str) -> str:
     """Quita sufijos de línea (:343), rangos (:176-178), (:535:0) y símbolos (::metodo)."""
@@ -282,6 +316,119 @@ def verificar_reportes(reportes_texto, paths_historicos):
     return brechas, info
 
 
+# ---------------------------------------------------------------------------
+# REGLA 11 — Deudas registradas con resolución asignada
+# ---------------------------------------------------------------------------
+# Solo deudas D-*: los hallazgos H* tienen su propia tabla en el doc (ya resueltos).
+RE_DEUDA_BITACORA = re.compile(r"\b(D-\d+|D-F1)\b")
+
+
+def verificar_deudas(texto_bitacora, texto_auditoria):
+    """Toda deuda canónica debe mencionarse en el doc; toda deuda pendiente debe
+    tener resolución asignada. Las deudas nuevas (en bitácora) sin registrar
+    en el canon son brechas (regla 11: nada queda sin seguimiento)."""
+    brechas, info = [], []
+    for deuda, datos in DEUDAS_CANONICAS.items():
+        if deuda not in texto_auditoria and deuda not in texto_bitacora:
+            brechas.append(f"D[{deuda}] deuda registrada en el canon pero ausente del doc de auditoría")
+            continue
+        if datos["estado"] == "PENDIENTE" and not datos["resolucion"]:
+            brechas.append(f"D[{deuda}] deuda PENDIENTE sin resolución asignada (regla 11)")
+        if datos["estado"] == "PENDIENTE":
+            info.append(f"D[{deuda}] PENDIENTE — resolución: {datos['resolucion']}")
+    # Deudas mencionadas en la bitácora que no están en el canon
+    encontradas = set(RE_DEUDA_BITACORA.findall(texto_bitacora))
+    no_registradas = encontradas - set(DEUDAS_CANONICAS)
+    for d in sorted(no_registradas):
+        brechas.append(f"D[{d}] deuda citada en la bitácora SIN registro en el canon (regla 11)")
+    return brechas, info
+
+
+# ---------------------------------------------------------------------------
+# REGLA 12 — Código muerto: scripts de parche/depuración en la raíz
+# ---------------------------------------------------------------------------
+def verificar_codigo_muerto():
+    """Scripts de depuración `_*.py` en la raíz = código muerto (regla 12).
+    El CI ya bloquea `_fix_*.py`; este gate amplía a cualquier `_*.py` raíz."""
+    brechas = []
+    for p in sorted(RAIZ.glob("_*.py")):
+        brechas.append(f"R12[{p.name}] script de depuración en la raíz — eliminar (regla 12)")
+    return brechas
+
+
+# ---------------------------------------------------------------------------
+# REGLA 13 — Modularización: módulos del compilador >1200 líneas sin D-9
+# ---------------------------------------------------------------------------
+def verificar_modularizacion():
+    """Archivos .syn del compilador >1200 líneas no registrados en D-9
+    (o archivos .py del generador >1200) = deuda sin registrar (regla 13).
+    generator.syn es unity ensamblado (exceptuado)."""
+    brechas, info = [], []
+    candidatos = sorted(RAIZ.glob("nucleo/*.syn")) + sorted(RAIZ.glob("compilador/generator/*.py"))
+    for p in candidatos:
+        if p.name == "generator.syn":
+            continue
+        try:
+            n = sum(1 for _ in p.open(encoding="utf-8", errors="replace"))
+        except OSError:
+            continue
+        if n > LIMITE_MODULO:
+            ref = str(p.relative_to(RAIZ)).replace("\\", "/")
+            if ref in MODULOS_D9:
+                info.append(f"R13[{ref}] {n} líneas — registrado en D-9 (resolución asignada)")
+            else:
+                brechas.append(
+                    f"R13[{ref}] {n} líneas > {LIMITE_MODULO} sin registrar en D-9 (regla 13)"
+                )
+    return brechas, info
+
+
+# ---------------------------------------------------------------------------
+# Manual 2 §12 — Toda función pública NUEVA debe declarar requiere/garantiza
+# ---------------------------------------------------------------------------
+def verificar_contratos_nuevos():
+    """Funciones añadidas o modificadas en el working tree vs HEAD en nucleo/*.syn
+    deben tener bloques requiere/garantiza (Manual 2 §12; D-4 registra las
+    306 existentes sin contrato hasta Fase 5 — el gate solo cubre código NUEVO)."""
+    out = subprocess.run(
+        ["git", "-C", str(RAIZ), "diff", "--unified=40", "HEAD", "--", "nucleo/*.syn"],
+        capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        return ["No se pudo calcular el diff de nucleo/*.syn vs HEAD"], []
+    diff = out.stdout
+    brechas, info = [], []
+    # Por archivo del diff: recoger las líneas + de cada archivo
+    lineas_por_archivo = {}
+    archivo_actual = None
+    for linea in diff.splitlines():
+        m = re.match(r"^\+\+\+ b/(.*\.syn)$", linea)
+        if m:
+            archivo_actual = m.group(1)
+            lineas_por_archivo.setdefault(archivo_actual, [])
+            continue
+        if archivo_actual is None or linea.startswith(("--- ", "diff --git", "index ")):
+            continue
+        if linea.startswith("+") and not linea.startswith("+++"):
+            lineas_por_archivo[archivo_actual].append(linea[1:])
+    # Para cada función nueva (definida en líneas +), buscar requiere/garantiza
+    # en las siguientes líneas + (hasta 25 líneas, dentro de su cuerpo)
+    for archivo, lineas in lineas_por_archivo.items():
+        for k, linea in enumerate(lineas):
+            m = re.match(r"^funcion\s+([A-Za-z_][A-Za-z0-9_]*)", linea)
+            if not m:
+                continue
+            nombre = m.group(1)
+            ventana = "\n".join(lineas[k + 1:k + 26])
+            if "requiere:" in ventana or "garantiza:" in ventana:
+                info.append(f"CTR[{archivo}] función nueva '{nombre}' con requiere/garantiza ✓")
+            else:
+                brechas.append(
+                    f"CTR[{archivo}] función nueva '{nombre}' sin requiere/garantiza (Manual 2 §12)"
+                )
+    return brechas, info
+
+
 def main():
     if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -307,6 +454,21 @@ def main():
     resultado["info"].extend(i)
 
     b, i = verificar_reportes(reportes_texto, paths_historicos)
+    resultado["brechas"].extend(b)
+    resultado["info"].extend(i)
+
+    # REGLAS 11/12/13 + Manual 2 §12 (contratos en funciones nuevas)
+    b, i = verificar_deudas(texto_bitacora, BITACORA.read_text(encoding="utf-8"))
+    resultado["brechas"].extend(b)
+    resultado["info"].extend(i)
+
+    resultado["brechas"].extend(verificar_codigo_muerto())
+
+    b, i = verificar_modularizacion()
+    resultado["brechas"].extend(b)
+    resultado["info"].extend(i)
+
+    b, i = verificar_contratos_nuevos()
     resultado["brechas"].extend(b)
     resultado["info"].extend(i)
 
