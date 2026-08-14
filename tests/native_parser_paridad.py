@@ -88,9 +88,15 @@ _ARCHIVOS_NATIVOS = [
     "parser_constantes.syn",
     "parser_base.syn",
     "lexer.syn",
+    "lexer_keywords.syn",  # R32 (D-9(b)): tablas keyword es/en/fr/pt extraidas
     "parser_expr.syn",
     "parser_stmt.syn",
     "parser.syn",
+    # R29 (D-9(a)): parser.syn se modularizo en 4 archivos — el orquestador
+    # (parser.syn) delega a estos tres; el harness los concatena todos.
+    "parser_sentencias.syn",
+    "parser_declaraciones.syn",
+    "parser_canales.syn",
 ]
 
 _INCLUDES = (

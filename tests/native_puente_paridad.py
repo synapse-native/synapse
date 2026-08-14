@@ -51,10 +51,16 @@ _ARCHIVOS_PUENTE = [
     "parser_constantes.syn",
     "parser_base.syn",
     "lexer.syn",
+    "lexer_keywords.syn",  # R32 (D-9(b)): tablas keyword es/en/fr/pt extraidas
     "ast_nodes.syn",
     "parser_expr.syn",
     "parser_stmt.syn",
     "parser.syn",
+    # R29 (D-9(a)): parser.syn se modularizo en 4 archivos — el orquestador
+    # (parser.syn) delega a estos tres; el harness los concatena todos.
+    "parser_sentencias.syn",
+    "parser_declaraciones.syn",
+    "parser_canales.syn",
     "puente_ast.syn",
 ]
 
@@ -157,7 +163,7 @@ static void _ser_nodo(struct Nodo* n) {
     if (!strcmp(_tg, "DeclaracionTipo")) { struct DeclaracionTipo* p = (struct DeclaracionTipo*)n; printf("(DeclaracionTipo "); _ser_s(p->nombre); printf(" tps="); _ser_list(p->parametros_tipo); printf(" base="); _ser_s(p->tipo_base); printf(" ctors="); _ser_list(p->constructores); printf(")"); return; }
     if (!strcmp(_tg, "ConstructorTipo")) { struct ConstructorTipo* p = (struct ConstructorTipo*)n; printf("(ConstructorTipo "); _ser_s(p->nombre); printf(" "); _ser_list(p->tipos); printf(")"); return; }
     if (!strcmp(_tg, "ExprTensor")) { struct ExprTensor* p = (struct ExprTensor*)n; printf("(ExprTensor "); _ser_nodo(p->filas); printf(" "); _ser_nodo(p->columnas); printf(")"); return; }
-    if (!strcmp(_tg, "SentenciaPara")) { struct SentenciaPara* p = (struct SentenciaPara*)n; printf("(SentenciaPara %d %d ", p->linea, p->columna); _ser_nodo(p->inicializacion); printf(" "); _ser_nodo(p->condicion); printf(" inc="); _ser_nodo(p->incremento); printf(" cpo="); _ser_nodo(p->cuerpo); printf(")"); return; }
+    if (!strcmp(_tg, "SentenciaPara")) { struct SentenciaPara* p = (struct SentenciaPara*)n; printf("(SentenciaPara %d %d ", p->linea, p->columna); _ser_nodo(p->inicializacion); printf(" "); _ser_nodo(p->condicion); printf(" inc="); _ser_nodo(p->incremento); printf(" cpo="); _ser_list(p->cuerpo); printf(")"); return; }
     printf("(DESCONOCIDO %s)", _tg);
 }
 static void _ser_programa(struct Programa* p) {

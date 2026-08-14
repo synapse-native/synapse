@@ -658,6 +658,22 @@ pide `requiere:`/`garantiza:` a las movidas). Bootstrap S2==S3 `423008d8…`,
 **105/105 HM**, S1 **530 passed**, probes multi-idioma es/en/fr/pt OK. Detalle:
 reporte §34.
 
+### R33 — Poda de `compilador/generator/emit_selfhost.py`: `emitir_generar` muerto eliminado (CERRADA, D-9(c))
+
+Cierre de la deuda D-9(c) del diagnóstico FASE A (regla 12): el generador
+auto-hospedado antiguo del bootstrap S1 (`emitir_generar`, L1106-1487, ~380
+líneas) quedó MUERTO tras A4 (0 callers en todo el repo; el compilador nativo
+tiene su propio `gen_emitir_generar_c`). Poda mecánica: 1487 → 1105 líneas
+(CRLF preservado), texto de las funciones vivas intacto. Reevaluación honesta:
+`gen_parse` NO era muerto — `emitir_parsear` (oráculo `_P_*` de los harnesses
+de paridad) lo llama; se conservó. Harnesses adaptados (regresiones NO
+detectadas de R29/R30/R32): `native_puente_paridad.py` y
+`native_parser_paridad.py` ahora concatenan los módulos `lexer_keywords.syn`
+(R32) y `parser_sentencias/declaraciones/canales.syn` (R29) que sus unity
+builds no incluían; `_ser_nodo` serializa `SentenciaPara.cuerpo` como
+`ListaNodo` (alineado al Manual 2 §2.2 L108, cambio de R30). Paridad frontend
+**28/28 passed** en los 4 harnesses. Detalle: reporte §35.
+
 ### R28 — Instancia ADT anidada en ctors sin anotación: derivación fixpoint (CERRADA)
 
 `let r = ok(ok(42))` (Manual 2 §4.2 L279-280) sin anotación, con solo la

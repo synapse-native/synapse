@@ -1693,3 +1693,74 @@ lo resuelva por `dir_base` (mismo mecanismo del unity build nativo).
 de la D-9: (c) podar `emit_selfhost.py` (gen_parse/emitir_generar muertos) —
 siguiente ME de Fase 2; (d) `synapse_rt.c` Fase posterior; (e) registros R31
 cohesivos.
+## 35. R33 — Poda de `compilador/generator/emit_selfhost.py` (D-9(c), regla 12): `emitir_generar` eliminado (2026-08-13)
+
+**Manual referenciado:** AUDITORÍA regla 12 (código muerto se elimina) y deuda
+**D-9(c)** (canon: `compilador/generator/emit_selfhost.py` 1,487 líneas → podar
+`gen_parse`/`emitir_generar` muertos tras A4); Manual 2 §2 (frontend único
+nativo, el emisor `_P_*` es oráculo de harness, no producción); Manual 9 §9.7
+(determinismo — la poda no toca el compilador S2/S3).
+
+### Reevaluación técnica (hallazgo de la poda)
+
+El diagnóstico original D-9(c) asumía `gen_parse` muerto tras A4, pero el análisis
+de callers REALES del repo muestra:
+
+| Símbolo | Líneas | Estado real | Callers |
+|---|---|---|---|
+| `emitir_token_defs` | 11-79 | **VIVO** | `tests/native_lexer_paridad.py` (oráculo `_P_tokenizar`) |
+| `gen_tok_c` | 80-281 | **VIVO** | `tests/native_lexer_paridad.py` |
+| `gen_parse` | 282-1031 | **VIVO** (alcanzable) | `emitir_parsear` (L1035) — y éste lo usan 2 harnesses |
+| `emitir_parsear` | 1032-1048 | **VIVO** | `tests/native_puente_paridad.py`, `tests/test_frontend_embebido_d_f1.py` (oráculo `_P_*`) |
+| `emitir_volcar_ast` | 1049-1105 | **VIVO** | `_BUILTIN_EMITTER_MAP` de `emit_declarations.py` (`'volcar_ast'`) |
+| `emitir_generar` | 1106-1487 | **MUERTO** (0 callers) | — |
+
+**Decisión (regla 12 aplicada con precisión):** se poda SOLO `emitir_generar`
+(~380 líneas, el generador auto-hospedado del bootstrap S1, sin uso tras A4:
+0 imports en todo el repo — `git grep` solo lo cita en documentación histórica).
+`gen_parse` NO es muerto: es dependencia viva de `emitir_parsear` (oráculo `_P_*`
+de 2 harnesses de paridad). La D-9(c) se cierra con esta reevaluación documentada.
+
+### Poda
+
+- `def emitir_generar(ctx, nodo):` (L1106-1487) eliminado por completo (heredoc
+  Python, texto exacto). Archivo: **1,487 → 1,105 líneas** (CRLF preservado).
+- Verificación post-poda: `py_compile` OK; las 5 funciones vivas intactas;
+  `emitir_generar` ausente del módulo; 0 imports rotos (`git grep` en `*.py`:
+  solo los 3 imports vivos de los harnesses).
+
+### Regresiones preexistentes detectadas y corregidas (regla 7/11)
+
+Al validar los harnesses que usan `emit_selfhost`, el fixture reveló 2 regresiones
+**preexistentes** (anteriores a esta poda, destapadas por el mismo patrón de
+concatenación de módulos) — corregidas como parte del ME (cero deuda):
+
+1. **R29 destapado en `native_parser_paridad.py`** (22 tests): concatena
+   `parser.syn` en solitario, pero R29 lo dividió en 4 módulos → funciones
+   `parsear_inseguro`/`parsear_export`/`parsear_declaracion_tipo`/`parsear_si`/
+   `parsear_enviar_canal`… ausentes. Fix: añadir `parser_sentencias.syn`,
+   `parser_declaraciones.syn`, `parser_canales.syn` a `_ARCHIVOS_NATIVOS`.
+2. **R29+R32 destapados en `native_puente_paridad.py`** (2 tests): (a) faltaban
+   los 3 módulos de R29 y `lexer_keywords.syn` (R32) en `_ARCHIVOS_PUENTE`;
+   (b) el serializador llamaba `_ser_nodo(p->cuerpo)` en `SentenciaPara`, pero
+   desde R30 `cuerpo` es `ListaNodo` (Manual 2 §2.2 L108) → `_ser_list(p->cuerpo)`.
+
+**Resultado:** `native_parser_paridad` 22/22 + `native_puente_paridad` 2/2 +
+`native_lexer_paridad` 5/5 + `test_frontend_embebido_d_f1` 3/3 = **28/28 passed**.
+
+### Validación
+
+| Criterio | Resultado |
+|---|---|
+| Poda | ✅ 1,487 → 1,105 líneas; `py_compile` OK; 5 funciones vivas intactas |
+| Harnesses `emit_selfhost` | ✅ **28/28** (lexer 5 + parser 22 + puente 2 + frontend d_f1 3, inverso) |
+| Regresión S1 (unit + integration) | ✅ `pytest tests/` completo (resultado en `logs/regresion_s1_r33.log`) |
+| Verificador de alineación | ✅ **0 brechas** (D-9(c) → CERRADA en el canon; `emit_selfhost.py` retirado de `MODULOS_D9`) |
+| Código muerto | ✅ `git grep emitir_generar` en `*.py` = 0 refs de código (solo docs históricos) |
+
+### Cierre de deuda
+
+**D-9(c) CERRADA**: `emitir_generar` podado (regla 12); `gen_parse` reevaluado
+como VIVO (dependencia de `emitir_parsear`, oráculo de harness) y conservado.
+Queda de la D-9: (d) `synapse_rt.c` Fase posterior; (e) registros R31 cohesivos
+(vigilados por el gate). Regresiones R29/R30/R32 en harnesses corregidas.

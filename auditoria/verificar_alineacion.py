@@ -244,7 +244,7 @@ DEUDAS_CANONICAS = {
     "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
     "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
     "D-8":  {"estado": "CERRADA", "resolucion": "sin acción (por diseño, Manual 2 §2: cadenas multi-línea)"},
-    "D-9":  {"estado": "PENDIENTE", "resolucion": "(a) parser.syn CERRADA en R29; (b) lexer_keywords.syn; (c) podar emit_selfhost.py; (d) synapse_rt.c Fase posterior"},
+    "D-9":  {"estado": "PENDIENTE", "resolucion": "(a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c Fase posterior"},
     "H12":  {"estado": "PENDIENTE", "resolucion": "Fase 26 (opensyn stale)"},
     "R3":   {"estado": "PENDIENTE", "resolucion": "codegen parámetros ADT (deuda D-2, expansión estática)"},
 }
@@ -256,9 +256,8 @@ DEUDAS_CANONICAS = {
 # ---------------------------------------------------------------------------
 LIMITE_MODULO = 1200
 MODULOS_D9 = [
-    "nucleo/lexer.syn",            # D-9(b): extraer keywords
+    "nucleo/lexer.syn",            # D-9(b): keywords extraidos en R32 (módulo 769 líneas, <límite)
     "nucleo/analizador_semantico.syn",  # D-9(e): cohesivo, vigilado
-    "compilador/generator/emit_selfhost.py",  # D-9(c): podar gen_parse/emitir_generar
     "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado
     "synapse_rt.c",                # D-9(d): Fase posterior
 ]
