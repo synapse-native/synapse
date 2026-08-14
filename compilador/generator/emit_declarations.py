@@ -37,6 +37,12 @@ from .emit_selfhost import (
 #   - volcar_ast: utilidad de volcado (no es el espejo; se mantiene).
 # I/O y tensor functions están en synapse_rt.o y se linkean.
 # (No incluirlas aquí causa multiple-definition linker errors)
+def _visitar_stmt(ctx, nodo):
+    """Import tardío de _visitar para evitar ciclo."""
+    from . import visitar as _v
+    return _v(ctx, nodo)
+
+
 def _emitir_parsear_nativo(ctx: GeneratorContext, nodo: DefinicionFuncion):
     """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo).
     R5 (F2-2.4c): si el parser nativo marca `_pe.hay_error`, imprime el
@@ -664,31 +670,80 @@ def visitar_recuperar(ctx: GeneratorContext, nodo: SentenciaRecuperar):
 
 
 def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
-    """Genera código C para listen/escuchar (canal listener).
-    Crea una función listener en background y lanza un hilo.
+    """Genera C para `escuchar` (Manual 2 L113 / Manual 5 §4.2).
+
+    F3-7: gramatica alineada al manual — `escuchar canal:` + INDENT bloque
+    DEDENT. La forma antigua `escuchar canal -> callback` NO existe en el
+    manual y se elimina. Semantica (Manual 5 §4.1): "procesa mensajes de un
+    canal de forma continua, ejecutando un bloque por cada mensaje recibido
+    hasta que el canal se cierra". El bloque recibe con `canal ->` (que emite
+    canal_recibir(_canal)); el cierre lo detecta canal_recibir devolviendo
+    NULL y el bloque lo maneja (p. ej. `si v == nulo: romper`).
+    El listener se lanza como hilo (synapse_lanzar_hilo) pasando el canal por
+    arg (la variable local del contenedor NO es visible en la funcion listener).
     """
-    canal = expr_a_c(ctx, nodo.canal)
-    respuesta = expr_a_c(ctx, nodo.respuesta)
     ctx._contador_listener += 1
     listener_name = f"_listener_{ctx._contador_listener}"
-    
-    # Build complete listener function as single string
+    canal = expr_a_c(ctx, nodo.canal)
+
+    # Generar el cuerpo del bloque en un buffer temporal con el modo escuchar
+    # activo: dentro del bloque, ExprRecibirCanal del canal escuchado emite
+    # `canal_recibir(_canal)` (no la variable local del contenedor).
+    prev_lineas = ctx.lineas
+    prev_modo = getattr(ctx, '_escuchar_modo', None)
+    ctx.lineas = []
+    ctx._escuchar_modo = True
+    try:
+        for s in nodo.cuerpo:
+            _visitar_stmt(ctx, s)
+    finally:
+        ctx._escuchar_modo = prev_modo
+    cuerpo_lines = ctx.lineas
+    ctx.lineas = prev_lineas
+
+    cuerpo_c = "\n".join(cuerpo_lines) if cuerpo_lines else "        (void)0;"
+
+    # F3-7: el listener es una funcion C separada — las variables asignadas en
+    # el bloque del `escuchar` no son visibles alli (el hoisting del S1 las
+    # declara en la funcion contenedora). Se declaran al inicio del listener
+    # con su tipo inferido (patron _col_vars_local de generator.py).
+    decls = []
+    def _scan_body(stmts):
+        for st in stmts:
+            if isinstance(st, DeclaracionVariable):
+                if st.expresion:
+                    t_syn = tipo_de_expr(ctx, st.expresion)
+                elif st.tipo:
+                    t_syn = st.tipo
+                else:
+                    continue
+                decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+            elif isinstance(st, AsignacionVariable):
+                if st.nombre and not any(st.nombre in d for d in decls):
+                    t_syn = tipo_de_expr(ctx, st.expresion)
+                    decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+            if hasattr(st, 'cuerpo') and isinstance(getattr(st, 'cuerpo'), list):
+                _scan_body(st.cuerpo)
+    _scan_body(nodo.cuerpo)
+    decl_c = "\n".join(decls)
+    if decl_c:
+        decl_c += "\n"
+
+    decl_c = decl_c.rstrip('\n')
+    body_parts = [f"    while (1) {{", cuerpo_c, f"    }}"]
+    if decl_c:
+        body_parts = [decl_c] + body_parts
     listener_lines = [
         f"void* {listener_name}(void* arg) {{",
         f"    (void)arg;",
-        f"    CanalConcurrencia* _canal = (CanalConcurrencia*){canal};",
-        f"    while (1) {{",
-        f"        void* _msg = canal_recibir(_canal);",
-        f"        if (!_msg) break;",
-        f"        {respuesta}(_msg);",
-        f"    }}",
+        f"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;",
+    ] + body_parts + [
         f"    return NULL;",
         f"}}",
     ]
     ctx._listener_funciones.append("\n".join(listener_lines))
-    
-    # Spawn listener thread inline
+
     ctx.write_line(
         f"synapse_lanzar_hilo("
-        f"(void*(*)(void*)){listener_name}, NULL);"
+        f"(void*(*)(void*)){listener_name}, (void*)({canal}));"
     )

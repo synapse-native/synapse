@@ -693,6 +693,62 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"    continue;\");")
 
 // ----------------------------------------------------------
+// gen_visitar_escuchar  (F3-7 - Manual 2 L113 / Manual 5 S4.2)
+// ----------------------------------------------------------
+funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    requiere:
+        stmt != nulo
+    garantiza:
+        _G_listeners_count >= 1
+    inseguro:
+        asm("struct SentenciaEscuchar* _se = (struct SentenciaEscuchar*)stmt;")
+        asm("if (!_se) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaEscuchar\");")
+        asm("extern int _G_listeners_count;")
+        asm("_G_listeners_count++;")
+        asm("char _lname[64]; snprintf(_lname, 64, \"_listener_%d\", _G_listeners_count);")
+        asm("char _lcan[1024]; _lcan[0] = 0;")
+        asm("if (_se->canal) { _oo_expr_a_c(est, _se->canal, _lcan, 1024); }")
+        asm("// Variables del cuerpo del bloque: el listener es una funcion C separada,")
+        asm("// el hoisting de la funcion contenedora NO las ve (paridad S1).")
+        asm("extern void _G_native_escuchar_vars(void* n, void* out);")
+        asm("char _lvars[4096]; _lvars[0] = 0;")
+        asm("{ struct ListaNodo* _lv = (struct ListaNodo*)_se->cuerpo; while (_lv) { _G_native_escuchar_vars(_lv->cabeza, _lvars); _lv = _lv->cola; } }")
+        asm("// Generar el cuerpo del bloque en el buffer temporal con el modo")
+        asm("// escuchar activo: dentro del bloque, ExprRecibirCanal emite")
+        asm("// canal_recibir(_canal) (la variable del listener, no la local).")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern int _G_listener_modo;")
+        asm("int _save_pos = _G_emit_pos;")
+        asm("int _prev_modo = _G_listener_modo; _G_listener_modo = 1;")
+        asm("{ struct ListaNodo* _lc = (struct ListaNodo*)_se->cuerpo;")
+        asm("    while (_lc) { struct Nodo* _ls = _lc->cabeza; if (_ls) { gen_visitar_stmt_generico(est, _ls); } _lc = _lc->cola; } }")
+        asm("_G_listener_modo = _prev_modo;")
+        asm("int _llen = _G_emit_pos - _save_pos;")
+        asm("char _lcuerpo[16384]; if (_llen > 16383) _llen = 16383;")
+        asm("memcpy(_lcuerpo, _G_emit_buf + _save_pos, _llen); _lcuerpo[_llen] = 0;")
+        asm("_G_emit_pos = _save_pos;")
+        asm("// Construir la funcion listener: void* _listener_N(void* arg) {")
+        asm("//     (void)arg; CanalConcurrencia* _canal = (CanalConcurrencia*)arg;")
+        asm("//     <vars> while (1) { <cuerpo> } return NULL; }")
+        asm("char _lfn[16384]; _lfn[0] = 0;")
+        asm("strcat(_lfn, \"void* \"); strcat(_lfn, _lname); strcat(_lfn, \"(void* arg) {\n\");")
+        asm("strcat(_lfn, \"    (void)arg;\n\");")
+        asm("strcat(_lfn, \"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;\n\");")
+        asm("if (_lvars[0]) { strcat(_lfn, _lvars); }")
+        asm("strcat(_lfn, \"    while (1) {\n\");")
+        asm("if (_lcuerpo[0]) { strcat(_lfn, _lcuerpo); } else { strcat(_lfn, \"        (void)0;\n\"); }")
+        asm("strcat(_lfn, \"    }\n\");")
+        asm("strcat(_lfn, \"    return NULL;\n\");")
+        asm("strcat(_lfn, \"}\n\");")
+        asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
+        asm("if (_G_listeners_count < 8) { strncpy(_G_listeners[_G_listeners_count], _lfn, 16383); _G_listeners[_G_listeners_count][16383] = 0; _G_listeners_count++; }")
+        asm("// Emitir el lanzamiento del hilo en el punto del escuchar")
+        asm("char _lcall[1200];")
+        asm("snprintf(_lcall, 1200, \"    synapse_lanzar_hilo((void*(*)(void*))%s, (void*)(%s));\", _lname, _lcan);")
+        asm("gen_emitir_str(est, _lcall);")
+
+// ----------------------------------------------------------
 // gen_visitar_stmt_generico - Dispatcher principal
 // ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
@@ -763,7 +819,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        strcat(_lzb, \");\");")
         asm("    }")
         asm("    gen_emitir_str(est, _lzb);")
-        asm("} else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaEscuchar\")) { gen_visitar_escuchar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")

@@ -593,12 +593,13 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, SentenciaExpr):
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):
+            # F3-7: gramatica alineada al Manual 2 L113 (`escuchar canal:` +
+            # INDENT bloque DEDENT). La forma antigua `escuchar canal ->
+            # callback` NO existe en el manual; el bloque se analiza como
+            # cuerpo de sentencia (puede contener `canal ->` para recibir).
             self._inferir_tipo(nodo.canal) if nodo.canal else None
-            if nodo.respuesta and isinstance(nodo.respuesta, LlamadaFuncion):
-                sim = self.tabla.buscar(nodo.respuesta.nombre)
-                if sim and isinstance(sim.nodo, DefinicionFuncion):
-                    pass
-                self._inferir_tipo(nodo.respuesta)
+            for s in nodo.cuerpo:
+                self._analizar_sentencia(s)
         elif isinstance(nodo, SentenciaRecuperar):
             self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
             self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None

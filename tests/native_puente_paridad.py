@@ -150,7 +150,7 @@ static void _ser_nodo(struct Nodo* n) {
     if (!strcmp(_tg, "SentenciaSiguiente")) { printf("(SentenciaSiguiente)"); return; }
     if (!strcmp(_tg, "SentenciaExpr")) { struct SentenciaExpr* p = (struct SentenciaExpr*)n; printf("(SentenciaExpr "); _ser_nodo(p->expr); printf(")"); return; }
     if (!strcmp(_tg, "SentenciaLanzar")) { struct SentenciaLanzar* p = (struct SentenciaLanzar*)n; printf("(SentenciaLanzar "); _ser_nodo(p->llamada); printf(")"); return; }
-    if (!strcmp(_tg, "SentenciaEscuchar")) { struct SentenciaEscuchar* p = (struct SentenciaEscuchar*)n; printf("(SentenciaEscuchar "); _ser_nodo(p->canal); printf(" "); _ser_nodo(p->respuesta); printf(")"); return; }
+    if (!strcmp(_tg, "SentenciaEscuchar")) { struct SentenciaEscuchar* p = (struct SentenciaEscuchar*)n; printf("(SentenciaEscuchar "); _ser_nodo(p->canal); printf(" cpo="); _ser_list(p->cuerpo); printf(")"); return; }
     if (!strcmp(_tg, "SentenciaEnviarCanal")) { struct SentenciaEnviarCanal* p = (struct SentenciaEnviarCanal*)n; printf("(SentenciaEnviarCanal "); _ser_nodo(p->canal); printf(" "); _ser_nodo(p->valor); printf(")"); return; }
     if (!strcmp(_tg, "ExprRecibirCanal")) { struct ExprRecibirCanal* p = (struct ExprRecibirCanal*)n; printf("(ExprRecibirCanal "); _ser_nodo(p->canal); printf(")"); return; }
     if (!strcmp(_tg, "ExprCrearCanal")) { struct ExprCrearCanal* p = (struct ExprCrearCanal*)n; printf("(ExprCrearCanal "); _ser_s(p->tipo_contenido); printf(" "); _ser_nodo(p->capacidad); printf(")"); return; }
@@ -387,6 +387,12 @@ _CASOS = [
     ("punteros",
      "#lang: es\n\nfuncion f() -> nulo:\n"
      "    let p = &mut a\n    let q = *p\n    retornar\n"),
+    ("escuchar",
+     "#lang: es\n\nfuncion f(ch: entero) -> nulo:\n"
+     "    escuchar ch:\n"
+     "        let mensaje = 42\n"
+     "        log(mensaje)\n"
+     "    retornar\n"),
 ]
 
 

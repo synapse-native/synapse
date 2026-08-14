@@ -68,8 +68,9 @@ def imprimir_ast(nodo: Nodo, nivel: int = 0):
     elif isinstance(nodo, SentenciaEscuchar):
         print(f"{prefijo}Escuchar (Canal):")
         imprimir_ast(nodo.canal, nivel + 1)
-        print(f"{prefijo}  -> Respuesta:")
-        imprimir_ast(nodo.respuesta, nivel + 1)
+        print(f"{prefijo}  -> Cuerpo:")
+        for st in nodo.cuerpo:
+            imprimir_ast(st, nivel + 1)
 
     elif isinstance(nodo, SentenciaRomper):
         print(f"{prefijo}Romper")
@@ -330,8 +331,9 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
 
         elif isinstance(nodo, SentenciaEscuchar):
             canal = _render_expr(nodo.canal, dicc_inv)
-            resp = _render_expr(nodo.respuesta, dicc_inv)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.ESCUCHAR, dicc_inv)} {canal} -> {resp}")
+            lines.append(f"{prefijo}{_token_a_palabra(TokenID.ESCUCHAR, dicc_inv)} {canal}:")
+            for s in nodo.cuerpo:
+                lines.extend(_render_nodo(s, indent + 1))
 
         elif isinstance(nodo, SentenciaExpr):
             expr_str = _render_expr(nodo.expr, dicc_inv)

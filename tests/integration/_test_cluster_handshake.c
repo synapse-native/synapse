@@ -116,6 +116,10 @@ int _G_fn_var_auto[2048];
 char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 int _G_fn_ptr_vars_count;
+char _G_listeners[8][16384];
+int _G_listeners_count;
+int _G_listener_modo;
+
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
 int _G_tipo_aliases_count;
@@ -540,8 +544,8 @@ int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    return principal();
+    int64_t _rc = principal();
     synapse_esperar_hilos();
     pool_destroy();
-    return 0;
+    return _rc;
 }

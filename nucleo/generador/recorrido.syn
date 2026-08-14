@@ -115,6 +115,31 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("        gen_visitar_top_level(est, _tdn);")
         asm("    }")
         asm("}")
+        asm("// F3-7: pre-scan de `escuchar` — emitir los externs de los listeners")
+        asm("// ANTES de los cuerpos de funciones (paridad S1 _emit_cuerpos: antes se")
+        asm("// emitian tras ellas y gcc fallaba con '_listener_N undeclared' al usarse")
+        asm("// en synapse_lanzar_hilo dentro de principal). El conteo replica el orden")
+        asm("// de emision (no-funciones en parse order + funciones alfabeticas) para")
+        asm("// que la numeracion _listener_1..N coincida con est->contador_listener.")
+        asm("extern int64_t _G_native_contar_escuchar(void* n);")
+        asm("int _esc_total = 0;")
+        asm("for (int _esci = 0; _esci < _top_count; _esci++) {")
+        asm("    struct Nodo* _escn = _top_nodes[_esci];")
+        asm("    if (!_escn || !_escn->tipo.datos) continue;")
+        asm("    if (strcmp(_escn->tipo.datos, \"DefinicionFuncion\") == 0) continue;")
+        asm("    _esc_total += _G_native_contar_escuchar(_escn);")
+        asm("}")
+        asm("for (int _esci = 0; _esci < _top_count; _esci++) {")
+        asm("    struct Nodo* _escn = _top_nodes[_esci];")
+        asm("    if (!_escn || !_escn->tipo.datos) continue;")
+        asm("    if (strcmp(_escn->tipo.datos, \"DefinicionFuncion\") != 0) continue;")
+        asm("    _esc_total += _G_native_contar_escuchar(_escn);")
+        asm("}")
+        asm("for (int _esi = 1; _esi <= _esc_total; _esi++) {")
+        asm("    char _esb[128]; snprintf(_esb, 128, \"extern void* _listener_%d(void* arg);\", _esi);")
+        asm("    gen_emitir_str(est, _esb);")
+        asm("}")
+        asm("if (_esc_total) gen_emitir_nueva_linea(est);")
         asm("// ME-B7: prototipos de funciones (Manual 8 S8.2, paridad _emit_prototipos_funciones + _SPECIAL_SIGS)")
         asm("// El C de salida no tiene prototipos si no se emiten: las llamadas entre modulos")
         asm("// (orden alfabetico) fallarian con 'implicit declaration / conflicting types'.")
@@ -198,6 +223,15 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("}")
 
     // Manual 8 S8.3 / paridad referencia: PGO via flags GCC (sin atexit manual)
+
+    // F3-7: flush de los listeners acumulados (funciones `void* _listener_N`)
+    // antes del main (paridad S1 _listener_funciones al final de _emit_cuerpos).
+    inseguro:
+        asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
+        asm("for (int _lfi = 0; _lfi < _G_listeners_count; _lfi++) {")
+        asm("    if (_G_listeners[_lfi][0]) gen_emitir_str(est, _G_listeners[_lfi]);")
+        asm("}")
+        asm("if (_G_listeners_count) gen_emitir_nueva_linea(est);")
 
     // Emit main() wrapper
     // Manual 8 S8.2 / paridad emit_selfhost.py L1207: NO usar el valor de

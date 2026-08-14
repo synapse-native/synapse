@@ -238,6 +238,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-C4: tipo inferido de cada variable auto-declarada (paridad tipo_de_expr para OpBinaria)
     gen_emitir_linea(est, "char _G_fn_var_tipos[2048][64];")
     gen_emitir_linea(est, "")
+    // F3-7: funciones listener de `escuchar` (Manual 2 L113) acumuladas y
+    // flusheadas antes del main; _G_listener_modo marca el cuerpo del bloque
+    // (ExprRecibirCanal -> canal_recibir(_canal) en vez de la variable local).
+    gen_emitir_linea(est, "char _G_listeners[8][16384];")
+    gen_emitir_linea(est, "int _G_listeners_count;")
+    gen_emitir_linea(est, "int _G_listener_modo;")
+    gen_emitir_linea(est, "")
     // ME-B6: PGO globals del parser nativo (definidos en _parser.c)
     gen_emitir_linea(est, "extern int _P_ntks, _P_tpos, _P_p_err;")
     gen_emitir_linea(est, "")

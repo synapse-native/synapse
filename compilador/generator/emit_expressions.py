@@ -347,6 +347,24 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
         args_str = ", ".join(args)
 
+        # F3-7: desboxeo de mensajes de canal. Un valor recibido con
+        # `canal ->` es void* (el S1 boxea al enviar con _synapse_box_int,
+        # cast directo (void*)(intptr_t)v). Si un builtin de conversion espera
+        # un primitivo, desboxear (paridad con el cast implicito del nativo
+        # bajo tdm64; gcc12 exige el cast explicito).
+        if nombre in ('entero_a_texto', 'decimal_a_texto'):
+            _unbox = '_synapse_unbox_int' if nombre == 'entero_a_texto' else '_synapse_unbox_float'
+            _ajustados = []
+            for i, a in enumerate(args):
+                _t = ''
+                if nodo.argumentos and i < len(nodo.argumentos):
+                    _t = tipo_de_expr(ctx, nodo.argumentos[i])
+                if _t in ('void*', 'puntero', 'Puntero'):
+                    _ajustados.append(f"{_unbox}({a})")
+                else:
+                    _ajustados.append(a)
+            args_str = ", ".join(_ajustados)
+
         # D-6: constructores ADT (ok/err/algun/ninguno) — compound literal del
         # tagged-union (Manual 2 §2 L75; std/err.syn los documenta como
         # 'implementados nativamente en el compilador').
@@ -524,6 +542,11 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return f"canal_crear({cap})"
 
     if isinstance(nodo, ExprRecibirCanal):
+        # F3-7: dentro del bloque de `escuchar canal:` el recibir se emite como
+        # canal_recibir(_canal) (la variable del listener, no la local del
+        # contenedor, que no es visible en la funcion listener).
+        if getattr(ctx, '_escuchar_modo', False):
+            return "canal_recibir(_canal)"
         canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
         return f"canal_recibir({canal})"
 

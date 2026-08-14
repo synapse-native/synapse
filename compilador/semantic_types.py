@@ -354,6 +354,11 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     # Allow void* to accept numeric types (pointer arithmetic)
                     if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
                         continue
+                    # F3-7 (paridad nativo): `canal ->` devuelve void*; el canal
+                    # es tipado en el Manual (Canal<int>, Manual 5 §3.2), así que
+                    # el valor recibido se usa como su tipo base (cast implícito).
+                    if tipo_arg == 'void*' and esperado in ('int', 'float', 'decimal'):
+                        continue
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),

@@ -185,7 +185,7 @@ estructura SentenciaRecuperar:
 estructura SentenciaEscuchar:
     tipo: texto
     canal: Nodo
-    respuesta: Nodo
+    cuerpo: ListaNodo
 
 estructura ExprTensor:
     tipo: texto

@@ -84,13 +84,23 @@ class ParserControlMixin(ParserBase):
         if tok_listen is None:
             return None
         canal = self._parsear_expresion()
-        if self._esperar(TokenID.ARROW) is None:
+        # F3-7: gramatica del Manual 2 L113 — escuchar_canal ::= "escuchar" expresion
+        # ":" NEWLINE INDENT bloque DEDENT. La forma antigua `escuchar canal ->
+        # callback` NO esta en el manual (se corrige). El bloque recibe con
+        # `canal ->` dentro (Manual 5 §4.2: mensaje = mi_canal ->).
+        if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        respuesta = self._parsear_llamada()
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
         return SentenciaEscuchar(
             canal=canal,
-            respuesta=respuesta,
+            cuerpo=cuerpo,
             linea=tok_listen.linea,
             columna=tok_listen.columna,
         )

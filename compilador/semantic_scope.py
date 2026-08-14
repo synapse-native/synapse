@@ -70,6 +70,14 @@ def _tipo_normalizado(tipo: str) -> str:
         return 'int'
     if t == 'double':
         return 'float'
+    # F3-7 (paridad context.py traducir_tipo_c L452 + nativo): Canal<T>
+    # (Manual 2 L144 / Manual 5 §3.2) es el tipo lógico; su ABI físico es
+    # CanalConcurrencia* — `canal(...)` produce CanalConcurrencia* y un
+    # parámetro Canal<entero> debe ser compatible (antes el call-site
+    # rechazaba 'CanalConcurrencia*' con 'Canal<entero>'). Va ANTES de la
+    # reducción D-2 (que convertiría Canal<entero> en 'Canal').
+    if t.startswith('Canal<') and t.endswith('>'):
+        return 'CanalConcurrencia*'
     # D-2: reducir instanciaciones de ADT genéricos a su base para comparación
     # de compatibilidad (`Resultado<entero,texto>` == `Resultado`). La
     # validación de argumentos de tipo (Hindley-Milner) es Fase 2, no FASE A.

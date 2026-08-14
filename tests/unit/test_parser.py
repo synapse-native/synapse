@@ -152,7 +152,8 @@ funcion usar_canales() -> nulo:
     ch <- x
     val = ch ->
     z: entero = ch ->
-    escuchar ch -> procesar(x)
+    escuchar ch:
+        procesar(x)
     retornar
 
 funcion usar_recuperar(v: texto) -> entero:

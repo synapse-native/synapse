@@ -12,7 +12,7 @@ from compilador.ast_nodes import (
     LlamadaFuncion, LiteralCadena, LiteralDecimal, SentenciaRomper,
     SentenciaSiguiente, SentenciaImportar, AsignacionCampo, ExprAccesoCampo,
     SentenciaEscuchar, SentenciaRecuperar,    OpUnaria, ExprTensor, ArgumentoTransferido,
-    DeclaracionTipo, LiteralNulo, NodoCoincidir
+    DeclaracionTipo, LiteralNulo, NodoCoincidir, SentenciaExpr
 )
 
 
@@ -241,8 +241,8 @@ class TestParserEscuchar:
     """Tests de parsing de escuchar"""
     
     def test_escuchar_simple(self):
-        """Test parsing de escuchar simple"""
-        fuente = "#lang: es\nescuchar canal -> respuesta()"
+        """Test parsing de escuchar (Manual 2 L113: `escuchar canal:` + bloque)"""
+        fuente = "#lang: es\nescuchar canal:\n    respuesta()"
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()
         diag = DiagnosticManager()
@@ -250,7 +250,8 @@ class TestParserEscuchar:
         prog = parser.parsear()
         
         assert isinstance(prog.sentencias[0], SentenciaEscuchar)
-        assert isinstance(prog.sentencias[0].respuesta, LlamadaFuncion)
+        assert isinstance(prog.sentencias[0].cuerpo[0], SentenciaExpr)
+        assert isinstance(prog.sentencias[0].cuerpo[0].expr, LlamadaFuncion)
 
 
 class TestParserRecuperar:

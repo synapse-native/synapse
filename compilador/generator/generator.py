@@ -1,5 +1,3 @@
-import re
-
 from compilador.ast_nodes import (
     Nodo, Programa,
     DefinicionFuncion, DefinicionEstructura,
@@ -309,11 +307,45 @@ def _preprocess_lanzar(ctx: GeneratorContext):
         _scan_node(s)
 
 
-def _extract_listener_name(func_str: str) -> str:
-    m = re.search(r'\*\s+(\w+)\s*\(', func_str)
-    if m:
-        return m.group(1)
-    return ''
+def _contar_escuchar_emision(
+        ctx: GeneratorContext, scope_names: set[str] | None = None) -> int:
+    """F3-7: cuenta SentenciaEscuchar en el MISMO orden en que visitar() los
+    visitará durante _emit_cuerpos (no-funciones en parse order + funciones
+    alfabéticas, recorriendo cuerpos anidados). Los externs de los listeners
+    se numeran _listener_1..N y _contador_listener los incrementa en ese mismo
+    orden, por lo que el conteo debe replicarlo para que los nombres coincidan."""
+    total = [0]
+
+    def _walk(nodo):
+        if isinstance(nodo, SentenciaEscuchar):
+            total[0] += 1
+        for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                     'expresion', 'objeto', 'condicion', 'accion_critica',
+                     'plan_b', 'inicializacion', 'incremento', 'casos',
+                     'valor', 'canal', 'funcion'):
+            hijo = getattr(nodo, attr, None)
+            if hijo is None:
+                continue
+            if isinstance(hijo, list):
+                for h in hijo:
+                    if hasattr(h, '__dict__'):
+                        _walk(h)
+            elif hasattr(hijo, '__dict__'):
+                _walk(hijo)
+
+    funciones = sorted(
+        [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)],
+        key=lambda f: f.nombre
+    )
+    if scope_names is not None:
+        funciones = [f for f in funciones if f.nombre in scope_names]
+    for s in ctx.programa.sentencias:
+        if isinstance(s, DefinicionFuncion):
+            continue
+        _walk(s)
+    for f in funciones:
+        _walk(f)
+    return total[0]
 
 
 def visitar(ctx: GeneratorContext, nodo: Nodo):
@@ -719,6 +751,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
     ctx.write_line("extern int _G_fn_ptr_vars_count;")
+    # F3-7: funciones listener de `escuchar` (Manual 2 L113) — paridad orquestador nativo
+    ctx.write_line("extern char _G_listeners[8][16384];")
+    ctx.write_line("extern int _G_listeners_count;")
+    ctx.write_line("extern int _G_listener_modo;")
     # ME-F1.2b: alias de tipo declarados (`tipo X = Y`) — paridad orquestador nativo
     ctx.write_line("extern char _G_tipo_aliases[128][64];")
     ctx.write_line("extern char _G_tipo_aliases_base[128][64];")
@@ -1006,6 +1042,13 @@ class GeneradorC:
             ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
             ctx.write_line("int _G_fn_ptr_vars_count;")
+            # F3-7: funciones listener de `escuchar` (Manual 2 L113) acumuladas y
+            # flusheadas antes del main (paridad orquestador.syn). _G_listener_modo
+            # marca el cuerpo del bloque (ExprRecibirCanal -> canal_recibir(_canal)).
+            ctx.write_line("char _G_listeners[8][16384];")
+            ctx.write_line("int _G_listeners_count;")
+            ctx.write_line("int _G_listener_modo;")
+            ctx.write_line("")
             # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
             ctx.write_line("char _G_tipo_aliases[128][64];")
             ctx.write_line("char _G_tipo_aliases_base[128][64];")
@@ -1112,11 +1155,18 @@ class GeneradorC:
             ret_tipo = ctx._func_return_types.get(principal, 'int')
             if ret_tipo in ('nulo', 'void'):
                 ctx.write_line(f"{principal}();")
+                ctx.write_line("synapse_esperar_hilos();")
+                ctx.write_line("pool_destroy();")
+                ctx.write_line("return 0;")
             else:
-                ctx.write_line(f"return {principal}();")
-            ctx.write_line("synapse_esperar_hilos();")
-            ctx.write_line("pool_destroy();")
-            ctx.write_line("return 0;")
+                # F3-7: el main DEBE esperar a los hilos (listeners lanzados
+                # con synapse_lanzar_hilo) antes de salir — `return principal();`
+                # mataba el proceso sin esperar. Paridad con el nativo
+                # (recorrido.syn gen_emitir_main).
+                ctx.write_line(f"int64_t _rc = {principal}();")
+                ctx.write_line("synapse_esperar_hilos();")
+                ctx.write_line("pool_destroy();")
+                ctx.write_line("return _rc;")
             ctx.dec_indent()
             ctx.write_line("}")
 
@@ -1124,6 +1174,17 @@ class GeneradorC:
         """Helper: emite cuerpos de funciones + listeners + wrappers.
         Manual 8 §8.2: orden alfabético estricto por nombre para funciones.
         Si scope_names no es None, solo emite funciones cuyos nombres estén en el conjunto."""
+        # F3-7: pre-scan de `escuchar` — emitir los externs de los listeners
+        # ANTES de los cuerpos de funciones (antes se emitían tras ellos y gcc
+        # fallaba con '_listener_N undeclared' al usarse en synapse_lanzar_hilo
+        # dentro de principal). El conteo replica el orden de emisión
+        # (no-funciones en parse order + funciones alfabéticas) para que la
+        # numeración _listener_1..N coincida con _contador_listener.
+        n_listeners = _contar_escuchar_emision(ctx, scope_names)
+        for i in range(1, n_listeners + 1):
+            ctx.write_line(f"extern void* _listener_{i}(void* arg);")
+        if n_listeners:
+            ctx.write_line("")
         # Manual 8 §8.2: orden alfabético estricto para funciones
         # Primero emitir sentencias no-función (extern, import, constantes) en parse order,
         # luego funciones en orden alfabético — requisito de C: extern/const antes de cuerpos
@@ -1150,12 +1211,8 @@ class GeneradorC:
         # Functions en orden alfabético
         for s in funciones:
             visitar(ctx, s)
-        for func in ctx._listener_funciones:
-            name = _extract_listener_name(func)
-            if name:
-                ctx.write_line(f"extern void* {name}(void* arg);")
-        if ctx._listener_funciones:
-            ctx.write_line("")
+        # Listener functions: cuerpos acumulados por visitar_escuchar (F3-7);
+        # sus externs ya se emitieron arriba, antes de los cuerpos.
         for func in ctx._listener_funciones:
             ctx.lineas.append(func)
             ctx.lineas.append("")
@@ -1179,6 +1236,11 @@ class GeneradorC:
         ctx._variables = {}
         ctx._func_return_types = {}
         ctx._func_param_types = {}
+        # F3-7: reset de listeners (el pre-scan de _emit_cuerpos cuenta en el
+        # mismo orden que _contador_listener incrementa; sin reset, una segunda
+        # llamada a generar() re-numeraría y los externs no coincidirían).
+        ctx._contador_listener = 0
+        ctx._listener_funciones = []
 
         for s in ctx.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
@@ -1478,6 +1540,11 @@ class GeneradorC:
                 ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
                 ctx.write_line("int _G_fn_ptr_vars_count;")
+                # F3-7: funciones listener de `escuchar` (Manual 2 L113) — paridad orquestador nativo
+                ctx.write_line("char _G_listeners[8][16384];")
+                ctx.write_line("int _G_listeners_count;")
+                ctx.write_line("int _G_listener_modo;")
+                ctx.write_line("")
                 # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
                 ctx.write_line("char _G_tipo_aliases[128][64];")
                 ctx.write_line("char _G_tipo_aliases_base[128][64];")

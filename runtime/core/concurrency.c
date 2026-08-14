@@ -126,8 +126,13 @@ void canal_enviar(CanalConcurrencia* canal, void* paquete) {
     }
 
     // Canal con buffer (capacidad > 0)
-    while (canal->contador == canal->capacidad) {
+    while (canal->contador == canal->capacidad && !canal->cerrado) {
         pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+    }
+    if (canal->cerrado) {
+        // Manual 5 §3.6: un canal cerrado no acepta más envíos.
+        pthread_mutex_unlock(&canal->mutex);
+        return;
     }
 
     canal->buffer[canal->cabeza] = paquete;
@@ -162,8 +167,14 @@ void* canal_recibir(CanalConcurrencia* canal) {
     }
 
     // Canal con buffer (capacidad > 0)
-    while (canal->contador == 0) {
+    while (canal->contador == 0 && !canal->cerrado) {
         pthread_cond_wait(&canal->no_vacio, &canal->mutex);
+    }
+    if (canal->cerrado && canal->contador == 0) {
+        // Manual 5 §3.6/§4.3: canal cerrado y vacío -> NULL (el listener
+        // del `escuchar` sale del bucle al recibir NULL).
+        pthread_mutex_unlock(&canal->mutex);
+        return NULL;
     }
 
     void* paquete = canal->buffer[canal->cola];
@@ -174,6 +185,19 @@ void* canal_recibir(CanalConcurrencia* canal) {
     pthread_mutex_unlock(&canal->mutex);
 
     return paquete;
+}
+
+void cerrar_canal(CanalConcurrencia* canal) {
+    // Manual 5 §3.6: cerrar() marca el canal cerrado y despierta a los
+    // receptores/emisores bloqueados; los receptores reciben NULL (paridad
+    // con el Resultado de cierre del manual) y pueden salir ordenadamente.
+    if (!canal) return;
+
+    pthread_mutex_lock(&canal->mutex);
+    canal->cerrado = 1;
+    pthread_cond_broadcast(&canal->no_vacio);
+    pthread_cond_broadcast(&canal->no_lleno);
+    pthread_mutex_unlock(&canal->mutex);
 }
 
 void canal_destruir(CanalConcurrencia* canal) {

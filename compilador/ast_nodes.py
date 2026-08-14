@@ -167,7 +167,7 @@ class SentenciaRetornar(Nodo):
 @dataclass
 class SentenciaEscuchar(Nodo):
     canal: Optional[Nodo] = None
-    respuesta: Optional[Nodo] = None
+    cuerpo: List[Nodo] = field(default_factory=list)
 
 
 @dataclass

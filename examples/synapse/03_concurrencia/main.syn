@@ -1,21 +1,21 @@
 #lang: es
 
-funcion productor(ch: CanalConcurrencia*, n: entero) -> nulo:
-    para i = 0 mientras i < n:
-        canal_enviar(ch, i)
-        i = i + 1
+funcion productor(ch: Canal<entero>) -> nulo:
+    dato1 = 42
+    ch <- dato1
+    dato2 = 99
+    ch <- dato2
     cerrar_canal(ch)
 
-funcion consumidor(ch: CanalConcurrencia*) -> nulo:
-    escuchar ch -> recibido()
-
-funcion recibido() -> nulo:
-    nulo = 0
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        mensaje = ch ->
+        si mensaje == nulo:
+            romper
+        escribir_linea(entero_a_texto(mensaje))
 
 funcion principal() -> entero:
-    ch: CanalConcurrencia* = canal_crear(5)
+    ch = canal(entero, 5)
     lanzar consumidor(ch)
-    canal_enviar(ch, 42)
-    canal_enviar(ch, 99)
-    cerrar_canal(ch)
+    lanzar productor(ch)
     retornar 0

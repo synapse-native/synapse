@@ -606,7 +606,12 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
         asm("}")
         asm("if (_syn_es_tipo(_t, \"ExprRecibirCanal\")) {")
         asm("    // F3-6: paridad emit_expressions.py L527-529 (ExprRecibirCanal -> canal_recibir(canal)).")
+        asm("    // F3-7: dentro del bloque de `escuchar canal:` el recibir se emite como")
+        asm("    // canal_recibir(_canal) (la variable del listener, no la local del")
+        asm("    // contenedor, que no es visible en la funcion listener).")
         asm("    struct ExprRecibirCanal* _rc = (struct ExprRecibirCanal*)_n;")
+        asm("    extern int _G_listener_modo;")
+        asm("    if (_G_listener_modo) { snprintf(_b, _sz, \"canal_recibir(_canal)\"); return; }")
         asm("    char _rcc[2048]; _rcc[0] = 0;")
         asm("    if (_rc->canal && _rc->canal->tipo.datos) { _oo_expr_a_c(est, _rc->canal, _rcc, 2048); } else { strcpy(_rcc, \"NULL\"); }")
         asm("    snprintf(_b, _sz, \"canal_recibir(%s)\", _rcc);")
@@ -1567,6 +1572,62 @@ funcion gen_visitar_siguiente(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"    continue;\");")
 
 // ----------------------------------------------------------
+// gen_visitar_escuchar  (F3-7 - Manual 2 L113 / Manual 5 S4.2)
+// ----------------------------------------------------------
+funcion gen_visitar_escuchar(est: GeneradorCEst, stmt: puntero) -> nulo:
+    requiere:
+        stmt != nulo
+    garantiza:
+        _G_listeners_count >= 1
+    inseguro:
+        asm("struct SentenciaEscuchar* _se = (struct SentenciaEscuchar*)stmt;")
+        asm("if (!_se) return;")
+        asm("gen_emitir_traza(est, \"nodos_flujo.syn\", \"SentenciaEscuchar\");")
+        asm("extern int _G_listeners_count;")
+        asm("_G_listeners_count++;")
+        asm("char _lname[64]; snprintf(_lname, 64, \"_listener_%d\", _G_listeners_count);")
+        asm("char _lcan[1024]; _lcan[0] = 0;")
+        asm("if (_se->canal) { _oo_expr_a_c(est, _se->canal, _lcan, 1024); }")
+        asm("// Variables del cuerpo del bloque: el listener es una funcion C separada,")
+        asm("// el hoisting de la funcion contenedora NO las ve (paridad S1).")
+        asm("extern void _G_native_escuchar_vars(void* n, void* out);")
+        asm("char _lvars[4096]; _lvars[0] = 0;")
+        asm("{ struct ListaNodo* _lv = (struct ListaNodo*)_se->cuerpo; while (_lv) { _G_native_escuchar_vars(_lv->cabeza, _lvars); _lv = _lv->cola; } }")
+        asm("// Generar el cuerpo del bloque en el buffer temporal con el modo")
+        asm("// escuchar activo: dentro del bloque, ExprRecibirCanal emite")
+        asm("// canal_recibir(_canal) (la variable del listener, no la local).")
+        asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
+        asm("extern int _G_listener_modo;")
+        asm("int _save_pos = _G_emit_pos;")
+        asm("int _prev_modo = _G_listener_modo; _G_listener_modo = 1;")
+        asm("{ struct ListaNodo* _lc = (struct ListaNodo*)_se->cuerpo;")
+        asm("    while (_lc) { struct Nodo* _ls = _lc->cabeza; if (_ls) { gen_visitar_stmt_generico(est, _ls); } _lc = _lc->cola; } }")
+        asm("_G_listener_modo = _prev_modo;")
+        asm("int _llen = _G_emit_pos - _save_pos;")
+        asm("char _lcuerpo[16384]; if (_llen > 16383) _llen = 16383;")
+        asm("memcpy(_lcuerpo, _G_emit_buf + _save_pos, _llen); _lcuerpo[_llen] = 0;")
+        asm("_G_emit_pos = _save_pos;")
+        asm("// Construir la funcion listener: void* _listener_N(void* arg) {")
+        asm("//     (void)arg; CanalConcurrencia* _canal = (CanalConcurrencia*)arg;")
+        asm("//     <vars> while (1) { <cuerpo> } return NULL; }")
+        asm("char _lfn[16384]; _lfn[0] = 0;")
+        asm("strcat(_lfn, \"void* \"); strcat(_lfn, _lname); strcat(_lfn, \"(void* arg) {\n\");")
+        asm("strcat(_lfn, \"    (void)arg;\n\");")
+        asm("strcat(_lfn, \"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;\n\");")
+        asm("if (_lvars[0]) { strcat(_lfn, _lvars); }")
+        asm("strcat(_lfn, \"    while (1) {\n\");")
+        asm("if (_lcuerpo[0]) { strcat(_lfn, _lcuerpo); } else { strcat(_lfn, \"        (void)0;\n\"); }")
+        asm("strcat(_lfn, \"    }\n\");")
+        asm("strcat(_lfn, \"    return NULL;\n\");")
+        asm("strcat(_lfn, \"}\n\");")
+        asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
+        asm("if (_G_listeners_count < 8) { strncpy(_G_listeners[_G_listeners_count], _lfn, 16383); _G_listeners[_G_listeners_count][16383] = 0; _G_listeners_count++; }")
+        asm("// Emitir el lanzamiento del hilo en el punto del escuchar")
+        asm("char _lcall[1200];")
+        asm("snprintf(_lcall, 1200, \"    synapse_lanzar_hilo((void*(*)(void*))%s, (void*)(%s));\", _lname, _lcan);")
+        asm("gen_emitir_str(est, _lcall);")
+
+// ----------------------------------------------------------
 // gen_visitar_stmt_generico - Dispatcher principal
 // ----------------------------------------------------------
 funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
@@ -1637,7 +1698,7 @@ funcion gen_visitar_stmt_generico(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        strcat(_lzb, \");\");")
         asm("    }")
         asm("    gen_emitir_str(est, _lzb);")
-        asm("} else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
+        asm("} else if (_syn_es_tipo(_t, \"SentenciaEscuchar\")) { gen_visitar_escuchar(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaRomper\")) { gen_visitar_romper(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"SentenciaSiguiente\")) { gen_visitar_siguiente(est, stmt); }")
         asm("else if (_syn_es_tipo(_t, \"BloqueInseguro\")) {")
@@ -2492,6 +2553,75 @@ funcion _G_native_scan_ctor_exprs(p: puntero) -> nulo:
         asm("    if (_G_native_adt_inst_count == _antes) break;")
         asm("}")
 
+// ----------------------------------------------------------
+// F3-7 (Manual 2 L113): helpers del `escuchar` nativo.
+// Funciones reales (patron _G_native_scan_ctor_exprs): el compilador
+// las necesita en SU unity (recorrido.syn pre-scan + nodos_flujo.syn
+// gen_visitar_escuchar las llaman via asm); NO pueden emitirse como
+// texto de cabecera (gen_emitir_linea) porque referencian structs del
+// AST que en programas de usuario no existen.
+// ----------------------------------------------------------
+funcion _G_native_contar_escuchar(n: puntero) -> entero:
+    requiere:
+        n != nulo
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        asm("if (!n) return 0;")
+        asm("struct Nodo* _no = (struct Nodo*)n;")
+        asm("if (!_no->tipo.datos) return 0;")
+        asm("const char* _t = _no->tipo.datos;")
+        asm("int _c = 0;")
+        asm("if (strcmp(_t, \"SentenciaEscuchar\") == 0) _c++;")
+        asm("struct ListaNodo* _l = 0;")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s = (struct SentenciaSi*)_no; _l = _s->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaMientras\") == 0) { struct SentenciaMientras* _m = (struct SentenciaMientras*)_no; _l = _m->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaPara\") == 0) { struct SentenciaPara* _p = (struct SentenciaPara*)_no; _l = _p->cuerpo; }")
+        asm("else if (strcmp(_t, \"BloqueInseguro\") == 0) { struct BloqueInseguro* _b = (struct BloqueInseguro*)_no; _l = _b->cuerpo; }")
+        asm("else if (strcmp(_t, \"DefinicionFuncion\") == 0) { struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_no; _l = _f->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaEscuchar\") == 0) { struct SentenciaEscuchar* _e = (struct SentenciaEscuchar*)_no; _l = _e->cuerpo; }")
+        asm("while (_l) { _c += _G_native_contar_escuchar(_l->cabeza); _l = _l->cola; }")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _c += _G_native_contar_escuchar(_ls->cabeza); _ls = _ls->cola; } }")
+        asm("return _c;")
+
+funcion _G_native_escuchar_vars(n: puntero, out: puntero) -> nulo:
+    requiere:
+        n != nulo
+        out != nulo
+    garantiza:
+        verdadero
+    inseguro:
+        asm("if (!n || !out) return;")
+        asm("struct Nodo* _no = (struct Nodo*)n;")
+        asm("if (!_no->tipo.datos) return;")
+        asm("const char* _t = _no->tipo.datos;")
+        asm("char _tb[128]; _tb[0] = 0;")
+        asm("if (strcmp(_t, \"AsignacionVariable\") == 0) {")
+        asm("    struct AsignacionVariable* _a = (struct AsignacionVariable*)_no;")
+        asm("    if (_a->nombre.datos && _a->expresion) {")
+        asm("        extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);")
+        asm("        _syn_nativo_expr_tipo_c((void*)_a->expresion, (void*)_tb);")
+        asm("        if (!_tb[0]) strcpy(_tb, \"int64_t\");")
+        asm("        snprintf(out + strlen(out), 4096 - strlen(out), \"    %s %s;\n\", _tb, _a->nombre.datos);")
+        asm("    }")
+        asm("} else if (strcmp(_t, \"DeclaracionVariable\") == 0) {")
+        asm("    struct DeclaracionVariable* _d = (struct DeclaracionVariable*)_no;")
+        asm("    if (_d->nombre.datos) {")
+        asm("        if (_d->expresion) { extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out); _syn_nativo_expr_tipo_c((void*)_d->expresion, (void*)_tb); }")
+        asm("        if (!_tb[0] && _d->tipo.datos && _d->tipo.datos[0]) { traducir_tipo_c((void*)_d->tipo.datos); extern char _gen_tmp_buf[4096]; strncpy(_tb, _gen_tmp_buf, 127); _tb[127] = 0; }")
+        asm("        if (!_tb[0]) strcpy(_tb, \"int64_t\");")
+        asm("        snprintf(out + strlen(out), 4096 - strlen(out), \"    %s %s;\n\", _tb, _d->nombre.datos);")
+        asm("    }")
+        asm("}")
+        asm("struct ListaNodo* _l = 0;")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s = (struct SentenciaSi*)_no; _l = _s->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaMientras\") == 0) { struct SentenciaMientras* _m = (struct SentenciaMientras*)_no; _l = _m->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaPara\") == 0) { struct SentenciaPara* _p = (struct SentenciaPara*)_no; _l = _p->cuerpo; }")
+        asm("else if (strcmp(_t, \"BloqueInseguro\") == 0) { struct BloqueInseguro* _b = (struct BloqueInseguro*)_no; _l = _b->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaEscuchar\") == 0) { struct SentenciaEscuchar* _e = (struct SentenciaEscuchar*)_no; _l = _e->cuerpo; }")
+        asm("while (_l) { _G_native_escuchar_vars(_l->cabeza, out); _l = _l->cola; }")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _G_native_escuchar_vars(_ls->cabeza, out); _ls = _ls->cola; } }")
+
 // ===== From: recorrido.syn =====
 
 #lang: es
@@ -2611,6 +2741,31 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("        gen_visitar_top_level(est, _tdn);")
         asm("    }")
         asm("}")
+        asm("// F3-7: pre-scan de `escuchar` — emitir los externs de los listeners")
+        asm("// ANTES de los cuerpos de funciones (paridad S1 _emit_cuerpos: antes se")
+        asm("// emitian tras ellas y gcc fallaba con '_listener_N undeclared' al usarse")
+        asm("// en synapse_lanzar_hilo dentro de principal). El conteo replica el orden")
+        asm("// de emision (no-funciones en parse order + funciones alfabeticas) para")
+        asm("// que la numeracion _listener_1..N coincida con est->contador_listener.")
+        asm("extern int64_t _G_native_contar_escuchar(void* n);")
+        asm("int _esc_total = 0;")
+        asm("for (int _esci = 0; _esci < _top_count; _esci++) {")
+        asm("    struct Nodo* _escn = _top_nodes[_esci];")
+        asm("    if (!_escn || !_escn->tipo.datos) continue;")
+        asm("    if (strcmp(_escn->tipo.datos, \"DefinicionFuncion\") == 0) continue;")
+        asm("    _esc_total += _G_native_contar_escuchar(_escn);")
+        asm("}")
+        asm("for (int _esci = 0; _esci < _top_count; _esci++) {")
+        asm("    struct Nodo* _escn = _top_nodes[_esci];")
+        asm("    if (!_escn || !_escn->tipo.datos) continue;")
+        asm("    if (strcmp(_escn->tipo.datos, \"DefinicionFuncion\") != 0) continue;")
+        asm("    _esc_total += _G_native_contar_escuchar(_escn);")
+        asm("}")
+        asm("for (int _esi = 1; _esi <= _esc_total; _esi++) {")
+        asm("    char _esb[128]; snprintf(_esb, 128, \"extern void* _listener_%d(void* arg);\", _esi);")
+        asm("    gen_emitir_str(est, _esb);")
+        asm("}")
+        asm("if (_esc_total) gen_emitir_nueva_linea(est);")
         asm("// ME-B7: prototipos de funciones (Manual 8 S8.2, paridad _emit_prototipos_funciones + _SPECIAL_SIGS)")
         asm("// El C de salida no tiene prototipos si no se emiten: las llamadas entre modulos")
         asm("// (orden alfabetico) fallarian con 'implicit declaration / conflicting types'.")
@@ -2694,6 +2849,15 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("}")
 
     // Manual 8 S8.3 / paridad referencia: PGO via flags GCC (sin atexit manual)
+
+    // F3-7: flush de los listeners acumulados (funciones `void* _listener_N`)
+    // antes del main (paridad S1 _listener_funciones al final de _emit_cuerpos).
+    inseguro:
+        asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
+        asm("for (int _lfi = 0; _lfi < _G_listeners_count; _lfi++) {")
+        asm("    if (_G_listeners[_lfi][0]) gen_emitir_str(est, _G_listeners[_lfi]);")
+        asm("}")
+        asm("if (_G_listeners_count) gen_emitir_nueva_linea(est);")
 
     // Emit main() wrapper
     // Manual 8 S8.2 / paridad emit_selfhost.py L1207: NO usar el valor de
@@ -3215,6 +3379,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "int _G_fn_var_auto[2048];")
     // ME-C4: tipo inferido de cada variable auto-declarada (paridad tipo_de_expr para OpBinaria)
     gen_emitir_linea(est, "char _G_fn_var_tipos[2048][64];")
+    gen_emitir_linea(est, "")
+    // F3-7: funciones listener de `escuchar` (Manual 2 L113) acumuladas y
+    // flusheadas antes del main; _G_listener_modo marca el cuerpo del bloque
+    // (ExprRecibirCanal -> canal_recibir(_canal) en vez de la variable local).
+    gen_emitir_linea(est, "char _G_listeners[8][16384];")
+    gen_emitir_linea(est, "int _G_listeners_count;")
+    gen_emitir_linea(est, "int _G_listener_modo;")
     gen_emitir_linea(est, "")
     // ME-B6: PGO globals del parser nativo (definidos en _parser.c)
     gen_emitir_linea(est, "extern int _P_ntks, _P_tpos, _P_p_err;")

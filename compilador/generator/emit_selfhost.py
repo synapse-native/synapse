@@ -609,10 +609,16 @@ _P_retry:;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_LISTEN) { """ + _P + """avanzar();
-        struct Nodo* cn=""" + _P + """expr(); """ + _P + """esperar(T_ARROW);
-        struct Nodo* rp=""" + _P + """expr();
+        struct Nodo* cn=""" + _P + """expr(); """ + _P + """esperar(T_COLON);
+        struct ListaNodo* cpo=NULL;
+        if (""" + _P + """mirar()->tipo == T_NL) {
+            cpo=""" + _P + """bloque();
+        } else {
+            struct Nodo* _st=""" + _P + """sentencia();
+            if (_st) { cpo=""" + _P + """mk_list(_st,NULL); }
+        }
         struct SentenciaEscuchar* n = (struct SentenciaEscuchar*)calloc(1,sizeof(struct SentenciaEscuchar));
-        n->tipo=""" + _P + """cs("SentenciaEscuchar"); n->canal=cn; n->respuesta=rp;
+        n->tipo=""" + _P + """cs("SentenciaEscuchar"); n->canal=cn; n->cuerpo=cpo;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_BREAK) { """ + _P + """avanzar();

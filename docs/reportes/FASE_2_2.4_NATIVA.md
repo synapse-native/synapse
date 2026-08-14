@@ -1682,7 +1682,8 @@ lo resuelva por `dir_base` (mismo mecanismo del unity build nativo).
 (regenerado por el build S1), `tests/native_lexer_paridad.py` (harness adaptado),
 `auditoria/verificar_alineacion.py` (gate contratos: funciones movidas), docs
 (este reporte §34, bitácora AUDITORIA fila R32, canon D-9(b) → CERRADA, README,
-`MEMORIA_PROYECTO.md`), logs (`logs/build_stage1_r32.log`,
+`MEMORIA_PROYECTO.md`), logs (`logs/build_stage1_r32.log` — eliminados en
+R34, regla 12; evidencia en este reporte y la bitácora —
 `build_stage1_r32b.log`, `stage2_r32.log`, `stage3_r32.log`,
 `suite_hm_r32.log`, `regresion_s1_r32.log`).
 

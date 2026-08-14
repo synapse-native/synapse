@@ -131,14 +131,16 @@ def test_codegen_s1_safe_mode():
 
 
 def test_codegen_s1_principal_retorno():
-    """D-5: principal con retorno entero -> `return principal();` en main()."""
+    """D-5: principal con retorno entero -> main() espera hilos y retorna _rc."""
     prog = _PROGRAMA.replace(
         "funcion principal() -> nulo:",
         "funcion principal() -> entero:\n    retornar 0",
     )
     ast = _compilar_ast(prog)
     codigo = GeneradorC(ast).generar()
-    assert "return principal();" in codigo, "main retorna principal"
+    assert "int64_t _rc = principal();" in codigo, "main captura principal"
+    assert "synapse_esperar_hilos();" in codigo, "main espera hilos (Manual 5)"
+    assert "return _rc;" in codigo, "main retorna _rc"
 
 
 def test_codegen_s1_ejecutable_fuera_de_ambito():
@@ -250,24 +252,22 @@ def test_codegen_s1_export_con_asm():
 
 
 def test_codegen_s1_escuchar_canal():
-    """D-5: canal con enviar (<-) y escuchar (-> llamada) en el codegen."""
+    """D-5: canal con enviar (<-) y escuchar (bloque, Manual 2 L113) en el codegen."""
     prog = (
         "#lang: es\n"
-        "funcion recibir(v: entero) -> nulo:\n"
-        "    escribir_linea(entero_a_texto(v))\n"
         "funcion principal() -> nulo:\n"
         "    ch = canal(entero)\n"
         "    ch <- 21\n"
-        "    escuchar ch -> recibir(21)\n"
+        "    escuchar ch:\n"
+        "        mensaje = ch ->\n"
+        "        escribir_linea(entero_a_texto(mensaje))\n"
         "    retornar\n"
     )
     ast = _compilar_ast(prog)
     codigo = GeneradorC(ast).generar()
     assert "canal_crear(10)" in codigo, "canal(entero) -> canal_crear(10)"
     assert "canal_enviar(ch," in codigo, "enviar <-"
-    assert "canal_recibir(_canal)" in codigo, "escuchar -> canal_recibir"
-
-
+    assert "canal_recibir(_canal)" in codigo, "escuchar bloque -> canal_recibir"
 def test_codegen_s1_tensor_crear():
     """D-5: crear_tensor en el codegen."""
     prog = (

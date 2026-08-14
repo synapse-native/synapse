@@ -31,6 +31,7 @@ CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
 void* canal_recibir(CanalConcurrencia* canal);
 void canal_destruir(CanalConcurrencia* canal);
+void cerrar_canal(CanalConcurrencia* canal);
 
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);

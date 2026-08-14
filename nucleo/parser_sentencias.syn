@@ -289,16 +289,59 @@ funcion parsear_escuchar(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     nodo = parser_nuevo_nodo(est, NODO_ESCUCHAR, linea, col)
-    // FASE A (A3.1): canal y respuesta se ENLAZAN (hijo_izq/hijo_der) — antes se
-    // parseaban y se DESCARTABAN (SentenciaEscuchar del puente vacio).
+    // F3-7 (Manual 2 L113): escuchar_canal ::= "escuchar" expresion ":"
+    // NEWLINE INDENT bloque DEDENT. La forma antigua `escuchar canal ->
+    // callback` NO existe en el manual y se elimina; el bloque recibe con
+    // `canal ->` (Manual 5 §4.2) y el generador emite el listener.
     canal_expr = parsear_expresion(est)
     inseguro:
         asm("est->nodos[nodo].hijo_izq = canal_expr")
-    si token_esperar(est, T_FLECHA) == 0:
+    si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
-    expr = parsear_expresion(est)
-    inseguro:
-        asm("est->nodos[nodo].hijo_der = expr")
+    primero = 0
+    ultimo = 0
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        mientras token_mirar(est) == T_NUEVALINEA:
+            token_avanzar(est)
+        si token_mirar(est) == T_INDENTAR:
+            token_avanzar(est)
+            r = 1
+            mientras r == 1:
+                t = token_mirar(est)
+                si t == T_NUEVALINEA:
+                    token_avanzar(est)
+                    siguiente
+                si t == T_DESINDENTAR:
+                    token_avanzar(est)
+                    r = 0
+                    romper
+                si t == T_FIN:
+                    r = 0
+                    romper
+                stmt = parsear_sentencia(est)
+                si stmt != 0:
+                    si primero == 0:
+                        primero = stmt
+                    sino:
+                        inseguro:
+                            asm("est->nodos[ultimo].hermano = stmt")
+                    ultimo = stmt
+                sino:
+                    token_avanzar(est)
+                siguiente
+        sino:
+            // Anti-cuelgue: bloque vacio tras ':' sin INDENTAR
+            retornar nodo
+    sino:
+        // cuerpo inline: 'escuchar ch: stmt' en una sola linea
+        stmt = parsear_sentencia(est)
+        si stmt != 0:
+            primero = stmt
+            ultimo = stmt
+    si primero > 0:
+        inseguro:
+            asm("est->nodos[nodo].hijo_der = primero")
     retornar nodo
 
 funcion parsear_asignacion(est: ParserEst) -> entero:

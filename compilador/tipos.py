@@ -78,7 +78,7 @@ _TIPOS_PRIMITIVOS = frozenset({
 })
 _TIPOS_RC = frozenset({'rc', 'arc', 'debil', 'débil', 'weak', 'faible', 'fraco'})
 _TENSOR = frozenset({'tensor'})
-_CANAL = frozenset({'CanalConcurrencia'})
+_CANAL = frozenset({'CanalConcurrencia', 'Canal'})  # F3-7: base generica Canal<T> (Manual 2 L144)
 
 
 def _normalizar_primitivo(nombre: str) -> str:
@@ -276,6 +276,13 @@ def es_tipo_conocido(cadena: str, estructuras: Optional[Set[str]] = None,
             # rc/arc/débil<T> son tipos de conteo de referencias válidos
             # (Manual 2 §4.3; ABI placeholder void* hasta Fase 23)
             return all(es_tipo_conocido(a, estructuras, adt_parametros) for a in args)
+        elif nombre in _CANAL:
+            # Canal<T> (Manual 2 L144 / Manual 5 §3.2): base genérica con
+            # exactamente 1 argumento de tipo; F3-6 añadió 'Canal' al analizador
+            # nativo — paridad aquí (antes `Canal<entero>` como parámetro se
+            # rechazaba con 'tipo conocido').
+            return len(args) == 1 and all(
+                es_tipo_conocido(a, estructuras, adt_parametros) for a in args)
         else:
             # Instanciación de un ADT no registrado: la base debe existir como struct
             if estructuras is not None and nombre not in estructuras:

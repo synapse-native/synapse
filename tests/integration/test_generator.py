@@ -658,8 +658,8 @@ class TestGeneradorCConcurrencia:
         assert "pthread_create" in codigo or "thread" in codigo.lower()
     
     def test_escuchar(self):
-        """Test generaci??n de escuchar"""
-        fuente = "#lang: es\nfuncion respuesta() -> int:\n    retornar 1\nfuncion principal() -> int:\n    escuchar canal -> respuesta()"
+        """Test generaci??n de escuchar (Manual 2 L113: bloque)"""
+        fuente = "#lang: es\nfuncion respuesta() -> int:\n    retornar 1\nfuncion principal() -> int:\n    escuchar canal:\n        respuesta()"
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()
         diag = DiagnosticManager()

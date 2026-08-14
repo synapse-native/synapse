@@ -1032,6 +1032,30 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
         tabla_salir_scope(est)
         retornar
 
+    // SentenciaEscuchar (F3-7, Manual 2 L113): `escuchar canal:` + bloque
+    // que recibe con `canal ->` (Manual 5 §4.2). Paridad S1 semantic_checker.py
+    // SentenciaEscuchar: analiza el canal, entra scope, analiza el cuerpo
+    // (use-after-move/prestamos dentro del bloque visibles), sale del scope.
+    // El listener se lanza como hilo (el generador lo emite); aqui solo se
+    // validan las expresiones.
+    si tipo == NODO_ESCUCHAR:
+        canal_expr = nodo_expr(est, idx_nodo)
+        si canal_expr > 0:
+            analizar_expr(est, canal_expr)
+        tabla_entrar_scope(est)
+        cuerpo = nodo_hijo_izq(est, idx_nodo)
+        stmt = cuerpo
+        r = 1
+        mientras r == 1:
+            si stmt <= 0:
+                r = 0
+                romper
+            analizar_sentencia(est, stmt)
+            inseguro:
+                asm("stmt = est->nodos[stmt].hermano")
+        tabla_salir_scope(est)
+        retornar
+
     // BloqueInseguro
     si tipo == NODO_INSEGURO:
         tabla_entrar_scope(est)

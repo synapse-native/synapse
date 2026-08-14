@@ -471,8 +471,10 @@ funcion puente_nodo(idx: entero) -> puntero:
         inseguro:
             asm("{ struct SentenciaEscuchar* _p = (struct SentenciaEscuchar*)calloc(1, sizeof(struct SentenciaEscuchar));")
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEscuchar\");")
+            asm("  // F3-7 (Manual 2 L113): canal en hijo_izq, bloque en hijo_der")
+            asm("  // como ListaNodo (paridad SentenciaSi/Mientras R30).")
             asm("  _p->canal = (struct Nodo*)puente_nodo(hi);")
-            asm("  _p->respuesta = (struct Nodo*)puente_nodo(hd);")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hd);")
             asm("  r = (void*)_p; }")
     si t == NODO_ENVIAR_CANAL:
         inseguro:

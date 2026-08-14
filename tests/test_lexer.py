@@ -195,7 +195,7 @@ class TestLexerKeywords:
     
     def test_keywords_escuchar(self):
         """Test keyword escuchar/listen"""
-        lexer = Lexer("#lang: es\nescuchar canal -> respuesta()")
+        lexer = Lexer("#lang: es\nescuchar canal:\n    respuesta()")
         tokens = lexer.tokenizar()
         assert TokenID.ESCUCHAR in [t.tipo for t in tokens]
     

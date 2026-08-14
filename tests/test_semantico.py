@@ -571,7 +571,7 @@ class TestAnalizadorSemanticoConcurrencia:
     
     def test_escuchar_canal(self):
         """Test que escuchar canal no genera error"""
-        fuente = "#lang: es\nfuncion respuesta() -> int:\n    retornar 1\nescuchar canal -> respuesta()"
+        fuente = "#lang: es\nfuncion respuesta() -> int:\n    retornar 1\nescuchar canal:\n    respuesta()"
         lexer = Lexer(fuente)
         tokens = lexer.tokenizar()
         diag = DiagnosticManager()

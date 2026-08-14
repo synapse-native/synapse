@@ -55,7 +55,7 @@ La Fase 3 del ROADMAP exige: emisor C (`nucleo/generator.syn`), `runtime/core/me
 | `io.c` en el link nativo | ✅ visible en el comando gcc de las etapas 2/3 y del programa de usuario |
 | E2E nativo (S2) | ✅ `examples/synapse/00_hola_mundo/main.syn` compila rc=0 y ejecuta imprimiendo `Hola desde Synapse!` (usa `escribir_linea` → `io.c`) |
 | Callers internos | ✅ 0 referencias rotas (`escribir`/`leer_linea`/`_syn_*_archivo` solo en io.c tras el movimiento) |
-| Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f31.log` |
+| Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f31.log` (log eliminado en R34, regla 12; evidencia en el reporte) |
 | Verificador de alineación | ✅ 0 brechas |
 
 ## 3b. F3-2 — externs `_syn_*` de `std/io.syn` definidos + migración de `abrir`/`leer`/`cerrar` a `io.c` (2026-08-14)
@@ -84,7 +84,7 @@ El hallazgo F3-2 del inventario decía "`importar std.io` no enlaza". La validac
 | Bootstrap 3 etapas | ✅ **S2==S3 byte-idénticos** sha256 `32ea2d4d…` (Manual 9 §9.7) |
 | E2E nativo archivos | ✅ `let archivo: Canal = abrir("…", "r"); contenido = leer(archivo); escribir_linea(contenido); cerrar(archivo)` compila rc=0 y ejecuta imprimiendo el contenido del archivo (abrir/leer/cerrar desde `io.c`) |
 | E2E `importar std.io` | ✅ `e2e_io.syn` rc=0 imprime `std.io: cargada correctamente` |
-| Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f32.log` |
+| Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f32.log` (log eliminado en R34, regla 12; evidencia en el reporte) |
 | Verificador | ✅ 0 brechas |
 
 ### 3b.4 Hallazgo nuevo (F3-4, resolución asignada)
@@ -107,7 +107,7 @@ Hallazgo F3-4 (registrado en F3-2): `archivo = abrir(...)` sin anotación infer�
 
 - Bootstrap **S2==S3 byte-idénticos `a817533f…`** (Manual 9 §9.7; el link nativo ya incluye `io.c`).
 - Probe e2e nativo `let archivo = abrir("tests/fixtures/test_io.es.syn", "r")` sin anotación: C generado `Canal archivo = abrir(...)` (antes `int64_t`), rc=0, ejecuta `OK_F3_4: abierto` + contenido; `let contenido = leer(archivo)` → `CadenaSegura`; `let t = crear_tensor(2,3)` → `Tensor t = crear_tensor(2LL, 3LL);` rc=0 (regresión de tensores cubierta por la suite).
-- Regresión S1 completa (log `logs/regresion_s1_f34.log`).
+- Regresión S1 completa (log `logs/regresion_s1_f34.log` — eliminado en R34, regla 12; evidencia en el reporte).
 - Verificador de alineación 0 brechas.
 
 **Manual referenciado:** Manual 2 §4.1 L267-268 (mapeo tipos→C, `canal`→`Canal`, `tensor`→`Tensor`); Manual 2 §4.2 L279-280 (inferencia); paridad S1 `context.py` `_BUILTINS` L72-118; Manual 9 §9.1/§9.7 (bootstrap).
@@ -131,9 +131,36 @@ Hallazgo de mayor impacto técnico detectado en el inventario B1 (checklist 3.4)
 - Probe e2e productor/consumidor: `let ch = canal(entero, 10)` + `ch <- dato` + `r = ch ->` → C generado `CanalConcurrencia* ch = canal_crear(10LL); canal_enviar(ch, (void*)(dato)); r = canal_recibir(ch);` rc=0, ejecuta e imprime **42** (el dato viaja por el canal real; antes `int64_t ch = 0;` sin llamadas).
 - Probe asignación (patrón HM R14): `ch = canal(entero, 10)` → hoisting declara `CanalConcurrencia* ch = {0};` + `ch = canal_crear(10LL);` rc=0, ejecuta.
 - Paridad frontend: harnesses lexer/parser/puente **27/27 passed**.
-- Regresión S1 completa (log `logs/regresion_s1_f36.log`); verificador 0 brechas.
+- Regresión S1 completa (log `logs/regresion_s1_f36.log` — eliminado en R34, regla 12; evidencia en el reporte); verificador 0 brechas.
 
 **Manual referenciado:** Manual 2 L144 (`Canal<T>` tipo), Manual 5 §3.4 (estructura de canales), Manual 2 L104-116 (enviar/recibir canal); paridad `emit_expressions.py` L523-529/L55-56; Manual 9 §9.1/§9.7.
+
+## 3e. F3-7 — `escuchar` alineado al Manual 2 L113 (bloque) en AMBOS compiladores + `Canal<T>` en el S1 + limpieza regla 12 (2026-08-14)
+
+### 3e.1 Contexto y decisión
+
+Cierre del hallazgo F3-7 del inventario B1. El Manual 2 L113 define `escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`; el código parseaba la forma vieja `escuchar canal -> callback` (NO documentada, regla 5) y el ejemplo `examples/synapse/03_concurrencia` estaba roto en ambos compiladores: el S1 generaba el listener `_listener_1` sin declararlo (gcc rc=1) y el main hacía `return principal();` **antes** de `synapse_esperar_hilos()` (el listener moría con el proceso — nunca imprimía), y el nativo no reconocía `SentenciaEscuchar`. Decisión: alinear la gramática, el AST, el analizador, el codegen y el ejemplo al Manual (regla 1: el manual manda), en ambos compiladores con paridad.
+
+### 3e.2 Cambios
+
+1. **Gramática (Manual 2 L113)**: `_parsear_escuchar` S1 (`parser_control.py`) → `SentenciaEscuchar(canal, cuerpo)`; `parsear_escuchar` nativo (`parser_sentencias.syn`) → NODO_ESCUCHAR con canal en `hijo_izq` y bloque INDENT/DEDENT como ListaNodo encadenado por `hermano`→`hijo_der` (patrón `si`/`mientras`); AST nativo `SentenciaEscuchar.respuesta: Nodo` → **`cuerpo: ListaNodo`** (`ast_nodes.syn` + `puente_ast.syn`); flatten F8 (`principal.syn`): canal en `slot[6]` y cuerpo en `hijo_izq` como cadena de hermanos (patrón `SentenciaSi`); analizador (`analizador_semantico.syn`): rama `NODO_ESCUCHAR` (scope + analiza canal y cuerpo); oráculo `_P_*` (`emit_selfhost.py`): rama `T_LISTEN` reescrita a la gramática L113 (patrón `T_IF` con `bloque()`).
+2. **Codegen S1**: el main ahora captura `int64_t _rc = principal(); synapse_esperar_hilos(); return _rc;` (antes `return principal();` mataba los hilos — Manual 5 §4.3: el listener sale cuando el canal se cierra; el main debe esperarlo).
+3. **Codegen nativo** (patrón R28/R30, 4 frentes): globals `_G_listeners[8][16384]`/`_G_listeners_count`/`_G_listener_modo` en la cabecera (`orquestador.syn` + S1 `_emit_cabecera_comun` en `generator.py`); helpers reales `_G_native_contar_escuchar`/`_G_native_escuchar_vars` en `monomorfizacion.syn` (patrón `_G_native_scan_ctor_exprs` — el intento de emitirlos como texto de cabecera rompía el unity: referencian structs del AST que no existen en programas de usuario; con `requiere:`/`garantiza:`); pre-scan de externs + flush de los `_listener_*` acumulados antes del `main` (`recorrido.syn`); `gen_visitar_escuchar` + rama dispatcher (`nodos_flujo.syn`, con `requiere:`/`garantiza:`); modo escuchar en `_oo_expr_a_c` (`expr_eval.syn`): `ExprRecibirCanal` → `canal_recibir(_canal)` dentro del listener.
+4. **S1 `Canal<T>`** (Manual 2 L144): `tipos.py` `_CANAL` incluye `Canal` (base del Manual); `semantic_scope.py` `_tipo_normalizado` normaliza `Canal<...>` → `CanalConcurrencia*` (paridad `context.py` L452; el branch ADT-`<` lo atrapaba antes — orden corregido).
+5. **Ejemplo** `examples/synapse/03_concurrencia/main.syn` a la sintaxis del Manual (`escuchar ch:` + bloque; params `Canal<entero>` — `CanalConcurrencia*` es el tipo de implementación, NO el del Manual).
+6. **Tests alineados** a la sintaxis L113: `test_parser.py`, `test_semantico.py`, `tests/unit/test_parser.py`, `test_lexer.py`, `test_cobertura_d5.py`, `tests/integration/test_generator.py`; caso `escuchar` (bloque) NUEVO en `tests/native_puente_paridad.py` (paridad de serialización campo a campo nativo vs `_P_*`).
+7. **Limpieza regla 12** (solicitud de auditoría): 849 artefactos de build/test NO trackeados eliminados (`_*.c`/`_*.c.o`/`*.exe`/`*.log`/`__pycache__` en raíz y tests/, `_test_*_temp/`, `.o` de runtime); los logs citados en reportes (artefactos transitorios nunca commiteados) se marcan como eliminados en los propios reportes — la evidencia queda en la bitácora y el reporte.
+
+### 3e.3 Validación
+
+- Bootstrap **S2==S3 byte-idénticos `68f0a4b7…`** (Manual 9 §9.7).
+- Probe e2e nativo `escuchar ch:` (params `Canal<entero>`, bloque con `mensaje = ch ->` y `si mensaje == nulo: romper`) con stage2 nuevo: compila rc=0 y **recibe e imprime 42 y 99**, sale al cerrarse el canal (antes: error semántico con `CanalConcurrencia*`/main que mataba los hilos).
+- Ejemplo `03_concurrencia` con AMBOS compiladores: rc=0, imprime 42/99.
+- Paridad frontend: harnesses lexer/parser/puente **27/27 passed** (16 casos de puente, incl. `escuchar` bloque).
+- Regresión S1: núcleo parser/lexer/semántico/cobertura/codegen **369 passed, 2 skipped**; frontend embebido + conmutación **21 passed, 9 skipped**; paridad y misc **248+20 passed**.
+- Verificador de alineación **0 brechas**.
+
+**Manual referenciado:** Manual 2 L113 (`escuchar_canal` EBNF) y L144 (`Canal<T>`); Manual 5 §3.4/§4.2-4.3 (canales, listener por cierre del canal); Manual 2 §12 (contratos `requiere:`/`garantiza:` de las funciones nuevas); Manual 9 §9.7 (determinismo S2==S3); reglas 1/5/11/12 de la auditoría.
 
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
@@ -144,7 +171,7 @@ Hallazgo de mayor impacto técnico detectado en el inventario B1 (checklist 3.4)
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | Fase posterior; la extracción de io.c es el primer corte real (patrón a repetir: texto, io.c, sistema…) |
-| F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ME de diseño aparte: alinear parser/puente a la gramática del Manual L113 + portar el listener thread (flush de `_listener_*` antes de `main`) o rediseñar; NO se adelanta dentro de F3-6 (regla 1/5: el manual manda, requiere decisión de diseño) |
+| F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido) vs S1 lenient rc=0 | Observación sin acción (regla 5): el Manual 2 L134 exige `let` en la declaración; el nativo es correcto al rechazarla — el S1 es lenient (divergencia preexistente documentada) |
 
 ## 5. REFERENCIAS
