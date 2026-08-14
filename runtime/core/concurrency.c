@@ -1,5 +1,6 @@
 // synapse_rt_concurrency.c — Concurrency module for Synapse runtime
-// Extracted from synapse_rt.c: thread-safe I/O, channels, thread tracker
+// Extracted from synapse_rt.c: channels, thread tracker (thread-safe console
+// I/O moved to runtime/core/io.c, F3-1)
 // Compilar: gcc -c synapse_rt_concurrency.c -o synapse_rt_concurrency.o -lpthread
 
 #include "synapse_rt_types.h"
@@ -9,40 +10,6 @@
 #ifdef _WIN32
   #include <winsock2.h>
 #endif
-
-// ============================================================
-// Thread-safe I/O
-// ============================================================
-
-pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void escribir(CadenaSegura contenido) {
-    pthread_mutex_lock(&io_mutex);
-    fwrite(contenido.datos, 1, contenido.longitud, stdout);
-    fflush(stdout);
-    pthread_mutex_unlock(&io_mutex);
-}
-
-void escribir_linea(CadenaSegura contenido) {
-    pthread_mutex_lock(&io_mutex);
-    fwrite(contenido.datos, 1, contenido.longitud, stdout);
-    fwrite("\n", 1, 1, stdout);
-    fflush(stdout);
-    pthread_mutex_unlock(&io_mutex);
-}
-
-CadenaSegura leer_linea(void) {
-    static char _buf[4096];
-    if (fgets(_buf, 4096, stdin)) {
-        int _len = (int)strlen(_buf);
-        if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
-        char* _dup = (char*)malloc(_len + 1);
-        if (!_dup) { return (CadenaSegura){ .longitud = 0, .datos = "" }; }
-        memcpy(_dup, _buf, _len + 1);
-        return (CadenaSegura){ .longitud = _len, .datos = _dup };
-    }
-    return (CadenaSegura){ .longitud = 0, .datos = "" };
-}
 
 // ============================================================
 // Thread tracker

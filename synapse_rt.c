@@ -2600,49 +2600,8 @@ int _syn_ejecutar_comando(CadenaSegura cmd) {
     return r;
 }
 
-static char* _syn_leer_archivo_como_texto(const char* ruta) {
-    FILE* f = fopen(ruta, "rb");
-    if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    rewind(f);
-    if (sz <= 0) { fclose(f); return NULL; }
-    char* buf = (char*)malloc((size_t)(sz + 1));
-    if (!buf) { fclose(f); return NULL; }
-    size_t n = fread(buf, 1, (size_t)sz, f);
-    fclose(f);
-    buf[n] = '\0';
-    return buf;
-}
-
-int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
-    if (ruta.datos == NULL || ruta.longitud <= 0) return -1;
-    char* ruta_c = (char*)malloc((size_t)(ruta.longitud + 1));
-    if (!ruta_c) return -1;
-    memcpy(ruta_c, ruta.datos, (size_t)ruta.longitud);
-    ruta_c[ruta.longitud] = '\0';
-    FILE* f = fopen(ruta_c, "wb");
-    if (!f) { free(ruta_c); return -1; }
-    if (contenido.datos && contenido.longitud > 0) {
-        fwrite(contenido.datos, 1, (size_t)contenido.longitud, f);
-    }
-    fclose(f);
-    free(ruta_c);
-    return 0;
-}
-
-CadenaSegura _syn_leer_archivo(CadenaSegura ruta) {
-    if (ruta.datos == NULL || ruta.longitud <= 0) return (CadenaSegura){0, ""};
-    char* ruta_c = (char*)malloc((size_t)(ruta.longitud + 1));
-    if (!ruta_c) return (CadenaSegura){0, ""};
-    memcpy(ruta_c, ruta.datos, (size_t)ruta.longitud);
-    ruta_c[ruta.longitud] = '\0';
-    char* contenido = _syn_leer_archivo_como_texto(ruta_c);
-    free(ruta_c);
-    if (!contenido) return (CadenaSegura){0, ""};
-    CadenaSegura res = {.longitud = (int)strlen(contenido), .datos = contenido};
-    return res;
-}
+// (I/O de archivos movido a runtime/core/io.c en F3-1: _syn_leer_archivo,
+// _syn_escribir_archivo, _syn_leer_archivo_como_texto)
 
 CadenaSegura _syn_obtener_env(CadenaSegura nombre) {
     if (nombre.datos == NULL || nombre.longitud <= 0) return (CadenaSegura){0, ""};

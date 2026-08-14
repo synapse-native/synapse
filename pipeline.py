@@ -95,6 +95,7 @@ _RT_FUENTES = (
     "synapse_rt.c",
     "runtime/core/memory.c",
     "runtime/core/concurrency.c",
+    "runtime/core/io.c",
     "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (
