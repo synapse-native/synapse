@@ -259,7 +259,7 @@ MODULOS_D9 = [
     "nucleo/lexer.syn",            # D-9(b): keywords extraidos en R32 (módulo 769 líneas, <límite)
     "nucleo/analizador_semantico.syn",  # D-9(e): cohesivo, vigilado
     "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado
-    "synapse_rt.c",                # D-9(d): Fase posterior
+    "synapse_rt.c",                # D-9(d): monolito en proceso (corte 2 tensor.c en R35; queda std.ai/cluster/debug)
 ]
 
 

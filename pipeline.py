@@ -96,6 +96,7 @@ _RT_FUENTES = (
     "runtime/core/memory.c",
     "runtime/core/concurrency.c",
     "runtime/core/io.c",
+    "runtime/core/tensor.c",  # D-9(d) corte 2: std.math/std.tensor/std.simd/std.mem
     "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (

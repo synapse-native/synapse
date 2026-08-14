@@ -162,6 +162,31 @@ Cierre del hallazgo F3-7 del inventario B1. El Manual 2 L113 define `escuchar_ca
 
 **Manual referenciado:** Manual 2 L113 (`escuchar_canal` EBNF) y L144 (`Canal<T>`); Manual 5 §3.4/§4.2-4.3 (canales, listener por cierre del canal); Manual 2 §12 (contratos `requiere:`/`garantiza:` de las funciones nuevas); Manual 9 §9.7 (determinismo S2==S3); reglas 1/5/11/12 de la auditoría.
 
+## 3f. F3-9 — D-9(d) corte 2: extracción de `runtime/core/tensor.c` del monolito `synapse_rt.c` (2026-08-14)
+
+### 3f.1 Contexto y decisión
+
+Segundo corte real de la deuda D-9(d) (regla 13) tras io.c en F3-1/F3-2. `synapse_rt.c` (7.793 líneas) es un monolito con 17+ subsistemas; el patrón establecido (F3-1/F3-2: extracción mecánica + enlace en pipeline.py y comando gcc nativo + bootstrap S2==S3) se repite con el bloque `std.math`/`std.tensor`/`std.simd`/`std.mem` (L37-655, 619 líneas): es el primer subsistema coherente del archivo, autocontenido (solo depende de `Tensor`/`CadenaSegura` de `synapse_rt_types.h` y de `_pool_malloc`/`pool_free` de memory.c, ya declarados en el header). **Análisis de acoplamiento previo:** los únicos callers cruzados hacia el bloque desde el resto del archivo son el stack IA (`_syn_rmsnorm`×3, `_syn_silu`×1, `_syn_extraer_fila`×1, `_syn_multiplicar_matrices_transpuesta_b`×7 — 12 refs en L>689); los statics (`_simd_habilitado`, `_simd_tipo_str`) y los headers SIMD condicionales (immintrin/xmmintrin/emmintrin/pmmintrin) viven DENTRO del bloque — no hay dependencias hacia fuera.
+
+### 3f.2 Cambios
+
+1. **`runtime/core/tensor.c` (NUEVO, 633 líneas)** — cabecera de módulo (patrón io.c) + las 619 líneas extraídas con texto **BYTE-IDENTICO** (CRLF preservado; verificación mecánica: bloque de tensor.c == L37-655 de HEAD reconstruido con CRLF).
+2. **`runtime/core/tensor.h` (NUEVO)** — API pública del módulo: `crear_tensor`/`suma_tensor`/`producto_punto`/`relu`, los 8 `_syn_*` internos del stack IA, los 8 `_syn_simd_*` + `_simd_detectar`, y `suma`/`producto`/`reserva`/`libera`. **Bug propio del ME corregido:** el prototipo NO-SIMD `_syn_multiplicar_matrices_transpuesta_b` faltaba en el primer intento → gcc rc=1 (`implicit declaration` en `_modelo_evaluar_token`, synapse_rt.c:2562) — añadido.
+3. **`synapse_rt.c`** — bloque eliminado (7.793 → **7.174 líneas**) + `#include "runtime/core/tensor.h"` (el stack IA necesita las declaraciones ahora que las definiciones viven en otra TU).
+4. **`pipeline.py`** — `runtime/core/tensor.c` en `_RT_FUENTES` (el compilador modular recompila los .o desde fuente en cada build → `build/obj/tensor.o` nuevo, sin duplicados con el viejo `synapse_rt.o`).
+5. **`nucleo/principal.syn`** — comando gcc nativo: `tensor.c` insertado + **7º `_rt_dir`** en los argumentos del snprintf (bug del ME: el primer intento sin el argumento corrompía el comando — detectado en stage1, corregido). `nucleo/generator.syn` REGENERADO con `_rebuild_generator.py` (lección R5).
+
+### 3f.3 Validación
+
+- Bootstrap **S2==S3 byte-idénticos `e6776c49…`** (Manual 9 §9.7).
+- `gcc -c runtime/core/tensor.c` y `gcc -c synapse_rt.c` OK (con `-I.`).
+- Probe e2e tensores (`crear_tensor`/`suma_tensor`/`producto_punto`/`relu` + `entero_a_texto` que sigue en synapse_rt.c) rc=0 en **S1 y nativo**, imprime 2/2 — las funciones vienen de tensor.c en el link.
+- Probe `importar std.modelo` + `cargar_modelo(...)`: el S1 **enlaza** (`build/obj/tensor.o` en el comando gcc, sin símbolos duplicados) — el stack IA de synapse_rt.c sigue viendo `_syn_rmsnorm`/`_syn_multiplicar_matrices_transpuesta_b` vía tensor.h.
+- Regresión S1 núcleo: **353 passed, 2 skipped**; paridad frontend **27/27 passed**.
+- Verificador de alineación **0 brechas**.
+
+**Manual referenciado:** regla 13 (modularización) de la auditoría; D-9(d) del canon; Manual 9 §9.7 (determinismo S2==S3); Manual 3 §3.1 (compilación del runtime desde fuente, ME-R2). Próximos cortes de D-9(d): std.ai (GGUF/BPE/inferencia), cluster (Raft/work-stealing/discovery/multicast), debug reversible/snapshots.
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -170,7 +195,7 @@ Cierre del hallazgo F3-7 del inventario B1. El Manual 2 L113 define `escuchar_ca
 | F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | ✅ **CERRADA en F3-4 (2026-08-14)** — seed `_G_rt_builtin_ret` ampliado (17→25 builtins, `abrir→canal`, tensores→`tensor`) + rama genérica `_G_native_tipo_retorno` en `gen_visitar_declaracion` (patrón hoisting ME-B6); bootstrap S2==S3 `a817533f…`; probes e2e `Canal archivo = abrir(...)`/`Tensor t = crear_tensor(...)` rc=0; ver §3c |
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
-| D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | Fase posterior; la extracción de io.c es el primer corte real (patrón a repetir: texto, io.c, sistema…) |
+| D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9 (2026-08-14, corte 2)** — `runtime/core/tensor.c` extraído (619 líneas byte-idénticas; std.math/tensor/simd/mem), 7.793 → 7.174 líneas; bootstrap S2==S3 `e6776c49…`; probes tensores y std.modelo OK; ver §3f. Siguientes cortes: std.ai (GGUF/BPE/inferencia), cluster (Raft/WS/discovery/multicast), debug reversible — cada uno con bootstrap diff 0 |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido) vs S1 lenient rc=0 | Observación sin acción (regla 5): el Manual 2 L134 exige `let` en la declaración; el nativo es correcto al rechazarla — el S1 es lenient (divergencia preexistente documentada) |
 
