@@ -112,6 +112,29 @@ Hallazgo F3-4 (registrado en F3-2): `archivo = abrir(...)` sin anotación infer�
 
 **Manual referenciado:** Manual 2 §4.1 L267-268 (mapeo tipos→C, `canal`→`Canal`, `tensor`→`Tensor`); Manual 2 §4.2 L279-280 (inferencia); paridad S1 `context.py` `_BUILTINS` L72-118; Manual 9 §9.1/§9.7 (bootstrap).
 
+## 3d. F3-6 — Emisión de canales en el codegen nativo: `canal(...)`→`canal_crear`, `ch ->`→`canal_recibir` (2026-08-14)
+
+### 3d.1 Contexto y decisión
+
+Hallazgo de mayor impacto técnico detectado en el inventario B1 (checklist 3.4): el codegen nativo **no emitía la creación ni la recepción de canales**. `ExprCrearCanal` (NODO 41) y `ExprRecibirCanal` (NODO 43) estaban definidos en AST/parser/puente pero **sin rama en el generador**: `let ch = canal(entero, 10)` emitía `int64_t ch = 0;` (nunca llamaba `canal_crear`) y `r = ch ->` emitía `0`. Los HM R14 no lo detectaban porque solo compilan (rc=0) sin ejecutar. El S1 los emite vía `emit_expressions.py` L523-529 (`canal_crear(cap)`/`canal_recibir(canal)`) y los tipa en L55-56 (`CanalConcurrencia*`/`void*`). Además el analizador nativo rechazaba `Canal<entero>` como parámetro (Manual 2 L144 define `Canal<T>`): `_prim[]` no incluía `Canal`. Fix en 4 frentes:
+
+### 3d.2 Cambios
+
+1. **`nucleo/generador/expr_eval.syn`** — ramas `ExprCrearCanal` → `canal_crear(%s)` (capacidad o `10` default) y `ExprRecibirCanal` → `canal_recibir(%s)` en `_oo_expr_a_c` (paridad emit_expressions.py L523-529).
+2. **`nucleo/generador/orquestador.syn`** — `_syn_nativo_expr_tipo_c`: `ExprCrearCanal` → `CanalConcurrencia*`, `ExprRecibirCanal` → `void*` (paridad L55-56).
+3. **`nucleo/generador/nodos_flujo.syn`** (`gen_visitar_declaracion`) + **`nucleo/generador/funciones.syn`** (hoisting ME-B7): ramas para que `let ch = canal(...)` y `ch = canal(...)` (asignación sin `let`, patrón de los HM R14) declaren `CanalConcurrencia*` en vez del default `int64_t`.
+4. **`nucleo/analizador_semantico.syn`** — `_prim[]` (tipos base conocidos de `validar_tipo_instanciacion`): añadido `"Canal"` (Manual 2 L144).
+
+### 3d.3 Validación
+
+- Bootstrap **S2==S3 byte-idénticos `9d84b3c1…`** (Manual 9 §9.7).
+- Probe e2e productor/consumidor: `let ch = canal(entero, 10)` + `ch <- dato` + `r = ch ->` → C generado `CanalConcurrencia* ch = canal_crear(10LL); canal_enviar(ch, (void*)(dato)); r = canal_recibir(ch);` rc=0, ejecuta e imprime **42** (el dato viaja por el canal real; antes `int64_t ch = 0;` sin llamadas).
+- Probe asignación (patrón HM R14): `ch = canal(entero, 10)` → hoisting declara `CanalConcurrencia* ch = {0};` + `ch = canal_crear(10LL);` rc=0, ejecuta.
+- Paridad frontend: harnesses lexer/parser/puente **27/27 passed**.
+- Regresión S1 completa (log `logs/regresion_s1_f36.log`); verificador 0 brechas.
+
+**Manual referenciado:** Manual 2 L144 (`Canal<T>` tipo), Manual 5 §3.4 (estructura de canales), Manual 2 L104-116 (enviar/recibir canal); paridad `emit_expressions.py` L523-529/L55-56; Manual 9 §9.1/§9.7.
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -121,6 +144,8 @@ Hallazgo F3-4 (registrado en F3-2): `archivo = abrir(...)` sin anotación infer�
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | Fase posterior; la extracción de io.c es el primer corte real (patrón a repetir: texto, io.c, sistema…) |
+| F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ME de diseño aparte: alinear parser/puente a la gramática del Manual L113 + portar el listener thread (flush de `_listener_*` antes de `main`) o rediseñar; NO se adelanta dentro de F3-6 (regla 1/5: el manual manda, requiere decisión de diseño) |
+| F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido) vs S1 lenient rc=0 | Observación sin acción (regla 5): el Manual 2 L134 exige `let` en la declaración; el nativo es correcto al rechazarla — el S1 es lenient (divergencia preexistente documentada) |
 
 ## 5. REFERENCIAS
 
