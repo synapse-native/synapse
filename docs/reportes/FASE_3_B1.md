@@ -58,11 +58,45 @@ La Fase 3 del ROADMAP exige: emisor C (`nucleo/generator.syn`), `runtime/core/me
 | Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f31.log` |
 | Verificador de alineación | ✅ 0 brechas |
 
+## 3b. F3-2 — externs `_syn_*` de `std/io.syn` definidos + migración de `abrir`/`leer`/`cerrar` a `io.c` (2026-08-14)
+
+**Manual referenciado:** ROADMAP Fase 3 (`runtime/core/io.c`); Manual 2 §5 (std.io como biblioteca estándar); regla 12 de la AUDITORÍA (símbolos declarados sin definición = código muerto/mina latente).
+
+### 3b.1 Contexto y reevaluación
+
+El hallazgo F3-2 del inventario decía "`importar std.io` no enlaza". La validación empírica refinó el diagnóstico:
+
+- `importar std.io` **SÍ funciona** para los nombres directos (`escribir`/`escribir_linea`/`leer_linea`/`abrir`/`leer`/`cerrar`): el generador los mapea vía la tabla de builtins `_rtb[]` del orquestador a las funciones C del runtime, y `--gc-sections` descarta los wrappers de std.io no referenciados (el binario enlaza sin pedir los `_syn_*`).
+- Los externs `_syn_abrir`/`_syn_leer`/`_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea` declarados en `std/io.syn` **NO estaban definidos en ningún lado** (verificado: solo externs en `src/main.c`, `tests/integration/test_cluster_handshake.c`, `_synapse_shared.h`). Es una **mina latente** (regla 12): cualquier ruta futura que llame a un wrapper de std.io (p.ej. la forma calificada `io.funcion(...)` que los Manuales 5/7 muestran) rompería el link.
+- **Observación (sin acción):** la forma calificada `io.escribir_linea(...)` (Manual 5 L569/592, Manual 7 L303) **no es soportada por la gramática** — Manual 2 EBNF (`llamada_funcion ::= IDENTIFICADOR "(" ...`) no define llamadas calificadas; el parser la rechaza con error. No es un breach (regla 5: no está en el manual), se documenta.
+
+### 3b.2 Cambios
+
+1. **`runtime/core/io.c`:** se definen los 5 externs — `_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea` (thin wrappers de los directos) y `_syn_abrir`/`_syn_leer` (implementación completa: tabla de librerías virtuales `LIB_*` + fopen/leer); se MIGRA el trío `abrir`/`leer`/`cerrar` (Canal-como-handle) desde `synapse_rt.c` (los directos quedan como wrappers de los `_syn_*`; `cerrar` directo). Añadido `#include "librerias/embedded_libs.h"` (LIB_*).
+2. **`synapse_rt.c`:** bloque "Virtual library tables / Canal abrir/leer/cerrar" (L31-95) eliminado con marcador comentado (0 callers internos rotos — el link lo verifica).
+
+### 3b.3 Validación
+
+| Criterio | Resultado |
+|---|---|
+| Compilación io.c | ✅ `gcc -O2 -c runtime/core/io.c -I.` OK |
+| **Probe de link de los externs** | ✅ programa C que llama a `_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea`/`_syn_abrir`/`_syn_leer` enlaza y ejecuta (antes: undefined reference) |
+| Bootstrap 3 etapas | ✅ **S2==S3 byte-idénticos** sha256 `32ea2d4d…` (Manual 9 §9.7) |
+| E2E nativo archivos | ✅ `let archivo: Canal = abrir("…", "r"); contenido = leer(archivo); escribir_linea(contenido); cerrar(archivo)` compila rc=0 y ejecuta imprimiendo el contenido del archivo (abrir/leer/cerrar desde `io.c`) |
+| E2E `importar std.io` | ✅ `e2e_io.syn` rc=0 imprime `std.io: cargada correctamente` |
+| Regresión S1 | ✅ `pytest tests/` completo → `logs/regresion_s1_f32.log` |
+| Verificador | ✅ 0 brechas |
+
+### 3b.4 Hallazgo nuevo (F3-4, resolución asignada)
+
+**F3-4 — Gap de paridad en la inferencia del `let` sin anotación para builtins con retorno no-`int64_t`:** `archivo = abrir(...)` (sin anotación) infiere `int64_t` en el nativo (C inválido: `int64_t archivo = abrir(...)` → incompatible types) mientras el S1 lo compila rc=0 (mapa `_BUILTINS` de `context.py` L70-80: `'abrir': 'Canal'`, `'leer': 'texto'`, `'crear_tensor': 'tensor'`, …). Con anotación (`let archivo: Canal = abrir(...)`) funciona en AMBOS. **Resolución asignada:** port del mapa `_BUILTINS` al nativo (`_syn_nativo_expr_tipo_c` en `orquestador.syn`, patrón R20/R25/R27) + regenerar `generator.syn` (lección R5) — ME independiente (toca el codegen del compilador: bootstrap + regresión completa).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
 |---|----------|---------------------|
-| F3-2 | `std/io.syn` (y su copia embebida `LIB_IO`) declara externs `_syn_abrir`/`_syn_leer`/`_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea` **sin definición en ningún lado** → `importar std.io` no enlaza (wrapper muerto; los nombres directos `escribir`/`escribir_linea`/`leer_linea` sí funcionan vía `io.c`) | **Siguiente ME de Fase 3 (F3-2):** definir los `_syn_*` en io.c (alias a los directos) o reescribir `std/io.syn` sobre los nombres directos; incluye evaluar migrar `abrir`/`leer`/`cerrar` (Canal-como-handle, synapse_rt.c L50-95) a io.c |
+| F3-2 | `std/io.syn` (y su copia embebida `LIB_IO`) declara externs `_syn_abrir`/`_syn_leer`/`_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea` **sin definición en ningún lado** (mina latente, regla 12; `importar std.io` funciona solo porque `--gc-sections` descarta los wrappers no referenciados) | ✅ **CERRADA en F3-2 (2026-08-14)** — los 5 externs definidos en `io.c` + `abrir`/`leer`/`cerrar` migrados de `synapse_rt.c` a `io.c`; probe de link C verifica las definiciones; bootstrap S2==S3 `32ea2d4d…`; e2e archivos nativo rc=0; ver §3b |
+| F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | Port del mapa `_BUILTINS` al nativo (`_syn_nativo_expr_tipo_c`, patrón R20/R25/R27) + regenerar `generator.syn` — **ME independiente de Fase 3** (toca codegen del compilador) |
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-4 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | Corregido en este ME (columna del checklist → Manual 2/4/5/9) |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | Fase posterior; la extracción de io.c es el primer corte real (patrón a repetir: texto, io.c, sistema…) |

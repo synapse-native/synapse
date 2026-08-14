@@ -1,10 +1,13 @@
 // synapse_rt_io.c — I/O module for Synapse runtime
-// Extracted from synapse_rt.c (file I/O) and synapse_rt_concurrency.c
-// (thread-safe console I/O). Roadmap Fase 3 deliverable runtime/core/io.c:
-// funciones de entrada/salida basicas (log, lectura/escritura de archivos).
+// Extracted from synapse_rt.c (file I/O, Canal-handle abrir/leer/cerrar) and
+// synapse_rt_concurrency.c (thread-safe console I/O). Roadmap Fase 3
+// deliverable runtime/core/io.c: funciones de entrada/salida basicas.
+// F3-2: define tambien los externs _syn_* que std/io.syn declara
+// (antes sin definicion en ningun lado — regla 12, mina latente).
 // Compilar: gcc -c synapse_rt_io.c -o synapse_rt_io.o -lpthread
 
 #include "synapse_rt_types.h"
+#include "librerias/embedded_libs.h"
 
 // ============================================================
 // Thread-safe console I/O
@@ -39,6 +42,15 @@ CadenaSegura leer_linea(void) {
     }
     return (CadenaSegura){ .longitud = 0, .datos = "" };
 }
+
+// ============================================================
+// std.io externs (F3-2) — std/io.syn los declara como `externo`;
+// antes no existian en ningun lado (importar std.io -> link latente).
+// ============================================================
+
+void _syn_escribir(CadenaSegura texto) { escribir(texto); }
+void _syn_escribir_linea(CadenaSegura texto) { escribir_linea(texto); }
+CadenaSegura _syn_leer_linea(void) { return leer_linea(); }
 
 // ============================================================
 // File I/O (lectura/escritura de archivos)
@@ -86,4 +98,61 @@ CadenaSegura _syn_leer_archivo(CadenaSegura ruta) {
     if (!contenido) return (CadenaSegura){0, ""};
     CadenaSegura res = {.longitud = (int)strlen(contenido), .datos = contenido};
     return res;
+}
+
+// ============================================================
+// Canal-as-file-handle (migrado de synapse_rt.c en F3-2)
+// Librerias virtuales (embedded_libs.h) + fopen/leer/cerrar
+// ============================================================
+
+Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo) {
+    Canal _c = {0};
+    _c.es_virtual = 0;
+    if (strcmp(ruta.datos, "librerias/compiler/ast_nodes.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_AST; _c.virtual_len = (int)strlen(LIB_AST); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "librerias/compiler/lexer.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_LEXER; _c.virtual_len = (int)strlen(LIB_LEXER); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "librerias/compiler/parser.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_PARSER; _c.virtual_len = (int)strlen(LIB_PARSER); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "librerias/compiler/generator.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_GENERATOR; _c.virtual_len = (int)strlen(LIB_GENERATOR); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/io.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_IO; _c.virtual_len = (int)strlen(LIB_IO); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/mem.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MEM; _c.virtual_len = (int)strlen(LIB_MEM); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/math.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MATH; _c.virtual_len = (int)strlen(LIB_MATH); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/fs.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_FS; _c.virtual_len = (int)strlen(LIB_FS); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/sys.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_SYS; _c.virtual_len = (int)strlen(LIB_SYS); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/modelo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_MODELO; _c.virtual_len = (int)strlen(LIB_MODELO); _c.es_valido = 1; return _c; }
+    if (strcmp(ruta.datos, "std/oraculo.syn") == 0) { _c.es_virtual = 1; _c.virtual_data = LIB_ORACULO; _c.virtual_len = (int)strlen(LIB_ORACULO); _c.es_valido = 1; return _c; }
+    _c.stream = fopen(ruta.datos, modo.datos);
+    _c.es_valido = (_c.stream != NULL) ? 1 : 0;
+    if (!_c.es_valido) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: fopen fallo en abrir()\n");
+    }
+    return _c;
+}
+
+Canal abrir(CadenaSegura ruta, CadenaSegura modo) { return _syn_abrir(ruta, modo); }
+
+CadenaSegura _syn_leer(Canal canal) {
+    if (!canal.es_valido) { return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+    if (canal.es_virtual) {
+        char* _buf = (char*)malloc(canal.virtual_len + 1);
+        if (!_buf) { return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+        memcpy(_buf, canal.virtual_data, canal.virtual_len);
+        _buf[canal.virtual_len] = '\0';
+        return (CadenaSegura){ .longitud = canal.virtual_len, .datos = (const char*)_buf };
+    }
+    fseek(canal.stream, 0, SEEK_END);
+    long _tam = ftell(canal.stream);
+    rewind(canal.stream);
+    char* _buf = (char*)malloc(_tam + 1);
+    if (!_buf) { return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+    size_t _leido = fread(_buf, 1, _tam, canal.stream);
+    _buf[_leido] = '\0';
+    return (CadenaSegura){ .longitud = (int)_leido, .datos = (const char*)_buf };
+}
+
+CadenaSegura leer(Canal canal) { return _syn_leer(canal); }
+
+void cerrar(Canal canal) {
+    if (canal.es_virtual) { return; }
+    if (canal.stream) {
+        fclose(canal.stream);
+    }
 }
