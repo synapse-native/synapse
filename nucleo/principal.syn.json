@@ -66803,6 +66803,104 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    } else if (_lf->nombre.datos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // F3-4 (hallazgo F3-4): `let x = abrir(...)` sin anotacion -> el tipo\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // de la variable es el retorno del builtin/funcion (paridad context.py\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // _BUILTINS L72-118 y hoisting ME-B6 L219-230). Antes caia al default\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // int64_t y el C quedaba `int64_t archivo = abrir(...)` (C invalido).\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _rtb[64]; _rtb[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_G_native_tipo_retorno(_lf->nombre.datos, _rtb)) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (strcmp(_rtb, \"vacio\") != 0 && strcmp(_rtb, \"nulo\") != 0 && strcmp(_rtb, \"entero\") != 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                traducir_tipo_c((void*)_rtb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strncpy(_var_type_buf, _gen_tmp_buf, 127); _var_type_buf[127] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strcat(_var_type_buf, \" \");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _var_type = _var_type_buf;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    }"
                 }
               },
@@ -71609,14 +71707,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "static const char* _G_rt_builtin_fns[] = { \"_argv\",\"leer\",\"leer_linea\",\"concat\",\"entero_a_texto\",\"decimal_a_texto\",\"subcadena\",\"_syn_obtener_env\",\"leer_archivo\",\"_syn_leer_archivo\",\"texto_a_entero\",\"texto_a_decimal\",\"salir\",\"escribir\",\"escribir_linea\",\"cerrar\",\"_argc\" };"
+                  "instruccion": "// F3-4: seed ampliado con paridad context.py _BUILTINS - abrir->canal,\n"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "static const char* _G_rt_builtin_ret[] = { \"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"entero\",\"decimal\",\"nulo\",\"nulo\",\"nulo\",\"nulo\",\"entero\" };"
+                  "instruccion": "// crear_tensor/reserva/suma_tensor/producto_punto/suma/producto/relu->tensor.\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// (let sin anotacion inferia int64_t para builtins que retornan Canal/Tensor).\n"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static const char* _G_rt_builtin_fns[] = { \"_argv\",\"leer\",\"leer_linea\",\"concat\",\"entero_a_texto\",\"decimal_a_texto\",\"subcadena\",\"_syn_obtener_env\",\"leer_archivo\",\"_syn_leer_archivo\",\"texto_a_entero\",\"texto_a_decimal\",\"salir\",\"escribir\",\"escribir_linea\",\"cerrar\",\"_argc\",\"abrir\",\"crear_tensor\",\"reserva\",\"suma_tensor\",\"producto_punto\",\"suma\",\"producto\",\"relu\" };"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static const char* _G_rt_builtin_ret[] = { \"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"cadena\",\"entero\",\"decimal\",\"nulo\",\"nulo\",\"nulo\",\"nulo\",\"entero\",\"canal\",\"tensor\",\"tensor\",\"tensor\",\"tensor\",\"tensor\",\"tensor\",\"tensor\" };"
                 }
               },
               {

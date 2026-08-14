@@ -91,14 +91,35 @@ El hallazgo F3-2 del inventario decía "`importar std.io` no enlaza". La validac
 
 **F3-4 — Gap de paridad en la inferencia del `let` sin anotación para builtins con retorno no-`int64_t`:** `archivo = abrir(...)` (sin anotación) infiere `int64_t` en el nativo (C inválido: `int64_t archivo = abrir(...)` → incompatible types) mientras el S1 lo compila rc=0 (mapa `_BUILTINS` de `context.py` L70-80: `'abrir': 'Canal'`, `'leer': 'texto'`, `'crear_tensor': 'tensor'`, …). Con anotación (`let archivo: Canal = abrir(...)`) funciona en AMBOS. **Resolución asignada:** port del mapa `_BUILTINS` al nativo (`_syn_nativo_expr_tipo_c` en `orquestador.syn`, patrón R20/R25/R27) + regenerar `generator.syn` (lección R5) — ME independiente (toca el codegen del compilador: bootstrap + regresión completa).
 
+## 3c. F3-4 — Inferencia del `let` sin anotación para builtins con retorno no-`int64_t` (2026-08-14)
+
+### 3c.1 Contexto y decisión
+
+Hallazgo F3-4 (registrado en F3-2): `archivo = abrir(...)` sin anotación infería `int64_t` en el codegen nativo (C inválido: `int64_t archivo = abrir(...)` → gcc `incompatible types`) mientras el S1 compilaba rc=0 vía el mapa `_BUILTINS` de `context.py` L72-118. El hoisting nativo (ME-B6) ya resolvía retornos de llamadas vía `_G_native_tipo_retorno` (seed `_G_rt_builtin_fns`/`_G_rt_builtin_ret` + funciones de usuario), pero el seed era parcial (`abrir`/`crear_tensor`/`reserva`/… no estaban) y `gen_visitar_declaracion` no tenía la rama genérica de builtin (solo ADT-ctor R25 y struct R27). Fix en 2 frentes (paridad `context.py` `_BUILTINS`):
+
+### 3c.2 Cambios
+
+1. **`nucleo/generador/escaneo.syn`** — seed `_G_rt_builtin_ret` ampliado (17 → 25 builtins): `abrir→canal`, `crear_tensor`/`reserva`/`suma_tensor`/`producto_punto`/`suma`/`producto`/`relu→tensor` (el resto ya estaba: `cadena`/`entero`/`decimal`/`nulo`).
+2. **`nucleo/generador/nodos_flujo.syn`** — rama `else if (_lf->nombre.datos)` en `gen_visitar_declaracion`: consulta `_G_native_tipo_retorno` (patrón del hoisting ME-B6 L219-230, filtra `vacio`/`nulo`/`entero` → default `int64_t`) y traduce con `traducir_tipo_c` (`canal→Canal`, `tensor→Tensor`, `cadena→CadenaSegura`).
+3. **`nucleo/generator.syn`** regenerado con `nucleo/_rebuild_generator.py` (lección R5: el cambio en submódulos no surte efecto hasta regenerar el unity).
+
+### 3c.3 Validación
+
+- Bootstrap **S2==S3 byte-idénticos `a817533f…`** (Manual 9 §9.7; el link nativo ya incluye `io.c`).
+- Probe e2e nativo `let archivo = abrir("tests/fixtures/test_io.es.syn", "r")` sin anotación: C generado `Canal archivo = abrir(...)` (antes `int64_t`), rc=0, ejecuta `OK_F3_4: abierto` + contenido; `let contenido = leer(archivo)` → `CadenaSegura`; `let t = crear_tensor(2,3)` → `Tensor t = crear_tensor(2LL, 3LL);` rc=0 (regresión de tensores cubierta por la suite).
+- Regresión S1 completa (log `logs/regresion_s1_f34.log`).
+- Verificador de alineación 0 brechas.
+
+**Manual referenciado:** Manual 2 §4.1 L267-268 (mapeo tipos→C, `canal`→`Canal`, `tensor`→`Tensor`); Manual 2 §4.2 L279-280 (inferencia); paridad S1 `context.py` `_BUILTINS` L72-118; Manual 9 §9.1/§9.7 (bootstrap).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
 |---|----------|---------------------|
 | F3-2 | `std/io.syn` (y su copia embebida `LIB_IO`) declara externs `_syn_abrir`/`_syn_leer`/`_syn_escribir`/`_syn_escribir_linea`/`_syn_leer_linea` **sin definición en ningún lado** (mina latente, regla 12; `importar std.io` funciona solo porque `--gc-sections` descarta los wrappers no referenciados) | ✅ **CERRADA en F3-2 (2026-08-14)** — los 5 externs definidos en `io.c` + `abrir`/`leer`/`cerrar` migrados de `synapse_rt.c` a `io.c`; probe de link C verifica las definiciones; bootstrap S2==S3 `32ea2d4d…`; e2e archivos nativo rc=0; ver §3b |
-| F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | Port del mapa `_BUILTINS` al nativo (`_syn_nativo_expr_tipo_c`, patrón R20/R25/R27) + regenerar `generator.syn` — **ME independiente de Fase 3** (toca codegen del compilador) |
+| F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | ✅ **CERRADA en F3-4 (2026-08-14)** — seed `_G_rt_builtin_ret` ampliado (17→25 builtins, `abrir→canal`, tensores→`tensor`) + rama genérica `_G_native_tipo_retorno` en `gen_visitar_declaracion` (patrón hoisting ME-B6); bootstrap S2==S3 `a817533f…`; probes e2e `Canal archivo = abrir(...)`/`Tensor t = crear_tensor(...)` rc=0; ver §3c |
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
-| F3-4 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | Corregido en este ME (columna del checklist → Manual 2/4/5/9) |
+| F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | Fase posterior; la extracción de io.c es el primer corte real (patrón a repetir: texto, io.c, sistema…) |
 
 ## 5. REFERENCIAS
