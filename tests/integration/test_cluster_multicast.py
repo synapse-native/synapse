@@ -23,6 +23,7 @@ SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
 SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
 
 # Toolchain
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -41,7 +42,7 @@ def _compilar():
         return False
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O,
+        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O,
         TWEETNACL_O if os.path.exists(TWEETNACL_O) else "",
         "-o", BIN_PATH,
         "-lm", "-lpthread", "-lws2_32"

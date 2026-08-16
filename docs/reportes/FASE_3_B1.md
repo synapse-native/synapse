@@ -187,6 +187,30 @@ Segundo corte real de la deuda D-9(d) (regla 13) tras io.c en F3-1/F3-2. `synaps
 
 **Manual referenciado:** regla 13 (modularización) de la auditoría; D-9(d) del canon; Manual 9 §9.7 (determinismo S2==S3); Manual 3 §3.1 (compilación del runtime desde fuente, ME-R2). Próximos cortes de D-9(d): std.ai (GGUF/BPE/inferencia), cluster (Raft/work-stealing/discovery/multicast), debug reversible/snapshots.
 
+## 3g. F3-8 — Rechazo de la forma sin `let` (`x: entero = 5`) alineado al Manual 2 L134 en AMBOS compiladores (2026-08-14)
+
+### 3g.1 Contexto y decisión
+
+Cierre del hallazgo F3-8 del inventario B1 (registrado en F3-6 con "observación sin acción"). El Manual 2 L134 define `declaracion_variable ::= "let" IDENTIFICADOR [ ":" tipo ] [ "=" expresion ]` — **el `let` es obligatorio** para declarar variables. El código aceptaba la forma NO documentada `x: entero = 5` (asignación con anotación de tipo sin `let`): el nativo la parseaba como `NODO_EXPR` y emitía `x;` (C inválido, gcc rc=5 — silencioso), mientras el S1 la aceptaba lenient y emitía `int64_t x = 5LL;` (funcionaba, pero admitía sintaxis que el Manual no define, regla 5). Decisión: **ambos compiladores deben RECHAZAR la forma** con error propio de parser (paridad), y los usos reales del repo (ejemplos/tests) corregidos a la forma del Manual con `let`.
+
+### 3g.2 Cambios
+
+1. **S1** (`compilador/parser.py`): `_parsear_declaracion_tipada` (L137) — el camino lenient que aceptaba `IDENT : tipo = expr` sin `let` ahora emite error sintáctico `ERR_SYNTAX_EXPECTED` esperando `let` (mensaje alineado al patrón existente; aborta la compilación, verificado con probe rc=1). La rama `_parsear_let` además aprende el receive `ch ->` (paridad con `_parsear_asignacion` — hallazgo de cobertura del propio ME).
+2. **Nativo** (`nucleo/parser_stmt.syn`): `parsear_sentencia_canal` — rama `T_DOSPUNTOS` que caía al `NODO_EXPR` con `x` (emitía `x;`) ahora emite error de parser esperando `let` (`err_sintactico` con línea/columna); rama `T_POR` (`*` multiplicación, token `T_POR` del lexer) añadida para no confundir la multiplicación con el prefijo de puntero.
+3. **Usos corregidos a la forma del Manual** (grep mecánico de `^\s+[a-z_]+: tipo =`): `examples/synapse/01_calculadora/main.syn`; tests `tests/unit/test_parser.py` (`test_declaracion_tipada_puntero` probaba exactamente la forma inválida → `let` + test nuevo del rechazo), `tests/unit/test_lsp.py` (hover con posiciones ajustadas a `let x:`), `tests/test_semantico.py`, `tests/test_parser.py`, `tests/test_cobertura_d5.py`.
+4. **`nucleo/parser_stmt.syn` regenerado** en el bootstrap (stage1 → stage2 → stage3): bootstrap **S2==S3 byte-idénticos `7c552471…`** (Manual 9 §9.7); `nucleo/principal.syn.json` (AST self-parse) regenerado y commiteado (convención R35).
+5. **Regresiones de R35 destapadas y corregidas (regla 11)**: 12 tests de integración linkeaban listas hardcodeadas de `.o` del runtime sin `tensor.o` (el split tensor.c de R35 movió `_syn_rmsnorm`/`_syn_silu`/`_syn_extraer_fila`/`_syn_multiplicar_matrices_transpuesta_b`/`_simd_detectar` fuera de `synapse_rt.o` → undefined reference en `test_toml_raii.py` y los 8 tests de cluster/debug/migración). `TENSOR_O` añadido a las listas de link: `test_toml_raii.py`, `test_runner.py`, `test_cluster_discovery.py`, `test_cluster_handshake_e2e.py`, `test_cluster_multicast.py`, `test_distributed_debug.py`, `test_memory_snapshots.py`, `test_reversible_debug.py`, `test_time_travel.py`, `test_live_migration.py`, `test_live_migration_cluster.py` (el fixture `conftest.py` ya conocía `tensor.o`/`io.o` desde R35).
+
+### 3g.3 Validación
+
+- Bootstrap **S2==S3 byte-idénticos `7c552471…`** (Manual 9 §9.7).
+- Probes de rechazo: `x: entero = 5` → **S1 rc=1** con error de parser (antes rc=0 lenient) y **nativo rc=1** con línea/columna (antes C inválido mudo); la forma con `let` (`let x: entero = 5`) sigue compilando rc=0 en ambos (regresión).
+- Ejemplo `01_calculadora` con `let`: S1 rc=0 y ejecuta.
+- Tests de integración arreglados: `test_toml_raii.py` + cluster multicast **16 passed**; resto de integración (discovery/handshake/distributed/memory_snapshots/reversible/time_travel/live_migration×2) **84 passed**.
+- Regresión S1 núcleo: parser/semántico/lexer/cobertura/unit **204 passed**; paridad frontend **3/3 harnesses rc=0**; verificador de alineación **0 brechas**.
+
+**Manual referenciado:** Manual 2 L134 (`declaracion_variable` EBNF — `let` obligatorio); regla 5 (no inventar sintaxis) y regla 11 (cero deuda: regresiones destapadas se corrigen, no se registran) de la auditoría; Manual 9 §9.7 (determinismo S2==S3).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -197,7 +221,7 @@ Segundo corte real de la deuda D-9(d) (regla 13) tras io.c en F3-1/F3-2. `synaps
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9 (2026-08-14, corte 2)** — `runtime/core/tensor.c` extraído (619 líneas byte-idénticas; std.math/tensor/simd/mem), 7.793 → 7.174 líneas; bootstrap S2==S3 `e6776c49…`; probes tensores y std.modelo OK; ver §3f. Siguientes cortes: std.ai (GGUF/BPE/inferencia), cluster (Raft/WS/discovery/multicast), debug reversible — cada uno con bootstrap diff 0 |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
-| F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido) vs S1 lenient rc=0 | Observación sin acción (regla 5): el Manual 2 L134 exige `let` en la declaración; el nativo es correcto al rechazarla — el S1 es lenient (divergencia preexistente documentada) |
+| F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |
 
 ## 5. REFERENCIAS
 

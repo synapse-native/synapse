@@ -74,12 +74,15 @@ _RT_OBJ_DEFS = [
     ("synapse_rt.o", "synapse_rt.c", []),
     ("synapse_rt_memory.o", "runtime/core/memory.c", ["-DSYNAPSE_DEBUG_MEM"]),
     ("synapse_rt_concurrency.o", "runtime/core/concurrency.c", []),
+    ("io.o", "runtime/core/io.c", []),        # F3-1/F3-2 (D-9(d)): I/O extraido de synapse_rt.c
+    ("tensor.o", "runtime/core/tensor.c", []),  # R35 (D-9(d) corte 2): tensores/SIMD extraidos
     ("axon_rt.o", "axon/axon_rt.c", []),
 ]
 
 # Headers del runtime: cualquier cambio en ellos invalida los .o
 _RT_HEADERS = [
     "synapse_rt.h", "synapse_rt_types.h", "synapse_rt_memory.h", "axon/tweetnacl.h",
+    "runtime/core/tensor.h",  # R35 (D-9(d) corte 2): API del modulo tensor
     "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
 ]
 

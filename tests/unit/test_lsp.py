@@ -47,7 +47,7 @@ def test_hover_variable():
     from compilador.parser import Parser
     from compilador.diagnostics import DiagnosticManager
 
-    codigo = "#lang: es\nfuncion principal() -> nulo:\n    x: entero = 1\n    escribir_linea(x)"
+    codigo = "#lang: es\nfuncion principal() -> nulo:\n    let x: entero = 1\n    escribir_linea(x)"
     fuente_lineas = codigo.split("\n")
     diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo="file:///test_hover.syn")
     lexer = Lexer(codigo)
@@ -58,7 +58,7 @@ def test_hover_variable():
 
     msg = _simular_mensaje("textDocument/hover", {
         "textDocument": {"uri": "file:///test_hover.syn"},
-        "position": {"line": 2, "character": 4},
+        "position": {"line": 2, "character": 8},  # 'x' en 'let x: entero'
     })
     resultado = _manejar_hover(msg)
     assert resultado is not None
@@ -74,7 +74,7 @@ def test_definicion_variable():
     from compilador.parser import Parser
     from compilador.diagnostics import DiagnosticManager
 
-    codigo = "#lang: es\nfuncion principal() -> nulo:\n    x: entero = 1\n    escribir_linea(x)"
+    codigo = "#lang: es\nfuncion principal() -> nulo:\n    let x: entero = 1\n    escribir_linea(x)"
     fuente_lineas = codigo.split("\n")
     diag = DiagnosticManager(fuente_lineas=fuente_lineas, ruta_archivo="file:///test_def.syn")
     lexer = Lexer(codigo)

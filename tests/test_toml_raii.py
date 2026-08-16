@@ -21,6 +21,7 @@ SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, 'synapse_rt.o')
 SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, 'synapse_rt_memory.o')
 SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, 'synapse_rt_concurrency.o')
 TWEETNACL_O = os.path.join(PROJECT_ROOT, 'tweetnacl.o')
+TENSOR_O = os.path.join(PROJECT_ROOT, 'tensor.o')
 
 
 def build_toml_ast() -> Programa:
@@ -233,7 +234,7 @@ def test_toml_compile_and_run():
         # Compilar
         compile_cmd = [
             'gcc', '-Wall', '-Wextra', '-O0',
-            tmp_c, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+            tmp_c, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, TWEETNACL_O,
             '-o', exe_path,
             '-lpthread', '-lws2_32'
         ]

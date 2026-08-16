@@ -25,6 +25,7 @@ SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
 SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
 
 
 def _find_gcc() -> str:
@@ -51,7 +52,7 @@ def _compilar() -> bool:
         print(f"[SKIP] {src} no encontrado")
         return False
 
-    objs = [o for o in [SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O] if o and os.path.exists(o)]
+    objs = [o for o in [SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, TWEETNACL_O] if o and os.path.exists(o)]
 
     if not objs:
         print("[SKIP] No se encontraron objetos runtime")

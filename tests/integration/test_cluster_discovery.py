@@ -23,6 +23,7 @@ BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
 SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
 SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
+TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
 
 # Toolchain GCC
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -43,7 +44,7 @@ def _compilar():
 
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O,
+        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O,
         os.path.join(PROJECT_ROOT, "tweetnacl.o"),
         "-o", BIN_PATH,
         "-lm", "-lpthread", "-lws2_32"
@@ -181,7 +182,7 @@ class TestCompilacionConFlags:
             return False
         src = os.path.join(TESTS_DIR, "test_cluster_discovery.c")
         out = BIN_PATH + ".tmp"
-        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, os.path.join(PROJECT_ROOT, "tweetnacl.o"), "-o", out, "-lm", "-lpthread", "-lws2_32"]
+        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, os.path.join(PROJECT_ROOT, "tweetnacl.o"), "-o", out, "-lm", "-lpthread", "-lws2_32"]
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         # Limpiar
         if os.path.exists(out):

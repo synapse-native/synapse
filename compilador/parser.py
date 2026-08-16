@@ -135,20 +135,19 @@ class Parser(
         )
 
     def _parsear_declaracion_tipada(self) -> DeclaracionVariable:
+        """F3-8 (Manual 2 L134): la forma `x: tipo = expr` SIN `let` NO existe en el
+        manual — declaracion_variable ::= "let" IDENTIFICADOR [ ":" tipo ]
+        [ "=" expresion ] NEWLINE. El S1 la aceptaba lenient (emitía
+        `int64_t x = ...`); el nativo emitía `x;` (C inválido). Ahora se
+        rechaza con error limpio en ambos compiladores (paridad)."""
         tok_id = self._avanzar()
-        self._esperar(TokenID.COLON)
-        tipo = self._parsear_tipo_parametro()
-        self._esperar(TokenID.ASSIGN)
-        if (es_token_identificador(self._mirar())
-                and self.pos + 1 < len(self.tokens)
-                and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
-            expr = self._parsear_recibir_canal()
-        else:
-            expr = self._parsear_expresion()
+        self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, tok_id,
+                           esperado="let", encontrado=nombre_de_token(tok_id))
+        self._sincronizar(_SYNC_EXPR)
         return DeclaracionVariable(
-            nombre=nombre_de_token(tok_id),
-            tipo=tipo,
-            expresion=expr,
+            nombre='',
+            tipo='',
+            expresion=None,
             linea=tok_id.linea,
             columna=tok_id.columna,
         )
@@ -173,7 +172,14 @@ class Parser(
         expr = None
         if self._mirar().tipo == TokenID.ASSIGN:
             self._avanzar()
-            expr = self._parsear_expresion()
+            if (es_token_identificador(self._mirar())
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+                # F3-8: `let z: entero = ch ->` — receive (Manual 5 §4.2),
+                # paridad con _parsear_asignacion/_parsear_declaracion_tipada.
+                expr = self._parsear_recibir_canal()
+            else:
+                expr = self._parsear_expresion()
         return DeclaracionVariable(
             nombre=nombre_de_token(tok_id),
             tipo=tipo,

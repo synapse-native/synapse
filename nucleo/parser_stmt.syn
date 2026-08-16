@@ -125,6 +125,40 @@ funcion parsear_sentencia_canal(est: ParserEst, t: entero) -> entero:
             retornar parsear_enviar_canal(est)
         si t2 == T_FLECHA:
             retornar parsear_recibir_canal(est)
+        // F3-8 (Manual 2 L134): la forma `x: tipo = expr` SIN `let` NO existe en
+        // el manual (declaracion_variable ::= "let" IDENTIFICADOR [ ":" tipo ]
+        // [ "=" expresion ]). Antes el nativo emitia `x;` (C invalido, gcc rc=1
+        // accidental). Ahora error limpio en ambos compiladores (paridad S1):
+        // se consume la declaracion completa y se registra parser_error.
+        si t2 == T_DOSPUNTOS:
+            linea = token_linea(est, est.posicion)
+            col = token_columna(est, est.posicion)
+            token_avanzar(est)  // IDENT
+            token_avanzar(est)  // ':'
+            mientras token_es_nombre(token_mirar(est)) == 1:
+                token_avanzar(est)  // tipo base
+            si token_mirar(est) == T_MENOR:
+                // tipo generico <T,E> con profundidad (patron let R20)
+                token_avanzar(est)
+                prof_t = 0
+                tt = token_mirar(est)
+                mientras tt != T_MAYOR o prof_t > 0:
+                    si tt == T_MENOR:
+                        prof_t = prof_t + 1
+                    si tt == T_MAYOR:
+                        prof_t = prof_t - 1
+                    si tt == T_FIN:
+                        romper
+                    token_avanzar(est)
+                    tt = token_mirar(est)
+                token_esperar(est, T_MAYOR)
+            mientras token_mirar(est) == T_POR:
+                token_avanzar(est)  // punteros * (T_POR = '*')
+            si token_mirar(est) == T_ASIGNAR:
+                token_avanzar(est)
+                parsear_expresion(est)  // valor (puede ser `ch ->`)
+            parser_error(est, "La declaracion de variable exige 'let' (Manual 2 L134)", linea, col)
+            retornar 0
         // detectar declaracion tipada: ident : ident =
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
