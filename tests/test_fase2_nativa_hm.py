@@ -2422,3 +2422,98 @@ def test_r30_para_cuerpo_analizado_use_after_move(stage, tmp_path):
                                str(tmp_path))
     assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
         f"E-501 ausente en el cuerpo del para:\n{proc.stderr[-1200:]}")
+
+
+# --- F3-7 (Manual 2 L113 / Manual 5 §4): escuchar end-to-end HM — listener ---
+# que RECIBE y PROCESA mensajes. F3-7 cerro la sintaxis del Manual
+# (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`)
+# y el listener en ambos compiladores; estos tests codifican la validacion
+# e2e que F3-7 hizo como probe manual (42/99) y la amplian a procesamiento
+# por mensaje. NOTA (hallazgo F3-10): el receive `ch ->` se tipa como void*
+# en ambos (F3-6); el nativo es lenient (permite usar el mensaje como
+# entero) y el S1 estricto (rechaza `procesar(mensaje)` con parametro
+# tipado) — divergencia registrada con resolucion asignada (tipar el
+# receive por el tipo del canal `Canal<T>`, Manual 2 L144 / Manual 5 §4.2).
+_PROG_F37_ESCUCHAR_RECIBE = '''#lang: es
+funcion productor(ch: Canal<entero>) -> nulo:
+    ch <- 42
+    ch <- 99
+    cerrar_canal(ch)
+
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        mensaje = ch ->
+        si mensaje == nulo:
+            romper
+        escribir_linea(entero_a_texto(mensaje))
+
+funcion principal() -> nulo:
+    ch = canal(entero, 5)
+    lanzar consumidor(ch)
+    lanzar productor(ch)
+    retornar
+'''
+
+_PROG_F37_ESCUCHAR_PROCESA = '''#lang: es
+funcion productor(ch: Canal<entero>) -> nulo:
+    ch <- 21
+    ch <- 22
+    cerrar_canal(ch)
+
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        mensaje = ch ->
+        si mensaje == nulo:
+            romper
+        escribir_linea(entero_a_texto(mensaje * 2))
+
+funcion principal() -> nulo:
+    ch = canal(entero, 5)
+    lanzar consumidor(ch)
+    lanzar productor(ch)
+    retornar
+'''
+
+
+def test_f37_escuchar_listener_recibe_y_escribe(stage, tmp_path):
+    """F3-7 (Manual 2 L113, Manual 5 §4): `escuchar ch:` — el listener
+    recibe los mensajes del canal y escribe cada uno (42, 99), saliendo del
+    bucle al cerrarse el canal (romper al recibir nulo). Antes: el S1
+    generaba `_listener_1` sin declarar y el main moria antes de que el
+    listener imprimiera."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_F37_ESCUCHAR_RECIBE,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"escuchar debe compilar rc=0:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0, (
+        f"ejecucion fallida: {run.stdout if run else None}")
+    assert run.stdout.splitlines() == ["42", "99"], (
+        f"el listener debe escribir 42,99: {run.stdout!r}")
+
+
+def test_f37_escuchar_listener_procesa_cada_mensaje(stage, tmp_path):
+    """F3-7: el listener PROCESA cada mensaje (transformacion `* 2`) y
+    termina al cerrarse el canal — salida 42, 44 (21*2, 22*2)."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_F37_ESCUCHAR_PROCESA,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"escuchar debe compilar rc=0:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0, (
+        f"ejecucion fallida: {run.stdout if run else None}")
+    assert run.stdout.splitlines() == ["42", "44"], (
+        f"el listener debe procesar y escribir 42,44: {run.stdout!r}")
+
+
+def test_f37_escuchar_s1_paridad(tmp_path):
+    """F3-7 paridad S1: el mismo programa (bloque del Manual L113) compila y
+    ejecuta con el S1 — el main espera los hilos (synapse_esperar_hilos) y
+    el listener escribe 42, 99 (antes el main retornaba antes de que el
+    listener imprimiera)."""
+    proc = _compilar_con_s1(_PROG_F37_ESCUCHAR_RECIBE, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: escuchar debe compilar:\n{proc.stderr[-1500:]}")
+    exe = os.path.join(tmp_path, "prog_s1.exe")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    assert run.returncode == 0, f"S1: ejecucion fallida: {run.stdout!r}"
+    assert run.stdout.splitlines() == ["42", "99"], (
+        f"S1: el listener debe escribir 42,99: {run.stdout!r}")

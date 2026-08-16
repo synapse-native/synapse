@@ -211,6 +211,29 @@ Cierre del hallazgo F3-8 del inventario B1 (registrado en F3-6 con "observación
 
 **Manual referenciado:** Manual 2 L134 (`declaracion_variable` EBNF — `let` obligatorio); regla 5 (no inventar sintaxis) y regla 11 (cero deuda: regresiones destapadas se corrigen, no se registran) de la auditoría; Manual 9 §9.7 (determinismo S2==S3).
 
+## 3h. R37 — Cobertura HM end-to-end de `escuchar` (listener que recibe y procesa mensajes) (2026-08-16)
+
+### 3h.1 Contexto
+
+F3-7 cerró la sintaxis del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`) y el listener en ambos compiladores, pero la validación e2e (42/99) quedó como **probe manual** en `/tmp` — la suite HM (tests/test_fase2_nativa_hm.py) no tenía NINGÚN test de `escuchar` (grep: solo R14 envío/move y el cuerpo del `para` R30). Este ME codifica la cobertura e2e en la suite HM y, al diseñar el caso "recibe Y procesa", destapa un hallazgo de tipado del receive (F3-10).
+
+### 3h.2 Cambios
+
+1. **3 tests HM nuevos** en `tests/test_fase2_nativa_hm.py` (patrón `_compilar_y_ejecutar` R7/R30):
+   - `test_f37_escuchar_listener_recibe_y_escribe` (nativo): productor envía 42 y 99, `escuchar ch:` recibe cada mensaje (`mensaje = ch ->`), `si mensaje == nulo: romper` (termina al cerrarse el canal) y escribe `entero_a_texto(mensaje)` → salida `42\n99`. Codifica la validación e2e de F3-7 como test permanente.
+   - `test_f37_escuchar_listener_procesa_cada_mensaje` (nativo): el listener **procesa** cada mensaje (transformación `mensaje * 2`) → salida `42\n44` (21*2, 22*2).
+   - `test_f37_escuchar_s1_paridad` (S1): el mismo programa recibe/escribe compila y ejecuta con el S1 → salida `42\n99` (el main S1 espera hilos, F3-7).
+2. **Hallazgo F3-10 registrado** (ver cuadro §4): el receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6: `ExprRecibirCanal→void*`), por lo que `procesar(mensaje)` con parámetro tipado `entero` compila en el nativo (lenient) pero el S1 lo rechaza ("Tipos incompatibles: void* con entero"), y `log("Recibido: ", mensaje)` imprime el puntero (S1: `000000000000002A` = 0x2A = 42) vs el valor formateado (nativo: `42`). Divergencia de paridad preexistente que limita el procesamiento tipado del mensaje. Resolución asignada: tipar el receive por el tipo del elemento del canal (`Canal<T>` → T, Manual 2 L144 / Manual 5 §4.2) en AMBOS compiladores + test S1 de paridad para el caso procesa.
+
+### 3h.3 Validación
+
+- Tests nuevos: **3 passed** (`pytest tests/test_fase2_nativa_hm.py -k escuchar`; el stage se copió de `build/` a la raíz — los HM buscan `synapse_stage*.exe` en RAIZ).
+- Suite HM completa: **108 tests** (105 previos + 3 nuevos) — ver log de la corrida completa.
+- Paridad S1: el programa recibe/escribe (42/99) produce salida IDÉNTICA en ambos compiladores; el caso procesa (`* 2`) es nativo-only hasta cerrar F3-10.
+- Suite completa con stage1 fresco de la fuente actual (Etapa 1 del bootstrap, post-R35 con `tensor.c`): 11/11 en el subconjunto crítico (4 tests rc=7 de 2.4 + 3 tests `escuchar` + R14 canal + R30 para). **Hallazgo F3-11 registrado**: stage2 auto-compilado devuelve rc=0 en errores semánticos (vs rc=7 de stage1) — los tests rc=7 pasan con stage1 (preferencia del fixture `_stage_disponible`) y fallarían con stage2; ver cuadro §4.
+
+**Manual referenciado:** Manual 2 L113 (`escuchar_canal` EBNF) y L144 (`Canal<T>`); Manual 5 §4.1-4.3 (escucha: bucle por mensaje hasta cierre) y §4.2 (ejemplo `log("Recibido: ", valor)`); regla 7 (validar con pruebas) y regla 11 (hallazgo con resolución asignada).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -222,6 +245,8 @@ Cierre del hallazgo F3-8 del inventario B1 (registrado en F3-6 con "observación
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9 (2026-08-14, corte 2)** — `runtime/core/tensor.c` extraído (619 líneas byte-idénticas; std.math/tensor/simd/mem), 7.793 → 7.174 líneas; bootstrap S2==S3 `e6776c49…`; probes tensores y std.modelo OK; ver §3f. Siguientes cortes: std.ai (GGUF/BPE/inferencia), cluster (Raft/WS/discovery/multicast), debug reversible — cada uno con bootstrap diff 0 |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |
+| F3-10 | El receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6 `ExprRecibirCanal→void*`) en vez del tipo del elemento del canal (`Canal<entero>` → `entero`, Manual 2 L144 / Manual 5 §4.2) — el nativo es lenient (permite `mensaje * 2`/`procesar(mensaje)` tipado, C correcto) pero el S1 rechaza cualquier uso tipado del mensaje ("Tipos incompatibles: void* con entero") y `log` imprime el puntero en vez del valor | **PENDIENTE — resolución asignada: tipar el receive por el tipo del elemento del canal (`Canal<T>` → T) en AMBOS compiladores (paridad S1↔nativo) + test S1 de paridad para el caso procesa; ME de Fase 3** (descubierto en R37 al diseñar la cobertura HM e2e de `escuchar`; ver §3h) |
+| F3-11 | Divergencia del código de error en la auto-compilación (Etapa 2/3 del bootstrap, Manual 9 §9.1): stage1 (compilado por el S1) devuelve rc=7 en errores semánticos 2.4, pero stage2/stage3 (auto-compilados, S2==S3 byte-idénticos) devuelven rc=0 — la suite HM detecta 4 fallos (`rc=7`) al ejecutarse con stage2; reproducible desde bootstrap limpio (stage1 fresco de la fuente actual → stage2 de 1.110.863 bytes, S2==S3 OK, rc=0); los mensajes de error SÍ se imprimen — el bug está en la propagación del rc del pipeline auto-compilado | **PENDIENTE — resolución asignada: investigar el codegen de `principal.syn` (manejo de la estructura `ResultadoEtapa`/`fallo_etapa`/`retornar` en la etapa de auto-compilación); ME de Fase 3** (descubierto en R37 al validar la suite HM; ver §3h) |
 
 ## 5. REFERENCIAS
 
