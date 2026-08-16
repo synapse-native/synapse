@@ -254,6 +254,58 @@ Hallazgo descubierto en R37 al validar la suite HM: stage2/stage3 (auto-compilad
 
 **Manual referenciado:** Manual 9 §9.1 (bootstrap 3 etapas) y §9.7 (determinismo diff 0); Manual 8 §8.2 (emisión del wrapper de `main`); paridad `compilador/generator/generator.py` L1158-1176; regla 11 (hallazgo descubierto en R37 con resolución asignada, CERRADO en R38).
 
+## 3j. D-9(d) corte 3 — `std.ai` extraído a `runtime/core/modelo.c` (2026-08-16)
+
+### 3j.1 Contexto y decisión
+
+Deuda D-9(d) (regla 13, canon): `synapse_rt.c` monolítico. Tras el corte 1
+(`io.c`, F3-1) y el corte 2 (`tensor.c`, F3-9), el corte 3 extrae el bloque
+`std.ai` — GGUF Reader / BPE Tokenizer / ModeloContexto (inferencia) /
+Sampling / oráculos (`_syn_modelo_*`, `_syn_gguf_*`, `_syn_compilar_codigo`,
+`_syn_extraer_bloque_codigo`) — al módulo `runtime/core/modelo.c` (patrón R35:
+texto BYTE-IDÉNTICO al original, CRLF preservado).
+
+**Corrección del alcance (hallazgo del propio corte):** el corte original
+(hecho en el working tree antes de esta sesión) incluyó también los stubs
+`Cache-to-TOML` (`toml_desde_entrada`/`toml_desde_stats`/`a_texto`/
+`actualizar_indice`) que NO pertenecen a `std.ai`: son externs de
+`nucleo/cache.syn` (módulo del compilador) y dependen de los tipos
+`NodoToml`/`CacheEntry`/`CacheStats` que viven en `synapse_rt.c` → `modelo.c`
+no compilaba aislado (gcc: `parameter 1 ('entry') has incomplete type`). Se
+**devolvieron a `synapse_rt.c`** (byte-idénticos al HEAD, verificados
+20/20 líneas funcionales) con nota `// (NO parte del corte std.ai...)`.
+
+### 3j.2 Cambios
+
+1. `runtime/core/modelo.c` (NUEVO, 2.017 líneas) — bloque `std.ai` con texto
+   byte-idéntico al HEAD (L1197-3218 original, −1.993 líneas de `synapse_rt.c`);
+   includes propios: `synapse_rt_types.h`, `runtime/core/tensor.h` (corte 2),
+   plataforma (mmap/Windows). Sin pool_alloc/sha256/TOML → autocontenido.
+2. `synapse_rt.c` (−1.993 líneas) — el bloque queda como marcador de 3 líneas;
+   los stubs `Cache-to-TOML` de `cache.syn` permanecen (L1200-1228).
+3. `pipeline.py` `_RT_FUENTES` (S1) — `runtime/core/modelo.c` añadido
+   (enlace modular: `build/obj/modelo.o`).
+4. `nucleo/principal.syn` comando gcc nativo — 8º `_rt_dir` +
+   `runtime\core\modelo.c` (snprintf 11 `%s` = 11 args verificado);
+   `generator.syn` regenerado (lección R5) + `principal.syn.json`.
+
+### 3j.3 Validación
+
+- `gcc -c` aislados: `modelo.c` rc=0, `synapse_rt.c` rc=0 (antes: error de
+  tipos TOML en modelo.c).
+- Bootstrap **S2==S3** sha256 `c8e07d2b…` (1.111.151 bytes; Manual 9 §9.7);
+  el comando gcc nativo del stage2 ya incluye `runtime\core\modelo.c`.
+- Probes e2e `std.ai` (`cargar_gguf` de archivo inexistente): **S1 y nativo
+  rc=0**, imprimen `AI_MODULO_OK` (el `ESCAPA_DEL_ALCANCE: CreateFileA fallo`
+  es el runtime reportando el GGUF inexistente — esperado).
+- Regresión S1 núcleo **137 passed** (parser/lexer/borrow/d6/d2/diagnostics/
+  embebido d-f1); paridad frontend **3/3 rc=0**; verificador **0 brechas**.
+
+**Manual referenciado:** regla 13 (modularización) + canon D-9(d); Manual 9
+§9.7 (determinismo S2==S3); patrón R35 (corte 2 tensor.c); Manual 2 §12
+(contratos — funciones movidas, gate MOVIDA ≠ nueva). Próximos cortes de
+D-9(d): cluster (Raft/WS/discovery/multicast) y debug reversible/snapshots.
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -262,6 +314,7 @@ Hallazgo descubierto en R37 al validar la suite HM: stage2/stage3 (auto-compilad
 | F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | ✅ **CERRADA en F3-4 (2026-08-14)** — seed `_G_rt_builtin_ret` ampliado (17→25 builtins, `abrir→canal`, tensores→`tensor`) + rama genérica `_G_native_tipo_retorno` en `gen_visitar_declaracion` (patrón hoisting ME-B6); bootstrap S2==S3 `a817533f…`; probes e2e `Canal archivo = abrir(...)`/`Tensor t = crear_tensor(...)` rc=0; ver §3c |
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
+| F3-12 | Colisión de símbolos del ME-R8 (Fase 0): `importar std.modelo` NO enlaza — `std/modelo.syn` define wrappers `ft_*`/`kd_*`/`qt_*` (que llaman `_syn_ft_*`/`_syn_kd_*`/`_syn_qt_*`) que el generador emite en `_modelo.c`/`synapse_unity.c`, y el link también incluye `nucleo/fine_tuning.c`/`distillation.c`/`quantization.c` (que definen `ft_*`/`kd_*`/`qt_*` reales + wrappers `_syn_*`) → `multiple definition` (S1 y nativo; reproducido con el pipeline del HEAD sin el corte → **preexistente**, no lo introduce D-9(d) corte 3) | **PENDIENTE — resolución asignada: hacer que los wrappers de `std/modelo.syn` no colisionen — o renombrar las implementaciones reales a `_syn_*`-solo en los 3 .c de IA (los wrappers `_syn_*` ya existen) y que `std/modelo.syn` declare externs directos a los `ft_*`/`kd_*`/`qt_*` C, o marcar los wrappers Synapse `static`-inline; ME de Fase 3 independiente del corte (descubierto al validar el e2e IA del corte 3; `std.ai` sí enlaza y se validó con él)** |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9 (2026-08-14, corte 2)** — `runtime/core/tensor.c` extraído (619 líneas byte-idénticas; std.math/tensor/simd/mem), 7.793 → 7.174 líneas; bootstrap S2==S3 `e6776c49…`; probes tensores y std.modelo OK; ver §3f. Siguientes cortes: std.ai (GGUF/BPE/inferencia), cluster (Raft/WS/discovery/multicast), debug reversible — cada uno con bootstrap diff 0 |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |
