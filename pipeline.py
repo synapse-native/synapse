@@ -98,6 +98,7 @@ _RT_FUENTES = (
     "runtime/core/io.c",
     "runtime/core/tensor.c",  # D-9(d) corte 2: std.math/std.tensor/std.simd/std.mem
     "runtime/core/modelo.c",  # D-9(d) corte 3: std.ai (GGUF/BPE/ModeloContexto/oraculos)
+    "runtime/core/cluster.c",  # D-9(d) corte 4: std.cluster (M8.1-M8.6: transporte/WS/raft/checkpoint/discovery/multicast)
     "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (

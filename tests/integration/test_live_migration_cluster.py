@@ -35,6 +35,7 @@ TEST_C = os.path.join(PROJECT_ROOT, "tests", "test_live_migration.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "test_live_migration.exe")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
+CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c
 MIGRATION_DIR = os.path.join(PROJECT_ROOT, "_test_migration_cluster")
 
 GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -66,6 +67,7 @@ def _compile_test_binary() -> subprocess.CompletedProcess:
         TEST_C,
         RT_O, RT_MEM_O, RT_CONC_O,
         TENSOR_O,
+        CLUSTER_O,
         TWEETNACL_O,
         "-lm", "-lws2_32", "-static",
     ]

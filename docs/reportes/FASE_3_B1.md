@@ -306,6 +306,90 @@ no compilaba aislado (gcc: `parameter 1 ('entry') has incomplete type`). Se
 (contratos — funciones movidas, gate MOVIDA ≠ nueva). Próximos cortes de
 D-9(d): cluster (Raft/WS/discovery/multicast) y debug reversible/snapshots.
 
+## 3k. D-9(d) corte 4 — `std.cluster` (M8.1-M8.6) extraído a `runtime/core/cluster.c` (2026-08-16)
+
+### 3k.1 Contexto y decisión
+
+Deuda D-9(d): `synapse_rt.c` monolítico. Corte 4 = bloque `std.cluster` (Manual 5
+§4.x — transporte distribuido, M8.1-M8.6): transporte UDP/Ed25519 (M8.1),
+distributed work-stealing (M8.2), consenso Raft (M8.3), checkpoint/live-migration
+(M8.4), auto-discovery & membership (M8.5) y UDP multicast real (M8.6).
+Patrón `modelo.c` (R39) / `tensor.c` (R35): texto de las funciones BYTE-IDENTICO,
+CRLF preservado.
+
+**El bloque NO es contiguo**: M9.1-M9.3 (debug time-travel: recording,
+breakpoints reversibles, snapshots) está intercalado entre M8.4 y M8.5 — ese
+bloque pertenece al corte 5 (debug reversible) y permanece en `synapse_rt.c`.
+Por tanto el corte extrae DOS tramos:
+- **Tramo A**: L1903-L3084 del HEAD (M8.1-M8.4) → transporte/WS/raft/checkpoint (1.182 líneas)
+- **Tramo B**: L3906-L4609 del HEAD (M8.5-M8.6) → discovery/multicast (704 líneas)
+
+`runtime/core/cluster.c` = header propio + tramo A + tramo B (concatenados).
+**Análisis de acoplamiento previo** (0 usos cruzados entre A y B — sin estáticas
+ni públicas compartidas; dependencias externas del bloque: `pool_alloc`
+(types.h/memory.c), `crypto_sign_*` (tweetnacl), `_syn_iniciar_red`/`_get_timestamp_ns`
+(permanecen en synapse_rt.c), `sha256_*` — ver 3k.2).
+
+### 3k.2 Cambios
+
+1. **`runtime/core/cluster.c` creado** (1.927 líneas): header con includes de
+   plataforma (winsock2/ws2tcpip en Windows, sys/socket en POSIX), externs del
+   resto del runtime (`_syn_iniciar_red`, `_get_timestamp_ns`, `sha256_init/update/final`)
+   + tramo A + tramo B. **Texto byte-idéntico al HEAD verificado** (1.882 líneas
+   funcionales: A_body 1.178 + B 704).
+2. **`runtime/core/cluster.h` creado** (API pública, patrón `tensor.h`): 68
+   prototipos de las funciones públicas del bloque (`cluster_*`, `ws_*`, `raft_*`,
+   `cm_*`, multicast/discovery). `synapse_rt.c` lo incluye — M9.4 (debug
+   distribuido) y FZ (fuzzing) usan `cluster_canal_remoto_enviar` desde el resto
+   del archivo.
+3. **`synapse_rt_types.h`**: `typedef SHA256_CTX` MOVIDO desde `synapse_rt.c`
+   (std.cripto) al header compartido + prototipos `sha256_init/update/final`
+   (el bloque cluster las usa; antes `static` en synapse_rt.c → ahora símbolo
+   global del runtime, patrón tensor.h).
+4. **`synapse_rt.c`** (5.187 → 3.315 líneas): ambos tramos reemplazados por
+   marcadores (patrón R39) + `#include "runtime/core/cluster.h"` junto al de
+   tensor.h. El bloque M9.1-M9.3 queda intacto entre los dos marcadores.
+5. **Integración**: `pipeline.py` `_RT_FUENTES` (+`runtime/core/cluster.c` →
+   `cluster.o` en el link S1) + comando gcc nativo en `principal.syn` (9º
+   `_rt_dir`; snprintf 12 `%s` = 12 args verificado) + `generator.syn` regenerado
+   (lección R5).
+6. **Tests de integración** (6): `CLUSTER_O` añadido al link de los tests C que
+   usan símbolos del bloque (`test_cluster_discovery`, `test_cluster_handshake_e2e`,
+   `test_cluster_multicast`, `test_live_migration`, `test_live_migration_cluster`,
+   `test_distributed_debug`) — patrón `TENSOR_O` de R35 (el split movió los
+   símbolos fuera de `synapse_rt.o`). `.o` de la raíz regenerados desde fuente
+   (incluye `cluster.o` nuevo).
+7. **`_cm_checksum` muerta** (regla 12): ya era código sin uso en el HEAD
+   (0 callers); se conservó por byte-identidad del corte — ver F3-14.
+
+### 3k.3 Validación
+
+- `gcc -c` aislados: `cluster.c` rc=0 (warning `_cm_checksum` preexistente),
+  `synapse_rt.c` rc=0 (warnings preexistentes).
+- **Bootstrap S2==S3** sha256 `3c9b180e…` (1.111.151 bytes) — 3 etapas, diff 0
+  (Manual 9 §9.7); el comando gcc del stage2 ya incluye `cluster.c` (9º `_rt_dir`).
+- Probes e2e `std.cluster` (externs directos `cluster_generar_par_claves`, patrón
+  de los tests C — ver 3k.4): **nativo rc=0 → `CLUSTER_OK`** (par Ed25519 real
+  generado y enlazado desde `cluster.o`); **S1 rc=0 → `CLUSTER_OK`** (link con
+  `cluster.o` visible).
+- Tests de integración de cluster: **66 + 6 + 12 passed** (`test_cluster_nodes`/`raft`
+  12, discovery/multicast/live_migration/distributed_debug 66, handshake_e2e 6).
+- Regresión S1 núcleo: **183 passed**; paridad frontend **3/3 rc=0**;
+  verificador **0 brechas**.
+
+### 3k.4 Hallazgos nuevos (regla 11)
+
+- **F3-13**: `importar std.cluster` NO compila en el nativo — los helpers de
+  `std/cluster.syn` usan `subcadena`/`concat`/`texto_a_entero` y el generador
+  nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con gcc rc=1.
+  **Reproducido con el stage1 del HEAD sin el corte** → preexistente del
+  generador, no del corte. (El S1 sí compila `importar std.cluster`; los tests
+  `test_cluster_nodes`/`raft` pasan.) Resolución asignada: investigar el seed de
+  builtins en el codegen nativo para las funciones de cadena usadas por std/*.syn.
+- **F3-14**: `_cm_checksum` (checkpoint, M8.4) es código muerto en el HEAD
+  (0 callers; warning `-Wunused-function` preexistente). Resolución asignada:
+  eliminarla en el corte de limpieza (no en el corte 4 — regla byte-identidad).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -315,12 +399,14 @@ D-9(d): cluster (Raft/WS/discovery/multicast) y debug reversible/snapshots.
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
 | F3-12 | Colisión de símbolos del ME-R8 (Fase 0): `importar std.modelo` NO enlaza — `std/modelo.syn` define wrappers `ft_*`/`kd_*`/`qt_*` (que llaman `_syn_ft_*`/`_syn_kd_*`/`_syn_qt_*`) que el generador emite en `_modelo.c`/`synapse_unity.c`, y el link también incluye `nucleo/fine_tuning.c`/`distillation.c`/`quantization.c` (que definen `ft_*`/`kd_*`/`qt_*` reales + wrappers `_syn_*`) → `multiple definition` (S1 y nativo; reproducido con el pipeline del HEAD sin el corte → **preexistente**, no lo introduce D-9(d) corte 3) | **PENDIENTE — resolución asignada: hacer que los wrappers de `std/modelo.syn` no colisionen — o renombrar las implementaciones reales a `_syn_*`-solo en los 3 .c de IA (los wrappers `_syn_*` ya existen) y que `std/modelo.syn` declare externs directos a los `ft_*`/`kd_*`/`qt_*` C, o marcar los wrappers Synapse `static`-inline; ME de Fase 3 independiente del corte (descubierto al validar el e2e IA del corte 3; `std.ai` sí enlaza y se validó con él)** |
-| D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9 (2026-08-14, corte 2)** — `runtime/core/tensor.c` extraído (619 líneas byte-idénticas; std.math/tensor/simd/mem), 7.793 → 7.174 líneas; bootstrap S2==S3 `e6776c49…`; probes tensores y std.modelo OK; ver §3f. Siguientes cortes: std.ai (GGUF/BPE/inferencia), cluster (Raft/WS/discovery/multicast), debug reversible — cada uno con bootstrap diff 0 |
+| D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **AVANZADA en F3-9/F3-9b/R39 (cortes 2/3)** — tensor.c (619 l.), modelo.c (2.017 l.); **CORTE 4 CERRADO (2026-08-16)** — `runtime/core/cluster.c` (1.927 l.): M8.1-M8.6 (transporte/WS/raft/checkpoint/discovery/multicast) extraído en 2 tramos (A: L1903-3084, B: L3906-4609, byte-idénticos; M9.1-3 debug queda para el corte 5), `cluster.h` (68 prototipos) + `SHA256_CTX` compartido en types.h; synapse_rt.c 5.187 → 3.315 l.; bootstrap S2==S3 `3c9b180e…`; e2e std.cluster S1+nativo `CLUSTER_OK`; integración cluster 84 passed; regresión S1 183; paridad 3/3; verificador 0 brechas; ver §3k. Siguiente: **corte 5 — debug reversible (M9.0 base + M9.1-3 + M9.4, ya separado entre los marcadores)** |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |
 | F3-10 | El receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6 `ExprRecibirCanal→void*`) en vez del tipo del elemento del canal (`Canal<entero>` → `entero`, Manual 2 L144 / Manual 5 §4.2) — el nativo es lenient (permite `mensaje * 2`/`procesar(mensaje)` tipado, C correcto) pero el S1 rechaza cualquier uso tipado del mensaje ("Tipos incompatibles: void* con entero") y `log` imprime el puntero en vez del valor | **PENDIENTE — resolución asignada: tipar el receive por el tipo del elemento del canal (`Canal<T>` → T) en AMBOS compiladores (paridad S1↔nativo) + test S1 de paridad para el caso procesa; ME de Fase 3** (descubierto en R37 al diseñar la cobertura HM e2e de `escuchar`; ver §3h) |
 | F3-11 | Divergencia del código de error en la auto-compilación (Etapa 2/3 del bootstrap, Manual 9 §9.1): stage2/stage3 devolvían rc=0 en errores semánticos (vs rc=7 de stage1/S1) — el wrapper de `main` en el codegen nativo emitía SIEMPRE `principal(); ... return 0;` (descarte del rc) | ✅ **CERRADA en F3-11 (2026-08-16)** — `recorrido.syn` ahora consulta el `tipo_retorno` de `principal` en el AST (`programa.sentencias`): si es `nulo`/`void` → `principal(); ... return 0;` (caso inalterado); si retorna entero → `int64_t _rc = principal(); ... return _rc;` (paridad generator.py L1158-1176); `generator.syn` regenerado; bootstrap S2==S3 `02566f0d…`; rc=7 restaurado en stage2 (base/aridad), rc del programa propagado (retornar 3 → rc=3), e2e escuchar 42/99 rc=0 (regresión main nulo), suite HM completa 108 passed, paridad 3/3, verificador 0 brechas; ver §3i |
 
+| F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | **PENDIENTE — resolución asignada: auditar el seed de builtins de cadena en el codegen nativo (`subcadena`/`concat`/`texto_a_entero`/`str_eq` — tipos de retorno para funciones importadas de std/*.syn); ME de Fase 3 independiente del corte (descubierto al validar el e2e cluster; el corte se validó con externs directos, patrón de los tests C)** |
+| F3-14 | `_cm_checksum` (checkpoint, M8.4) código muerto en el HEAD (0 callers; gcc `-Wunused-function` preexistente) — conservada por byte-identidad del corte 4 | **PENDIENTE — resolución asignada: eliminarla en un corte de limpieza (regla 12) sin romper la byte-identidad del corte 4** |
 ## 5. REFERENCIAS
 
 - ROADMAP.md — FASE 3 (generador de código C y runtime; criterios de aceptación) y FASE 4 (fibras).

@@ -96919,7 +96919,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\" \\\"%s\\\\runtime\\\\core\\\\memory.c\\\" \\\"%s\\\\runtime\\\\core\\\\concurrency.c\\\" \\\"%s\\\\runtime\\\\core\\\\io.c\\\" \\\"%s\\\\runtime\\\\core\\\\tensor.c\\\" \\\"%s\\\\runtime\\\\core\\\\modelo.c\\\" \\\"%s\\\\axon\\\\tweetnacl.c\\\"%s -o \\\"%s\\\" -lpthread -lm -lws2_32\", _gcc_flags, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _ia_part, salida.datos);"
+                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\" \\\"%s\\\\runtime\\\\core\\\\memory.c\\\" \\\"%s\\\\runtime\\\\core\\\\concurrency.c\\\" \\\"%s\\\\runtime\\\\core\\\\io.c\\\" \\\"%s\\\\runtime\\\\core\\\\tensor.c\\\" \\\"%s\\\\runtime\\\\core\\\\modelo.c\\\" \\\"%s\\\\runtime\\\\core\\\\cluster.c\\\" \\\"%s\\\\axon\\\\tweetnacl.c\\\"%s -o \\\"%s\\\" -lpthread -lm -lws2_32\", _gcc_flags, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _ia_part, salida.datos);"
                 }
               },
               {

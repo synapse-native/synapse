@@ -110,6 +110,23 @@ typedef struct {
 } WatchdogEntry;
 #endif
 
+// --- SHA-256 context (compartido: synapse_rt.c + runtime/core/cluster.c) ---
+// D-9(d) corte 4: movido aqui para que cluster.c use sha256_* sin duplicar.
+#define SHA256_BLOCK_SIZE 64
+#define SHA256_DIGEST_SIZE 32
+
+typedef struct {
+    uint32_t state[8];
+    uint64_t bitcount;
+    uint8_t buffer[SHA256_BLOCK_SIZE];
+    uint32_t buffer_len;
+} SHA256_CTX;
+
+// Funciones sha256_* (definidas en synapse_rt.c, std.cripto)
+void sha256_init(SHA256_CTX* ctx);
+void sha256_update(SHA256_CTX* ctx, const uint8_t* data, size_t len);
+void sha256_final(SHA256_CTX* ctx, uint8_t* digest);
+
 // ============================================================
 // Cross-module function declarations
 // Defined in synapse_rt_memory.c:
