@@ -233,17 +233,41 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("}")
         asm("if (_G_listeners_count) gen_emitir_nueva_linea(est);")
 
-    // Emit main() wrapper
-    // Manual 8 S8.2 / paridad emit_selfhost.py L1207: NO usar el valor de
-    // retorno de principal() - si principal retorna nulo (void) el C fallaria
-    // con 'void value not ignored'. La referencia llama principal();,
-    // synapse_esperar_hilos();, pool_destroy(); y retorna 0.
-    gen_emitir_linea(est, "int main(int argc, char** argv) {")
-    gen_emitir_linea(est, "    _g_argc = argc;")
-    gen_emitir_linea(est, "    _g_argv = argv;")
-    gen_emitir_linea(est, "    pool_init(64, 4096);")
-    gen_emitir_linea(est, "    principal();")
-    gen_emitir_linea(est, "    synapse_esperar_hilos();")
-    gen_emitir_linea(est, "    pool_destroy();")
-    gen_emitir_linea(est, "    return 0;")
-    gen_emitir_linea(est, "}")
+    // Emit main() wrapper — F3-11: paridad S1 (generator.py L1158-1176).
+    // Manual 8 S8.2: si `principal` retorna nulo (void) el C fallaria con
+    // 'void value not ignored' -> llamada sin captura y return 0; si retorna
+    // entero (el rc del pipeline), capturar y return _rc. ANTES se emitia
+    // SIEMPRE `principal(); ... return 0;` -> stage2 auto-compilado perdia el
+    // codigo de error (rc=7 -> 0) de los errores semanticos (F3-11).
+    inseguro:
+        asm("int _principal_es_entero = 0;")
+        asm("struct ListaNodo* _pcur = programa.sentencias;")
+        asm("while (_pcur) {")
+        asm("    struct Nodo* _pn = _pcur->cabeza;")
+        asm("    if (_pn && _pn->tipo.datos && strcmp(_pn->tipo.datos, \"DefinicionFuncion\") == 0) {")
+        asm("        struct DefinicionFuncion* _pf = (struct DefinicionFuncion*)_pn;")
+        asm("        if (_pf->nombre.datos && strcmp(_pf->nombre.datos, \"principal\") == 0) {")
+        asm("            const char* _ptr = _pf->tipo_retorno.datos ? _pf->tipo_retorno.datos : \"\";")
+        asm("            if (_ptr[0] && strcmp(_ptr, \"nulo\") != 0 && strcmp(_ptr, \"void\") != 0) _principal_es_entero = 1;")
+        asm("            break;")
+        asm("        }")
+        asm("    }")
+        asm("    _pcur = _pcur->cola;")
+        asm("}")
+        asm("gen_emitir_str(est, \"int main(int argc, char** argv) {\");")
+        asm("gen_emitir_str(est, \"    _g_argc = argc;\");")
+        asm("gen_emitir_str(est, \"    _g_argv = argv;\");")
+        asm("gen_emitir_str(est, \"    pool_init(64, 4096);\");")
+        asm("if (_principal_es_entero) {")
+        asm("    gen_emitir_str(est, \"    int64_t _rc = principal();\");")
+        asm("} else {")
+        asm("    gen_emitir_str(est, \"    principal();\");")
+        asm("}")
+        asm("gen_emitir_str(est, \"    synapse_esperar_hilos();\");")
+        asm("gen_emitir_str(est, \"    pool_destroy();\");")
+        asm("if (_principal_es_entero) {")
+        asm("    gen_emitir_str(est, \"    return _rc;\");")
+        asm("} else {")
+        asm("    gen_emitir_str(est, \"    return 0;\");")
+        asm("}")
+        asm("gen_emitir_str(est, \"}\");")
