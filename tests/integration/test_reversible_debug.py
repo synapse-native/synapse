@@ -16,6 +16,8 @@ RUNTIME_MEM_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_
 RUNTIME_CONC_O = os.path.join(os.path.dirname(__file__), "..", "..", "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(os.path.dirname(__file__), "..", "..", "tweetnacl.o")
 TENSOR_O = os.path.join(os.path.dirname(__file__), "..", "..", "tensor.o")
+DEBUG_O = os.path.join(os.path.dirname(__file__), "..", "..", "debug.o")  # D-9(d) corte 5: debug reversible extraido a runtime/core/debug.c
+CLUSTER_O = os.path.join(os.path.dirname(__file__), "..", "..", "cluster.o")  # D-9(d) corte 4: synapse_rt.o (FZ M10.4) usa cluster_canal_remoto_enviar
 COMPILADOR_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "compilador")
 ERR_SYN = os.path.join(os.path.dirname(__file__), "..", "..", "std", "err.syn")
 BIN = "test_reversible_debug.exe"
@@ -25,7 +27,7 @@ BIN_ABS = os.path.abspath(BIN)
 def test_compila_y_pasa_todos():
     """Compila el test C y ejecuta la suite completa. Verifica 0 fallos."""
     rc = subprocess.run(
-        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TENSOR_O, TWEETNACL_O, "-lm", "-lws2_32", "-static"],
+        ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O, "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)
     )
     assert rc.returncode == 0, f"Compilación falló:\n{rc.stderr}"

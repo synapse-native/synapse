@@ -19,6 +19,8 @@ SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
 SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c (FZ usa cluster_canal_remoto_enviar)
+DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: cluster.o usa _get_timestamp_ns (debug.c)
 TEST_C_SRC = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.exe")
 MAIN_PY = os.path.join(PROJECT_ROOT, "main.py")
@@ -195,7 +197,7 @@ def compiled_test():
 
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+        TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -227,7 +229,7 @@ class TestCompilacion:
             f.write(TEST_C_CODE)
         cmd = [
             TOOLCHAIN_GCC, "-O2", "-std=c99",
-            TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+            TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
             "-o", TEST_BIN,
             "-lm", "-lpthread", "-lws2_32"
         ]

@@ -15,6 +15,7 @@ SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
 CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c
+DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: debug reversible extraido a runtime/core/debug.c
 TEST_SRC = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.exe")
 
@@ -37,7 +38,7 @@ def _compile_test_binary():
     """Compile the distributed debug C test binary. Return (success, output)."""
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, TWEETNACL_O,
+        TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -92,7 +93,7 @@ class TestCompilacion:
         """Check that compilation produces no warnings."""
         result = subprocess.run(
             [TOOLCHAIN_GCC, "-O2", "-std=c99", "-Wall", "-Wextra",
-             TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, TWEETNACL_O,
+             TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
              "-o", TEST_BIN, "-lm", "-lpthread", "-lws2_32"],
             capture_output=True, text=True, timeout=30,
             cwd=PROJECT_ROOT
@@ -217,8 +218,8 @@ class TestEstructuraCodigo:
             )
 
     def test_dd_proto_en_synapse_rt(self):
-        """Verify DD_PROTO_MAGIC and dd_* functions are in synapse_rt.c."""
-        rt_path = os.path.join(PROJECT_ROOT, "synapse_rt.c")
+        """Verify DD_PROTO_MAGIC and dd_* functions are in debug.c (D-9(d) corte 5: M9.4 extraido a runtime/core/debug.c)."""
+        rt_path = os.path.join(PROJECT_ROOT, "runtime/core/debug.c")
         with open(rt_path, 'r', encoding='utf-8') as f:
             content = f.read()
 

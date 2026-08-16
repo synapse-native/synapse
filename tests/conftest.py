@@ -76,6 +76,9 @@ _RT_OBJ_DEFS = [
     ("synapse_rt_concurrency.o", "runtime/core/concurrency.c", []),
     ("io.o", "runtime/core/io.c", []),        # F3-1/F3-2 (D-9(d)): I/O extraido de synapse_rt.c
     ("tensor.o", "runtime/core/tensor.c", []),  # R35 (D-9(d) corte 2): tensores/SIMD extraidos
+    ("modelo.o", "runtime/core/modelo.c", []),  # R39 (D-9(d) corte 3): std.ai extraido
+    ("cluster.o", "runtime/core/cluster.c", []),  # R40 (D-9(d) corte 4): std.cluster extraido
+    ("debug.o", "runtime/core/debug.c", []),  # R41 (D-9(d) corte 5): debug reversible extraido
     ("axon_rt.o", "axon/axon_rt.c", []),
 ]
 
@@ -83,6 +86,8 @@ _RT_OBJ_DEFS = [
 _RT_HEADERS = [
     "synapse_rt.h", "synapse_rt_types.h", "synapse_rt_memory.h", "axon/tweetnacl.h",
     "runtime/core/tensor.h",  # R35 (D-9(d) corte 2): API del modulo tensor
+    "runtime/core/cluster.h",  # R40 (D-9(d) corte 4): API del modulo cluster
+    "runtime/core/debug.h",  # R41 (D-9(d) corte 5): API del modulo debug
     "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
 ]
 

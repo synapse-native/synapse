@@ -16,6 +16,8 @@ RUNTIME_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
 RUNTIME_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
 TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
+DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: debug reversible extraido a runtime/core/debug.c
+CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: synapse_rt.o (FZ M10.4) usa cluster_canal_remoto_enviar
 COMPILADOR_DIR = os.path.join(PROJECT_ROOT, "compilador")
 DEBUG_SYN = os.path.join(PROJECT_ROOT, "std", "debug.syn")
 BIN = "test_memory_snapshots.exe"
@@ -39,7 +41,7 @@ def test_compila_y_pasa_todos():
     """Compila el test C y verifica que compile."""
     gcc = _find_gcc()
     rc = subprocess.run(
-        [gcc, "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TENSOR_O, TWEETNACL_O,
+        [gcc, "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, RUNTIME_O, RUNTIME_MEM_O, RUNTIME_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
          "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)
     )
