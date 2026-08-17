@@ -23,6 +23,18 @@ typedef struct {
     } datos;
 } Resultado_T;
 
+// --- Fibra (definida en runtime/core/concurrency.c; Manual 5 §2.6, F4.1/F4.2) ---
+typedef struct Fibra Fibra;
+
+// Nodo de espera de una fibra parqueada en un canal (F4.2: bloqueo fiber-aware,
+// Manual 5 §2.6 — la fibra bloqueada se parquea en vez de bloquear el worker).
+typedef struct _EsperaFibra {
+    struct _EsperaFibra* next;
+    Fibra* fibra;        // fibra parqueada
+    void* dato;          // dato a enviar (emisor) / dato recibido (receptor)
+    int satisfecho;      // 1 = el waker completó la operación
+} _EsperaFibra;
+
 // --- CanalConcurrencia (Buffer circular thread-safe + sync handoff) ---
 typedef struct CanalConcurrencia {
     void** buffer;
@@ -36,6 +48,10 @@ typedef struct CanalConcurrencia {
     pthread_mutex_t mutex;
     pthread_cond_t no_vacio;  // señal para receptores
     pthread_cond_t no_lleno;  // señal para emisores
+    struct _EsperaFibra* espera_envio;      // F4.2: fibras bloqueadas enviando (FIFO)
+    struct _EsperaFibra* espera_envio_tail;
+    struct _EsperaFibra* espera_recepcion;  // F4.2: fibras bloqueadas recibiendo (FIFO)
+    struct _EsperaFibra* espera_recepcion_tail;
 } CanalConcurrencia;
 
 // --- Memory pool constants ---

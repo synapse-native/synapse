@@ -181,7 +181,11 @@ def _auto_compilar_objetos_runtime():
             deps = [src_path] + [os.path.join(root, h) for h in _RT_HEADERS]
             if os.path.exists(obj_path) and os.path.getmtime(obj_path) >= _rt_mtime_max(deps):
                 continue
-            cmd = [gcc, "-O2", "-I.", "-c", src_path, "-o", obj_path] + extra
+            # -I{root} explicito (F4.2): los .c del runtime incluyen headers
+            # anidados (p.ej. runtime/core/tensor.h -> synapse_rt_types.h) que
+            # el -I. relativo al cwd de pytest (tests/) no resolvia — bug
+            # latente que solo aparecia al cambiar headers (recompilacion).
+            cmd = [gcc, "-O2", "-I.", "-I" + root, "-c", src_path, "-o", obj_path] + extra
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 try:
@@ -202,7 +206,7 @@ def _auto_compilar_objetos_runtime():
             deps = [src_path] + rt_objs
             if os.path.exists(exe_path) and os.path.getmtime(exe_path) >= _rt_mtime_max(deps):
                 continue
-            cmd = [gcc, "-O2", "-I.", src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32", "-o", exe_path]
+            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32", "-o", exe_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")

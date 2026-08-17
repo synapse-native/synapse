@@ -20,6 +20,14 @@
   #include <windows.h>
 #endif
 
+// F4.2: el parqueo de fibras (sección F4.1) se invoca desde las operaciones
+// de canal. Declaraciones adelantadas (Fibra ya es tipo incompleto vía
+// synapse_rt_types.h).
+static __thread Fibra* _fibra_actual;
+static void _fibra_parquear(void);
+static void _scheduler_despertar_fibra(Fibra* f);
+static void _sched_mover_a_activa(Fibra* f);
+
 // ============================================================
 // Thread tracker
 // ============================================================
@@ -99,11 +107,46 @@ CanalConcurrencia* canal_crear(uint32_t capacidad) {
     canal->cola = 0;
     canal->contador = 0;
 
+    // F4.2: colas de espera de fibras parqueadas vacías.
+    canal->espera_envio = NULL;
+    canal->espera_envio_tail = NULL;
+    canal->espera_recepcion = NULL;
+    canal->espera_recepcion_tail = NULL;
+
     pthread_mutex_init(&canal->mutex, NULL);
     pthread_cond_init(&canal->no_vacio, NULL);
     pthread_cond_init(&canal->no_lleno, NULL);
 
     return canal;
+}
+
+// F4.2: encola la fibra actual en la cola de espera del canal y cede el
+// control al worker (que sigue con otras fibras). Al reanudar, el envío ya
+// fue completado por el waker (o el canal se cerró y el envío se descarta,
+// Manual 5 §3.6).
+static void _canal_parquear_emisor(CanalConcurrencia* canal, void* paquete) {
+    _EsperaFibra* n = (_EsperaFibra*)malloc(sizeof(_EsperaFibra));
+    if (!n) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_enviar (parqueo)\n");
+        exit(1);
+    }
+    n->next = NULL;
+    n->fibra = _fibra_actual;
+    n->dato = paquete;
+    n->satisfecho = 0;
+    if (canal->espera_envio_tail) {
+        canal->espera_envio_tail->next = n;
+    } else {
+        canal->espera_envio = n;
+    }
+    canal->espera_envio_tail = n;
+    // Despertar a un receptor THREAD que espera en la cond: puede completar
+    // este envío tomando el dato del nodo (canal síncrono) o un item del
+    // buffer (canal con buffer lleno por otros emisores).
+    pthread_cond_signal(&canal->no_vacio);
+    pthread_mutex_unlock(&canal->mutex);
+    _fibra_parquear();
+    free(n);
 }
 
 void canal_enviar(CanalConcurrencia* canal, void* paquete) {
@@ -114,42 +157,61 @@ void canal_enviar(CanalConcurrencia* canal, void* paquete) {
 
     pthread_mutex_lock(&canal->mutex);
 
-    if (canal->es_sync) {
-        // Canal síncrono: handoff directo (Manual 5 §5.3)
-        // Esperar hasta que un receptor esté listo (contador==0 significa sin receptor)
-        while (canal->contador != 0 && !canal->cerrado) {
-            pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+    for (;;) {
+        if (canal->cerrado) {
+            // Manual 5 §3.6: un canal cerrado no acepta más envíos.
+            pthread_mutex_unlock(&canal->mutex);
+            return;
         }
-        if (canal->cerrado) { pthread_mutex_unlock(&canal->mutex); return; }
-        // Marcar que hay un emisor con datos
-        canal->sync_item = paquete;
-        canal->contador = 1;
-        // Despertar al receptor
-        pthread_cond_signal(&canal->no_vacio);
-        // Esperar a que el receptor confirme recepción
-        while (canal->contador != 0 && !canal->cerrado) {
-            pthread_cond_wait(&canal->no_lleno, &canal->mutex);
-        }
-        pthread_mutex_unlock(&canal->mutex);
-        return;
-    }
 
-    // Canal con buffer (capacidad > 0)
-    while (canal->contador == canal->capacidad && !canal->cerrado) {
+        // 1) Receptor parqueado (fibra): handoff directo (F4.2).
+        if (canal->espera_recepcion) {
+            _EsperaFibra* r = canal->espera_recepcion;
+            canal->espera_recepcion = r->next;
+            if (canal->espera_recepcion_tail == r) canal->espera_recepcion_tail = NULL;
+            r->dato = paquete;
+            r->satisfecho = 1;
+            Fibra* rf = r->fibra;
+            _scheduler_despertar_fibra(rf);
+            pthread_mutex_unlock(&canal->mutex);
+            return;
+        }
+
+        if (canal->es_sync) {
+            // Canal síncrono: rendezvous directo con un receptor thread.
+            // Solo hilos OS: una FIBRA jamás bloquea el worker con cond_wait
+            // (F4.2) — si no hay receptor disponible se parquea abajo.
+            if (!_fibra_actual && canal->contador == 0) {
+                canal->sync_item = paquete;
+                canal->contador = 1;
+                pthread_cond_signal(&canal->no_vacio);
+                while (canal->contador != 0 && !canal->cerrado) {
+                    pthread_cond_wait(&canal->no_lleno, &canal->mutex);
+                }
+                pthread_mutex_unlock(&canal->mutex);
+                return;
+            }
+        } else {
+            // Canal con buffer (capacidad > 0)
+            if (canal->contador < canal->capacidad) {
+                canal->buffer[canal->cabeza] = paquete;
+                canal->cabeza = (canal->cabeza + 1) % canal->capacidad;
+                canal->contador++;
+                pthread_cond_signal(&canal->no_vacio);
+                pthread_mutex_unlock(&canal->mutex);
+                return;
+            }
+        }
+
+        // 2) Bloquea: buffer lleno o síncrono sin receptor disponible.
+        if (_fibra_actual) {
+            // Fibra: parquear (F4.2) — el worker sigue con otras fibras.
+            _canal_parquear_emisor(canal, paquete);
+            return;
+        }
+        // Hilo OS: bloqueo pthread (comportamiento previo F3-6).
         pthread_cond_wait(&canal->no_lleno, &canal->mutex);
     }
-    if (canal->cerrado) {
-        // Manual 5 §3.6: un canal cerrado no acepta más envíos.
-        pthread_mutex_unlock(&canal->mutex);
-        return;
-    }
-
-    canal->buffer[canal->cabeza] = paquete;
-    canal->cabeza = (canal->cabeza + 1) % canal->capacidad;
-    canal->contador++;
-
-    pthread_cond_signal(&canal->no_vacio);
-    pthread_mutex_unlock(&canal->mutex);
 }
 
 void* canal_recibir(CanalConcurrencia* canal) {
@@ -160,40 +222,99 @@ void* canal_recibir(CanalConcurrencia* canal) {
 
     pthread_mutex_lock(&canal->mutex);
 
-    if (canal->es_sync) {
-        // Canal síncrono: esperar a que un emisor entregue datos (Manual 5 §5.3)
-        while (canal->contador == 0 && !canal->cerrado) {
-            pthread_cond_wait(&canal->no_vacio, &canal->mutex);
+    for (;;) {
+        if (canal->es_sync) {
+            // 1) Emisor parqueado (fibra) en canal síncrono: su dato se
+            // entrega directo (FIFO entre emisores parqueados, F4.2).
+            if (canal->espera_envio) {
+                _EsperaFibra* s = canal->espera_envio;
+                canal->espera_envio = s->next;
+                if (canal->espera_envio_tail == s) canal->espera_envio_tail = NULL;
+                void* paquete = s->dato;
+                s->satisfecho = 1;
+                Fibra* sf = s->fibra;
+                _scheduler_despertar_fibra(sf);
+                pthread_mutex_unlock(&canal->mutex);
+                return paquete;
+            }
+            if (canal->cerrado) {
+                pthread_mutex_unlock(&canal->mutex);
+                return NULL;
+            }
+            if (canal->contador == 1) {
+                // Item de un emisor thread en rendezvous: confirmar recepción.
+                void* paquete = canal->sync_item;
+                canal->sync_item = NULL;
+                canal->contador = 0;
+                pthread_cond_signal(&canal->no_lleno);
+                pthread_mutex_unlock(&canal->mutex);
+                return paquete;
+            }
+        } else {
+            // 1) Canal con buffer: FIFO estricto — primero el buffer; el slot
+            // liberado se rellena con el item de un emisor parqueado (F4.2).
+            if (canal->contador > 0) {
+                void* paquete = canal->buffer[canal->cola];
+                canal->cola = (canal->cola + 1) % canal->capacidad;
+                canal->contador--;
+                if (canal->espera_envio) {
+                    _EsperaFibra* s = canal->espera_envio;
+                    canal->espera_envio = s->next;
+                    if (canal->espera_envio_tail == s) canal->espera_envio_tail = NULL;
+                    canal->buffer[canal->cabeza] = s->dato;
+                    canal->cabeza = (canal->cabeza + 1) % canal->capacidad;
+                    canal->contador++;
+                    s->satisfecho = 1;
+                    Fibra* sf = s->fibra;
+                    _scheduler_despertar_fibra(sf);
+                }
+                pthread_cond_signal(&canal->no_lleno);
+                pthread_mutex_unlock(&canal->mutex);
+                return paquete;
+            }
+            if (canal->cerrado) {
+                // Manual 5 §3.6/§4.3: canal cerrado y vacío -> NULL (el
+                // listener del `escuchar` sale del bucle al recibir NULL).
+                pthread_mutex_unlock(&canal->mutex);
+                return NULL;
+            }
         }
-        if (canal->cerrado) { pthread_mutex_unlock(&canal->mutex); return NULL; }
-        void* paquete = canal->sync_item;
-        canal->sync_item = NULL;
-        // Marcar que el receptor recibió (contador=0) y despertar al emisor
-        canal->contador = 0;
-        pthread_cond_signal(&canal->no_lleno);
-        pthread_mutex_unlock(&canal->mutex);
-        return paquete;
-    }
 
-    // Canal con buffer (capacidad > 0)
-    while (canal->contador == 0 && !canal->cerrado) {
+        // 2) Bloquea: canal vacío (o síncrono sin emisor).
+        if (_fibra_actual) {
+            // Fibra: parquear (F4.2) — el worker sigue con otras fibras.
+            _EsperaFibra* n = (_EsperaFibra*)malloc(sizeof(_EsperaFibra));
+            if (!n) {
+                fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_recibir (parqueo)\n");
+                pthread_mutex_unlock(&canal->mutex);
+                return NULL;
+            }
+            n->next = NULL;
+            n->fibra = _fibra_actual;
+            n->dato = NULL;
+            n->satisfecho = 0;
+            if (canal->espera_recepcion_tail) {
+                canal->espera_recepcion_tail->next = n;
+            } else {
+                canal->espera_recepcion = n;
+            }
+            canal->espera_recepcion_tail = n;
+            // Despertar a un emisor THREAD que espera en la cond: al reanudar
+            // re-chequea y completa este receive (handoff directo al receptor
+            // parqueado) o rellenar el slot liberado del buffer.
+            pthread_cond_signal(&canal->no_lleno);
+            pthread_mutex_unlock(&canal->mutex);
+            _fibra_parquear();
+            // Reanudada: dato si el waker completó el envío; NULL si cerró.
+            pthread_mutex_lock(&canal->mutex);
+            void* paquete = n->dato;
+            pthread_mutex_unlock(&canal->mutex);
+            free(n);
+            return paquete;
+        }
+        // Hilo OS: bloqueo pthread (comportamiento previo F3-6).
         pthread_cond_wait(&canal->no_vacio, &canal->mutex);
     }
-    if (canal->cerrado && canal->contador == 0) {
-        // Manual 5 §3.6/§4.3: canal cerrado y vacío -> NULL (el listener
-        // del `escuchar` sale del bucle al recibir NULL).
-        pthread_mutex_unlock(&canal->mutex);
-        return NULL;
-    }
-
-    void* paquete = canal->buffer[canal->cola];
-    canal->cola = (canal->cola + 1) % canal->capacidad;
-    canal->contador--;
-
-    pthread_cond_signal(&canal->no_lleno);
-    pthread_mutex_unlock(&canal->mutex);
-
-    return paquete;
 }
 
 void cerrar_canal(CanalConcurrencia* canal) {
@@ -204,6 +325,23 @@ void cerrar_canal(CanalConcurrencia* canal) {
 
     pthread_mutex_lock(&canal->mutex);
     canal->cerrado = 1;
+    // F4.2: despertar fibras parqueadas — su operación queda insatisfecha
+    // (canal_recibir devuelve NULL; canal_enviar descarta el envío). El nodo
+    // de espera lo libera la propia fibra al reanudar.
+    while (canal->espera_envio) {
+        _EsperaFibra* n = canal->espera_envio;
+        canal->espera_envio = n->next;
+        if (canal->espera_envio_tail == n) canal->espera_envio_tail = NULL;
+        Fibra* f = n->fibra;
+        _scheduler_despertar_fibra(f);
+    }
+    while (canal->espera_recepcion) {
+        _EsperaFibra* n = canal->espera_recepcion;
+        canal->espera_recepcion = n->next;
+        if (canal->espera_recepcion_tail == n) canal->espera_recepcion_tail = NULL;
+        Fibra* f = n->fibra;
+        _scheduler_despertar_fibra(f);
+    }
     pthread_cond_broadcast(&canal->no_vacio);
     pthread_cond_broadcast(&canal->no_lleno);
     pthread_mutex_unlock(&canal->mutex);
@@ -241,9 +379,21 @@ void canal_destruir(CanalConcurrencia* canal) {
 // Implementación: cooperativa por worker �?" cada fibra corre hasta que
 // retorna (la trampolina llama fibra_terminar) o llama fibra_terminar
 // explícitamente; al terminar cede el control al worker, que libera pila y
-// contexto. Las operaciones de canal (canal_enviar/canal_recibir) siguen
-// siendo pthread (F3-6); hacerlas fiber-aware (parquear la fibra en vez de
-// bloquear el worker) es la siguiente iteración de Fase 4 (F4.2).
+// contexto.
+// F4.2: las operaciones de canal (canal_enviar/canal_recibir) son
+// fiber-aware — cuando una fibra se bloquearía (buffer lleno/vacío o canal
+// síncrono sin pareja) se PARQUEA en la cola_espera del scheduler (Manual 5
+// §2.6) y cede el control a su worker, que sigue ejecutando otras fibras; el
+// waker la re-encola en cola_activa al completar la operación. Los hilos OS
+// (no fibras) conservan el bloqueo pthread (comportamiento previo F3-6).
+
+// Estados de una fibra (transiciones bajo g_sched_mutex, F4.2):
+//   CORRIENDO  -> PARQUEADA (se bloquea en un canal y cede al worker)
+//   PARQUEADA  -> CORRIENDO (la despierta el waker de la operación)
+//   CORRIENDO  -> TERMINADA (fibra_terminar publica resultado y cede)
+#define F_ESTADO_CORRIENDO  0
+#define F_ESTADO_PARQUEADA  1
+#define F_ESTADO_TERMINADA  2
 
 #define FIBRAS_MAX 4096
 #define FIBRA_STACK_DEFAULT (64 * 1024)  // Manual 5 §2.1: 64 KB por defecto
@@ -254,16 +404,18 @@ typedef struct Fibra {
     void* context;              // Win32: LPVOID fiber; POSIX: ucontext_t*
     struct Fibra* next;         // Siguiente fibra en la cola de scheduling
     int id;                     // Identificador único
-    int terminada;              // Flag de finalización
+    int terminada;              // Flag de finalización (tabla g_resultados)
     void* resultado;            // Resultado de la fibra (si retorna)
     void (*func)(void*);        // Función de la fibra
     void* arg;                  // Argumento de la fibra
     void* worker_fiber;         // Win32: fiber primaria del worker; POSIX: ucontext_t* del worker
+    int estado;                 // F4.2: F_ESTADO_* (bajo g_sched_mutex)
+    int despertado;             // F4.2: el waker completó la op antes del park
 } Fibra;
 
 typedef struct Scheduler {
     Fibra* cola_activa;         // Cola de fibras listas para ejecutar
-    Fibra* cola_espera;         // Cola de fibras bloqueadas (reservado F4.2)
+    Fibra* cola_espera;         // Cola de fibras bloqueadas (F4.2: parqueadas)
     int num_fibras;             // Número total de fibras
     pthread_t* hilos_os;        // Hilos del sistema operativo (pool)
     int num_hilos_os;           // Número de hilos OS (por defecto = núcleos)
@@ -271,6 +423,7 @@ typedef struct Scheduler {
     pthread_mutex_t mutex;      // Mutex para operaciones en colas
     pthread_cond_t cond;        // Despertar workers (implementación F4.1)
     Fibra* cola_activa_tail;    // Cola FIFO (implementación F4.1)
+    Fibra* cola_espera_tail;    // Cola FIFO de parqueadas (implementación F4.2)
     int proximo_id;             // Contador de ids (implementación F4.1)
 } Scheduler;
 
@@ -284,7 +437,7 @@ typedef struct {
 
 static Scheduler g_sched;
 static _ResultadoFibra g_resultados[FIBRAS_MAX];
-static __thread Fibra* _fibra_actual;  // TLS: fibra que corre en este worker
+// _fibra_actual declarada al inicio del TU (la usan las operaciones de canal).
 
 // mutex/cond con inicializadores estáticos (Manual 5 §2.6 no fija el init; el
 // static zero-init cubre colas/contadores; usar PTHREAD_MUTEX_INITIALIZER evita
@@ -326,7 +479,10 @@ static void* _scheduler_worker(void* arg) {
 #ifdef _WIN32
         SwitchToFiber(f->context);
 #else
-        // El worker guarda su contexto local; la fibra vuelve aqui al terminar.
+        // El worker guarda su contexto local; la fibra vuelve aqui al terminar
+        // o al parquearse. Se re-vincula por ejecución: si la fibra fue
+        // despertada y la toma otro worker, cederá a ESE worker (sin migrar
+        // contextos entre hilos).
         ucontext_t wctx_local;
         f->worker_fiber = &wctx_local;
         if (swapcontext(&wctx_local, (ucontext_t*)f->context) != 0) {
@@ -335,17 +491,54 @@ static void* _scheduler_worker(void* arg) {
         }
 #endif
 
-        // La fibra terminó (fibra_terminar cedió el control): liberar.
+        // La fibra cedió el control: se parqueó (F4.2) o terminó. El worker
+        // registra el parqueo AQUÍ, tras el yield — la fibra queda marcada
+        // como suspendida antes de ser despertable (sin carrera de doble
+        // ejecución con un waker).
         _fibra_actual = NULL;
-#ifdef _WIN32
-        DeleteFiber(f->context);
-#else
-        free(f->context);
-#endif
-        if (f->stack) free(f->stack);
-        free(f);
-
         pthread_mutex_lock(&g_sched_mutex);
+        if (f->despertado && f->estado != F_ESTADO_TERMINADA) {
+            // El waker completó la operación mientras la fibra cedía: la
+            // fibra NO se parquea — re-encolar en cola_activa para que
+            // reanude su operación de canal (aún no está en cola_espera).
+            f->despertado = 0;
+            f->estado = F_ESTADO_CORRIENDO;
+            f->next = NULL;
+            if (g_sched.cola_activa_tail) {
+                g_sched.cola_activa_tail->next = f;
+            } else {
+                g_sched.cola_activa = f;
+            }
+            g_sched.cola_activa_tail = f;
+            pthread_cond_signal(&g_sched_cond);
+            continue;
+        }
+        f->despertado = 0;   // residual en estado TERMINADA
+        if (f->estado == F_ESTADO_TERMINADA) {
+            pthread_mutex_unlock(&g_sched_mutex);
+            // Terminó (fibra_terminar cedió el control): liberar pila y contexto.
+#ifdef _WIN32
+            DeleteFiber(f->context);
+#else
+            free(f->context);
+#endif
+            if (f->stack) free(f->stack);
+            free(f);
+
+            pthread_mutex_lock(&g_sched_mutex);
+        } else {
+            // La fibra se bloqueó en un canal: registrar el parqueo (F4.2) en
+            // cola_espera del scheduler — la fibra ya está suspendida, así
+            // que un waker puede moverla a cola_activa sin carrera.
+            f->estado = F_ESTADO_PARQUEADA;
+            f->next = NULL;
+            if (g_sched.cola_espera_tail) {
+                g_sched.cola_espera_tail->next = f;
+            } else {
+                g_sched.cola_espera = f;
+            }
+            g_sched.cola_espera_tail = f;
+        }
     }
     pthread_mutex_unlock(&g_sched_mutex);
 #ifdef _WIN32
@@ -371,6 +564,85 @@ static void _fibras_trampoline_posix(int lo, int hi) {
 }
 #endif
 
+// F4.2: parquea la fibra actual (se bloqueó en un canal) y cede al worker,
+// que sigue ejecutando otras fibras. El PARQUEO lo registra el worker tras el
+// yield (estado=PARQUEADA + cola_espera del scheduler, Manual 5 §2.6): la
+// fibra solo es despertable cuando está REALMENTE suspendida — si el waker
+// la re-encolara antes del yield, otro worker la re-ejecutaría mientras aún
+// corre (carrera de doble ejecución). Si el waker completó la operación
+// antes de que la fibra ceda (despertado), no se suspende.
+static void _fibra_parquear(void) {
+    Fibra* f = _fibra_actual;
+    if (!f) return;
+
+    pthread_mutex_lock(&g_sched_mutex);
+    if (f->despertado) {
+        // El waker ya completó la operación: no ceder el control.
+        f->despertado = 0;
+        pthread_mutex_unlock(&g_sched_mutex);
+        return;
+    }
+    pthread_mutex_unlock(&g_sched_mutex);
+
+#ifdef _WIN32
+    SwitchToFiber(f->worker_fiber);
+#else
+    ucontext_t dummy;
+    if (swapcontext(&dummy, (ucontext_t*)f->worker_fiber) != 0) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: swapcontext (parquear) fallo\n");
+        exit(1);
+    }
+#endif
+    // Reanudada por _scheduler_despertar_fibra (o por el worker que procesó
+    // el despertado): la operación de canal está completa o el canal se cerró.
+}
+
+// Mueve la fibra de cola_espera a cola_activa. Requiere g_sched_mutex tomado.
+static void _sched_mover_a_activa(Fibra* f) {
+    if (g_sched.cola_espera == f) {
+        g_sched.cola_espera = f->next;
+        if (g_sched.cola_espera_tail == f) g_sched.cola_espera_tail = NULL;
+    } else {
+        Fibra* prev = g_sched.cola_espera;
+        while (prev && prev->next != f) prev = prev->next;
+        if (prev) {
+            prev->next = f->next;
+            if (g_sched.cola_espera_tail == f) g_sched.cola_espera_tail = prev;
+        }
+    }
+    f->next = NULL;
+    f->estado = F_ESTADO_CORRIENDO;
+    if (g_sched.cola_activa_tail) {
+        g_sched.cola_activa_tail->next = f;
+    } else {
+        g_sched.cola_activa = f;
+    }
+    g_sched.cola_activa_tail = f;
+}
+
+// F4.2: despierta una fibra parqueada — la mueve de cola_espera a cola_activa.
+// estado==PARQUEADA solo lo fija el worker tras el yield de la fibra (la fibra
+// está suspendida), así que moverla es seguro. Si la fibra aún no cede (o
+// está cediendo), se marca despertado: o bien _fibra_parquear no se suspende,
+// o el worker la re-encola al procesar el yield.
+static void _scheduler_despertar_fibra(Fibra* f) {
+    pthread_mutex_lock(&g_sched_mutex);
+    if (!g_sched.ejecutando) {
+        // scheduler_detener con fibras parqueadas es un uso inválido
+        // (documentado); la fibra no puede reanudarse.
+        pthread_mutex_unlock(&g_sched_mutex);
+        return;
+    }
+    if (f->estado == F_ESTADO_PARQUEADA) {
+        _sched_mover_a_activa(f);
+        pthread_cond_signal(&g_sched_cond);
+    } else if (f->estado == F_ESTADO_CORRIENDO) {
+        // Aún no se parquea (o está cediendo): notificar.
+        f->despertado = 1;
+    }
+    pthread_mutex_unlock(&g_sched_mutex);
+}
+
 void fibra_crear(void (*func)(void*), void* arg, size_t stack_size) {
     if (stack_size == 0) stack_size = FIBRA_STACK_DEFAULT;
 
@@ -387,6 +659,7 @@ void fibra_crear(void (*func)(void*), void* arg, size_t stack_size) {
     f->func = func;
     f->arg = arg;
     f->stack_size = stack_size;
+    f->estado = F_ESTADO_CORRIENDO;
     f->id = g_sched.proximo_id++;
     if (f->id >= FIBRAS_MAX) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: FIBRAS_MAX alcanzado\n"); exit(1); }
 
@@ -437,6 +710,7 @@ void fibra_terminar(void* resultado) {
     Fibra* f = _fibra_actual;
     if (!f) return;
     pthread_mutex_lock(&g_sched_mutex);
+    f->estado = F_ESTADO_TERMINADA;
     if (f->id >= 0 && f->id < FIBRAS_MAX) {
         g_resultados[f->id].resultado = resultado;
         g_resultados[f->id].terminada = 1;
