@@ -9,6 +9,11 @@
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <dirent.h>
+#endif
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
@@ -602,6 +607,11 @@ extern char _G_native_structs[256][64];
 extern int _G_native_structs_count;
 extern int _G_native_es_estructura(const char* n);
 
+extern char _G_native_struct_campos[256][64][64];
+extern char _G_native_struct_campos_tipo[256][64][64];
+extern int _G_native_struct_campos_count[256];
+extern int _G_native_campo_tipo(const char* sn, const char* cn, char* out);
+
 // ME-B6: tipos de retorno de funciones definidas (inferencia de tipos nativa)
 extern char _G_native_func_returns[512][64];
 extern int _G_native_func_returns_count;
@@ -639,6 +649,11 @@ extern int _G_fn_var_auto[2048];
 extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 extern int _G_fn_ptr_vars_count;
+extern char _G_native_canal_names[512][64];
+extern char _G_native_canal_elem[512][64];
+extern int _G_native_canal_count;
+extern void _G_native_canal_elem_set(const char* _cname, const char* _celem);
+extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
@@ -742,6 +757,23 @@ int _G_native_es_estructura(const char* n) {
     return 0;
 }
 
+char _G_native_struct_campos[256][64][64];
+char _G_native_struct_campos_tipo[256][64][64];
+int _G_native_struct_campos_count[256];
+int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
+    if (!sn || !cn || !out) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], sn) == 0) {
+            for (int _j = 0; _j < _G_native_struct_campos_count[_i]; _j++) {
+                if (strcmp(_G_native_struct_campos[_i][_j], cn) == 0) {
+                    strcpy(out, _G_native_struct_campos_tipo[_i][_j]); return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 char _G_native_func_returns[512][64];
 int _G_native_func_returns_count;
 int _G_native_tipo_retorno(const char* fn, char* out) {
@@ -837,6 +869,19 @@ int _G_fn_var_auto[2048];
 char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 int _G_fn_ptr_vars_count;
+char _G_native_canal_names[512][64];
+char _G_native_canal_elem[512][64];
+int _G_native_canal_count;
+void _G_native_canal_elem_set(const char* _cname, const char* _celem) {
+    if (!_cname || !_celem) return;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }
+    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }
+}
+int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
+    if (!_cname || !_cout) return 0;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }
+    return 0;
+}
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;

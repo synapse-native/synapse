@@ -267,6 +267,41 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-C4: tipo inferido de cada variable auto-declarada (paridad tipo_de_expr para OpBinaria)
     gen_emitir_linea(est, "char _G_fn_var_tipos[2048][64];")
     gen_emitir_linea(est, "")
+    // F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
+    // (Manual 2 L144, Manual 5 §4.2). Paridad S1 _elemento_canal de
+    // emit_expressions.py: el receive hereda el tipo del elemento del canal.
+    gen_emitir_linea(est, "char _G_native_canal_names[512][64];")
+    gen_emitir_linea(est, "char _G_native_canal_elem[512][64];")
+    gen_emitir_linea(est, "int _G_native_canal_count;")
+    gen_emitir_linea(est, "void _G_native_canal_elem_set(const char* _cname, const char* _celem) {")
+    gen_emitir_linea(est, "    if (!_cname || !_celem) return;")
+    gen_emitir_linea(est, "    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }")
+    gen_emitir_linea(est, "    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }")
+    gen_emitir_linea(est, "}")
+    gen_emitir_linea(est, "int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {")
+    gen_emitir_linea(est, "    if (!_cname || !_cout) return 0;")
+    gen_emitir_linea(est, "    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }")
+    gen_emitir_linea(est, "    return 0;")
+    gen_emitir_linea(est, "}")
+    gen_emitir_linea(est, "")
+    // F3-10: helpers de boxeo/desboxeo primitivo (paridad S1 generator.py L796-827).
+    // El receive `ch ->` desboxea el void* que devuelve canal_recibir; el S1 ya los
+    // emite en sus programas de usuario y el nativo debe tenerlos (antes usaba el
+    // cast implicito de gcc al enviar y nunca los emito).
+    gen_emitir_linea(est, "static inline void* _synapse_box_int(int64_t v) { return (void*)(intptr_t)v; }")
+    gen_emitir_linea(est, "static inline int64_t _synapse_unbox_int(void* p) { return (int64_t)(intptr_t)p; }")
+    gen_emitir_linea(est, "static inline void* _synapse_box_float(double v) {")
+    gen_emitir_linea(est, "    double* _p = (double*)malloc(sizeof(double));")
+    gen_emitir_linea(est, "    if (!_p) { fprintf(stderr, \"ESCAPA_DEL_ALCANCE: malloc fallo\\n\"); exit(1); }")
+    gen_emitir_linea(est, "    *_p = v;")
+    gen_emitir_linea(est, "    return (void*)_p;")
+    gen_emitir_linea(est, "}")
+    gen_emitir_linea(est, "static inline double _synapse_unbox_float(void* p) {")
+    gen_emitir_linea(est, "    double _v = *(double*)p;")
+    gen_emitir_linea(est, "    free(p);")
+    gen_emitir_linea(est, "    return _v;")
+    gen_emitir_linea(est, "}")
+    gen_emitir_linea(est, "")
     // F3-7: funciones listener de `escuchar` (Manual 2 L113) acumuladas y
     // flusheadas antes del main; _G_listener_modo marca el cuerpo del bloque
     // (ExprRecibirCanal -> canal_recibir(_canal) en vez de la variable local).
@@ -593,7 +628,17 @@ funcion _syn_nativo_expr_tipo_c(n: puntero, out: puntero) -> entero:
         asm("    if (strcmp(_t, \"ExprCrearCanal\") == 0) { strcpy(_oo, \"CanalConcurrencia*\"); return 1; }")
         asm("    // F3-6: paridad emit_expressions.py L55-56 (ExprCrearCanal -> CanalConcurrencia*,\n")
         asm("    // ExprRecibirCanal -> void*). Antes: default int64_t -> C invalido.\n")
-        asm("    if (strcmp(_t, \"ExprRecibirCanal\") == 0) { strcpy(_oo, \"void*\"); return 1; }")
+        asm("    // F3-10: el receive hereda el tipo del elemento del canal (Manual 5 §4.2) -\n")
+        asm("    // paridad S1 _elemento_canal de emit_expressions.py. Fallback void* (F3-6).\n")
+        asm("    if (strcmp(_t, \"ExprRecibirCanal\") == 0) {")
+        asm("        struct ExprRecibirCanal* _rr = (struct ExprRecibirCanal*)_nn;")
+        asm("        char _rcant[64]; _rcant[0] = 0;")
+        asm("        if (_rr->canal && _rr->canal->tipo.datos && strcmp(_rr->canal->tipo.datos, \"Identificador\") == 0) {")
+        asm("            struct Identificador* _rid3 = (struct Identificador*)_rr->canal;")
+        asm("            if (_rid3->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_rid3->nombre.datos, _rcant); }")
+        asm("        }")
+        asm("        strcpy(_oo, _rcant[0] ? _rcant : \"void*\"); return 1;")
+        asm("    }")
         asm("    if (strcmp(_t, \"Identificador\") == 0) {")
         asm("        struct Identificador* _id = (struct Identificador*)_nn;")
         asm("        if (_id->nombre.datos) {")

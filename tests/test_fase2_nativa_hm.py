@@ -2519,6 +2519,21 @@ def test_f37_escuchar_s1_paridad(tmp_path):
         f"S1: el listener debe escribir 42,99: {run.stdout!r}")
 
 
+def test_f37_escuchar_s1_paridad_procesa(tmp_path):
+    """F3-10 paridad S1: el caso procesa (`mensaje * 2`) que antes rechazaba
+    el S1 (`Tipos incompatibles: no se puede usar 'void*' con 'int' en '*'`)
+    ahora tipa el receive por el elemento del canal `Canal<T>` (Manual 2
+    L144 / Manual 5 §4.2): compila, ejecuta y escribe 42, 44 (21*2, 22*2)."""
+    proc = _compilar_con_s1(_PROG_F37_ESCUCHAR_PROCESA, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: escuchar procesa debe compilar rc=0:\n{proc.stderr[-1500:]}")
+    exe = os.path.join(tmp_path, "prog_s1.exe")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    assert run.returncode == 0, f"S1: ejecucion fallida: {run.stdout!r}"
+    assert run.stdout.splitlines() == ["42", "44"], (
+        f"S1: el listener debe procesar y escribir 42,44: {run.stdout!r}")
+
+
 # --- F3-13 (2026-08-16): builtins de cadena en el codegen nativo ---
 # `importar std.cluster` NO compilaba en el nativo: los helpers usan
 # subcadena/len/texto_a_entero (que no existen como funciones C -> gcc

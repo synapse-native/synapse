@@ -765,6 +765,12 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
     ctx.write_line("extern int _G_fn_ptr_vars_count;")
+    # F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
+    ctx.write_line("extern char _G_native_canal_names[512][64];")
+    ctx.write_line("extern char _G_native_canal_elem[512][64];")
+    ctx.write_line("extern int _G_native_canal_count;")
+    ctx.write_line("extern void _G_native_canal_elem_set(const char* _cname, const char* _celem);")
+    ctx.write_line("extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);")
     # F3-7: funciones listener de `escuchar` (Manual 2 L113) — paridad orquestador nativo
     ctx.write_line("extern char _G_listeners[8][16384];")
     ctx.write_line("extern int _G_listeners_count;")
@@ -1084,6 +1090,21 @@ class GeneradorC:
             ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
             ctx.write_line("int _G_fn_ptr_vars_count;")
+            # F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
+            # (Manual 2 L144 / Manual 5 §4.2). Paridad orquestador nativo.
+            ctx.write_line("char _G_native_canal_names[512][64];")
+            ctx.write_line("char _G_native_canal_elem[512][64];")
+            ctx.write_line("int _G_native_canal_count;")
+            ctx.write_line("void _G_native_canal_elem_set(const char* _cname, const char* _celem) {")
+            ctx.write_line("    if (!_cname || !_celem) return;")
+            ctx.write_line("    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }")
+            ctx.write_line("    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }")
+            ctx.write_line("}")
+            ctx.write_line("int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {")
+            ctx.write_line("    if (!_cname || !_cout) return 0;")
+            ctx.write_line("    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }")
+            ctx.write_line("    return 0;")
+            ctx.write_line("}")
             # F3-7: funciones listener de `escuchar` (Manual 2 L113) acumuladas y
             # flusheadas antes del main (paridad orquestador.syn). _G_listener_modo
             # marca el cuerpo del bloque (ExprRecibirCanal -> canal_recibir(_canal)).
@@ -1610,6 +1631,21 @@ class GeneradorC:
                 ctx.write_line("char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
 )
                 ctx.write_line("int _G_fn_ptr_vars_count;")
+                # F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
+                # (Manual 2 L144 / Manual 5 §4.2). Paridad orquestador nativo.
+                ctx.write_line("char _G_native_canal_names[512][64];")
+                ctx.write_line("char _G_native_canal_elem[512][64];")
+                ctx.write_line("int _G_native_canal_count;")
+                ctx.write_line("void _G_native_canal_elem_set(const char* _cname, const char* _celem) {")
+                ctx.write_line("    if (!_cname || !_celem) return;")
+                ctx.write_line("    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }")
+                ctx.write_line("    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }")
+                ctx.write_line("}")
+                ctx.write_line("int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {")
+                ctx.write_line("    if (!_cname || !_cout) return 0;")
+                ctx.write_line("    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }")
+                ctx.write_line("    return 0;")
+                ctx.write_line("}")
                 # F3-7: funciones listener de `escuchar` (Manual 2 L113) — paridad orquestador nativo
                 ctx.write_line("char _G_listeners[8][16384];")
                 ctx.write_line("int _G_listeners_count;")

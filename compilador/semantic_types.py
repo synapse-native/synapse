@@ -106,6 +106,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                         return None
                     return 'int'
 
+                # F3-10: centinela de cierre de canal (Manual 5 §4.2): comparar el
+                # valor recibido (`ch ->`, tipo del elemento) con nulo.
+                if nodo.operador in ('==', '!=') and (
+                    isinstance(nodo.izquierdo, LiteralNulo) or isinstance(nodo.derecho, LiteralNulo)
+                ):
+                    return 'int'
+
                 if (tipo_izq == 'booleano' and tipo_der != 'booleano') or (tipo_izq != 'booleano' and tipo_der == 'booleano'):
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -232,9 +239,17 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         elif isinstance(nodo, ExprCrearCanal):
             if nodo.capacidad:
                 self._inferir_tipo(nodo.capacidad)
+            # F3-10: el canal se tipa por su elemento (Manual 2 L144 Canal<T>,
+            # Manual 5 §3 canales tipados). El elemento lo usa el receive `ch ->`.
+            if getattr(nodo, 'tipo_contenido', None):
+                return f'Canal<{nodo.tipo_contenido}>'
             return 'CanalConcurrencia*'
         elif isinstance(nodo, ExprRecibirCanal):
-            self._inferir_tipo(nodo.canal)
+            # F3-10: el receive hereda el tipo del elemento del canal (Manual 5
+            # §4.2 `valor = canal ->`). Fallback void* si el canal no esta tipado.
+            tipo_canal = self._inferir_tipo(nodo.canal)
+            if tipo_canal and tipo_canal.startswith('Canal<') and tipo_canal.endswith('>'):
+                return tipo_canal[6:-1]
             return 'void*'
         elif isinstance(nodo, ExprIndice):
             tipo_base = self._inferir_tipo(nodo.expr)

@@ -23,6 +23,14 @@ from .emit_selfhost import (
 )
 
 
+def _es_canal_concurrencia(tipo_syn: str) -> bool:
+    """F3-10: un canal de concurrencia puede aparecer como 'CanalConcurrencia*'
+    (sin elemento) o 'Canal<T>' (tipado, Manual 2 L144 / Manual 5 §3)."""
+    return tipo_syn == 'CanalConcurrencia*' or (
+        tipo_syn.startswith('Canal<') and tipo_syn.endswith('>')
+    )
+
+
 # FASE A (A4.5): retirada COMPLETA del espejo _P_* — el map ya NO enruta
 # tokenizar/parsear a los emisores del espejo (emitir_parsear, la última emisora
 # viva, se conserva solo como referencia del harness native_puente_paridad.py;
@@ -101,7 +109,7 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
     ctx._variables[nodo.nombre] = tipo_syn  # Store Synapse type (consistent)
-    if tipo_syn == 'CanalConcurrencia*':
+    if _es_canal_concurrencia(tipo_syn):
         ctx._canal_vars_concurrencia.add(nodo.nombre)
     elif tipo_syn == 'Canal':
         ctx._canal_vars.add(nodo.nombre)
@@ -136,7 +144,7 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx._tensor_vars.add(nodo.nombre)
         elif tipo_syn == 'Canal':
             ctx._canal_vars.add(nodo.nombre)
-        elif tipo_syn == 'CanalConcurrencia*':
+        elif _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
         else:
             ctx.register_var(nodo.nombre, tipo_syn, desde_llamada)
@@ -148,7 +156,7 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx.unregister_var(nodo.nombre)
         if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
-        if tipo_syn == 'CanalConcurrencia*':
+        if _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
         ctx.write_line(f"{nodo.nombre} = {val};")
 

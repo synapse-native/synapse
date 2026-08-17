@@ -20,6 +20,15 @@ from .context import GeneratorContext
 # Type inference
 # ================================================================
 
+def _elemento_canal(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
+    """F3-10: tipo del elemento de un canal. `Canal<T>` -> T (Manual 2 L144,
+    Manual 5 §3/§4.2). Si el canal no esta tipado, fallback void* (F3-6)."""
+    canal = getattr(nodo, 'canal', None)
+    tipo_canal = tipo_de_expr(ctx, canal) if canal else ''
+    if tipo_canal and tipo_canal.startswith('Canal<') and tipo_canal.endswith('>'):
+        return tipo_canal[6:-1]
+    return 'void*'
+
 def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     """Infiere el tipo C de una expresión Synapse."""
     if nodo is None:
@@ -53,9 +62,11 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, ExprTensor):
         return 'Tensor'
     if isinstance(nodo, ExprCrearCanal):
+        if getattr(nodo, 'tipo_contenido', None):
+            return f'Canal<{nodo.tipo_contenido}>'
         return 'CanalConcurrencia*'
     if isinstance(nodo, ExprRecibirCanal):
-        return 'void*'
+        return _elemento_canal(ctx, nodo)
 
     if isinstance(nodo, ExprObtenerDireccion):
         base_tipo = tipo_de_expr(ctx, nodo.expr)
@@ -546,9 +557,18 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # canal_recibir(_canal) (la variable del listener, no la local del
         # contenedor, que no es visible en la funcion listener).
         if getattr(ctx, '_escuchar_modo', False):
-            return "canal_recibir(_canal)"
-        canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
-        return f"canal_recibir({canal})"
+            _r = "canal_recibir(_canal)"
+        else:
+            canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
+            _r = f"canal_recibir({canal})"
+        # F3-10: el receive hereda el tipo del elemento del canal (Manual 5 §4.2).
+        # Se desboxea el void* que devuelve canal_recibir (el S1 boxea al enviar).
+        _elem = _elemento_canal(ctx, nodo)
+        if _elem == 'entero':
+            return f"_synapse_unbox_int({_r})"
+        if _elem == 'decimal':
+            return f"_synapse_unbox_float({_r})"
+        return _r
 
     return "0"
 
