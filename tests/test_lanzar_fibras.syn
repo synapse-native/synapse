@@ -1,0 +1,32 @@
+#lang: es
+
+// F4.4 - lanzar/escuchar crean FIBRAS M:N (Manual 5 S2.6) en vez de pthread.
+// El main espera a todas las fibras (synapse_esperar_fibras) antes de salir.
+
+funcion productor(ch: Canal<entero>) -> nulo:
+    cont = 1
+    mientras cont <= 5:
+        v = cont
+        ch <- v
+        cont = cont + 1
+    retornar
+
+funcion doblar(x: entero) -> entero:
+    retornar x * 2
+
+funcion trabajador(dato: entero) -> nulo:
+    r = doblar(dato)
+    si r == dato * 2:
+        log("WORKER_OK")
+    retornar
+
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar productor(ch)
+    lanzar trabajador(21)
+    a = ch ->
+    b = ch ->
+    c = ch ->
+    si a == 1 y b == 2 y c == 3:
+        log("FIBRAS_OK")
+    retornar

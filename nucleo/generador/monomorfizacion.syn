@@ -511,6 +511,46 @@ funcion _G_native_contar_escuchar(n: puntero) -> entero:
         asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _c += _G_native_contar_escuchar(_ls->cabeza); _ls = _ls->cola; } }")
         asm("return _c;")
 
+// F4.4: pre-scan de `lanzar` (fibras M:N, Manual 5 §2.6) — recorre un nodo
+// contando SentenciaLanzar con el MISMO orden que la emision (contador local
+// que replica _G_lanzar_count, que avanza para TODO lanzar aunque solo los
+// que llevan argumentos crean wrapper) y acumula en `out` las declaraciones
+// adelantadas `static void _wrap_N(void* arg);` para emitirlas ANTES de los
+// cuerpos de funcion (paridad S1 _preprocess_lanzar + _deferred_wrap_decls;
+// el patron _G_native_contar_escuchar de F3-7).
+funcion _G_native_contar_lanzar(n: puntero, out: puntero) -> nulo:
+    requiere:
+        n != nulo
+        out != nulo
+    garantiza:
+        verdadero
+    inseguro:
+        asm("if (!n || !out) return;")
+        asm("struct Nodo* _no = (struct Nodo*)n;")
+        asm("if (!_no->tipo.datos) return;")
+        asm("const char* _t = _no->tipo.datos;")
+        asm("static int _lc = 0;")
+        asm("if (strcmp(_t, \"SentenciaLanzar\") == 0) {")
+        asm("    _lc++;")
+        asm("    struct SentenciaLanzar* _lz = (struct SentenciaLanzar*)_no;")
+        asm("    if (_lz->llamada && _lz->llamada->tipo.datos && strcmp(_lz->llamada->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_lz->llamada;")
+        asm("        if (_lf->argumentos) {")
+        asm("            char _lb[128]; snprintf(_lb, 128, \"static void _wrap_%d(void* arg);\\n\", _lc);")
+        asm("            strcat(out, _lb);")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("struct ListaNodo* _l = 0;")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s = (struct SentenciaSi*)_no; _l = _s->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaMientras\") == 0) { struct SentenciaMientras* _m = (struct SentenciaMientras*)_no; _l = _m->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaPara\") == 0) { struct SentenciaPara* _p = (struct SentenciaPara*)_no; _l = _p->cuerpo; }")
+        asm("else if (strcmp(_t, \"BloqueInseguro\") == 0) { struct BloqueInseguro* _b = (struct BloqueInseguro*)_no; _l = _b->cuerpo; }")
+        asm("else if (strcmp(_t, \"DefinicionFuncion\") == 0) { struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_no; _l = _f->cuerpo; }")
+        asm("else if (strcmp(_t, \"SentenciaEscuchar\") == 0) { struct SentenciaEscuchar* _e = (struct SentenciaEscuchar*)_no; _l = _e->cuerpo; }")
+        asm("while (_l) { _G_native_contar_lanzar(_l->cabeza, out); _l = _l->cola; }")
+        asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _G_native_contar_lanzar(_ls->cabeza, out); _ls = _ls->cola; } }")
+
 funcion _G_native_escuchar_vars(n: puntero, out: puntero) -> nulo:
     requiere:
         n != nulo

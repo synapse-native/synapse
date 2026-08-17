@@ -309,6 +309,14 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "int _G_listeners_count;")
     gen_emitir_linea(est, "int _G_listener_modo;")
     gen_emitir_linea(est, "")
+    // F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
+    // flusheados antes del main (patrón _G_listeners). El typedef del struct
+    // de argumentos es LOCAL a cada sitio (call-site y wrapper) — mismo
+    // layout, sin colisión de símbolos globales.
+    gen_emitir_linea(est, "char _G_lanzar_wrappers[8][4096];")
+    gen_emitir_linea(est, "int _G_lanzar_wrappers_count;")
+    gen_emitir_linea(est, "int _G_lanzar_count;")
+    gen_emitir_linea(est, "")
     // ME-B6: PGO globals del parser nativo (definidos en _parser.c)
     gen_emitir_linea(est, "extern int _P_ntks, _P_tpos, _P_p_err;")
     gen_emitir_linea(est, "")
@@ -369,6 +377,12 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "extern int str_eq(CadenaSegura a, CadenaSegura b);")
     gen_emitir_linea(est, "extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);")
     gen_emitir_linea(est, "extern void synapse_esperar_hilos(void);")
+    gen_emitir_linea(est, "extern void synapse_esperar_fibras(void);")
+    gen_emitir_linea(est, "extern void scheduler_iniciar(int num_hilos_os);")
+    gen_emitir_linea(est, "extern void scheduler_detener(void);")
+    gen_emitir_linea(est, "extern void fibra_crear(void (*func)(void*), void* arg, size_t stack_size);")
+    gen_emitir_linea(est, "extern void fibra_esperar(int fibra_id);")
+    gen_emitir_linea(est, "extern void fibra_terminar(void* resultado);")
     gen_emitir_linea(est, "extern void _syn_texto_liberar(CadenaSegura s);")
     gen_emitir_linea(est, "typedef struct CanalConcurrencia CanalConcurrencia;")
     gen_emitir_linea(est, "extern CanalConcurrencia* canal_crear(uint32_t capacidad);")

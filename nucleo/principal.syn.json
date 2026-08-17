@@ -72325,7 +72325,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Construir la funcion listener: void* _listener_N(void* arg) {"
+                  "instruccion": "// Construir la funcion listener: void _listener_N(void* arg) {"
                 }
               },
               {
@@ -72339,7 +72339,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "//     <vars> while (1) { <cuerpo> } return NULL; }"
+                  "instruccion": "//     <vars> while (1) { <cuerpo> } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// F4.4: firma void (trampolin de fibra, Manual 5 §2.6) — sin return NULL;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// al salir del while (canal cerrado -> romper) la trampolina llama"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// fibra_terminar. Se lanza con fibra_crear (antes synapse_lanzar_hilo)."
                 }
               },
               {
@@ -72353,7 +72374,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcat(_lfn, \"void* \"); strcat(_lfn, _lname); strcat(_lfn, \"(void* arg) {\n\");"
+                  "instruccion": "strcat(_lfn, \"void \"); strcat(_lfn, _lname); strcat(_lfn, \"(void* arg) {\n\");"
                 }
               },
               {
@@ -72402,13 +72423,6 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcat(_lfn, \"    return NULL;\n\");"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
                   "instruccion": "strcat(_lfn, \"}\n\");"
                 }
               },
@@ -72423,14 +72437,49 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (_G_listeners_count < 8) { strncpy(_G_listeners[_G_listeners_count], _lfn, 16383); _G_listeners[_G_listeners_count][16383] = 0; _G_listeners_count++; }"
+                  "instruccion": "// F4.4 fix (bug latente F3-7): el contador ya avanzo arriba para el"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Emitir el lanzamiento del hilo en el punto del escuchar"
+                  "instruccion": "// nombre (_listener_N); almacenar en el indice N-1 SIN incrementar de"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// nuevo (antes el doble incremento hacia los nombres 1,3,5... con N"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// escuchar — invisible con un solo escuchar por programa, los tests"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// F3-7 tenian exactamente uno; destapado por el probe multi-listener F4.4)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_G_listeners_count <= 8) { strncpy(_G_listeners[_G_listeners_count - 1], _lfn, 16383); _G_listeners[_G_listeners_count - 1][16383] = 0; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Emitir el lanzamiento de la fibra en el punto del escuchar"
                 }
               },
               {
@@ -72444,7 +72493,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "snprintf(_lcall, 1200, \"    synapse_lanzar_hilo((void*(*)(void*))%s, (void*)(%s));\", _lname, _lcan);"
+                  "instruccion": "snprintf(_lcall, 1200, \"    fibra_crear((void(*)(void*))%s, (void*)(%s), 0);\", _lname, _lcan);"
                 }
               },
               {
@@ -72720,14 +72769,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // R15: lanzar -> llamada directa (codegen minimo; el thread real"
+                  "instruccion": "    // F4.4: lanzar -> fibra M:N (Manual 5 §2.6). Cierra D-4/R15 (antes:"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // del S1 visitar_lanzar requiere runtime de hilos no portado - deuda D-4)"
+                  "instruccion": "    // llamada directa; el thread real del S1 no estaba portado). El"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // struct de argumentos es ANONIMO con el MISMO layout en el call-site"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // y en el wrapper (tipos C compatibles -> layout identico); evita el"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // typedef global y el pre-scan de tipos (paridad S1 visitar_lanzar)."
                 }
               },
               {
@@ -72755,14 +72825,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    char _lzb[4096]; _lzb[0] = 0;"
+                  "instruccion": "    extern int _G_lanzar_count;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    strcat(_lzb, \"    \");"
+                  "instruccion": "    extern char _G_lanzar_wrappers[8][4096]; extern int _G_lanzar_wrappers_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_lanzar_count++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _wrn[64]; snprintf(_wrn, 64, \"_wrap_%d\", _G_lanzar_count);"
                 }
               },
               {
@@ -72783,105 +72867,217 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if (_lfz->nombre.datos) strcat(_lzb, _lfz->nombre.datos);"
+                  "instruccion": "        if (_lfz->nombre.datos) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        strcat(_lzb, \"(\");"
+                  "instruccion": "            struct ListaNodo* _lcz = _lfz->argumentos;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        struct ListaNodo* _lcz = _lfz->argumentos;"
+                  "instruccion": "            int _nai = 0;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        int _faz = 1;"
+                  "instruccion": "            char _flds[2048]; _flds[0] = 0;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        while (_lcz) {"
+                  "instruccion": "            char _expv[8][1024];"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if (_lcz->cabeza) {"
+                  "instruccion": "            while (_lcz && _nai < 8) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if (!_faz) strcat(_lzb, \", \");"
+                  "instruccion": "                if (_lcz->cabeza) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                _faz = 0;"
+                  "instruccion": "                    struct Nodo* _az = _lcz->cabeza;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                struct Nodo* _az = _lcz->cabeza;"
+                  "instruccion": "                    char _abz[1024]; _abz[0] = 0;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                char _abz[1024]; _abz[0] = 0;"
+                  "instruccion": "                    if (_az->tipo.datos && strcmp(_az->tipo.datos, \"ArgumentoTransferido\") == 0) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                if (_az->tipo.datos && strcmp(_az->tipo.datos, \"ArgumentoTransferido\") == 0) {"
+                  "instruccion": "                        struct ArgumentoTransferido* _atz = (struct ArgumentoTransferido*)_az;"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    struct ArgumentoTransferido* _atz = (struct ArgumentoTransferido*)_az;"
+                  "instruccion": "                        if (_atz->expr) { _oo_expr_a_c(est, _atz->expr, _abz, 1024); }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    if (_atz->expr) { _oo_expr_a_c(est, _atz->expr, _abz, 1024); }"
+                  "instruccion": "                    } else {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                } else {"
+                  "instruccion": "                        _oo_expr_a_c(est, _az, _abz, 1024);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    _oo_expr_a_c(est, _az, _abz, 1024);"
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // Tipo C del argumento (paridad S1 tipo_de_expr):"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // _syn_nativo_expr_tipo_c resuelve literales/identificadores/"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    // llamadas/estructuras; fallback void*."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    char _azt[128]; _azt[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    struct Nodo* _azt_n = _az;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_az->tipo.datos && strcmp(_az->tipo.datos, \"ArgumentoTransferido\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        struct ArgumentoTransferido* _atz2 = (struct ArgumentoTransferido*)_az;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                        if (_atz2->expr) _azt_n = _atz2->expr;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    extern int64_t _syn_nativo_expr_tipo_c(void* n, void* out);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_azt_n) { _syn_nativo_expr_tipo_c((void*)_azt_n, (void*)_azt); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (!_azt[0]) strcpy(_azt, \"void*\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    if (_nai > 0) strcat(_flds, \" \");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    char _f1[256]; snprintf(_f1, 256, \"%s v%d;\", _azt, _nai); strcat(_flds, _f1);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncpy(_expv[_nai], _abz, 1023); _expv[_nai][1023] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    _nai++;"
                 }
               },
               {
@@ -72895,7 +73091,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                strcat(_lzb, _abz);"
+                  "instruccion": "                _lcz = _lcz->cola;"
                 }
               },
               {
@@ -72909,7 +73105,168 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            _lcz = _lcz->cola;"
+                  "instruccion": "            if (_nai > 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Wrapper diferido: static void _wrap_N(void* _arg) { struct { ... }* _a = ...; pool_free(_arg); fn(_a->v0, ...); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _wfb[4096]; _wfb[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_wfb, 4096, \"static void %s(void* _arg) { struct { %s }* _a = (struct { %s }*)_arg; pool_free(_arg); %s(_a->v0\", _wrn, _flds, _flds, _lfz->nombre.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                for (int _wai = 1; _wai < _nai; _wai++) { char _wa[64]; snprintf(_wa, 64, \", _a->v%d\", _wai); strcat(_wfb, _wa); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                strcat(_wfb, \"); }\\n\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_G_lanzar_wrappers_count < 8) { strncpy(_G_lanzar_wrappers[_G_lanzar_wrappers_count], _wfb, 4095); _G_lanzar_wrappers[_G_lanzar_wrappers_count][4095] = 0; _G_lanzar_wrappers_count++; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Call-site: struct anonimo + pool_alloc + fibra_crear"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _lcb[4096]; _lcb[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_lcb, 4096, \"    struct { %s }* _args_%d = (struct { %s }*)pool_alloc(sizeof(struct { %s }));\", _flds, _G_lanzar_count, _flds, _flds);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                gen_emitir_str(est, _lcb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                for (int _lai = 0; _lai < _nai; _lai++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    char _las[1200]; snprintf(_las, 1200, \"    _args_%d->v%d = %s;\", _G_lanzar_count, _lai, _expv[_lai]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    gen_emitir_str(est, _las);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _lcall[1200]; snprintf(_lcall, 1200, \"    fibra_crear(%s, _args_%d, 0);\", _wrn, _G_lanzar_count);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                gen_emitir_str(est, _lcall);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // Sin argumentos: funcion directa (firma void(void*))"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _lcz0[1200]; snprintf(_lcz0, 1200, \"    fibra_crear((void(*)(void*))%s, NULL, 0);\", _lfz->nombre.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                gen_emitir_str(est, _lcz0);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            gen_emitir_str(est, \"    (void)0;\");"
                 }
               },
               {
@@ -72923,7 +73280,42 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        strcat(_lzb, \");\");"
+                  "instruccion": "    } else {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // No es LlamadaFuncion (expresion directa)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _lexpr[1024]; _lexpr[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_lzs->llamada) { _oo_expr_a_c(est, _lzs->llamada, _lexpr, 1024); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _lcz1[1200]; snprintf(_lcz1, 1200, \"    fibra_crear((void(*)(void*))%s, NULL, 0);\", _lexpr[0] ? _lexpr : \"(void(*)(void*))0\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        gen_emitir_str(est, _lcz1);"
                 }
               },
               {
@@ -72931,13 +73323,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    gen_emitir_str(est, _lzb);"
                 }
               },
               {
@@ -78627,6 +79012,233 @@
       },
       {
         "_tipo": "DefinicionFuncion",
+        "nombre": "_G_native_contar_lanzar",
+        "parametros": [
+          {
+            "nombre": "n",
+            "tipo": "puntero"
+          },
+          {
+            "nombre": "out",
+            "tipo": "puntero"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [
+          {
+            "_tipo": "OpBinaria",
+            "izquierdo": {
+              "_tipo": "Identificador",
+              "nombre": "n"
+            },
+            "operador": "!=",
+            "derecho": {
+              "_tipo": "LiteralNulo"
+            }
+          },
+          {
+            "_tipo": "OpBinaria",
+            "izquierdo": {
+              "_tipo": "Identificador",
+              "nombre": "out"
+            },
+            "operador": "!=",
+            "derecho": {
+              "_tipo": "LiteralNulo"
+            }
+          }
+        ],
+        "garantiza": [
+          {
+            "_tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "cuerpo": [
+          {
+            "_tipo": "BloqueInseguro",
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (!n || !out) return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct Nodo* _no = (struct Nodo*)n;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (!_no->tipo.datos) return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "const char* _t = _no->tipo.datos;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "static int _lc = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (strcmp(_t, \"SentenciaLanzar\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _lc++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct SentenciaLanzar* _lz = (struct SentenciaLanzar*)_no;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_lz->llamada && _lz->llamada->tipo.datos && strcmp(_lz->llamada->tipo.datos, \"LlamadaFuncion\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_lz->llamada;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_lf->argumentos) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _lb[128]; snprintf(_lb, 128, \"static void _wrap_%d(void* arg);\\n\", _lc);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            strcat(out, _lb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct ListaNodo* _l = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s = (struct SentenciaSi*)_no; _l = _s->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if (strcmp(_t, \"SentenciaMientras\") == 0) { struct SentenciaMientras* _m = (struct SentenciaMientras*)_no; _l = _m->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if (strcmp(_t, \"SentenciaPara\") == 0) { struct SentenciaPara* _p = (struct SentenciaPara*)_no; _l = _p->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if (strcmp(_t, \"BloqueInseguro\") == 0) { struct BloqueInseguro* _b = (struct BloqueInseguro*)_no; _l = _b->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if (strcmp(_t, \"DefinicionFuncion\") == 0) { struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_no; _l = _f->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if (strcmp(_t, \"SentenciaEscuchar\") == 0) { struct SentenciaEscuchar* _e = (struct SentenciaEscuchar*)_no; _l = _e->cuerpo; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "while (_l) { _G_native_contar_lanzar(_l->cabeza, out); _l = _l->cola; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _G_native_contar_lanzar(_ls->cabeza, out); _ls = _ls->cola; } }"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
         "nombre": "_G_native_escuchar_vars",
         "parametros": [
           {
@@ -79758,7 +80370,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    char _esb[128]; snprintf(_esb, 128, \"extern void* _listener_%d(void* arg);\", _esi);"
+                  "instruccion": "    char _esb[128]; snprintf(_esb, 128, \"extern void _listener_%d(void* arg);\", _esi);"
                 }
               },
               {
@@ -79780,6 +80392,139 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "if (_esc_total) gen_emitir_nueva_linea(est);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// F4.4: pre-scan de `lanzar` — declaraciones adelantadas de los wrappers"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// `static void _wrap_N(void* arg)` ANTES de los cuerpos (paridad S1"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// _preprocess_lanzar/_deferred_wrap_decls; patron _G_native_contar_lanzar"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// replica el orden de emision y el contador de TODO lanzar)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern void _G_native_contar_lanzar(void* n, void* out);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "char _lzb[8192]; _lzb[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _lzi = 0; _lzi < _top_count; _lzi++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct Nodo* _lzn = _top_nodes[_lzi];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (!_lzn || !_lzn->tipo.datos) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (strcmp(_lzn->tipo.datos, \"DefinicionFuncion\") == 0) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_native_contar_lanzar(_lzn, _lzb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _lzi = 0; _lzi < _top_count; _lzi++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    struct Nodo* _lzn = _top_nodes[_lzi];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (!_lzn || !_lzn->tipo.datos) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (strcmp(_lzn->tipo.datos, \"DefinicionFuncion\") != 0) continue;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_native_contar_lanzar(_lzn, _lzb);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_lzb[0]) { gen_emitir_str(est, _lzb); gen_emitir_nueva_linea(est); }"
                 }
               },
               {
@@ -80388,6 +81133,41 @@
                   "_tipo": "ExprAsm",
                   "instruccion": "if (_G_listeners_count) gen_emitir_nueva_linea(est);"
                 }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern char _G_lanzar_wrappers[8][4096]; extern int _G_lanzar_wrappers_count;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _lwi = 0; _lwi < _G_lanzar_wrappers_count; _lwi++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_G_lanzar_wrappers[_lwi][0]) gen_emitir_str(est, _G_lanzar_wrappers[_lwi]);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (_G_lanzar_wrappers_count) gen_emitir_nueva_linea(est);"
+                }
               }
             ]
           },
@@ -80560,6 +81340,13 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_emitir_str(est, \"    synapse_esperar_hilos();\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, \"    synapse_esperar_fibras();\");"
                 }
               },
               {
@@ -86953,6 +87740,74 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
+                  "valor": "char _G_lanzar_wrappers[8][4096];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_lanzar_wrappers_count;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "int _G_lanzar_count;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
                   "valor": "extern int _P_ntks, _P_tpos, _P_p_err;"
                 }
               ]
@@ -87855,6 +88710,108 @@
                 {
                   "_tipo": "LiteralCadena",
                   "valor": "extern void synapse_esperar_hilos(void);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void synapse_esperar_fibras(void);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void scheduler_iniciar(int num_hilos_os);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void scheduler_detener(void);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void fibra_crear(void (*func)(void*), void* arg, size_t stack_size);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void fibra_esperar(int fibra_id);"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "extern void fibra_terminar(void* resultado);"
                 }
               ]
             }

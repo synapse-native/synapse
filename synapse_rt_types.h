@@ -166,6 +166,7 @@ void escribir_linea(CadenaSegura contenido);
 CadenaSegura leer_linea(void);
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);
+void synapse_esperar_fibras(void);
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
 void* canal_recibir(CanalConcurrencia* canal);

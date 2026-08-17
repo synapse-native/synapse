@@ -526,6 +526,11 @@ static void* _scheduler_worker(void* arg) {
         }
         f->despertado = 0;   // residual en estado TERMINADA
         if (f->estado == F_ESTADO_TERMINADA) {
+            // F4.4: la fibra terminó — decrementar el contador de fibras
+            // activas y señalizar (synapse_esperar_fibras espera a 0 bajo la
+            // misma cond).
+            g_sched.num_fibras--;
+            pthread_cond_broadcast(&g_sched_cond);
             pthread_mutex_unlock(&g_sched_mutex);
             // Terminó (fibra_terminar cedió el control): liberar pila y contexto.
 #ifdef _WIN32
@@ -851,4 +856,18 @@ void scheduler_detener(void) {
         free(g_sched.hilos_os);
         g_sched.hilos_os = NULL;
     }
+}
+
+// F4.4: espera a que TODAS las fibras del scheduler terminen (num_fibras == 0).
+// El main del programa generado la llama tras principal() — los listeners de
+// `escuchar` y las fibras de `lanzar` son fibras M:N (Manual 5 §2.6); el main
+// debe esperarlas antes de pool_destroy/salir (paridad con synapse_esperar_hilos
+// para los pthreads). Si el scheduler no se inició (0 fibras) retorna al
+// instante.
+void synapse_esperar_fibras(void) {
+    pthread_mutex_lock(&g_sched_mutex);
+    while (g_sched.num_fibras > 0) {
+        pthread_cond_wait(&g_sched_cond, &g_sched_mutex);
+    }
+    pthread_mutex_unlock(&g_sched_mutex);
 }

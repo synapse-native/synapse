@@ -136,10 +136,29 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("    _esc_total += _G_native_contar_escuchar(_escn);")
         asm("}")
         asm("for (int _esi = 1; _esi <= _esc_total; _esi++) {")
-        asm("    char _esb[128]; snprintf(_esb, 128, \"extern void* _listener_%d(void* arg);\", _esi);")
+        asm("    char _esb[128]; snprintf(_esb, 128, \"extern void _listener_%d(void* arg);\", _esi);")
         asm("    gen_emitir_str(est, _esb);")
         asm("}")
         asm("if (_esc_total) gen_emitir_nueva_linea(est);")
+        asm("// F4.4: pre-scan de `lanzar` — declaraciones adelantadas de los wrappers")
+        asm("// `static void _wrap_N(void* arg)` ANTES de los cuerpos (paridad S1")
+        asm("// _preprocess_lanzar/_deferred_wrap_decls; patron _G_native_contar_lanzar")
+        asm("// replica el orden de emision y el contador de TODO lanzar).")
+        asm("extern void _G_native_contar_lanzar(void* n, void* out);")
+        asm("char _lzb[8192]; _lzb[0] = 0;")
+        asm("for (int _lzi = 0; _lzi < _top_count; _lzi++) {")
+        asm("    struct Nodo* _lzn = _top_nodes[_lzi];")
+        asm("    if (!_lzn || !_lzn->tipo.datos) continue;")
+        asm("    if (strcmp(_lzn->tipo.datos, \"DefinicionFuncion\") == 0) continue;")
+        asm("    _G_native_contar_lanzar(_lzn, _lzb);")
+        asm("}")
+        asm("for (int _lzi = 0; _lzi < _top_count; _lzi++) {")
+        asm("    struct Nodo* _lzn = _top_nodes[_lzi];")
+        asm("    if (!_lzn || !_lzn->tipo.datos) continue;")
+        asm("    if (strcmp(_lzn->tipo.datos, \"DefinicionFuncion\") != 0) continue;")
+        asm("    _G_native_contar_lanzar(_lzn, _lzb);")
+        asm("}")
+        asm("if (_lzb[0]) { gen_emitir_str(est, _lzb); gen_emitir_nueva_linea(est); }")
         asm("// ME-B7: prototipos de funciones (Manual 8 S8.2, paridad _emit_prototipos_funciones + _SPECIAL_SIGS)")
         asm("// El C de salida no tiene prototipos si no se emiten: las llamadas entre modulos")
         asm("// (orden alfabetico) fallarian con 'implicit declaration / conflicting types'.")
@@ -224,14 +243,20 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
 
     // Manual 8 S8.3 / paridad referencia: PGO via flags GCC (sin atexit manual)
 
-    // F3-7: flush de los listeners acumulados (funciones `void* _listener_N`)
-    // antes del main (paridad S1 _listener_funciones al final de _emit_cuerpos).
+    // F3-7/F4.4: flush de los listeners (`void _listener_N`) y de los wrappers
+    // de `lanzar` (`static void _wrap_N`) acumulados — antes del main (paridad
+    // S1 _listener_funciones/_deferred_wrappers al final de _emit_cuerpos).
     inseguro:
         asm("extern char _G_listeners[8][16384]; extern int _G_listeners_count;")
         asm("for (int _lfi = 0; _lfi < _G_listeners_count; _lfi++) {")
         asm("    if (_G_listeners[_lfi][0]) gen_emitir_str(est, _G_listeners[_lfi]);")
         asm("}")
         asm("if (_G_listeners_count) gen_emitir_nueva_linea(est);")
+        asm("extern char _G_lanzar_wrappers[8][4096]; extern int _G_lanzar_wrappers_count;")
+        asm("for (int _lwi = 0; _lwi < _G_lanzar_wrappers_count; _lwi++) {")
+        asm("    if (_G_lanzar_wrappers[_lwi][0]) gen_emitir_str(est, _G_lanzar_wrappers[_lwi]);")
+        asm("}")
+        asm("if (_G_lanzar_wrappers_count) gen_emitir_nueva_linea(est);")
 
     // Emit main() wrapper — F3-11: paridad S1 (generator.py L1158-1176).
     // Manual 8 S8.2: si `principal` retorna nulo (void) el C fallaria con
@@ -264,6 +289,7 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("    gen_emitir_str(est, \"    principal();\");")
         asm("}")
         asm("gen_emitir_str(est, \"    synapse_esperar_hilos();\");")
+        asm("gen_emitir_str(est, \"    synapse_esperar_fibras();\");")
         asm("gen_emitir_str(est, \"    pool_destroy();\");")
         asm("if (_principal_es_entero) {")
         asm("    gen_emitir_str(est, \"    return _rc;\");")

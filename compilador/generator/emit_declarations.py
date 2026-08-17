@@ -585,11 +585,13 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
 
 
 def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
-    """Genera código C para spawn/lanzar (crear hilo) con ownership transfer.
+    """Genera código C para lanzar con FIBRAS M:N (Manual 5 §2.6) con ownership transfer.
 
-    C99 strict: usa wrapper static top-level + struct args con pool allocator (_syn_malloc/_syn_free)
-    para evitar desajustes de ciclo de vida heap entre hilo principal e hijo.
-    El wrapper se emite como funcion static al final del archivo via _deferred_wrappers.
+    F4.4: `lanzar` crea una fibra del scheduler (fibra_crear) en vez de un
+    pthread (synapse_lanzar_hilo, pre-F4.4). El trampolín de fibra firma
+    `void func(void*)`, así que el wrapper es static void (no void*).
+    El wrapper se emite como funcion static al final del archivo via
+    _deferred_wrappers (paridad con la estructura pre-F4.4).
     """
     ctx._contador_thread += 1
     tid = ctx._contador_thread
@@ -627,21 +629,21 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
                 ctx._emitted_typedefs.add(typedef_line)
 
             # Forward declaration del wrapper (evitar duplicados)
-            wrap_decl = f"static void* {wrapper_name}(void* arg);"
+            wrap_decl = f"static void {wrapper_name}(void* arg);"
             if wrap_decl not in ctx._emitted_wrap_decls:
                 ctx._deferred_wrap_decls.append(wrap_decl)
                 ctx._emitted_wrap_decls.add(wrap_decl)
 
             # Wrapper body: liberar ARGS inmediatamente despues de desempaquetar
             # y ANTES de ejecutar el bloque logico de usuario (propiedad estricta).
-            # Se usa pool_alloc/pool_free para mantener compatibilidad con el runtime
-            # (malloc/free directo causa segfault en hilos por desajuste de ciclo de vida).
-            wrap_lines = [f"static void* {wrapper_name}(void* _arg) {{"]
+            # Se usa pool_alloc/pool_free para mantener compatibilidad con el runtime.
+            # F4.4: wrapper void (firma del trampolin de fibra), sin return NULL —
+            # al retornar, la trampolina llama fibra_terminar.
+            wrap_lines = [f"static void {wrapper_name}(void* _arg) {{"]
             wrap_lines.append(f"    {args_type_name}* _a = ({args_type_name}*)_arg;")
             wrap_lines.append(f"    {ctx.syn_pool_free('_arg')};")
             unpacked = ", ".join(f"_a->v{i}" for i in range(len(args)))
             wrap_lines.append(f"    {fn_name}({unpacked});")
-            wrap_lines.append(f"    return NULL;")
             wrap_lines.append(f"}}")
             ctx._deferred_wrappers.append("\n".join(wrap_lines))
 
@@ -650,19 +652,19 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
             ctx.write_line(f"{args_type_name}* _args_{tid} = ({args_type_name}*){ctx.syn_pool_alloc(f'sizeof({args_type_name})')};")
             for i, expr_c in enumerate(arg_c_exprs):
                 ctx.write_line(f"_args_{tid}->v{i} = {expr_c};")
-            ctx.write_line(f"synapse_lanzar_hilo({wrapper_name}, _args_{tid});")
+            ctx.write_line(f"fibra_crear({wrapper_name}, _args_{tid}, 0);")
         else:
-            # Sin argumentos: pasar funcion directamente
+            # Sin argumentos: pasar funcion directamente (firma de fibra void(void*))
             ctx.write_line(
-                f"synapse_lanzar_hilo("
-                f"(void*(*)(void*)){fn_name}, NULL);"
+                f"fibra_crear("
+                f"(void(*)(void*)){fn_name}, NULL, 0);"
             )
     else:
         # No es LlamadaFuncion (expresion directa)
         fn = expr_a_c(ctx, nodo.llamada)
         ctx.write_line(
-            f"synapse_lanzar_hilo("
-            f"(void*(*)(void*)){fn}, NULL);"
+            f"fibra_crear("
+            f"(void(*)(void*)){fn}, NULL, 0);"
         )
 
 
@@ -687,8 +689,8 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
     hasta que el canal se cierra". El bloque recibe con `canal ->` (que emite
     canal_recibir(_canal)); el cierre lo detecta canal_recibir devolviendo
     NULL y el bloque lo maneja (p. ej. `si v == nulo: romper`).
-    El listener se lanza como hilo (synapse_lanzar_hilo) pasando el canal por
-    arg (la variable local del contenedor NO es visible en la funcion listener).
+    F4.4: el listener se lanza como FIBRA (fibra_crear, Manual 5 §2.6)
+    pasando el canal por arg — firma void (trampolin de fibra), no void*.
     """
     ctx._contador_listener += 1
     listener_name = f"_listener_{ctx._contador_listener}"
@@ -741,17 +743,18 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
     body_parts = [f"    while (1) {{", cuerpo_c, f"    }}"]
     if decl_c:
         body_parts = [decl_c] + body_parts
+    # F4.4: listener void (firma del trampolin de fibra); al salir del while
+    # (canal cerrado -> romper) retorna y la trampolina llama fibra_terminar.
     listener_lines = [
-        f"void* {listener_name}(void* arg) {{",
+        f"void {listener_name}(void* arg) {{",
         f"    (void)arg;",
         f"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;",
     ] + body_parts + [
-        f"    return NULL;",
         f"}}",
     ]
     ctx._listener_funciones.append("\n".join(listener_lines))
 
     ctx.write_line(
-        f"synapse_lanzar_hilo("
-        f"(void*(*)(void*)){listener_name}, (void*)({canal}));"
+        f"fibra_crear("
+        f"(void(*)(void*)){listener_name}, (void*)({canal}), 0);"
     )

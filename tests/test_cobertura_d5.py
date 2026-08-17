@@ -162,7 +162,10 @@ def test_codegen_s1_ejecutable_fuera_de_ambito():
 
 
 def test_codegen_s1_lanzar_con_transferencia():
-    """D-5: lanzar con argumento transferido (->x) emite wrapper + typedef."""
+    """D-5/F4.4: lanzar con argumento transferido (->x) emite wrapper + typedef
+    y crea una FIBRA M:N (fibra_crear, Manual 5 §2.6) — antes thread
+    (synapse_lanzar_hilo, deuda D-4/R15). Firma del wrapper void (trampolín
+    de fibra), no void*."""
     prog = (
         "#lang: es\n"
         "funcion consumir(v: entero) -> nulo:\n"
@@ -176,8 +179,9 @@ def test_codegen_s1_lanzar_con_transferencia():
     )
     ast = _compilar_ast(prog)
     codigo = GeneradorC(ast).generar()
-    assert "synapse_lanzar_hilo(_wrap_" in codigo, "lanzar con wrapper"
-    assert "static void* _wrap_1(void* arg);" in codigo, "forward del wrapper"
+    assert "fibra_crear(_wrap_" in codigo, "lanzar con wrapper crea fibra M:N"
+    assert "static void _wrap_1(void* arg);" in codigo, "forward del wrapper"
+    assert "synapse_lanzar_hilo(_wrap_" not in codigo, "F4.4: sin thread directo"
 
 
 def test_codegen_s1_prototipos_puntero():

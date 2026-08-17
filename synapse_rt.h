@@ -35,5 +35,6 @@ void cerrar_canal(CanalConcurrencia* canal);
 
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);
+void synapse_esperar_fibras(void);
 
 #endif

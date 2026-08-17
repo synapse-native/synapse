@@ -251,10 +251,16 @@ def _preprocess_lanzar(ctx: GeneratorContext):
 
     def _scan_node(nodo, local_vars=None):
         if isinstance(nodo, SentenciaLanzar):
+            # F4.4: el contador avanza para TODO lanzar (paridad estricta con
+            # visitar_lanzar, que hace += 1 incondicional); solo los que llevan
+            # argumentos crean wrapper (_wrap_N/_args_N_t). Antes solo se
+            # contaban los de args: un programa mixto (args + sin-args)
+            # desalineaba los nombres (latente pre-F4.4, destapado al probar
+            # el probe mixto).
+            ctx._contador_thread += 1
             if isinstance(nodo.llamada, LlamadaFuncion):
                 args = nodo.llamada.argumentos
                 if args:
-                    ctx._contador_thread += 1
                     tid = ctx._contador_thread
                     arg_type_names = []
                     for i, arg in enumerate(args):
@@ -284,7 +290,7 @@ def _preprocess_lanzar(ctx: GeneratorContext):
                     if td_line not in ctx._emitted_typedefs:
                         ctx._deferred_typedefs.append(td_line)
                         ctx._emitted_typedefs.add(td_line)
-                    wd_line = f"static void* {wrapper_name}(void* arg);"
+                    wd_line = f"static void {wrapper_name}(void* arg);"
                     if wd_line not in ctx._emitted_wrap_decls:
                         ctx._deferred_wrap_decls.append(wd_line)
                         ctx._emitted_wrap_decls.add(wd_line)
@@ -303,7 +309,17 @@ def _preprocess_lanzar(ctx: GeneratorContext):
             for s in nodo.cuerpo_sino:
                 _scan_node(s, local_vars)
 
+    # F4.4: el pre-scan recorre en el MISMO orden que la emision
+    # (_emit_cuerpos: no-funciones en parse order + funciones alfabeticas,
+    # patron _contar_escuchar_emision) para que el contador coincida.
     for s in ctx.programa.sentencias:
+        if isinstance(s, DefinicionFuncion):
+            continue
+        _scan_node(s)
+    for s in sorted(
+        [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)],
+        key=lambda f: f.nombre
+    ):
         _scan_node(s)
 
 
@@ -775,6 +791,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern char _G_listeners[8][16384];")
     ctx.write_line("extern int _G_listeners_count;")
     ctx.write_line("extern int _G_listener_modo;")
+    # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) — paridad orquestador nativo
+    ctx.write_line("extern char _G_lanzar_wrappers[8][4096];")
+    ctx.write_line("extern int _G_lanzar_wrappers_count;")
+    ctx.write_line("extern int _G_lanzar_count;")
     # ME-F1.2b: alias de tipo declarados (`tipo X = Y`) — paridad orquestador nativo
     ctx.write_line("extern char _G_tipo_aliases[128][64];")
     ctx.write_line("extern char _G_tipo_aliases_base[128][64];")
@@ -858,6 +878,12 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "int str_eq(CadenaSegura a, CadenaSegura b)",
             "void synapse_lanzar_hilo(void* (*fn)(void*), void* arg)",
             "void synapse_esperar_hilos(void)",
+            "void synapse_esperar_fibras(void)",
+            "void scheduler_iniciar(int num_hilos_os)",
+            "void scheduler_detener(void)",
+            "void fibra_crear(void (*func)(void*), void* arg, size_t stack_size)",
+            "void fibra_esperar(int fibra_id)",
+            "void fibra_terminar(void* resultado)",
             "void _syn_texto_liberar(CadenaSegura s)",
         ]:
             ctx.write_line(f"extern {ext};")
@@ -1111,6 +1137,11 @@ class GeneradorC:
             ctx.write_line("char _G_listeners[8][16384];")
             ctx.write_line("int _G_listeners_count;")
             ctx.write_line("int _G_listener_modo;")
+            # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
+            # flusheados antes del main (paridad orquestador.syn).
+            ctx.write_line("char _G_lanzar_wrappers[8][4096];")
+            ctx.write_line("int _G_lanzar_wrappers_count;")
+            ctx.write_line("int _G_lanzar_count;")
             ctx.write_line("")
             # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
             ctx.write_line("char _G_tipo_aliases[128][64];")
@@ -1219,15 +1250,18 @@ class GeneradorC:
             if ret_tipo in ('nulo', 'void'):
                 ctx.write_line(f"{principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
+                ctx.write_line("synapse_esperar_fibras();")
                 ctx.write_line("pool_destroy();")
                 ctx.write_line("return 0;")
             else:
-                # F3-7: el main DEBE esperar a los hilos (listeners lanzados
-                # con synapse_lanzar_hilo) antes de salir — `return principal();`
-                # mataba el proceso sin esperar. Paridad con el nativo
-                # (recorrido.syn gen_emitir_main).
+                # F3-7: el main DEBE esperar a los hilos/fibras (listeners y
+                # fibras de lanzar) antes de salir — `return principal();`
+                # mataba el proceso sin esperar. F4.4: además de los pthreads
+                # residuales (synapse_esperar_hilos) espera a las FIBRAS M:N
+                # (synapse_esperar_fibras). Paridad con el nativo.
                 ctx.write_line(f"int64_t _rc = {principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
+                ctx.write_line("synapse_esperar_fibras();")
                 ctx.write_line("pool_destroy();")
                 ctx.write_line("return _rc;")
             ctx.dec_indent()
@@ -1245,7 +1279,7 @@ class GeneradorC:
         # numeración _listener_1..N coincida con _contador_listener.
         n_listeners = _contar_escuchar_emision(ctx, scope_names)
         for i in range(1, n_listeners + 1):
-            ctx.write_line(f"extern void* _listener_{i}(void* arg);")
+            ctx.write_line(f"extern void _listener_{i}(void* arg);")
         if n_listeners:
             ctx.write_line("")
         # Manual 8 §8.2: orden alfabético estricto para funciones
@@ -1650,6 +1684,11 @@ class GeneradorC:
                 ctx.write_line("char _G_listeners[8][16384];")
                 ctx.write_line("int _G_listeners_count;")
                 ctx.write_line("int _G_listener_modo;")
+                # F4.4: wrappers de `lanzar` (fibras M:N, Manual 5 §2.6) acumulados y
+                # flusheados antes del main (paridad orquestador.syn).
+                ctx.write_line("char _G_lanzar_wrappers[8][4096];")
+                ctx.write_line("int _G_lanzar_wrappers_count;")
+                ctx.write_line("int _G_lanzar_count;")
                 ctx.write_line("")
                 # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
                 ctx.write_line("char _G_tipo_aliases[128][64];")
