@@ -439,6 +439,17 @@ static Scheduler g_sched;
 static _ResultadoFibra g_resultados[FIBRAS_MAX];
 // _fibra_actual declarada al inicio del TU (la usan las operaciones de canal).
 
+// F4.3: colas FIFO de fibras esperando a una fibra objetivo (fibra_esperar
+// llamado DESDE una fibra). El nodo lo libera fibra_terminar de la objetivo
+// al despertar; la esperante jamás toca el nodo tras reanudar (patrón F4.2).
+typedef struct _EsperaFibraId {
+    struct _EsperaFibraId* next;
+    Fibra* fibra;                // fibra esperante
+} _EsperaFibraId;
+
+static _EsperaFibraId* g_espera_id[FIBRAS_MAX];
+static _EsperaFibraId* g_espera_id_tail[FIBRAS_MAX];
+
 // mutex/cond con inicializadores estáticos (Manual 5 §2.6 no fija el init; el
 // static zero-init cubre colas/contadores; usar PTHREAD_MUTEX_INITIALIZER evita
 // reinicializarlos desde scheduler_iniciar).
@@ -625,12 +636,12 @@ static void _sched_mover_a_activa(Fibra* f) {
 // está suspendida), así que moverla es seguro. Si la fibra aún no cede (o
 // está cediendo), se marca despertado: o bien _fibra_parquear no se suspende,
 // o el worker la re-encola al procesar el yield.
-static void _scheduler_despertar_fibra(Fibra* f) {
-    pthread_mutex_lock(&g_sched_mutex);
+// Variante bajo mutex (F4.3): asume g_sched_mutex ya tomado — la usa
+// fibra_terminar, que publica el resultado y despierta a los esperantes.
+static void _sched_despertar_bajo_mutex(Fibra* f) {
     if (!g_sched.ejecutando) {
         // scheduler_detener con fibras parqueadas es un uso inválido
         // (documentado); la fibra no puede reanudarse.
-        pthread_mutex_unlock(&g_sched_mutex);
         return;
     }
     if (f->estado == F_ESTADO_PARQUEADA) {
@@ -640,6 +651,11 @@ static void _scheduler_despertar_fibra(Fibra* f) {
         // Aún no se parquea (o está cediendo): notificar.
         f->despertado = 1;
     }
+}
+
+static void _scheduler_despertar_fibra(Fibra* f) {
+    pthread_mutex_lock(&g_sched_mutex);
+    _sched_despertar_bajo_mutex(f);
     pthread_mutex_unlock(&g_sched_mutex);
 }
 
@@ -714,6 +730,17 @@ void fibra_terminar(void* resultado) {
     if (f->id >= 0 && f->id < FIBRAS_MAX) {
         g_resultados[f->id].resultado = resultado;
         g_resultados[f->id].terminada = 1;
+        // F4.3: despertar a las fibras esperantes (fibra_esperar desde una
+        // fibra) — el nodo se libera aqui; la esperante solo re-chequea la
+        // tabla de resultados al reanudar.
+        while (g_espera_id[f->id]) {
+            _EsperaFibraId* n = g_espera_id[f->id];
+            g_espera_id[f->id] = n->next;
+            if (g_espera_id_tail[f->id] == n) g_espera_id_tail[f->id] = NULL;
+            Fibra* w = n->fibra;
+            free(n);
+            _sched_despertar_bajo_mutex(w);
+        }
     }
     pthread_cond_broadcast(&g_sched_cond);
     pthread_mutex_unlock(&g_sched_mutex);
@@ -730,9 +757,45 @@ void fibra_terminar(void* resultado) {
 }
 
 void fibra_esperar(int fibra_id) {
-    // Espera a que la fibra termine y devuelve su resultado. Llama al mutex
-    // protegido: si la fibra no existe (id invalido o ya consumida) retorna
-    // sin bloquear (tabla _ResultadoFibra solo se marca, no se reusa).
+    // Espera a que la fibra termine. Si la llama UNA FIBRA, se parquea
+    // (F4.3, Manual 5 §2.6) en vez de bloquear a su worker con cond_wait:
+    // fibra_terminar de la objetivo la despierta al publicar el resultado.
+    // Si la llama un hilo OS, conserva el cond_wait (F4.1). Id inválido o
+    // sin registro: retorna sin bloquear.
+    Fibra* self = _fibra_actual;
+    if (self) {
+        pthread_mutex_lock(&g_sched_mutex);
+        for (;;) {
+            if (fibra_id < 0 || fibra_id >= FIBRAS_MAX || !g_resultados[fibra_id].activo) {
+                break;   // no existe: retorna sin bloquear
+            }
+            if (g_resultados[fibra_id].terminada) {
+                break;   // ya terminó
+            }
+            // Registrarse como esperante de la objetivo y parquear.
+            _EsperaFibraId* n = (_EsperaFibraId*)malloc(sizeof(_EsperaFibraId));
+            if (!n) {
+                fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en fibra_esperar (fibra)\n");
+                exit(1);
+            }
+            n->next = NULL;
+            n->fibra = self;
+            if (g_espera_id_tail[fibra_id]) {
+                g_espera_id_tail[fibra_id]->next = n;
+            } else {
+                g_espera_id[fibra_id] = n;
+            }
+            g_espera_id_tail[fibra_id] = n;
+            pthread_mutex_unlock(&g_sched_mutex);
+            _fibra_parquear();
+            pthread_mutex_lock(&g_sched_mutex);
+            // Despertada por fibra_terminar de la objetivo: terminada==1.
+        }
+        pthread_mutex_unlock(&g_sched_mutex);
+        return;
+    }
+
+    // Hilo OS: cond_wait (comportamiento F4.1).
     pthread_mutex_lock(&g_sched_mutex);
     while (1) {
         if (fibra_id >= 0 && fibra_id < FIBRAS_MAX && g_resultados[fibra_id].activo) {
