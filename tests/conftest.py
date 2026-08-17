@@ -79,6 +79,7 @@ _RT_OBJ_DEFS = [
     ("modelo.o", "runtime/core/modelo.c", []),  # R39 (D-9(d) corte 3): std.ai extraido
     ("cluster.o", "runtime/core/cluster.c", []),  # R40 (D-9(d) corte 4): std.cluster extraido
     ("debug.o", "runtime/core/debug.c", []),  # R41 (D-9(d) corte 5): debug reversible extraido
+    ("fuzz.o", "runtime/core/fuzz.c", []),  # R42 (D-9(d) corte 6): fuzzing M10.4 extraido
     ("axon_rt.o", "axon/axon_rt.c", []),
 ]
 

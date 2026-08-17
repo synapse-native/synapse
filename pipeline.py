@@ -100,6 +100,7 @@ _RT_FUENTES = (
     "runtime/core/modelo.c",  # D-9(d) corte 3: std.ai (GGUF/BPE/ModeloContexto/oraculos)
     "runtime/core/cluster.c",  # D-9(d) corte 4: std.cluster (M8.1-M8.6: transporte/WS/raft/checkpoint/discovery/multicast)
     "runtime/core/debug.c",  # D-9(d) corte 5: debug (M9.0-M9.4: trace base/recording/breakpoints/snapshots/debug distribuido)
+    "runtime/core/fuzz.c",  # D-9(d) corte 6: fuzzing (M10.4: coordinador/agentes/procesamiento SYNFUZZ)
     "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (
