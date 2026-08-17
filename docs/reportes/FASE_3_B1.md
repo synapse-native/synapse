@@ -610,6 +610,66 @@ declaraba la función (era `static`), luego no hay prototipo que quitar. CRLF pr
 std.modelo` no enlaza — colisión ft_*/kd_*/qt_*).
 
 
+## 3q. F3-12 — `importar std.modelo` enlaza: eliminación de la colisión ft_*/kd_*/qt_* (2026-08-17)
+
+**Manual referenciado:** reglas 1/5/11/12 de la auditoría (los manuales no definen la
+API de `std.modelo` — el contrato es el propio `std/modelo.syn` y su copia embebida
+`LIB_MODELO`); Manual 8 §8.2 (emisor determinista); Manual 9 §9.7 (bootstrap S2==S3).
+
+**Hallazgo (registrado en R40/D-9(d) corte 3, del ME-R8 Fase 0):** `importar std.modelo`
+NO enlazaba en NINGÚN compilador — `std/modelo.syn` define 35 wrappers Synapse
+`ft_*`/`kd_*`/`qt_*` que el generador emite como símbolos C globales en
+`_modelo.c`/`synapse_unity.c`, y el link además incluye `nucleo/fine_tuning.c`/
+`distillation.c`/`quantization.c` que definen las implementaciones REALES con esos
+mismos nombres → `multiple definition` (reproducido: 35+ errores ld entre
+`_modelo.c.o` y `fine_tuning.o`/`distillation.o`/`quantization.o`).
+
+**Diagnóstico (2 capas, 3 causas):**
+1. **Doble definición de los wrappers**: los wrappers `funcion ft_iniciar(...)` de
+   `std/modelo.syn` reenvían 1:1 a los externs `_syn_ft_*` (`retornar _syn_ft_iniciar(...)`).
+   La cadena es: Synapse `ft_iniciar` → C `_syn_ft_iniciar` (puente de adaptación en
+   `fine_tuning.c`, firmas void*/float/int) → C `ft_iniciar` (implementación real con
+   firmas FTSession*/FTConfig*). El emisor baja los wrappers Synapse a C con el MISMO
+   nombre que las implementaciones reales → colisión en el link.
+2. **0 usuarios de la capa idiomática**: ningún programa/test/ejemplo del repo usa los
+   wrappers `ft_*`/`kd_*`/`qt_*` desde el lenguaje (grep global: solo los define
+   `std/modelo.syn` + la copia embebida `LIB_MODELO`). Los consumidores reales
+   (`opensyn/router.syn`, `std/oraculo.syn`, `nucleo/optimizador_ia.syn`) usan
+   `cargar_modelo`/`evaluar`/`generar_texto`/`_syn_modelo_generar_texto` — que NO
+   colisionan (patrón `std.ai`: wrappers con nombres propios + externs `_syn_*`).
+3. **Doble fuente de verdad**: el S1 lee `std/modelo.syn` del disco (sysroot) y el
+   nativo lo sirve desde el VFS embebido `LIB_MODELO` (`runtime/core/io.c` L120) —
+   ambas copias debían actualizarse.
+
+**Fix (la vía de menor impacto de la resolución asignada — regla 12):**
+eliminar de `std/modelo.syn` los 3 bloques de wrappers redundantes
+(`ft_*` L162-219, `qt_*` L248-300, `kd_*` L362-405 — poda mecánica con aserciones
+byte-exactas, 405 → 250 líneas) y **conservar los 35 externs `_syn_ft_*`/`_syn_kd_*`/
+`_syn_qt_*` como la API del lenguaje** (ya declarados, resuelven contra los puentes
+C existentes — cero cambios en los 3 .c de IA, sus headers ni `validate_*.c`).
+La API idiomática que sí se usa (`cargar_modelo`/`evaluar`/`generar_texto`/…)
+queda intacta. Regenerado `librerias/embedded_libs.h` con `tests/_gen_embedded.py`
+(lección: LIB_MODELO debe reflejar std/modelo.syn — el nativo la sirve por VFS).
+
+**Validación:**
+- Probe `importar std.modelo` + `cargar_modelo`/`cerrar_modelo`: **S1 rc=0 y nativo
+  rc=0** → `MODELO_OK` (antes: 35 `multiple definition` en ambos).
+- Probe del puente FT (`_syn_ft_iniciar`/`_syn_ft_paso_entrenamiento`/`_syn_ft_cerrar`):
+  **S1 y nativo rc=0 → 1** (sesión real creada por `fine_tuning.o`).
+- Probe del patrón de consumo real (`cargar_modelo`+`generar_texto`, como
+  `router.syn`): **S1 y nativo rc=0 → ROUTER_OK**.
+- Bootstrap **S2==S3 `b089fdd4…`** (1.112.886 bytes — hash nuevo porque
+  `embedded_libs.h` cambió el binario del compilador; las 3 etapas rc=0).
+- Regresión S1 núcleo **165 passed**; suite HM **110 passed**; paridad frontend
+  **27/27**; integración sin cambios de link (los `.o` de IA se enlazan igual).
+- Verificador **0 brechas**.
+
+**Hallazgos (regla 11):** ninguno nuevo. Observación documentada: la API del lenguaje
+para fine-tuning/KD/cuantización pasa a ser los externs `_syn_*` (patrón puente
+estándar, igual que `std.ai`); los nombres `ft_*`/`kd_*`/`qt_*` quedan EXCLUSIVOS de
+la API C nativa (headers + validate_*.c) — sin colisión posible.
+
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 
@@ -619,7 +679,7 @@ std.modelo` no enlaza — colisión ft_*/kd_*/qt_*).
 | F3-4 | Gap de paridad: `archivo = abrir(...)` sin anotación infiere `int64_t` en el nativo (C inválido) vs S1 rc=0 (mapa `_BUILTINS` context.py L70-80) — con anotación funciona en ambos | ✅ **CERRADA en F3-4 (2026-08-14)** — seed `_G_rt_builtin_ret` ampliado (17→25 builtins, `abrir→canal`, tensores→`tensor`) + rama genérica `_G_native_tipo_retorno` en `gen_visitar_declaracion` (patrón hoisting ME-B6); bootstrap S2==S3 `a817533f…`; probes e2e `Canal archivo = abrir(...)`/`Tensor t = crear_tensor(...)` rc=0; ver §3c |
 | F3-3 | Fibras (`Fibra`/`Scheduler`, Manual 5 §2.6) ausentes — `lanzar` usa pthread directo | **Fase 4** (scheduler de fibras completo, ROADMAP F4) — no se adelanta (regla 7) |
 | F3-5 | Checklist de auditoría Fase 3 citaba "Manual 3" (Syquex) como fuente | ✅ Corregido en F3-1 (columna del checklist → Manual 2/4/5/9) |
-| F3-12 | Colisión de símbolos del ME-R8 (Fase 0): `importar std.modelo` NO enlaza — `std/modelo.syn` define wrappers `ft_*`/`kd_*`/`qt_*` (que llaman `_syn_ft_*`/`_syn_kd_*`/`_syn_qt_*`) que el generador emite en `_modelo.c`/`synapse_unity.c`, y el link también incluye `nucleo/fine_tuning.c`/`distillation.c`/`quantization.c` (que definen `ft_*`/`kd_*`/`qt_*` reales + wrappers `_syn_*`) → `multiple definition` (S1 y nativo; reproducido con el pipeline del HEAD sin el corte → **preexistente**, no lo introduce D-9(d) corte 3) | **PENDIENTE — resolución asignada: hacer que los wrappers de `std/modelo.syn` no colisionen — o renombrar las implementaciones reales a `_syn_*`-solo en los 3 .c de IA (los wrappers `_syn_*` ya existen) y que `std/modelo.syn` declare externs directos a los `ft_*`/`kd_*`/`qt_*` C, o marcar los wrappers Synapse `static`-inline; ME de Fase 3 independiente del corte (descubierto al validar el e2e IA del corte 3; `std.ai` sí enlaza y se validó con él)** |
+| F3-12 | Colisión de símbolos del ME-R8 (Fase 0): `importar std.modelo` NO enlaza — `std/modelo.syn` define wrappers `ft_*`/`kd_*`/`qt_*` (que llaman `_syn_ft_*`/`_syn_kd_*`/`_syn_qt_*`) que el generador emite en `_modelo.c`/`synapse_unity.c`, y el link también incluye `nucleo/fine_tuning.c`/`distillation.c`/`quantization.c` (que definen `ft_*`/`kd_*`/`qt_*` reales + wrappers `_syn_*`) → `multiple definition` (S1 y nativo; reproducido con el pipeline del HEAD sin el corte → **preexistente**, no lo introduce D-9(d) corte 3) | ✅ **CERRADA en F3-12 (2026-08-17)** — poda de los 35 wrappers redundantes `ft_*`/`kd_*`/`qt_*` de `std/modelo.syn` (3 bloques, 405 → 250 líneas, aserciones byte-exactas; regla 12: reenvío 1:1 a los externs `_syn_*` + 0 usuarios en el lenguaje — verificado por grep) y **conservación de los 35 externs `_syn_*` como API** (resuelven contra los puentes C existentes; los 3 .c de IA, headers y validate_*.c INTACTOS); `embedded_libs.h` regenerado (LIB_MODELO VFS del nativo); probes `std.modelo` + puente FT + patrón router **S1 y nativo rc=0** (antes 35 `multiple definition`); bootstrap S2==S3 `b089fdd4…`; regresión S1 165; suite HM 110; paridad 27/27; verificador 0 brechas; ver §3q |
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **CERRADA en R42 (2026-08-16, corte 6)** — tensor.c (619 l.) + modelo.c (2.017 l.) + cluster.c (1.927 l.) + debug.c (1.396 l.) + fuzz.c (159 l., M10.4 FZ: coordinador/agentes/SYNFUZZ) extraídos byte-idénticos en 5 cortes (io.c F3-1/2 → 7.882 → 1.769 l.); `fuzz.h` (11 prototipos); synapse_rt.c 1.919 → 1.769 (marcador corte 6); pipeline.py + principal.syn (11º `_rt_dir`, 14 args — arity bug corregido); tests `FUZZ_O` (fuzz 15 passed) + `test_fz_en_fuzz_c`; conftest.py + fuzz.o; bootstrap S2==S3 `6e2c3de2…`; e2e fuzz S1+nativo rc=0; integración cluster+debug+fuzz 113 passed; regresión S1 + suite HM + paridad en curso; verificador pendiente; ver §3m. **D-9(d) CERRADA** — siguiente: F3-12 (colisión std.modelo) / F3-13 (seed builtins de cadena) |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |

@@ -160,64 +160,6 @@ externo funcion _syn_ft_obtener_perdida(sesion: puntero) -> decimal
 externo funcion _syn_ft_obtener_paso(sesion: puntero) -> entero
 
 // ============================================================
-// Wrappers públicos de Fine-Tuning (Synapse idiomático)
-// ============================================================
-
-// Inicia una sesión de fine-tuning con la configuración dada
-funcion ft_iniciar(ctx: puntero, lr: decimal, rank: entero, alpha: decimal) -> puntero:
-    retornar _syn_ft_iniciar(ctx, lr, rank, alpha)
-
-// Cierra una sesión de fine-tuning y libera recursos
-funcion ft_cerrar(sesion: puntero) -> nulo:
-    _syn_ft_cerrar(sesion)
-    retornar
-
-// Agrega un adaptador LoRA para una capa específica
-funcion ft_agregar_adaptador(sesion: puntero, capa_idx: entero, tipo_capa: entero, rank: entero, alpha: decimal, dim_in: entero, dim_out: entero) -> entero:
-    retornar _syn_ft_agregar_adaptador(sesion, capa_idx, tipo_capa, rank, alpha, dim_in, dim_out)
-
-// Agrega un ejemplo al dataset de fine-tuning
-funcion ft_agregar_ejemplo(sesion: puntero, tokens_in: puntero, len_in: entero, tokens_out: puntero, len_out: entero, peso: decimal) -> entero:
-    retornar _syn_ft_agregar_ejemplo(sesion, tokens_in, len_in, tokens_out, len_out, peso)
-
-// Ejecuta un paso de entrenamiento
-funcion ft_paso_entrenamiento(sesion: puntero) -> decimal:
-    retornar _syn_ft_paso_entrenamiento(sesion)
-
-// Ejecuta entrenamiento completo (todas las épocas)
-funcion ft_entrenar(sesion: puntero) -> decimal:
-    retornar _syn_ft_entrenar(sesion)
-
-// Evalúa pérdida sin actualizar pesos
-funcion ft_evaluar_perdida(sesion: puntero, len_salida: entero, target_id: entero) -> decimal:
-    retornar _syn_ft_evaluar_perdida(sesion, len_salida, target_id)
-
-// Guarda pesos de adaptadores a archivo
-funcion ft_guardar_pesos(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_ft_guardar_pesos(sesion, ruta)
-
-// Carga pesos de adaptadores desde archivo
-funcion ft_cargar_pesos(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_ft_cargar_pesos(sesion, ruta)
-
-// Aplica adaptadores a la inferencia del modelo
-funcion ft_aplicar_adaptadores(sesion: puntero) -> entero:
-    retornar _syn_ft_aplicar_adaptadores(sesion)
-
-// Remueve adaptadores (restaura modelo base)
-funcion ft_remover_adaptadores(sesion: puntero) -> nulo:
-    _syn_ft_remover_adaptadores(sesion)
-    retornar
-
-// Obtiene la pérdida actual
-funcion ft_perdida_actual(sesion: puntero) -> decimal:
-    retornar _syn_ft_obtener_perdida(sesion)
-
-// Obtiene el paso actual
-funcion ft_paso_actual(sesion: puntero) -> entero:
-    retornar _syn_ft_obtener_paso(sesion)
-
-// ============================================================
 // Declaraciones externas de Cuantización (implementadas en quantization.c)
 // ============================================================
 
@@ -244,59 +186,6 @@ externo funcion _syn_qt_cargar(sesion: puntero, ruta: texto) -> entero
 // --- Selección dinámica ---
 externo funcion _syn_qt_seleccionar_formato(ram_mb: entero) -> entero
 externo funcion _syn_qt_estimar_tamano_modelo(params_m: entero, formato: entero) -> decimal
-
-// ============================================================
-// Wrappers públicos de Cuantización (Synapse idiomático)
-// ============================================================
-
-// Inicia una sesión de cuantización
-funcion qt_iniciar(formato: entero, block_size: entero) -> puntero:
-    retornar _syn_qt_iniciar(formato, block_size)
-
-// Cierra la sesión y libera recursos
-funcion qt_cerrar(sesion: puntero) -> nulo:
-    _syn_qt_cerrar(sesion)
-    retornar
-
-// Agrega un tensor FP32 a la sesión
-funcion qt_agregar_tensor(sesion: puntero, datos: puntero, filas: entero, columnas: entero, nombre: texto) -> entero:
-    retornar _syn_qt_agregar_tensor(sesion, datos, filas, columnas, nombre)
-
-// Cuantiza un tensor específico
-funcion qt_cuantizar_tensor(sesion: puntero, idx: entero) -> entero:
-    retornar _syn_qt_cuantizar_tensor(sesion, idx)
-
-// Cuantiza todos los tensores
-funcion qt_cuantizar_todos(sesion: puntero) -> entero:
-    retornar _syn_qt_cuantizar_todos(sesion)
-
-// Descuantiza un tensor a FP32
-funcion qt_descuantizar_tensor(sesion: puntero, idx: entero) -> puntero:
-    retornar _syn_qt_descuantizar_tensor(sesion, idx)
-
-// Convierte FP16 ↔ FP32
-funcion qt_fp16_a_fp32(src: puntero, dst: puntero, n: entero) -> nulo:
-    _syn_qt_fp16_a_fp32(src, dst, n)
-    retornar
-
-funcion qt_fp32_a_fp16(src: puntero, dst: puntero, n: entero) -> nulo:
-    _syn_qt_fp32_a_fp16(src, dst, n)
-    retornar
-
-// Guarda/Carga sesión cuantizada
-funcion qt_guardar(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_qt_guardar(sesion, ruta)
-
-funcion qt_cargar(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_qt_cargar(sesion, ruta)
-
-// Selecciona formato óptimo según RAM disponible
-funcion qt_seleccionar_formato(ram_mb: entero) -> entero:
-    retornar _syn_qt_seleccionar_formato(ram_mb)
-
-// Estima tamaño de modelo cuantizado
-funcion qt_estimar_tamano_modelo(params_m: entero, formato: entero) -> decimal:
-    retornar _syn_qt_estimar_tamano_modelo(params_m, formato)
 
 // ============================================================
 // Funciones helper de alto nivel
@@ -359,47 +248,3 @@ externo funcion _syn_kd_cargar(sesion: puntero, ruta: texto) -> entero
 // --- Integración ---
 externo funcion _syn_kd_estimar_reduccion(teacher_m: entero, student_m: entero, fmt: entero) -> decimal
 
-// ============================================================
-// Wrappers públicos de Destilación (Synapse idiomático)
-// ============================================================
-
-// Inicia una sesión de destilación
-funcion kd_iniciar(temperatura: decimal, alpha: decimal, vocab_size: entero) -> puntero:
-    retornar _syn_kd_iniciar(temperatura, alpha, vocab_size)
-
-// Cierra la sesión y libera recursos
-funcion kd_cerrar(sesion: puntero) -> nulo:
-    _syn_kd_cerrar(sesion)
-    retornar
-
-// Agrega un par de logits (teacher + student) para destilación
-funcion kd_agregar_par(sesion: puntero, logits_t: puntero, logits_s: puntero, target_id: entero, peso: decimal) -> entero:
-    retornar _syn_kd_agregar_par(sesion, logits_t, logits_s, target_id, peso)
-
-// Computa la divergencia KL entre dos distribuciones
-funcion kd_divergencia_kl(logits_p: puntero, logits_q: puntero, n: entero, temperatura: decimal) -> decimal:
-    retornar _syn_kd_divergencia_kl(logits_p, logits_q, n, temperatura)
-
-// Computa la pérdida combinada (soft + hard) para destilación
-funcion kd_perdida_combinada(logits_t: puntero, logits_s: puntero, target_id: entero, vocab_size: entero, temperatura: decimal, alpha: decimal) -> decimal:
-    retornar _syn_kd_perdida_combinada(logits_t, logits_s, target_id, vocab_size, temperatura, alpha)
-
-// Ejecuta un paso de destilación sobre el dataset
-funcion kd_paso_destilacion(sesion: puntero) -> decimal:
-    retornar _syn_kd_paso_destilacion(sesion)
-
-// Ejecuta destilación completa
-funcion kd_destilar(sesion: puntero) -> decimal:
-    retornar _syn_kd_destilar(sesion)
-
-// Guarda el estado de destilación a archivo
-funcion kd_guardar(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_kd_guardar(sesion, ruta)
-
-// Carga el estado de destilación desde archivo
-funcion kd_cargar(sesion: puntero, ruta: texto) -> entero:
-    retornar _syn_kd_cargar(sesion, ruta)
-
-// Estima la reducción teacher → student con cuantización
-funcion kd_estimar_reduccion(teacher_m: entero, student_m: entero, fmt: entero) -> decimal:
-    retornar _syn_kd_estimar_reduccion(teacher_m, student_m, fmt)
