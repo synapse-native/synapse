@@ -432,6 +432,86 @@ ni públicas compartidas; dependencias externas del bloque: `pool_alloc`
 
 **Siguiente ME de Fase 3:** F3-12 (`importar std.modelo` no enlaza — colisión ft_*/kd_*/qt_* con los .c de IA del ME-R8) o F3-13 (seed de builtins de cadena del generador nativo: `subcadena`/`concat`/`texto_a_entero` sin tipo de retorno → `importar std.cluster`/`std.modelo` no compilan en el nativo).
 
+## 3n. F3-13 — Builtins de cadena en el codegen nativo: `importar std.cluster` compila (2026-08-16)
+
+### 3n.1 Contexto y decisión
+
+Cierre del hallazgo F3-13 (registrado en R40 al validar el e2e cluster del corte 4):
+`importar std.cluster` NO compilaba en el compilador nativo (S2/S3) — los helpers de
+`std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan
+`subcadena`/`len`/`texto_a_entero` y el generador nativo emitía esos builtins como
+**llamadas a funciones C que NO existen** → gcc declaración implícita → `int` →
+`str_eq(int, CadenaSegura)`/`concat(int, …)`/`texto_a_entero(int)` rc=1 (4 errores
+reproducidos con el stage1 del HEAD). Además `"synapse-handshake:" + ch.clave_publica_local`
+(campo de struct `CanalRemoto.texto`) emitía `entero_a_texto(campo)` — el generador no
+conocía el tipo del campo → C inválido. El S1 sí compilaba (los tests
+`test_cluster_nodes`/`test_cluster_raft` pasan).
+
+**Diagnóstico (2 causas raíz):**
+1. **Builtins inline ausentes**: `len`/`subcadena`/`empieza_con` NO existen como
+   funciones C en el runtime — el S1 los expande inline en `emit_expressions.py`
+   L407-422 (`len(x)` → `(x).longitud`; `subcadena(s,i,l)` → compound literal con
+   `memcpy`; `empieza_con(s,p)` → `strncmp` ternario). El nativo los emitía como
+   llamadas a funciones inexistentes.
+2. **Tipo de campos de struct desconocido**: el nativo registraba solo los NOMBRES
+   de struct (`_G_native_structs`, ME-B4), sin los tipos de sus campos → un campo
+   `texto` se asumía `int64_t` en OpBinaria/let → `entero_a_texto(campo)` en `concat`.
+
+**Decisión (paridad S1, Manual 8 §8.2 emisor / Manual 2 §4.1 tipos):** portar ambos
+comportamientos del S1 al nativo — (1) builtins inline en `_oo_expr_a_c`;
+(2) registro de campos de struct con tipo Synapse + consulta en `_syn_nativo_expr_tipo_c`
+y en la detección de texto de OpBinaria.
+
+### 3n.2 Cambios (5 frentes)
+
+1. **`nucleo/generador/expr_eval.syn`** — `_oo_expr_a_c` rama `LlamadaFuncion`:
+   builtins inline `len` → `(%s).longitud`, `subcadena(s,i,l)` → `((CadenaSegura){.longitud=l, .datos=((char*)memcpy(malloc(l+1),(s).datos+i,l))})` (fallback cadena vacía), `empieza_con(s,p)` → `(((s).longitud>=(p).longitud&&strncmp(...)==0)?1:0)` — paridad `emit_expressions.py` L407-422.
+2. **`nucleo/generador/escaneo.syn`** — `gen_escanear_estructuras`: además de los
+   nombres, registra los CAMPOS con su tipo Synapse (`_G_native_struct_campos[256][64][64]`
+   + `_G_native_struct_campos_tipo[256][64][64]` + `_G_native_struct_campos_count[256]`),
+   paridad `context.py` `_estructuras['campos']`.
+3. **`nucleo/generador/orquestador.syn`** — declaración de los arrays de campos +
+   helper `_G_native_campo_tipo(sn, cn, out)` (búsqueda por struct y campo);
+   `_syn_nativo_expr_tipo_c` rama `ExprAccesoCampo`: resuelve el tipo del objeto
+   (Identificador → `_G_fn_var_tipos`), normaliza `struct X`/`X<...>` → base, y
+   traduce el tipo Synapse del campo a C (`texto`→`CadenaSegura`, `entero`→`int64_t`,
+   `decimal`→`double`, `booleano`→`int`, otro→`struct X`) — paridad S1 `tipo_de_expr` L70-95.
+4. **`nucleo/generador/expr_eval.syn`** — OpBinaria: detección de texto ampliada con
+   `ExprAccesoCampo` (el campo de tipo texto cuenta como texto en `==`/`!=`/`+` → `str_eq`/`concat`
+   sin `entero_a_texto` espurio).
+5. **`compilador/generator/generator.py`** — paridad S1 del nuevo helper:
+   externs en `_emitir_encabezado` + definiciones en `_emit_cabecera_comun` y en el
+   bloque `modo == 'modulo'` (módulo principal).
+
+`nucleo/generator.syn` REGENERADO con `_rebuild_generator.py` (lección R5). **Bug del
+ME corregido:** 2 líneas `asm("// …")` sin cierre `")` → error léxico "Cadena sin
+cerrar" del S1 (el lexer lee hasta la siguiente comilla) — corregidas.
+
+### 3n.3 Validación
+
+- Bootstrap **S2==S3 `8fc5b44b…`** (E1 S1 rc=0 con el nuevo generator.syn; E2/E3
+  nativos rc=0; Manual 9 §9.7).
+- Probe `importar std.cluster` + `cluster_generar_par_claves()` + `len(par)`:
+  **nativo rc=0 → 193** (64 pub + ':' + 128 priv hex) y **S1 rc=0 → 193** (paridad;
+  antes: 4 errores gcc en el nativo). El probe recorre `_extraer_parte`/`_buscar_dos_puntos`
+  (subcadena/len/texto_a_entero) sin errores.
+- Tests HM nuevos: **2/2 passed** (`test_f313_importar_std_cluster_compila_y_corre` +
+  `test_f313_importar_std_cluster_s1_paridad`; suite total 110 tests).
+- Regresión S1 núcleo **195 passed** (229s); suite HM **108 passed** (19 min);
+  paridad frontend **27/27 passed**; **verificador 0 brechas**.
+
+**Hallazgos registrados (regla 11):** ninguno nuevo del ME. Observación: el probe
+complejo `conectar()`+`enviar()` falla en AMBOS compiladores por temas preexistentes
+de `std/cluster.syn` (S1: `struct Resultado` sin `valor_str` en el flujo de `conectar`;
+nativo: RC=193 load-time del exe) — fuera del alcance de F3-13, se registra como
+observación con seguimiento en el cuadro §4 (F3-15, no bloqueante: `conectar`/`enviar`
+e2e con red real). Queda abierto F3-12 (`importar std.modelo` no enlaza) y F3-14
+(`_cm_checksum` muerta).
+
+**Manual referenciado:** Manual 2 §4.1 (tipos texto/entero) y §2.2; Manual 8 §8.2
+(emisor determinista); reglas 1/11/12 de la auditoría; paridad `emit_expressions.py`
+L407-422 y `tipo_de_expr` L70-95 (S1).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 | # | Hallazgo | Resolución asignada |
@@ -447,7 +527,7 @@ ni públicas compartidas; dependencias externas del bloque: `pool_alloc`
 | F3-10 | El receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6 `ExprRecibirCanal→void*`) en vez del tipo del elemento del canal (`Canal<entero>` → `entero`, Manual 2 L144 / Manual 5 §4.2) — el nativo es lenient (permite `mensaje * 2`/`procesar(mensaje)` tipado, C correcto) pero el S1 rechaza cualquier uso tipado del mensaje ("Tipos incompatibles: void* con entero") y `log` imprime el puntero en vez del valor | **PENDIENTE — resolución asignada: tipar el receive por el tipo del elemento del canal (`Canal<T>` → T) en AMBOS compiladores (paridad S1↔nativo) + test S1 de paridad para el caso procesa; ME de Fase 3** (descubierto en R37 al diseñar la cobertura HM e2e de `escuchar`; ver §3h) |
 | F3-11 | Divergencia del código de error en la auto-compilación (Etapa 2/3 del bootstrap, Manual 9 §9.1): stage2/stage3 devolvían rc=0 en errores semánticos (vs rc=7 de stage1/S1) — el wrapper de `main` en el codegen nativo emitía SIEMPRE `principal(); ... return 0;` (descarte del rc) | ✅ **CERRADA en F3-11 (2026-08-16)** — `recorrido.syn` ahora consulta el `tipo_retorno` de `principal` en el AST (`programa.sentencias`): si es `nulo`/`void` → `principal(); ... return 0;` (caso inalterado); si retorna entero → `int64_t _rc = principal(); ... return _rc;` (paridad generator.py L1158-1176); `generator.syn` regenerado; bootstrap S2==S3 `02566f0d…`; rc=7 restaurado en stage2 (base/aridad), rc del programa propagado (retornar 3 → rc=3), e2e escuchar 42/99 rc=0 (regresión main nulo), suite HM completa 108 passed, paridad 3/3, verificador 0 brechas; ver §3i |
 
-| F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | **PENDIENTE — resolución asignada: auditar el seed de builtins de cadena en el codegen nativo (`subcadena`/`concat`/`texto_a_entero`/`str_eq` — tipos de retorno para funciones importadas de std/*.syn); ME de Fase 3 independiente del corte (descubierto al validar el e2e cluster; el corte se validó con externs directos, patrón de los tests C)** |
+| F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | ✅ **CERRADA en F3-13 (2026-08-16)** — 2 causas raíz: (1) `len`/`subcadena`/`empieza_con` son builtins INLINE del S1 (emit_expressions.py L407-422) que NO existen como funciones C → el unity los llamaba como funciones inexistentes → gcc declaración implícita → int; (2) el nativo no registraba los tipos de campos de struct → `ch.clave_publica_local` (CanalRemoto.texto) se asumía int64_t → `entero_a_texto(campo)` en concat. Fix en 5 frentes: builtins inline en `_oo_expr_a_c` + registro de campos con tipo en `gen_escanear_estructuras` + `_G_native_campo_tipo` + `_syn_nativo_expr_tipo_c` rama `ExprAccesoCampo` + detección de texto en OpBinaria; paridad S1 en generator.py (externs + definiciones); generator.syn regenerado (lección R5; bug del ME: 2 `asm` sin cierre `")"` → error léxico S1); bootstrap S2==S3 `8fc5b44b…`; e2e `std.cluster` S1+nativo rc=0 → 193; tests HM 2/2 (suite 110); regresión S1 195; suite HM 108; paridad 27/27; verificador 0 brechas; ver §3n |
 | F3-14 | `_cm_checksum` (checkpoint, M8.4) código muerto en el HEAD (0 callers; gcc `-Wunused-function` preexistente) — conservada por byte-identidad del corte 4 | **PENDIENTE — resolución asignada: eliminarla en un corte de limpieza (regla 12) sin romper la byte-identidad del corte 4** |
 ## 5. REFERENCIAS
 

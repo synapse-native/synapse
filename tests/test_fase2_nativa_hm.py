@@ -2517,3 +2517,51 @@ def test_f37_escuchar_s1_paridad(tmp_path):
     assert run.returncode == 0, f"S1: ejecucion fallida: {run.stdout!r}"
     assert run.stdout.splitlines() == ["42", "99"], (
         f"S1: el listener debe escribir 42,99: {run.stdout!r}")
+
+
+# --- F3-13 (2026-08-16): builtins de cadena en el codegen nativo ---
+# `importar std.cluster` NO compilaba en el nativo: los helpers usan
+# subcadena/len/texto_a_entero (que no existen como funciones C -> gcc
+# declaracion implicita -> int -> str_eq(int, CadenaSegura) rc=1) y
+# campos de struct de tipo texto (ch.clave_publica_local -> entero_a_texto
+# -> C invalido). Fix: builtins inline len/subcadena/empieza_con en
+# _oo_expr_a_c (paridad emit_expressions.py L407-422) + registro de
+# campos de struct con tipo en el escaneo + _syn_nativo_expr_tipo_c
+# rama ExprAccesoCampo + deteccion de texto en OpBinaria.
+_PROG_F313_CLUSTER = '''#lang: es
+importar std.cluster
+
+funcion principal() -> entero:
+    let par = cluster_generar_par_claves()
+    let n = len(par)
+    escribir_linea(entero_a_texto(n))
+    retornar 0
+'''
+
+
+def test_f313_importar_std_cluster_compila_y_corre(stage, tmp_path):
+    """F3-13: `importar std.cluster` compila rc=0 en el nativo y el binario
+    ejecuta `cluster_generar_par_claves()` (par Ed25519 real) y `len()`
+    (builtin inline). Antes: 4 errores gcc (str_eq/concat/texto_a_entero
+    con int implicito y entero_a_texto(campo texto))."""
+    proc, run = _compilar_y_ejecutar(stage, _PROG_F313_CLUSTER,
+                                     str(tmp_path))
+    assert proc.returncode == 0, (
+        f"std.cluster debe compilar rc=0 en el nativo:\n{proc.stderr[-1500:]}")
+    assert run is not None and run.returncode == 0, (
+        f"ejecucion fallida: {run.stdout if run else None}")
+    assert run.stdout.splitlines() == ["193"], (
+        f"len(par) debe ser 193 (64 pub + 1 ':' + 128 priv hex): {run.stdout!r}")
+
+
+def test_f313_importar_std_cluster_s1_paridad(tmp_path):
+    """F3-13 paridad S1: el mismo programa compila y ejecuta con el S1
+    (el S1 ya soportaba std.cluster; verifica que no hubo regresion)."""
+    proc = _compilar_con_s1(_PROG_F313_CLUSTER, str(tmp_path))
+    assert proc.returncode == 0, (
+        f"S1: std.cluster debe compilar:\n{proc.stderr[-1500:]}")
+    exe = os.path.join(tmp_path, "prog_s1.exe")
+    run = subprocess.run([exe], capture_output=True, text=True, timeout=30)
+    assert run.returncode == 0, f"S1: ejecucion fallida: {run.stdout!r}"
+    assert run.stdout.splitlines() == ["193"], (
+        f"S1: len(par) debe ser 193 (64 pub + ':' + 128 priv): {run.stdout!r}")
