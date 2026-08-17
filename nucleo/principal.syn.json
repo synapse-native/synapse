@@ -82396,6 +82396,91 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
+                  "valor": "#ifdef _WIN32"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#include <io.h>"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#else"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#include <dirent.h>"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "#endif"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
                   "valor": ""
                 }
               ]
@@ -98167,7 +98252,280 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\" \\\"%s\\\\runtime\\\\core\\\\memory.c\\\" \\\"%s\\\\runtime\\\\core\\\\concurrency.c\\\" \\\"%s\\\\runtime\\\\core\\\\io.c\\\" \\\"%s\\\\runtime\\\\core\\\\tensor.c\\\" \\\"%s\\\\runtime\\\\core\\\\modelo.c\\\" \\\"%s\\\\runtime\\\\core\\\\cluster.c\\\" \\\"%s\\\\runtime\\\\core\\\\debug.c\\\" \\\"%s\\\\runtime\\\\core\\\\fuzz.c\\\" \\\"%s\\\\axon\\\\tweetnacl.c\\\"%s -o \\\"%s\\\" -lpthread -lm -lws2_32\", _gcc_flags, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _rt_dir, _ia_part, salida.datos);"
+                  "instruccion": "    // D-9(d) resuelta / regla 13 (sin hardcoding): la lista de fuentes del"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // runtime NO se hardcodea en el comando gcc. Se escanea el directorio"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // runtime/core/ con opendir/readdir (paridad pipeline.py _RT_CORE_FUENTES):"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // cualquier .c nuevo en runtime/core/ se enlaza automaticamente en el"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // compilador nativo — mismo comportamiento que el S1. Orden estable por"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // qsort alfabetico (determinismo S2==S3, Manual 9 S9.7)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_flags, _rt_dir, _rt_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _rc_dir[1200]; snprintf(_rc_dir, 1200, \"%s\\\\runtime\\\\core\\\\\", _rt_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#ifdef _WIN32"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        // Windows: _findfirst/_findnext (io.h) sobre el patron \\*.c"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct _finddata_t _rfd;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _rc_pat[1400]; snprintf(_rc_pat, 1400, \"%s*.c\", _rc_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        intptr_t _rfind = _findfirst(_rc_pat, &_rfd);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_rfind != -1) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            do {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if ((_rfd.attrib & _A_SUBDIR) == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rc_dir, 4095 - strlen(_cmd)); strncat(_cmd, _rfd.name, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\"\", 4095 - strlen(_cmd));"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            } while (_findnext(_rfind, &_rfd) == 0);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _findclose(_rfind);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#else"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        DIR* _rd = opendir(_rc_dir);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_rd) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct dirent* _rde;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            while ((_rde = readdir(_rd)) != 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                size_t _rlen = strlen(_rde->d_name);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                if (_rlen > 2 && strcmp(_rde->d_name + _rlen - 2, \".c\") == 0) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rc_dir, 4095 - strlen(_cmd)); strncat(_cmd, _rde->d_name, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\"\", 4095 - strlen(_cmd));"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            closedir(_rd);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "#endif"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rt_dir, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\\axon\\\\tweetnacl.c\\\"\", 4095 - strlen(_cmd));"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncat(_cmd, _ia_part, 4095 - strlen(_cmd));"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm -lws2_32\", salida.datos);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncat(_cmd, _cmd_tail, 4095 - strlen(_cmd));"
                 }
               },
               {

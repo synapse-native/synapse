@@ -91,16 +91,19 @@ def _resolver_toolchain_gcc() -> str:
 # ME-R2: elimina la dependencia de .o precompilados que no existen
 # en una instalación limpia (eran artefactos locales ignorados por git).
 # ============================================================
+# D-9(d) resuelta / regla 13: la lista de fuentes del runtime NO se hardcodea
+# (gobernanza: sin hardcoding). El monolito synapse_rt.c se dividio en modulos
+# cohesivos bajo runtime/core/ (cortes 1-6: io/tensor/modelo/cluster/debug/fuzz);
+# cualquier .c nuevo en runtime/core/ se enlaza automaticamente en el S1 y en el
+# comando gcc nativo (principal.syn escanea el directorio — paridad).
+import glob as _glob
+import os as _os
+
+_RT_CORE_FUENTES = tuple(sorted(
+    _glob.glob(_os.path.join("runtime", "core", "*.c"))))
 _RT_FUENTES = (
     "synapse_rt.c",
-    "runtime/core/memory.c",
-    "runtime/core/concurrency.c",
-    "runtime/core/io.c",
-    "runtime/core/tensor.c",  # D-9(d) corte 2: std.math/std.tensor/std.simd/std.mem
-    "runtime/core/modelo.c",  # D-9(d) corte 3: std.ai (GGUF/BPE/ModeloContexto/oraculos)
-    "runtime/core/cluster.c",  # D-9(d) corte 4: std.cluster (M8.1-M8.6: transporte/WS/raft/checkpoint/discovery/multicast)
-    "runtime/core/debug.c",  # D-9(d) corte 5: debug (M9.0-M9.4: trace base/recording/breakpoints/snapshots/debug distribuido)
-    "runtime/core/fuzz.c",  # D-9(d) corte 6: fuzzing (M10.4: coordinador/agentes/procesamiento SYNFUZZ)
+) + _RT_CORE_FUENTES + (
     "axon/tweetnacl.c",
 )
 _RT_QUANTUM_FUENTES = (

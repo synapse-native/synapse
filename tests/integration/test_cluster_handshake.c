@@ -9,6 +9,11 @@
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <dirent.h>
+#endif
 
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 
@@ -602,6 +607,11 @@ extern char _G_native_structs[256][64];
 extern int _G_native_structs_count;
 extern int _G_native_es_estructura(const char* n);
 
+extern char _G_native_struct_campos[256][64][64];
+extern char _G_native_struct_campos_tipo[256][64][64];
+extern int _G_native_struct_campos_count[256];
+extern int _G_native_campo_tipo(const char* sn, const char* cn, char* out);
+
 // ME-B6: tipos de retorno de funciones definidas (inferencia de tipos nativa)
 extern char _G_native_func_returns[512][64];
 extern int _G_native_func_returns_count;
@@ -738,6 +748,23 @@ int _G_native_es_estructura(const char* n) {
     if (!n) return 0;
     for (int _i = 0; _i < _G_native_structs_count; _i++) {
         if (strcmp(_G_native_structs[_i], n) == 0) return 1;
+    }
+    return 0;
+}
+
+char _G_native_struct_campos[256][64][64];
+char _G_native_struct_campos_tipo[256][64][64];
+int _G_native_struct_campos_count[256];
+int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
+    if (!sn || !cn || !out) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], sn) == 0) {
+            for (int _j = 0; _j < _G_native_struct_campos_count[_i]; _j++) {
+                if (strcmp(_G_native_struct_campos[_i][_j], cn) == 0) {
+                    strcpy(out, _G_native_struct_campos_tipo[_i][_j]); return 1;
+                }
+            }
+        }
     }
     return 0;
 }

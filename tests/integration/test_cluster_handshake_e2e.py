@@ -15,19 +15,18 @@ import sys
 import time
 import pytest
 
+from conftest import rt_objs
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 # --- Configuracion ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 BIN_NAME = "test_cluster_handshake_e2e.exe" if sys.platform == "win32" else "test_cluster_handshake_e2e"
 BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
 SYN_PATH = os.path.join(PROJECT_ROOT, "tests", "integration", "test_cluster_handshake.syn")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
-TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
-CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c
-DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: cluster.o usa _get_timestamp_ns (debug.c)
+
+
 
 
 def _find_gcc() -> str:
@@ -54,7 +53,7 @@ def _compilar() -> bool:
         print(f"[SKIP] {src} no encontrado")
         return False
 
-    objs = [o for o in [SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O] if o and os.path.exists(o)]
+    objs = [o for o in RT_OBJS if o and os.path.exists(o)]
 
     if not objs:
         print("[SKIP] No se encontraron objetos runtime")

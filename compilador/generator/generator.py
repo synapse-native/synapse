@@ -631,6 +631,13 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("#include <pthread.h>")
         ctx.write_line("#include <string.h>")
         ctx.write_line("#include <assert.h>")
+        # F3-15: escaneo de runtime/core/ en generar_etapa (sin hardcoding) —
+        # _findfirst (Windows) / opendir (POSIX), guardados por plataforma.
+        ctx.write_line("#ifdef _WIN32")
+        ctx.write_line("#include <io.h>")
+        ctx.write_line("#else")
+        ctx.write_line("#include <dirent.h>")
+        ctx.write_line("#endif")
     else:
         ctx.write_line("#include <stdint.h>")
         ctx.write_line("#include <stddef.h>")

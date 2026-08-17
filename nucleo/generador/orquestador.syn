@@ -30,6 +30,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "#include <pthread.h>")
     gen_emitir_linea(est, "#include <string.h>")
     gen_emitir_linea(est, "#include <assert.h>")
+    // F3-15: escaneo de runtime/core/ en generar_etapa (sin hardcoding) —
+    // _findfirst (Windows) / opendir (POSIX), guardados por plataforma.
+    gen_emitir_linea(est, "#ifdef _WIN32")
+    gen_emitir_linea(est, "#include <io.h>")
+    gen_emitir_linea(est, "#else")
+    gen_emitir_linea(est, "#include <dirent.h>")
+    gen_emitir_linea(est, "#endif")
     gen_emitir_linea(est, "")
     gen_emitir_linea(est, "typedef struct { int longitud; const char* datos; } CadenaSegura;")
     gen_emitir_linea(est, "")

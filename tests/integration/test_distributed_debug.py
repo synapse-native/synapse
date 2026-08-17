@@ -7,15 +7,14 @@ import subprocess
 import sys
 import pytest
 
+from conftest import rt_objs
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
-TENSOR_O = os.path.join(PROJECT_ROOT, "tensor.o")
-CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c
-DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: debug reversible extraido a runtime/core/debug.c
+
+
 TEST_SRC = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.exe")
 
@@ -25,10 +24,8 @@ def ensure_toolchain():
     """Verify toolchain exists and test source is available."""
     if not os.path.exists(TOOLCHAIN_GCC):
         pytest.skip(f"Toolchain GCC not found: {TOOLCHAIN_GCC}")
-    if not os.path.exists(SYNAPSE_RT_O):
-        pytest.skip(f"synapse_rt.o not found: {SYNAPSE_RT_O}")
-    if not os.path.exists(TWEETNACL_O):
-        pytest.skip(f"tweetnacl.o not found: {TWEETNACL_O}")
+    if not any(os.path.exists(o) for o in RT_OBJS):
+        pytest.skip("objetos del runtime no encontrados")
     if not os.path.exists(TEST_SRC):
         pytest.skip(f"Test source not found: {TEST_SRC}")
     yield
@@ -38,7 +35,7 @@ def _compile_test_binary():
     """Compile the distributed debug C test binary. Return (success, output)."""
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
+        TEST_SRC, *RT_OBJS,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -93,7 +90,7 @@ class TestCompilacion:
         """Check that compilation produces no warnings."""
         result = subprocess.run(
             [TOOLCHAIN_GCC, "-O2", "-std=c99", "-Wall", "-Wextra",
-             TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, CLUSTER_O, DEBUG_O, TWEETNACL_O,
+             TEST_SRC, *RT_OBJS,
              "-o", TEST_BIN, "-lm", "-lpthread", "-lws2_32"],
             capture_output=True, text=True, timeout=30,
             cwd=PROJECT_ROOT

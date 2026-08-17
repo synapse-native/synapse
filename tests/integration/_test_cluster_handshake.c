@@ -21,6 +21,23 @@ int _G_native_es_estructura(const char* n) {
     return 0;
 }
 
+char _G_native_struct_campos[256][64][64];
+char _G_native_struct_campos_tipo[256][64][64];
+int _G_native_struct_campos_count[256];
+int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
+    if (!sn || !cn || !out) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], sn) == 0) {
+            for (int _j = 0; _j < _G_native_struct_campos_count[_i]; _j++) {
+                if (strcmp(_G_native_struct_campos[_i][_j], cn) == 0) {
+                    strcpy(out, _G_native_struct_campos_tipo[_i][_j]); return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 char _G_native_func_returns[512][64];
 int _G_native_func_returns_count;
 int _G_native_tipo_retorno(const char* fn, char* out) {

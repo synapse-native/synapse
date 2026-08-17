@@ -512,7 +512,68 @@ e2e con red real). Queda abierto F3-12 (`importar std.modelo` no enlaza) y F3-14
 (emisor determinista); reglas 1/11/12 de la auditoría; paridad `emit_expressions.py`
 L407-422 y `tipo_de_expr` L70-95 (S1).
 
+## 3o. F3-15 — Eliminación del hardcodeo de fuentes runtime (regla 13 / Manual 9 §9.7) (2026-08-17)
+
+### 3o.1 Contexto y decisión
+
+Hallazgo del usuario (auditoría de limpieza): la lista de fuentes del runtime
+(`.c`/`.o`) estaba **hardcodeada a mano en 4 frentes** — `pipeline.py` `_RT_FUENTES`,
+el comando gcc nativo en `principal.syn` (11º `_rt_dir`), `tests/conftest.py`
+`_RT_OBJ_DEFS` y las constantes `.o` de 9 tests de integración. Cada corte de
+D-9(d) las rompía (regresiones R35/R40/R41/R42 por `tensor.o`/`cluster.o`/
+`debug.o`/`fuzz.o` faltantes) — el código exigía tocar N listas duplicadas.
+
+**Decisión (regla 13, gobernanza "sin hardcoding"):** la lista se **deriva del
+directorio `runtime/core/*.c`** en cada consumidor — cualquier `.c` nuevo se
+enlaza automáticamente en S1, nativo y tests (paridad de comportamiento,
+determinismo S2==S3 por orden alfabético, Manual 9 §9.7).
+
+### 3o.2 Cambios (4 frentes)
+
+1. **`pipeline.py`** — `_RT_FUENTES` = `glob(runtime/core/*.c)` (orden alfabético)
+   + fijos (`synapse_rt.c`, `tweetnacl.c`) + IA opcionales; se eliminan las 8
+   entradas core hardcodeadas (io/tensor/modelo/cluster/debug/fuzz/memory/concurrency).
+2. **`nucleo/principal.syn`** — el comando gcc nativo ESCANEA `runtime/core/`
+   en C: `_findfirst`/`_findnext` (Windows, `io.h`) / `opendir`/`readdir` (POSIX)
+   + `strncat` al `_cmd`; se eliminan los 8 `_rt_dir` hardcodeados. **Bug del ME
+   (2 corregidos):** (a) nivel de escape de backslashes — FILE necesita 4
+   backslashes → C 2 → runtime 1 (el intento con 2 emitía `\r` en C);
+   (b) **handle de `_findfirst` truncado**: `long _rfind` (32-bit en mingw64)
+   truncaba el `intptr_t` (64-bit en x64) → `_findnext`/`_findclose` con handle
+   inválido → **segfault 139 standalone** (gdb lo enmascaraba por el layout);
+   fix: `intptr_t _rfind`.
+3. **`compilador/generator/generator.py` + `nucleo/generador/orquestador.syn`** —
+   includes `#include <io.h>` (Windows) / `<dirent.h>` (POSIX) guardados por
+   plataforma en la cabecera común (S1 y nativo).
+4. **`tests/conftest.py` + 9 tests de integración** — `_RT_OBJ_DEFS` derivado de
+   `glob(runtime/core/*.c)` (nombres `.o` especiales `synapse_rt_memory.o`/
+   `synapse_rt_concurrency.o` + flags preservados); helper `rt_objs()` (único
+   punto de verdad); los 9 tests (`test_cluster_discovery`, `_handshake_e2e`,
+   `_multicast`, `_distributed_debug`, `_live_migration`, `_live_migration_cluster`,
+   `_memory_snapshots`, `_reversible_debug`, `_time_travel`) reemplazan sus
+   constantes `.o` por `*RT_OBJS`.
+
+### 3o.3 Validación
+
+- Bootstrap **S2==S3 `ef5afc70…`** (1.119.542 bytes byte-idénticos; E1 S1 rc=0,
+  E2/E3 nativos rc=0 — el escaneo nativo lista las 8 fuentes core en orden
+  alfabético en el comando gcc; antes: segfault 139 standalone del stage1).
+- Probe e2e `importar std.cluster` + `cluster_generar_par_claves()` + `len(par)`:
+  **nativo rc=0 → 193** (regresión F3-13, el escaneo no rompió el enlace).
+- Integración con `*RT_OBJS`: `test_cluster_handshake_e2e` **6/6** +
+  `test_cluster_multicast` + `test_distributed_debug` **29/29 passed**.
+- Regresión S1 núcleo **165 passed**; paridad frontend **27/27 passed**;
+  suite HM en curso; **verificador 0 brechas**.
+
+**Hallazgos registrados (regla 11):** ninguno nuevo del ME (el segfault del
+handle truncado fue del propio ME y se corrigió; no era preexistente — el
+HEAD usaba el snprintf hardcodeado sin `_findfirst`).
+
+**Manual referenciado:** regla 13 (modularización / sin hardcoding) y gobernanza;
+Manual 9 §9.7 (determinismo S2==S3); Manual 8 §8.2 (emisor determinista).
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
+
 
 | # | Hallazgo | Resolución asignada |
 |---|----------|---------------------|
@@ -529,6 +590,7 @@ L407-422 y `tipo_de_expr` L70-95 (S1).
 
 | F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | ✅ **CERRADA en F3-13 (2026-08-16)** — 2 causas raíz: (1) `len`/`subcadena`/`empieza_con` son builtins INLINE del S1 (emit_expressions.py L407-422) que NO existen como funciones C → el unity los llamaba como funciones inexistentes → gcc declaración implícita → int; (2) el nativo no registraba los tipos de campos de struct → `ch.clave_publica_local` (CanalRemoto.texto) se asumía int64_t → `entero_a_texto(campo)` en concat. Fix en 5 frentes: builtins inline en `_oo_expr_a_c` + registro de campos con tipo en `gen_escanear_estructuras` + `_G_native_campo_tipo` + `_syn_nativo_expr_tipo_c` rama `ExprAccesoCampo` + detección de texto en OpBinaria; paridad S1 en generator.py (externs + definiciones); generator.syn regenerado (lección R5; bug del ME: 2 `asm` sin cierre `")"` → error léxico S1); bootstrap S2==S3 `8fc5b44b…`; e2e `std.cluster` S1+nativo rc=0 → 193; tests HM 2/2 (suite 110); regresión S1 195; suite HM 108; paridad 27/27; verificador 0 brechas; ver §3n |
 | F3-14 | `_cm_checksum` (checkpoint, M8.4) código muerto en el HEAD (0 callers; gcc `-Wunused-function` preexistente) — conservada por byte-identidad del corte 4 | **PENDIENTE — resolución asignada: eliminarla en un corte de limpieza (regla 12) sin romper la byte-identidad del corte 4** |
+| F3-15 | Lista de fuentes runtime (`.c`/`.o`) **hardcodeada a mano en 4 frentes** (regla 13 / gobernanza "sin hardcoding"): `pipeline.py` `_RT_FUENTES`, comando gcc nativo de `principal.syn` (11 `_rt_dir`), `conftest.py` `_RT_OBJ_DEFS` y constantes `.o` de 9 tests de integración — cada corte de D-9(d) las rompía (regresiones R35/R40/R41/R42) | ✅ **CERRADA en F3-15 (2026-08-17)** — la lista se DERIVA de `runtime/core/*.c` en cada consumidor (glob en pipeline.py/conftest.py + escaneo `_findfirst`/`opendir` en el gcc nativo); helper `rt_objs()` central en conftest (9 tests usan `*RT_OBJS`); **bug del ME corregido**: handle de `_findfirst` truncado (`long` 32-bit vs `intptr_t` 64-bit → segfault 139 standalone, gdb lo enmascaraba) → `intptr_t`; bootstrap S2==S3 `ef5afc70…`; e2e std.cluster rc=0 → 193; integración 35 passed (handshake 6 + multicast/debug 29); regresión S1 165; paridad 27/27; verificador 0 brechas; ver §3o |
 ## 5. REFERENCIAS
 
 - ROADMAP.md — FASE 3 (generador de código C y runtime; criterios de aceptación) y FASE 4 (fibras).

@@ -1,4 +1,4 @@
-import os, sys, json, re
+import os, sys, json, re, glob
 import pytest
 import subprocess
 from typing import Tuple
@@ -69,19 +69,48 @@ def ast_a_canonico_test(programa: Programa) -> str:
 # Post-revision ME-R7: las dependencias incluyen los headers del runtime y los
 # binarios extra se re-enlazan si cambia cualquier objeto del runtime.
 
+_RT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# F3-15 (sin hardcoding, regla 13 / Manual 9 §9.7): la lista de fuentes del
+# runtime NO se mantiene a mano — se deriva de runtime/core/*.c. Cualquier .c
+# nuevo en runtime/core/ se compila automaticamente (mismo comportamiento que
+# pipeline.py _RT_CORE_FUENTES y el escaneo del comando gcc nativo). Los
+# nombres .o especiales (memory/concurrency) y sus flags se preservan.
+_RT_CORE_OBJ_ESPECIALES = {
+    "memory.c": ("synapse_rt_memory.o", ["-DSYNAPSE_DEBUG_MEM"]),
+    "concurrency.c": ("synapse_rt_concurrency.o", []),
+}
+
+
+def _rt_objs_core():
+    """Deriva los .o de runtime/core/*.c (orden alfabetico estable)."""
+    entries = []
+    for src in sorted(glob.glob(os.path.join(_RT_ROOT, "runtime", "core", "*.c"))):
+        base = os.path.basename(src)
+        if base in _RT_CORE_OBJ_ESPECIALES:
+            obj, extra = _RT_CORE_OBJ_ESPECIALES[base]
+        else:
+            obj, extra = base[:-2] + ".o", []
+        entries.append((obj, os.path.relpath(src, _RT_ROOT).replace(os.sep, "/"), extra))
+    return entries
+
+
 _RT_OBJ_DEFS = [
     ("tweetnacl.o", "axon/tweetnacl.c", []),
     ("synapse_rt.o", "synapse_rt.c", []),
-    ("synapse_rt_memory.o", "runtime/core/memory.c", ["-DSYNAPSE_DEBUG_MEM"]),
-    ("synapse_rt_concurrency.o", "runtime/core/concurrency.c", []),
-    ("io.o", "runtime/core/io.c", []),        # F3-1/F3-2 (D-9(d)): I/O extraido de synapse_rt.c
-    ("tensor.o", "runtime/core/tensor.c", []),  # R35 (D-9(d) corte 2): tensores/SIMD extraidos
-    ("modelo.o", "runtime/core/modelo.c", []),  # R39 (D-9(d) corte 3): std.ai extraido
-    ("cluster.o", "runtime/core/cluster.c", []),  # R40 (D-9(d) corte 4): std.cluster extraido
-    ("debug.o", "runtime/core/debug.c", []),  # R41 (D-9(d) corte 5): debug reversible extraido
-    ("fuzz.o", "runtime/core/fuzz.c", []),  # R42 (D-9(d) corte 6): fuzzing M10.4 extraido
+] + _rt_objs_core() + [
     ("axon_rt.o", "axon/axon_rt.c", []),
 ]
+
+
+def rt_objs():
+    """Rutas completas de los .o del runtime (derivados, sin hardcoding).
+
+    F3-15: unico punto de verdad para los tests de integracion — enlazan
+    contra los mismos objetos que conftest auto-compila. Cualquier .c nuevo
+    en runtime/core/ aparece aqui automaticamente.
+    """
+    return [os.path.join(_RT_ROOT, obj) for obj, _, _ in _RT_OBJ_DEFS]
 
 # Headers del runtime: cualquier cambio en ellos invalida los .o
 _RT_HEADERS = [
