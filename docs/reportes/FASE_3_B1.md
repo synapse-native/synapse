@@ -572,6 +572,44 @@ HEAD usaba el snprintf hardcodeado sin `_findfirst`).
 **Manual referenciado:** regla 13 (modularización / sin hardcoding) y gobernanza;
 Manual 9 §9.7 (determinismo S2==S3); Manual 8 §8.2 (emisor determinista).
 
+## 3p. F3-14 — Poda de `_cm_checksum` (regla 12): corte de limpieza (2026-08-17)
+
+**Manual referenciado:** regla 12 (código muerto se elimina); Manual 2 §4.1; Manual 9 §9.7
+(bootstrap S2==S3); Manual 8 §8.2 (emisor determinista).
+
+**Hallazgo (registrado en R40/D-9(d) corte 4):** `_cm_checksum` (checkpoint, M8.4) era
+código muerto en el HEAD — `static unsigned int _cm_checksum(const char*, int)` con
+**0 callers** en todo el repo (grep global en `runtime/`, `compilador/`, `nucleo/`,
+`tests/`, `librerias/` sin resultados fuera de la definición) y warning gcc
+`-Wunused-function` preexistente. Se conservó durante el corte 4 por la byte-identidad
+del corte; la resolución asignada era eliminarla en un corte de limpieza.
+
+**Poda (mecánica, 14 líneas):** `runtime/core/cluster.c` L934-947 — los 3 comentarios
+(`// --- Compute SHA-256 checksum …`) + el cuerpo de `_cm_checksum` + la línea en blanco
+posterior. Verificado con aserciones byte-exactas antes de borrar (comentario en L934,
+firma en L937, cierre `}` en L946, línea en blanco en L947). **No se tocó nada más**:
+`_cm_sha256_hex` (L950) SÍ tiene callers (`cm_serializar_checkpoint` L985,
+`cm_verificar_integridad` L1051, `cm_migrar_tarea` L1142) y se conserva; `cluster.h` no
+declaraba la función (era `static`), luego no hay prototipo que quitar. CRLF preservado
+(diff = solo las 14 eliminaciones, sin churn de fin de línea).
+
+**Validación:**
+- `gcc -c` aislado de `cluster.c`: **rc=0**, el warning `-Wunused-function` de
+  `_cm_checksum` desapareció (quedan solo `-Wunused-parameter` preexistentes de firmas
+  públicas, que no son código muerto).
+- Bootstrap **S2==S3 `ef5afc70…`** — **idéntico al hash de R44**: la función era
+  `static` sin uso y `-Wl,--gc-sections` ya la descartaba del binario, luego la poda es
+  **transparente para el compilador** (el exe no cambió ni un byte — prueba de que era
+  código muerto real, no latente).
+- Integración del módulo afectado (bloque checkpoint/migración M8.4):
+  `test_live_migration` + `test_live_migration_cluster` **19 passed** +
+  `test_cluster_handshake_e2e`/`test_cluster_discovery`/`test_cluster_multicast`/
+  `test_distributed_debug` **53 passed** → **72 passed** del cluster completo.
+
+**Hallazgos (regla 11):** ninguno nuevo del ME. Queda abierto **F3-12** (`importar
+std.modelo` no enlaza — colisión ft_*/kd_*/qt_*).
+
+
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
 
@@ -589,7 +627,7 @@ Manual 9 §9.7 (determinismo S2==S3); Manual 8 §8.2 (emisor determinista).
 | F3-11 | Divergencia del código de error en la auto-compilación (Etapa 2/3 del bootstrap, Manual 9 §9.1): stage2/stage3 devolvían rc=0 en errores semánticos (vs rc=7 de stage1/S1) — el wrapper de `main` en el codegen nativo emitía SIEMPRE `principal(); ... return 0;` (descarte del rc) | ✅ **CERRADA en F3-11 (2026-08-16)** — `recorrido.syn` ahora consulta el `tipo_retorno` de `principal` en el AST (`programa.sentencias`): si es `nulo`/`void` → `principal(); ... return 0;` (caso inalterado); si retorna entero → `int64_t _rc = principal(); ... return _rc;` (paridad generator.py L1158-1176); `generator.syn` regenerado; bootstrap S2==S3 `02566f0d…`; rc=7 restaurado en stage2 (base/aridad), rc del programa propagado (retornar 3 → rc=3), e2e escuchar 42/99 rc=0 (regresión main nulo), suite HM completa 108 passed, paridad 3/3, verificador 0 brechas; ver §3i |
 
 | F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | ✅ **CERRADA en F3-13 (2026-08-16)** — 2 causas raíz: (1) `len`/`subcadena`/`empieza_con` son builtins INLINE del S1 (emit_expressions.py L407-422) que NO existen como funciones C → el unity los llamaba como funciones inexistentes → gcc declaración implícita → int; (2) el nativo no registraba los tipos de campos de struct → `ch.clave_publica_local` (CanalRemoto.texto) se asumía int64_t → `entero_a_texto(campo)` en concat. Fix en 5 frentes: builtins inline en `_oo_expr_a_c` + registro de campos con tipo en `gen_escanear_estructuras` + `_G_native_campo_tipo` + `_syn_nativo_expr_tipo_c` rama `ExprAccesoCampo` + detección de texto en OpBinaria; paridad S1 en generator.py (externs + definiciones); generator.syn regenerado (lección R5; bug del ME: 2 `asm` sin cierre `")"` → error léxico S1); bootstrap S2==S3 `8fc5b44b…`; e2e `std.cluster` S1+nativo rc=0 → 193; tests HM 2/2 (suite 110); regresión S1 195; suite HM 108; paridad 27/27; verificador 0 brechas; ver §3n |
-| F3-14 | `_cm_checksum` (checkpoint, M8.4) código muerto en el HEAD (0 callers; gcc `-Wunused-function` preexistente) — conservada por byte-identidad del corte 4 | **PENDIENTE — resolución asignada: eliminarla en un corte de limpieza (regla 12) sin romper la byte-identidad del corte 4** |
+| F3-14 | `_cm_checksum` (checkpoint, M8.4) código muerto en el HEAD (0 callers; gcc `-Wunused-function` preexistente) — conservada por byte-identidad del corte 4 | ✅ **CERRADA en F3-14 (2026-08-17)** — podada de `runtime/core/cluster.c` (14 líneas: 3 comentarios + cuerpo + blank; `_cm_sha256_hex` conservada — tiene callers; `cluster.h` intacto, era `static`); gcc -c rc=0 sin `-Wunused-function`; bootstrap S2==S3 `ef5afc70…` **idéntico a R44** (prueba de que `--gc-sections` ya la descartaba del binario — era código muerto real); integración cluster 72 passed (live_migration 19 + discovery/multicast/distributed_debug/handshake_e2e 53); verificador 0 brechas; ver §3p |
 | F3-15 | Lista de fuentes runtime (`.c`/`.o`) **hardcodeada a mano en 4 frentes** (regla 13 / gobernanza "sin hardcoding"): `pipeline.py` `_RT_FUENTES`, comando gcc nativo de `principal.syn` (11 `_rt_dir`), `conftest.py` `_RT_OBJ_DEFS` y constantes `.o` de 9 tests de integración — cada corte de D-9(d) las rompía (regresiones R35/R40/R41/R42) | ✅ **CERRADA en F3-15 (2026-08-17)** — la lista se DERIVA de `runtime/core/*.c` en cada consumidor (glob en pipeline.py/conftest.py + escaneo `_findfirst`/`opendir` en el gcc nativo); helper `rt_objs()` central en conftest (9 tests usan `*RT_OBJS`); **bug del ME corregido**: handle de `_findfirst` truncado (`long` 32-bit vs `intptr_t` 64-bit → segfault 139 standalone, gdb lo enmascaraba) → `intptr_t`; bootstrap S2==S3 `ef5afc70…`; e2e std.cluster rc=0 → 193; integración 35 passed (handshake 6 + multicast/debug 29); regresión S1 165; paridad 27/27; verificador 0 brechas; ver §3o |
 ## 5. REFERENCIAS
 

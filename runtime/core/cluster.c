@@ -931,20 +931,6 @@ static char _cm_ultimo_resultado[256];
 
 static pthread_mutex_t _cm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// --- Compute SHA-256 checksum for checkpoint integrity ---
-// Uses the SHA-256 implementation already present in this file.
-// Returns first 4 bytes of SHA-256 digest as a 32-bit truncated hash.
-static unsigned int _cm_checksum(const char* data, int len) {
-    SHA256_CTX ctx;
-    uint8_t digest[32];
-    sha256_init(&ctx);
-    sha256_update(&ctx, (const uint8_t*)data, (size_t)len);
-    sha256_final(&ctx, digest);
-    // Truncate to 32 bits for checkpoint format compatibility
-    return ((unsigned int)digest[0] << 24) | ((unsigned int)digest[1] << 16) |
-           ((unsigned int)digest[2] << 8)  | ((unsigned int)digest[3]);
-}
-
 // --- Compute full SHA-256 hex hash for checkpoint integrity ---
 // Returns 64-char hex string (caller must free if pool_alloc'd).
 static void _cm_sha256_hex(const char* data, int len, char* hex_out) {
