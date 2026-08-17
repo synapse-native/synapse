@@ -669,6 +669,106 @@ para fine-tuning/KD/cuantización pasa a ser los externs `_syn_*` (patrón puent
 estándar, igual que `std.ai`); los nombres `ft_*`/`kd_*`/`qt_*` quedan EXCLUSIVOS de
 la API C nativa (headers + validate_*.c) — sin colisión posible.
 
+## 3r. F3-10 — CERRADA: tipado del receive por el tipo del elemento del canal (`Canal<T>` → T) en ambos compiladores (2026-08-17)
+
+### 3r.1 Contexto y causa raíz
+
+Hallazgo descubierto en R37 (ver §3h): el receive `ch ->` se tipaba `void*` en
+AMBOS compiladores (F3-6: `ExprRecibirCanal→void*`) en vez del tipo del elemento
+del canal — el nativo es lenient (acepta `mensaje * 2`, C correcto) pero el S1
+rechazaba cualquier uso tipado del mensaje ("Tipos incompatibles: void* con
+entero") y `log("Recibido: ", mensaje)` imprimía el puntero (`000000000000002A` =
+0x2A = 42) vs el valor formateado (nativo: `42`). El Manual 2 L144 define
+`Canal<T>` y el Manual 5 §4.2 ejemplifica el procesamiento tipado del valor
+recibido. Resolución asignada: tipar el receive por el elemento de `Canal<T>`
+(paridad S1↔nativo) + test S1 de paridad para el caso procesa.
+
+### 3r.2 Cambios (S1 — compilador en Python)
+
+1. `compilador/semantic_types.py`:
+   - `_inferir_tipo(ExprCrearCanal)` → `Canal<tipo_contenido>` (o `CanalConcurrencia*`
+     si no hay `tipo_contenido`) — antes `CanalConcurrencia*` siempre.
+   - `_inferir_tipo(ExprRecibirCanal)` → el elemento extraído de `Canal<T>`
+     (fallback `'void*'` si el canal es `CanalConcurrencia*`).
+   - Exención de paridad en `OpBinaria` (`==`/`!=`): si uno de los operandos es
+     `LiteralNulo`, el resultado es `'int'` (antes `'int'` solo si ambos eran
+     compatibles; el centinela `(void*)0` tipado como `int64_t` con `== nulo` era
+     incompatible). Preserva la semántica de `si mensaje == nulo: romper`
+     (Manual 5 §4.1).
+2. `compilador/generator/emit_expressions.py`:
+   - Helper `_elemento_canal(ctx, nodo)`: extrae `T` de `Canal<T>` consultando
+     `ctx._variables` del canal (fallback `'void*'`).
+   - `tipo_de_expr(ExprCrearCanal)` → `Canal<tipo_contenido>`;
+     `tipo_de_expr(ExprRecibirCanal)` → `_elemento_canal`.
+   - `expr_a_c(ExprRecibirCanal)` → `_synapse_unbox_int(...)` si el elemento es
+     entero, `_synapse_unbox_float(...)` si es flotante, sin desboxeo si `void*`
+     (paridad con el envío que boxea).
+3. `compilador/generator/emit_declarations.py`: helper `_es_canal_concurrencia`
+   (detecta `Canal<...>`/`CanalConcurrencia*`) usado en los 3 checks de
+   `_canal_vars_concurrencia` para el registro de `ctx._variables`.
+
+### 3r.3 Cambios (nativo — `nucleo/generador/*.syn`)
+
+1. `orquestador.syn` (header de usuario vía `gen_emitir_linea`, paridad S1
+   `generator.py`):
+   - Globals del registro de elementos: `_G_native_canal_names[512][64]`,
+     `_G_native_canal_elem[512][64]`, `_G_native_canal_count`.
+   - Funciones `_G_native_canal_elem_set` (no-static, para el binario del
+     compilador) y `_G_native_canal_elem_tipo` (no-static, usada por el
+     generador en `_syn_nativo_expr_tipo_c`).
+   - Helpers `static inline` `_synapse_box_int`/`_synapse_unbox_int`/
+     `_synapse_box_float`/`_synapse_unbox_float` — el nativo NO emitía helpers de
+     boxeo en programas de usuario (el envío usa cast directo `(void*)(valor)`),
+     por lo que el nuevo `_synapse_unbox_int` fallaba el link con `undefined
+     reference`; paridad S1 (generator.py L796-827).
+2. `funciones.syn`: reset `_G_native_canal_count = 0;` por función (con `extern`
+   inline, el módulo generador es `_generator.c` y las globals viven en
+   `_principal.c`); registro del elemento desde parámetros `Canal<T>`; hoisting
+   de `ExprCrearCanal` (registra elemento desde `tipo_contenido`) y
+   `ExprRecibirCanal` (tipo C del elemento, fallback `void*`).
+3. `expr_eval.syn`: codegen del receive → `_synapse_unbox_int/float(...)` según
+   el tipo C del elemento registrado.
+4. `nodos_flujo.syn`: `let` de `ExprCrearCanal` (registra elemento) y
+   `ExprRecibirCanal` (tipo elemento); `gen_visitar_asignacion` rama `_recv_type`
+   para declarar la variable receptora con el tipo del elemento (el hoisting NO
+   recursa en `SentenciaEscuchar`; las variables del listener se resuelven vía
+   `_G_native_escuchar_vars` en `monomorfizacion.syn`, que usa
+   `_syn_nativo_expr_tipo_c` → arreglado por la rama `ExprRecibirCanal`).
+5. `orquestador.syn` `_syn_nativo_expr_tipo_c(ExprRecibirCanal)` → elemento
+   registrado, fallback `void*`.
+6. S1 `generator.py`: mismas globals + helpers en los 3 puntos de cabecera del
+   binario del compilador (externs compartidos ~L750, definiciones ~L1079 y
+   ~L1605).
+
+**Ojo de build (lección R5):** `nucleo/generator.syn` es el combinado
+AUTO-GENERADO de `nucleo/generador/` — tras editar los módulos hay que regenerarlo
+(`python nucleo/_rebuild_generator.py`) ANTES del bootstrap; el S1 se recompila
+con `python main.py nucleo\principal.syn -o synapse_stage1.exe`.
+
+### 3r.4 Validación
+
+- Bootstrap: Etapa 1 (S1→stage1) rc=0; Etapa 2 rc=0; Etapa 3 rc=0;
+  **S2==S3 byte-idénticos** (1.118.760 bytes, comparación byte a byte `True`).
+- Caso nativo PROCESA (stage2, `f310_procesa.syn`): rc=0 → ejecución **84/88**
+  (42·2, 44·2); `synapse_unity.c` con `int64_t mensaje;` +
+  `int64_t mensaje = _synapse_unbox_int(canal_recibir(_canal));` +
+  `mensaje * 2LL` (C correcto del listener tipado).
+- Caso S1 PROCESA: rc=0 → salida **84/88**; C emitido con `int64_t mensaje;` +
+  `_synapse_unbox_int(canal_recibir(_canal))` (paridad byte-diferente OK, mismo
+  resultado).
+- Tests: `test_f37_escuchar*` **4 passed** (3 de R37 + nuevo
+  `test_f37_escuchar_s1_paridad_procesa`); `test_semantico.py` +
+  `test_cobertura_d5.py` **56 passed**; unit **183 passed**; suite HM completa
+  **111 passed**; paridad A23 **10 passed**.
+- Regresión del centinela: `si mensaje == nulo` sigue compilando en ambos
+  (exención `OpBinaria`/paridad nativa `(int64_t) == (void*)0` con warning,
+  aceptado — pipeline sin `-Werror`, misma semántica que F3-7).
+
+**Manual referenciado:** Manual 2 L144 (`Canal<T>` — el canal transporta T);
+Manual 5 §4.1-4.3 (bucle de escucha hasta cierre, `si mensaje == nulo: romper`)
+y §4.2 (procesamiento tipado del valor recibido); regla 7 (validar con pruebas)
+y regla 11 (cero deuda: resolución completa del hallazgo registrado).
+
 
 ## 4. HALLAZGOS Y DEUDA (regla 11: registro con resolución asignada)
 
@@ -683,7 +783,7 @@ la API C nativa (headers + validate_*.c) — sin colisión posible.
 | D-9(d) | `synapse_rt.c` monolítico (7.882 líneas) | **CERRADA en R42 (2026-08-16, corte 6)** — tensor.c (619 l.) + modelo.c (2.017 l.) + cluster.c (1.927 l.) + debug.c (1.396 l.) + fuzz.c (159 l., M10.4 FZ: coordinador/agentes/SYNFUZZ) extraídos byte-idénticos en 5 cortes (io.c F3-1/2 → 7.882 → 1.769 l.); `fuzz.h` (11 prototipos); synapse_rt.c 1.919 → 1.769 (marcador corte 6); pipeline.py + principal.syn (11º `_rt_dir`, 14 args — arity bug corregido); tests `FUZZ_O` (fuzz 15 passed) + `test_fz_en_fuzz_c`; conftest.py + fuzz.o; bootstrap S2==S3 `6e2c3de2…`; e2e fuzz S1+nativo rc=0; integración cluster+debug+fuzz 113 passed; regresión S1 + suite HM + paridad en curso; verificador pendiente; ver §3m. **D-9(d) CERRADA** — siguiente: F3-12 (colisión std.modelo) / F3-13 (seed builtins de cadena) |
 | F3-7 | `escuchar` (listen): (1) el S1 genera listener thread con `_listener_1` **sin declararlo** (ejemplo 03_concurrencia → gcc `undeclared`, rc=1); (2) el nativo no reconoce `SentenciaEscuchar` (Error Fatal); (3) la sintaxis parseada `escuchar canal -> callback` NO es la del Manual 2 L113 (`escuchar_canal ::= "escuchar" expresion ":" NEWLINE INDENT bloque DEDENT`); (4) el ejemplo `examples/synapse/03_concurrencia` está roto en AMBOS compiladores | ✅ **CERRADA en F3-7 (2026-08-14)** — gramática L113 en ambos compiladores (`SentenciaEscuchar.cuerpo: ListaNodo` nativo + `_P_*`), main S1 espera hilos (`synapse_esperar_hilos`), listener nativo completo (globals + pre-scan + flush + `gen_visitar_escuchar` + modo escuchar), S1 `Canal<T>` (tipos.py + `_tipo_normalizado`), ejemplo y tests a la sintaxis del Manual; bootstrap S2==S3 `68f0a4b7…`; e2e 42/99 en AMBOS compiladores; paridad 27/27; verificador 0 brechas; ver §3e |
 | F3-8 | Forma NO documentada `x: entero = 5` (asignación con anotación SIN `let`) — el nativo emite `x;` (C inválido, gcc rc=5 silencioso) vs S1 lenient rc=0 | ✅ **CERRADA en F3-8 (2026-08-14)** — ambos compiladores RECHAZAN la forma con error de parser (S1 `_parsear_declaracion_tipada` → `ERR_SYNTAX_EXPECTED` esperando `let`; nativo rama `T_DOSPUNTOS` → error con línea/columna); usos corregidos a la forma del Manual (`01_calculadora` + 5 tests) y regresiones de R35 corregidas (12 tests de integración con `TENSOR_O` en el link); bootstrap S2==S3 `7c552471…`; verificador 0 brechas; ver §3g |
-| F3-10 | El receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6 `ExprRecibirCanal→void*`) en vez del tipo del elemento del canal (`Canal<entero>` → `entero`, Manual 2 L144 / Manual 5 §4.2) — el nativo es lenient (permite `mensaje * 2`/`procesar(mensaje)` tipado, C correcto) pero el S1 rechaza cualquier uso tipado del mensaje ("Tipos incompatibles: void* con entero") y `log` imprime el puntero en vez del valor | **PENDIENTE — resolución asignada: tipar el receive por el tipo del elemento del canal (`Canal<T>` → T) en AMBOS compiladores (paridad S1↔nativo) + test S1 de paridad para el caso procesa; ME de Fase 3** (descubierto en R37 al diseñar la cobertura HM e2e de `escuchar`; ver §3h) |
+| F3-10 | El receive `ch ->` se tipa `void*` en AMBOS compiladores (F3-6 `ExprRecibirCanal→void*`) en vez del tipo del elemento del canal (`Canal<entero>` → `entero`, Manual 2 L144 / Manual 5 §4.2) — el nativo es lenient (permite `mensaje * 2`/`procesar(mensaje)` tipado, C correcto) pero el S1 rechaza cualquier uso tipado del mensaje ("Tipos incompatibles: void* con entero") y `log` imprime el puntero en vez del valor | ✅ **CERRADA en F3-10 (2026-08-17)** — tipado del receive por el elemento del canal `Canal<T>` → T en AMBOS compiladores (paridad S1↔nativo): S1 (`_inferir_tipo`/`tipo_de_expr` → `Canal<T>` en `ExprCrearCanal`, `T` en `ExprRecibirCanal`, desboxeo `_synapse_unbox_int/float` en `expr_a_c`, exención `== nulo` en `OpBinaria`) + nativo (registro `_G_native_canal_elem*` poblado desde parámetros `Canal<T>`, hoisting de `canal(T, cap)` y `let`; `_syn_nativo_expr_tipo_c` y codegen `expr_eval.syn` desboxean; helpers `_synapse_box_*`/`unbox_*` ahora emitidos en el header del nativo — paridad S1); `generator.syn` regenerado; bootstrap S2==S3 byte-idénticos; test `test_f37_escuchar_s1_paridad_procesa` (S1, `* 2` → 42/44); suite HM 111 passed; ver §3r |
 | F3-11 | Divergencia del código de error en la auto-compilación (Etapa 2/3 del bootstrap, Manual 9 §9.1): stage2/stage3 devolvían rc=0 en errores semánticos (vs rc=7 de stage1/S1) — el wrapper de `main` en el codegen nativo emitía SIEMPRE `principal(); ... return 0;` (descarte del rc) | ✅ **CERRADA en F3-11 (2026-08-16)** — `recorrido.syn` ahora consulta el `tipo_retorno` de `principal` en el AST (`programa.sentencias`): si es `nulo`/`void` → `principal(); ... return 0;` (caso inalterado); si retorna entero → `int64_t _rc = principal(); ... return _rc;` (paridad generator.py L1158-1176); `generator.syn` regenerado; bootstrap S2==S3 `02566f0d…`; rc=7 restaurado en stage2 (base/aridad), rc del programa propagado (retornar 3 → rc=3), e2e escuchar 42/99 rc=0 (regresión main nulo), suite HM completa 108 passed, paridad 3/3, verificador 0 brechas; ver §3i |
 
 | F3-13 | `importar std.cluster` NO compila en el nativo: los helpers de `std/cluster.syn` (`_buscar_dos_puntos`, `_extraer_parte`, `conectar`, …) usan `subcadena`/`concat`/`texto_a_entero` y el generador nativo no tipea su retorno (`CadenaSegura`) → `synapse_unity.c` con `incompatible type for argument … of 'str_eq'/'concat'/'texto_a_entero'` (gcc rc=1). Reproducido con el stage1 del HEAD sin el corte → **preexistente** del generador, no lo introduce D-9(d) corte 4 (el S1 sí compila `importar std.cluster` — los tests `test_cluster_nodes`/`test_cluster_raft` pasan) | ✅ **CERRADA en F3-13 (2026-08-16)** — 2 causas raíz: (1) `len`/`subcadena`/`empieza_con` son builtins INLINE del S1 (emit_expressions.py L407-422) que NO existen como funciones C → el unity los llamaba como funciones inexistentes → gcc declaración implícita → int; (2) el nativo no registraba los tipos de campos de struct → `ch.clave_publica_local` (CanalRemoto.texto) se asumía int64_t → `entero_a_texto(campo)` en concat. Fix en 5 frentes: builtins inline en `_oo_expr_a_c` + registro de campos con tipo en `gen_escanear_estructuras` + `_G_native_campo_tipo` + `_syn_nativo_expr_tipo_c` rama `ExprAccesoCampo` + detección de texto en OpBinaria; paridad S1 en generator.py (externs + definiciones); generator.syn regenerado (lección R5; bug del ME: 2 `asm` sin cierre `")"` → error léxico S1); bootstrap S2==S3 `8fc5b44b…`; e2e `std.cluster` S1+nativo rc=0 → 193; tests HM 2/2 (suite 110); regresión S1 195; suite HM 108; paridad 27/27; verificador 0 brechas; ver §3n |
