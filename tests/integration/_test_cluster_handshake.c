@@ -133,9 +133,25 @@ int _G_fn_var_auto[2048];
 char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 int _G_fn_ptr_vars_count;
+char _G_native_canal_names[512][64];
+char _G_native_canal_elem[512][64];
+int _G_native_canal_count;
+void _G_native_canal_elem_set(const char* _cname, const char* _celem) {
+    if (!_cname || !_celem) return;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }
+    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }
+}
+int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
+    if (!_cname || !_cout) return 0;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }
+    return 0;
+}
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;
+char _G_lanzar_wrappers[8][4096];
+int _G_lanzar_wrappers_count;
+int _G_lanzar_count;
 
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
@@ -563,6 +579,7 @@ int main(int argc, char** argv) {
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     int64_t _rc = principal();
     synapse_esperar_hilos();
+    synapse_esperar_fibras();
     pool_destroy();
     return _rc;
 }

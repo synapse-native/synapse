@@ -556,11 +556,21 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # F3-7: dentro del bloque de `escuchar canal:` el recibir se emite como
         # canal_recibir(_canal) (la variable del listener, no la local del
         # contenedor, que no es visible en la funcion listener).
+        # F4-6: firma del Manual 5 §3.4 `canal_recibir(canal, bool* cerrado)`.
+        # Dentro del escuchar, el receive emite un statement-expression que
+        # rompe el while del listener cuando *cerrado == true (Manual 5 §4.3),
+        # permitiendo distinguir el valor 0 del cierre del canal. Fuera del
+        # escuchar se pasa &(bool){0} (el idiom `== nulo` sigue siendo leniency).
         if getattr(ctx, '_escuchar_modo', False):
-            _r = "canal_recibir(_canal)"
+            _elem = _elemento_canal(ctx, nodo)
+            _unbox = {
+                'entero': "_synapse_unbox_int(_m)",
+                'decimal': "_synapse_unbox_float(_m)",
+            }.get(_elem, "_m")
+            return f"({{ void* _m = canal_recibir(_canal, &_cerrado); if (_cerrado) break; {_unbox}; }})"
         else:
             canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
-            _r = f"canal_recibir({canal})"
+            _r = f"canal_recibir({canal}, &(bool){{0}})"
         # F3-10: el receive hereda el tipo del elemento del canal (Manual 5 §4.2).
         # Se desboxea el void* que devuelve canal_recibir (el S1 boxea al enviar).
         _elem = _elemento_canal(ctx, nodo)

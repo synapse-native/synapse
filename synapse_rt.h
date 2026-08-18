@@ -29,7 +29,7 @@ CadenaSegura entero_a_texto(int64_t n);
 // --- CanalConcurrencia API (Zero-Copy, Thread-Safe) ---
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
-void* canal_recibir(CanalConcurrencia* canal);
+void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
 void cerrar_canal(CanalConcurrencia* canal);
 

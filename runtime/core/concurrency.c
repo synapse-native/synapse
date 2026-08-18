@@ -214,11 +214,13 @@ void canal_enviar(CanalConcurrencia* canal, void* paquete) {
     }
 }
 
-void* canal_recibir(CanalConcurrencia* canal) {
+void* canal_recibir(CanalConcurrencia* canal, bool* cerrado) {
     if (!canal) {
         fprintf(stderr, "ESCAPA_DEL_ALCANCE: canal nulo en canal_recibir\n");
+        if (cerrado) *cerrado = true;
         return NULL;
     }
+    if (cerrado) *cerrado = false;
 
     pthread_mutex_lock(&canal->mutex);
 
@@ -235,10 +237,12 @@ void* canal_recibir(CanalConcurrencia* canal) {
                 Fibra* sf = s->fibra;
                 _scheduler_despertar_fibra(sf);
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = false;
                 return paquete;
             }
             if (canal->cerrado) {
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = true;
                 return NULL;
             }
             if (canal->contador == 1) {
@@ -248,6 +252,7 @@ void* canal_recibir(CanalConcurrencia* canal) {
                 canal->contador = 0;
                 pthread_cond_signal(&canal->no_lleno);
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = false;
                 return paquete;
             }
         } else {
@@ -270,12 +275,16 @@ void* canal_recibir(CanalConcurrencia* canal) {
                 }
                 pthread_cond_signal(&canal->no_lleno);
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = false;
                 return paquete;
             }
             if (canal->cerrado) {
-                // Manual 5 §3.6/§4.3: canal cerrado y vacío -> NULL (el
-                // listener del `escuchar` sale del bucle al recibir NULL).
+                // Manual 5 §3.6/§4.3: canal cerrado y vacío -> NULL con
+                // *cerrado = true (el listener del `escuchar` sale del bucle).
+                // El 0 real se entrega boxeado (NULL) con *cerrado = false,
+                // distinguible del cierre (F4-6).
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = true;
                 return NULL;
             }
         }
@@ -287,6 +296,7 @@ void* canal_recibir(CanalConcurrencia* canal) {
             if (!n) {
                 fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_recibir (parqueo)\n");
                 pthread_mutex_unlock(&canal->mutex);
+                if (cerrado) *cerrado = true;
                 return NULL;
             }
             n->next = NULL;
@@ -305,11 +315,15 @@ void* canal_recibir(CanalConcurrencia* canal) {
             pthread_cond_signal(&canal->no_lleno);
             pthread_mutex_unlock(&canal->mutex);
             _fibra_parquear();
-            // Reanudada: dato si el waker completó el envío; NULL si cerró.
+            // Reanudada: dato si el waker completó el envío (satisfecho=1);
+            // NULL si el canal se cerró (satisfecho=0) — F4-6 distingue el
+            // cierre del valor 0 (que se entrega boxeado con satisfecho=1).
             pthread_mutex_lock(&canal->mutex);
             void* paquete = n->dato;
+            int satisfecho = n->satisfecho;
             pthread_mutex_unlock(&canal->mutex);
             free(n);
+            if (cerrado) *cerrado = (satisfecho == 0);
             return paquete;
         }
         // Hilo OS: bloqueo pthread (comportamiento previo F3-6).

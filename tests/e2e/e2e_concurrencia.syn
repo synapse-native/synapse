@@ -5,10 +5,11 @@
 // F4.4: usa la API NATIVA del lenguaje (Manual 5 S3): canal(T,N), <-, ->,
 // cerrar_canal, lanzar (fibras M:N) - la API de std.concurrencia con externs
 // inventados _syn_canal_* fue eliminada (regla 5/8, hallazgo d2 de R51).
-// NOTA (hallazgo F4-6 de R51): el valor 0 es indistinguible del cierre en
-// canales Canal<entero> (el boxeo (void*)(intptr_t)v hace 0 -> NULL, el
-// mismo centinela del cierre) - se usan valores 1..3 a la espera del fix
-// (receive como Resultado<T, Error>, Manual 5 S3.6).
+// NOTA (F4-6 resuelto en R53): el valor 0 ya es distinguible del cierre — el
+// listener del `escuchar` rompe el while con el out-param `bool* cerrado`
+// (Manual 5 §3.4/§4.3), no por el centinela NULL. Se mantienen valores 1..3
+// como snapshot del comportamiento previo (el probe tests/probe_f46.syn cubre
+// el caso 0 real vs cierre).
 
 importar std.io
 

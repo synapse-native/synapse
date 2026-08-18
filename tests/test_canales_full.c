@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
@@ -123,7 +124,7 @@ void* ok_valor; const char* err_mensaje;
 typedef struct CanalConcurrencia CanalConcurrencia;
 extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
-extern void* canal_recibir(CanalConcurrencia* canal);
+extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
 // --- Contratos (requiere/garantiza) ---
@@ -170,7 +171,7 @@ void productor(struct CanalConcurrencia* ch) {
 
 void consumidor(struct CanalConcurrencia* ch) {
     struct void* resultado;
-    resultado = canal_recibir(NULL);
+    resultado = canal_recibir(NULL, &(bool){0});
     printf("%s\
 ", (CadenaSegura){ .longitud = (int)strlen("Recibido"), .datos = "Recibido" }.datos);
 }

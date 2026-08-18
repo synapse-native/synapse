@@ -644,6 +644,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("#include <stdio.h>")
         ctx.write_line("#include <stdlib.h>")
         ctx.write_line("#include <stdint.h>")
+        ctx.write_line("#include <stdbool.h>")
         ctx.write_line("#include <pthread.h>")
         ctx.write_line("#include <string.h>")
         ctx.write_line("#include <assert.h>")
@@ -896,7 +897,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
         for ext in [
             "CanalConcurrencia* canal_crear(uint32_t capacidad)",
             "void canal_enviar(CanalConcurrencia* canal, void* paquete)",
-            "void* canal_recibir(CanalConcurrencia* canal)",
+            "void* canal_recibir(CanalConcurrencia* canal, bool* cerrado)",
             "void canal_destruir(CanalConcurrencia* canal)",
             "void cerrar_canal(CanalConcurrencia* canal)",
         ]:

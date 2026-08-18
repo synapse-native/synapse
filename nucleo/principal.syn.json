@@ -64869,7 +64869,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // F3-6: paridad emit_expressions.py L527-529 (ExprRecibirCanal -> canal_recibir(canal))."
+                  "instruccion": "    // F3-6: paridad emit_expressions.py (ExprRecibirCanal -> canal_recibir(canal))."
                 }
               },
               {
@@ -64911,6 +64911,34 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    // F4-6: firma del Manual 5 §3.4 `canal_recibir(canal, bool* cerrado)`. Dentro"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // del escuchar el receive emite un statement-expression que rompe el while"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // del listener cuando *cerrado == true (Manual 5 §4.3), distinguiendo el"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // valor 0 del cierre. Fuera del escuchar se pasa &(bool){0} (leniency)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    struct ExprRecibirCanal* _rc = (struct ExprRecibirCanal*)_n;"
                 }
               },
@@ -64919,55 +64947,6 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    extern int _G_listener_modo;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    char _rbuf[2048]; _rbuf[0] = 0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    if (_G_listener_modo) { snprintf(_rbuf, 2048, \"canal_recibir(_canal)\"); }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    else {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        char _rcc[2048]; _rcc[0] = 0;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        if (_rc->canal && _rc->canal->tipo.datos) { _oo_expr_a_c(est, _rc->canal, _rcc, 2048); } else { strcpy(_rcc, \"NULL\"); }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        snprintf(_rbuf, 2048, \"canal_recibir(%s)\", _rcc);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    }"
                 }
               },
               {
@@ -64996,6 +64975,104 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "        if (_rid->nombre.datos) { extern int _G_native_canal_elem_tipo(const char*, char*); _G_native_canal_elem_tipo(_rid->nombre.datos, _relem); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_G_listener_modo) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _unbox[64];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (strcmp(_relem, \"int64_t\") == 0) { strcpy(_unbox, \"_synapse_unbox_int(_m)\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        else if (strcmp(_relem, \"double\") == 0) { strcpy(_unbox, \"_synapse_unbox_float(_m)\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        else { strcpy(_unbox, \"_m\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        snprintf(_b, _sz, \"({ void* _m = canal_recibir(_canal, &_cerrado); if (_cerrado) break; %s; })\", _unbox);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    char _rbuf[2048]; _rbuf[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        char _rcc[2048]; _rcc[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_rc->canal && _rc->canal->tipo.datos) { _oo_expr_a_c(est, _rc->canal, _rcc, 2048); } else { strcpy(_rcc, \"NULL\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        snprintf(_rbuf, 2048, \"canal_recibir(%s, &(bool){0})\", _rcc);"
                 }
               },
               {
@@ -72389,6 +72466,27 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "strcat(_lfn, \"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;\n\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// F4-6: _cerrado recibe el out-param de canal_recibir (Manual 5 §3.4);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// el statement-expression del receive rompe el while al cerrarse (Manual 5 §4.3)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "strcat(_lfn, \"    bool _cerrado;\n\");"
                 }
               },
               {
@@ -83678,6 +83776,23 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
+                  "valor": "#include <stdbool.h>"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
                   "valor": "#include <pthread.h>"
                 }
               ]
@@ -88931,7 +89046,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "extern void* canal_recibir(CanalConcurrencia* canal);"
+                  "valor": "extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);"
                 }
               ]
             }

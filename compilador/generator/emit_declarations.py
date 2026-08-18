@@ -745,10 +745,14 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
         body_parts = [decl_c] + body_parts
     # F4.4: listener void (firma del trampolin de fibra); al salir del while
     # (canal cerrado -> romper) retorna y la trampolina llama fibra_terminar.
+    # F4-6: _cerrado recibe el out-param de canal_recibir (Manual 5 §3.4); el
+    # statement-expression del receive rompe el while cuando el canal se cierra
+    # (Manual 5 §4.3), distinguiendo el valor 0 del cierre.
     listener_lines = [
         f"void {listener_name}(void* arg) {{",
         f"    (void)arg;",
         f"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;",
+        f"    bool _cerrado;",
     ] + body_parts + [
         f"}}",
     ]

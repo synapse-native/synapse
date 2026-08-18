@@ -271,7 +271,7 @@ def test_codegen_s1_escuchar_canal():
     codigo = GeneradorC(ast).generar()
     assert "canal_crear(10)" in codigo, "canal(entero) -> canal_crear(10)"
     assert "canal_enviar(ch," in codigo, "enviar <-"
-    assert "canal_recibir(_canal)" in codigo, "escuchar bloque -> canal_recibir"
+    assert "canal_recibir(_canal, &_cerrado)" in codigo, "escuchar bloque -> canal_recibir"
 def test_codegen_s1_tensor_crear():
     """D-5: crear_tensor en el codegen."""
     prog = (

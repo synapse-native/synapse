@@ -12,6 +12,7 @@ extern int _G_safe_mode;  // M22.5: --safe flag
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
@@ -655,9 +656,17 @@ extern int _G_fn_var_auto[2048];
 extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 extern int _G_fn_ptr_vars_count;
+extern char _G_native_canal_names[512][64];
+extern char _G_native_canal_elem[512][64];
+extern int _G_native_canal_count;
+extern void _G_native_canal_elem_set(const char* _cname, const char* _celem);
+extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
+extern char _G_lanzar_wrappers[8][4096];
+extern int _G_lanzar_wrappers_count;
+extern int _G_lanzar_count;
 extern char _G_tipo_aliases[128][64];
 extern char _G_tipo_aliases_base[128][64];
 extern int _G_tipo_aliases_count;
@@ -713,6 +722,12 @@ extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
+extern void synapse_esperar_fibras(void);
+extern void scheduler_iniciar(int num_hilos_os);
+extern void scheduler_detener(void);
+extern void fibra_crear(void (*func)(void*), void* arg, size_t stack_size);
+extern void fibra_esperar(int fibra_id);
+extern void fibra_terminar(void* resultado);
 extern void _syn_texto_liberar(CadenaSegura s);
 
 typedef struct { int es_ok; union {
@@ -721,7 +736,7 @@ void* ok_valor; const char* err_mensaje;
 typedef struct CanalConcurrencia CanalConcurrencia;
 extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
-extern void* canal_recibir(CanalConcurrencia* canal);
+extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
 // --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---

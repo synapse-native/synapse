@@ -130,7 +130,7 @@ void* ok_valor; const char* err_mensaje;
 typedef struct CanalConcurrencia CanalConcurrencia;
 extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
-extern void* canal_recibir(CanalConcurrencia* canal);
+extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 extern void canal_destruir(CanalConcurrencia* canal);
 extern void cerrar_canal(CanalConcurrencia* canal);
 // --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---

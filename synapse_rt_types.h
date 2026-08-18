@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <pthread.h>
 
 // --- Core type definitions (deben coincidir exactamente con las emitidas por el generador) ---
@@ -202,7 +203,7 @@ void synapse_esperar_hilos(void);
 void synapse_esperar_fibras(void);
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
-void* canal_recibir(CanalConcurrencia* canal);
+void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
 
 // ============================================================

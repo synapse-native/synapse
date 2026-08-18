@@ -69,7 +69,7 @@ static void fibra_productor(void* p) {
 static void fibra_consumidor(void* p) {
     (void)p;
     for (int i = 0; i < N_ITEMS; i++) {
-        int* dato = (int*)canal_recibir(g_ch_buf);   /* se parquea si esta vacio */
+        int* dato = (int*)canal_recibir(g_ch_buf, &(bool){0});   /* se parquea si esta vacio */
         if (!dato || *dato != i) { g_buf_ok = 0; break; }
         free(dato);
     }
@@ -95,7 +95,7 @@ static void fibra_prod_sync(void* p) {
 static void fibra_cons_sync(void* p) {
     (void)p;
     for (int i = 0; i < SYNC_N; i++) {
-        int* dato = (int*)canal_recibir(g_ch_sync);
+        int* dato = (int*)canal_recibir(g_ch_sync, &(bool){0});
         if (!dato || *dato != i + 1000) { g_sync_ok = 0; break; }
         free(dato);
     }
@@ -109,7 +109,7 @@ static long g_slot3 = -1;
 
 static void fibra3_a_recibe(void* p) {
     (void)p;
-    void* dato = canal_recibir(g_ch3);   /* canal vacio: se parquea */
+    void* dato = canal_recibir(g_ch3, &(bool){0});   /* canal vacio: se parquea */
     long v = dato ? *(long*)dato : -1;
     g_slot3 = v;
     fibra_terminar(NULL);
@@ -127,7 +127,7 @@ static int g_cierre_vio_nulo = 0;
 
 static void fibra4_recibe(void* p) {
     (void)p;
-    void* dato = canal_recibir(g_ch4);   /* canal vacio: se parquea */
+    void* dato = canal_recibir(g_ch4, &(bool){0});   /* canal vacio: se parquea */
     g_cierre_vio_nulo = (dato == NULL);  /* cerrar_canal -> NULL (Manual 5 §3.6) */
     fibra_terminar(NULL);
 }
@@ -142,7 +142,7 @@ static int g_mix_fs_ok = 1;
 static void fibra_mix_receptor(void* p) {
     (void)p;
     for (int i = 0; i < MIX_N; i++) {
-        int* dato = (int*)canal_recibir(g_ch_mix_fr);
+        int* dato = (int*)canal_recibir(g_ch_mix_fr, &(bool){0});
         if (!dato || *dato != i) { g_mix_fr_ok = 0; break; }
         free(dato);
     }
@@ -183,7 +183,7 @@ static void fibra_estres_emisor(void* p) {
 static void fibra_estres_consumidor(void* p) {
     (void)p;
     for (int i = 0; i < ESTRES_TOTAL; i++) {
-        int* dato = (int*)canal_recibir(g_ch_estres);
+        int* dato = (int*)canal_recibir(g_ch_estres, &(bool){0});
         if (!dato) { g_estres_ok = 0; break; }
         if (*dato < 0 || *dato >= ESTRES_EMISORES) { g_estres_ok = 0; free(dato); break; }
         g_estres_vistos[*dato]++;
@@ -284,7 +284,7 @@ int main(void) {
         canal_enviar(g_ch_mix_fr, dato);   /* thread -> fibra parqueada */
     }
     for (int i = 0; i < MIX_N; i++) {
-        int* dato = (int*)canal_recibir(g_ch_mix_fs);   /* thread recibe de la fibra */
+        int* dato = (int*)canal_recibir(g_ch_mix_fs, &(bool){0});   /* thread recibe de la fibra */
         if (!dato || *dato != i + 2000) { g_mix_fs_ok = 0; }
         free(dato);
     }
