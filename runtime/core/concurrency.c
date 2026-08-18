@@ -409,7 +409,7 @@ void canal_destruir(CanalConcurrencia* canal) {
 #define F_ESTADO_PARQUEADA  1
 #define F_ESTADO_TERMINADA  2
 
-#define FIBRAS_MAX 4096
+#define FIBRAS_MAX 16384  // Checklist 4.4 (ROADMAP L109): 10,000 fibras concurrentes + margen
 #define FIBRA_STACK_DEFAULT (64 * 1024)  // Manual 5 §2.1: 64 KB por defecto
 
 typedef struct Fibra {
