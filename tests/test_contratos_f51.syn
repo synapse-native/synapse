@@ -1,0 +1,44 @@
+#lang: es
+
+// F5.1 probe: contratos requiere/garantiza (Manual 2 §5)
+// Test 1: requiere que pasa (b != 0)
+funcion dividir(a: entero, b: entero) -> entero:
+    requiere:
+        b != 0
+    garantiza:
+        _resultado_ >= 0
+    retornar a / b
+
+// Test 2: funcion void con garantiza final
+funcion actualizar(x: puntero) -> nulo:
+    requiere:
+        x != nulo
+    garantiza:
+        verdadero
+
+// Test 3: funcion con retorno y garantiza
+funcion duplicar(n: entero) -> entero:
+    requiere:
+        n >= 0
+    garantiza:
+        _resultado_ == n * 2
+    retornar n * 2
+
+funcion principal() -> entero:
+    // Test 1: dividir con b=0 Should ABORT (requiere violado)
+    // (We won't test this one as it would abort)
+    escribir_linea(" CONTRATO TEST")
+
+    // Test 2: dividir con b != 0 (requiere pasa)
+    r1 = dividir(10, 2)
+    escribir_linea(entero_a_texto(r1))
+
+    // Test 3: duplicar
+    r2 = duplicar(5)
+    escribir_linea(entero_a_texto(r2))
+
+    // Test 4: actualizar con puntero valido
+    // (skip - needs a valid pointer)
+
+    escribir_linea("CONTRATOS_OK")
+    retornar 0

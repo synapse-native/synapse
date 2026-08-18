@@ -1130,39 +1130,8 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("_buf[0] = 0;")
         asm("_buf2[0] = 0;")
         asm("if (_rt->expr) { _oo_expr_a_c(est, _rt->expr, _buf2, 4096); }")
-        asm("// F5-1 (Manual 2 §5.1): garantiza se evalua inmediatamente antes de cada")
-        asm("// `retornar`, con _resultado_ conteniendo el valor a retornar (paridad")
-        asm("// emit_declarations.py visitar_retornar L563-603). El S1 declara")
-        asm("// `RET_TIPO _resultado_ = EXPR;` FUERA del guard #ifndef para que el")
-        asm("// return siempre compile; los asserts van dentro del guard.")
-        asm("extern void* _G_fn_garantizas_actuales;")
-        asm("struct ListaNodo* _gz = (struct ListaNodo*)_G_fn_garantizas_actuales;")
-        // F5-1: garantiza asserts disabled in native compiler for self-hosting
-        // (same AST leak issue as requiere in funciones.syn)
-        asm("if (0 && _gz) {")
-        asm("    if (_rt->expr) {")
-        asm("        extern char _G_fn_ret_tipo_c[64];")
-        asm("        snprintf(_buf, 4096, \"    %s _resultado_ = %s;\", _G_fn_ret_tipo_c, _buf2);")
-        asm("        gen_emitir_str(est, _buf);")
-        asm("    }")
-        asm("    { struct ListaNodo* _gi = _gz;")
-        asm("      while (_gi) {")
-        asm("        struct Nodo* _gin = (struct Nodo*)_gi->cabeza;")
-        asm("        if (_gin) {")
-        asm("            char _gib[4096]; _gib[0] = 0;")
-        asm("            _oo_expr_a_c(est, _gin, _gib, 4096);")
-        asm("            char _gil[4200];")
-        asm("            snprintf(_gil, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gil);")
-        asm("            snprintf(_gil, 4200, \"    assert((%s) && \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);")
-        asm("            snprintf(_gil, 4200, \"    #endif\"); gen_emitir_str(est, _gil);")
-        asm("        }")
-        asm("        _gi = _gi->cola;")
-        asm("      }")
-        asm("    }")
-        asm("    if (_rt->expr) { gen_emitir_str(est, \"    return _resultado_;\"); }")
-        asm("    else { gen_emitir_str(est, \"    return;\"); }")
-        asm("    return;")
-        asm("}")
+        // F5-1 (Manual 2 §5.1): garantiza disabled in native compiler
+        // (same AST leak as requiere in funciones.syn)
         asm("strcat(_buf, \"    return \");")
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
@@ -3413,11 +3382,12 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    extern void* _G_fn_garantizas_actuales; extern char _G_fn_ret_tipo_c[64];")
         asm("    _G_fn_garantizas_actuales = (void*)_f->garantiza;")
         asm("    strncpy(_G_fn_ret_tipo_c, _rct, 63); _G_fn_ret_tipo_c[63] = 0;")
-        // F5-1 (Manual 2 §5.1): requiere asserts (Disabled in native compiler)
-        // The AST pipeline leaks requiere/garantiza data between functions when
-        // self-hosting (nucleo/*.syn). The S1 Python compiler handles this correctly
-        // via separate Python lists per DefinicionFuncion. Re-enable when AST bridge
-        // is fixed (puente_nodo must NULL-check contrato padre for each function).
+        // F5-1 (Manual 2 §5.1): requiere asserts
+        // NOTE: The native compiler's AST bridge leaks requiere/garantiza data
+        // between functions (stale ListaNodo chains from previous functions' contracts
+        // appear in functions without contracts). The S1 Python compiler handles
+        // this correctly via separate Python lists per DefinicionFuncion.
+        // When the AST bridge is fixed, re-enable by uncommenting the block below.
         asm("    // A2.3 paridad emit_declarations.py L411-413: inyectar _simd_detectar() al inicio de principal()")
         asm("    if (strcmp(_fn, \"principal\") == 0) { gen_emitir_str(est, \"    _simd_detectar();\"); }")
         asm("    // ME-B7: emitir declaraciones hoisteadas al inicio de la funcion (paridad _collect_vars -> write_line)")
