@@ -22,7 +22,7 @@ from compilador.ast_nodes import (
     DeclaracionVariable, AsignacionCampo, BloqueInseguro,
     LlamadaFuncion, Identificador, StmtConstante,
     OpBinaria, OpUnaria, LiteralNumero, LiteralDecimal, LiteralBooleano,
-    DeclaracionExterna, SentenciaLanzar,
+    LiteralNulo, DeclaracionExterna, SentenciaLanzar,
 )
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
@@ -185,11 +185,9 @@ def _es_expresion_booleana_valida(expr: Optional[Nodo]) -> bool:
     """
     if expr is None:
         return False
-    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano)):
+    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, LiteralNulo)):
         return True
     if isinstance(expr, Identificador):
-        if expr.nombre == 'nulo':
-            return True  # nulo es válido en comparaciones
         return True
     if isinstance(expr, OpBinaria):
         op = expr
@@ -220,7 +218,7 @@ def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
     """
     if expr is None:
         return False
-    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, Identificador)):
+    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, LiteralNulo, Identificador)):
         return True
     if isinstance(expr, OpBinaria):
         op = expr
