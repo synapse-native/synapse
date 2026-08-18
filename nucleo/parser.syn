@@ -356,6 +356,12 @@ funcion parsear_funcion(est: ParserEst) -> entero:
     pos_nombre = est.posicion
     token_avanzar(est)
     nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
+    // Resetear estado de contratos entre funciones (paridad S1 parser_declarations.py L94-95)
+    // Sin esto, una funcion sin requiere/garantiza hereda los de la anterior.
+    est.contr_primera_requiere = 0
+    est.contr_cuenta_requiere = 0
+    est.contr_primera_garantiza = 0
+    est.contr_cuenta_garantiza = 0
     // FASE A (A3.0): payload del nombre de la funcion (DefinicionFuncion.nombre)
     nodo_guardar_token(est, nodo_func, pos_nombre)
     si token_esperar(est, T_PAREN_IZQ) == 0:
