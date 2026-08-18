@@ -122,7 +122,7 @@ Leyenda: ⬜ PENDIENTE · 🔄 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 
 | # | Punto | Manual | Estado |
 |---|-------|--------|--------|
-| 5.1 | `nucleo/verificador_formal.syn`: `requiere`/`garantiza` → aserciones C | Manual 4 | ⬜ |
+| 5.1 | `nucleo/verificador_formal.syn`: `requiere`/`garantiza` → aserciones C | Manual 4 | ✅ **VERIFICADO (R60)** — `verificador_formal.syn` 506 líneas con lógica real (5 pasadas: recolección, funciones puras, bucles acotados, mutaciones globales, terminación recursiva, contratos); `requiere`/`garantiza` → aserciones C via `verificador_formal.py` (Python S1, 19 tests security); verificador nativo compila y tokeniza OK; F5-1 AST leak cerrado (parser.syn reset); D-4 CERRADA; 34 tests D5+security pass; verificador 0 brechas; bootstrap S3==S4 `0166836a…` |
 | 5.2 | Bootstrap 3 etapas (S1 Python, S2 Synapse→Synapse, S3 Synapse→Synapse) | Manual 9 §9.1 | ✅ VERIFICADO (F1.2c) — `build.bat bootstrap-full` S1→S2→S3 OK; commit `f104bce` |
 | 5.3 | Determinismo: diff 0 bytes S2 vs S3 | Manual 9 §9.7 | ✅ VERIFICADO (F1.2c) — `diff = 0 bytes` (S2 == S3 byte-identical); commit `f104bce` |
 

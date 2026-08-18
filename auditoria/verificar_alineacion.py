@@ -239,7 +239,7 @@ DEUDAS_CANONICAS = {
     "D-1":  {"estado": "PENDIENTE", "resolucion": "Fase 23 (modelo de memoria Syquex: arenas/RC/alcance)"},
     "D-2":  {"estado": "CERRADA", "resolucion": "A5 monomorfización (Opción A del Arquitecto)"},
     "D-3":  {"estado": "CERRADA", "resolucion": "A5 hoisting FIFO + = {0};"},
-    "D-4":  {"estado": "PENDIENTE", "resolucion": "Fase 5 (verificador_formal: requiere/garantiza → aserciones C)"},
+    "D-4":  {"estado": "CERRADA", "resolucion": "R60 verificador_formal.syn + verificador_formal.py (19 tests security); AST leak F5-1 cerrado; 34 tests D5+security pass"},
     "D-5":  {"estado": "CERRADA", "resolucion": "A5 cobertura generator.py 58%→95%"},
     "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
     "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
