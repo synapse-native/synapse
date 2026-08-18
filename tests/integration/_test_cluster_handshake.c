@@ -153,6 +153,9 @@ char _G_lanzar_wrappers[8][4096];
 int _G_lanzar_wrappers_count;
 int _G_lanzar_count;
 
+void* _G_fn_garantizas_actuales = 0;
+char _G_fn_ret_tipo_c[64];
+
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
 int _G_tipo_aliases_count;

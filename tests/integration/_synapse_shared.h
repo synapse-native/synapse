@@ -3,6 +3,8 @@ extern int _G_scope_vars_depth[256];
 extern char _G_scope_vars_names[256][64];
 extern int _G_scope_vars_total;
 extern int _G_safe_mode;  // M22.5: --safe flag
+extern void* _G_fn_garantizas_actuales;  // F5-1
+extern char _G_fn_ret_tipo_c[64];  // F5-1
 
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
@@ -812,6 +814,7 @@ extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
 extern CadenaSegura _syn_obtener_env(CadenaSegura nombre);
 extern int64_t _syn_existe_archivo(CadenaSegura ruta);
 extern int64_t _syn_eliminar_archivo(CadenaSegura ruta);
+extern void cerrar_archivo(Canal c);
 extern Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura _syn_leer(Canal c);
 extern void _syn_escribir(CadenaSegura texto);

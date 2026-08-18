@@ -100,7 +100,7 @@ import glob as _glob
 import os as _os
 
 _RT_CORE_FUENTES = tuple(sorted(
-    _glob.glob(_os.path.join("runtime", "core", "*.c"))))
+    _glob.glob(_os.path.join(SYNAPSE_BIN, "runtime", "core", "*.c"))))
 _RT_FUENTES = (
     "synapse_rt.c",
 ) + _RT_CORE_FUENTES + (
@@ -619,7 +619,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         linker_net = "-lws2_32" if sys.platform == "win32" else ""
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
         no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
-        base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I.'.strip()
+        base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}"'.strip()
         # ME-R2: compilar el runtime modular desde fuente (Manual 3 §3.1).
         # Elimina la dependencia de .o precompilados inexistentes en instalación limpia.
         rt_objs = ""
@@ -740,7 +740,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         if incremental:
             # Generar .o por separado para cache
             obj_path = ruta_base + ".o"
-            gcc_obj_cmd = f'{compiler} -c {platform_flags} {env_gcc_flags} -I. "{ruta_c}" -o "{obj_path}"'
+            gcc_obj_cmd = f'{compiler} -c {platform_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}" "{ruta_c}" -o "{obj_path}"'
             print(f"[CACHE] Generando objeto: {gcc_obj_cmd}")
             obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
             if obj_rc == 0 and os.path.exists(obj_path):
@@ -867,7 +867,7 @@ def _link_object(obj_path: str, output_exe: str) -> int:
     else:
         platform_flags += " -Wl,--stack,8388608"
     linker_net = "-lws2_32" if sys.platform == "win32" else ""
-    base_flags = f'{platform_flags} -I.'.strip()
+    base_flags = f'{platform_flags} -I"{SYNAPSE_BIN}"'.strip()
 
     # ME-R2: runtime modular compilado desde fuente (Manual 3 §3.1)
     try:

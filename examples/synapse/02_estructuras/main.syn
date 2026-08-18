@@ -5,7 +5,7 @@ estructura Persona:
     edad: entero
 
 funcion principal() -> nulo:
-    p: Persona = Persona()
+    let p: Persona = Persona()
     p.nombre = "Ana"
     p.edad = 30
     escribir_linea("Nombre: " + p.nombre)
