@@ -32,7 +32,7 @@
 
 // --- Externs del resto del runtime (permanecen en synapse_rt.c) ---
 // D-9(d) corte 4: el bloque cluster usa estas funciones definidas fuera.
-extern int _syn_iniciar_red(void);
+#include "runtime/core/network.h"  // D-9(d) corte 6: std.net extraido a network.c
 extern long long _get_timestamp_ns(void);
 extern void sha256_init(SHA256_CTX* ctx);
 extern void sha256_update(SHA256_CTX* ctx, const uint8_t* data, size_t len);
