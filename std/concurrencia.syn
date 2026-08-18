@@ -8,25 +8,21 @@
 //   - Canal<T> / canal(T, N)   canales tipados FIFO (Manual 5 §3.1)
 //   - ch <- valor              envío (bloquea si lleno; Manual 5 §3.2)
 //   - valor = ch ->            recepción (bloquea si vacío; Manual 5 §3.2)
-//   - cerrar_canal(ch)         cierre del canal (builtin del lenguaje;
+//   - cerrar(ch)               cierre del canal (builtin del lenguaje;
 //                              los receptores obtienen nulo, Manual 5 §3.6)
 //   - lanzar fn(...)           fibras M:N (Manual 5 §2.6; codegen F4.4)
 //   - escuchar ch:             listener sobre el canal (Manual 5 §4;
 //                              codegen F4.4)
 //
 // HALLAZGOS F4.4 (regla 11, resolución asignada):
-//   (d1) El builtin de cierre de canales es `cerrar_canal`, mientras Manual 5
-//        §3.2 la nombra `cerrar(canal)`. `cerrar` NO puede usarse para
-//        canales: ya es un builtin del cierre de ARCHIVOS de std.io
-//        (`void cerrar(Canal canal)`, donde `Canal` es el canal de archivo).
-//        Resolución: renombrar el builtin `cerrar_canal` → `cerrar` y
-//        desambiguar el cierre de archivo en una limpieza futura (rompería
-//        los tests R37/F3-7 si se hace en F4.4).
+//   (d1) RESUELTO (R55): el builtin de cierre de canales es `cerrar`
+//        (Manual 5 §3.2). El cierre de archivos de std.io fue renombrado
+//        a `cerrar_archivo` para desambiguar.
 //   (d2) Los wrappers `enviar`/`recibir`/`cerrar`/`destruir` con externs
 //        inventados `_syn_canal_*` (inexistentes en el runtime) fueron
 //        ELIMINADOS (regla 5: no están en los manuales; regla 8: no
 //        enlazaban). El uso legítimo es el operador `<-`/`->` y el builtin
-//        `cerrar_canal` nativos del lenguaje.
+//        `cerrar` nativos del lenguaje.
 //   (d3) `e2e_concurrencia.syn` (único usuario de la API eliminada) es
 //        legacy sin referencia en la suite pytest; se actualiza al uso
 //        nativo o se elimina en la limpieza (regla 12).

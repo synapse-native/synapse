@@ -21,5 +21,5 @@ funcion principal() -> nulo:
     ch <- 5
     ch <- 0
     ch <- 7
-    cerrar_canal(ch)
+    cerrar(ch)
     retornar

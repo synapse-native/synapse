@@ -331,7 +331,7 @@ void* canal_recibir(CanalConcurrencia* canal, bool* cerrado) {
     }
 }
 
-void cerrar_canal(CanalConcurrencia* canal) {
+void cerrar(CanalConcurrencia* canal) {
     // Manual 5 §3.6: cerrar() marca el canal cerrado y despierta a los
     // receptores/emisores bloqueados; los receptores reciben NULL (paridad
     // con el Resultado de cierre del manual) y pueden salir ordenadamente.

@@ -733,7 +733,7 @@ def emitir_leer_linea(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx.write_line("")
 
 def emitir_cerrar(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    ctx.write_line("void cerrar(Canal canal) {")
+    ctx.write_line("void cerrar_archivo(Canal canal) {")
     ctx.inc_indent()
     ctx.write_line("if (canal.es_virtual) return;")
     ctx.write_line("if (canal.stream) fclose(canal.stream);")

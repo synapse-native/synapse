@@ -322,7 +322,7 @@ funcion es_builtin(nombre: cadena) -> booleano:
         asm("if (strcmp(nombre.datos, \"escribir\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"leer_linea\") == 0) { return verdadero; }")
-        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"suma\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"producto\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"relu\") == 0) { return verdadero; }")
@@ -341,7 +341,7 @@ funcion es_builtin(nombre: cadena) -> booleano:
         asm("if (strcmp(nombre.datos, \"canal_crear\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return verdadero; }")
-        asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"len\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return verdadero; }")
@@ -359,7 +359,7 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
         asm("if (strcmp(nombre.datos, \"escribir\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"leer_linea\") == 0) { return 0; }")
-        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"suma\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"producto\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"relu\") == 0) { return 1; }")
@@ -378,7 +378,7 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
         asm("if (strcmp(nombre.datos, \"canal_crear\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return 1; }")
-        asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"len\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return 3; }")
         asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return 2; }")
@@ -395,7 +395,7 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     si nombre == "escribir": retornar "nulo"
     si nombre == "escribir_linea": retornar "nulo"
     si nombre == "leer_linea": retornar "texto"
-    si nombre == "cerrar": retornar "nulo"
+    si nombre == "cerrar_archivo": retornar "nulo"
     si nombre == "suma": retornar "tensor"
     si nombre == "producto": retornar "tensor"
     si nombre == "relu": retornar "tensor"
@@ -414,7 +414,7 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     si nombre == "canal_crear": retornar "CanalConcurrencia*"
     si nombre == "canal_enviar": retornar "nulo"
     si nombre == "canal_recibir": retornar "void*"
-    si nombre == "cerrar_canal": retornar "nulo"
+    si nombre == "cerrar": retornar "nulo"
     si nombre == "len": retornar "int"
     si nombre == "subcadena": retornar "texto"
     si nombre == "empieza_con": retornar "int"
@@ -426,7 +426,7 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
         si idx == 1 o nombre == "reserva" o nombre == "libera": retornar "int"
     si nombre == "abrir":
         si idx == 0 o idx == 1: retornar "texto"
-    si nombre == "leer" o nombre == "cerrar":
+    si nombre == "leer" o nombre == "cerrar_archivo":
         si idx == 0: retornar "Canal"
     si nombre == "escribir" o nombre == "escribir_linea":
         si idx == 0: retornar "texto"
@@ -452,7 +452,7 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
     si nombre == "canal_enviar":
         si idx == 0: retornar "CanalConcurrencia*"
         si idx == 1: retornar "void*"
-    si nombre == "canal_recibir" o nombre == "cerrar_canal":
+    si nombre == "canal_recibir" o nombre == "cerrar":
         si idx == 0: retornar "CanalConcurrencia*"
     si nombre == "len" o nombre == "empieza_con":
         si idx == 0: retornar "texto"

@@ -560,13 +560,32 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         excl = nodo.expr.nombre
         ctx._tensor_vars_transferidas.add(excl)
 
-    # Garantiza assertions before every return
+    # Manual 2 §5.1: garantiza se evalúa inmediatamente antes de cada
+    # `retornar`, con `_resultado_` conteniendo el valor que se va a retornar.
+    if ctx._garantizas_actuales and nodo.expr:
+        ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
+        ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
+        ret_expr = expr_a_c(ctx, nodo.expr)
+        ctx.write_line(f"{ret_tipo_c} _resultado_ = {ret_expr};")
+        for expr in ctx._garantizas_actuales:
+            expr_c = expr_a_c(ctx, expr)
+            ctx.write_line("#ifndef SYNAPSE_RELEASE")
+            ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
+            ctx.write_line("#endif")
+        ctx.emit_all_destructors(exclude_var=excl)
+        if nodo.es_transferencia:
+            ctx.write_line("return ->_resultado_;")
+        else:
+            ctx.write_line("return _resultado_;")
+        return
+
+    # Garantiza assertions before every return (sin expr: `return;` en void)
     for expr in ctx._garantizas_actuales:
         expr_c = expr_a_c(ctx, expr)
         ctx.write_line("#ifndef SYNAPSE_RELEASE")
         ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
         ctx.write_line("#endif")
-    
+
     if nodo.expr:
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output

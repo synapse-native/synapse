@@ -265,9 +265,9 @@ funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> Resultado:
     r.valor_str = paquete
     retornar r
 
-// cerrar — Cierra un CanalRemoto y libera sus recursos
+// cerrar_remoto — Cierra un CanalRemoto y libera sus recursos
 // -> ch: canal a cerrar
-funcion cerrar(-> ch: CanalRemoto) -> nulo:
+funcion cerrar_remoto(-> ch: CanalRemoto) -> nulo:
     ch.estado = 1  // CERRADO
     retornar
 

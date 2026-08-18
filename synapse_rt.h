@@ -9,7 +9,7 @@ void escribir_linea(CadenaSegura contenido);
 CadenaSegura leer_linea(void);
 Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 CadenaSegura leer(Canal canal);
-void cerrar(Canal canal);
+void cerrar_archivo(Canal canal);
 
 Tensor crear_tensor(int filas, int columnas);
 Tensor suma_tensor(Tensor a, Tensor b);
@@ -31,7 +31,7 @@ CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
 void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
-void cerrar_canal(CanalConcurrencia* canal);
+void cerrar(CanalConcurrencia* canal);
 
 void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);

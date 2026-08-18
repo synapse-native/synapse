@@ -128,7 +128,7 @@ static int g_cierre_vio_nulo = 0;
 static void fibra4_recibe(void* p) {
     (void)p;
     void* dato = canal_recibir(g_ch4, &(bool){0});   /* canal vacio: se parquea */
-    g_cierre_vio_nulo = (dato == NULL);  /* cerrar_canal -> NULL (Manual 5 §3.6) */
+    g_cierre_vio_nulo = (dato == NULL);  /* cerrar -> NULL (Manual 5 §3.6) */
     fibra_terminar(NULL);
 }
 
@@ -258,15 +258,15 @@ int main(void) {
     scheduler_detener();
 
     /* 4. Cierre despierta una fibra parqueada en receive */
-    printf("\n--- 4. cerrar_canal despierta una fibra parqueada ---\n");
+    printf("\n--- 4. cerrar despierta una fibra parqueada ---\n");
     scheduler_iniciar(2);
     g_ch4 = canal_crear(4);
     fibra_crear(fibra4_recibe, NULL, 0);
     for (volatile int i = 0; i < 200000; i++) { }
-    cerrar_canal(g_ch4);
+    cerrar(g_ch4);
     fibra_esperar(prox_id);
     prox_id++;
-    check(g_cierre_vio_nulo == 1, "cerrar_canal -> la fibra parqueada recibe NULL");
+    check(g_cierre_vio_nulo == 1, "cerrar -> la fibra parqueada recibe NULL");
     canal_destruir(g_ch4);
     scheduler_detener();
 
@@ -324,13 +324,13 @@ int main(void) {
     scheduler_detener();
 
     /* 7. Cierre con emisor parqueado (buffer lleno) */
-    printf("\n--- 7. cerrar_canal con emisor parqueado (buffer lleno) ---\n");
+    printf("\n--- 7. cerrar con emisor parqueado (buffer lleno) ---\n");
     scheduler_iniciar(2);
     for (int i = 0; i < 3; i++) g_cierre_items[i] = i + 1;
     g_ch_cierre = canal_crear(CIERRE_CAP);
     fibra_crear(fibra_cierre_emisor, NULL, 0);
     for (volatile int i = 0; i < 300000; i++) { }
-    cerrar_canal(g_ch_cierre);
+    cerrar(g_ch_cierre);
     fibra_esperar(prox_id);
     prox_id++;
     check(g_cierre_emisor_termino == 1, "el emisor parqueado se despierta al cerrar y termina");

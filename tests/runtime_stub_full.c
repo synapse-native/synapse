@@ -14,7 +14,7 @@ void escribir_linea(CadenaSegura contenido) { fprintf(stderr, "%.*s\n", contenid
 CadenaSegura leer_linea(void) { return (CadenaSegura){0, ""}; }
 Canal abrir(CadenaSegura ruta, CadenaSegura modo) { return (Canal){0}; }
 CadenaSegura leer(Canal canal) { return (CadenaSegura){0, ""}; }
-void cerrar(Canal canal) {}
+void cerrar_archivo(Canal canal) {}
 Tensor crear_tensor(int filas, int columnas) { return (Tensor){0}; }
 Tensor suma_tensor(Tensor a, Tensor b) { return (Tensor){0}; }
 Tensor producto_punto(Tensor a, Tensor b) { return (Tensor){0}; }

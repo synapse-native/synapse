@@ -100,7 +100,7 @@ extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
+extern void cerrar_archivo(Canal canal);
 extern Tensor crear_tensor(int filas, int columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
@@ -125,7 +125,7 @@ extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
-extern void cerrar_canal(CanalConcurrencia* canal);
+extern void cerrar(CanalConcurrencia* canal);
 // --- Contratos (requiere/garantiza) ---
 #ifdef SYNAPSE_RELEASE
 #define assert_contrato(expr, msg) ((void)0)
@@ -499,7 +499,7 @@ int es_builtin(CadenaSegura nombre) {
         if (strcmp(nombre.datos, "canal_crear") == 0) { return verdadero; };
         if (strcmp(nombre.datos, "canal_enviar") == 0) { return verdadero; };
         if (strcmp(nombre.datos, "canal_recibir") == 0) { return verdadero; };
-        if (strcmp(nombre.datos, "cerrar_canal") == 0) { return verdadero; };
+        if (strcmp(nombre.datos, "cerrar") == 0) { return verdadero; };
     }
     int _ret_264 = 0;
     return _ret_264;
@@ -536,7 +536,7 @@ int builtin_cantidad_args(CadenaSegura nombre) {
         if (strcmp(nombre.datos, "canal_crear") == 0) { return 1; };
         if (strcmp(nombre.datos, "canal_enviar") == 0) { return 2; };
         if (strcmp(nombre.datos, "canal_recibir") == 0) { return 1; };
-        if (strcmp(nombre.datos, "cerrar_canal") == 0) { return 1; };
+        if (strcmp(nombre.datos, "cerrar") == 0) { return 1; };
     }
     int _ret_298 = 0;
     return _ret_298;
@@ -659,7 +659,7 @@ CadenaSegura builtin_tipo_retorno(CadenaSegura nombre) {
         CadenaSegura _ret_329 = (CadenaSegura){ .longitud = (int)strlen("void*"), .datos = "void*" };
         return _ret_329;
     }
-    if ((str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("cerrar_canal"), .datos = "cerrar_canal" }) == 1)) {
+    if ((str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("cerrar"), .datos = "cerrar" }) == 1)) {
         CadenaSegura _ret_330 = (CadenaSegura){ .longitud = (int)strlen("nulo"), .datos = "nulo" };
         return _ret_330;
     }
@@ -764,7 +764,7 @@ CadenaSegura builtin_tipo_parametro(CadenaSegura nombre, int idx) {
             return _ret_364;
         }
     }
-    if (((str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("canal_recibir"), .datos = "canal_recibir" }) == 1) || (str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("cerrar_canal"), .datos = "cerrar_canal" }) == 1))) {
+    if (((str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("canal_recibir"), .datos = "canal_recibir" }) == 1) || (str_eq(nombre, (CadenaSegura){ .longitud = (int)strlen("cerrar"), .datos = "cerrar" }) == 1))) {
         if ((idx == 0)) {
             CadenaSegura _ret_366 = (CadenaSegura){ .longitud = (int)strlen("CanalConcurrencia*"), .datos = "CanalConcurrencia*" };
             return _ret_366;

@@ -863,7 +863,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "CadenaSegura leer_linea(void)",
             "Canal abrir(CadenaSegura ruta, CadenaSegura modo)",
             "CadenaSegura leer(Canal canal)",
-            "void cerrar(Canal canal)",
+            "void cerrar_archivo(Canal canal)",
             "Tensor crear_tensor(int filas, int columnas)",
             "Tensor suma_tensor(Tensor a, Tensor b)",
             "Tensor producto_punto(Tensor a, Tensor b)",
@@ -899,7 +899,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "void canal_enviar(CanalConcurrencia* canal, void* paquete)",
             "void* canal_recibir(CanalConcurrencia* canal, bool* cerrado)",
             "void canal_destruir(CanalConcurrencia* canal)",
-            "void cerrar_canal(CanalConcurrencia* canal)",
+            "void cerrar(CanalConcurrencia* canal)",
         ]:
             ctx.write_line(f"extern {ext};")
 
@@ -1424,6 +1424,10 @@ class GeneradorC:
             ctx.write_line("extern char _G_scope_vars_names[256][64];")
             ctx.write_line("extern int _G_scope_vars_total;")
             ctx.write_line("extern int _G_safe_mode;  // M22.5: --safe flag")
+            # F5-1 (Manual 2 §5.1): garantiza globals del codegen (usados via
+            # asm() en funciones.syn/nodos_flujo.syn para emitir asserts)
+            ctx.write_line("extern void* _G_fn_garantizas_actuales;  // F5-1")
+            ctx.write_line("extern char _G_fn_ret_tipo_c[64];  // F5-1")
             ctx.write_line("")
             _emitir_encabezado(ctx)
             # Extern declarations para runtime helpers (NO definiciones \u2014 son solo para link)
@@ -1690,6 +1694,11 @@ class GeneradorC:
                 ctx.write_line("char _G_lanzar_wrappers[8][4096];")
                 ctx.write_line("int _G_lanzar_wrappers_count;")
                 ctx.write_line("int _G_lanzar_count;")
+                ctx.write_line("")
+                # F5-1 (Manual 2 §5.1): garantiza globals del codegen (definidos
+                # aqui, usados via asm() en funciones.syn/nodos_flujo.syn)
+                ctx.write_line("void* _G_fn_garantizas_actuales = 0;")
+                ctx.write_line("char _G_fn_ret_tipo_c[64];")
                 ctx.write_line("")
                 # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
                 ctx.write_line("char _G_tipo_aliases[128][64];")

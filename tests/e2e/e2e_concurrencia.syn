@@ -3,7 +3,7 @@
 // Lanza dos fibras que se comunican usando Canal<T>
 // Verifica: ausencia de deadlocks, ownership strict, paso de mensajes correcto
 // F4.4: usa la API NATIVA del lenguaje (Manual 5 S3): canal(T,N), <-, ->,
-// cerrar_canal, lanzar (fibras M:N) - la API de std.concurrencia con externs
+// cerrar, lanzar (fibras M:N) - la API de std.concurrencia con externs
 // inventados _syn_canal_* fue eliminada (regla 5/8, hallazgo d2 de R51).
 // NOTA (F4-6 resuelto en R53): el valor 0 ya es distinguible del cierre — el
 // listener del `escuchar` rompe el while con el out-param `bool* cerrado`
@@ -19,7 +19,7 @@ funcion productor(ch: Canal<entero>, total: entero) -> nulo:
         v = i
         ch <- v
         i = i + 1
-    cerrar_canal(ch)
+    cerrar(ch)
     retornar
 
 funcion consumidor(ch: Canal<entero>) -> nulo:

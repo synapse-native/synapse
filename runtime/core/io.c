@@ -150,7 +150,7 @@ CadenaSegura _syn_leer(Canal canal) {
 
 CadenaSegura leer(Canal canal) { return _syn_leer(canal); }
 
-void cerrar(Canal canal) {
+void cerrar_archivo(Canal canal) {
     if (canal.es_virtual) { return; }
     if (canal.stream) {
         fclose(canal.stream);

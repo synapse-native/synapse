@@ -50482,7 +50482,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return verdadero; }"
                 }
               },
               {
@@ -50615,7 +50615,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return verdadero; }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }"
                 }
               },
               {
@@ -50741,7 +50741,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return 1; }"
                 }
               },
               {
@@ -50874,7 +50874,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return 1; }"
+                  "instruccion": "if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }"
                 }
               },
               {
@@ -51184,7 +51184,7 @@
               "operador": "==",
               "derecho": {
                 "_tipo": "LiteralCadena",
-                "valor": "cerrar"
+                "valor": "cerrar_archivo"
               }
             },
             "cuerpo": [
@@ -51659,7 +51659,7 @@
               "operador": "==",
               "derecho": {
                 "_tipo": "LiteralCadena",
-                "valor": "cerrar_canal"
+                "valor": "cerrar"
               }
             },
             "cuerpo": [
@@ -52022,7 +52022,7 @@
                 "operador": "==",
                 "derecho": {
                   "_tipo": "LiteralCadena",
-                  "valor": "cerrar"
+                  "valor": "cerrar_archivo"
                 }
               }
             },
@@ -52736,7 +52736,7 @@
                 "operador": "==",
                 "derecho": {
                   "_tipo": "LiteralCadena",
-                  "valor": "cerrar_canal"
+                  "valor": "cerrar"
                 }
               }
             },
@@ -68290,13 +68290,6 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "strcat(_buf, \"    return \");"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
                   "instruccion": "_buf2[0] = 0;"
                 }
               },
@@ -68305,6 +68298,230 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "if (_rt->expr) { _oo_expr_a_c(est, _rt->expr, _buf2, 4096); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// F5-1 (Manual 2 §5.1): garantiza se evalua inmediatamente antes de cada"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// `retornar`, con _resultado_ conteniendo el valor a retornar (paridad"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// emit_declarations.py visitar_retornar L563-603). El S1 declara"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// `RET_TIPO _resultado_ = EXPR;` FUERA del guard #ifndef para que el"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// return siempre compile; los asserts van dentro del guard."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "extern void* _G_fn_garantizas_actuales;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "struct ListaNodo* _gz = (struct ListaNodo*)_G_fn_garantizas_actuales;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if (0 && _gz) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_rt->expr) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        extern char _G_fn_ret_tipo_c[64];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        snprintf(_buf, 4096, \"    %s _resultado_ = %s;\", _G_fn_ret_tipo_c, _buf2);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        gen_emitir_str(est, _buf);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    { struct ListaNodo* _gi = _gz;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "      while (_gi) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct Nodo* _gin = (struct Nodo*)_gi->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        if (_gin) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _gib[4096]; _gib[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _oo_expr_a_c(est, _gin, _gib, 4096);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            char _gil[4200];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_gil, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gil);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_gil, 4200, \"    assert((%s) && \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            snprintf(_gil, 4200, \"    #endif\"); gen_emitir_str(est, _gil);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        _gi = _gi->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "      }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_rt->expr) { gen_emitir_str(est, \"    return _resultado_;\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    else { gen_emitir_str(est, \"    return;\"); }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    return;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "strcat(_buf, \"    return \");"
                 }
               },
               {
@@ -82798,6 +83015,48 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "    // F5-1 (Manual 2 §5.1): requiere se evalua antes de la primera"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // instruccion -> asserts al inicio del cuerpo (paridad"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // emit_declarations.py L461-465, incl. guard #ifndef SYNAPSE_RELEASE)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    extern void* _G_fn_garantizas_actuales; extern char _G_fn_ret_tipo_c[64];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_fn_garantizas_actuales = (void*)_f->garantiza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    strncpy(_G_fn_ret_tipo_c, _rct, 63); _G_fn_ret_tipo_c[63] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "    // A2.3 paridad emit_declarations.py L411-413: inyectar _simd_detectar() al inicio de principal()"
                 }
               },
@@ -83527,6 +83786,139 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // F5-1 (Manual 2 §5.1): funciones void con garantiza emiten los"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // asserts en el retorno implicito (paridad emit_declarations.py"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // L510-516, mensaje \"garantiza (final)\"). Sin _resultado_ (void)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if ((strcmp(_rt, \"nada\") == 0 || _rt[0] == 0) && _G_fn_garantizas_actuales) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        struct ListaNodo* _gvf = (struct ListaNodo*)_G_fn_garantizas_actuales;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        while (_gvf) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            struct Nodo* _gvfn = (struct Nodo*)_gvf->cabeza;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            if (_gvfn) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _gvb[4096]; _gvb[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                _oo_expr_a_c(est, _gvfn, _gvb, 4096);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                char _gvl[4200];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_gvl, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gvl);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_gvl, 4200, \"    assert((%s) && \\\"Fallo en contrato: garantiza (final)\\\");\", _gvb); gen_emitir_str(est, _gvl);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                snprintf(_gvl, 4200, \"    #endif\"); gen_emitir_str(est, _gvl);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            _gvf = _gvf->cola;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "        }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    _G_fn_garantizas_actuales = 0;"
                 }
               },
               {
@@ -87346,6 +87738,57 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
+                  "valor": "void* _G_fn_garantizas_actuales;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "char _G_fn_ret_tipo_c[64];"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
                   "valor": "char _G_native_canal_names[512][64];"
                 }
               ]
@@ -87925,6 +88368,40 @@
                 {
                   "_tipo": "LiteralCadena",
                   "valor": "int _G_lanzar_count;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "void* _G_fn_garantizas_actuales = 0;"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "gen_emitir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "LiteralCadena",
+                  "valor": "char _G_fn_ret_tipo_c[64];"
                 }
               ]
             }
@@ -88604,7 +89081,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "extern void cerrar(Canal canal);"
+                  "valor": "extern void cerrar_archivo(Canal canal);"
                 }
               ]
             }
@@ -89080,7 +89557,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "extern void cerrar_canal(CanalConcurrencia* canal);"
+                  "valor": "extern void cerrar(CanalConcurrencia* canal);"
                 }
               ]
             }
@@ -93128,23 +93605,15 @@
         ]
       },
       {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "cerrar",
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cerrar_archivo",
         "parametros": [
           {
             "nombre": "c",
             "tipo": "Canal"
           }
         ],
-        "tipo_retorno": "nulo",
-        "requiere": [],
-        "garantiza": [],
-        "cuerpo": [
-          {
-            "_tipo": "SentenciaRetornar",
-            "es_transferencia": false
-          }
-        ]
+        "tipo_retorno": "nulo"
       },
       {
         "_tipo": "DefinicionFuncion",

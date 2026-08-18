@@ -210,7 +210,7 @@ def _es_expresion_booleana_valida(expr: Optional[Nodo]) -> bool:
     if isinstance(expr, LlamadaFuncion):
         # Llamadas de I/O o efectos no permitidas en contratos
         return expr.nombre not in {'escribir', 'escribir_linea', 'leer', 'leer_linea',
-                                    'abrir', 'cerrar', 'lanzar'}
+                                    'abrir', 'cerrar_archivo', 'lanzar'}
     return False
 
 
@@ -232,7 +232,7 @@ def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
         return expr.operador in ('!', '-')
     if isinstance(expr, LlamadaFuncion):
         return expr.nombre not in {'escribir', 'escribir_linea', 'leer', 'leer_linea',
-                                    'abrir', 'cerrar', 'lanzar'}
+                                    'abrir', 'cerrar_archivo', 'lanzar'}
     return False
 
 

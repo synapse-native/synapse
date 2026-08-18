@@ -10,7 +10,7 @@ y ejecuta el binario. Verifica:
   2. Canal sincrono (capacidad 0) fibra<->fibra: handoff directo.
   3. 1 worker: una fibra parqueada en receive NO bloquea al worker (la 2.ª
      fibra corre) y luego se despierta al enviar.
-  4. cerrar_canal despierta una fibra parqueada (recibe NULL).
+  4. cerrar despierta una fibra parqueada (recibe NULL).
   5. Mixto thread <-> fibra (handoff directo en ambas direcciones).
   6. Estres: 40 emisores x 25 + consumidor (1.000 mensajes, buffer 8) sin
      deadlocks ni perdidas.
@@ -110,7 +110,7 @@ class TestCanalesFibras:
         assert "canal sincrono fibra<->fibra: handoff directo 50 items" in out, f"[PASS] faltante:\n{out}"
         assert "1 worker: la 2. fibra corre mientras la 1. esta parqueada" in out, f"[PASS] faltante:\n{out}"
         assert "la fibra parqueada en receive se despierta y recibe el dato" in out, f"[PASS] faltante:\n{out}"
-        assert "cerrar_canal -> la fibra parqueada recibe NULL" in out, f"[PASS] faltante:\n{out}"
+        assert "cerrar -> la fibra parqueada recibe NULL" in out, f"[PASS] faltante:\n{out}"
         assert "emisor thread -> receptor fibra parqueada (handoff directo)" in out, f"[PASS] faltante:\n{out}"
         assert "emisor fibra -> receptor thread (handoff directo)" in out, f"[PASS] faltante:\n{out}"
         assert "estres: 1.000 mensajes sin deadlocks ni perdidas" in out, f"[PASS] faltante:\n{out}"

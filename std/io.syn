@@ -19,8 +19,7 @@ funcion abrir(ruta: texto, modo: texto) -> Canal:
 funcion leer(c: Canal) -> texto:
     retornar _syn_leer(c)
 
-funcion cerrar(-> c: Canal) -> nulo:
-    retornar
+externo funcion cerrar_archivo(c: Canal) -> nulo
 
 funcion escribir(texto: texto) -> nulo:
     _syn_escribir(texto)

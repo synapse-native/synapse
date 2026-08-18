@@ -5,7 +5,7 @@ funcion leer(canal: Canal) -> texto:
     retornar ""
 funcion escribir(canal: Canal, contenido: texto) -> nulo:
     retornar
-funcion cerrar(-> canal: Canal) -> nulo:
+funcion cerrar_archivo(-> canal: Canal) -> nulo:
     retornar
 funcion reserva(tamano: int) -> tensor:
     retornar 0
@@ -16,5 +16,5 @@ funcion principal() -> nulo:
     contenido = leer(archivo)
     log("archivo leido:")
     log(contenido)
-    cerrar(->archivo)
+    cerrar_archivo(->archivo)
     log("archivo cerrado")

@@ -211,6 +211,6 @@ void canal_destruir(CanalConcurrencia* canal);
 // ============================================================
 Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 CadenaSegura leer(Canal canal);
-void cerrar(Canal canal);
+void cerrar_archivo(Canal canal);
 
 #endif /* SYNAPSE_RT_TYPES_H */

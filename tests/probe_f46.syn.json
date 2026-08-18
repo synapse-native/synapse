@@ -1,0 +1,1045 @@
+{
+  "synapse": "2.0",
+  "ast": {
+    "_tipo": "Programa",
+    "sentencias": [
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_sha256_texto",
+        "parametros": [
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ed25519_verificar",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "sha256_texto",
+        "parametros": [
+          {
+            "nombre": "datos",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_sha256_texto",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "datos"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ed25519_verificar",
+        "parametros": [
+          {
+            "nombre": "mensaje",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "firma",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "clave_publica",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ed25519_verificar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "mensaje"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "firma"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "clave_publica"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_normalizar_ruta",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_cwd",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ruta_en_directorio",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "dir",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "_validar_ruta_segura",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "normalizada",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_normalizar_ruta",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "cwd",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_cwd",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpUnaria",
+              "operador": "!",
+              "expr": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_syn_ruta_en_directorio",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "normalizada"
+                  },
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "cwd"
+                  }
+                ]
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "Identificador",
+              "nombre": "normalizada"
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_obtener_env",
+        "parametros": [
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_existe_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_eliminar_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "ejecutar_comando",
+        "parametros": [
+          {
+            "nombre": "cmd",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_ejecutar_comando",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "cmd"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "contenido",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "OpUnaria",
+                  "operador": "-",
+                  "expr": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "contenido"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralCadena",
+                  "valor": ""
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "obtener_env",
+        "parametros": [
+          {
+            "nombre": "nombre",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_obtener_env",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "nombre"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "existe_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "booleano",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralBooleano",
+                  "valor": false
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "LlamadaFuncion",
+                "nombre": "_syn_existe_archivo",
+                "argumentos": [
+                  {
+                    "_tipo": "Identificador",
+                    "nombre": "ruta_segura"
+                  }
+                ]
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralNumero",
+                "valor": 1
+              }
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "eliminar_archivo",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "entero",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "OpUnaria",
+                  "operador": "-",
+                  "expr": {
+                    "_tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_eliminar_archivo",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ruta_segura",
+            "expresion": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_validar_ruta_segura",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaSi",
+            "condicion": {
+              "_tipo": "OpBinaria",
+              "izquierdo": {
+                "_tipo": "Identificador",
+                "nombre": "ruta_segura"
+              },
+              "operador": "==",
+              "derecho": {
+                "_tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "_tipo": "SentenciaRetornar",
+                "expr": {
+                  "_tipo": "LiteralNumero",
+                  "valor": 0
+                },
+                "es_transferencia": false
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_abrir",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ruta_segura"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "modo"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "c"
+                }
+              ]
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "cerrar_archivo",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_escribir_linea",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "texto"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaRetornar",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "_syn_leer_linea",
+              "argumentos": []
+            },
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_abrir",
+        "parametros": [
+          {
+            "nombre": "ruta",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "modo",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "Canal"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer",
+        "parametros": [
+          {
+            "nombre": "c",
+            "tipo": "Canal"
+          }
+        ],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_escribir_linea",
+        "parametros": [
+          {
+            "nombre": "texto",
+            "tipo": "texto"
+          }
+        ],
+        "tipo_retorno": "nulo"
+      },
+      {
+        "_tipo": "DeclaracionExterna",
+        "nombre": "_syn_leer_linea",
+        "parametros": [],
+        "tipo_retorno": "texto"
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "consumidor",
+        "parametros": [
+          {
+            "nombre": "ch",
+            "tipo": "Canal<entero>"
+          }
+        ],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "SentenciaEscuchar",
+            "canal": {
+              "_tipo": "Identificador",
+              "nombre": "ch"
+            },
+            "cuerpo": [
+              {
+                "_tipo": "AsignacionVariable",
+                "nombre": "mensaje",
+                "expresion": {
+                  "_tipo": "ExprRecibirCanal",
+                  "canal": {
+                    "_tipo": "Identificador",
+                    "nombre": "ch"
+                  }
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "_tipo": "LlamadaFuncion",
+                      "nombre": "entero_a_texto",
+                      "argumentos": [
+                        {
+                          "_tipo": "Identificador",
+                          "nombre": "mensaje"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      },
+      {
+        "_tipo": "DefinicionFuncion",
+        "nombre": "principal",
+        "parametros": [],
+        "tipo_retorno": "nulo",
+        "requiere": [],
+        "garantiza": [],
+        "cuerpo": [
+          {
+            "_tipo": "AsignacionVariable",
+            "nombre": "ch",
+            "expresion": {
+              "_tipo": "ExprCrearCanal",
+              "tipo_contenido": "entero",
+              "capacidad": {
+                "_tipo": "LiteralNumero",
+                "valor": 10
+              }
+            }
+          },
+          {
+            "_tipo": "SentenciaLanzar",
+            "llamada": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "consumidor",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ch"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaEnviarCanal",
+            "canal": {
+              "_tipo": "Identificador",
+              "nombre": "ch"
+            },
+            "valor": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaEnviarCanal",
+            "canal": {
+              "_tipo": "Identificador",
+              "nombre": "ch"
+            },
+            "valor": {
+              "_tipo": "LiteralNumero",
+              "valor": 5
+            }
+          },
+          {
+            "_tipo": "SentenciaEnviarCanal",
+            "canal": {
+              "_tipo": "Identificador",
+              "nombre": "ch"
+            },
+            "valor": {
+              "_tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "_tipo": "SentenciaEnviarCanal",
+            "canal": {
+              "_tipo": "Identificador",
+              "nombre": "ch"
+            },
+            "valor": {
+              "_tipo": "LiteralNumero",
+              "valor": 7
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "cerrar",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "ch"
+                }
+              ]
+            }
+          },
+          {
+            "_tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      }
+    ],
+    "is_no_std": false
+  }
+}

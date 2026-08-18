@@ -268,6 +268,13 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-C4: tipo inferido de cada variable auto-declarada (paridad tipo_de_expr para OpBinaria)
     gen_emitir_linea(est, "char _G_fn_var_tipos[2048][64];")
     gen_emitir_linea(est, "")
+    // F5-1 (Manual 2 §5): contratos requiere/garantiza de la funcion actual.
+    // _G_fn_garantizas_actuales = ListaNodo* con las expresiones de garantiza
+    // (leidas por gen_visitar_retornar); _G_fn_ret_tipo_c = tipo C del retorno
+    // (para declarar _resultado_, Manual 2 §5.1).
+    gen_emitir_linea(est, "void* _G_fn_garantizas_actuales;")
+    gen_emitir_linea(est, "char _G_fn_ret_tipo_c[64];")
+    gen_emitir_linea(est, "")
     // F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
     // (Manual 2 L144, Manual 5 §4.2). Paridad S1 _elemento_canal de
     // emit_expressions.py: el receive hereda el tipo del elemento del canal.
@@ -317,6 +324,10 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "char _G_lanzar_wrappers[8][4096];")
     gen_emitir_linea(est, "int _G_lanzar_wrappers_count;")
     gen_emitir_linea(est, "int _G_lanzar_count;")
+    // F5-1: garantiza globals del codegen (definidos aqui, usados via
+    // asm() en funciones.syn/nodos_flujo.syn para emitir asserts)
+    gen_emitir_linea(est, "void* _G_fn_garantizas_actuales = 0;")
+    gen_emitir_linea(est, "char _G_fn_ret_tipo_c[64];")
     gen_emitir_linea(est, "")
     // ME-B6: PGO globals del parser nativo (definidos en _parser.c)
     gen_emitir_linea(est, "extern int _P_ntks, _P_tpos, _P_p_err;")
@@ -362,7 +373,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "extern CadenaSegura leer_linea(void);")
     gen_emitir_linea(est, "extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);")
     gen_emitir_linea(est, "extern CadenaSegura leer(Canal canal);")
-    gen_emitir_linea(est, "extern void cerrar(Canal canal);")
+    gen_emitir_linea(est, "extern void cerrar_archivo(Canal canal);")
     gen_emitir_linea(est, "extern Tensor crear_tensor(int filas, int columnas);")
     gen_emitir_linea(est, "extern Tensor suma_tensor(Tensor a, Tensor b);")
     gen_emitir_linea(est, "extern Tensor producto_punto(Tensor a, Tensor b);")
@@ -390,7 +401,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "extern void canal_enviar(CanalConcurrencia* canal, void* paquete);")
     gen_emitir_linea(est, "extern void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);")
     gen_emitir_linea(est, "extern void canal_destruir(CanalConcurrencia* canal);")
-    gen_emitir_linea(est, "extern void cerrar_canal(CanalConcurrencia* canal);")
+    gen_emitir_linea(est, "extern void cerrar(CanalConcurrencia* canal);")
     gen_emitir_linea(est, "extern void _simd_detectar(void);")
     gen_emitir_linea(est, "")
 

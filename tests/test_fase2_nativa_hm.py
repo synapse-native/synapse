@@ -2438,7 +2438,7 @@ _PROG_F37_ESCUCHAR_RECIBE = '''#lang: es
 funcion productor(ch: Canal<entero>) -> nulo:
     ch <- 42
     ch <- 99
-    cerrar_canal(ch)
+    cerrar(ch)
 
 funcion consumidor(ch: Canal<entero>) -> nulo:
     escuchar ch:
@@ -2458,7 +2458,7 @@ _PROG_F37_ESCUCHAR_PROCESA = '''#lang: es
 funcion productor(ch: Canal<entero>) -> nulo:
     ch <- 21
     ch <- 22
-    cerrar_canal(ch)
+    cerrar(ch)
 
 funcion consumidor(ch: Canal<entero>) -> nulo:
     escuchar ch:
