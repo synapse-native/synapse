@@ -657,6 +657,9 @@ extern int _G_native_canal_elem_tipo(const char* _cname, char* _cout);
 extern char _G_listeners[8][16384];
 extern int _G_listeners_count;
 extern int _G_listener_modo;
+extern char _G_lanzar_wrappers[8][4096];
+extern int _G_lanzar_wrappers_count;
+extern int _G_lanzar_count;
 extern char _G_tipo_aliases[128][64];
 extern char _G_tipo_aliases_base[128][64];
 extern int _G_tipo_aliases_count;
@@ -712,6 +715,12 @@ extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
+extern void synapse_esperar_fibras(void);
+extern void scheduler_iniciar(int num_hilos_os);
+extern void scheduler_detener(void);
+extern void fibra_crear(void (*func)(void*), void* arg, size_t stack_size);
+extern void fibra_esperar(int fibra_id);
+extern void fibra_terminar(void* resultado);
 extern void _syn_texto_liberar(CadenaSegura s);
 
 typedef struct { int es_ok; union {
@@ -885,6 +894,9 @@ int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
 char _G_listeners[8][16384];
 int _G_listeners_count;
 int _G_listener_modo;
+char _G_lanzar_wrappers[8][4096];
+int _G_lanzar_wrappers_count;
+int _G_lanzar_count;
 
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
@@ -945,6 +957,7 @@ int main(int argc, char** argv) {
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     principal();
     synapse_esperar_hilos();
+    synapse_esperar_fibras();
     pool_destroy();
     return 0;
 }

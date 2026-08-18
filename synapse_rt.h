@@ -37,4 +37,19 @@ void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 void synapse_esperar_hilos(void);
 void synapse_esperar_fibras(void);
 
+// --- Primitivas de sincronización (Manual 5 §5, F4.5) ---
+// Implementación fiber-aware: una fibra bloqueada se parquea en el scheduler
+// (F4.2) en vez de bloquear a su worker; los hilos OS usan cond_wait.
+Mutex* mutex_crear(void);
+void mutex_bloquear(Mutex* m);
+void mutex_desbloquear(Mutex* m);
+void mutex_destruir(Mutex* m);
+Semaforo* semaforo_crear(int valor);
+void semaforo_esperar(Semaforo* s);
+void semaforo_señalar(Semaforo* s);
+void semaforo_destruir(Semaforo* s);
+Barrera* barrera_crear(int total);
+void barrera_esperar(Barrera* b);
+void barrera_destruir(Barrera* b);
+
 #endif

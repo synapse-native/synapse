@@ -871,3 +871,227 @@ void synapse_esperar_fibras(void) {
     }
     pthread_mutex_unlock(&g_sched_mutex);
 }
+
+// ============================================================================
+// Primitivas de sincronización (Manual 5 §5, F4.5)
+// ============================================================================
+// Bloqueo FIBER-AWARE (patrón F4.2 de los canales): si la operación no puede
+// completarse y el llamador es una FIBRA (M:N, Manual 5 §2.6), esta se parquea
+// en la cola de espera de la primitiva y cede al worker (que sigue con otras
+// fibras); el waker transfiere el recurso marcando `satisfecho` (handoff). Si
+// el llamador es un hilo OS (p.ej. `principal`), se usa cond_wait clásico.
+// El guard pthread protege estado + cola; g_sched_mutex solo se toma tras el
+// guard (orden fijo: primitiva → scheduler, sin ciclos de bloqueo).
+
+// Encola la fibra actual en la cola de espera de la primitiva, libera el guard
+// y cede al worker. Al reanudar, el waker completó la operación (satisfecho=1)
+// — la fibra NO re-evalúa el estado ni re-intenta.
+static void _sync_parquear(_EsperaFibra** cola, _EsperaFibra** cola_tail,
+                           pthread_mutex_t* guard) {
+    _EsperaFibra* n = (_EsperaFibra*)malloc(sizeof(_EsperaFibra));
+    if (!n) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en primitiva de sync (parqueo)\n");
+        exit(1);
+    }
+    n->next = NULL;
+    n->fibra = _fibra_actual;
+    n->dato = NULL;
+    n->satisfecho = 0;
+    if (*cola_tail) {
+        (*cola_tail)->next = n;
+    } else {
+        *cola = n;
+    }
+    *cola_tail = n;
+    pthread_mutex_unlock(guard);
+    _fibra_parquear();
+    free(n);
+}
+
+// --- Mutex (Manual 5 §5.1) ---
+Mutex* mutex_crear(void) {
+    Mutex* m = (Mutex*)malloc(sizeof(Mutex));
+    if (!m) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en mutex_crear\n"); exit(1); }
+    memset(m, 0, sizeof(Mutex));
+    pthread_mutex_init(&m->mutex, NULL);
+    pthread_cond_init(&m->cond, NULL);
+    m->espera = NULL;
+    m->espera_tail = NULL;
+    return m;
+}
+
+void mutex_bloquear(Mutex* m) {
+    pthread_mutex_lock(&m->mutex);
+    if (!m->tomado && !m->espera) {
+        // Libre y sin fibras en cola: adquisición directa (FIFO estricto).
+        m->tomado = 1;
+        pthread_mutex_unlock(&m->mutex);
+        return;
+    }
+    if (_fibra_actual) {
+        // F4.5: la fibra se parquea; el waker transfiere la propiedad.
+        _sync_parquear(&m->espera, &m->espera_tail, &m->mutex);
+        return;
+    }
+    while (m->tomado) {
+        pthread_cond_wait(&m->cond, &m->mutex);
+    }
+    m->tomado = 1;
+    pthread_mutex_unlock(&m->mutex);
+}
+
+void mutex_desbloquear(Mutex* m) {
+    pthread_mutex_lock(&m->mutex);
+    if (m->espera) {
+        // Handoff: la propiedad pasa al primer esperante (FIFO) — tomado
+        // permanece 1, la fibra despertada reanuda con el mutex tomado.
+        _EsperaFibra* n = m->espera;
+        m->espera = n->next;
+        if (m->espera_tail == n) m->espera_tail = NULL;
+        n->satisfecho = 1;
+        _scheduler_despertar_fibra(n->fibra);
+        pthread_mutex_unlock(&m->mutex);
+        return;
+    }
+    m->tomado = 0;
+    pthread_cond_signal(&m->cond);
+    pthread_mutex_unlock(&m->mutex);
+}
+
+void mutex_destruir(Mutex* m) {
+    if (!m) return;
+    pthread_mutex_lock(&m->mutex);
+    if (m->espera) {
+        // Destrucción con fibras parqueadas: uso inválido (Manual 5 §5).
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: mutex_destruir con fibras esperando\n");
+        exit(1);
+    }
+    pthread_mutex_unlock(&m->mutex);
+    pthread_mutex_destroy(&m->mutex);
+    pthread_cond_destroy(&m->cond);
+    free(m);
+}
+
+// --- Semáforo (Manual 5 §5.2) ---
+Semaforo* semaforo_crear(int valor) {
+    Semaforo* s = (Semaforo*)malloc(sizeof(Semaforo));
+    if (!s) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en semaforo_crear\n"); exit(1); }
+    memset(s, 0, sizeof(Semaforo));
+    s->valor = valor < 0 ? 0 : valor;
+    pthread_mutex_init(&s->mutex, NULL);
+    pthread_cond_init(&s->cond, NULL);
+    s->espera = NULL;
+    s->espera_tail = NULL;
+    return s;
+}
+
+void semaforo_esperar(Semaforo* s) {
+    pthread_mutex_lock(&s->mutex);
+    if (s->valor > 0) {
+        s->valor--;
+        pthread_mutex_unlock(&s->mutex);
+        return;
+    }
+    if (_fibra_actual) {
+        // F4.5: la fibra se parquea; el waker (señalar) completa la operación
+        // (handoff del permiso) — la fibra no re-decrementa al reanudar.
+        _sync_parquear(&s->espera, &s->espera_tail, &s->mutex);
+        return;
+    }
+    while (s->valor <= 0) {
+        pthread_cond_wait(&s->cond, &s->mutex);
+    }
+    s->valor--;
+    pthread_mutex_unlock(&s->mutex);
+}
+
+void semaforo_señalar(Semaforo* s) {
+    pthread_mutex_lock(&s->mutex);
+    if (s->espera) {
+        // Handoff: entregar el permiso al primer esperante (FIFO).
+        _EsperaFibra* n = s->espera;
+        s->espera = n->next;
+        if (s->espera_tail == n) s->espera_tail = NULL;
+        n->satisfecho = 1;
+        _scheduler_despertar_fibra(n->fibra);
+        pthread_mutex_unlock(&s->mutex);
+        return;
+    }
+    s->valor++;
+    pthread_cond_signal(&s->cond);
+    pthread_mutex_unlock(&s->mutex);
+}
+
+void semaforo_destruir(Semaforo* s) {
+    if (!s) return;
+    pthread_mutex_lock(&s->mutex);
+    if (s->espera) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: semaforo_destruir con fibras esperando\n");
+        exit(1);
+    }
+    pthread_mutex_unlock(&s->mutex);
+    pthread_mutex_destroy(&s->mutex);
+    pthread_cond_destroy(&s->cond);
+    free(s);
+}
+
+// --- Barrera (Manual 5 §5.3) ---
+Barrera* barrera_crear(int total) {
+    Barrera* b = (Barrera*)malloc(sizeof(Barrera));
+    if (!b) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en barrera_crear\n"); exit(1); }
+    memset(b, 0, sizeof(Barrera));
+    b->total = total < 1 ? 1 : total;
+    b->esperando = 0;
+    b->generacion = 0;
+    pthread_mutex_init(&b->mutex, NULL);
+    pthread_cond_init(&b->cond, NULL);
+    b->espera = NULL;
+    b->espera_tail = NULL;
+    return b;
+}
+
+void barrera_esperar(Barrera* b) {
+    pthread_mutex_lock(&b->mutex);
+    int mi_gen = b->generacion;
+    b->esperando++;
+    if (b->esperando >= b->total) {
+        // Última llegada de la ronda: reset + generación nueva + despertar a
+        // todos (fibras parqueadas y hilos OS en cond).
+        b->esperando = 0;
+        b->generacion++;
+        _EsperaFibra* n = b->espera;
+        b->espera = NULL;
+        b->espera_tail = NULL;
+        pthread_cond_broadcast(&b->cond);
+        pthread_mutex_unlock(&b->mutex);
+        while (n) {
+            _EsperaFibra* sig = n->next;
+            n->satisfecho = 1;
+            _scheduler_despertar_fibra(n->fibra);
+            n = sig;
+        }
+        return;
+    }
+    if (_fibra_actual) {
+        // F4.5: la fibra se parquea; la última llegada la despierta.
+        _sync_parquear(&b->espera, &b->espera_tail, &b->mutex);
+        return;
+    }
+    while (mi_gen == b->generacion) {
+        pthread_cond_wait(&b->cond, &b->mutex);
+    }
+    pthread_mutex_unlock(&b->mutex);
+}
+
+void barrera_destruir(Barrera* b) {
+    if (!b) return;
+    pthread_mutex_lock(&b->mutex);
+    if (b->espera) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: barrera_destruir con fibras esperando\n");
+        exit(1);
+    }
+    pthread_mutex_unlock(&b->mutex);
+    pthread_mutex_destroy(&b->mutex);
+    pthread_cond_destroy(&b->cond);
+    free(b);
+}

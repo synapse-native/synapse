@@ -54,6 +54,39 @@ typedef struct CanalConcurrencia {
     struct _EsperaFibra* espera_recepcion_tail;
 } CanalConcurrencia;
 
+// --- Primitivas de sincronización (Manual 5 §5, F4.5) ---
+// Estructuras del Manual 5 §5.4 + campos aditivos F4.5 para bloqueo
+// FIBER-AWARE (la fibra bloqueada se parquea en cola_espera del scheduler en
+// vez de bloquear a su worker con pthread; los hilos OS conservan el
+// cond_wait — patrón F4.2 de los canales). `mutex` guarda el estado y las
+// colas; `cond` es la cond de los hilos OS (aditiva en Mutex: el manual no
+// la lista pero un thread no puede esperar sin ella).
+typedef struct Mutex {
+    pthread_mutex_t mutex;   // guard (Manual 5 §5.4)
+    int tomado;              // 1 = propiedad de un bloqueador (F4.5)
+    pthread_cond_t cond;     // hilos OS esperando (F4.5 aditivo)
+    struct _EsperaFibra* espera;    // F4.5: fibras parqueadas (FIFO)
+    struct _EsperaFibra* espera_tail;
+} Mutex;
+
+typedef struct Semaforo {
+    int valor;               // contador (Manual 5 §5.2)
+    pthread_mutex_t mutex;   // guard (Manual 5 §5.4)
+    pthread_cond_t cond;     // hilos OS (Manual 5 §5.4)
+    struct _EsperaFibra* espera;    // F4.5: fibras parqueadas (FIFO)
+    struct _EsperaFibra* espera_tail;
+} Semaforo;
+
+typedef struct Barrera {
+    int total;               // participantes (Manual 5 §5.3)
+    int esperando;           // llegados a la ronda (Manual 5 §5.4)
+    int generacion;          // n.º de ronda liberada (F4.5 aditivo)
+    pthread_mutex_t mutex;   // guard (Manual 5 §5.4)
+    pthread_cond_t cond;     // hilos OS (Manual 5 §5.4)
+    struct _EsperaFibra* espera;    // F4.5: fibras parqueadas (FIFO)
+    struct _EsperaFibra* espera_tail;
+} Barrera;
+
 // --- Memory pool constants ---
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096

@@ -72776,28 +72776,28 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // llamada directa; el thread real del S1 no estaba portado). El"
+                  "instruccion": "    // llamada directa; el thread real del S1 no estaba portado). El struct"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // struct de argumentos es ANONIMO con el MISMO layout en el call-site"
+                  "instruccion": "    // de argumentos es ANONIMO con el MISMO layout en el call-site y en el"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // y en el wrapper (tipos C compatibles -> layout identico); evita el"
+                  "instruccion": "    // wrapper (tipos C compatibles -> layout identico); evita el typedef"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    // typedef global y el pre-scan de tipos (paridad S1 visitar_lanzar)."
+                  "instruccion": "    // global y el pre-scan de tipos (paridad S1 visitar_lanzar)."
                 }
               },
               {
@@ -73112,7 +73112,42 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                // Wrapper diferido: static void _wrap_N(void* _arg) { struct { ... }* _a = ...; pool_free(_arg); fn(_a->v0, ...); }"
+                  "instruccion": "                // Wrapper diferido (struct anonimo con layout identico en"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // call-site y wrapper). F4.5: el cast a `struct { ... }*`"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // genera -Wincompatible-pointer-types (cada anonimo es un"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // tipo distinto para gcc) — se asigna VOID* (conversion"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // implicita estandar, sin warning): call-site `= (void*)` y"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                // wrapper `= (void*)_arg`."
                 }
               },
               {
@@ -73126,7 +73161,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_wfb, 4096, \"static void %s(void* _arg) { struct { %s }* _a = (struct { %s }*)_arg; pool_free(_arg); %s(_a->v0\", _wrn, _flds, _flds, _lfz->nombre.datos);"
+                  "instruccion": "                snprintf(_wfb, 4096, \"static void %s(void* _arg) { struct { %s }* _a = (void*)_arg; pool_free(_arg); %s(_a->v0\", _wrn, _flds, _lfz->nombre.datos);"
                 }
               },
               {
@@ -73168,7 +73203,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                snprintf(_lcb, 4096, \"    struct { %s }* _args_%d = (struct { %s }*)pool_alloc(sizeof(struct { %s }));\", _flds, _G_lanzar_count, _flds, _flds);"
+                  "instruccion": "                snprintf(_lcb, 4096, \"    struct { %s }* _args_%d = (void*)pool_alloc(sizeof(struct { %s }));\", _flds, _G_lanzar_count, _flds);"
                 }
               },
               {
