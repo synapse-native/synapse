@@ -85,6 +85,9 @@ tests/dummy_main.c
 tests/validate_borrow_abort.c
 tests/validate_borrow_abort.syn.json
 
+# CLASE M2: Artefactos de ejecución de tests en raíz
+test_*.txt
+
 # CLASE N: Paquetes locales Axon
 paquetes_oficiales/
 
