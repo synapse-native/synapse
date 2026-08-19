@@ -52,7 +52,8 @@ fi
 echo "── Limpiando artefactos de build ──"
 find "$RAIZ" -maxdepth 1 \( -name '*.o' -o -name '*.obj' -o -name 'synapse_unity.c' \
     -o -name 'synapse_stage1.exe' -o -name '.coverage' -o -name 'test_*.txt' \
-    -o -name 'nul' -o -name 'runtime_linked.dll' \) -type f -delete 2>/dev/null || true
+    -o -name 'nul' -o -name 'runtime_linked.dll' -o -name '_*.c' -o -name '_*.c.o' \
+    -o -name '_*.h' -o -name '_synapse_shared.h' \) -type f -delete 2>/dev/null || true
 # Limpiar __pycache__ recursivamente (mantener .venv excluido)
 find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycache__' \
     -exec rm -rf {} + 2>/dev/null || true
