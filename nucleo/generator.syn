@@ -262,6 +262,16 @@ funcion traducir_tipo_c(tipo_synapse: puntero) -> nulo:
         asm("if (strcmp(_t, \"char\")==0) { strcpy(_gen_tmp_buf, \"char\"); return; }")
         asm("if (strcmp(_t, \"double\")==0) { strcpy(_gen_tmp_buf, \"double\"); return; }")
         asm("if (strcmp(_t, \"puntero\")==0) { strcpy(_gen_tmp_buf, \"void*\"); return; }")
+        // M22.6 (paridad context.py L466-469): tipos puntero C (p.ej. char*, int*)
+        // -> se traduce la base y se re-anade '*'. Sin esto 'char*' caia al fallback
+        // 'struct char*' y rompia externs como los de std.http/std.net.
+        asm("if (_len > 0 && _t[_len-1] == '*') {")
+        asm("    char _pt[64]; int _pw = 0; for (int _pc = 0; _pc < _len-1 && _pw < 62; _pc++) _pt[_pw++] = _t[_pc]; _pt[_pw] = 0;")
+        asm("    while (_pw > 0 && _pt[_pw-1] == ' ') _pt[--_pw] = 0;")
+        asm("    traducir_tipo_c((void*)_pt);")
+        asm("    strcat(_gen_tmp_buf, \"*\");")
+        asm("    return;")
+        asm("}")
         // F1.2b: resolver alias declarados (`tipo X = Y`) — paridad context.py L399-400
         // (recursion: un alias puede apuntar a otro alias).
         asm("extern char _G_tipo_aliases[128][64]; extern char _G_tipo_aliases_base[128][64]; extern int _G_tipo_aliases_count;")

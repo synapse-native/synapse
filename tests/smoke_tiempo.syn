@@ -1,0 +1,12 @@
+#lang: es
+importar std.tiempo
+
+funcion principal() -> nulo:
+    inicio = ahora_ms()
+    dormir_ms(50)
+    fin = ahora_ms()
+    si fin >= inicio:
+        log("tiempo OK")
+    sino:
+        log("FALLO tiempo")
+    log("FIN")

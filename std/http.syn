@@ -41,8 +41,8 @@ funcion aceptar(fd_servidor: entero) -> entero:
 funcion leer_peticion(fd_cliente: entero) -> texto:
     retornar _syn_http_leer_peticion(fd_cliente)
 
-funcion responder(fd_cliente: entero, codigo: entero, tipo: texto, cuerpo: texto):
-    res = _syn_http_respuesta_ok(codigo, tipo, cuerpo, cuerpo.longitud)
+funcion responder(fd_cliente: entero, codigo: entero, tipo: texto, cuerpo: texto) -> nulo:
+    res = _syn_http_respuesta_ok(codigo, tipo.datos, cuerpo.datos, cuerpo.longitud)
     _syn_http_enviar_respuesta(fd_cliente, res)
     _syn_http_cerrar_cliente(fd_cliente)
     retornar

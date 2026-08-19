@@ -243,3 +243,82 @@ def test_d3_paridad_s1_s2():
     for linea in ["Tensor t = {0};", "t = crear_tensor(2LL, 3LL);"]:
         assert linea in s1, f"S1 carece de: {linea}"
         assert linea in s2, f"S2 carece de: {linea}"
+
+
+# ================================================================
+# M22.6 (corte 10, D-9(d)): externs con tipos puntero C (char*)
+# ================================================================
+# Regresion: el traductor nativo emitia `struct char*` para el tipo de un
+# parametro externo `char*` (caia al fallback `struct %s`). S1 (context.py
+# L466-469) ya lo manejaba; el fix (nucleo/generador/emision_c.syn) anade la
+# rama M22.6: tipo que termina en '*' -> traduce la base y re-anade '*'.
+# Sin esto std.http/std.net (externs char*) no compilaban con el nativo.
+
+FIXTURE_EXTERN_CHARP = """#lang: es
+externo funcion _opcion_leer(nombre: char*, valor: char*) -> nulo
+externo funcion _opcion_entero(clave: char*) -> entero
+funcion principal() -> nulo:
+    retornar
+"""
+
+
+def _escribir_fixture(src: str, prefix: str) -> str:
+    """Escribe un programa .syn en un archivo temporal y devuelve su ruta."""
+    with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", suffix=".syn", prefix=prefix, delete=False) as f:
+        f.write(src)
+        ruta = f.name
+    return ruta
+
+
+def test_extern_charp_s1_no_struct_char():
+    """M22.6: S1 emite `char*` (nunca `struct char*`) para externs."""
+    ruta = _escribir_fixture(FIXTURE_EXTERN_CHARP, "extc_s1_")
+    try:
+        c = _compilar_s1_fuente(ruta)
+    finally:
+        os.unlink(ruta)
+    assert "char* nombre, char* valor" in c, (
+        "S1 debe emitir char* para los parametros del extern")
+    assert "char* clave" in c, "S1 debe emitir char* clave"
+    assert "struct char" not in c, "S1 no debe emitir struct char"
+
+
+def test_extern_charp_s2_no_struct_char():
+    """M22.6: S2 emite `char*` (nunca `struct char*`) para externs."""
+    ruta = _escribir_fixture(FIXTURE_EXTERN_CHARP, "extc_s2_")
+    try:
+        c = _compilar_s2_fuente("stage2", ruta)
+    finally:
+        os.unlink(ruta)
+    assert "char* nombre, char* valor" in c, (
+        "S2 debe emitir char* para los parametros del extern")
+    assert "char* clave" in c, "S2 debe emitir char* clave"
+    assert "struct char" not in c, (
+        "S2 no debe emitir struct char (regresion del fallback 'struct %s')")
+
+
+def test_extern_charp_s3_no_struct_char():
+    """M22.6: S3 (auto-compilacion determinista) emite `char*` igual que S2."""
+    ruta = _escribir_fixture(FIXTURE_EXTERN_CHARP, "extc_s3_")
+    try:
+        c = _compilar_s2_fuente("stage3", ruta)
+    finally:
+        os.unlink(ruta)
+    assert "char* nombre, char* valor" in c, (
+        "S3 debe emitir char* para los parametros del extern")
+    assert "struct char" not in c, "S3 no debe emitir struct char"
+
+
+def test_extern_charp_paridad_s1_s2():
+    """M22.6: la firma del extern es identica entre S1 y S2/S3."""
+    ruta = _escribir_fixture(FIXTURE_EXTERN_CHARP, "extc_par_")
+    try:
+        s1 = _compilar_s1_fuente(ruta)
+        s2 = _compilar_s2_fuente("stage2", ruta)
+    finally:
+        os.unlink(ruta)
+    for linea in ["extern void _opcion_leer(char* nombre, char* valor);",
+                  "extern int64_t _opcion_entero(char* clave);"]:
+        assert linea in s1, f"S1 carece de la firma: {linea}"
+        assert linea in s2, f"S2 carece de la firma: {linea}"

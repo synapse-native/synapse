@@ -42,6 +42,8 @@
 #include "runtime/core/json.h"  // D-9(d) corte 7: std.json extraido a json.c
 #include "runtime/core/cripto.h"  // D-9(d) corte 8: std.cripto extraido a cripto.c
 #include "runtime/core/toml.h"  // D-9(d) corte 9: std.toml extraido a toml.c
+#include "runtime/core/tiempo.h"  // D-9(d) corte 10: std.tiempo extraido a tiempo.c
+#include "runtime/core/http.h"  // D-9(d) corte 10: std.http extraido a http.c
 
 // --- std.conv ---
 
@@ -110,121 +112,9 @@ typedef struct CampoToml {
 
 
 // ============================================================
-// std.tiempo — Time & Profiling
+// std.tiempo + std.http extraidos a runtime/core/tiempo.c y
+// runtime/core/http.c (D-9(d) corte 10, patron toml.c R64).
 // ============================================================
-
-int64_t _syn_ahora_ms(void) {
-#ifdef _WIN32
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
-    uint64_t t = ((uint64_t)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
-    // Convert from 100-ns intervals since 1601-01-01 to ms since 1970-01-01
-    return (int64_t)((t - 116444736000000000ULL) / 10000);
-#else
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
-#endif
-}
-
-void _syn_dormir_ms(int ms) {
-#ifdef _WIN32
-    Sleep((DWORD)ms);
-#else
-    struct timespec ts;
-    ts.tv_sec = ms / 1000;
-    ts.tv_nsec = (long)(ms % 1000) * 1000000L;
-    nanosleep(&ts, NULL);
-#endif
-}
-
-
-// ============================================================
-// std.http — HTTP Server (Minimalista, sincrono, single-thread)
-// ============================================================
-
-int _syn_servidor_escuchar(int puerto) {
-    int fd = (int)socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return -1;
-
-    int opt = 1;
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
-
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons((unsigned short)puerto);
-
-    if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        _syn_cerrar_socket(fd);
-        return -1;
-    }
-    if (listen(fd, 5) < 0) {
-        _syn_cerrar_socket(fd);
-        return -1;
-    }
-    return fd;
-}
-
-int _syn_servidor_aceptar(int fd_servidor) {
-    struct sockaddr_in cliente;
-    socklen_t tam = sizeof(cliente);
-    return (int)accept(fd_servidor, (struct sockaddr*)&cliente, &tam);
-}
-
-// Lee una peticion HTTP completa (hasta \r\n\r\n + contenido opcional)
-CadenaSegura _syn_http_leer_peticion(int fd_cliente) {
-    char buf[4096];
-    int total = 0;
-    int n;
-
-    while (total < (int)sizeof(buf) - 1) {
-        n = (int)recv(fd_cliente, buf + total, (size_t)(sizeof(buf) - 1 - total), 0);
-        if (n <= 0) break;
-        total += n;
-        buf[total] = '\0';
-        // Check for end of headers
-        if (total >= 4 && memcmp(buf + total - 4, "\r\n\r\n", 4) == 0)
-            break;
-    }
-    if (total <= 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
-
-    char* data = (char*)malloc((size_t)(total + 1));
-    if (!data) return (CadenaSegura){ .longitud = 0, .datos = "" };
-    memcpy(data, buf, (size_t)total);
-    data[total] = '\0';
-    return (CadenaSegura){ .longitud = total, .datos = data };
-}
-
-int _syn_http_enviar_respuesta(int fd_cliente, CadenaSegura respuesta) {
-    int total = (int)send(fd_cliente, respuesta.datos, (size_t)respuesta.longitud, 0);
-    return total;
-}
-
-void _syn_http_cerrar_cliente(int fd_cliente) {
-    _syn_cerrar_socket(fd_cliente);
-}
-
-CadenaSegura _syn_http_respuesta_ok(int codigo, const char* tipo, const char* cuerpo, int lon) {
-    char header[512];
-    int hlen = snprintf(header, sizeof(header),
-        "HTTP/1.1 %d OK\r\n"
-        "Content-Type: %s\r\n"
-        "Content-Length: %d\r\n"
-        "Connection: close\r\n\r\n",
-        codigo, tipo, lon);
-    if (hlen < 0 || hlen >= (int)sizeof(header)) {
-        return (CadenaSegura){ .longitud = 0, .datos = "" };
-    }
-    int total = hlen + lon;
-    char* buf = (char*)malloc((size_t)(total + 1));
-    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = "" };
-    memcpy(buf, header, (size_t)hlen);
-    memcpy(buf + hlen, cuerpo, (size_t)lon);
-    buf[total] = '\0';
-    return (CadenaSegura){ .longitud = total, .datos = buf };
-}
 
 // --- std.ai (GGUF Reader / Memory Mapping) ---
 // D-9(d) corte 3: bloque std.ai (GGUF/BPE/ModeloContexto/inferencia/oraculos)
