@@ -349,7 +349,7 @@ Comprueba de forma automatizada:
 ### Capas de enforcement
 
 1. **CI (`.github/workflows/ci-tests.yml`, job `auditoria`):** se ejecuta en TODO push a cualquier rama y en PRs. `fetch-depth: 0` (historia completa para validar hashes). Si el verificador reporta brechas → el job falla y el PR no puede mergearse. **Ningún push puede introducir desalineación.**
-2. **Pre-commit hook (`githooks/pre-commit`):** bloquea el commit local con las mismas brechas. Instalación: `bash githooks/instalar_hooks.sh` (configura `core.hooksPath=githooks`, local al repo). Resolución robusta del intérprete (`.venv`, `python`, `python3`, `py -3`). Se puede saltar con `--no-verify`, pero el CI lo bloquea igual (capas independientes).
+2. **Pre-commit hook (`scripts/githooks/pre-commit`):** bloquea el commit local con las mismas brechas. Instalación: `bash scripts/githooks/instalar_hooks.sh` (configura `core.hooksPath=scripts/githooks`, local al repo). Resolución robusta del intérprete (`.venv`, `python`, `python3`, `py -3`). Se puede saltar con `--no-verify`, pero el CI lo bloquea igual (capas independientes).
 3. **D-9 ampliada (2026-08-13):** `generator.py` (1,585 líneas) y `analizador_semantico.syn` (1,393) evaluados como COHESIVOS — registrados con resolución asignada, vigilados por el gate 5.
 
 ### Regla de oro para el programador

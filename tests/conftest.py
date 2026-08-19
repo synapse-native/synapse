@@ -118,6 +118,15 @@ _RT_HEADERS = [
     "runtime/core/tensor.h",  # R35 (D-9(d) corte 2): API del modulo tensor
     "runtime/core/cluster.h",  # R40 (D-9(d) corte 4): API del modulo cluster
     "runtime/core/debug.h",  # R41 (D-9(d) corte 5): API del modulo debug
+    "runtime/core/fuzz.h",  # R42 (D-9(d) corte 6): API del modulo fuzz
+    "runtime/core/network.h",  # D-9(d) corte 6: API del modulo network
+    "runtime/core/toml.h",  # R64 (D-9(d) corte 9): API del modulo toml
+    "runtime/core/tiempo.h",  # D-9(d) corte 10: API del modulo tiempo
+    "runtime/core/http.h",  # D-9(d) corte 10: API del modulo http
+    "runtime/core/cripto.h",  # D-9(d) corte 8: API del modulo cripto
+    "runtime/core/axon.h",  # D-9(d) corte 11: API del modulo axon
+    "runtime/core/cache.h",  # D-9(d) corte 11: API del modulo cache
+    "runtime/core/sistema.h",  # D-9(d) corte 11: API del modulo sistema
     "librerias/embedded_libs.h",  # incluido por runtime/core/memory.c y concurrency.c
 ]
 

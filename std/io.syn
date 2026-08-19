@@ -35,3 +35,5 @@ externo funcion _syn_leer(c: Canal) -> texto
 externo funcion _syn_escribir(texto: texto) -> nulo
 externo funcion _syn_escribir_linea(texto: texto) -> nulo
 externo funcion _syn_leer_linea() -> texto
+
+// CACHE TEST: modification

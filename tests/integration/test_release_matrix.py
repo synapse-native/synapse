@@ -196,7 +196,7 @@ class TestBootstrap:
         """El entry point principal.syn debe existir."""
         rutas = [
             os.path.join(PROJECT_ROOT, 'nucleo', 'principal.syn'),
-            os.path.join(PROJECT_ROOT, 'src', 'main.syn'),
+            os.path.join(PROJECT_ROOT, 'docs', 'historicas', 'main.syn'),
             os.path.join(PROJECT_ROOT, 'opensyn', 'principal.syn'),
         ]
         alguna_existe = any(os.path.exists(r) for r in rutas)
@@ -250,7 +250,7 @@ class TestReleaseMatrixCI:
             candidatos = [
                 os.path.join(PROJECT_ROOT, 'tests', 'test_math.syn'),
                 os.path.join(PROJECT_ROOT, 'test_simple.syn'),
-                os.path.join(PROJECT_ROOT, 'hola.syn'),
+                os.path.join(PROJECT_ROOT, 'examples', 'synapse', '00_hola_mundo', 'hola.syn'),
             ]
             
             archivo_prueba = None

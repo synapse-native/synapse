@@ -131,7 +131,7 @@ def build_toml_ast() -> Programa:
         '[proyecto]\n'
         'nombre = "Synapse"\n'
         'version = "1.5.0"\n'
-        'punto_entrada = "src/main.syn"\n'
+        'punto_entrada = "nucleo/principal.syn"\n'
     ))))
 
     # seccion = obtener_campo(doc, "proyecto")
