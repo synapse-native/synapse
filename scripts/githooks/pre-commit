@@ -11,7 +11,10 @@
 #   - Módulos >1200 líneas sin registrar en D-9 (regla 13)
 #   - Funciones NUEVAS en nucleo/*.syn sin requiere/garantiza (Manual 2 §12)
 #
-# Instalación:  git config core.hooksPath githooks
+# Además limpia artefactos de build (.o, *.exe, synapse_unity.c, test_*.txt,
+# .coverage, __pycache__/) antes del commit para mantener el working tree limpio.
+#
+# Instalación:  git config core.hooksPath scripts/githooks
 # Desinstalar:  git config --unset core.hooksPath
 # Saltar (NO recomendado — el CI lo bloquea igual): git commit --no-verify
 # ============================================================================
@@ -44,6 +47,16 @@ else
     echo "pre-commit: no se encontró un intérprete Python" >&2
     exit 1
 fi
+
+# --- Limpieza de artefactos de build antes del commit ---
+echo "── Limpiando artefactos de build ──"
+find "$RAIZ" -maxdepth 1 \( -name '*.o' -o -name '*.obj' -o -name 'synapse_unity.c' \
+    -o -name 'synapse_stage1.exe' -o -name '.coverage' -o -name 'test_*.txt' \
+    -o -name 'nul' -o -name 'runtime_linked.dll' \) -type f -delete 2>/dev/null || true
+# Limpiar __pycache__ recursivamente (mantener .venv excluido)
+find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycache__' \
+    -exec rm -rf {} + 2>/dev/null || true
+echo "✅ Artefactos limpiados"
 
 echo "── Verificando alineación con los manuales (auditoria/verificar_alineacion.py) ──"
 
