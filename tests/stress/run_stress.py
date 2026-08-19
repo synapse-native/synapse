@@ -22,9 +22,13 @@ import sys
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 STRESS_SRC = os.path.join(PROJECT_ROOT, 'tests', 'stress', 'test_stress_concurrencia.c')
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, 'synapse_rt.o')
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, 'synapse_rt_concurrency.o')
-TWEETNACL_O = os.path.join(PROJECT_ROOT, 'tweetnacl.o')
+# F3-15 + D-9(d) corte 8 (sin hardcoding, regla 13): objetos del runtime
+# derivados de runtime/core/*.c via conftest.rt_objs(). El objeto de memoria
+# estandar se sustituye por MIM_OBJ (memory.c con -DSYNAPSE_DEBUG_MEM).
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'tests'))
+from conftest import rt_objs
+
+RT_OBJS = [o for o in rt_objs() if o and os.path.exists(o)]
 MIM_SRC = os.path.join(PROJECT_ROOT, 'runtime', 'core', 'memory.c')
 MIM_OBJ = os.path.join(PROJECT_ROOT, 'synapse_rt_memory_mim.o')
 STRESS_BIN = os.path.join(PROJECT_ROOT, 'tests', 'stress', 'stress_concurrencia.exe')
@@ -39,31 +43,12 @@ def _base_flags(tsan: bool) -> str:
 
 def compilar_stress(tsan: bool = False) -> bool:
     """Compila el ejecutable de la prueba de estres con MemoryWatchdog (MIM) activo."""
-    for artefacto, ruta in [
-        ("synapse_rt.o", SYNAPSE_RT_O),
-        ("synapse_rt_concurrency.o", SYNAPSE_RT_CONC_O),
-        ("runtime/core/memory.c", MIM_SRC),
-    ]:
-        if not os.path.exists(ruta):
-            print(f"[STRESS] {artefacto} no encontrado en {ruta}")
-            return False
-
-    # 0) tweetnacl.o: auto-compilar desde tweetnacl.c si el objeto no existe
-    if not os.path.exists(TWEETNACL_O):
-        tn_src = os.path.join(PROJECT_ROOT, 'axon/tweetnacl.c')
-        if not os.path.exists(tn_src):
-            print(f"[STRESS] tweetnacl.c no encontrado en {tn_src}")
-            return False
-        print("[STRESS] Compilando tweetnacl.c -> tweetnacl.o ...")
-        tn_cmd = ['gcc', '-O2', '-I.', '-c', tn_src, '-o', TWEETNACL_O]
-        tn_res = subprocess.run(tn_cmd, capture_output=True, text=True)
-        if tn_res.returncode != 0:
-            print(f"[STRESS] Compilacion de tweetnacl.c fallo (codigo {tn_res.returncode})")
-            if tn_res.stderr:
-                for line in tn_res.stderr.split('\n')[-10:]:
-                    if line.strip():
-                        print(line)
-            return False
+    if not RT_OBJS:
+        print("[STRESS] objetos del runtime no disponibles (conftest.rt_objs)")
+        return False
+    if not os.path.exists(MIM_SRC):
+        print(f"[STRESS] runtime/core/memory.c no encontrado en {MIM_SRC}")
+        return False
 
     # 1) Compilar el modulo de memoria con SYNAPSE_DEBUG_MEM -> objeto MIM
     #    (el synapse_rt_memory.o precompilado solo exporta watchdog_report;
@@ -79,17 +64,23 @@ def compilar_stress(tsan: bool = False) -> bool:
                     print(line)
         return False
 
-    # 2) Compilar y enlazar el binario de estres
+    # 2) Compilar y enlazar el binario de estres: los .o del runtime derivados
+    #    de runtime/core/*.c (F3-15), sustituyendo el objeto de memoria estandar
+    #    por MIM_OBJ (memory.c con -DSYNAPSE_DEBUG_MEM).
     flags = _base_flags(tsan)
     libs = ['-lpthread', '-lm']
     if os.name == 'nt':
         libs.append('-lws2_32')  # winsock: solo en Windows
+    rt_objs_final = [
+        MIM_OBJ if o.endswith('synapse_rt_memory.o') else o
+        for o in RT_OBJS
+    ]
     cmd = [
         'gcc',
         *flags.split(),
         '-o', STRESS_BIN,
         STRESS_SRC,
-        SYNAPSE_RT_O, MIM_OBJ, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+        *rt_objs_final,
         *libs,
     ]
     print(f"[STRESS] Compilando: {' '.join(cmd[:4])} ...")

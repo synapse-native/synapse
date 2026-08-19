@@ -15,13 +15,15 @@ import pytest
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
-CLUSTER_O = os.path.join(PROJECT_ROOT, "cluster.o")  # D-9(d) corte 4: std.cluster extraido a runtime/core/cluster.c (FZ usa cluster_canal_remoto_enviar)
-DEBUG_O = os.path.join(PROJECT_ROOT, "debug.o")  # D-9(d) corte 5: cluster.o usa _get_timestamp_ns (debug.c)
-FUZZ_O = os.path.join(PROJECT_ROOT, "fuzz.o")  # D-9(d) corte 6: fuzzing (M10.4) extraido a runtime/core/fuzz.c
+# F3-15 + D-9(d) corte 8 (sin hardcoding, regla 13): los .o del runtime se
+# derivan de runtime/core/*.c via conftest.rt_objs() — cualquier corte nuevo
+# (cripto.c, json.c, ...) se enlaza automaticamente.
+try:
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "tests"))
+    from conftest import rt_objs
+    RT_OBJS = [o for o in rt_objs() if o and os.path.exists(o)]
+except Exception:
+    RT_OBJS = []
 TEST_C_SRC = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.exe")
 MAIN_PY = os.path.join(PROJECT_ROOT, "main.py")
@@ -191,14 +193,12 @@ def compiled_test():
     # Compile
     if not os.path.exists(TOOLCHAIN_GCC):
         pytest.skip(f"Toolchain not found: {TOOLCHAIN_GCC}")
-    if not os.path.exists(SYNAPSE_RT_O):
-        pytest.skip(f"synapse_rt.o not found")
-    if not os.path.exists(TWEETNACL_O):
-        pytest.skip(f"tweetnacl.o not found")
+    if not RT_OBJS:
+        pytest.skip("objetos del runtime no disponibles (conftest.rt_objs)")
 
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, CLUSTER_O, DEBUG_O, FUZZ_O, TWEETNACL_O,
+        TEST_C_SRC, *RT_OBJS,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -230,7 +230,7 @@ class TestCompilacion:
             f.write(TEST_C_CODE)
         cmd = [
             TOOLCHAIN_GCC, "-O2", "-std=c99",
-            TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, CLUSTER_O, DEBUG_O, FUZZ_O, TWEETNACL_O,
+            TEST_C_SRC, *RT_OBJS,
             "-o", TEST_BIN,
             "-lm", "-lpthread", "-lws2_32"
         ]

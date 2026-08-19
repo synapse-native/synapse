@@ -17,11 +17,11 @@ from compilador.ast_nodes import (
 from compilador.generator import GeneradorC
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, 'synapse_rt.o')
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, 'synapse_rt_memory.o')
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, 'synapse_rt_concurrency.o')
-TWEETNACL_O = os.path.join(PROJECT_ROOT, 'tweetnacl.o')
-TENSOR_O = os.path.join(PROJECT_ROOT, 'tensor.o')
+# F3-15 + D-9(d) corte 8 (sin hardcoding, regla 13): objetos del runtime
+# derivados de runtime/core/*.c via conftest.rt_objs().
+sys.path.insert(0, os.path.dirname(__file__))
+from conftest import rt_objs
+RT_OBJS = [o for o in rt_objs() if o and os.path.exists(o)]
 
 
 def build_toml_ast() -> Programa:
@@ -234,7 +234,7 @@ def test_toml_compile_and_run():
         # Compilar
         compile_cmd = [
             'gcc', '-Wall', '-Wextra', '-O0',
-            tmp_c, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TENSOR_O, TWEETNACL_O,
+            tmp_c, *RT_OBJS,
             '-o', exe_path,
             '-lpthread', '-lws2_32'
         ]
