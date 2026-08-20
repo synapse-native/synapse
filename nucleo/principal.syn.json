@@ -97601,168 +97601,21 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if (_es_cmp) {"
+                  "instruccion": "        int _es_logico = (strcmp(_oc, \"y\") == 0 || strcmp(_oc, \"o\") == 0 || strcmp(_oc, \"&&\") == 0 || strcmp(_oc, \"||\") == 0);"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            r = (_ver_es_literal_o_constante(_op->izquierdo) || _ver_es_literal_o_constante(_op->derecho)) ? 1 : 0;"
+                  "instruccion": "        if (_es_cmp) { r = 1; }"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "}"
-                }
-              }
-            ]
-          },
-          {
-            "_tipo": "SentenciaRetornar",
-            "expr": {
-              "_tipo": "Identificador",
-              "nombre": "r"
-            },
-            "es_transferencia": false
-          }
-        ]
-      },
-      {
-        "_tipo": "DefinicionFuncion",
-        "nombre": "_ver_es_literal_o_constante",
-        "parametros": [
-          {
-            "nombre": "expr",
-            "tipo": "puntero"
-          }
-        ],
-        "tipo_retorno": "entero",
-        "requiere": [
-          {
-            "_tipo": "OpBinaria",
-            "izquierdo": {
-              "_tipo": "Identificador",
-              "nombre": "expr"
-            },
-            "operador": "!=",
-            "derecho": {
-              "_tipo": "LiteralNulo"
-            }
-          }
-        ],
-        "garantiza": [
-          {
-            "_tipo": "OpBinaria",
-            "izquierdo": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "_resultado_"
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "operador": "||",
-            "derecho": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "_resultado_"
-              },
-              "operador": "==",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 1
-              }
-            }
-          }
-        ],
-        "cuerpo": [
-          {
-            "_tipo": "AsignacionVariable",
-            "nombre": "r",
-            "expresion": {
-              "_tipo": "LiteralNumero",
-              "valor": 0
-            }
-          },
-          {
-            "_tipo": "BloqueInseguro",
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "struct Nodo* _e = (struct Nodo*)expr;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "if (_e && _e->tipo.datos) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    const char* _t = _e->tipo.datos;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    if (strcmp(_t, \"LiteralNumero\") == 0 || strcmp(_t, \"LiteralDecimal\") == 0) { r = 1; }"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    else if (strcmp(_t, \"Identificador\") == 0) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        struct Identificador* _id = (struct Identificador*)_e;"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        char* _nm = _id->nombre.datos ? _id->nombre.datos : (char*)\"\";"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "        if (strcmp(_nm, \"MAX\") == 0 || strcmp(_nm, \"LIMITE\") == 0 || strcmp(_nm, \"N\") == 0 || strcmp(_nm, \"TAMANO\") == 0 || strcmp(_nm, \"LIMIT\") == 0 || strcmp(_nm, \"MAX_ITER\") == 0 || strcmp(_nm, \"MAXIMO\") == 0 || strcmp(_nm, \"MIN\") == 0 || strcmp(_nm, \"MINIMO\") == 0) { r = 1; }"
+                  "instruccion": "        else if (_es_logico) { r = (_ver_tiene_cota(_op->izquierdo) || _ver_tiene_cota(_op->derecho)) ? 1 : 0; }"
                 }
               },
               {
@@ -97907,21 +97760,35 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            char* _nm = _av->nombre.datos ? _av->nombre.datos : (char*)\"(desconocida)\";"
+                  "instruccion": "            if (!_av->es_constante) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            fprintf(stderr, \"[Synapse] Error de verificacion (E-701): mutacion de variable global '%s' prohibida en modo --safe\\n\", _nm);"
+                  "instruccion": "                char* _nm = _av->nombre.datos ? _av->nombre.datos : (char*)\"(desconocida)\";"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            errs++;"
+                  "instruccion": "                fprintf(stderr, \"[Synapse] Error de verificacion (E-701): mutacion de variable global '%s' prohibida en modo --safe\\n\", _nm);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "                errs++;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "            }"
                 }
               },
               {
@@ -97956,7 +97823,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if (_ver_es_pura(_fn)) {"
+                  "instruccion": "            if (_ver_comprobar_pureza(_fn)) {"
                 }
               },
               {
@@ -98015,7 +97882,7 @@
       },
       {
         "_tipo": "DefinicionFuncion",
-        "nombre": "_ver_es_pura",
+        "nombre": "_ver_comprobar_pureza",
         "parametros": [
           {
             "nombre": "nombre",
@@ -99252,14 +99119,14 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "        if (_ver_tiene_caso_base(_si->cuerpo, _fn)) {"
+                  "instruccion": "            if (_ver_tiene_caso_base(_si->cuerpo, _fn)) {"
                 }
               },
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "            if (_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn)) { r = 1; }"
+                  "instruccion": "            if ((_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn)) || (!_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_c->cola, _fn))) { r = 1; }"
                 }
               },
               {
@@ -99301,7 +99168,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "                    if (_ver_tiene_caso_base(_sub->cuerpo, _fn) && _sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_sub->cuerpo_sino, _fn)) { r = 1; }"
+                  "instruccion": "                    if (_ver_tiene_caso_base(_sub->cuerpo, _fn) && ((_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_sub->cuerpo_sino, _fn)) || (!_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_ic->cola, _fn)))) { r = 1; }"
                 }
               },
               {

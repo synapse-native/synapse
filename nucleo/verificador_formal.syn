@@ -112,10 +112,10 @@ funcion _ver_inspeccionar_bucles(cuerpo: puntero, nombre_func: puntero) -> enter
         asm("}")
     retornar errs
 
-// Criterio: condición OpBinaria con operador de comparación (<, >, <=, >=,
-// ==, !=) donde al menos un lado sea un literal numérico o constante conocida
-// (NOMBRES_LIMITE del S1: MAX, LIMITE, N, TAMANO, LIMIT, MAX_ITER, MAXIMO,
-// MIN, MINIMO).
+// Criterio: la condición contiene un operador de comparación (<, >, <=, >=,
+// ==, !=), posiblemente anidado dentro de operadores lógicos (y, o).
+// Un 'mientras verdadero:' (sin comparación) se sigue rechazando, pero
+// 'mientras i < len_texto:' o 'mientras t != T_MAYOR o x > 0:' se aceptan.
 
 funcion _ver_tiene_cota(cond: puntero) -> entero:
     requiere:
@@ -130,28 +130,9 @@ funcion _ver_tiene_cota(cond: puntero) -> entero:
         asm("    if (_op->operador && _op->operador->lexema.datos) {")
         asm("        const char* _oc = _op->operador->lexema.datos;")
         asm("        int _es_cmp = (strcmp(_oc, \"<\") == 0 || strcmp(_oc, \">\") == 0 || strcmp(_oc, \"<=\") == 0 || strcmp(_oc, \">=\") == 0 || strcmp(_oc, \"==\") == 0 || strcmp(_oc, \"!=\") == 0);")
-        asm("        if (_es_cmp) {")
-        asm("            r = (_ver_es_literal_o_constante(_op->izquierdo) || _ver_es_literal_o_constante(_op->derecho)) ? 1 : 0;")
-        asm("        }")
-        asm("    }")
-        asm("}")
-    retornar r
-
-funcion _ver_es_literal_o_constante(expr: puntero) -> entero:
-    requiere:
-        expr != nulo
-    garantiza:
-        _resultado_ == 0 o _resultado_ == 1
-    r = 0
-    inseguro:
-        asm("struct Nodo* _e = (struct Nodo*)expr;")
-        asm("if (_e && _e->tipo.datos) {")
-        asm("    const char* _t = _e->tipo.datos;")
-        asm("    if (strcmp(_t, \"LiteralNumero\") == 0 || strcmp(_t, \"LiteralDecimal\") == 0) { r = 1; }")
-        asm("    else if (strcmp(_t, \"Identificador\") == 0) {")
-        asm("        struct Identificador* _id = (struct Identificador*)_e;")
-        asm("        char* _nm = _id->nombre.datos ? _id->nombre.datos : (char*)\"\";")
-        asm("        if (strcmp(_nm, \"MAX\") == 0 || strcmp(_nm, \"LIMITE\") == 0 || strcmp(_nm, \"N\") == 0 || strcmp(_nm, \"TAMANO\") == 0 || strcmp(_nm, \"LIMIT\") == 0 || strcmp(_nm, \"MAX_ITER\") == 0 || strcmp(_nm, \"MAXIMO\") == 0 || strcmp(_nm, \"MIN\") == 0 || strcmp(_nm, \"MINIMO\") == 0) { r = 1; }")
+        asm("        int _es_logico = (strcmp(_oc, \"y\") == 0 || strcmp(_oc, \"o\") == 0 || strcmp(_oc, \"&&\") == 0 || strcmp(_oc, \"||\") == 0);")
+        asm("        if (_es_cmp) { r = 1; }")
+        asm("        else if (_es_logico) { r = (_ver_tiene_cota(_op->izquierdo) || _ver_tiene_cota(_op->derecho)) ? 1 : 0; }")
         asm("    }")
         asm("}")
     retornar r
@@ -176,14 +157,16 @@ funcion _ver_mutaciones_globales(ast: puntero) -> entero:
         asm("        const char* _t = _s->tipo.datos;")
         asm("        if (strcmp(_t, \"AsignacionVariable\") == 0) {")
         asm("            struct AsignacionVariable* _av = (struct AsignacionVariable*)_s;")
-        asm("            char* _nm = _av->nombre.datos ? _av->nombre.datos : (char*)\"(desconocida)\";")
-        asm("            fprintf(stderr, \"[Synapse] Error de verificacion (E-701): mutacion de variable global '%s' prohibida en modo --safe\\n\", _nm);")
-        asm("            errs++;")
+        asm("            if (!_av->es_constante) {")
+        asm("                char* _nm = _av->nombre.datos ? _av->nombre.datos : (char*)\"(desconocida)\";")
+        asm("                fprintf(stderr, \"[Synapse] Error de verificacion (E-701): mutacion de variable global '%s' prohibida en modo --safe\\n\", _nm);")
+        asm("                errs++;")
+        asm("            }")
         asm("        }")
         asm("        else if (strcmp(_t, \"DefinicionFuncion\") == 0) {")
         asm("            struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_s;")
         asm("            char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
-        asm("            if (_ver_es_pura(_fn)) {")
+        asm("            if (_ver_comprobar_pureza(_fn)) {")
         asm("                errs += _ver_funcion_sin_efectos(_f->cuerpo, _fn);")
         asm("            }")
         asm("        }")
@@ -194,7 +177,7 @@ funcion _ver_mutaciones_globales(ast: puntero) -> entero:
 
 // Funciones puras por convención de nombre: sufijo '_pura' o prefijo 'pura_'.
 
-funcion _ver_es_pura(nombre: puntero) -> entero:
+funcion _ver_comprobar_pureza(nombre: puntero) -> entero:
     requiere:
         nombre != nulo
     garantiza:
@@ -369,14 +352,14 @@ funcion _ver_tiene_convergencia(func: puntero) -> entero:
         asm("    struct Nodo* _s = _c->cabeza;")
         asm("    if (_s && _s->tipo.datos && strcmp(_s->tipo.datos, \"SentenciaSi\") == 0) {")
         asm("        struct SentenciaSi* _si = (struct SentenciaSi*)_s;")
-        asm("        if (_ver_tiene_caso_base(_si->cuerpo, _fn)) {")
-        asm("            if (_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn)) { r = 1; }")
+        asm("            if (_ver_tiene_caso_base(_si->cuerpo, _fn)) {")
+        asm("            if ((_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn)) || (!_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_c->cola, _fn))) { r = 1; }")
         asm("            struct ListaNodo* _ic = _si->cuerpo;")
         asm("            while (_ic) {")
         asm("                struct Nodo* _is = _ic->cabeza;")
         asm("                if (_is && _is->tipo.datos && strcmp(_is->tipo.datos, \"SentenciaSi\") == 0) {")
         asm("                    struct SentenciaSi* _sub = (struct SentenciaSi*)_is;")
-        asm("                    if (_ver_tiene_caso_base(_sub->cuerpo, _fn) && _sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_sub->cuerpo_sino, _fn)) { r = 1; }")
+        asm("                    if (_ver_tiene_caso_base(_sub->cuerpo, _fn) && ((_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_sub->cuerpo_sino, _fn)) || (!_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_ic->cola, _fn)))) { r = 1; }")
         asm("                }")
         asm("                _ic = _ic->cola;")
         asm("            }")
