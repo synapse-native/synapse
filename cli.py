@@ -876,6 +876,14 @@ def main():
                     output_path = sys.argv[i + 1]
                 break
         
+        # Parsear --target (Manual 8 §4.2)
+        target = "native"
+        for i, arg in enumerate(sys.argv):
+            if arg == "--target":
+                if i + 1 < len(sys.argv):
+                    target = sys.argv[i + 1]
+                    break
+        
         modo_safe = "--safe" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
         clave_sbom = args.sign or ""
@@ -886,7 +894,8 @@ def main():
                                      incremental=incremental,
                                      generar_sbom=generar_sbom_flag,
                                      firmar_binario=bool(clave_sbom),
-                                     clave_sbom=clave_sbom)
+                                     clave_sbom=clave_sbom,
+                                     target=target)
         return codigo
 
     if args.help:

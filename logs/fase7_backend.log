@@ -1,0 +1,65 @@
+=== FASE 7: BACKEND LLVM Y WASM — Build Log ===
+Fecha: 2026-08-20
+
+--- Compilacion synapse_llvm.c ---
+Return code: 0
+STDERR: 
+
+--- Compilacion synapse_wasm.c ---
+Return code: 0
+STDERR: 
+
+--- LLVM IR Generator Test ---
+IR output (first 300 chars): ; ModuleID = 'synapse'
+source_filename = "synapse"
+target datalayout = "e-m:w-i666-32-n32"
+target triple = "unknown-pc-win32"
+
+define i32 @principal() {
+    entry:
+        ret i32 42
+        }
+        
+        
+Test PASS: IR contains define + ret
+
+--- WAT Generator Test ---
+WAT output (first 300 chars): (module
+  (func $principal  (result i32)
+    ;; entry block
+    i32.const 42
+    return
+  )
+)
+
+Test PASS: WAT contains module + const + return
+
+--- CLI --target llvm test ---
+RC: 0
+STDOUT: [OK] Codigo C generado: C:\Users\marce\AppData\Local\Temp\tmprvrh9uea.c
+[OK] LLVM IR generado: C:\Users\marce\AppData\Local\Temp\tmprvrh9uea.ll
+STDERR: 
+.ll output: ; ModuleID = 'synapse'
+source_filename = "synapse"
+target datalayout = "e-m:w-i666-32-n32"
+target triple = "unknown-pc-win32"
+
+define i32 @principal() {
+    entry:
+        ret i32 42
+        }
+       
+
+--- CLI --target wasm test ---
+RC: 0
+STDOUT: [OK] Codigo C generado: C:\Users\marce\AppData\Local\Temp\tmprvrh9uea.c
+[OK] WAT generado: C:\Users\marce\AppData\Local\Temp\tmprvrh9uea.wat
+STDERR: 
+.wat output: (module
+  (func $principal  (result i32)
+    ;; entry block
+    i32.const 42
+    return
+  )
+)
+

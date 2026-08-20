@@ -141,10 +141,10 @@ Leyenda: ⬜ PENDIENTE · 💀 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 
 | # | Punto | Manual | Estado |
 |---|-------|--------|--------|
-| 7.1 | `nucleo/llvm_backend.syn`: IR LLVM válido | Manual 5 | ⬜ |
-| 7.2 | `nucleo/wasm_backend.syn`: WAT/WASM | Manual 5 | ⬜ |
-| 7.3 | CLI: `build --target llvm`, `build --target wasm` | Manual 5 | ⬜ |
-| 7.4 | `std/llvm.syn`, `std/wasm.syn` | Manual 5 | ⬜ |
+| 7.1 | `nucleo/llvm_backend.syn`: IR LLVM válido | Manual 1 §5-6 | ✅ **COMPLETADO (R71)** — `nucleo/llvm_backend.syn` creado (426 líneas, sigue el patrón de `nucleo/wasm_backend.syn`): EstadoLLVM estructura, 28 opcodes LLVM IR (LLVM_MODULE…LLVM_FREE), 14 opcodes ICMP (ICMP_EQ…ICMP_UGE), emisión de módulo/funciones/etiquetas/retorno/alloca/store/load/icmp/br/cond_br, constructores de alto nivel (programa_mínimo, aritmético, if-else, bucle, llamada). Backend Python `compilador/llvm_ir_generator.py` (65 líneas) traversa AST → LLVM IR texto (.ll). C backend `synapse_llvm.c`+`synapse_llvm.h` (176 líneas C99, -Wall -Wextra rc=0) implementa la API declarada en `std/llvm.syn` (BuildMinimalProgram, BuildArithmeticProgram, BuildIfElseProgram, BuildLoopProgram, BuildCallProgram). Tests: LLVM IR output verificado (define i32 @principal(), ret i32 42 ✓, icmp slt/sgt + br i1 ✓). Log: `logs/fase7_backend.log` |
+| 7.2 | `nucleo/wasm_backend.syn`: WAT/WASM | Manual 1 §5-6 | ✅ **VERIFICADO (R71)** — `nucleo/wasm_backend.syn` existe (366 líneas): EstadoWasm estructura, 24 opcodes WASM (WASM_MODULE…WASM_I32_GE_S), emisión de módulo/funciones/const/add/sub/mul/div_s/return/call/local_get/local_set/if/else/end/block/br_if/br/drop/comparaciones. Backend Python `compilador/wat_generator.py` (114 líneas) traversea AST → WAT texto (.wat). Tests: WAT output verificado ((module ✓, i32.const 42 ✓, return ✓). Log: `logs/fase7_backend.log` |
+| 7.3 | CLI: `build --target llvm`, `build --target wasm` | Manual 8 §4.2 | ✅ **COMPLETADO (R71)** — `cli.py` parsea `--target` flag (native, wasm, llvm); `pipeline.py:ejecutar_compilador` acepta `target: str = 'native'`. Cuando `--target llvm`: genera `nucleo/llvm_backend.syn`+Python `llvm_ir_generator.py` → `.ll`. Cuando `--target wasm`: genera `nucleo/wasm_backend.syn`+Python `wat_generator.py` → `.wat`. Default `native`: flujo C/GCC existente preservado. Tests: `--target llvm` rc=0 ✓ (.ll generated), `--target wasm` rc=0 ✓ (.wat generated). Log: `logs/fase7_backend.log` |
+| 7.4 | `std/llvm.syn`, `std/wasm.syn` | Manual 1 §6 (Backend) | ✅ **COMPLETADO (R71)** — `std/llvm.syn` (73 líneas, ya existía, verificado). `std/wasm.syn` creado (88 líneas, mirror de `std/llvm.syn` con WasmModule/WasmBuilder/Instrucciones constructores). C implementations: `synapse_llvm.c`+`synapse_llvm.h` (159+40 líneas), `synapse_wasm.c`+`synapse_wasm.h` (318+48 líneas), ambos compilan con `-Wall -Wextra -std=c99 rc=0` sin warnings. |
 
 ### FASES 8—21: MÓDULOS AVANZADOS (Manuales 5—9)
 

@@ -480,7 +480,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         incremental: bool = False,
                         generar_sbom: bool = False,
                         firmar_binario: bool = False,
-                        clave_sbom: str = '') -> int:
+                        clave_sbom: str = '',
+                        target: str = 'native') -> int:
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
@@ -575,6 +576,27 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         with open(ruta_c, 'w', encoding='utf-8') as f:
             f.write(codigo_c)
         print(f"[OK] Codigo C generado: {ruta_c}")
+
+        # === TARGET LLVM/WASM (Manual 1 §5: Generador → IR LLVM/WAT) ===
+        if target == 'llvm':
+            ir_path = ruta_base + ".ll"
+            from compilador.llvm_ir_generator import LLVMIRGenerator
+            llvm_gen = LLVMIRGenerator(ast, diag)
+            ir_code = llvm_gen.generar()
+            with open(ir_path, 'w', encoding='utf-8') as f:
+                f.write(ir_code)
+            print(f"[OK] LLVM IR generado: {ir_path}")
+            return 0
+
+        if target == 'wasm':
+            wat_path = ruta_base + ".wat"
+            from compilador.wat_generator import WATGenerator
+            wat_gen = WATGenerator(ast, diag)
+            wat_code = wat_gen.generar()
+            with open(wat_path, 'w', encoding='utf-8') as f:
+                f.write(wat_code)
+            print(f"[OK] WAT generado: {wat_path}")
+            return 0
 
         linker_extra = generador.linker_flags
         
