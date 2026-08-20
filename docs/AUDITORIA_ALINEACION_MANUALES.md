@@ -150,20 +150,20 @@ Leyenda: ⬜ PENDIENTE · 💀 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 
 | # | Punto | Manual | Estado |
 |---|-------|--------|--------|
-| 8 | `std.cluster`: Raft, work-stealing, multicast, handshake Ed25519 | Manual 5 | ⬜ |
-| 9 | `std.debug`: time-travel, snapshots | Manual 6 | ⬜ |
+| 8 | `std.cluster`: Raft, work-stealing, multicast, handshake Ed25519 | Manual 5 §6-9 | ✅ **VERIFICADO** — `runtime/core/cluster.c` (1.927 L, M8.1-M8.6) + `cluster.h` (68 prototipos); `std/cluster.syn` (619 L) con externs alineados; tests C: raft 77/77, discovery 52/52, multicast 23/23, handshake 21/21, work_stealing 43/43. **Pendiente**: serialización binaria (Manual 5 §6.3, formato MessagePack) no implementada — `cluster_canal_remoto_enviar`/`recibir` usan texto plano, no el formato `[0x03][8 bytes]`. Hallazgo registrado. |
+| 9 | `std.debug`: time-travel, snapshots | Manual 5 §9 | ✅ **VERIFICADO** — `runtime/core/debug.c` (1.396 L, M9.0-M9.4 tr/* rp_* ms_* dd_*); tests distribuidos pasan (R41). |
 | 10 | Hardening: ATP avanzado, SBOM SPDX, SLSA L3, fuzzing 24/7 | Manual 9 | ⬜ |
 | 11 | Release matrix (4 targets), firma Ed25519, marketplace, benchmarks | Manual 9 | ⬜ |
-| 12 | IA Nativa: modelo local, RAG, LoRA, quantization, distillation | Manual 7 | ⬜ |
+| 12 | IA Nativa: modelo local, RAG, LoRA, quantization, distillation | Manual 7 | ✅ **PARCIAL** — `runtime/core/modelo.c` (2.017 L) + `std/modelo.syn` (250 L); `importar std.modelo` enlaza (F3-12 cerrado R46). |
 | 13 | Federated: FedAvg, orquestador distribuido | Manual 7 | ⬜ |
 | 14 | Proof Bridge (Coq/Lean), symbolic execution | Manual 9 | ⬜ |
 | 15 | Quantum: Shor QEC, Surface Code, T1/T2 | Manual 9 | ⬜ |
-| 16 | Modularización de `synapse_rt.c` | Manual 3 §3.1 | ⬜ |
+| 16 | Modularización de `synapse_rt.c` | Manual 1 §4 | ✅ **VERIFICADO** — D-9(d) CERRADA (R42): `synapse_rt.c` 7.882 → 1.769 L; `runtime/core/` tiene 18 módulos (io.c, memory.c, concurrency.c, cluster.c, debug.c, fuzz.c, modelo.c, etc.). |
 | 17 | PGO/LTO, footprint, benchmarks | Manual 9 | ⬜ |
 | 18 | Caché incremental SHA-256 (HIT/MISS/STALE) | Manual 9 | ⬜ |
-| 19 | CanalRemoto v2: handshake Ed25519 | Manual 5 | ⬜ |
+| 19 | CanalRemoto v2: handshake Ed25519 | Manual 5 §6.2 | ✅ **VERIFICADO** — `cluster_canal_remoto_enviar`/`recibir_paquete`/handshake HELLO/HELLO_ACK Ed25519 zero-trust implementado en cluster.c; std/cluster.syn `conectar()` realiza handshake + verificación firma. **Pendiente**: v2 con derivación de clave de sesión (Manual 5 §6.2 paso 3 — `crypto_kx`). |
 | 20 | Lifetimes avanzados: region graph, union-find | Manual 2 | ⬜ |
-| 21 | RAII y scopes: destructor maps | Manual 3 | ⬜ |
+| 21 | RAII y scopes: destructor maps | Manual 3 | ✅ **PARCIAL** — RAII en runtime (Manual 4 §5, F3-2); destructor maps = Fase 23 (Syquex). |
 
 ### FASES 22—30: SYQUEX Y ECOSISTEMA COMPLETO (Manuales 1/3, ROADMAP)
 
@@ -393,4 +393,6 @@ Comprueba de forma automatizada:
 | 2026-08-20 | R68/F6.1: Axon package manager runtime — axon_rt.c con TOML/TAR/SHA-256/Ed25519/SemVer/lock (Manual 8 §4.3-4.4, Manual 6 §6.1) | ✅ Resuelto | `axin_rt.c` 420 líneas: agregados extern declarations para TAR (`_syn_tar_extraer`), SHA-256 (`_syn_sha256_hex`/`_syn_sha256_archivo`/`_syn_sha256_texto`), Ed25519 verify (`_syn_ed25519_verificar`), HTTP (`_syn_http_get_archivo`), lock (`_syn_axon_verificar_lock`/`_syn_axon_escribir_lock`/`_syn_axon_buscar_local`) desde runtime/core/; nuevas funciones Axon-specific: `_syn_ed25519_generar_par` (keypair via `crypto_sign_ed25519_keypair`), `_syn_ed25519_firmar` (sign via `crypto_sign_ed25519`), `_syn_axon_verificar_paquete` (wrapper combinado: HTTP+TAR+SHA256+Ed25519+lock); `#include "axon/tweetnacl.h"`. `gcc -c -O2 -Wall -Wextra` rc=0 sin warnings. Verificador: 0 brechas. Hash: 8311010.
 
 | 2026-08-20 | R69-R70/F6.2-F6.6: Completa Fase 6 Axon package manager | ✅ Resuelto | F6.2: `tweetnacl.c` 812 líneas, Ed25519 completo (keypair/sign/verify); test end-to-end rc=0 (sign len=76, verify rc=0, tamper rc=-1); Manual 6 §5.3. F6.3: `axin.toml` esquema creado (`[paquete]` con nombre, version SemVer, autor=pk_hex, tipo, punto_entrada; `[dependencias]`, `[parametros]`); 19/19 E2E + 15/15 unit/integration tests PASS. F6.4: CLI commands en `cli.py` — `synapse init` (estructura proyecto Manual 8 §4.3), `synapse fetch` (download+verify+extract con path traversal protection), `synapse axon init/publish/verify/search`; fix deviation L479 `[proyecto]`→`[paquete]`. F6.5: Path traversal protection verificada en C runtime (`runtime/core/axon.c:_syn_tar_extraer` L159-191) + Python CLI (`_tar_extraer`); tests: normal ✓, `../` → False ✓, absolute → False ✓. F6.6: Lockfiles `axon.lock` deterministas (`[lock]` TOML con `{version, hash=sha256:...}`); determinismo verificado (`test_sha256_determinista` PASSED). Verificador: 0 brechas. Hash: 467b739.
+| 2026-08-20 | **F7/R71**: Fase 7 Backend LLVM y WASM COMPLETADA | ✅ Resuelto | **Manual 1 §5-6** (LLVM IR), **Manual 8 §4.2** (CLI target). Checklist 7.1-7.4 ✅. `nucleo/llvm_backend.syn` (426 L); `compilador/llvm_ir_generator.py` (65 L); `synapse_llvm.c`/`.h` (C99, -Wall -Wextra rc=0); `std/llvm.syn` (73 L). `nucleo/wasm_backend.syn` (366 L); `compilador/wat_generator.py` (114 L); `synapse_wasm.c`/`.h` (C99 rc=0); `std/wasm.syn` (88 L). CLI `build --target llvm`→`.ll` ✓; `--target wasm`→`.wat` ✓; default `native` preservado. Tests: LLVM IR `define i32 @principal()` + `ret i32 42` ✓; WAT `(module` + `i32.const 42` + `return` ✓. Log: `logs/fase7_backend.log`. Verificador 0 brechas. Hash: 324c0d7.
+| 2026-08-20 | **F8 Audit** / Concurrencia Distribuida Audit | ✅ Verificado | **Manual 5 §6-9** (Concurrencia Distribuida). `runtime/core/cluster.c` (1.927 L) + `cluster.h` (68 prototipos) implementan M8.1 (Ed25519 handshake), M8.2 (work-stealing), M8.3 (Raft), M8.4 (checkpoint/live-migration), M8.5 (auto-discovery), M8.6 (UDP multicast). `std/cluster.syn` (619 L) expone las 8 funciones externas. Tests C: **test_cluster_raft 77/77, test_cluster_discovery 52/52, test_cluster_multicast 23/23, test_cluster_handshake_e2e 21/21, test_work_stealing 43/43** — todos PASS. Log: `logs/cluster_tests_f8.log`. Verificador 0 brechas. Hash: 324c0d7. **Hallazgos pendientes**: (1) **Serialización binaria** (Manual 5 §6.3): formato MessagePack binario (`0x03` entero 64-bit, etc.) no implementado en `cluster_canal_remoto_enviar`/`recibir_paquete` — usa texto plano; (2) **CanalRemoto v2** (Manual 5 §6.2 paso 3): derivación de clave de sesión via `crypto_kx` no implementada. |
 
