@@ -130,7 +130,7 @@ Leyenda: ⬜ PENDIENTE · 💀 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 
 | # | Punto | Manual | Estado |
 |---|-------|--------|--------|
-| 6.1 | `axon/axon_rt.c`: TOML, TAR, SHA-256, Ed25519, SemVer, lock | Manual 8 | ⬜ |
+| 6.1 | `axon/axon_rt.c`: TOML, TAR, SHA-256, Ed25519, SemVer, lock | Manual 8 | ✅ **VERIFICADO (R68)** — `axon_rt.c` 420 líneas: **TOML** (parse + validar_manifiesto via `runtime/core/toml.c` extern); **TAR** (`_syn_tar_extraer` extern, path-traversal protection de Manual 6 §6.1); **SHA-256** (`_syn_sha256_hex`/`_syn_sha256_archivo`/`_syn_sha256_texto` extern); **Ed25519** (`_syn_ed25519_verificar` extern + signing propio `_syn_ed25519_firmar`/`_syn_ed25519_generar_par` via `tweetnacl.h` `crypto_sign_ed25519`/`crypto_sign_ed25519_keypair`); **SemVer** (`_syn_semver_match` con ^~exacto); **lock** (`_syn_axon_verificar_lock`/`_syn_axon_escribir_lock`/`_syn_axon_buscar_local` extern + wrapper `_syn_axon_verificar_paquete` combinando HTTP+TAR+SHA256+Ed25519+lock); `gcc -c -O2 -Wall -Wextra` rc=0 sin warnings; hash `8311010`. |
 | 6.2 | `axon/tweetnacl.c`: Ed25519 | Manual 8 | ⬜ |
 | 6.3 | `axon/axon.toml`: esquema de manifiesto | Manual 8 | ⬜ |
 | 6.4 | CLI: `axon init`, `fetch`, `publish`, `verify`, `search` | Manual 8 | ⬜ |

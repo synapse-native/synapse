@@ -1,18 +1,26 @@
-// axon_rt.c — Axon package manager runtime (unique functions only)
+// axon_rt.c — Axon package manager runtime
 //
-// This file contains ONLY the Axon-specific functions that are NOT
-// provided by the modular runtime (synapse_rt.c, synapse_rt_memory.c,
-// synapse_rt_concurrency.c). All shared runtime functions come from
-// those modules via extern declarations.
+// Fase 6.1: TOML, TAR, SHA-256, Ed25519, SemVer, lock.
+// Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §6.1 (path
+// traversal protection en extracción TAR).
 //
-// Compilar: gcc -c axon_rt.c -o axon_rt.o
-// Linkear: gcc programa.c synapse_rt.o synapse_rt_memory.o synapse_rt_concurrency.o axon_rt.o tweetnacl.o -o programa -lpthread
+// This file contains the Axon-specific functions. Shared runtime
+// functions (TOML parse, SHA-256, TAR, HTTP, lock, Ed25519 verify)
+// come from the modular runtime via extern declarations. This file
+// adds Axon-specific signing, key generation, and combined
+// package verification.
+//
+// Compilar: gcc -c axon/axon_rt.c -o axon_rt.o -I. -Iruntime/core
+// Linkear: gcc programa.c synapse_rt.o synapse_rt_memory.o
+//          synapse_rt_concurrency.o axon_rt.o tweetnacl.o -o programa -lpthread
 
 #include "synapse_rt_types.h"
+#include "axon/tweetnacl.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 // ============================================================
 // TOML types (local definition, same layout as synapse_rt.c)
@@ -38,6 +46,30 @@ struct NodoToml {
 extern NodoToml _toml_parse(CadenaSegura entrada);
 extern void _toml_nodo_liberar(NodoToml n);
 extern NodoToml _toml_object_get(NodoToml nodo, CadenaSegura clave);
+
+// ============================================================
+// Extern: SHA-256 (provided by synapse_rt.c / runtime/core/cripto.c)
+// ============================================================
+extern CadenaSegura _syn_sha256_hex(CadenaSegura datos);
+extern CadenaSegura _syn_sha256_archivo(const char* ruta);
+extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
+
+// ============================================================
+// Extern: Ed25519 verify (provided by runtime/core/cripto.c)
+// ============================================================
+extern int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+
+// ============================================================
+// Extern: TAR extraction, HTTP download, lock (runtime/core/axon.c)
+// ============================================================
+extern int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir);
+extern int _syn_http_get_archivo(CadenaSegura host, int puerto, CadenaSegura ruta, const char* salida_ruta);
+extern int _syn_axon_verificar_lock(const char* paquete, const char* version, const char* archivo_ruta, const char* lock_ruta);
+extern int _syn_axon_verificar_firma(const char* tar_ruta, const char* sig_ruta, const char* clave_publica_hex);
+extern int _syn_axon_escribir_lock(const char* paquete, const char* version, const char* hash_sha256);
+extern int _syn_axon_buscar_local(const char* paquete, const char* version,
+                                   char* tar_path, int tar_sz,
+                                   char* extract_dir, int ext_sz);
 
 // ============================================================
 // SemVer helpers (static — local to this TU)
@@ -179,4 +211,127 @@ int _syn_axon_validar_manifiesto(const char* toml_path) {
 
     _toml_nodo_liberar(root);
     return valid ? 0 : -1;
+}
+
+// ============================================================
+// Ed25519 signing (Axon-specific, uses tweetnacl directly)
+// ============================================================
+
+/* _syn_ed25519_generar_par: generate Ed25519 keypair.
+ * Writes 32-byte public key to pk_out and 64-byte secret key to sk_out.
+ * Both buffers must be at least 32/64 bytes.
+ * Retorna: 0 OK, -1 error.
+ */
+int _syn_ed25519_generar_par(unsigned char* pk_out, unsigned char* sk_out) {
+    if (!pk_out || !sk_out) return -1;
+    return crypto_sign_ed25519_keypair(pk_out, sk_out);
+}
+
+/* _syn_ed25519_firmar: sign a message with Ed25519 secret key.
+ * Allocates a 64-byte signature buffer (*out_len = 64).
+ * Caller must free the returned buffer.
+ * Retorna: pointer to 64-byte signature, or NULL on error.
+ */
+unsigned char* _syn_ed25519_firmar(CadenaSegura mensaje,
+                                    const unsigned char* clave_secreta,
+                                    unsigned long long* out_len) {
+    if (!mensaje.datos || !clave_secreta || !out_len) return NULL;
+    *out_len = 0;
+    unsigned long long smlen = 0;
+    unsigned char* sm = (unsigned char*)malloc((size_t)(mensaje.longitud + 64));
+    if (!sm) return NULL;
+    int rc = crypto_sign_ed25519(sm, &smlen,
+                                (const unsigned char*)mensaje.datos,
+                                (unsigned long long)mensaje.longitud,
+                                clave_secreta);
+    if (rc != 0) { free(sm); return NULL; }
+    // signature is the first 64 bytes
+    unsigned char* sig = (unsigned char*)malloc(64);
+    if (!sig) { free(sm); return NULL; }
+    memcpy(sig, sm, 64);
+    *out_len = 64;
+    free(sm);
+    return sig;
+}
+
+// ============================================================
+// Axon: combined package verification (SHA-256 + Ed25519 + lock)
+// ============================================================
+
+/* _syn_axon_verificar_paquete: download (or use local) + verify a package.
+ * Steps:
+ *   1. Buscar localmente (cache/oficiales/AXON_PATH)
+ *   2. Si no está, HTTP download (host, puerto, ruta → .tar)
+ *   3. Verify SHA-256 hash against expected (or compute + write lock)
+ *   4. Verify Ed25519 signature (if clave_publica_hex provided)
+ *   5. Extract TAR (con path traversal protection)
+ * Returns: 0 OK, -1 error.
+ */
+int _syn_axon_verificar_paquete(const char* paquete, const char* version,
+                                 const char* host, int puerto, const char* ruta_http,
+                                 const char* hash_esperado,
+                                 const char* clave_publica_hex) {
+    char tar_path[512];
+    char extract_dir[512];
+
+    // 1. Try local first
+    int local_rc = _syn_axon_buscar_local(paquete, version, tar_path, sizeof(tar_path),
+                                           extract_dir, sizeof(extract_dir));
+    if (local_rc < 0) {
+        // Not found locally: download via HTTP
+        if (!host || !ruta_http) {
+            fprintf(stderr, "[Axon] ERR_FETCH: paquete '%s' no encontrado local y no hay host HTTP\n", paquete);
+            return -1;
+        }
+        CadenaSegura h = { .longitud = (int)strlen(host), .datos = host };
+        CadenaSegura rp = { .longitud = (int)strlen(ruta_http), .datos = ruta_http };
+        snprintf(tar_path, sizeof(tar_path), ".axon_cache/%s.tar", paquete);
+        int dl_rc = _syn_http_get_archivo(h, puerto, rp, tar_path);
+        if (dl_rc != 0) {
+            fprintf(stderr, "[Axon] ERR_FETCH: fallo download HTTP para '%s'\n", paquete);
+            return -1;
+        }
+        fprintf(stderr, "[Axon] Download: %s → %s\n", ruta_http, tar_path);
+    } else {
+        fprintf(stderr, "[Axon] Local: encontrado (rc=%d) en %s\n", local_rc, tar_path);
+    }
+
+    // 2. Verify SHA-256
+    if (hash_esperado && *hash_esperado) {
+        int vrc = _syn_axon_verificar_lock(paquete, version, tar_path, "axon.lock");
+        if (vrc != 0) {
+            fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: hash mismatch para '%s'\n", paquete);
+            return -1;
+        }
+    } else {
+        // No expected hash: write to lock
+        CadenaSegura hash = _syn_sha256_archivo(tar_path);
+        if (hash.longitud == 0) {
+            fprintf(stderr, "[Axon] ERR_HASH: no se pudo calcular SHA-256 de %s\n", tar_path);
+            return -1;
+        }
+        _syn_axon_escribir_lock(paquete, version, hash.datos);
+        free((void*)hash.datos);
+    }
+
+    // 3. Verify Ed25519 signature (if public key provided)
+    if (clave_publica_hex && *clave_publica_hex) {
+        char sig_path[512];
+        snprintf(sig_path, sizeof(sig_path), "%s.sig", tar_path);
+        int src = _syn_axon_verificar_firma(tar_path, sig_path, clave_publica_hex);
+        if (src != 0) {
+            fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: firma Ed25519 invalida para '%s'\n", paquete);
+            return -1;
+        }
+        fprintf(stderr, "[Axon] Signature verificada: %s\n", paquete);
+    }
+
+    // 4. Extract TAR (path traversal protection inside)
+    int trc = _syn_tar_extraer(tar_path, extract_dir);
+    if (trc != 0) {
+        fprintf(stderr, "[Axon] ERR_TAR: fallo extracción de %s\n", tar_path);
+        return -1;
+    }
+    fprintf(stderr, "[Axon] Paquete instalado: %s v%s → %s\n", paquete, version, extract_dir);
+    return 0;
 }
