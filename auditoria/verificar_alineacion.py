@@ -431,10 +431,38 @@ def verificar_contratos_nuevos():
                     f"pre-existente — split mecánico, no aplica D-4)"
                 )
             else:
-                brechas.append(
-                    f"CTR[{archivo}] función nueva '{nombre}' sin requiere/garantiza (Manual 2 §12)"
-                )
+                # El diff puede alinear bloques estructuralmente similares y dejar
+                # las líneas requiere:/garantiza: como contexto (sin prefijo +),
+                # aunque existan en el archivo (falso positivo). Verificar contra
+                # el working tree antes de declarar la brecha.
+                if _contratos_en_archivo(archivo, nombre):
+                    info.append(
+                        f"CTR[{archivo}] función '{nombre}' con requiere/garantiza ✓ "
+                        f"(verificada en el archivo; el diff las alineó como contexto)"
+                    )
+                else:
+                    brechas.append(
+                        f"CTR[{archivo}] función nueva '{nombre}' sin requiere/garantiza (Manual 2 §12)"
+                    )
     return brechas, info
+
+
+def _contratos_en_archivo(archivo: str, nombre: str) -> bool:
+    """Comprueba en el working tree si la función 'nombre' declara
+    requiere:/garantiza: a continuación de su definición."""
+    ruta = RAIZ / archivo
+    if not ruta.exists():
+        return False
+    try:
+        lineas = ruta.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return False
+    for k, linea in enumerate(lineas):
+        m = re.match(r"^funcion\s+([A-Za-z_][A-Za-z0-9_]*)", linea)
+        if m and m.group(1) == nombre:
+            ventana = "\n".join(lineas[k + 1:k + 26])
+            return "requiere:" in ventana or "garantiza:" in ventana
+    return False
 
 
 def _funciones_en_head() -> set:

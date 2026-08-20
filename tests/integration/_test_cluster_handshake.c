@@ -38,13 +38,13 @@ int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
     return 0;
 }
 
-char _G_native_func_returns[512][64];
+char _G_native_func_returns[2048][64];
 int _G_native_func_returns_count;
 int _G_native_tipo_retorno(const char* fn, char* out) {
     if (!fn || !out) return 0;
     for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
         if (strcmp(_G_native_func_returns[_i], fn) == 0) {
-            strcpy(out, _G_native_func_returns[_i + 256]); return 1;
+            strcpy(out, _G_native_func_returns[_i + 1024]); return 1;
         }
     }
     return 0;

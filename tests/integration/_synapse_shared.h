@@ -622,7 +622,7 @@ extern int _G_native_struct_campos_count[256];
 extern int _G_native_campo_tipo(const char* sn, const char* cn, char* out);
 
 // ME-B6: tipos de retorno de funciones definidas (inferencia de tipos nativa)
-extern char _G_native_func_returns[512][64];
+extern char _G_native_func_returns[2048][64];
 extern int _G_native_func_returns_count;
 extern int _G_native_tipo_retorno(const char* fn, char* out);
 

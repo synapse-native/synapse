@@ -30,6 +30,10 @@ importar generator
 importar generator_pgo
 importar resolvedor_axon
 importar cache
+// M10.1: verificador formal nativo (modo --safe) — paridad S1
+// compilador/verificador_formal.py. En el unity build tambien debe figurar en
+// _files[] (mas abajo) para que stage1/2/3 lo incluyan al auto-compilarse.
+importar verificador_formal
 
 // --- ADT for stage results ---
 estructura ResultadoEtapa:
@@ -66,7 +70,7 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("struct ListaNodo* _merged = NULL;")
         asm("struct ListaNodo** _mcur = &_merged;")
         asm("int _is_usr = (ruta.longitud > 0 && ruta.datos != NULL && ruta.datos[0] != 0) ? 1 : 0;")
-        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/principal.syn\",NULL};")
+        asm("const char* _files[] = {\"nucleo/tokens.syn\",\"nucleo/lexer.syn\",\"nucleo/lexer_keywords.syn\",\"nucleo/ast_nodes.syn\",\"nucleo/errores.syn\",\"nucleo/diagnostics.syn\",\"nucleo/parser_constantes.syn\",\"nucleo/parser_base.syn\",\"nucleo/parser_expr.syn\",\"nucleo/parser_stmt.syn\",\"nucleo/parser.syn\",\"nucleo/parser_sentencias.syn\",\"nucleo/parser_declaraciones.syn\",\"nucleo/parser_canales.syn\",\"nucleo/puente_ast.syn\",\"nucleo/tabla_simbolos.syn\",\"nucleo/analizador_semantico.syn\",\"nucleo/lifetimes.syn\",\"nucleo/memoria.syn\",\"nucleo/generator.syn\",\"nucleo/generator_pgo.syn\",\"nucleo/resolvedor_axon.syn\",\"nucleo/verificador_formal.syn\",\"nucleo/principal.syn\",NULL};")
         asm("int _ya_incluido = 0;")
         asm("// Paridad pipeline.py:485 / Manual 9 S9.1: unity build SOLO para el compilador")
         asm("// (la ruta del usuario coincide con un modulo de _files[] o termina en principal.syn).")
@@ -571,6 +575,16 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("    fprintf(stderr,\"[Synapse] Analisis semantico fallido \\n\");")
         asm("    struct ResultadoEtapa _e = {1, 7}; return _e; }")
         asm("fprintf(stderr,\"[Synapse] F8: Analisis completado\\n\");")
+        asm("// M10.1 (--safe): verificacion formal nativa (paridad pipeline.py:525-533)")
+        asm("extern int64_t verificar(void*, int);")
+        asm("int _ver_safe=0;")
+        asm("for(int _si=2;_si<_argc();_si++){ CadenaSegura _sa=_argv(_si); if(_sa.longitud==6&&strcmp(_sa.datos,\"--safe\")==0){ _ver_safe=1; break; } }")
+        asm("if(_ver_safe){")
+        asm("    fprintf(stderr,\"[Synapse] Verificacion formal (M10.1) activada\\n\");")
+        asm("    int _ver_errs=(int)verificar((void*)&_ast,1);")
+        asm("    if(_ver_errs>0){ fprintf(stderr,\"[Synapse] Verificacion formal fallida: %d error(es)\\n\",_ver_errs); struct ResultadoEtapa _e={1,9}; return _e; }")
+        asm("    fprintf(stderr,\"[Synapse] Verificacion formal superada - codigo verificado\\n\");")
+        asm("}")
         asm("// 4. Generar codigo C desde AST (Manual 3 S3.1: la Etapa 4 emite synapse_unity.c)")
         asm("extern int64_t generar(struct Programa, CadenaSegura);")  // A5.2 D-7: entero -> int64_t
         asm("CadenaSegura _salida_c = { .longitud = 15, .datos = \"synapse_unity.c\" };")
