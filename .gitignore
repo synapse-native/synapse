@@ -107,6 +107,10 @@ test_lsp_bin
 *.pub
 *.attestation.json
 
+# CLASE R2: Artefactos públicos de release (checksums y changelog — NO son secretos)
+!CHANGELOG_v*.md
+!*.sha256
+
 # Estándar Python
 *.egg-info/
 .venv/

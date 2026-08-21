@@ -283,9 +283,9 @@ def test_fuzz_corpus_mutation():
 
 def test_fuzz_engine_smoke():
     """Verificar que el motor de fuzzing funciona minimamente."""
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     try:
-        from tests.fuzz.fuzz_engine import FuzzEngine, ResultadoFuzz
+        from fuzz_engine import FuzzEngine, ResultadoFuzz
         engine = FuzzEngine(seed=42)
         resultado = engine.iterar(n=10)
         assert resultado.total == 10, f"Esperaba 10 iteraciones, obtuvo {resultado.total}"
