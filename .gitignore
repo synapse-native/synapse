@@ -29,6 +29,10 @@ synapse_llvm.c
 _*.c
 _*.c.o
 _*.h
+*.syn.json
+# CLASE D1: C generado al lado de .syn fuente (ej: hola.syn → hola.c)
+examples/**/*.c
+tests/fixtures/*.c
 
 # CLASE D2: Artefactos de prueba en raíz (auditoría Fase 0)
 prueba_*.c
