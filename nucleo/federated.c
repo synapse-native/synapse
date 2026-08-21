@@ -236,7 +236,7 @@ int fed_recibir_gradientes(FEDSession* sesion, const char* worker_id,
 int fed_agregar_gradientes(FEDSession* sesion, const float* const* grad_workers,
                             const float* weights, int num_workers) {
     if (!sesion || !grad_workers || !weights) return -1;
-    if (num_workers <= 0 || num_workers > sesion->num_workers) return -1;
+    if (num_workers <= 0) return -1;
 
     // Limpiar buffer de agregación
     memset(sesion->buffer_agregacion, 0,
@@ -321,7 +321,7 @@ float fed_ronda_fedavg(FEDSession* sesion) {
         // Gradiente simulado: ruido gaussiano con dirección hacia cero (minimización)
         float perdida_local = 0.0f;
         for (int j = 0; j < n; j++) {
-            float g = frand(-0.01f, 0.01f);
+            float g = frand(-10.0f, 10.0f);
             // Dirigir hacia convergencia: -0.001 * peso_actual
             g -= 0.001f * sesion->pesos_globales[j];
             grad[j] = g;
