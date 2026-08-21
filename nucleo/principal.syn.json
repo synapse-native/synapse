@@ -67670,6 +67670,19 @@
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_emitir_incremento_bb",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "// Visit if-body via dispatcher"
                 }
@@ -67756,6 +67769,19 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    gen_abrir_bloque_c(est);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_emitir_incremento_bb",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
                 }
               },
               {
@@ -67927,6 +67953,19 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_abrir_bloque_c(est);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_emitir_incremento_bb",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
                 }
               },
               {
@@ -68245,6 +68284,19 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_abrir_bloque_c(est);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_emitir_incremento_bb",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
                 }
               },
               {
@@ -81701,6 +81753,19 @@
               {
                 "_tipo": "SentenciaExpr",
                 "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_finalizar",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_emitir_str(est, \"int main(int argc, char** argv) {\");"
                 }
@@ -81724,6 +81789,19 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "gen_emitir_str(est, \"    pool_init(64, 4096);\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "LlamadaFuncion",
+                  "nombre": "pgo_registrar_atexit",
+                  "argumentos": [
+                    {
+                      "_tipo": "Identificador",
+                      "nombre": "est"
+                    }
+                  ]
                 }
               },
               {
@@ -84158,6 +84236,14 @@
             "expresion": {
               "_tipo": "LlamadaFuncion",
               "nombre": "GeneradorCEst",
+              "argumentos": []
+            }
+          },
+          {
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "pgo_inicializar",
               "argumentos": []
             }
           },
@@ -92191,6 +92277,34 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "snprintf(_tmp, 128, \"    extern uint64_t __pgo_counter_%d;  /* [PGO] */\", _id);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, _tmp);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, _tmp);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);"
                 }
               },
@@ -92244,6 +92358,20 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "char _tmp[128];"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "snprintf(_tmp, 128, \"    extern uint64_t __pgo_counter_%d;  /* [PGO] */\", _id);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, _tmp);"
                 }
               },
               {
@@ -92310,6 +92438,41 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": ""
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, \"// PGO: Declaraciones globales de contadores\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for (int _i = 0; _i < _total; _i++) {"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    snprintf(_tmp, 512, \"uint64_t __pgo_counter_%d = 0;\", _i);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    gen_emitir_str(est, _tmp);"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "}"
                 }
               },
               {
@@ -92414,41 +92577,6 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Emitir declaraciones externas y fprintf para cada contador"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "for (int _i = 0; _i < _total; _i++) {"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    snprintf(_tmp, 512, \"    extern uint64_t __pgo_counter_%d;\", _i);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "    gen_emitir_str(est, _tmp);"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
-                  "instruccion": "}"
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
                   "instruccion": "for (int _i = 0; _i < _total; _i++) {"
                 }
               },
@@ -92518,6 +92646,13 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
+                  "instruccion": "gen_emitir_str(est, \"    extern void __pgo_dump(void);  /* [PGO] forward decl */\");"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
                   "instruccion": "gen_emitir_str(est, \"    atexit(__pgo_dump);  /* [PGO] Registro de volcado */\");"
                 }
               }
@@ -92548,51 +92683,21 @@
             }
           },
           {
-            "_tipo": "SentenciaSi",
-            "condicion": {
-              "_tipo": "OpBinaria",
-              "izquierdo": {
-                "_tipo": "Identificador",
-                "nombre": "total"
-              },
-              "operador": ">",
-              "derecho": {
-                "_tipo": "LiteralNumero",
-                "valor": 0
-              }
-            },
-            "cuerpo": [
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "pgo_emitir_volcado",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    },
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "total"
-                    }
-                  ]
+            "_tipo": "SentenciaExpr",
+            "expr": {
+              "_tipo": "LlamadaFuncion",
+              "nombre": "pgo_emitir_volcado",
+              "argumentos": [
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "est"
+                },
+                {
+                  "_tipo": "Identificador",
+                  "nombre": "total"
                 }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "LlamadaFuncion",
-                  "nombre": "pgo_registrar_atexit",
-                  "argumentos": [
-                    {
-                      "_tipo": "Identificador",
-                      "nombre": "est"
-                    }
-                  ]
-                }
-              }
-            ]
+              ]
+            }
           }
         ]
       },
@@ -104373,7 +104478,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "// Manual 8.3: PGO/LTO profiles via --profile flag (unico mecanismo)"
+                  "instruccion": "// Manual 8.3: PGO/LTO via --profile + --release/--debug (Manual 8 §4.2, Manual 1 §165)"
                 }
               },
               {
@@ -104394,7 +104499,91 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "for(int _pi=2;_pi<_argc();_pi++){ CadenaSegura _pa=_argv(_pi); if(_pa.longitud>9&&strcmp(_pa.datos,\"--profile\")==0&&_pi<_argc()-1){ CadenaSegura _pv=_argv(_pi+1); if(strcmp(_pv.datos,\"release-pgo\")==0){ _gcc_flags=\"-fprofile-generate\"; }else if(strcmp(_pv.datos,\"release-pgo-use\")==0){ _gcc_flags=\"-fprofile-use -flto\"; }else{ fprintf(stderr,\"[Synapse] WARNING: perfil desconocido '%s', ignorado\\n\",_pv.datos); } break; } }"
+                  "instruccion": "// --release: -O3 -flto -DNDEBUG (Manual 1 §165)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _is_release=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for(int _pi=2;_pi<_argc();_pi++){ CadenaSegura _pa=_argv(_pi); if(_pa.longitud==9&&strcmp(_pa.datos,\"--release\")==0){ _is_release=1; break; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// --debug: -O0 -g -fsanitize=address,undefined (Manual 8 §4.2)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "int _is_debug=0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for(int _pi=2;_pi<_argc();_pi++){ CadenaSegura _pa=_argv(_pi); if(_pa.longitud==7&&strcmp(_pa.datos,\"--debug\")==0){ _is_debug=1; break; } }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// Flags de optimización por modo (paridad pipeline.py)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "const char* _gcc_opt;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "if(_is_release){ _gcc_opt=\"-O3 -flto -DNDEBUG\"; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else if(_is_debug){ _gcc_opt=\"-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer\"; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "else{ _gcc_opt=\"-O2\"; }"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "// --profile: PGO instrumentation (Manual 8.3, paridad pgo_pipeline.sh)"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "for(int _pi=2;_pi<_argc();_pi++){ CadenaSegura _pa=_argv(_pi); if(_pa.longitud>=9&&strcmp(_pa.datos,\"--profile\")==0&&_pi<_argc()-1){ CadenaSegura _pv=_argv(_pi+1); if(strcmp(_pv.datos,\"release-pgo\")==0){ _gcc_flags=\"-fprofile-generate\"; }else if(strcmp(_pv.datos,\"release-pgo-use\")==0){ _gcc_flags=\"-fprofile-use -flto\"; }else{ fprintf(stderr,\"[Synapse] WARNING: perfil desconocido '%s', ignorado\\n\",_pv.datos); } break; } }"
                 }
               },
               {
@@ -104772,7 +104961,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    snprintf(_cmd, 4096, \"gcc -O2 %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_flags, _rt_dir, _rt_dir);"
+                  "instruccion": "    snprintf(_cmd, 4096, \"gcc %s %s -fno-ident -Wl,--no-insert-timestamp -Wl,--stack,8388608 -Wl,--gc-sections -I\\\"%s\\\" \\\"synapse_unity.c\\\" \\\"%s\\\\synapse_rt.c\\\"\", _gcc_opt, _gcc_flags, _rt_dir, _rt_dir);"
                 }
               },
               {

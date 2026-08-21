@@ -10,6 +10,8 @@
 funcion generar(programa: Programa, ruta: cadena) -> entero:
     r = 0
     est = GeneradorCEst()
+    // F17: Inicializar estado PGO (instrumentación de contadores de bloques básicos)
+    pgo_inicializar()
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] Abriendo archivo...\\n\"); fflush(stderr);")
         asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")

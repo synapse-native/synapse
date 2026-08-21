@@ -279,10 +279,14 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("    }")
         asm("    _pcur = _pcur->cola;")
         asm("}")
+        // F17: PGO — emitir __pgo_dump() antes del main() generado
+        pgo_finalizar(est)
         asm("gen_emitir_str(est, \"int main(int argc, char** argv) {\");")
         asm("gen_emitir_str(est, \"    _g_argc = argc;\");")
         asm("gen_emitir_str(est, \"    _g_argv = argv;\");")
         asm("gen_emitir_str(est, \"    pool_init(64, 4096);\");")
+        // F17: PGO — registrar atexit(__pgo_dump) dentro del main
+        pgo_registrar_atexit(est)
         asm("if (_principal_es_entero) {")
         asm("    gen_emitir_str(est, \"    int64_t _rc = principal();\");")
         asm("} else {")

@@ -1028,6 +1028,8 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera if-true
+        pgo_emitir_incremento_bb(est)
         asm("// Visit if-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _ic = _s->cuerpo;")
@@ -1041,6 +1043,8 @@ funcion gen_visitar_si(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("if (_s->cuerpo_sino) {")
         asm("    gen_emitir_str(est, \"    else\");")
         asm("    gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera if-else
+        pgo_emitir_incremento_bb(est)
         asm("    struct ListaNodo* _ec = _s->cuerpo_sino;")
         asm("    while (_ec) {")
         asm("        struct Nodo* _es = _ec->cabeza;")
@@ -1068,6 +1072,8 @@ funcion gen_visitar_mientras(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, \")\");")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera while-body
+        pgo_emitir_incremento_bb(est)
         asm("// While-body via dispatcher")
         asm("{")
         asm("    struct ListaNodo* _wc = _w->cuerpo;")
@@ -1116,6 +1122,8 @@ funcion gen_visitar_para(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("else { snprintf(_buf, 4096, \"    for (%s; %s; %s)\", _init, _cond, _step); }")
         asm("gen_emitir_str(est, _buf);")
         asm("gen_abrir_bloque_c(est);")
+        // F17: PGO — incremento de contador en frontera for-body
+        pgo_emitir_incremento_bb(est)
         asm("// For-body via dispatcher (R30: ListaNodo, paridad si/mientras — antes")
         asm("// solo se visitaba la PRIMERA sentencia del cuerpo).")
         asm("{")
@@ -3210,10 +3218,14 @@ funcion gen_recorrer_toplevel(est: GeneradorCEst, programa: Programa) -> nulo:
         asm("    }")
         asm("    _pcur = _pcur->cola;")
         asm("}")
+        // F17: PGO — emitir __pgo_dump() antes del main() generado
+        pgo_finalizar(est)
         asm("gen_emitir_str(est, \"int main(int argc, char** argv) {\");")
         asm("gen_emitir_str(est, \"    _g_argc = argc;\");")
         asm("gen_emitir_str(est, \"    _g_argv = argv;\");")
         asm("gen_emitir_str(est, \"    pool_init(64, 4096);\");")
+        // F17: PGO — registrar atexit(__pgo_dump) dentro del main
+        pgo_registrar_atexit(est)
         asm("if (_principal_es_entero) {")
         asm("    gen_emitir_str(est, \"    int64_t _rc = principal();\");")
         asm("} else {")
@@ -3583,6 +3595,8 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
 funcion generar(programa: Programa, ruta: cadena) -> entero:
     r = 0
     est = GeneradorCEst()
+    // F17: Inicializar estado PGO (instrumentación de contadores de bloques básicos)
+    pgo_inicializar()
     inseguro:
         asm("fprintf(stderr, \"[Orquestador] Abriendo archivo...\\n\"); fflush(stderr);")
         asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos;")
