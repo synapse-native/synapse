@@ -233,7 +233,7 @@ funcion lexer_obtener_total() -> entero:
 // El lexer produce LexerBuffers.tokens (struct TokenLex) con CadenaSegura.valor (ptr 64b);
 // el parser nativo consume TokenExt{int ptr_valor, int len_valor}. Se realiza la
 // conversion aqui (low ptr en ptr_valor, hi bits en _P_tk_ptr_hi) para evitar
-// truncamiento (paridad _probe_a21b.py). Pendiente fase 2: divulgar _P_tk_ptr_hi.
+// truncamiento. Pendiente fase 2: divulgar _P_tk_ptr_hi.
 funcion lexer_obtener_tokens() -> puntero:
     inseguro:
         asm("static struct TokenExt _P_tk_ext[65536];")

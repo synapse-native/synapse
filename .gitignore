@@ -115,6 +115,10 @@ test_lsp_bin
 !CHANGELOG_v*.md
 !*.sha256
 
+# CLASE R3: Artefactos de perfilamiento PGO
+*.profdata
+*.profraw
+
 # Estándar Python
 *.egg-info/
 .venv/
