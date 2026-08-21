@@ -244,7 +244,7 @@ DEUDAS_CANONICAS = {
     "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
     "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
     "D-8":  {"estado": "CERRADA", "resolucion": "sin acción (por diseño, Manual 2 §2: cadenas multi-línea)"},
-    "D-9":  {"estado": "PENDIENTE", "resolucion": "(a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c Fase posterior"},
+    "D-9":  {"estado": "CERRADA", "resolucion": "R42: D-9(d) corte 6 CERRADA COMPLETA; (a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c 7.882->1.769 L, runtime/core/ 20+ modulos"},
     "H12":  {"estado": "PENDIENTE", "resolucion": "Fase 26 (opensyn stale)"},
     "R3":   {"estado": "PENDIENTE", "resolucion": "codegen parámetros ADT (deuda D-2, expansión estática)"},
 }
