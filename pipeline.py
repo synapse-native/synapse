@@ -123,7 +123,7 @@ _RT_IA_FUENTES = (
 )
 
 
-def _compilar_runtime_objetos(compiler: str, base_flags: str) -> List[str]:
+def _compilar_runtime_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
     """Compila el runtime modular desde fuente a build/obj/ (Manual 3 §3.1).
 
     Retorna la lista de objetos .o. Lanza RuntimeError si alguna compilación
@@ -136,7 +136,7 @@ def _compilar_runtime_objetos(compiler: str, base_flags: str) -> List[str]:
         src = os.path.join(SYNAPSE_BIN, src_rel)
         nombre = os.path.splitext(os.path.basename(src_rel))[0]
         ruta_obj = os.path.join(build_obj, nombre + ".o")
-        cmd = f'{compiler} -O2 -c {base_flags} "{src}" -o "{ruta_obj}"'
+        cmd = f'{compiler} {opt_flags} -c {base_flags} "{src}" -o "{ruta_obj}"'
         print(f"[RUNTIME] gcc -c: {src_rel}")
         rc = subprocess.run(cmd, shell=True).returncode
         if rc != 0:
@@ -145,7 +145,7 @@ def _compilar_runtime_objetos(compiler: str, base_flags: str) -> List[str]:
     return objs
 
 
-def _compilar_quantum_objetos(compiler: str, base_flags: str) -> List[str]:
+def _compilar_quantum_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
     """Compila los módulos cuánticos (M16.1-M16.4) desde fuente si existen. Opcionales."""
     build_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
     os.makedirs(build_obj, exist_ok=True)
@@ -156,7 +156,7 @@ def _compilar_quantum_objetos(compiler: str, base_flags: str) -> List[str]:
             continue
         nombre = os.path.splitext(os.path.basename(src_rel))[0]
         ruta_obj = os.path.join(build_obj, nombre + ".o")
-        cmd = f'{compiler} -O2 -c {base_flags} "{src}" -o "{ruta_obj}"'
+        cmd = f'{compiler} {opt_flags} -c {base_flags} "{src}" -o "{ruta_obj}"'
         rc = subprocess.run(cmd, shell=True).returncode
         if rc != 0:
             print(f"[RUNTIME][!] Modulo cuantico {src_rel} no compilo (rc={rc}); se omite", file=sys.stderr)
@@ -481,13 +481,16 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         generar_sbom: bool = False,
                         firmar_binario: bool = False,
                         clave_sbom: str = '',
-                        target: str = 'native') -> int:
+                        target: str = 'native',
+                        modo_release: bool = False,
+                        modo_debug: bool = False) -> int:
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
 
-    # Flags de compilación para la clave de caché
-    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + " -O2 -Wl,--stack,8388608 -Wl,--gc-sections"
+    # Flags de compilación para la clave de caché (Manual 1 §165:PGO+LTO, Manual 8 §4.2 --release/--debug)
+    gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else ("-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer" if modo_debug else "-O2")
+    flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt} -Wl,--stack,8388608 -Wl,--gc-sections"
     
     try:
         if ruta_archivo.endswith('.json'):
@@ -647,11 +650,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         rt_objs = ""
         if not ast.is_no_std:
             try:
-                rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags))
+                rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags, gcc_opt))
             except RuntimeError as e:
                 print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
                 return 1
-            for qo in _compilar_quantum_objetos(compiler, base_flags):
+            for qo in _compilar_quantum_objetos(compiler, base_flags, gcc_opt):
                 rt_objs += f' "{qo}"'
             # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
             for ia_src in _RT_IA_FUENTES:
@@ -661,7 +664,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
                 ia_obj = os.path.join(
                     os.path.join(SYNAPSE_BIN, "build", "obj"), ia_nombre + ".o")
-                ia_cmd = f'{compiler} -O2 -c {base_flags} "{ia_abs}" -o "{ia_obj}"'
+                ia_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ia_abs}" -o "{ia_obj}"'
                 ia_rc = subprocess.run(ia_cmd, shell=True).returncode
                 if ia_rc != 0:
                     print(f"[ME-R8][!] Modulo IA {ia_src} no compilo (rc={ia_rc}); se omite", file=sys.stderr)
@@ -705,7 +708,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         objs_existentes = []
         for ruta_mod_c in modulos_c:
             ruta_obj = ruta_mod_c + ".o"
-            gcc_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_mod_c}" -o "{ruta_obj}"'
+            gcc_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ruta_mod_c}" -o "{ruta_obj}"'
             print(f"[MODULAR] gcc -c: {ruta_mod_c}")
             rc = subprocess.run(gcc_cmd, shell=True).returncode
             if rc == 0:
@@ -718,7 +721,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             objs_str = ' '.join(f'"{o}"' for o in objs_existentes)
             if rt_objs:
                 objs_str += f' {rt_objs}'
-            gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_str} -o "{ruta_exe}" {link_flags}'.strip()
+            gcc_link_cmd = f'{compiler} {gcc_opt} {base_flags} {objs_str} -o "{ruta_exe}" {link_flags}'.strip()
             print(f"[MODULAR] Link: {gcc_link_cmd}")
             link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
             if link_rc == 0:
@@ -728,7 +731,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
         else:
             print("[!] No se generaron objetos modulares — usando unity fallback", file=sys.stderr)
             # Fallback: compilar unity file a objeto y linkear
-            gcc_obj_cmd = f'{compiler} -O2 -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'
+            gcc_obj_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'
             print(f"[FALLBACK] {gcc_obj_cmd}")
             try:
                 obj_rc = subprocess.run(gcc_obj_cmd, shell=True).returncode
@@ -738,7 +741,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 objs_fb = f'"{ruta_c}.o"'
                 if rt_objs:
                     objs_fb += f' {rt_objs}'
-                gcc_link_cmd = f'{compiler} -O2 {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
+                gcc_link_cmd = f'{compiler} {gcc_opt} {base_flags} {objs_fb} -o "{ruta_exe}" {link_flags}'.strip()
                 print(f"[FALLBACK] Link: {gcc_link_cmd}")
                 link_rc = subprocess.run(gcc_link_cmd, shell=True).returncode
                 if link_rc != 0:
@@ -879,7 +882,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
     return 0
 
 
-def _link_object(obj_path: str, output_exe: str) -> int:
+def _link_object(obj_path: str, output_exe: str, opt_flags: str = "-O2") -> int:
     """Linkea un archivo objeto (.o) directamente al ejecutable final."""
     compiler = _resolver_toolchain_gcc()
     platform_flags = "-fno-ident -Wl,--gc-sections"
@@ -893,7 +896,7 @@ def _link_object(obj_path: str, output_exe: str) -> int:
 
     # ME-R2: runtime modular compilado desde fuente (Manual 3 §3.1)
     try:
-        rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags))
+        rt_objs = ' '.join(f'"{o}"' for o in _compilar_runtime_objetos(compiler, base_flags, opt_flags))
     except RuntimeError as e:
         print(f"[ME-R2][ERROR] {e}", file=sys.stderr)
         return 1

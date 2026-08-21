@@ -725,6 +725,8 @@ def main():
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
+    parser.add_argument("--release", action="store_true", help="Compilar en modo release: optimizaciones -O3 -flto (Manual 8 §4.2)")
+    parser.add_argument("--debug", action="store_true", help="Compilar con información de depuración -O0 -g (Manual 8 §4.2)")
     parser.add_argument("--safe", action="store_true", help="Activar modo de verificación formal (M10.1)")
     parser.add_argument("--sbom", action="store_true", help="Generar SBOM SPDX 2.3 (M10.2)")
     parser.add_argument("--sign", type=str, default=None,
@@ -895,7 +897,9 @@ def main():
                                      generar_sbom=generar_sbom_flag,
                                      firmar_binario=bool(clave_sbom),
                                      clave_sbom=clave_sbom,
-                                     target=target)
+                                    target=target,
+                                      modo_release=args.release,
+                                      modo_debug=args.debug)
         return codigo
 
     if args.help:
@@ -1083,7 +1087,10 @@ def main():
                                      incremental=args.incremental,
                                      generar_sbom=args.sbom,
                                      firmar_binario=bool(args.sign),
-                                     clave_sbom=args.sign or '')
+                                     clave_sbom=args.sign or '',
+                                     target="native",
+                                     modo_release=args.release,
+                                     modo_debug=args.debug)
         sys.exit(codigo)
 
 
