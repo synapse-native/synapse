@@ -248,7 +248,7 @@ def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
         return None
     if meta.get('flags') != flags:
         return None
-    if meta.get('version') != os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'):
+    if meta.get('version') != os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'):
         return None
     if meta.get('hash_fuente') != _cache_file_hash(archivo):
         return None
@@ -265,7 +265,7 @@ def _cache_store(clave: str, archivo: str, flags: str, obj_path: str) -> None:
         'clave': clave,
         'archivo': archivo,
         'flags': flags,
-        'version': os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'),
+        'version': os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'),
         'hash_fuente': _cache_file_hash(archivo),
         'timestamp': int(time.time()),
         'tamano': os.path.getsize(obj_path) if os.path.exists(obj_path) else 0,
@@ -848,7 +848,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         "buildType": "synapse-build",
                         "recipe": {
                             "type": "synapse-compiler",
-                            "version": os.environ.get('SYNAPSE_VERSION', '5.1.0-industrial'),
+                            "version": os.environ.get('SYNAPSE_VERSION', '8.1.0-industrial'),
                         },
                         "metadata": {
                             "completeness": {
