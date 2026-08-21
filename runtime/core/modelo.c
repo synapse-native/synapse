@@ -1480,7 +1480,7 @@ static void _filtro_top_k(float* logits, int vs, int k) {
 }
 
 static void _filtro_top_p(float* logits, int vs, float p) {
-    if (p <= 0.0f || p >= 1.0f) return;
+    if (p <= 0.0f || p >= 1.0f || vs <= 0) return;
     typedef struct { float v; int i; } PV;
     PV* pa = (PV*)malloc((size_t)vs * sizeof(PV));
     if (!pa) return;

@@ -1,3 +1,6 @@
+import os
+import re
+
 from compilador.ast_nodes import (
     Nodo, Programa,
     DefinicionFuncion, DefinicionEstructura,
@@ -550,7 +553,7 @@ def _emitir_token_defines(ctx: GeneratorContext):
         val = ast_vals.get(cname, TokenID[name].value)
         # Usar #ifndef guard para evitar redefinicion en unity file
         ctx.write_line(f"#ifndef {cname}")
-        ctx.write_line(f"#define {cname} ({val})")
+        ctx.write_line(f"#define {cname} ({val}LL)")
         ctx.write_line(f"#endif")
     ctx.write_line("")
 
@@ -582,29 +585,82 @@ def _emitir_nodo_defines(ctx: GeneratorContext):
     for name, val in NODOS:
         # Usar #ifndef guard para evitar redefinicion
         ctx.write_line(f"#ifndef {name}")
-        ctx.write_line(f"#define {name} ({val})")
+        ctx.write_line(f"#define {name} ({val}LL)")
         ctx.write_line(f"#endif")
     ctx.write_line("")
 
 
+    ctx.write_line("")
+
+
+def _cargar_err_constantes_desde_diagnostics(ruta_diagnostics: str) -> dict[str, int]:
+    """Parsea nucleo/diagnostics.syn y extrae constantes ERR_* con su valor entero.
+
+    Fuente de verdad = codigo nativo (diagnostics.syn). No usa enum Python
+    porque los valores divergen (auto() vs valores manuales 1-35/39).
+    """
+    errs: dict[str, int] = {}
+    try:
+        with open(ruta_diagnostics, 'r', encoding='utf-8') as f:
+            for linea in f:
+                linea = linea.strip()
+                # Match: constante ERR_XXXXX = N
+                m = re.match(r'^constante\s+(ERR_[A-Z0-9_]+)\s*=\s*(\d+)\s*$', linea)
+                if m:
+                    errs[m.group(1)] = int(m.group(2))
+    except FileNotFoundError:
+        pass
+    return errs
+
+
 def _emitir_error_defines(ctx: GeneratorContext):
-    """Emite #define ERR_* desde ErrorCodes enum + extras de nucleo/diagnostics.syn."""
-    from compilador.diagnostics import ErrorCodes
+    """Emite #define ERR_* desde nucleo/diagnostics.syn (fuente de verdad = codigo nativo)."""
     ctx.write_line("// --- Error code constants (Manual 3 §3.5) ---")
-    for name in ErrorCodes._member_names_:
-        val = ErrorCodes[name].value
-        # Usar #ifndef guard para evitar redefinicion
-        ctx.write_line(f"#ifndef {name}")
-        ctx.write_line(f"#define {name} ({val})")
-        ctx.write_line(f"#endif")
-    # Extras from self-hosted diagnostics.syn (not in Python ErrorCodes)
-    for extra_name, extra_val in [
-        ("ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED", 33),
-        ("ERR_MEM_LIFETIME_MISMATCH", 34),
-        ("ERR_MEM_LIFETIME_CYCLE", 35),
-    ]:
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ruta_diagnostics = os.path.join(raiz, '..', 'nucleo', 'diagnostics.syn')
+    err_vals = _cargar_err_constantes_desde_diagnostics(ruta_diagnostics)
+    if not err_vals:
+        err_vals = {
+            "ERR_SYNTAX_EXPECTED_TOKEN": 1,
+            "ERR_SYNTAX_UNEXPECTED_TOKEN": 2,
+            "ERR_SYNTAX_UNEXPECTED_EXPR": 3,
+            "ERR_SYNTAX_EXPECTED_NEWLINE": 4,
+            "ERR_LANG_MISSING": 5,
+            "ERR_LANG_UNSUPPORTED": 6,
+            "ERR_INDENT_INVALID": 7,
+            "ERR_INDENT_INCONSISTENT": 8,
+            "ERR_STRING_UNCLOSED": 9,
+            "ERR_LEX_CHAR_UNEXPECTED": 10,
+            "ERR_LEX": 11,
+            "ERR_FILE_NOT_FOUND": 12,
+            "ERR_CANONICAL_FORMAT": 13,
+            "ERR_SEM_VAR_NO_DECLARADA": 14,
+            "ERR_SEM_TIPO_INCOMPATIBLE": 15,
+            "ERR_SEM_TIPO_RETORNO": 16,
+            "ERR_SEM_FUNC_NO_DEFINIDA": 17,
+            "ERR_SEM_REDEFINICION": 18,
+            "ERR_SEM_ARGUMENTOS_INVALIDOS": 19,
+            "ERR_SEM_ESTRUCTURA_NO_DEFINIDA": 20,
+            "ERR_SEM_CAMPO_NO_EXISTE": 21,
+            "ERR_SEM_VAR_MOVIDA": 22,
+            "ERR_SEM_ACCESO_MEMORIA_MOVIDA": 23,
+            "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR": 24,
+            "ERR_MANIFEST_NOT_FOUND": 25,
+            "ERR_MODULE_STD_NOT_FOUND": 26,
+            "ERR_MODULE_AXON_NOT_FOUND": 27,
+            "ERR_DEP_NOT_DECLARED": 28,
+            "ERR_LOCK_HASH_MISMATCH": 29,
+            "ERR_GIT_FAILURE": 30,
+            "ERR_SEM_ASM_FUERA_INSEGURO": 31,
+            "ERR_SEM_CONSTANTE_INMUTABLE": 32,
+            "ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED": 33,
+            "ERR_MEM_LIFETIME_MISMATCH": 34,
+            "ERR_MEM_LIFETIME_CYCLE": 35,
+            "ERR_MEM_BORROW_CONFLICT": 39,
+        }
+    for extra_name, extra_val in sorted(err_vals.items()):
         ctx.write_line(f"#ifndef {extra_name}")
-        ctx.write_line(f"#define {extra_name} ({extra_val})")
+        ctx.write_line(f"#define {extra_name} ({extra_val}LL)")
         ctx.write_line(f"#endif")
     ctx.write_line("")
 
@@ -620,13 +676,13 @@ def _emitir_constantes_programa(ctx: GeneratorContext):
         if not isinstance(_s, StmtConstante):
             continue
         _nombre = _s.nombre
-        if _nombre.startswith('T_') or _nombre.startswith('NODO_') or _nombre.startswith('ERR_'):
+        if _nombre.startswith('T_') or _nombre.startswith('NODO_') or _nombre.startswith('ERR_') or _nombre.startswith('_'):
             continue
         _v = getattr(_s.valor, 'valor', None)
         if not isinstance(_v, int):
             continue
         ctx.write_line(f"#ifndef {_nombre}")
-        ctx.write_line(f"#define {_nombre} ({_v})")
+        ctx.write_line(f"#define {_nombre} ({_v}LL)")
         ctx.write_line(f"#endif")
     ctx.write_line("")
 
@@ -715,7 +771,6 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("#define POOL_BLOQUES 64")
     ctx.write_line("#define TAMANO_BLOQUE 4096")
     ctx.write_line("")
-    ctx.write_line("#define _GEN_TMP_SIZE (4096)")
     ctx.write_line("#include \"librerias/embedded_libs.h\"")
     ctx.write_line("")
     # Emit T_*, NODO_*, ERR_*, y constantes del programa para compilacion modular
