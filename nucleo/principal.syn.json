@@ -45927,7 +45927,21 @@
                     "_tipo": "SentenciaExpr",
                     "expr": {
                       "_tipo": "ExprAsm",
-                      "instruccion": "  _p->valor = atoll((const char*)puente_str(idx));"
+                      "instruccion": "  { char* _ns = (char*)puente_str(idx);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "    _p->valor = (strcmp(_ns, \"9223372036854775808\") == 0) ? (-9223372036854775807LL - 1) : atoll(_ns);"
+                    }
+                  },
+                  {
+                    "_tipo": "SentenciaExpr",
+                    "expr": {
+                      "_tipo": "ExprAsm",
+                      "instruccion": "  }"
                     }
                   },
                   {
@@ -64455,7 +64469,7 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": "    if ((long long)_ln->valor == (long long)9223372036854775807LL + 1) { strcpy(_b, \"(-9223372036854775807LL - 1)\"); }"
+                  "instruccion": "    if ((long long)_ln->valor == (-9223372036854775807LL - 1)) { strcpy(_b, \"(-9223372036854775807LL - 1)\"); }"
                 }
               },
               {
@@ -66422,13 +66436,6 @@
                 "_tipo": "SentenciaExpr",
                 "expr": {
                   "_tipo": "ExprAsm",
-                  "instruccion": ""
-                }
-              },
-              {
-                "_tipo": "SentenciaExpr",
-                "expr": {
-                  "_tipo": "ExprAsm",
                   "instruccion": "if (_syn_es_tipo(_t, \"OpUnaria\")) {"
                 }
               },
@@ -66444,6 +66451,48 @@
                 "expr": {
                   "_tipo": "ExprAsm",
                   "instruccion": "    char _uexpr[2048]; _uexpr[0] = 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // D-T1: -INT64_MIN (lexema 9223372036854775808) causa UB si se"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // emite como -(-9223372036854775807LL - 1). Detectar aquí mismo"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // y emitir (-9223372036854775807LL - 1) sin signo externo."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    // Paridad S1 emit_expressions.py:257-258 (Manual 2 §4.1 L267-268 D-7)."
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    int _is_int64min = (_ou->expr && _ou->operador && _ou->operador->tipo == 31 && strcmp(_ou->expr->tipo.datos, \"LiteralNumero\") == 0 && (long long)((struct LiteralNumero*)_ou->expr)->valor == (-9223372036854775807LL - 1)) ? 1 : 0;"
+                }
+              },
+              {
+                "_tipo": "SentenciaExpr",
+                "expr": {
+                  "_tipo": "ExprAsm",
+                  "instruccion": "    if (_is_int64min) { strcpy(_b, \"(-9223372036854775807LL - 1)\"); return; }"
                 }
               },
               {

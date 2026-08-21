@@ -332,6 +332,11 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         op_map = {'-': '-', 'no': '!', '!': '!'}
         op = getattr(nodo, 'operador', '-')
         c_op = op_map.get(op, op)
+        # D-T1: -INT64_MIN es UB. Si el hijo es LiteralNumero(INT64_MIN abs)
+        # y el operador es '-', emitir INT64_MIN directamente sin signo externo.
+        if (op == '-' and isinstance(nodo.expr, LiteralNumero)
+                and nodo.expr.valor == 9223372036854775808):
+            return '(-9223372036854775807LL - 1)'
         return f"({c_op}{expr})"
 
     if isinstance(nodo, LlamadaFuncion):

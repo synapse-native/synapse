@@ -204,7 +204,9 @@ funcion puente_nodo(idx: entero) -> puntero:
         inseguro:
             asm("{ struct LiteralNumero* _p = (struct LiteralNumero*)calloc(1, sizeof(struct LiteralNumero));")
             asm("  _p->tipo = puente_cs_str((void*)\"LiteralNumero\");")
-            asm("  _p->valor = atoll((const char*)puente_str(idx));")
+            asm("  { char* _ns = (char*)puente_str(idx);")
+            asm("    _p->valor = (strcmp(_ns, \"9223372036854775808\") == 0) ? (-9223372036854775807LL - 1) : atoll(_ns);")
+            asm("  }")
             asm("  r = (void*)_p; }")
     si t == NODO_DECIMAL:
         inseguro:
