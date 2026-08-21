@@ -89156,7 +89156,7 @@
                 },
                 {
                   "_tipo": "LiteralCadena",
-                  "valor": "extern struct NodoToml _toml_parse(CadenaSegura entrada);"
+                  "valor": "extern NodoToml _toml_parse(CadenaSegura entrada);"
                 }
               ]
             }

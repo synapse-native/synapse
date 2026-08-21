@@ -358,7 +358,7 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     // ME-B1/B3 fix: tipos TOML y pool allocator (paridad _synapse_shared.h / embedded_libs.h)
     gen_emitir_linea(est, "typedef struct ParToml { CadenaSegura clave; struct NodoToml* valor; } ParToml;")
     gen_emitir_linea(est, "typedef struct NodoToml { int tipo; CadenaSegura valor_str; int valor_ent; struct ParToml* pares; int longitud; } NodoToml;")
-    gen_emitir_linea(est, "extern struct NodoToml _toml_parse(CadenaSegura entrada);")
+    gen_emitir_linea(est, "extern NodoToml _toml_parse(CadenaSegura entrada);")
     gen_emitir_linea(est, "extern struct NodoToml _toml_nodo_new(void);")
     gen_emitir_linea(est, "extern void _toml_nodo_liberar(struct NodoToml n);")
     gen_emitir_linea(est, "extern struct NodoToml _toml_object_get(struct NodoToml nodo, CadenaSegura clave);")
