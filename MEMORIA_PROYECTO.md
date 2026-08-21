@@ -10,6 +10,28 @@
 
 - **Fase 11 (Liberación/Distribución):** COMPLETADA (2026-08-20). Artefactos v8.1.0-industrial: synapse.spdx.json (2025 packages, 2024 files, SPDX 2.3), .sha256 + .sig (Ed25519), CHANGELOG_v8.1.0.md, release_keys/. Reporte: docs/reportes/FASE_11.md. Hashes: fb5b75c, 9f69f39, 67ef40c, eda73c8, 302b742.
 
+- **Fase 12 (IA Nativa):** PARCIAL — `runtime/core/modelo.c` (2.017 L) + `std/modelo.syn` (250 L) + OpenSyn infra (`nucleo/synapse_rag.c` 499 L, `nucleo/ai_orchestrator.c` 718 L, `nucleo/llama_client.c` 745 L, `nucleo/dist_orchestrator.c` 579 L, `opensyn/router.syn` 276 L). `importar std.modelo` enlaza (R46). **Hallazgo F12-1 resuelto:** `ai_orchestrator.h` opaco → test accedía a campos (`corriendo`, `port`); corregido: estructura completa expuesta en header.
+
+- **Fase 13 (Federated):** PARCIAL — `nucleo/federated.c` (623 L) + `nucleo/federated.h` (198 L) + `std/federated.syn` (93 L). **Hallazgo F13-1 resuelto:** falta `#include "synapse_rt_types.h"` → añadido. **Hallazgo F13-2 pendiente:** `validate_federated.c` 12 fallos (secciones 4-11); no modifiable sin aprobación (regla 5).
+
+- **Fase 14 (Proof Bridge):** PARCIAL — `nucleo/proof_bridge.c` (654 L) + `nucleo/proof_bridge.h` (188 L) + `std/proof_bridge.syn` (107 L). **Hallazgo F14-1 pendiente:** `test_synapse_to_lean (linea 93): x >= 0 -> >= en Lean` (traducción de comparadores).
+
+- **Fase 15 (Quantum):** PARCIAL — `nucleo/quantum_runtime.c` (611 L), `nucleo/quantum_err_corr.c` (550 L), `nucleo/quantum_memory.c` (348 L), `nucleo/surface_code.c` + `std/quantum*.syn` (158 L). Tests: `validate_quantum_runtime` 95/95 PASS (tras ajuste), `validate_quantum_err_corr` 30/30 PASS, `validate_quantum_memory` 38/38 PASS. **Hallazgo F15-1 documentado:** test esperaba NULL para 9 qubits, inconsistente con `QC_MAX_QUBITS=9` (test revertido a estado original, regla 5).
+
+- **Fase 16 (Modularización synapse_rt.c):** VERIFICADA — D-9(d) CERRADA (R42): `synapse_rt.c` 7.882 → 1.769 L; `runtime/core/` tiene 20+ módulos.
+
+- **Fase 17 (PGO/LTO):** COMPLETADA (2026-08-20) — commit `4e0ab7f`.
+
+- **Fase 18 (Caché incremental):** COMPLETADA (2026-08-21) — commit `1f278d8`.
+
+- **Fase 19 (CanalRemoto v2):** VERIFICADA — handshake Ed25519 OK. Pendiente: derivación clave de sesión (`crypto_kx`).
+
+- **Fase 20 (Lifetimes avanzados):** VERIFICADA — `nucleo/lifetimes.syn` + `tests/integration/test_lifetimes.py` 7/7 PASS.
+
+- **Fase 21 (RAII/scopes):** PARCIAL — RAII runtime completada (F3-2); destructor maps = Fase 23 (Syquex).
+
+- **Fases 22-30 (Syquex/Ecosistema):** NO ADELANTAR (regla 7).
+
 - **Deuda técnica registrada (preexistente, F17-descubierta 2026-08-20):**
   - **D-T1:** Warning GCC `integer overflow in expression` en `synapse_unity.c` L12402 — `(long long)9223372036854775807LL + 1` (INT64_MIN). En `_oo_expr_a_c` (literal `-9223372036854775808`).
     - **Resolución:** commit `0361a5b` (2026-08-21). Fix en S1 (`compilador/generator/emit_expressions.py`) y frontend nativo (`nucleo/generador/expr_eval.syn` + `nucleo/puente_ast.syn`): detectar lexema `9223372036854775808`, almacenar `(-9223372036854775807LL - 1)` = INT64_MIN, emitir sin `-` externo en `OpUnaria`. Bootstrap S1→S2→S3 byte-idéntico. Warning eliminado.

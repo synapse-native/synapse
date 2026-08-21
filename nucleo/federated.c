@@ -14,6 +14,7 @@
 // ======================================================================
 
 #include "federated.h"
+#include "synapse_rt_types.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

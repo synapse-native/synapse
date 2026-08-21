@@ -33,26 +33,6 @@
     #include <malloc.h>
 #endif
 
-struct AIOrchestrator {
-    char* server_exe;
-    char* model_path;
-    char* host;
-    int port;
-    HwConfig hw;
-    
-#ifdef _WIN32
-    HANDLE hProcess;
-    HANDLE hThread;
-    DWORD dwProcessId;
-    PROCESS_INFORMATION pi;
-#else
-    pid_t pid;
-#endif
-    
-    int corriendo;
-    int hw_detectado;
-};
-
 // Variable global para el orquestador activo (solo uno a la vez)
 static AIOrchestrator* g_active_orchestrator = NULL;
 
