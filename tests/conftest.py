@@ -98,6 +98,7 @@ def _rt_objs_core():
 _RT_OBJ_DEFS = [
     ("tweetnacl.o", "axon/tweetnacl.c", []),
     ("synapse_rt.o", "synapse_rt.c", []),
+    ("proof_bridge.o", "nucleo/proof_bridge.c", []),
 ] + _rt_objs_core() + [
     ("axon_rt.o", "axon/axon_rt.c", []),
 ]
@@ -135,13 +136,15 @@ _RT_HEADERS = [
 #   (nombre_binario, fuente.c, [objetos]) — si objetos es None, se usan TODOS
 #   los .o del runtime.
 _RT_BINARIOS_EXTRA = [
-    ("test_work_stealing", "test_work_stealing.c", None),
-    ("test_cluster_raft", "test_cluster_raft.c", None),
+    ("test_work_stealing", "test_work_stealing.c", None, []),
+    ("test_cluster_raft", "test_cluster_raft.c", None, []),
     # test_axon_e2e.py espera estos binarios con sufijo _new (Causa E):
-    ("test_path_traversal_new", "test_path_traversal.c", None),
-    ("test_ed25519_axon_new", "test_ed25519_axon.c", None),
+    ("test_path_traversal_new", "test_path_traversal.c", None, []),
+    ("test_ed25519_axon_new", "test_ed25519_axon.c", None, []),
     # gen_axon_test_fixtures define su propio randombytes -> solo tweetnacl.o
-    ("gen_axon_test_fixtures", "gen_axon_test_fixtures.c", ["tweetnacl.o"]),
+    ("gen_axon_test_fixtures", "gen_axon_test_fixtures.c", ["tweetnacl.o"], []),
+    # F14-2: validate_formal_proof necesita stack de 8MB (95 tests, buffers grandes)
+    ("validate_formal_proof", "validate_formal_proof.c", ["proof_bridge.o"], ["-Wl,--stack,8388608"]),
 ]
 
 
@@ -205,7 +208,7 @@ def _auto_compilar_objetos_runtime():
 
         # 2) Binarios de test extra (re-enlazar si cambia el runtime)
         all_rt_objs = [os.path.join(root, o) for o, _, _ in _RT_OBJ_DEFS]
-        for bin_name, src, objs in _RT_BINARIOS_EXTRA:
+        for bin_name, src, objs, extra_flags in _RT_BINARIOS_EXTRA:
             exe_path = os.path.join(root, "tests", bin_name + ".exe")
             src_path = os.path.join(root, "tests", src)
             if objs is None:
@@ -215,7 +218,7 @@ def _auto_compilar_objetos_runtime():
             deps = [src_path] + rt_objs
             if os.path.exists(exe_path) and os.path.getmtime(exe_path) >= _rt_mtime_max(deps):
                 continue
-            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32", "-o", exe_path]
+            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32"] + extra_flags + ["-o", exe_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")
