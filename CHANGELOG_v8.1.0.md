@@ -13,16 +13,21 @@
 - Firmas Ed25519 para SBOM e instalador.
 - Fuzzing 24/7 (`tests/fuzz/fuzz_engine.py`).
 - Instalador Inno Setup v8.1.0-industrial (`instalador_synapse.iss`).
+- Flags `--release`/`--debug`/`--profile` en CLI y pipeline (Manual 1 §165, Manual 8 §4.2, Manual 9 §4).
 
 ### Correcciones
 - Bug import path en `tests/fuzz/test_fuzz.py::test_fuzz_engine_smoke` (cambiado `tests.fuzz.fuzz_engine` → `fuzz_engine`).
+- Bug flag `--profile` (longitud `== 9` vs `>= 9`) en `principal.syn:665` y `pipeline.py:637`: el flag no se activaba correctamente.
+- Fix de overflow `9223372036854775807LL + 1` (INT64_MIN) en `_oo_expr_a_c` — registro D-T1.
+- Fix type mismatch `_toml_parse` (struct NodoToml vs NodoToml) — registro D-T2.
 
 ### Tests
 - Fase 7: LLVM+WASM rc=0, 0 brechas.
 - Fase 8: 217/217 PASS (raft 77, discovery 52, multicast 23, handshake 21, work_stealing 43).
 - Fase 9: 75/75 PASS (reversible_debug 32, distributed_debug 43). S2==S3 byte-idénticos.
 - Fase 10: 115/115 PASS (security 59, SBOM/SLSA 37, fuzzing 13).
-- Total: 407/407 suites PASS.
+- Fase 12/F17 (Release Flags + PGO/LTO): 32/32 PASS (release_matrix 23, release_flags 9). S2==S3 byte-idénticos.
+- Total: 439/439 suites PASS.
 
 ### Artefactos de Release
 - `synapse.spdx.json` — SBOM SPDX 2.3 (2025 packages).
