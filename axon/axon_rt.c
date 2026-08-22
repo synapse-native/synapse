@@ -1,8 +1,8 @@
-// axon_rt.c — Axon package manager runtime
+﻿// axon_rt.c â€” Axon package manager runtime
 //
 // Fase 6.1: TOML, TAR, SHA-256, Ed25519, SemVer, lock.
-// Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §6.1 (path
-// traversal protection en extracción TAR).
+// Manual 8 Â§4.3-4.4 (gestor de paquetes Axon); Manual 6 Â§6.1 (path
+// traversal protection en extracciÃ³n TAR).
 //
 // This file contains the Axon-specific functions. Shared runtime
 // functions (TOML parse, SHA-256, TAR, HTTP, lock, Ed25519 verify)
@@ -72,7 +72,7 @@ extern int _syn_axon_buscar_local(const char* paquete, const char* version,
                                    char* extract_dir, int ext_sz);
 
 // ============================================================
-// SemVer helpers (static — local to this TU)
+// SemVer helpers (static â€” local to this TU)
 // ============================================================
 
 /* _syn_parse_ver: parse "x.y.z" version string into components */
@@ -198,8 +198,8 @@ int _syn_axon_validar_manifiesto(const char* toml_path) {
             }
         }
 
-        // Optional: [dependencias] section — no validation required
-        // Optional: [parametros] section — no validation required
+        // Optional: [dependencias] section â€” no validation required
+        // Optional: [parametros] section â€” no validation required
     }
 
     if (!has_paquete) { fprintf(stderr, "[Axon] ERR_MANIFEST: falta seccion [paquete]\n"); valid = 0; }
@@ -261,7 +261,7 @@ unsigned char* _syn_ed25519_firmar(CadenaSegura mensaje,
 /* _syn_axon_verificar_paquete: download (or use local) + verify a package.
  * Steps:
  *   1. Buscar localmente (cache/oficiales/AXON_PATH)
- *   2. Si no está, HTTP download (host, puerto, ruta → .tar)
+ *   2. Si no estÃ¡, HTTP download (host, puerto, ruta â†’ .tar)
  *   3. Verify SHA-256 hash against expected (or compute + write lock)
  *   4. Verify Ed25519 signature (if clave_publica_hex provided)
  *   5. Extract TAR (con path traversal protection)
@@ -291,7 +291,7 @@ int _syn_axon_verificar_paquete(const char* paquete, const char* version,
             fprintf(stderr, "[Axon] ERR_FETCH: fallo download HTTP para '%s'\n", paquete);
             return -1;
         }
-        fprintf(stderr, "[Axon] Download: %s → %s\n", ruta_http, tar_path);
+        fprintf(stderr, "[Axon] Download: %s â†’ %s\n", ruta_http, tar_path);
     } else {
         fprintf(stderr, "[Axon] Local: encontrado (rc=%d) en %s\n", local_rc, tar_path);
     }
@@ -329,9 +329,329 @@ int _syn_axon_verificar_paquete(const char* paquete, const char* version,
     // 4. Extract TAR (path traversal protection inside)
     int trc = _syn_tar_extraer(tar_path, extract_dir);
     if (trc != 0) {
-        fprintf(stderr, "[Axon] ERR_TAR: fallo extracción de %s\n", tar_path);
+        fprintf(stderr, "[Axon] ERR_TAR: fallo extracciÃ³n de %s\n", tar_path);
         return -1;
     }
-    fprintf(stderr, "[Axon] Paquete instalado: %s v%s → %s\n", paquete, version, extract_dir);
+    fprintf(stderr, "[Axon] Paquete instalado: %s v%s â†’ %s\n", paquete, version, extract_dir);
     return 0;
+}
+
+// ============================================================
+// R84 ï¿½ Serializaciï¿½n binaria de valores (Manual 6 ï¿½5.2;
+// tabla de tipos Manual 5 ï¿½6.3 / Manual 6 ï¿½5.1)
+//
+// Codificaciï¿½n auto-descriptiva: cada valor va precedido por su byte de tipo.
+// Enteros: serializar_valor emite el ancho solicitado en `tipo` (p.ej. el
+// ejemplo del Manual 5 ï¿½6.3 usa 0x02+4B para 42); deserializar_valor acepta
+// cualquier ancho y devuelve AXON_T_ENTERO64 normalizado.
+// ESTRUCTURA (0x08) no se implementa en la API genï¿½rica: los manuales no
+// definen esquema de campos ("serializaciï¿½n secuencial" requiere metadatos).
+// ============================================================
+
+#define AXON_T_ENTERO8   0x00
+#define AXON_T_ENTERO16  0x01
+#define AXON_T_ENTERO32  0x02
+#define AXON_T_ENTERO64  0x03
+#define AXON_T_DECIMAL32 0x04
+#define AXON_T_DECIMAL64 0x05
+#define AXON_T_TEXTO     0x06
+#define AXON_T_TENSOR    0x07
+#define AXON_T_LISTA     0x09
+#define AXON_T_MAPA      0x0A
+#define AXON_T_NULO      0xC0
+#define AXON_T_FALSO     0xC2
+#define AXON_T_VERDADERO 0xC3
+
+typedef struct AxonValor AxonValor;
+typedef struct { size_t n; AxonValor* elems; } AxonLista;
+typedef struct { char* clave; AxonValor* valor; } AxonPar;
+typedef struct { size_t n; AxonPar* pares; } AxonMapa;
+struct AxonValor {
+    int tipo;            // AXON_T_*
+    union {
+        int64_t  entero;          // 0x00-0x03 (normalizado a 64 bits)
+        double   decimal;         // 0x04 (float), 0x05 (double)
+        char*    texto;           // 0x06 (NUL-terminado, malloc)
+        Tensor*  tensor;          // 0x07
+        AxonLista lista;          // 0x09
+        AxonMapa  mapa;           // 0x0A
+    } dato;
+};
+
+static void _ax_put_u32be(uint8_t* p, uint32_t v) {
+    p[0] = (uint8_t)(v >> 24); p[1] = (uint8_t)(v >> 16);
+    p[2] = (uint8_t)(v >> 8);  p[3] = (uint8_t)v;
+}
+static uint32_t _ax_get_u32be(const uint8_t* p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) |
+           ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+}
+static void _ax_put_u64be(uint8_t* p, uint64_t v) {
+    for (int i = 0; i < 8; i++) p[i] = (uint8_t)(v >> (56 - 8 * i));
+}
+static uint64_t _ax_get_u64be(const uint8_t* p) {
+    uint64_t v = 0;
+    for (int i = 0; i < 8; i++) v = (v << 8) | p[i];
+    return v;
+}
+
+// Tamano serializado de un valor (para reservar el buffer de una pasada)
+// Puntero al dato crudo segun el tipo del AxonValor (para recursion)
+static const void* _ax_dato(const AxonValor* e) {
+    switch (e->tipo) {
+    case AXON_T_TEXTO:  return e->dato.texto;
+    case AXON_T_TENSOR: return e->dato.tensor;
+    case AXON_T_LISTA:  return &e->dato.lista;
+    case AXON_T_MAPA:   return &e->dato.mapa;
+    default:            return &e->dato.entero;
+    }
+}
+
+static size_t _ax_sizeof_valor(int tipo, const void* v) {
+    switch (tipo) {
+    case AXON_T_NULO: case AXON_T_FALSO: case AXON_T_VERDADERO: return 1;
+    case AXON_T_ENTERO8:   return 2;
+    case AXON_T_ENTERO16:  return 3;
+    case AXON_T_ENTERO32:  return 5;
+    case AXON_T_ENTERO64:  return 9;
+    case AXON_T_DECIMAL32: return 5;
+    case AXON_T_DECIMAL64: return 9;
+    case AXON_T_TEXTO:     return 5 + strlen((const char*)v);
+    case AXON_T_TENSOR: {
+        const Tensor* t = (const Tensor*)v;
+        return 1 + 8 + (size_t)t->filas * t->columnas * 4;
+    }
+    case AXON_T_LISTA: {
+        const AxonLista* l = (const AxonLista*)v;
+        size_t s = 1 + 4;
+        for (size_t i = 0; i < l->n; i++)
+            s += _ax_sizeof_valor(l->elems[i].tipo, _ax_dato(&l->elems[i]));
+        return s;
+    }
+    case AXON_T_MAPA: {
+        const AxonMapa* m = (const AxonMapa*)v;
+        size_t s = 1 + 4;
+        for (size_t i = 0; i < m->n; i++) {
+            s += _ax_sizeof_valor(AXON_T_TEXTO, m->pares[i].clave);
+            s += _ax_sizeof_valor(m->pares[i].valor->tipo, _ax_dato(m->pares[i].valor));
+        }
+        return s;
+    }
+    default: return 0; // 0x08 estructura y desconocidos no soportados
+    }
+}
+
+static uint8_t* _ax_escribir_valor(uint8_t* p, int tipo, const void* v) {
+    *p++ = (uint8_t)tipo;
+    switch (tipo) {
+    case AXON_T_NULO: break;
+    case AXON_T_FALSO: break;
+    case AXON_T_VERDADERO: break;
+    case AXON_T_ENTERO8:
+        *p++ = (uint8_t)(*(const int64_t*)v & 0xFF);
+        break;
+    case AXON_T_ENTERO16: {
+        uint16_t x = (uint16_t)(*(const int64_t*)v & 0xFFFF);
+        p[0] = (uint8_t)(x >> 8); p[1] = (uint8_t)x; p += 2;
+        break;
+    }
+    case AXON_T_ENTERO32:
+        _ax_put_u32be(p, (uint32_t)(*(const int64_t*)v & 0xFFFFFFFFu)); p += 4;
+        break;
+    case AXON_T_ENTERO64:
+        _ax_put_u64be(p, (uint64_t)*(const int64_t*)v); p += 8;
+        break;
+    case AXON_T_DECIMAL32: {
+        float f = (float)*(const double*)v;
+        uint32_t bits; memcpy(&bits, &f, 4);
+        _ax_put_u32be(p, bits); p += 4;
+        break;
+    }
+    case AXON_T_DECIMAL64: {
+        uint64_t bits; memcpy(&bits, v, 8);
+        _ax_put_u64be(p, bits); p += 8;
+        break;
+    }
+    case AXON_T_TEXTO: {
+        size_t lon = strlen((const char*)v);
+        _ax_put_u32be(p, (uint32_t)lon); p += 4;
+        memcpy(p, v, lon); p += lon;
+        break;
+    }
+    case AXON_T_TENSOR: {
+        const Tensor* t = (const Tensor*)v;
+        _ax_put_u32be(p, t->filas);  p += 4;
+        _ax_put_u32be(p, t->columnas); p += 4;
+        for (size_t i = 0; i < (size_t)t->filas * t->columnas; i++) {
+            uint32_t bits; memcpy(&bits, &t->datos[i], 4);
+            _ax_put_u32be(p, bits); p += 4;
+        }
+        break;
+    }
+    case AXON_T_LISTA: {
+        const AxonLista* l = (const AxonLista*)v;
+        _ax_put_u32be(p, (uint32_t)l->n); p += 4;
+        for (size_t i = 0; i < l->n; i++)
+            p = _ax_escribir_valor(p, l->elems[i].tipo, _ax_dato(&l->elems[i]));
+        break;
+    }
+    case AXON_T_MAPA: {
+        const AxonMapa* m = (const AxonMapa*)v;
+        _ax_put_u32be(p, (uint32_t)m->n); p += 4;
+        for (size_t i = 0; i < m->n; i++) {
+            p = _ax_escribir_valor(p, AXON_T_TEXTO, m->pares[i].clave);
+            p = _ax_escribir_valor(p, m->pares[i].valor->tipo, _ax_dato(m->pares[i].valor));
+        }
+        break;
+    }
+    default: break;
+    }
+    return p;
+}
+
+void _syn_axon_serializar_valor(const void* valor, int tipo,
+                                 uint8_t** buffer, size_t* len) {
+    *buffer = NULL; *len = 0;
+    size_t sz = _ax_sizeof_valor(tipo, valor);
+    if (sz == 0) return;
+    uint8_t* buf = (uint8_t*)malloc(sz);
+    if (!buf) return;
+    uint8_t* fin = _ax_escribir_valor(buf, tipo, valor);
+    *buffer = buf; *len = (size_t)(fin - buf);
+}
+
+// Deserializaciï¿½n recursiva; consume bytes avanzando el cursor.
+static const uint8_t* _ax_leer_valor(const uint8_t* p, const uint8_t* fin,
+                                      AxonValor* out);
+
+static const uint8_t* _ax_leer_valor(const uint8_t* p, const uint8_t* fin,
+                                      AxonValor* out) {
+    if (p >= fin) return NULL;
+    int tipo = *p++;
+    out->tipo = tipo;
+    memset(&out->dato, 0, sizeof(out->dato));
+    switch (tipo) {
+    case AXON_T_NULO: case AXON_T_FALSO: case AXON_T_VERDADERO:
+        out->dato.entero = (tipo == AXON_T_VERDADERO);
+        return p;
+    case AXON_T_ENTERO8:  if (fin - p < 1) return NULL;
+        out->dato.entero = (int64_t)(int8_t)*p++; return p;
+    case AXON_T_ENTERO16: if (fin - p < 2) return NULL;
+        out->dato.entero = (int16_t)((p[0] << 8) | p[1]); p += 2; return p;
+    case AXON_T_ENTERO32: if (fin - p < 4) return NULL;
+        out->dato.entero = (int32_t)_ax_get_u32be(p); p += 4; return p;
+    case AXON_T_ENTERO64: if (fin - p < 8) return NULL;
+        out->dato.entero = (int64_t)_ax_get_u64be(p); p += 8; return p;
+    case AXON_T_DECIMAL32: if (fin - p < 4) return NULL; {
+        uint32_t bits = _ax_get_u32be(p); float f;
+        memcpy(&f, &bits, 4);
+        out->tipo = AXON_T_DECIMAL64;
+        out->dato.decimal = (double)f; p += 4; return p;
+    }
+    case AXON_T_DECIMAL64: if (fin - p < 8) return NULL; {
+        uint64_t bits = _ax_get_u64be(p);
+        memcpy(&out->dato.decimal, &bits, 8);
+        p += 8; return p;
+    }
+    case AXON_T_TEXTO: if (fin - p < 4) return NULL; {
+        uint32_t lon = _ax_get_u32be(p); p += 4;
+        if ((size_t)(fin - p) < lon) return NULL;
+        char* s = (char*)malloc(lon + 1);
+        if (!s) return NULL;
+        memcpy(s, p, lon); s[lon] = 0;
+        out->dato.texto = s; p += lon; return p;
+    }
+    case AXON_T_TENSOR: if (fin - p < 8) return NULL; {
+        Tensor* t = (Tensor*)calloc(1, sizeof(Tensor));
+        if (!t) return NULL;
+        t->filas = _ax_get_u32be(p); p += 4;
+        t->columnas = _ax_get_u32be(p); p += 4;
+        size_t n = (size_t)t->filas * t->columnas;
+        if ((size_t)(fin - p) < n * 4) { free(t); return NULL; }
+        t->datos = (float*)malloc(n * 4);
+        if (!t->datos) { free(t); return NULL; }
+        for (size_t i = 0; i < n; i++) {
+            uint32_t bits = _ax_get_u32be(p); p += 4;
+            memcpy(&t->datos[i], &bits, 4);
+        }
+        t->es_mapeado = 0;
+        out->dato.tensor = t; return p;
+    }
+    case AXON_T_LISTA: if (fin - p < 4) return NULL; {
+        uint32_t n = _ax_get_u32be(p); p += 4;
+        out->dato.lista.n = 0;
+        out->dato.lista.elems = n ? (AxonValor*)calloc(n, sizeof(AxonValor)) : NULL;
+        for (uint32_t i = 0; i < n; i++) {
+            p = _ax_leer_valor(p, fin, &out->dato.lista.elems[i]);
+            if (!p) return NULL;
+            out->dato.lista.n++;
+        }
+        return p;
+    }
+    case AXON_T_MAPA: if (fin - p < 4) return NULL; {
+        uint32_t n = _ax_get_u32be(p); p += 4;
+        out->dato.mapa.n = 0;
+        out->dato.mapa.pares = n ? (AxonPar*)calloc(n, sizeof(AxonPar)) : NULL;
+        for (uint32_t i = 0; i < n; i++) {
+            AxonValor k;
+            p = _ax_leer_valor(p, fin, &k);
+            if (!p || k.tipo != AXON_T_TEXTO) return NULL;
+            out->dato.mapa.pares[i].clave = k.dato.texto;
+            AxonValor* v = (AxonValor*)malloc(sizeof(AxonValor));
+            if (!v) return NULL;
+            p = _ax_leer_valor(p, fin, v);
+            if (!p) return NULL;
+            out->dato.mapa.pares[i].valor = v;
+            out->dato.mapa.n++;
+        }
+        return p;
+    }
+    default:
+        return NULL; // 0x08 estructura y tipos desconocidos
+    }
+}
+
+void* _syn_axon_deserializar_valor(const uint8_t* buffer, size_t len, int* tipo) {
+    if (!buffer || len == 0 || !tipo) return NULL;
+    AxonValor* v = (AxonValor*)malloc(sizeof(AxonValor));
+    if (!v) return NULL;
+    const uint8_t* fin = buffer + len;
+    if (!_ax_leer_valor(buffer, fin, v)) {
+        free(v);
+        return NULL;
+    }
+    *tipo = v->tipo;
+    return v;
+}
+
+// Libera SOLO los recursos apuntados por el valor (no la propia struct).
+// Necesario porque los elementos de una lista son interiores al array.
+static void _ax_liberar_contenido(AxonValor* v) {
+    switch (v->tipo) {
+    case AXON_T_TEXTO: free(v->dato.texto); break;
+    case AXON_T_TENSOR: free(v->dato.tensor->datos); free(v->dato.tensor); break;
+    case AXON_T_LISTA:
+        for (size_t i = 0; i < v->dato.lista.n; i++)
+            _ax_liberar_contenido(&v->dato.lista.elems[i]);
+        free(v->dato.lista.elems);
+        break;
+    case AXON_T_MAPA:
+        for (size_t i = 0; i < v->dato.mapa.n; i++) {
+            free(v->dato.mapa.pares[i].clave);
+            if (v->dato.mapa.pares[i].valor) {
+                _ax_liberar_contenido(v->dato.mapa.pares[i].valor);
+                free(v->dato.mapa.pares[i].valor);
+            }
+        }
+        free(v->dato.mapa.pares);
+        break;
+    default: break;
+    }
+}
+
+void _syn_axon_liberar_valor(void* valor) {
+    AxonValor* v = (AxonValor*)valor;
+    if (!v) return;
+    _ax_liberar_contenido(v);
+    free(v);
 }

@@ -18,3 +18,40 @@ int _syn_axon_buscar_local(const char* paquete, const char* version, char* tar_p
 int _syn_axon_escribir_lock(const char* paquete, const char* version, const char* hash_sha256);
 
 #endif /* SYNAPSE_AXON_H */
+
+// R84 — Serialización binaria de valores (Manual 6 §5.2; tabla Manual 5 §6.3)
+// Nombres del manual: serializar_valor / deserializar_valor (convención _syn_axon_).
+// ESTRUCTURA (0x08) no soportada por la API genérica (sin esquema en manuales).
+#define AXON_T_ENTERO8   0x00
+#define AXON_T_ENTERO16  0x01
+#define AXON_T_ENTERO32  0x02
+#define AXON_T_ENTERO64  0x03
+#define AXON_T_DECIMAL32 0x04
+#define AXON_T_DECIMAL64 0x05
+#define AXON_T_TEXTO     0x06
+#define AXON_T_TENSOR    0x07
+#define AXON_T_LISTA     0x09
+#define AXON_T_MAPA      0x0A
+#define AXON_T_NULO      0xC0
+#define AXON_T_FALSO     0xC2
+#define AXON_T_VERDADERO 0xC3
+
+typedef struct AxonValor AxonValor;
+typedef struct { size_t n; AxonValor* elems; } AxonLista;
+typedef struct { char* clave; AxonValor* valor; } AxonPar;
+typedef struct { size_t n; AxonPar* pares; } AxonMapa;
+struct AxonValor {
+    int tipo;
+    union {
+        int64_t  entero;
+        double   decimal;
+        char*    texto;
+        Tensor*  tensor;
+        AxonLista lista;
+        AxonMapa  mapa;
+    } dato;
+};
+
+void _syn_axon_serializar_valor(const void* valor, int tipo, uint8_t** buffer, size_t* len);
+void* _syn_axon_deserializar_valor(const uint8_t* buffer, size_t len, int* tipo);
+void _syn_axon_liberar_valor(void* valor);
