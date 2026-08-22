@@ -1,0 +1,857 @@
+#lang: es
+
+// ============================================================
+// syquex/lexer.syn — Tokenizador de Syquex (FASE 22, R86)
+// Manual 3 §1 (directiva/codificación/comentarios ANIDABLES),
+// §3 terminales de la gramática (numero con exponente e,
+// lista [..], mapa {..}, rango ..), §4 keywords multi-idioma.
+//
+// DECISIÓN D-F22-A: implementado en Synapse (Manual 1 §4).
+// Arquitectura: adaptación del lexer nativo probado
+// (nucleo/lexer.syn, FASE A) con prefijos globales _SQ_* para
+// permitir coexistencia de ambos frontends en un mismo binario.
+//
+// TokenID UNIVERSALES: 1-74 idénticos a nucleo/tokens.syn
+// (Manual 2 §3, compartidos con Synapse); 75+ son las palabras
+// propias de Syquex (Manual 3 §4). Los compartidos se delegan a
+// las tablas probadas de nucleo/lexer_keywords.syn.
+// ============================================================
+
+importar lexer_keywords
+
+
+constante T_SI = 1
+constante T_SINO = 2
+constante T_FUNCION = 3
+constante T_RETORNAR = 4
+constante T_LANZAR = 5
+constante T_RECUPERAR = 6
+constante T_ESCUCHAR = 7
+constante T_MIENTRAS = 8
+constante T_IMPORTAR = 9
+constante T_ESTRUCTURA = 10
+constante T_ROMPER = 11
+constante T_SIGUIENTE = 12
+constante T_PUNTO = 13
+constante T_Y = 14
+constante T_O = 15
+constante T_NO = 16
+constante T_VERDADERO = 17
+constante T_FALSO = 18
+constante T_IDENTIFICADOR = 19
+constante T_NUMERO = 20
+constante T_FLOTANTE = 21
+constante T_CADENA = 22
+constante T_MAYOR = 23
+constante T_MENOR = 24
+constante T_IGUAL = 25
+constante T_DISTINTO = 26
+constante T_MENOR_IGUAL = 27
+constante T_MAYOR_IGUAL = 28
+constante T_ASIGNAR = 29
+constante T_MAS = 30
+constante T_MENOS = 31
+constante T_POR = 32
+constante T_DIV = 33
+constante T_MOD = 34
+constante T_FLECHA = 35
+constante T_COINCIDIR = 36
+constante T_FLECHA_DER = 37
+constante T_PAREN_IZQ = 38
+constante T_PAREN_DER = 39
+constante T_DOSPUNTOS = 40
+constante T_COMA = 41
+constante T_NUEVALINEA = 42
+constante T_INDENTAR = 43
+constante T_DESINDENTAR = 44
+constante T_AMPERSAND = 45
+constante T_INSEGURO = 46
+constante T_IMPORTAR_C = 47
+constante T_EXTERNO = 48
+constante T_FLECHA_IZQ = 49
+constante T_REQUIERE = 50
+constante T_GARANTIZA = 51
+constante T_CANAL = 52
+constante T_ASM = 53
+constante T_CONSTANTE = 54
+constante T_PUNTOCOMA = 55
+constante T_PARA = 56
+constante T_LET = 59
+constante T_TIPO = 60
+constante T_TENSOR = 61
+constante T_NULO = 62
+constante T_OK = 63
+constante T_ERR = 64
+constante T_ALGUN = 65
+constante T_NINGUNO = 66
+constante T_MODULO = 67
+constante T_DELEGAR = 68
+constante T_EXPORT = 69
+constante T_RC = 70
+constante T_ARC = 71
+constante T_DEBIL = 72
+constante T_PIPE = 73
+constante T_INTERROGACION = 74
+// Solo en nucleo/lexer.syn (no están en tokens.syn): cierre de flujo y error
+constante T_FIN = 57
+constante T_ERROR = 58
+
+// --- Syquex-specific tokens (continuación de la numeración universal) ---
+constante T_METODO = 75
+constante T_CREAR = 76
+constante T_ATRAPAR = 77
+constante T_INTENTAR = 78
+constante T_LISTA = 79
+constante T_MAPA = 80
+constante T_ENUMERACION = 81
+constante T_ARENA = 82
+constante T_EN = 83
+constante T_PASO = 84
+// Puntuación propia de la gramática M3 §3 (rango, listas, mapas)
+constante T_PUNTOPUNTO = 85
+constante T_CORCH_IZQ = 86
+constante T_CORCH_DER = 87
+constante T_LLAVE_IZQ = 88
+constante T_LLAVE_DER = 89
+
+// --- Ids de idioma (M2 §2.3 / M3 §1.1) ---
+constante IDIOMA_ES = 0
+constante IDIOMA_EN = 1
+constante IDIOMA_FR = 2
+constante IDIOMA_PT = 3
+
+estructura TokenLex:
+    tipo: entero
+    linea: entero
+    columna: entero
+    valor: cadena
+
+// --- Helpers de cadena (patrón probado del lexer nativo) ---
+funcion str_len(s: cadena) -> entero:
+    inseguro:
+        r = 0
+        asm("r = s.longitud")
+        retornar r
+
+// str_eq público: las tablas importadas de lexer_keywords.syn lo consumen
+// (en nucleo/ vive en lexer.syn; aquí se provee localmente hasta la
+// integración unity, donde habrá que deduplicar símbolos — nota R86).
+funcion str_eq(a: cadena, b: cadena) -> entero:
+    inseguro:
+        r = 0
+        asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
+        retornar r
+
+funcion str_eq_sq(a: cadena, b: cadena) -> entero:
+    inseguro:
+        r = 0
+        asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
+        retornar r
+
+// --- Buffers globales (prefijo _SQ_*: coexistencia con el lexer Synapse) ---
+constante MAX_INDENT = 64
+
+estructura SqLexerBuffers:
+    tokens: puntero
+    sbuf: puntero
+    indent_stack: puntero
+    str_pos: entero
+    ntks: entero
+    total_tokens: entero
+    hay_error: entero
+    idioma: entero
+    linea_actual: entero
+    nivel_pila: entero
+    nivel_comentario: entero   // R86: profundidad de /* */ anidados (M3 §1.3)
+
+funcion sq_buffers() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static struct SqLexerBuffers _SQ_bufs = {0,0,0,0,0,0,0,0,0,0,0};")
+        asm("static struct TokenLex _SQ_tks[65536];")
+        asm("static char _SQ_sbuf[1048576];")
+        asm("static int _SQ_indents[64];")
+        asm("if (_SQ_bufs.tokens == 0) { _SQ_bufs.tokens = (void*)_SQ_tks; _SQ_bufs.sbuf = (void*)_SQ_sbuf; _SQ_bufs.indent_stack = (void*)_SQ_indents; }")
+        asm("r = (void*)&_SQ_bufs;")
+        retornar r
+
+funcion sq_reset() -> nulo:
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("_b->ntks = 0; _b->str_pos = 0; _b->hay_error = 0; _b->total_tokens = 0; _b->nivel_pila = 0; _b->nivel_comentario = 0;")
+
+funcion sq_total() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct SqLexerBuffers*)sq_buffers())->ntks;")
+        retornar r
+
+funcion sq_hay_error() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct SqLexerBuffers*)sq_buffers())->hay_error;")
+        retornar r
+
+funcion sq_fijar_linea(n: entero) -> nulo:
+    inseguro:
+        asm("((struct SqLexerBuffers*)sq_buffers())->linea_actual = n;")
+
+funcion sq_linea_actual() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct SqLexerBuffers*)sq_buffers())->linea_actual;")
+        retornar r
+
+funcion sq_idioma_actual() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct SqLexerBuffers*)sq_buffers())->idioma;")
+        retornar r
+
+// --- Decodifica cadenas al pool (escapes M2/M3: \" \' \\ \n \t \r \0 \uXXXX) ---
+funcion sq_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("const char* _p = (const char*)ptr + ini;")
+        asm("char* _out = (char*)_b->sbuf + _b->str_pos; int _n = 0;")
+        asm("for (int _k = 0; _k < len && _n < 1048575 - _b->str_pos; _k++) {")
+        asm("    if (_p[_k] == 92 && _k + 1 < len) {")
+        asm("        if (_p[_k+1] == 'u' && _k + 5 < len) {")
+        asm("            unsigned int cp = 0; int _ok = 1;")
+        asm("            for (int h = 0; h < 4; h++) { char hc = _p[_k+2+h]; cp <<= 4;")
+        asm("                if (hc >= 48 && hc <= 57) cp |= (hc - 48);")
+        asm("                else if (hc >= 'a' && hc <= 'f') cp |= (hc - 'a' + 10);")
+        asm("                else if (hc >= 'A' && hc <= 'F') cp |= (hc - 'A' + 10);")
+        asm("                else { _ok = 0; break; } }")
+        asm("            if (_ok) {")
+        asm("                if (cp < 0x80) { _out[_n++] = (char)cp; }")
+        asm("                else if (cp < 0x800) { _out[_n++] = (char)(0xC0 | (cp >> 6)); _out[_n++] = (char)(0x80 | (cp & 0x3F)); }")
+        asm("                else { _out[_n++] = (char)(0xE0 | (cp >> 12)); _out[_n++] = (char)(0x80 | ((cp >> 6) & 0x3F)); _out[_n++] = (char)(0x80 | (cp & 0x3F)); }")
+        asm("                _k += 5; continue;")
+        asm("            }")
+        asm("        }")
+        asm("        switch (_p[_k + 1]) {")
+        asm("            case 34: _out[_n++] = 34; _k++; break;")
+        asm("            case 39: _out[_n++] = 39; _k++; break;")
+        asm("            case 92: _out[_n++] = 92; _k++; break;")
+        asm("            case 110: _out[_n++] = 10; _k++; break;")
+        asm("            case 116: _out[_n++] = 9; _k++; break;")
+        asm("            case 114: _out[_n++] = 13; _k++; break;")
+        asm("            case 48: _out[_n++] = 0; _k++; break;")
+        asm("            default: _out[_n++] = _p[_k]; break;")
+        asm("        }")
+        asm("    } else { _out[_n++] = _p[_k]; }")
+        asm("}")
+        asm("CadenaSegura _rv = (CadenaSegura){_n, _out};")
+        asm("_b->str_pos += _n;")
+        asm("return _rv;")
+    retornar ""
+
+// --- Push de tokens ---
+funcion sq_push_valor(tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("if (_b->ntks >= 65536) return;")
+        asm("struct TokenLex* _t = (struct TokenLex*)_b->tokens;")
+        asm("_t[_b->ntks].tipo = tipo;")
+        asm("_t[_b->ntks].linea = linea;")
+        asm("_t[_b->ntks].columna = columna;")
+        asm("_t[_b->ntks].valor = valor;")
+        asm("_b->ntks = _b->ntks + 1;")
+        asm("_b->total_tokens = _b->ntks;")
+
+funcion sq_push(tipo: entero, linea: entero, columna: entero) -> nulo:
+    sq_push_valor(tipo, linea, columna, "")
+
+// Lexema real desde la fuente (patrón A3.1: spans de tipos/listas)
+funcion sq_push_punt(tipo: entero, linea: entero, columna: entero, ini: entero, fin: entero, ptr: puntero) -> nulo:
+    inseguro:
+        asm("sq_push_valor(tipo, linea, columna, (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini});")
+
+funcion sq_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("_b->hay_error = 1;")
+
+// --- Predicados ---
+funcion sq_es_digito(c: entero) -> entero:
+    si c >= 48:
+        si c <= 57:
+            retornar 1
+    retornar 0
+
+funcion sq_es_letra(c: entero) -> entero:
+    si c >= 128:
+        retornar 1
+    si c >= 65:
+        si c <= 90:
+            retornar 1
+    si c >= 97:
+        si c <= 122:
+            retornar 1
+    si c == 95:
+        retornar 1
+    retornar 0
+
+funcion sq_es_alnum(c: entero) -> entero:
+    si sq_es_digito(c) == 1:
+        retornar 1
+    si sq_es_letra(c) == 1:
+        retornar 1
+    retornar 0
+
+// --- Keywords Syquex (Manual 3 §4) sobre las tablas universales heredadas ---
+// Dispatcher local: lexer_keywords.syn expone keyword_token_es/en/fr/pt;
+// el dispatcher `keyword_token` vive en nucleo/lexer.syn (fuera de alcance aquí).
+funcion sq_keyword_heredado(palabra: cadena, idioma: entero) -> entero:
+    si idioma == IDIOMA_EN:
+        retornar keyword_token_en(palabra)
+    si idioma == IDIOMA_FR:
+        retornar keyword_token_fr(palabra)
+    si idioma == IDIOMA_PT:
+        retornar keyword_token_pt(palabra)
+    retornar keyword_token_es(palabra)
+
+// Los compartidos resuelven vía tablas heredadas (universal 1-74); las
+// 10 palabras propias + fallback 0 aquí.
+funcion sq_keyword(palabra: cadena, idioma: entero) -> entero:
+    let t: entero = sq_keyword_heredado(palabra, idioma)
+    si t != 0:
+        retornar t
+    si idioma == IDIOMA_EN:
+        si str_eq_sq(palabra, "method") == 1:
+            retornar T_METODO
+        si str_eq_sq(palabra, "new") == 1:
+            retornar T_CREAR
+        si str_eq_sq(palabra, "catch") == 1:
+            retornar T_ATRAPAR
+        si str_eq_sq(palabra, "try") == 1:
+            retornar T_INTENTAR
+        si str_eq_sq(palabra, "list") == 1:
+            retornar T_LISTA
+        si str_eq_sq(palabra, "map") == 1:
+            retornar T_MAPA
+        si str_eq_sq(palabra, "enum") == 1:
+            retornar T_ENUMERACION
+        si str_eq_sq(palabra, "in") == 1:
+            retornar T_EN
+        si str_eq_sq(palabra, "step") == 1:
+            retornar T_PASO
+        // arena/arena/delegar/rc/arc/débil: iguales o ya heredadas
+        si str_eq_sq(palabra, "arena") == 1:
+            retornar T_ARENA
+        retornar 0
+    si idioma == IDIOMA_FR:
+        si str_eq_sq(palabra, "méthode") == 1:
+            retornar T_METODO
+        si str_eq_sq(palabra, "créer") == 1:
+            retornar T_CREAR
+        si str_eq_sq(palabra, "attraper") == 1:
+            retornar T_ATRAPAR
+        si str_eq_sq(palabra, "essayer") == 1:
+            retornar T_INTENTAR
+        si str_eq_sq(palabra, "liste") == 1:
+            retornar T_LISTA
+        si str_eq_sq(palabra, "carte") == 1:
+            retornar T_MAPA
+        si str_eq_sq(palabra, "arène") == 1:
+            retornar T_ARENA
+        si str_eq_sq(palabra, "dans") == 1:
+            retornar T_EN
+        si str_eq_sq(palabra, "pas") == 1:
+            retornar T_PASO
+        retornar 0
+    si idioma == IDIOMA_PT:
+        si str_eq_sq(palabra, "capturar") == 1:
+            retornar T_ATRAPAR
+        si str_eq_sq(palabra, "tentar") == 1:
+            retornar T_INTENTAR
+        si str_eq_sq(palabra, "em") == 1:
+            retornar T_EN
+        si str_eq_sq(palabra, "passo") == 1:
+            retornar T_PASO
+        retornar 0
+    // Español (default)
+    si str_eq_sq(palabra, "metodo") == 1:
+        retornar T_METODO
+    si str_eq_sq(palabra, "crear") == 1:
+        retornar T_CREAR
+    si str_eq_sq(palabra, "atrapar") == 1:
+        retornar T_ATRAPAR
+    si str_eq_sq(palabra, "intentar") == 1:
+        retornar T_INTENTAR
+    si str_eq_sq(palabra, "lista") == 1:
+        retornar T_LISTA
+    si str_eq_sq(palabra, "mapa") == 1:
+        retornar T_MAPA
+    si str_eq_sq(palabra, "enumeracion") == 1:
+        retornar T_ENUMERACION
+    si str_eq_sq(palabra, "arena") == 1:
+        retornar T_ARENA
+    si str_eq_sq(palabra, "en") == 1:
+        retornar T_EN
+    si str_eq_sq(palabra, "paso") == 1:
+        retornar T_PASO
+    retornar 0
+
+// --- Detección de idioma (#lang: es|en|fr|pt) ---
+funcion sq_detectar_idioma(ptr: puntero, len: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (len >= 7 && ((const char*)ptr)[0] == '#' && ((const char*)ptr)[1] == 'l' && ((const char*)ptr)[2] == 'a' && ((const char*)ptr)[3] == 'n' && ((const char*)ptr)[4] == 'g' && ((const char*)ptr)[5] == ':') ? 1 : 0")
+        si r == 0:
+            retornar -1
+        ini = 6
+        asm("while (ini < len && ((const char*)ptr)[ini] == ' ') { ini = ini + 1; }")
+        fin = ini
+        asm("while (fin < len && ((const char*)ptr)[fin] != ' ' && ((const char*)ptr)[fin] != 10 && ((const char*)ptr)[fin] != 13) { fin = fin + 1; }")
+        id_detectado = -2
+        asm("if (str_eq_sq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"es\"}) == 1) { id_detectado = IDIOMA_ES; }")
+        asm("else if (str_eq_sq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"en\"}) == 1) { id_detectado = IDIOMA_EN; }")
+        asm("else if (str_eq_sq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"fr\"}) == 1) { id_detectado = IDIOMA_FR; }")
+        asm("else if (str_eq_sq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"pt\"}) == 1) { id_detectado = IDIOMA_PT; }")
+        retornar id_detectado
+
+// --- Indentación (4 espacios, tab prohibido) ---
+funcion sq_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        espacios = 0
+        asm("while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; }")
+        si espacios < len_linea:
+            r = 0
+            asm("r = (((const char*)ptr_linea)[espacios] == '\t') ? 1 : 0")
+            si r == 1:
+                sq_error("Tabulador prohibido E-101", sq_linea_actual(), espacios + 1)
+                retornar
+        si espacios % 4 != 0:
+            sq_error("Indentacion debe ser multiplo de 4 espacios", sq_linea_actual(), 0)
+            retornar
+        nivel = espacios / 4
+        tope = 0
+        asm("tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0")
+        si nivel > tope:
+            asm("((int*)_b->indent_stack)[_b->nivel_pila] = nivel;")
+            asm("_b->nivel_pila = _b->nivel_pila + 1;")
+            sq_push(T_INDENTAR, sq_linea_actual(), 0)
+        si nivel < tope:
+            mientras nivel < tope:
+                asm("_b->nivel_pila = _b->nivel_pila - 1;")
+                asm("tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0;")
+                sq_push(T_DESINDENTAR, sq_linea_actual(), 0)
+
+// --- Tokeniza una línea (con estado de bloque /* */ anidado) ---
+funcion sq_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
+    i = 0
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+            // R86 M3 §1.3: comentario de bloque ANIDABLE con estado entre líneas
+            asm("if (_b->nivel_comentario > 0) {")
+            asm("    while (i + 1 < len_texto) {")
+            asm("        char a = ((const char*)ptr_texto)[i];")
+            asm("        if (a == '/' && ((const char*)ptr_texto)[i+1] == '*') { _b->nivel_comentario++; i += 2; continue; }")
+            asm("        if (a == '*' && ((const char*)ptr_texto)[i+1] == '/') { _b->nivel_comentario--; i += 2; if (_b->nivel_comentario == 0) break; continue; }")
+            asm("        i++;")
+            asm("    }")
+            asm("    if (_b->nivel_comentario > 0) return;")
+            asm("}")
+            asm("r = (i < len_texto) ? 1 : 0")
+            si r == 0:
+                romper
+            c = 0
+            asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+            si c == 32:
+                asm("i = i + 1")
+                siguiente
+            // Comentarios (M3 §1.3): línea // y bloque /* */ anidable
+            si c == 47:
+                si i + 1 < len_texto:
+                    c2 = 0
+                    asm("c2 = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c2 == 47:
+                        retornar
+                    si c2 == 42:
+                        asm("_b->nivel_comentario = 1; i = i + 2;")
+                        en_bloque = 1
+                        mientras en_bloque == 1:
+                            inseguro:
+                                asm("if (i + 1 >= len_texto) { en_bloque = 0; break; }")
+                                asm("char a = ((const char*)ptr_texto)[i];")
+                                asm("if (a == '/' && ((const char*)ptr_texto)[i+1] == '*') { _b->nivel_comentario++; i += 2; continue; }")
+                                asm("if (a == '*' && ((const char*)ptr_texto)[i+1] == '/') { _b->nivel_comentario--; i += 2; if (_b->nivel_comentario == 0) en_bloque = 0; continue; }")
+                                asm("i = i + 1;")
+                        siguiente
+            si c == 35:
+                retornar
+            // Cadenas (M2 §2 cadena_literal / M3 cadena): escapes con \uXXXX
+            si c == 34:
+                inicio_str = i
+                cerrada = 0
+                asm("i = i + 1")
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si c == 92:
+                        asm("i = i + 2")
+                    sino:
+                        si c == 34:
+                            cerrada = 1
+                            romper
+                        asm("i = i + 1")
+                si cerrada == 1:
+                    inseguro:
+                        asm("sq_push_valor(T_CADENA, sq_linea_actual(), (inicio_str + 1), sq_decodificar_cadena(ptr_texto, inicio_str + 1, (i - inicio_str - 1)));")
+                asm("i = i + 1")
+                siguiente
+            // Números (M3 numero ::= DIGITO+ ["."DIGITO+] ["e"["-"]DIGITO+])
+            si c >= 48:
+                si c <= 57:
+                    inicio_num = i
+                    es_float = 0
+                    mientras i < len_texto:
+                        asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                        si sq_es_digito(c) == 0:
+                            romper
+                        asm("i = i + 1")
+                    si i < len_texto:
+                        asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                        si c == 46:
+                            es_float = 1
+                            asm("i = i + 1")
+                            mientras i < len_texto:
+                                asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                                si sq_es_digito(c) == 0:
+                                    romper
+                                asm("i = i + 1")
+                    // R86 M3: exponente 'e'/'E' ['-'] dígitos
+                    si i < len_texto:
+                        asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                        si c == 101:
+                            es_float = 1
+                            asm("i = i + 1")
+                            si i < len_texto:
+                                asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                                si c == 45:
+                                    asm("i = i + 1")
+                                si c == 43:
+                                    asm("i = i + 1")
+                            hay_exp = 0
+                            mientras i < len_texto:
+                                asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                                si sq_es_digito(c) == 0:
+                                    romper
+                                asm("hay_exp = 1; i = i + 1")
+                            si hay_exp == 0:
+                                sq_error("Exponente sin digitos", sq_linea_actual(), i + 1)
+                    si es_float == 1:
+                        inseguro:
+                            asm("sq_push_valor(T_FLOTANTE, sq_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
+                    sino:
+                        inseguro:
+                            asm("sq_push_valor(T_NUMERO, sq_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
+                    siguiente
+            // Identificadores / keywords (unión M2 §3 + M3 §4)
+            si sq_es_letra(c) == 1:
+                inicio = i
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si sq_es_alnum(c) == 0:
+                        si c != 95:
+                            romper
+                    asm("i = i + 1")
+                tok = 0
+                inseguro:
+                    asm("tok = sq_keyword((CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}, sq_idioma_actual());")
+                si tok == 0:
+                    tok = T_IDENTIFICADOR
+                inseguro:
+                    asm("sq_push_valor(tok, sq_linea_actual(), (inicio + 1), (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio});")
+                siguiente
+            // Operadores / puntuación
+            si c == 43:
+                sq_push(T_MAS, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 45:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 62:
+                        sq_push(T_FLECHA, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push(T_MENOS, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 61:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 62:
+                        sq_push(T_FLECHA_DER, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                    si c == 61:
+                        sq_push(T_IGUAL, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push(T_ASIGNAR, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 33:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        sq_push(T_DISTINTO, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push(T_NO, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 60:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        sq_push(T_MENOR_IGUAL, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                    si c == 45:
+                        sq_push(T_FLECHA_IZQ, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push_punt(T_MENOR, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 62:
+                si i + 1 < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c == 61:
+                        sq_push(T_MAYOR_IGUAL, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push_punt(T_MAYOR, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 42:
+                sq_push_punt(T_POR, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 47:
+                sq_push(T_DIV, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 37:
+                sq_push(T_MOD, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 40:
+                sq_push_punt(T_PAREN_IZQ, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 41:
+                sq_push_punt(T_PAREN_DER, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 91:
+                // R86 M3 §3: listas literales e indexación
+                sq_push_punt(T_CORCH_IZQ, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 93:
+                sq_push_punt(T_CORCH_DER, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 123:
+                // R86 M3 §3: mapa literal {clave: valor}
+                sq_push_punt(T_LLAVE_IZQ, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 125:
+                sq_push_punt(T_LLAVE_DER, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 58:
+                sq_push(T_DOSPUNTOS, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 44:
+                sq_push_punt(T_COMA, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 46:
+                // R86 M3 §3: rango ".." (para i = a .. b [paso s])
+                si i + 1 < len_texto:
+                    c2 = 0
+                    asm("c2 = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c2 == 46:
+                        sq_push(T_PUNTOPUNTO, sq_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                sq_push(T_PUNTO, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 38:
+                sq_push_punt(T_AMPERSAND, sq_linea_actual(), i + 1, i, i + 1, ptr_texto)
+                asm("i = i + 1")
+                siguiente
+            si c == 59:
+                sq_push(T_PUNTOCOMA, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 124:
+                sq_push(T_PIPE, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 63:
+                // M3 §5.4/§7: propagación ?
+                sq_push(T_INTERROGACION, sq_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            sq_error("Caracter inesperado", sq_linea_actual(), i + 1)
+            asm("i = i + 1")
+        siguiente
+
+// --- Tokenizador principal de Syquex ---
+// Contrato (regla 4 / Manual 3 §1): requiere fuente con #lang válido;
+// garantiza rc = total de tokens, o -1 ante error léxico.
+funcion tokenizar_syquex(fuente: cadena) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != 0
+    let ptr_fuente: puntero = nulo
+    let len_fuente: entero = 0
+    inseguro:
+        asm("ptr_fuente = (void*)fuente.datos;")
+        asm("len_fuente = fuente.longitud;")
+    sq_reset()
+    sq_fijar_linea(1)
+    inseguro:
+        asm("struct SqLexerBuffers* _b0 = (struct SqLexerBuffers*)sq_buffers();")
+        asm("_b0->idioma = -1;")
+    idioma = sq_detectar_idioma(ptr_fuente, len_fuente)
+    si idioma == -1:
+        sq_error("Falta declaracion de idioma #lang: en la linea 1", 1, 0)
+        retornar -1
+    si idioma == -2:
+        sq_error("Idioma no soportado: use es, en, fr, pt", 1, 0)
+        retornar -1
+    inseguro:
+        asm("((struct SqLexerBuffers*)sq_buffers())->idioma = idioma;")
+
+    i = 0
+    linea_num = 1
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("r = (i < len_fuente) ? 1 : 0")
+            si r == 0:
+                romper
+        inicio_linea = i
+        mientras r == 1:
+            inseguro:
+                asm("r = (i < len_fuente) ? 1 : 0")
+                si r == 0:
+                    romper
+                c = 0
+                asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                si c == 10:
+                    romper
+                si c == 13:
+                    romper
+                asm("i = i + 1")
+        len_linea = i - inicio_linea
+        let ptr_linea: puntero = nulo
+        inseguro:
+            asm("ptr_linea = (void*)((const char*)ptr_fuente + inicio_linea)")
+        si len_linea > 0:
+            j = 0
+            solo_blancos = 1
+            es_comentario = 0
+            inseguro:
+                asm("while (j < len_linea && (((const char*)ptr_linea)[j] == ' ' || ((const char*)ptr_linea)[j] == 9)) { j = j + 1; }")
+            si j < len_linea:
+                solo_blancos = 0
+                c0 = 0
+                inseguro:
+                    asm("c0 = (unsigned char)((const char*)ptr_linea)[j]")
+                    si c0 == 35:
+                        es_comentario = 1
+                    si c0 == 47:
+                        si j + 1 < len_linea:
+                            asm("c0 = (unsigned char)((const char*)ptr_linea)[j + 1]")
+                            si c0 == 47:
+                                es_comentario = 1
+            si solo_blancos == 0:
+                si es_comentario == 0:
+                    sq_fijar_linea(linea_num)
+                    sq_procesar_indentacion(ptr_linea, len_linea)
+                    sq_tokenizar_linea(ptr_linea, len_linea)
+        sq_fijar_linea(linea_num)
+        sq_push(T_NUEVALINEA, linea_num, 0)
+        si i < len_fuente:
+            inseguro:
+                c = 0
+                asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                si c == 13:
+                    asm("i = i + 1")
+                si i < len_fuente:
+                    asm("c = (unsigned char)((const char*)ptr_fuente)[i]")
+                    si c == 10:
+                        asm("i = i + 1")
+        linea_num = linea_num + 1
+        r = 1
+
+    tope_fin = 1
+    mientras tope_fin == 1:
+        inseguro:
+            r = 0
+            asm("r = (((struct SqLexerBuffers*)sq_buffers())->nivel_pila > 0) ? 1 : 0")
+            si r == 0:
+                romper
+            asm("((struct SqLexerBuffers*)sq_buffers())->nivel_pila = ((struct SqLexerBuffers*)sq_buffers())->nivel_pila - 1;")
+            sq_push(T_DESINDENTAR, linea_num, 0)
+
+    // R86: comentario de bloque sin cerrar (M3 §1.3 anidado) → error E-1xx
+    inseguro:
+        asm("if (((struct SqLexerBuffers*)sq_buffers())->nivel_comentario > 0) { ((struct SqLexerBuffers*)sq_buffers())->hay_error = 1; }")
+
+    sq_push(T_FIN, linea_num, 0)
+
+    si sq_hay_error() == 1:
+        retornar -1
+
+    retornar sq_total()
+
+// --- Accesores públicos para harness/tests (regla 4: contratos) ---
+funcion sq_token_tipo(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        r = 0
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("if (i < _b->ntks) { r = ((struct TokenLex*)_b->tokens)[i].tipo; }")
+        retornar r
+
+funcion sq_token_linea(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        _resultado_ >= 1
+    inseguro:
+        r = 0
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("if (i < _b->ntks) { r = ((struct TokenLex*)_b->tokens)[i].linea; }")
+        retornar r
+
+funcion sq_token_lexema(i: entero) -> cadena:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("if (i < _b->ntks) { return ((struct TokenLex*)_b->tokens)[i].valor; }")
+    retornar ""
+
