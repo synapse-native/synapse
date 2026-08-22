@@ -932,6 +932,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "CadenaSegura decimal_a_texto(double n)",
             "CadenaSegura entero_a_texto(int64_t n)",
             "int str_eq(CadenaSegura a, CadenaSegura b)",
+            "CadenaSegura concat(CadenaSegura a, CadenaSegura b)",
             "void synapse_lanzar_hilo(void* (*fn)(void*), void* arg)",
             "void synapse_esperar_hilos(void)",
             "void synapse_esperar_fibras(void)",
@@ -1225,21 +1226,6 @@ class GeneradorC:
             ctx.write_line("}")
             ctx.write_line("")
             ctx.write_line("void salir(int codigo) { exit(codigo); }")
-            ctx.write_line("")
-            ctx.write_line("CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
-            ctx.inc_indent()
-            ctx.write_line("int _tl = a.longitud + b.longitud;")
-            ctx.write_line("char* _buf = (char*)malloc(_tl + 1);")
-            ctx.write_line(
-                'if (!_buf) { fprintf(stderr,'
-                '"Error: malloc fallo en concat()\\\\n"); exit(1); }'
-            )
-            ctx.write_line("memcpy(_buf, a.datos, a.longitud);")
-            ctx.write_line("memcpy(_buf + a.longitud, b.datos, b.longitud);")
-            ctx.write_line("_buf[_tl] = 0;")
-            ctx.write_line("return (CadenaSegura){_tl, _buf};")
-            ctx.dec_indent()
-            ctx.write_line("}")
             ctx.write_line("")
 
     def _emit_prototipos_funciones(self, ctx):
@@ -1781,21 +1767,6 @@ class GeneradorC:
                 ctx.write_line("}")
                 ctx.write_line("")
                 ctx.write_line("void salir(int codigo) { exit(codigo); }")
-                ctx.write_line("")
-                ctx.write_line("CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
-                ctx.inc_indent()
-                ctx.write_line("int _tl = a.longitud + b.longitud;")
-                ctx.write_line("char* _buf = (char*)malloc(_tl + 1);")
-                ctx.write_line(
-                    'if (!_buf) { fprintf(stderr,'
-                    '"Error: malloc fallo en concat()\\\\n"); exit(1); }'
-                )
-                ctx.write_line("memcpy(_buf, a.datos, a.longitud);")
-                ctx.write_line("memcpy(_buf + a.longitud, b.datos, b.longitud);")
-                ctx.write_line("_buf[_tl] = 0;")
-                ctx.write_line("return (CadenaSegura){_tl, _buf};")
-                ctx.dec_indent()
-                ctx.write_line("}")
                 ctx.write_line("")
             # NO emitir structs \u2014 ya est\u00e1n definidos en el header compartido
             # Pre-pass lanzar y typedefs

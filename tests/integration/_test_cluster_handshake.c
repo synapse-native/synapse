@@ -173,16 +173,6 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
-    int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: malloc fallo en concat()\\n"); exit(1); }
-    memcpy(_buf, a.datos, a.longitud);
-    memcpy(_buf + a.longitud, b.datos, b.longitud);
-    _buf[_tl] = 0;
-    return (CadenaSegura){_tl, _buf};
-}
-
 int64_t principal(void) {
     int64_t total_fallos;
     _simd_detectar();

@@ -130,6 +130,26 @@ int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex,
     return rc;
 }
 
+// --- Session Key Derivation (Manual 5 §6.2 paso 3, "o similar") ---
+// Derives a 32-byte session key from both Ed25519 public keys using SHA-256.
+// No external deps: uses the SHA-256 implementation already in synapse_rt_types.h.
+static void cluster_derivar_clave_sesion(const char* pubkey_local_hex,
+                                         const char* pubkey_remota_hex,
+                                         unsigned char* out_clave) {
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, (const uint8_t*)pubkey_local_hex, 64);
+    sha256_update(&ctx, (const uint8_t*)pubkey_remota_hex, 64);
+    sha256_final(&ctx, out_clave);
+}
+
+// --- XOR stream cipher (session key) ---
+static void cluster_xor_cifrar(const unsigned char* clave, size_t clave_len,
+                               const char* entrada, char* salida, int lon) {
+    for (int i = 0; i < lon; i++)
+        salida[i] = entrada[i] ^ (char)clave[i % clave_len];
+}
+
 // --- UDP Socket Helpers ---
 static int _cluster_udp_socket(int puerto) {
     int fd = (int)socket(AF_INET, SOCK_DGRAM, 0);
@@ -167,11 +187,40 @@ static int _cluster_udp_enviar(int fd, const char* ip, int puerto,
 // --- Cluster Initialization ---
 static int _cluster_sock_global = -1;
 
+// Session key state (Manual 5 §6.2 paso 3, "o similar": SHA-256 de pubkeys)
+static unsigned char _cluster_sesion_clave[32];
+static int _cluster_sesion_activa = 0;
+
+// Server identity for handshake (generated on iniciar_nodo if not set)
+static unsigned char _cluster_server_pk[32];
+static unsigned char _cluster_server_sk[64];
+static int _cluster_server_identity = 0;
+static char _cluster_server_id[64] = "synapse-server";
+
+void cluster_establecer_clave_sesion(const char* pubkey_local_hex,
+                                     const char* pubkey_remota_hex) {
+    cluster_derivar_clave_sesion(pubkey_local_hex, pubkey_remota_hex, _cluster_sesion_clave);
+    _cluster_sesion_activa = 1;
+}
+
+void cluster_limpiar_clave_sesion(void) {
+    _cluster_sesion_activa = 0;
+    memset(_cluster_sesion_clave, 0, sizeof(_cluster_sesion_clave));
+}
+
 int cluster_iniciar_nodo(int puerto) {
     _syn_iniciar_red();
     int fd = _cluster_udp_socket(puerto);
     if (fd < 0) return -1;
     _cluster_sock_global = fd;
+    cluster_limpiar_clave_sesion();
+    if (!_cluster_server_identity) {
+        if (crypto_sign_keypair(_cluster_server_pk, _cluster_server_sk) != 0) {
+            _cluster_server_identity = 0;
+            return -1;
+        }
+        _cluster_server_identity = 1;
+    }
     return 0;
 }
 
@@ -198,6 +247,36 @@ int cluster_enviar_hello(const char* ip, int puerto,
     return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, len);
 }
 
+// --- Generate 32-byte random nonce as 64-char hex ---
+CadenaSegura cluster_generar_nonce(void) {
+    unsigned char raw[32];
+    for (int i = 0; i < 32; i++) raw[i] = (unsigned char)(rand() % 256);
+    char hex[65];
+    for (int i = 0; i < 32; i++) sprintf(hex + i * 2, "%02x", raw[i]);
+    hex[64] = '\0';
+    char* out = (char*)pool_alloc(65);
+    if (!out) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(out, hex, 65);
+    return (CadenaSegura){ .longitud = 64, .datos = out };
+}
+
+// --- Send signed HELLO handshake message ---
+// Formato: HELLO:id:nonce_hex:pubkey_hex:firma_hex
+int cluster_enviar_hello_firmado(const char* ip, int puerto,
+                                  CadenaSegura id_origen,
+                                  CadenaSegura pubkey_hex,
+                                  CadenaSegura nonce_hex,
+                                  CadenaSegura firma_hex) {
+    if (_cluster_sock_global < 0) return -1;
+    char buf[1024];
+    int len = snprintf(buf, sizeof(buf), "HELLO:%.*s:%.*s:%.*s:%.*s",
+                       (int)id_origen.longitud, id_origen.datos,
+                       (int)nonce_hex.longitud, nonce_hex.datos,
+                       (int)pubkey_hex.longitud, pubkey_hex.datos,
+                       (int)firma_hex.longitud, firma_hex.datos);
+    return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, len);
+}
+
 // --- Remote Channel: send data ---
 int cluster_canal_remoto_enviar(const char* ip, int puerto,
                                 const char* datos, int lon,
@@ -206,14 +285,80 @@ int cluster_canal_remoto_enviar(const char* ip, int puerto,
     char header[64];
     static int seq_counter = 0;
     int hdr_len = snprintf(header, sizeof(header), "DATA:%d:%d:", chan_id, seq_counter++);
-    char* paquete = (char*)pool_alloc((size_t)(hdr_len + lon));
+    uint32_t len_be = htonl((uint32_t)lon);
+    int total = hdr_len + 1 + 4 + (int)lon;
+    char* paquete = (char*)pool_alloc((size_t)total);
     if (!paquete) return -1;
     memcpy(paquete, header, (size_t)hdr_len);
-    memcpy(paquete + hdr_len, datos, (size_t)lon);
+    paquete[hdr_len] = 0x06;
+    memcpy(paquete + hdr_len + 1, &len_be, 4);
+    if (_cluster_sesion_activa)
+        cluster_xor_cifrar(_cluster_sesion_clave, 32, datos, paquete + hdr_len + 1 + 4, lon);
+    else
+        memcpy(paquete + hdr_len + 1 + 4, datos, (size_t)lon);
     int n = _cluster_udp_enviar(_cluster_sock_global, ip, puerto,
-                                 paquete, hdr_len + lon);
+                                 paquete, total);
     pool_free(paquete);
     return n;
+}
+
+// --- Serialization helpers (Manual 5 §6.3, MessagePack-like) ---
+static CadenaSegura cluster_deserializar_texto(const char* buf, int len) {
+    if (len < 1 + 4) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    if ((unsigned char)buf[0] != 0x06) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    uint32_t text_len;
+    memcpy(&text_len, buf + 1, 4);
+    text_len = ntohl(text_len);
+    if (text_len > (unsigned)(len - 5)) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    char* out = (char*)pool_alloc((size_t)text_len + 1);
+    if (!out) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(out, buf + 5, (size_t)text_len);
+    out[text_len] = '\0';
+    return (CadenaSegura){ .longitud = (int)text_len, .datos = out };
+}
+
+// --- Process incoming HELLO handshake and respond with HELLO_RESP ---
+// Formato HELLO: HELLO:id:nonce_hex:pubkey_hex:firma_hex
+// Formato HELLO_RESP: HELLO_RESP:id_servidor:nonce_hex:pubkey_hex:firma_hex
+static int _cluster_procesar_hello_entrante(const char* buf, int n,
+                                             const struct sockaddr_in* from) {
+    if (n < 6 || memcmp(buf, "HELLO:", 6) != 0) return 0;
+    char id[128] = {0};
+    char nonce_hex[65] = {0};
+    char pubkey_hex[65] = {0};
+    char firma_hex[129] = {0};
+    int fields = sscanf(buf + 6, "%127[^:]:%64[^:]:%64[^:]:%128[^:]",
+                        id, nonce_hex, pubkey_hex, firma_hex);
+    if (fields != 4) return 0;
+    if (strlen(nonce_hex) != 64 || strlen(pubkey_hex) != 64 || strlen(firma_hex) != 128)
+        return 0;
+
+    CadenaSegura nonce = { .longitud = 64, .datos = nonce_hex };
+    CadenaSegura firma = { .longitud = 128, .datos = firma_hex };
+    CadenaSegura pk = { .longitud = 64, .datos = pubkey_hex };
+    if (cluster_verificar_firma(nonce, firma, pk) != 0) return 0;
+
+    char nonce_serv_hex[65];
+    CadenaSegura nonce_serv = cluster_generar_nonce();
+    if (nonce_serv.longitud != 64) return 0;
+    memcpy(nonce_serv_hex, nonce_serv.datos, 65);
+
+    char pk_serv_hex[65];
+    for (int i = 0; i < 32; i++) sprintf(pk_serv_hex + i * 2, "%02x", _cluster_server_pk[i]);
+    pk_serv_hex[64] = '\0';
+
+    CadenaSegura mensaje_serv = { .longitud = 64, .datos = nonce_serv_hex };
+    CadenaSegura firma_serv_hex = cluster_firmar_mensaje(mensaje_serv,
+        (CadenaSegura){ .longitud = 128, .datos = (char*)_cluster_server_sk });
+    if (firma_serv_hex.longitud != 128) return 0;
+
+    char resp[1024];
+    int resp_len = snprintf(resp, sizeof(resp), "HELLO_RESP:%s:%s:%s:%s",
+                            _cluster_server_id, nonce_serv_hex, pk_serv_hex, firma_serv_hex.datos);
+    char ip_str[64];
+    snprintf(ip_str, sizeof(ip_str), "%s", inet_ntoa(from->sin_addr));
+    _cluster_udp_enviar(_cluster_sock_global, ip_str, ntohs(from->sin_port), resp, resp_len);
+    return 1;
 }
 
 // --- Receive a datagram (non-blocking) ---
@@ -233,6 +378,30 @@ CadenaSegura cluster_recibir_paquete(int timeout_ms) {
                            (struct sockaddr*)&from, &fromlen);
     if (n <= 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
     buf[n] = '\0';
+    if (_cluster_procesar_hello_entrante(buf, n, &from)) {
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    if (n >= 5 && memcmp(buf, "DATA:", 5) == 0) {
+        int last_colon = -1;
+        for (int i = n - 1; i >= 0; i--) {
+            if (buf[i] == ':') { last_colon = i; break; }
+        }
+        if (last_colon >= 0 && last_colon + 1 < n) {
+            CadenaSegura texto = cluster_deserializar_texto(buf + last_colon + 1, n - last_colon - 1);
+            if (texto.longitud > 0) {
+                if (_cluster_sesion_activa) {
+                    char* decrypt = (char*)pool_alloc((size_t)texto.longitud + 1);
+                    if (decrypt) {
+                        cluster_xor_cifrar(_cluster_sesion_clave, 32, texto.datos, decrypt, texto.longitud);
+                        decrypt[texto.longitud] = '\0';
+                        pool_free((void*)texto.datos);
+                        texto.datos = decrypt;
+                    }
+                }
+                return texto;
+            }
+        }
+    }
     char* result = (char*)pool_alloc((size_t)(n + 1));
     if (!result) return (CadenaSegura){ .longitud = 0, .datos = "" };
     memcpy(result, buf, (size_t)(n + 1));

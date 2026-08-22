@@ -1,0 +1,357 @@
+name: Synapse CI — Tests
+
+on:
+  push:
+    branches: [ main, develop, '**' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  lint-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          pip install -r requirements.txt
+
+      - name: Lint (flake8)
+        run: python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Bloquear scripts de parche (_fix_*.py)
+        run: |
+          FIX_FILES=$(find . -name '_fix_*.py' 2>/dev/null)
+          if [ -n "$FIX_FILES" ]; then
+            echo "❌ ERROR: Scripts de parche prohibidos encontrados:"
+            echo "$FIX_FILES"
+            exit 1
+          fi
+          echo "✅ No hay scripts de parche"
+
+      - name: Bloquear artefactos .exe.c
+        run: |
+          EXE_C=$(find . -name '*.exe.c' 2>/dev/null)
+          if [ -n "$EXE_C" ]; then
+            echo "❌ ERROR: Artefactos .exe.c prohibidos encontrados:"
+            echo "$EXE_C"
+            exit 1
+          fi
+          echo "✅ No hay artefactos .exe.c"
+
+      - name: Bloquear except-pass en Python
+        run: |
+          FOUND=0
+          for f in $(find . -name '*.py' -not -path './.git/*' -not -path './toolchain_gcc12/*' 2>/dev/null); do
+            if grep -n 'except\s*:\s*pass' "$f" > /dev/null 2>&1; then
+              echo "❌ except: pass en $f"
+              grep -n 'except\s*:\s*pass' "$f"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -ne 0 ]; then exit 1; fi
+          echo "✅ No hay except: pass"
+
+  test:
+    needs: lint-and-check
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-md pytest-emoji flake8
+          pip install -r requirements.txt
+
+      - name: Verificar entorno
+        run: |
+          python --version
+          python -c "import sys; print(f'Python {sys.version}')"
+          python -c "import pytest; print(f'pytest {pytest.__version__}')"
+          python -c "import flake8; print(f'flake8 {flake8.__version__}')"
+
+      - name: Ejecutar tests unitarios y de integración
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --cov=. --cov-report=term-missing \
+            --cov-report=html:coverage_reports/
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Compilar runtime (C) - Unix
+        if: matrix.os != 'windows-latest'
+        run: |
+          gcc --version
+          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
+
+      - name: Compilar runtime (C) - Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          gcc --version
+          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lws2_32
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
+
+      - name: Smoke test — compilar programas Synapse
+        run: |
+          python tests/run_tests.py
+
+      - name: Subir reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage_reports/
+          retention-days: 7
+
+      - name: Notificar resultado
+        if: always()
+        run: |
+          echo "## ✅ Tests completados para ${{ matrix.os }} / Python ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+
+  fuzz:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar runtime objects
+        run: |
+          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
+
+      - name: Crear directorios de fuzzing
+        run: |
+          mkdir -p tests/fuzz/corpus tests/fuzz/crashes
+
+      - name: Fuzzing rapido (500 iteraciones)
+        run: |
+          python tests/fuzz/fuzz_engine.py -n 500 2>&1 | tee fuzz.log
+          if grep -q "CRASH" fuzz.log; then
+            echo "❌ Fuzzing detecto crashes"
+            grep "CRASH" fuzz.log
+            exit 1
+          fi
+          echo "✅ Fuzzing superado"
+
+      - name: Fuzzing con sanitizers (200 iteraciones)
+        run: |
+          python tests/fuzz/fuzz_engine.py -n 200 --sanitize 2>&1 | tee fuzz_san.log
+          if grep -q "CRASH\|SANITIZER" fuzz_san.log; then
+            echo "❌ Fuzzing con sanitizers detecto fallos"
+            grep -E "CRASH|SANITIZER" fuzz_san.log
+            exit 1
+          fi
+          echo "✅ Fuzzing con sanitizers superado"
+
+      - name: Tests de fuzzing unitarios
+        run: |
+          python -m pytest tests/fuzz/test_fuzz.py -v --tb=short 2>&1 | tee fuzz_tests.log
+          if grep -q "FAILED" fuzz_tests.log; then
+            echo "❌ Tests de fuzzing fallaron"
+            grep "FAILED" fuzz_tests.log
+            exit 1
+          fi
+          echo "✅ Tests de fuzzing pasan"
+
+      - name: Subir crashes como artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: tests/fuzz/crashes/
+          retention-days: 30
+
+      - name: Notificar fuzzing
+        if: always()
+        run: |
+          echo "## ✅ Fuzzing CI completado" >> $GITHUB_STEP_SUMMARY
+
+  bootstrap:
+    needs: [test, fuzz]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Bootstrap — generar binario nativo (Manual 9 S9.1)
+        run: |
+          # ME-R2: el pipeline compila el runtime modular desde fuente (build/obj/),
+          # no se compilan .o a mano. Entrada: nucleo/principal.syn (Manual 9 S9.1).
+          python main.py nucleo/principal.syn -o synapse_stage1.exe 2>&1 | tee bootstrap.log
+          if grep -q "error:" bootstrap.log; then
+            echo "❌ Bootstrap fallo"
+            grep "error:" bootstrap.log
+            exit 1
+          fi
+          if [ ! -f synapse_stage1.exe ]; then
+            echo "❌ Bootstrap fallo: synapse_stage1.exe no generado"
+            exit 1
+          fi
+          echo "✅ Bootstrap exitoso: synapse_stage1.exe"
+
+      - name: Verificar micro-tests (bootstrap nativo)
+        run: |
+          python scripts/run_micro_tests.py 2>&1 | tee micro.log
+          if ! grep -q "Todos los tests pasaron" micro.log; then
+            echo "❌ Micro-tests fallaron"
+            exit 1
+          fi
+          echo "✅ Micro-tests pasan"
+
+      - name: Tests de regresión post-bootstrap
+        run: |
+          python -m pytest tests/ -q --tb=short 2>&1 | tee test.log
+          if grep -q "FAILED" test.log; then
+            echo "❌ Tests fallaron post-bootstrap"
+            grep "FAILED" test.log
+            exit 1
+          fi
+          echo "✅ Todos los tests pasan"
+
+      - name: Notificar bootstrap
+        if: always()
+        run: |
+          echo "## ✅ Bootstrap verification completado" >> $GITHUB_STEP_SUMMARY
+
+  benchmark:
+    needs: lint-and-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compilar runtime objects con ASan
+        run: |
+          gcc --version
+          # runtime/core/memory.c (pool_alloc, pool_free) fue modularizado desde M0.2
+          gcc -c -O2 -std=c11 -Wall -fsanitize=address -g \
+            runtime/core/memory.c -o synapse_rt_memory_asan.o -I. -lpthread -lm
+          echo "=== runtime (asan) OK ==="
+
+      - name: Compilar benchmark con ASan
+        run: |
+          gcc -O2 -std=c11 -Wall -fsanitize=address -g \
+            tests/bench_alloc.c synapse_rt_memory_asan.o \
+            -o tests/bench_alloc_asan.exe -lm -lpthread
+          echo "=== benchmark (asan) OK ==="
+
+      - name: Ejecutar benchmark con ASan
+        run: |
+          echo "=== BENCHMARK ALLOC (ASan) ==="
+          tests/bench_alloc_asan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark_asan.log
+          RC="${PIPESTATUS[0]}"
+          if [ "$RC" -ne 0 ]; then
+            echo "❌ ASan: benchmark fallo con codigo $RC — posible fuga"
+            exit $RC
+          fi
+          echo "✅ ASan: 0 fugas de memoria"
+
+      - name: Compilar runtime objects con TSan
+        run: |
+          gcc -c -O2 -std=c11 -Wall -fsanitize=thread -g \
+            runtime/core/memory.c -o synapse_rt_memory_tsan.o -I. -lpthread -lm
+          echo "=== runtime (tsan) OK ==="
+
+      - name: Compilar benchmark con TSan
+        run: |
+          gcc -O2 -std=c11 -Wall -fsanitize=thread -g \
+            tests/bench_alloc.c synapse_rt_memory_tsan.o \
+            -o tests/bench_alloc_tsan.exe -lm -lpthread
+          echo "=== benchmark (tsan) OK ==="
+
+      - name: Ejecutar benchmark con TSan
+        run: |
+          echo "=== BENCHMARK ALLOC (TSan) ==="
+          tests/bench_alloc_tsan.exe --threads 4 --measure 10000 --warmup 500 2>&1 | tee benchmark_tsan.log
+          RC="${PIPESTATUS[0]}"
+          if [ "$RC" -ne 0 ]; then
+            echo "❌ TSan: benchmark fallo con codigo $RC — posible data race"
+            exit $RC
+          fi
+          echo "✅ TSan: 0 data races"
+
+      - name: Notificar benchmark
+        if: always()
+        run: |
+          echo "## ✅ Benchmark M19.1 completado" >> $GITHUB_STEP_SUMMARY
+
+  auditoria:
+    # Gate de alineación con los manuales (R31): ningún push/PR puede introducir
+    # brechas de trazabilidad (bitácora/reportes/hashes), deuda sin registrar,
+    # código muerto en la raíz, módulos >1200 líneas sin registrar, ni funciones
+    # nuevas sin requiere/garantiza (Manual 2 §12).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
+        run: |
+          python auditoria/verificar_alineacion.py 2>&1 | tee auditoria.log
+          echo ""
+          if grep -q "BRECHAS (errores de trazabilidad):" auditoria.log && \
+             grep -qE "^  \[!\]" auditoria.log; then
+            echo "❌ Brechas de alineación detectadas — resolver antes de mergear (regla 11)"
+            exit 1
+          fi
+          echo "✅ Alineación verificada: 0 brechas"

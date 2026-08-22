@@ -727,8 +727,9 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             if link_rc == 0:
                 print(f"[OK] Ejecutable modular generado: {ruta_exe}")
             else:
-                print(f"[!] Link modular fallo (rc={link_rc})", file=sys.stderr)
-        else:
+                print(f"[!] Link modular fallo (rc={link_rc}) — intentando unity fallback", file=sys.stderr)
+                objs_existentes = []
+        if not objs_existentes:
             print("[!] No se generaron objetos modulares — usando unity fallback", file=sys.stderr)
             # Fallback: compilar unity file a objeto y linkear
             gcc_obj_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ruta_c}" -o "{ruta_c}.o"'

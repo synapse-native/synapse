@@ -81,526 +81,505 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
 
-#define _GEN_TMP_SIZE (4096)
 #include "librerias/embedded_libs.h"
 
 // --- Token ID constants (Manual 2 §2.3) ---
 #ifndef T_SI
-#define T_SI (1)
+#define T_SI (1LL)
 #endif
 #ifndef T_SINO
-#define T_SINO (2)
+#define T_SINO (2LL)
 #endif
 #ifndef T_FUNCION
-#define T_FUNCION (3)
+#define T_FUNCION (3LL)
 #endif
 #ifndef T_RETORNAR
-#define T_RETORNAR (4)
+#define T_RETORNAR (4LL)
 #endif
 #ifndef T_LANZAR
-#define T_LANZAR (5)
+#define T_LANZAR (5LL)
 #endif
 #ifndef T_RECUPERAR
-#define T_RECUPERAR (6)
+#define T_RECUPERAR (6LL)
 #endif
 #ifndef T_ESCUCHAR
-#define T_ESCUCHAR (7)
+#define T_ESCUCHAR (7LL)
 #endif
 #ifndef T_MIENTRAS
-#define T_MIENTRAS (8)
+#define T_MIENTRAS (8LL)
 #endif
 #ifndef T_IMPORTAR
-#define T_IMPORTAR (9)
+#define T_IMPORTAR (9LL)
 #endif
 #ifndef T_ESTRUCTURA
-#define T_ESTRUCTURA (10)
+#define T_ESTRUCTURA (10LL)
 #endif
 #ifndef T_ROMPER
-#define T_ROMPER (11)
+#define T_ROMPER (11LL)
 #endif
 #ifndef T_SIGUIENTE
-#define T_SIGUIENTE (12)
+#define T_SIGUIENTE (12LL)
 #endif
 #ifndef T_PUNTO
-#define T_PUNTO (13)
+#define T_PUNTO (13LL)
 #endif
 #ifndef T_Y
-#define T_Y (14)
+#define T_Y (14LL)
 #endif
 #ifndef T_O
-#define T_O (15)
+#define T_O (15LL)
 #endif
 #ifndef T_NO
-#define T_NO (16)
+#define T_NO (16LL)
 #endif
 #ifndef T_VERDADERO
-#define T_VERDADERO (17)
+#define T_VERDADERO (17LL)
 #endif
 #ifndef T_FALSO
-#define T_FALSO (18)
+#define T_FALSO (18LL)
 #endif
 #ifndef T_IDENTIFICADOR
-#define T_IDENTIFICADOR (19)
+#define T_IDENTIFICADOR (19LL)
 #endif
 #ifndef T_NUMERO
-#define T_NUMERO (20)
+#define T_NUMERO (20LL)
 #endif
 #ifndef T_FLOTANTE
-#define T_FLOTANTE (21)
+#define T_FLOTANTE (21LL)
 #endif
 #ifndef T_CADENA
-#define T_CADENA (22)
+#define T_CADENA (22LL)
 #endif
 #ifndef T_MAYOR
-#define T_MAYOR (23)
+#define T_MAYOR (23LL)
 #endif
 #ifndef T_MENOR
-#define T_MENOR (24)
+#define T_MENOR (24LL)
 #endif
 #ifndef T_IGUAL
-#define T_IGUAL (25)
+#define T_IGUAL (25LL)
 #endif
 #ifndef T_DISTINTO
-#define T_DISTINTO (26)
+#define T_DISTINTO (26LL)
 #endif
 #ifndef T_MENOR_IGUAL
-#define T_MENOR_IGUAL (27)
+#define T_MENOR_IGUAL (27LL)
 #endif
 #ifndef T_MAYOR_IGUAL
-#define T_MAYOR_IGUAL (28)
+#define T_MAYOR_IGUAL (28LL)
 #endif
 #ifndef T_ASIGNAR
-#define T_ASIGNAR (29)
+#define T_ASIGNAR (29LL)
 #endif
 #ifndef T_MAS
-#define T_MAS (30)
+#define T_MAS (30LL)
 #endif
 #ifndef T_MENOS
-#define T_MENOS (31)
+#define T_MENOS (31LL)
 #endif
 #ifndef T_POR
-#define T_POR (32)
+#define T_POR (32LL)
 #endif
 #ifndef T_DIV
-#define T_DIV (33)
+#define T_DIV (33LL)
 #endif
 #ifndef T_MOD
-#define T_MOD (34)
+#define T_MOD (34LL)
 #endif
 #ifndef T_FLECHA
-#define T_FLECHA (35)
+#define T_FLECHA (35LL)
 #endif
 #ifndef T_COINCIDIR
-#define T_COINCIDIR (36)
+#define T_COINCIDIR (36LL)
 #endif
 #ifndef T_FLECHA_DER
-#define T_FLECHA_DER (37)
+#define T_FLECHA_DER (37LL)
 #endif
 #ifndef T_PAREN_IZQ
-#define T_PAREN_IZQ (38)
+#define T_PAREN_IZQ (38LL)
 #endif
 #ifndef T_PAREN_DER
-#define T_PAREN_DER (39)
+#define T_PAREN_DER (39LL)
 #endif
 #ifndef T_DOSPUNTOS
-#define T_DOSPUNTOS (40)
+#define T_DOSPUNTOS (40LL)
 #endif
 #ifndef T_COMA
-#define T_COMA (41)
+#define T_COMA (41LL)
 #endif
 #ifndef T_NUEVALINEA
-#define T_NUEVALINEA (42)
+#define T_NUEVALINEA (42LL)
 #endif
 #ifndef T_INDENTAR
-#define T_INDENTAR (43)
+#define T_INDENTAR (43LL)
 #endif
 #ifndef T_DESINDENTAR
-#define T_DESINDENTAR (44)
+#define T_DESINDENTAR (44LL)
 #endif
 #ifndef T_AMPERSAND
-#define T_AMPERSAND (45)
+#define T_AMPERSAND (45LL)
 #endif
 #ifndef T_INSEGURO
-#define T_INSEGURO (46)
+#define T_INSEGURO (46LL)
 #endif
 #ifndef T_IMPORTAR_C
-#define T_IMPORTAR_C (47)
+#define T_IMPORTAR_C (47LL)
 #endif
 #ifndef T_EXTERNO
-#define T_EXTERNO (48)
+#define T_EXTERNO (48LL)
 #endif
 #ifndef T_FLECHA_IZQ
-#define T_FLECHA_IZQ (49)
+#define T_FLECHA_IZQ (49LL)
 #endif
 #ifndef T_REQUIERE
-#define T_REQUIERE (50)
+#define T_REQUIERE (50LL)
 #endif
 #ifndef T_GARANTIZA
-#define T_GARANTIZA (51)
+#define T_GARANTIZA (51LL)
 #endif
 #ifndef T_CANAL
-#define T_CANAL (52)
+#define T_CANAL (52LL)
 #endif
 #ifndef T_ASM
-#define T_ASM (53)
+#define T_ASM (53LL)
 #endif
 #ifndef T_CONSTANTE
-#define T_CONSTANTE (54)
+#define T_CONSTANTE (54LL)
 #endif
 #ifndef T_PUNTOCOMA
-#define T_PUNTOCOMA (55)
+#define T_PUNTOCOMA (55LL)
 #endif
 #ifndef T_PARA
-#define T_PARA (56)
+#define T_PARA (56LL)
 #endif
 #ifndef T_CORCH_IZQ
-#define T_CORCH_IZQ (57)
+#define T_CORCH_IZQ (57LL)
 #endif
 #ifndef T_CORCH_DER
-#define T_CORCH_DER (58)
+#define T_CORCH_DER (58LL)
 #endif
 #ifndef T_PIPE
-#define T_PIPE (59)
+#define T_PIPE (59LL)
 #endif
 #ifndef T_LET
-#define T_LET (60)
+#define T_LET (60LL)
 #endif
 #ifndef T_TIPO
-#define T_TIPO (61)
+#define T_TIPO (61LL)
 #endif
 #ifndef T_TENSOR
-#define T_TENSOR (62)
+#define T_TENSOR (62LL)
 #endif
 #ifndef T_NULO
-#define T_NULO (63)
+#define T_NULO (63LL)
 #endif
 #ifndef T_OK
-#define T_OK (64)
+#define T_OK (64LL)
 #endif
 #ifndef T_ERR
-#define T_ERR (65)
+#define T_ERR (65LL)
 #endif
 #ifndef T_ALGUN
-#define T_ALGUN (66)
+#define T_ALGUN (66LL)
 #endif
 #ifndef T_NINGUNO
-#define T_NINGUNO (67)
+#define T_NINGUNO (67LL)
 #endif
 #ifndef T_MODULO
-#define T_MODULO (68)
+#define T_MODULO (68LL)
 #endif
 #ifndef T_DELEGAR
-#define T_DELEGAR (69)
+#define T_DELEGAR (69LL)
 #endif
 #ifndef T_EXPORT
-#define T_EXPORT (70)
+#define T_EXPORT (70LL)
 #endif
 #ifndef T_RC
-#define T_RC (71)
+#define T_RC (71LL)
 #endif
 #ifndef T_ARC
-#define T_ARC (72)
+#define T_ARC (72LL)
 #endif
 #ifndef T_DEBIL
-#define T_DEBIL (73)
+#define T_DEBIL (73LL)
 #endif
 #ifndef T_FIN
-#define T_FIN (74)
+#define T_FIN (74LL)
 #endif
 #ifndef T_INTERROGACION
-#define T_INTERROGACION (75)
+#define T_INTERROGACION (75LL)
 #endif
 
 // --- Nodo type constants (AST node types) ---
 #ifndef NODO_PROGRAMA
-#define NODO_PROGRAMA (1)
+#define NODO_PROGRAMA (1LL)
 #endif
 #ifndef NODO_FUNCION
-#define NODO_FUNCION (2)
+#define NODO_FUNCION (2LL)
 #endif
 #ifndef NODO_SI
-#define NODO_SI (3)
+#define NODO_SI (3LL)
 #endif
 #ifndef NODO_MIENTRAS
-#define NODO_MIENTRAS (4)
+#define NODO_MIENTRAS (4LL)
 #endif
 #ifndef NODO_RETORNAR
-#define NODO_RETORNAR (5)
+#define NODO_RETORNAR (5LL)
 #endif
 #ifndef NODO_EXPR
-#define NODO_EXPR (6)
+#define NODO_EXPR (6LL)
 #endif
 #ifndef NODO_ASIGNACION
-#define NODO_ASIGNACION (7)
+#define NODO_ASIGNACION (7LL)
 #endif
 #ifndef NODO_IDENTIFICADOR
-#define NODO_IDENTIFICADOR (8)
+#define NODO_IDENTIFICADOR (8LL)
 #endif
 #ifndef NODO_NUMERO
-#define NODO_NUMERO (9)
+#define NODO_NUMERO (9LL)
 #endif
 #ifndef NODO_DECIMAL
-#define NODO_DECIMAL (10)
+#define NODO_DECIMAL (10LL)
 #endif
 #ifndef NODO_CADENA_LIT
-#define NODO_CADENA_LIT (11)
+#define NODO_CADENA_LIT (11LL)
 #endif
 #ifndef NODO_BINARIA
-#define NODO_BINARIA (12)
+#define NODO_BINARIA (12LL)
 #endif
 #ifndef NODO_UNARIA
-#define NODO_UNARIA (13)
+#define NODO_UNARIA (13LL)
 #endif
 #ifndef NODO_LLAMADA
-#define NODO_LLAMADA (14)
+#define NODO_LLAMADA (14LL)
 #endif
 #ifndef NODO_PARAMETRO
-#define NODO_PARAMETRO (15)
+#define NODO_PARAMETRO (15LL)
 #endif
 #ifndef NODO_ESTRUCTURA
-#define NODO_ESTRUCTURA (16)
+#define NODO_ESTRUCTURA (16LL)
 #endif
 #ifndef NODO_IMPORTAR
-#define NODO_IMPORTAR (17)
+#define NODO_IMPORTAR (17LL)
 #endif
 #ifndef NODO_LANZAR
-#define NODO_LANZAR (18)
+#define NODO_LANZAR (18LL)
 #endif
 #ifndef NODO_ESCUCHAR
-#define NODO_ESCUCHAR (19)
+#define NODO_ESCUCHAR (19LL)
 #endif
 #ifndef NODO_ROMPER
-#define NODO_ROMPER (20)
+#define NODO_ROMPER (20LL)
 #endif
 #ifndef NODO_SIGUIENTE
-#define NODO_SIGUIENTE (21)
+#define NODO_SIGUIENTE (21LL)
 #endif
 #ifndef NODO_BOOLEANO
-#define NODO_BOOLEANO (22)
+#define NODO_BOOLEANO (22LL)
 #endif
 #ifndef NODO_CONSTANTE
-#define NODO_CONSTANTE (23)
+#define NODO_CONSTANTE (23LL)
 #endif
 #ifndef NODO_INSEGURO
-#define NODO_INSEGURO (24)
+#define NODO_INSEGURO (24LL)
 #endif
 #ifndef NODO_IMPORTAR_C
-#define NODO_IMPORTAR_C (25)
+#define NODO_IMPORTAR_C (25LL)
 #endif
 #ifndef NODO_EXTERNO
-#define NODO_EXTERNO (26)
+#define NODO_EXTERNO (26LL)
 #endif
 #ifndef NODO_RECUPERAR
-#define NODO_RECUPERAR (27)
+#define NODO_RECUPERAR (27LL)
 #endif
 #ifndef NODO_TENSOR
-#define NODO_TENSOR (28)
+#define NODO_TENSOR (28LL)
 #endif
 #ifndef NODO_INDICE
-#define NODO_INDICE (29)
+#define NODO_INDICE (29LL)
 #endif
 #ifndef NODO_TRANSFERIDO
-#define NODO_TRANSFERIDO (30)
+#define NODO_TRANSFERIDO (30LL)
 #endif
 #ifndef NODO_ACCESO_CAMPO
-#define NODO_ACCESO_CAMPO (31)
+#define NODO_ACCESO_CAMPO (31LL)
 #endif
 #ifndef NODO_ASIGNACION_CAMPO
-#define NODO_ASIGNACION_CAMPO (32)
+#define NODO_ASIGNACION_CAMPO (32LL)
 #endif
 #ifndef NODO_PARRAFO
-#define NODO_PARRAFO (33)
+#define NODO_PARRAFO (33LL)
 #endif
 #ifndef NODO_DECLARACION
-#define NODO_DECLARACION (34)
+#define NODO_DECLARACION (34LL)
 #endif
 #ifndef NODO_LOG
-#define NODO_LOG (35)
+#define NODO_LOG (35LL)
 #endif
 #ifndef NODO_PUNTERO
-#define NODO_PUNTERO (36)
+#define NODO_PUNTERO (36LL)
 #endif
 #ifndef NODO_DEREF
-#define NODO_DEREF (37)
+#define NODO_DEREF (37LL)
 #endif
 #ifndef NODO_COINCIDIR
-#define NODO_COINCIDIR (38)
+#define NODO_COINCIDIR (38LL)
 #endif
 #ifndef NODO_CASO
-#define NODO_CASO (39)
+#define NODO_CASO (39LL)
 #endif
 #ifndef NODO_ASM
-#define NODO_ASM (40)
+#define NODO_ASM (40LL)
 #endif
 #ifndef NODO_CANAL_CREAR
-#define NODO_CANAL_CREAR (41)
+#define NODO_CANAL_CREAR (41LL)
 #endif
 #ifndef NODO_ENVIAR_CANAL
-#define NODO_ENVIAR_CANAL (42)
+#define NODO_ENVIAR_CANAL (42LL)
 #endif
 #ifndef NODO_RECIBIR_CANAL
-#define NODO_RECIBIR_CANAL (43)
+#define NODO_RECIBIR_CANAL (43LL)
 #endif
 #ifndef NODO_VACIO
-#define NODO_VACIO (44)
+#define NODO_VACIO (44LL)
 #endif
 #ifndef NODO_PARA
-#define NODO_PARA (45)
+#define NODO_PARA (45LL)
 #endif
 #ifndef NODO_CONTRATO
-#define NODO_CONTRATO (46)
+#define NODO_CONTRATO (46LL)
 #endif
 #ifndef NODO_NULO
-#define NODO_NULO (47)
+#define NODO_NULO (47LL)
 #endif
 #ifndef NODO_LET
-#define NODO_LET (48)
+#define NODO_LET (48LL)
 #endif
 #ifndef NODO_DELEGAR
-#define NODO_DELEGAR (49)
+#define NODO_DELEGAR (49LL)
 #endif
 #ifndef NODO_EXPORT
-#define NODO_EXPORT (50)
+#define NODO_EXPORT (50LL)
 #endif
 #ifndef NODO_DECLARACION_TIPO
-#define NODO_DECLARACION_TIPO (51)
+#define NODO_DECLARACION_TIPO (51LL)
 #endif
 #ifndef NODO_CONSTRUCTOR
-#define NODO_CONSTRUCTOR (52)
+#define NODO_CONSTRUCTOR (52LL)
 #endif
 #ifndef NODO_PROPAGAR
-#define NODO_PROPAGAR (53)
+#define NODO_PROPAGAR (53LL)
 #endif
 
+
 // --- Error code constants (Manual 3 §3.5) ---
-#ifndef ERR_SYNTAX_EXPECTED_TOKEN
-#define ERR_SYNTAX_EXPECTED_TOKEN (1)
-#endif
-#ifndef ERR_SYNTAX_UNEXPECTED_TOKEN
-#define ERR_SYNTAX_UNEXPECTED_TOKEN (2)
-#endif
-#ifndef ERR_SYNTAX_UNEXPECTED_EXPR
-#define ERR_SYNTAX_UNEXPECTED_EXPR (3)
-#endif
-#ifndef ERR_SYNTAX_EXPECTED_NEWLINE
-#define ERR_SYNTAX_EXPECTED_NEWLINE (4)
-#endif
-#ifndef ERR_LANG_MISSING
-#define ERR_LANG_MISSING (5)
-#endif
-#ifndef ERR_LANG_UNSUPPORTED
-#define ERR_LANG_UNSUPPORTED (6)
-#endif
-#ifndef ERR_INDENT_INVALID
-#define ERR_INDENT_INVALID (7)
-#endif
-#ifndef ERR_INDENT_INCONSISTENT
-#define ERR_INDENT_INCONSISTENT (8)
-#endif
-#ifndef ERR_STRING_UNCLOSED
-#define ERR_STRING_UNCLOSED (9)
-#endif
-#ifndef ERR_LEX_CHAR_UNEXPECTED
-#define ERR_LEX_CHAR_UNEXPECTED (10)
-#endif
-#ifndef ERR_LEX
-#define ERR_LEX (11)
-#endif
-#ifndef ERR_FILE_NOT_FOUND
-#define ERR_FILE_NOT_FOUND (12)
-#endif
 #ifndef ERR_CANONICAL_FORMAT
-#define ERR_CANONICAL_FORMAT (13)
-#endif
-#ifndef ERR_SEM_VAR_NO_DECLARADA
-#define ERR_SEM_VAR_NO_DECLARADA (14)
-#endif
-#ifndef ERR_SEM_TIPO_INCOMPATIBLE
-#define ERR_SEM_TIPO_INCOMPATIBLE (15)
-#endif
-#ifndef ERR_SEM_TIPO_RETORNO
-#define ERR_SEM_TIPO_RETORNO (16)
-#endif
-#ifndef ERR_SEM_FUNC_NO_DEFINIDA
-#define ERR_SEM_FUNC_NO_DEFINIDA (17)
-#endif
-#ifndef ERR_SEM_REDEFINICION
-#define ERR_SEM_REDEFINICION (18)
-#endif
-#ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
-#define ERR_SEM_ARGUMENTOS_INVALIDOS (19)
-#endif
-#ifndef ERR_SEM_ESTRUCTURA_NO_DEFINIDA
-#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20)
-#endif
-#ifndef ERR_SEM_CAMPO_NO_EXISTE
-#define ERR_SEM_CAMPO_NO_EXISTE (21)
-#endif
-#ifndef ERR_SEM_VAR_MOVIDA
-#define ERR_SEM_VAR_MOVIDA (22)
-#endif
-#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
-#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23)
-#endif
-#ifndef ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR
-#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24)
-#endif
-#ifndef ERR_MANIFEST_NOT_FOUND
-#define ERR_MANIFEST_NOT_FOUND (25)
-#endif
-#ifndef ERR_MODULE_STD_NOT_FOUND
-#define ERR_MODULE_STD_NOT_FOUND (26)
-#endif
-#ifndef ERR_MODULE_AXON_NOT_FOUND
-#define ERR_MODULE_AXON_NOT_FOUND (27)
+#define ERR_CANONICAL_FORMAT (13LL)
 #endif
 #ifndef ERR_DEP_NOT_DECLARED
-#define ERR_DEP_NOT_DECLARED (28)
+#define ERR_DEP_NOT_DECLARED (28LL)
 #endif
-#ifndef ERR_LOCK_HASH_MISMATCH
-#define ERR_LOCK_HASH_MISMATCH (29)
+#ifndef ERR_FILE_NOT_FOUND
+#define ERR_FILE_NOT_FOUND (12LL)
 #endif
 #ifndef ERR_GIT_FAILURE
-#define ERR_GIT_FAILURE (30)
+#define ERR_GIT_FAILURE (30LL)
 #endif
-#ifndef ERR_SEM_ASM_FUERA_INSEGURO
-#define ERR_SEM_ASM_FUERA_INSEGURO (31)
+#ifndef ERR_INDENT_INCONSISTENT
+#define ERR_INDENT_INCONSISTENT (8LL)
 #endif
-#ifndef ERR_SEM_CONSTANTE_INMUTABLE
-#define ERR_SEM_CONSTANTE_INMUTABLE (32)
+#ifndef ERR_INDENT_INVALID
+#define ERR_INDENT_INVALID (7LL)
 #endif
-#ifndef ERR_MEM_USE_AFTER_MOVE
-#define ERR_MEM_USE_AFTER_MOVE (33)
+#ifndef ERR_LANG_MISSING
+#define ERR_LANG_MISSING (5LL)
 #endif
-#ifndef ERR_VER_WHILE_INACOTADO
-#define ERR_VER_WHILE_INACOTADO (34)
+#ifndef ERR_LANG_UNSUPPORTED
+#define ERR_LANG_UNSUPPORTED (6LL)
 #endif
-#ifndef ERR_VER_MUTACION_GLOBAL
-#define ERR_VER_MUTACION_GLOBAL (35)
+#ifndef ERR_LEX
+#define ERR_LEX (11LL)
 #endif
-#ifndef ERR_VER_RECURSION_NO_TERMINAL
-#define ERR_VER_RECURSION_NO_TERMINAL (36)
+#ifndef ERR_LEX_CHAR_UNEXPECTED
+#define ERR_LEX_CHAR_UNEXPECTED (10LL)
 #endif
-#ifndef ERR_VER_CONTRATO_INVALIDO
-#define ERR_VER_CONTRATO_INVALIDO (37)
+#ifndef ERR_LOCK_HASH_MISMATCH
+#define ERR_LOCK_HASH_MISMATCH (29LL)
 #endif
-#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
-#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (38)
+#ifndef ERR_MANIFEST_NOT_FOUND
+#define ERR_MANIFEST_NOT_FOUND (25LL)
 #endif
 #ifndef ERR_MEM_BORROW_CONFLICT
-#define ERR_MEM_BORROW_CONFLICT (39)
-#endif
-#ifndef ERR_SEM_TYPE_AMBIGUOUS
-#define ERR_SEM_TYPE_AMBIGUOUS (40)
-#endif
-#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
-#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
-#endif
-#ifndef ERR_MEM_LIFETIME_MISMATCH
-#define ERR_MEM_LIFETIME_MISMATCH (34)
+#define ERR_MEM_BORROW_CONFLICT (39LL)
 #endif
 #ifndef ERR_MEM_LIFETIME_CYCLE
-#define ERR_MEM_LIFETIME_CYCLE (35)
+#define ERR_MEM_LIFETIME_CYCLE (35LL)
+#endif
+#ifndef ERR_MEM_LIFETIME_MISMATCH
+#define ERR_MEM_LIFETIME_MISMATCH (34LL)
+#endif
+#ifndef ERR_MODULE_AXON_NOT_FOUND
+#define ERR_MODULE_AXON_NOT_FOUND (27LL)
+#endif
+#ifndef ERR_MODULE_STD_NOT_FOUND
+#define ERR_MODULE_STD_NOT_FOUND (26LL)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
+#endif
+#ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
+#define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
+#endif
+#ifndef ERR_SEM_ASM_FUERA_INSEGURO
+#define ERR_SEM_ASM_FUERA_INSEGURO (31LL)
+#endif
+#ifndef ERR_SEM_CAMPO_NO_EXISTE
+#define ERR_SEM_CAMPO_NO_EXISTE (21LL)
+#endif
+#ifndef ERR_SEM_CONSTANTE_INMUTABLE
+#define ERR_SEM_CONSTANTE_INMUTABLE (32LL)
+#endif
+#ifndef ERR_SEM_ESTRUCTURA_NO_DEFINIDA
+#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20LL)
+#endif
+#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
+#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33LL)
+#endif
+#ifndef ERR_SEM_FUNC_NO_DEFINIDA
+#define ERR_SEM_FUNC_NO_DEFINIDA (17LL)
+#endif
+#ifndef ERR_SEM_REDEFINICION
+#define ERR_SEM_REDEFINICION (18LL)
+#endif
+#ifndef ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR
+#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24LL)
+#endif
+#ifndef ERR_SEM_TIPO_INCOMPATIBLE
+#define ERR_SEM_TIPO_INCOMPATIBLE (15LL)
+#endif
+#ifndef ERR_SEM_TIPO_RETORNO
+#define ERR_SEM_TIPO_RETORNO (16LL)
+#endif
+#ifndef ERR_SEM_VAR_MOVIDA
+#define ERR_SEM_VAR_MOVIDA (22LL)
+#endif
+#ifndef ERR_SEM_VAR_NO_DECLARADA
+#define ERR_SEM_VAR_NO_DECLARADA (14LL)
+#endif
+#ifndef ERR_STRING_UNCLOSED
+#define ERR_STRING_UNCLOSED (9LL)
+#endif
+#ifndef ERR_SYNTAX_EXPECTED_NEWLINE
+#define ERR_SYNTAX_EXPECTED_NEWLINE (4LL)
+#endif
+#ifndef ERR_SYNTAX_EXPECTED_TOKEN
+#define ERR_SYNTAX_EXPECTED_TOKEN (1LL)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_EXPR
+#define ERR_SYNTAX_UNEXPECTED_EXPR (3LL)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_TOKEN
+#define ERR_SYNTAX_UNEXPECTED_TOKEN (2LL)
 #endif
 
 // --- Constantes del programa (fuente de verdad = codigo) ---
@@ -722,6 +701,7 @@ extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
+extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
 extern void synapse_esperar_fibras(void);

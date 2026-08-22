@@ -52,4 +52,7 @@ Barrera* barrera_crear(int total);
 void barrera_esperar(Barrera* b);
 void barrera_destruir(Barrera* b);
 
+// --- Helpers de cadena (usados por el codegen Synapse) ---
+CadenaSegura concat(CadenaSegura a, CadenaSegura b);
+
 #endif

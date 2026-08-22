@@ -21,6 +21,16 @@ int str_eq(CadenaSegura a, CadenaSegura b) {
     return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
 }
 
+CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
+    int _tl = a.longitud + b.longitud;
+    char* _buf = (char*)malloc((size_t)(_tl + 1));
+    if (!_buf) { fprintf(stderr, "Error: malloc fallo en concat()\n"); exit(1); }
+    memcpy(_buf, a.datos, (size_t)a.longitud);
+    memcpy(_buf + a.longitud, b.datos, (size_t)b.longitud);
+    _buf[_tl] = '\0';
+    return (CadenaSegura){ .longitud = _tl, .datos = _buf };
+}
+
 CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta) {
     char buf[4096];
     int len = ruta.longitud < 4095 ? ruta.longitud : 4095;

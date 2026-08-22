@@ -16,8 +16,12 @@ int cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, Cadena
 int cluster_iniciar_nodo(int puerto);
 int cluster_detener_nodo(void);
 int cluster_enviar_hello(const char* ip, int puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
+CadenaSegura cluster_generar_nonce(void);
+int cluster_enviar_hello_firmado(const char* ip, int puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex, CadenaSegura nonce_hex, CadenaSegura firma_hex);
 int cluster_canal_remoto_enviar(const char* ip, int puerto, const char* datos, int lon, int chan_id);
 CadenaSegura cluster_recibir_paquete(int timeout_ms);
+void cluster_establecer_clave_sesion(const char* pubkey_local_hex, const char* pubkey_remota_hex);
+void cluster_limpiar_clave_sesion(void);
 int ws_inicializar(int capacidad);
 int ws_encolar(int id, CadenaSegura datos);
 CadenaSegura ws_desencolar(void);
