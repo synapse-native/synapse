@@ -1,0 +1,31 @@
+#lang: es
+// R87 — driver del parser Syquex (se CONCATENA con syquex/{lexer,expr,parser}.syn
+// por tests/unit/test_syquex_parser.py). Parsea la muestra M3 §6/§13 y emite:
+//   TOTAL=<nodos>  y luego "N:<tipo_nodo>" por nodo (0..total-1).
+
+funcion principal() -> entero:
+    fuente = "#lang: es\nestructura Punto:\n    x: entero\n    crear(px: entero):\n        self.x = px\n    metodo desplazar(d: entero):\n        self.x = self.x + d\n\nenumeracion Color:\n    rojo\n    verde\n\nfuncion sumar(a: entero, b: entero = 2) -> entero:\n    retornar a + b\n\nfuncion mitad(x: entero) -> entero = x / 2\n\n@export(wasm) funcion visible(v: entero) -> entero:\n    retornar v * 2\n\nexterno funcion externa(k: entero) -> entero\n\ntipo EnteroAlias = entero\nconstante MAXIMO = 100\nlet global_sq = 5\n\nfuncion principal() -> entero:\n    let l = lista<entero>()\n    let m = mapa<texto, entero>()\n    para i = 0 .. 10 paso 2:\n        l.agregar(i * 2e1)\n    para v en l:\n        let z = v\n    si z > 0 y v != 0:\n        m[\"clave\"] = 7\n    intentar:\n        let r = m[\"clave\"]?\n    atrapar e:\n        retornar 1\n    coincidir m[\"clave\"]:\n        0 => escribir_linea(\"cero\")\n        _ => escribir_linea(\"otro\")\n    lanzar error_interno(3)\n    escuchar canal_eventos:\n        procesar()\n    while_extra = verdadero\n    retornar 0\n"
+
+    prog = sq_programa(fuente)
+    si prog < 0:
+        escribir_linea(concat("PARSE_ERROR=", entero_a_texto(prog)))
+        total = parser_obtener_total()
+        i = 0
+        mientras i < total:
+            si sq_token_tipo(i) == T_ERROR:
+                e1 = concat("ERRPOS=", entero_a_texto(i))
+                e2 = concat(e1, "|")
+                e3 = concat(e2, sq_token_lexema(i))
+                escribir_linea(e3)
+            i = i + 1
+        escribir_linea("FIN_DUMP")
+        retornar 1
+    total = parser_obtener_total()
+    total = parser_obtener_total()
+    escribir_linea(concat("TOTAL=", entero_a_texto(total)))
+    i = 0
+    mientras i < total:
+        escribir_linea(concat("N:", entero_a_texto(sq_nodo_tipo(i))))
+        i = i + 1
+    escribir_linea("FIN_DUMP")
+    retornar 0

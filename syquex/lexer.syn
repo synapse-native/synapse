@@ -551,6 +551,25 @@ funcion sq_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         inseguro:
                             asm("sq_push_valor(T_NUMERO, sq_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
                     siguiente
+            // R86 M3 §4/@: '@export(lenguaje)' → T_EXPORT (Manual 2 §3/M6 §4)
+            si c == 64:
+                inicio_ar = i
+                asm("i = i + 1")
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si sq_es_alnum(c) == 0:
+                        si c != 95:
+                            romper
+                    asm("i = i + 1")
+                es_export = 0
+                inseguro:
+                    asm("es_export = str_eq_sq((CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar}, (CadenaSegura){.longitud = 7, .datos = \"@export\"});")
+                si es_export == 1:
+                    inseguro:
+                        asm("sq_push_valor(T_EXPORT, sq_linea_actual(), (inicio_ar + 1), (CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar});")
+                sino:
+                    sq_error("Caracter inesperado '@'", sq_linea_actual(), inicio_ar + 1)
+                siguiente
             // Identificadores / keywords (unión M2 §3 + M3 §4)
             si sq_es_letra(c) == 1:
                 inicio = i
