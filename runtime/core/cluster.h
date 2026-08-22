@@ -22,6 +22,15 @@ int cluster_canal_remoto_enviar(const char* ip, int puerto, const char* datos, i
 CadenaSegura cluster_recibir_paquete(int timeout_ms);
 void cluster_establecer_clave_sesion(const char* pubkey_local_hex, const char* pubkey_remota_hex);
 void cluster_limpiar_clave_sesion(void);
+// R78 — derivación de clave de sesión crypto_kx-equivalente (Manual 5 §6.2 paso 3)
+int cluster_kx_secreto_compartido(const unsigned char* sk_local, const unsigned char* pk_local,
+                                   const char* kx_pk_remota_hex, int rol_cliente,
+                                   unsigned char* clave_out32);
+int cluster_kx_par(char* pk_hex_out65, unsigned char* sk_out32);
+CadenaSegura cluster_kx_generar_par(void);
+int cluster_kx_derivar(const char* kx_pk_remota_hex, int rol_cliente);
+CadenaSegura cluster_clave_sesion_hex(void);
+int cluster_enviar_kx_init(const char* ip, int puerto, CadenaSegura kx_pk_hex, CadenaSegura firma_hex);
 int ws_inicializar(int capacidad);
 int ws_encolar(int id, CadenaSegura datos);
 CadenaSegura ws_desencolar(void);

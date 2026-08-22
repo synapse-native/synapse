@@ -88,6 +88,20 @@ externo funcion cluster_establecer_clave_sesion(pubkey_local: texto, pubkey_remo
 // limpiar_clave_sesion — Desactiva la clave de sesión (al cerrar el canal)
 externo funcion cluster_limpiar_clave_sesion() -> nulo
 
+// kx_generar_par — Genera el par efímero X25519 del nodo (R78, Manual 5 §6.2 paso 3)
+// Retorna la clave pública en hex (64 chars); el secreto queda en el runtime
+externo funcion cluster_kx_generar_par() -> texto
+
+// kx_derivar — Deriva y activa la clave de sesión (ECDH X25519 + SHA-512)
+// kx_pub_remota_hex: clave pública X25519 del peer; rol_cliente: 1 si este nodo envió el HELLO
+externo funcion cluster_kx_derivar(kx_pub_remota_hex: texto, rol_cliente: entero) -> entero
+
+// enviar_kx_init — Envía KX_INIT:<kxpub>:<firma> al servidor
+externo funcion cluster_enviar_kx_init(ip: texto, puerto: entero, kx_pk_hex: texto, firma_hex: texto) -> entero
+
+// clave_sesion_hex — Hex de la clave de sesión activa (texto vacío si no hay sesión)
+externo funcion cluster_clave_sesion_hex() -> texto
+
 // ============================================================
 // Funciones de alto nivel — CanalRemoto<T> + Handshake Ed25519
 // ============================================================
@@ -247,9 +261,61 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
     ch.estado = 2  // AUTENTICADO
     ch.clave_publica_remota = pubkey_serv
 
-    cluster_establecer_clave_sesion(ch.clave_publica_local, ch.clave_publica_remota)
+    // Derivación de clave de sesión v2 (R78, Manual 5 §6.2 paso 3 / Manual 6 §5.3):
+    // intercambio efímero X25519 firmado (KX_INIT/KX_RESP) + ECDH + SHA-512.
+    kx_local = cluster_kx_generar_par()
+    si len(kx_local) != 64:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
 
-    retornar ch
+    mensaje_kx = concat(concat(kx_local, ":"), nonce)
+    firma_kx = cluster_firmar_mensaje(mensaje_kx, ch.clave_privada_local)
+    si len(firma_kx) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rc_kx = cluster_enviar_kx_init(ip, puerto, kx_local, firma_kx)
+    si rc_kx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    paquete_kx = cluster_recibir_paquete(5000)
+    prefijo_kx = "KX_RESP:"
+    si len(paquete_kx) < len(prefijo_kx) o empieza_con(paquete_kx, prefijo_kx) != 1:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rkx = _extraer_parte(paquete_kx, len(prefijo_kx), len(paquete_kx))
+    qkx = _buscar_dos_puntos(rkx)
+    si qkx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    kx_remota = _extraer_parte(rkx, 0, qkx)
+    firma_kxs = _extraer_parte(rkx, qkx + 1, len(rkx))
+    si len(kx_remota) != 64 o len(firma_kxs) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Verificar firma del servidor sobre su kxpub + el nonce que envió en HELLO_RESP
+    mensaje_kxs = concat(concat(kx_remota, ":"), nonce_serv)
+    resultado_kxs = cluster_verificar_firma(mensaje_kxs, firma_kxs, pubkey_serv)
+    si resultado_kxs != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Derivar la clave de sesión con rol cliente (1)
+    si cluster_kx_derivar(kx_remota, 1) != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
 
     retornar ch
 

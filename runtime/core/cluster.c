@@ -187,13 +187,25 @@ static int _cluster_udp_enviar(int fd, const char* ip, int puerto,
 // --- Cluster Initialization ---
 static int _cluster_sock_global = -1;
 
-// Session key state (Manual 5 §6.2 paso 3, "o similar": SHA-256 de pubkeys)
+// Session key state (Manual 5 §6.2 paso 3)
 static unsigned char _cluster_sesion_clave[32];
 static int _cluster_sesion_activa = 0;
+
+// Ephemeral X25519 keypair for session key derivation (crypto_kx-equivalent,
+// Manual 5 §6.2 paso 3 / Manual 6 §5.3 paso 4; R78)
+static unsigned char _cluster_kx_sk[32];
+static int _cluster_kx_listo = 0;
+
+// Peer identity retained from the verified HELLO (binds KX_INIT to the
+// authenticated client, zero-trust per Manual 6 §5.3)
+static char _cluster_peer_pk_hex[65] = {0};
+static char _cluster_peer_nonce_hex[65] = {0};
+static char _cluster_server_nonce_hex[65] = {0};
 
 // Server identity for handshake (generated on iniciar_nodo if not set)
 static unsigned char _cluster_server_pk[32];
 static unsigned char _cluster_server_sk[64];
+static char _cluster_server_sk_hex[129] = {0};
 static int _cluster_server_identity = 0;
 static char _cluster_server_id[64] = "synapse-server";
 
@@ -208,6 +220,107 @@ void cluster_limpiar_clave_sesion(void) {
     memset(_cluster_sesion_clave, 0, sizeof(_cluster_sesion_clave));
 }
 
+// --- Session Key Derivation v2 (R78, Manual 5 §6.2 paso 3 / Manual 6 §5.3 paso 4) ---
+// crypto_kx-equivalent built only on TweetNaCl primitives (cero dependencias, regla 8):
+extern void randombytes(unsigned char* x, unsigned long long xlen); // tweetnacl.c (no en .h)
+//   q    = X25519(sk_local, kx_pk_remota)              [crypto_scalarmult]
+//   h    = SHA-512(q || kxpk_cliente || kxpk_servidor) [crypto_hash]
+//   clave= h[0..31]  -> _cluster_sesion_clave (XOR transport cipher)
+// The client/server ordering is by ROLE (whoever sent the HELLO is the client),
+// so both parties derive the identical key without exchanging extra material.
+int cluster_kx_secreto_compartido(const unsigned char* sk_local,
+                                   const unsigned char* pk_local,
+                                   const char* kx_pk_remota_hex,
+                                   int rol_cliente,
+                                   unsigned char* clave_out32) {
+    if (!sk_local || !pk_local || !kx_pk_remota_hex || !clave_out32) return -1;
+    if (strlen(kx_pk_remota_hex) != 64) return -1;
+    unsigned char peer[32], q[32], buf[96], h[64];
+    for (int i = 0; i < 32; i++) {
+        unsigned int b;
+        if (sscanf(kx_pk_remota_hex + i * 2, "%2x", &b) != 1) return -1;
+        peer[i] = (unsigned char)b;
+    }
+    if (crypto_scalarmult(q, sk_local, peer) != 0) return -1;
+    int todo_cero = 1;
+    for (int i = 0; i < 32; i++) if (q[i]) { todo_cero = 0; break; }
+    if (todo_cero) return -1; // shared secret degenerado (punto de orden pequeño)
+    const unsigned char* primero = rol_cliente ? pk_local : peer;
+    const unsigned char* segundo = rol_cliente ? peer : pk_local;
+    memcpy(buf, q, 32);
+    memcpy(buf + 32, primero, 32);
+    memcpy(buf + 64, segundo, 32);
+    crypto_hash(h, buf, 96);
+    memcpy(clave_out32, h, 32);
+    return 0;
+}
+
+// Variante PURA (sin estado global): genera un par X25519 en buffers del
+// caller — usada por las pruebas unitarias (test_cluster_kx.c).
+int cluster_kx_par(char* pk_hex_out65, unsigned char* sk_out32) {
+    if (!pk_hex_out65 || !sk_out32) return -1;
+    randombytes(sk_out32, 32);
+    unsigned char pk[32];
+    crypto_scalarmult_base(pk, sk_out32);
+    for (int i = 0; i < 32; i++) sprintf(pk_hex_out65 + i * 2, "%02x", pk[i]);
+    pk_hex_out65[64] = '\0';
+    return 0;
+}
+
+// Genera el par efímero X25519 del nodo (el secreto queda en el estado del
+// runtime); retorna la clave pública en hex (64 chars).
+CadenaSegura cluster_kx_generar_par(void) {
+    randombytes(_cluster_kx_sk, 32);
+    unsigned char pk[32];
+    crypto_scalarmult_base(pk, _cluster_kx_sk);
+    _cluster_kx_listo = 1;
+    char hex[65];
+    for (int i = 0; i < 32; i++) sprintf(hex + i * 2, "%02x", pk[i]);
+    hex[64] = '\0';
+    char* out = (char*)pool_alloc(65);
+    if (!out) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(out, hex, 65);
+    return (CadenaSegura){ .longitud = 64, .datos = out };
+}
+
+// Deriva y ACTIVA la clave de sesión desde el par efímero global del nodo.
+// rol_cliente: 1 si este nodo inició el HELLO, 0 si lo respondió.
+int cluster_kx_derivar(const char* kx_pk_remota_hex, int rol_cliente) {
+    if (!_cluster_kx_listo) return -1;
+    unsigned char lcl[32], clave[32];
+    crypto_scalarmult_base(lcl, _cluster_kx_sk);
+    if (cluster_kx_secreto_compartido(_cluster_kx_sk, lcl, kx_pk_remota_hex,
+                                       rol_cliente, clave) != 0)
+        return -1;
+    memcpy(_cluster_sesion_clave, clave, sizeof(_cluster_sesion_clave));
+    _cluster_sesion_activa = 1;
+    return 0;
+}
+
+// Hex de la clave de sesión activa (vacía si no hay sesión). Diagnóstico/verificación.
+CadenaSegura cluster_clave_sesion_hex(void) {
+    if (!_cluster_sesion_activa) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    char hex[65];
+    for (int i = 0; i < 32; i++) sprintf(hex + i * 2, "%02x", _cluster_sesion_clave[i]);
+    hex[64] = '\0';
+    char* out = (char*)pool_alloc(65);
+    if (!out) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(out, hex, 65);
+    return (CadenaSegura){ .longitud = 64, .datos = out };
+}
+
+// --- Send the client's signed ephemeral X25519 public key ---
+// Formato: KX_INIT:<kxpub_hex>:<firma_hex>
+int cluster_enviar_kx_init(const char* ip, int puerto,
+                            CadenaSegura kx_pk_hex, CadenaSegura firma_hex) {
+    if (_cluster_sock_global < 0) return -1;
+    char buf[512];
+    int len = snprintf(buf, sizeof(buf), "KX_INIT:%.*s:%.*s",
+                       (int)kx_pk_hex.longitud, kx_pk_hex.datos,
+                       (int)firma_hex.longitud, firma_hex.datos);
+    return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, len);
+}
+
 int cluster_iniciar_nodo(int puerto) {
     _syn_iniciar_red();
     int fd = _cluster_udp_socket(puerto);
@@ -219,6 +332,12 @@ int cluster_iniciar_nodo(int puerto) {
             _cluster_server_identity = 0;
             return -1;
         }
+        // Canonical hex form of the full Ed25519 secret key (128 chars):
+        // cluster_firmar_mensaje hex-decodes its input, so the raw bytes
+        // must NEVER be passed directly (latent bug fixed in R78).
+        for (int i = 0; i < 64; i++)
+            sprintf(_cluster_server_sk_hex + i * 2, "%02x", _cluster_server_sk[i]);
+        _cluster_server_sk_hex[128] = '\0';
         _cluster_server_identity = 1;
     }
     return 0;
@@ -338,18 +457,24 @@ static int _cluster_procesar_hello_entrante(const char* buf, int n,
     CadenaSegura pk = { .longitud = 64, .datos = pubkey_hex };
     if (cluster_verificar_firma(nonce, firma, pk) != 0) return 0;
 
+    // Retain the authenticated client identity to bind its KX_INIT
+    // (zero-trust, Manual 6 §5.3; R78)
+    snprintf(_cluster_peer_pk_hex, sizeof(_cluster_peer_pk_hex), "%s", pubkey_hex);
+    snprintf(_cluster_peer_nonce_hex, sizeof(_cluster_peer_nonce_hex), "%s", nonce_hex);
+
     char nonce_serv_hex[65];
     CadenaSegura nonce_serv = cluster_generar_nonce();
     if (nonce_serv.longitud != 64) return 0;
     memcpy(nonce_serv_hex, nonce_serv.datos, 65);
+    snprintf(_cluster_server_nonce_hex, sizeof(_cluster_server_nonce_hex), "%s", nonce_serv_hex);
 
     char pk_serv_hex[65];
     for (int i = 0; i < 32; i++) sprintf(pk_serv_hex + i * 2, "%02x", _cluster_server_pk[i]);
     pk_serv_hex[64] = '\0';
 
     CadenaSegura mensaje_serv = { .longitud = 64, .datos = nonce_serv_hex };
-    CadenaSegura firma_serv_hex = cluster_firmar_mensaje(mensaje_serv,
-        (CadenaSegura){ .longitud = 128, .datos = (char*)_cluster_server_sk });
+    CadenaSegura sk_serv_hex = { .longitud = 128, .datos = _cluster_server_sk_hex };
+    CadenaSegura firma_serv_hex = cluster_firmar_mensaje(mensaje_serv, sk_serv_hex);
     if (firma_serv_hex.longitud != 128) return 0;
 
     char resp[1024];
@@ -361,9 +486,62 @@ static int _cluster_procesar_hello_entrante(const char* buf, int n,
     return 1;
 }
 
+// --- Process incoming KX_INIT: client's signed ephemeral X25519 public key ---
+// Formato: KX_INIT:<kxpub_hex>:<firma_hex>
+// firma = Ed25519_sign("<kxpub_hex>:<nonce_HELLO_del_cliente>") con la identidad
+// del cliente autenticado en HELLO (zero-trust, Manual 6 §5.3; R78).
+static int _cluster_procesar_kx_entrante(const char* buf, int n,
+                                          const struct sockaddr_in* from) {
+    if (n < 8 || memcmp(buf, "KX_INIT:", 8) != 0) return 0;
+    if (_cluster_server_identity != 1 || _cluster_peer_pk_hex[0] == '\0') return 0;
+    char kx_hex[65] = {0};
+    char firma_hex[129] = {0};
+    if (sscanf(buf + 8, "%64[^:]:%128s", kx_hex, firma_hex) != 2) return 0;
+    if (strlen(kx_hex) != 64 || strlen(firma_hex) != 128) return 0;
+
+    char msg[160];
+    snprintf(msg, sizeof(msg), "%s:%s", kx_hex, _cluster_peer_nonce_hex);
+    CadenaSegura m = { .longitud = (int)strlen(msg), .datos = msg };
+    CadenaSegura f = { .longitud = 128, .datos = firma_hex };
+    CadenaSegura pk = { .longitud = 64, .datos = _cluster_peer_pk_hex };
+    if (cluster_verificar_firma(m, f, pk) != 0) return 0;
+
+    CadenaSegura pk_serv = cluster_kx_generar_par();
+    if (pk_serv.longitud != 64) return 0;
+    if (cluster_kx_derivar(kx_hex, 0) != 0) return 0;
+
+    char msg2[160];
+    snprintf(msg2, sizeof(msg2), "%.*s:%s", 64, pk_serv.datos, _cluster_server_nonce_hex);
+    CadenaSegura m2 = { .longitud = (int)strlen(msg2), .datos = msg2 };
+    CadenaSegura sk_srv_hex = { .longitud = 128, .datos = _cluster_server_sk_hex };
+    CadenaSegura firma = cluster_firmar_mensaje(m2, sk_srv_hex);
+    if (firma.longitud != 128) return 0;
+
+    char resp[256];
+    int rl = snprintf(resp, sizeof(resp), "KX_RESP:%.*s:%.*s",
+                      64, pk_serv.datos, 128, firma.datos);
+    char ip_str[64];
+    snprintf(ip_str, sizeof(ip_str), "%s", inet_ntoa(from->sin_addr));
+    _cluster_udp_enviar(_cluster_sock_global, ip_str, ntohs(from->sin_port), resp, rl);
+    return 1;
+}
+
 // --- Receive a datagram (non-blocking) ---
+// R78 (fix): honra timeout_ms vía select() — la API documentada
+// (std/cluster.syn recibir) promete "tiempo máximo de espera"; la versión
+// previa hacía un único recvfrom no bloqueante y retornaba al instante.
 CadenaSegura cluster_recibir_paquete(int timeout_ms) {
     if (_cluster_sock_global < 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    if (timeout_ms > 0) {
+        fd_set leer;
+        struct timeval tv;
+        tv.tv_sec = timeout_ms / 1000;
+        tv.tv_usec = (timeout_ms % 1000) * 1000;
+        FD_ZERO(&leer);
+        FD_SET((unsigned int)_cluster_sock_global, &leer);
+        int listo = select((int)_cluster_sock_global + 1, &leer, NULL, NULL, &tv);
+        if (listo <= 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
 #ifdef _WIN32
     u_long mode = 1;
     ioctlsocket(_cluster_sock_global, FIONBIO, &mode);
@@ -379,6 +557,9 @@ CadenaSegura cluster_recibir_paquete(int timeout_ms) {
     if (n <= 0) return (CadenaSegura){ .longitud = 0, .datos = "" };
     buf[n] = '\0';
     if (_cluster_procesar_hello_entrante(buf, n, &from)) {
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
+    }
+    if (_cluster_procesar_kx_entrante(buf, n, &from)) {
         return (CadenaSegura){ .longitud = 0, .datos = "" };
     }
     if (n >= 5 && memcmp(buf, "DATA:", 5) == 0) {
