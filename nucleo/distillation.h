@@ -31,7 +31,7 @@ extern "C" {
 #define KD_TEMPERATURE_DEFAULT 4.0f     // Temperatura por defecto para soft targets
 #define KD_ALPHA_DEFAULT 0.5f           // Peso de pérdida soft vs hard (0.5 = 50% soft)
 #define KD_MAGIC_HEADER 0x4B444953      // "KDIS" — Distillation session magic
-#define KD_VERSION 1                    // Versión del formato de persistencia
+#define KD_VERSION 2                    // R80: v2 añade num_logits por par en persistencia
 
 // ============================================================
 // Tipos de datos
@@ -54,10 +54,11 @@ typedef struct {
 
 // Par de logits (teacher + student) para un token
 typedef struct {
-    float* logits_teacher;       // Logits del teacher [vocab_size]
-    float* logits_student;       // Logits del student [vocab_size]
+    float* logits_teacher;       // Logits del teacher [num_logits]
+    float* logits_student;       // Logits del student [num_logits]
     int target_id;               // Token objetivo (ground truth)
     float peso;                  // Peso del ejemplo
+    int num_logits;              // R80: longitud real de este par (0 = legacy: usar config.vocab_size)
 } KDLogitPair;
 
 // Dataset de destilación (pares de logits precomputados)
@@ -102,9 +103,16 @@ typedef struct {
 KDSession* kd_iniciar(const KDConfig* config);
 
 // Añade un par de logits (teacher + student) para un token
-// Retorna: 0 en éxito, -1 en error
+// Los arrays deben tener config.vocab_size elementos (contrato legacy)
+// Retorna: índice del par agregado, -1 en error
 int kd_agregar_par(KDSession* sesion, const float* logits_t,
                     const float* logits_s, int target_id, float peso);
+
+// R80 (F12-2, opción b del Arquitecto): variante con longitud EXPLÍCITA.
+// Copia exactamente n elementos de cada array — no depende de config.vocab_size.
+// Retorna: índice del par agregado, -1 en error
+int kd_agregar_par_n(KDSession* sesion, const float* logits_t,
+                      const float* logits_s, int n, int target_id, float peso);
 
 // Computa KL divergence entre dos distribuciones de probabilidad
 // KL(P||Q) = sum(P_i * log(P_i / Q_i))
