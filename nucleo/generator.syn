@@ -3935,15 +3935,10 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "    return (CadenaSegura){ .longitud = (int)strlen(_g_argv[i]), .datos = _g_argv[i] };")
     gen_emitir_linea(est, "}")
     gen_emitir_linea(est, "void salir(int codigo) { exit(codigo); }")
-    gen_emitir_linea(est, "CadenaSegura concat(CadenaSegura a, CadenaSegura b) {")
-    gen_emitir_linea(est, "    int _tl = a.longitud + b.longitud;")
-    gen_emitir_linea(est, "    char* _buf = (char*)malloc(_tl + 1);")
-    gen_emitir_linea(est, "    if (!_buf) { fprintf(stderr, \"Error: malloc fallo en concat()\\n\"); exit(1); }")
-    gen_emitir_linea(est, "    memcpy(_buf, a.datos, a.longitud);")
-    gen_emitir_linea(est, "    memcpy(_buf + a.longitud, b.datos, b.longitud);")
-    gen_emitir_linea(est, "    _buf[_tl] = 0;")
-    gen_emitir_linea(est, "    return (CadenaSegura){_tl, _buf};")
-    gen_emitir_linea(est, "}")
+    // H27/R81: concat vive en el RUNTIME (runtime/core/sistema.c) — el emisor
+    // solo declara el extern (paridad generator.py L1481). Emitir la definición
+    // aquí causaba "multiple definition of `concat'" contra sistema.c en etapa 2/3.
+    gen_emitir_linea(est, "extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);")
     gen_emitir_linea(est, "")
     // ME-B1/B3 fix: tipos TOML y pool allocator (paridad _synapse_shared.h / embedded_libs.h)
     gen_emitir_linea(est, "typedef struct ParToml { CadenaSegura clave; struct NodoToml* valor; } ParToml;")
