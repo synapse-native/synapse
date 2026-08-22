@@ -37,6 +37,8 @@ extern long long _get_timestamp_ns(void);
 extern void sha256_init(SHA256_CTX* ctx);
 extern void sha256_update(SHA256_CTX* ctx, const uint8_t* data, size_t len);
 extern void sha256_final(SHA256_CTX* ctx, uint8_t* digest);
+// TweetNaCl CSPRNG (definida en axon/tweetnacl.c; no declarada en tweetnacl.h)
+extern void randombytes(unsigned char* x, unsigned long long xlen);
 
 // ============================================================
 // M8.1 — std.cluster — Transport Layer for Distributed Nodes
@@ -143,11 +145,53 @@ static void cluster_derivar_clave_sesion(const char* pubkey_local_hex,
     sha256_final(&ctx, out_clave);
 }
 
-// --- XOR stream cipher (session key) ---
-static void cluster_xor_cifrar(const unsigned char* clave, size_t clave_len,
-                               const char* entrada, char* salida, int lon) {
-    for (int i = 0; i < lon; i++)
-        salida[i] = entrada[i] ^ (char)clave[i % clave_len];
+// --- Cifrado AEAD del transporte (R83, Manual 6 §5.3 paso 4 "DATOS_CIFRADOS") ---
+// crypto_secretbox de TweetNaCl: XSalsa20-Poly1305 con la clave de sesión
+// derivada por KX (R78). Formato en el wire: [nonce 24B][MAC 16B][ciphertext].
+// Sustituye al XOR repetitivo pre-R83 (keystream reutilizable entre paquetes).
+int cluster_sesion_cifrar_buffer(const unsigned char* clave32,
+                                  const char* entrada, int lon,
+                                  char* salida, int* lon_salida) {
+    if (!clave32 || !entrada || !salida || !lon_salida || lon <= 0) return -1;
+    // layout interno TweetNaCl: m=[32 ceros][msg] (d=lon+32) → c=[16 ceros][MAC16][ct]
+    // el blob transmitido es c+16 con longitud d-16 = MAC16 + ct
+    size_t d = (size_t)lon + 32;
+    unsigned char* m = (unsigned char*)calloc(d, 1);
+    unsigned char* c = (unsigned char*)malloc(d);
+    unsigned char n[24];
+    if (!m || !c) { free(m); free(c); return -1; }
+    memcpy(m + 32, entrada, (size_t)lon);
+    randombytes(n, 24); // nonce aleatorio por mensaje, viaja inline
+    if (crypto_secretbox(c, m, d, n, clave32) != 0) {
+        free(m); free(c); return -1;
+    }
+    memcpy(salida, n, 24);
+    memcpy(salida + 24, c + 16, d - 16);
+    *lon_salida = 24 + (int)(d - 16);
+    free(m); free(c);
+    return 0;
+}
+
+int cluster_sesion_descifrar_buffer(const unsigned char* clave32,
+                                     const char* entrada, int lon,
+                                     char* salida, int* lon_salida) {
+    if (!clave32 || !entrada || !salida || !lon_salida) return -1;
+    if (lon < 24 + 16 + 1) return -1; // nonce+mac+mínimo 1 byte
+    // Padding TweetNaCl: buffer reconstruido = [0..16 ceros][MAC 16][ct]
+    // => tamaño total = (lon-24) + 16   (el blob ya trae la MAC)
+    size_t clen = (size_t)(lon - 24) + 16;
+    unsigned char* c = (unsigned char*)calloc(clen, 1);
+    unsigned char* m = (unsigned char*)malloc(clen);
+    if (!c || !m) { free(c); free(m); return -1; }
+    memcpy(c + 16, entrada + 24, (size_t)(lon - 24));
+    int rc = crypto_secretbox_open(m, c, clen,
+                                    (const unsigned char*)entrada, clave32);
+    free(c);
+    if (rc != 0) { free(m); return -2; } // MAC inválida / clave incorrecta
+    *lon_salida = (int)(clen - 32);
+    memcpy(salida, m + 32, (size_t)*lon_salida);
+    free(m);
+    return 0;
 }
 
 // --- UDP Socket Helpers ---
@@ -222,7 +266,6 @@ void cluster_limpiar_clave_sesion(void) {
 
 // --- Session Key Derivation v2 (R78, Manual 5 §6.2 paso 3 / Manual 6 §5.3 paso 4) ---
 // crypto_kx-equivalent built only on TweetNaCl primitives (cero dependencias, regla 8):
-extern void randombytes(unsigned char* x, unsigned long long xlen); // tweetnacl.c (no en .h)
 //   q    = X25519(sk_local, kx_pk_remota)              [crypto_scalarmult]
 //   h    = SHA-512(q || kxpk_cliente || kxpk_servidor) [crypto_hash]
 //   clave= h[0..31]  -> _cluster_sesion_clave (XOR transport cipher)
@@ -405,14 +448,17 @@ int cluster_canal_remoto_enviar(const char* ip, int puerto,
     static int seq_counter = 0;
     int hdr_len = snprintf(header, sizeof(header), "DATA:%d:%d:", chan_id, seq_counter++);
     uint32_t len_be = htonl((uint32_t)lon);
-    int total = hdr_len + 1 + 4 + (int)lon;
+    // R83: con sesión activa el payload viaja como [nonce24][mac16][ct]
+    int overhead = _cluster_sesion_activa ? (24 + 16) : 0;
+    int total = hdr_len + 1 + 4 + lon + overhead;
     char* paquete = (char*)pool_alloc((size_t)total);
     if (!paquete) return -1;
     memcpy(paquete, header, (size_t)hdr_len);
     paquete[hdr_len] = 0x06;
     memcpy(paquete + hdr_len + 1, &len_be, 4);
     if (_cluster_sesion_activa)
-        cluster_xor_cifrar(_cluster_sesion_clave, 32, datos, paquete + hdr_len + 1 + 4, lon);
+        cluster_sesion_cifrar_buffer(_cluster_sesion_clave, datos, lon,
+                                      paquete + hdr_len + 1 + 4, &overhead);
     else
         memcpy(paquete + hdr_len + 1 + 4, datos, (size_t)lon);
     int n = _cluster_udp_enviar(_cluster_sock_global, ip, puerto,
@@ -562,23 +608,36 @@ CadenaSegura cluster_recibir_paquete(int timeout_ms) {
     if (_cluster_procesar_kx_entrante(buf, n, &from)) {
         return (CadenaSegura){ .longitud = 0, .datos = "" };
     }
-    if (n >= 5 && memcmp(buf, "DATA:", 5) == 0) {
-        int last_colon = -1;
-        for (int i = n - 1; i >= 0; i--) {
-            if (buf[i] == ':') { last_colon = i; break; }
-        }
-        if (last_colon >= 0 && last_colon + 1 < n) {
-            CadenaSegura texto = cluster_deserializar_texto(buf + last_colon + 1, n - last_colon - 1);
-            if (texto.longitud > 0) {
-                if (_cluster_sesion_activa) {
-                    char* decrypt = (char*)pool_alloc((size_t)texto.longitud + 1);
-                    if (decrypt) {
-                        cluster_xor_cifrar(_cluster_sesion_clave, 32, texto.datos, decrypt, texto.longitud);
-                        decrypt[texto.longitud] = '\0';
-                        pool_free((void*)texto.datos);
-                        texto.datos = decrypt;
+        if (n >= 5 && memcmp(buf, "DATA:", 5) == 0) {
+            // R83: parseo determinista "DATA:<chan>:<seq>:<payload>" — el
+            // payload binario (nonce/MAC) puede contener 0x3A, así que NO se
+            // busca el último ':' en todo el datagrama.
+            const char* c1 = memchr(buf + 5, ':', (size_t)(n - 5));
+            const char* c2 = c1 ? memchr(c1 + 1, ':', (size_t)(buf + n - c1 - 1)) : NULL;
+            if (c2 && c2 + 1 < buf + n) {
+                int seg_len = (int)(buf + n - (c2 + 1));
+                const char* seg = c2 + 1;
+            if (_cluster_sesion_activa && seg_len > 1 + 4 + 24 + 16) {
+                // R83: [0x06][len_be][nonce24][mac16+ct] — descifrar y validar
+                uint32_t len_be;
+                memcpy(&len_be, seg + 1, 4);
+                int lon_plain = (int)(seg_len - 1 - 4 - 24 - 16);
+                if (lon_plain > 0 && ntohl(len_be) == (uint32_t)lon_plain) {
+                    char* plain = (char*)pool_alloc((size_t)lon_plain);
+                    int lon_out = 0;
+                    if (plain &&
+                        cluster_sesion_descifrar_buffer(_cluster_sesion_clave,
+                                                         seg + 1 + 4, seg_len - 1 - 4,
+                                                         plain, &lon_out) == 0 &&
+                        lon_out == lon_plain) {
+                        return (CadenaSegura){ .longitud = lon_out, .datos = plain };
                     }
+                    // MAC inválida o clave distinta → descartar datagrama
+                    return (CadenaSegura){ .longitud = 0, .datos = "" };
                 }
+            }
+            CadenaSegura texto = cluster_deserializar_texto(seg, seg_len);
+            if (texto.longitud > 0) {
                 return texto;
             }
         }

@@ -31,6 +31,13 @@ CadenaSegura cluster_kx_generar_par(void);
 int cluster_kx_derivar(const char* kx_pk_remota_hex, int rol_cliente);
 CadenaSegura cluster_clave_sesion_hex(void);
 int cluster_enviar_kx_init(const char* ip, int puerto, CadenaSegura kx_pk_hex, CadenaSegura firma_hex);
+// R83 — AEAD del transporte (Manual 6 §5.3 "DATOS_CIFRADOS"): XSalsa20-Poly1305
+// con la clave de sesión; formato cifrado = [nonce 24B][MAC 16B][ciphertext].
+// descifrar retorna -2 si la MAC no valida (tamper/clave incorrecta).
+int cluster_sesion_cifrar_buffer(const unsigned char* clave32, const char* entrada,
+                                  int lon, char* salida, int* lon_salida);
+int cluster_sesion_descifrar_buffer(const unsigned char* clave32, const char* entrada,
+                                     int lon, char* salida, int* lon_salida);
 int ws_inicializar(int capacidad);
 int ws_encolar(int id, CadenaSegura datos);
 CadenaSegura ws_desencolar(void);

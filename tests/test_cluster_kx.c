@@ -55,6 +55,13 @@ extern int cluster_enviar_hello_firmado(const char* ip, int puerto, CadenaSegura
 extern CadenaSegura cluster_recibir_paquete(int timeout_ms);
 extern int cluster_canal_remoto_enviar(const char* ip, int puerto,
                                         const char* datos, int lon, int chan_id);
+/* R83 — AEAD del transporte */
+extern int cluster_sesion_cifrar_buffer(const unsigned char* clave32,
+                                         const char* entrada, int lon,
+                                         char* salida, int* lon_salida);
+extern int cluster_sesion_descifrar_buffer(const unsigned char* clave32,
+                                            const char* entrada, int lon,
+                                            char* salida, int* lon_salida);
 
 static int tests_passed = 0, tests_failed = 0;
 
@@ -118,6 +125,41 @@ static void modo_test(void) {
           "U9 hex malformado rechazado");
     check(cluster_kx_secreto_compartido(skA, NULL, pkB, 1, claveA) != 0,
           "U10 pk_local nula rechazada");
+
+    /* ===== R83: AEAD del transporte (Manual 6 §5.3) ===== */
+    {
+        const char* msg = "payload-aead-123";
+        int lon = (int)strlen(msg);
+        char ct[512]; int ct_len = 0;
+        char pt[512]; int pt_len = 0;
+        unsigned char clave[32];
+        memset(clave, 0xAB, sizeof(clave));
+
+        check(cluster_sesion_cifrar_buffer(clave, msg, lon, ct, &ct_len) == 0,
+              "A1 cifrado secretbox");
+        check(ct_len == 24 + 16 + lon, "A2 formato nonce24+mac16+ct");
+        check(memcmp(ct, msg, (size_t)(lon < 8 ? lon : 8)) != 0,
+              "A3 ciphertext distinto del plano");
+        check(cluster_sesion_descifrar_buffer(clave, ct, ct_len, pt, &pt_len) == 0 &&
+              pt_len == lon && memcmp(pt, msg, (size_t)lon) == 0,
+              "A4 roundtrip AEAD");
+
+        /* Clave equivocada -> MAC invalida (-2) */
+        unsigned char clave_mala[32];
+        memset(clave_mala, 0xCD, sizeof(clave_mala));
+        check(cluster_sesion_descifrar_buffer(clave_mala, ct, ct_len, pt, &pt_len) == -2,
+              "A5 clave incorrecta rechazada (MAC)");
+
+        /* Tamper de un byte del ciphertext -> rechazo */
+        ct[ct_len - 1] ^= 0x01;
+        check(cluster_sesion_descifrar_buffer(clave, ct, ct_len, pt, &pt_len) == -2,
+              "A6 tamper detectado (integridad)");
+        ct[ct_len - 1] ^= 0x01;
+
+        /* Entrada demasiado corta -> -1 */
+        check(cluster_sesion_descifrar_buffer(clave, ct, 10, pt, &pt_len) == -1,
+              "A7 entrada corta rechazada");
+    }
 
     printf("RESUMEN: Exitos: %d Fallos: %d\n", tests_passed, tests_failed);
     printf(tests_failed == 0 ? "[PASS] 0 fallos\n" : "[FAIL] hay fallos\n");
