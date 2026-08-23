@@ -105,8 +105,18 @@ funcion sq_declaracion(est: ParserEst) -> entero:
             asm("est->nodos[n].hijo_der = valor")
         sq_copiar_nombre(est, n, nombre_pos_previa(est, nombre))
         retornar n
+    si t == T_VARIABLE:
+        // M3 §3 L74: declaracion a nivel de módulo (H-R87-1 cierre R92).
+        retornar sq_variable(est)
     si t == T_LET:
-        retornar sq_let(est)
+        // Opción B del Arquitecto (R92): `let` es SOLO local (M3 §3 L122).
+        // A nivel de módulo ya no se tolera — error limpio.
+        inseguro:
+            asm("est->hay_error = true;")
+            asm("fprintf(stderr, \"[Syquex] 'let' solo es válido dentro de funciones; usa 'variable' a nivel de módulo (M3 §3 L74/L122)\\n\");")
+        token_avanzar(est)
+        saltar_nl(est)
+        retornar 0
     si t == T_TIPO:
         token_avanzar(est)
         nombre = sq_id(est)
@@ -198,10 +208,9 @@ funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> 
         asm("if (nodo_id >= 0 && nodo_id < est->total_nodos && n_destino >= 0 && n_destino < est->total_nodos) { est->nodos[n_destino].ptr_str = est->nodos[nodo_id].ptr_str; est->nodos[n_destino].len_str = est->nodos[nodo_id].len_str; int* _hi_sq_c = (int*)sq_tokens_hi(); if (_hi_sq_c) { _hi_sq_c[n_destino] = _hi_sq_c[nodo_id]; } }")
     retornar
 
-funcion sq_let(est: ParserEst) -> entero:
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
+// Núcleo compartido de declaraciones let/variable (M3 §3 L74 y L122):
+// keyword ya consumido; ID [":" tipo] ["=" expr] con span slot2.
+funcion sq_let_nucleo(est: ParserEst, linea: entero, col: entero) -> entero:
     nombre = sq_id(est)
     n = sq_nuevo(est, NODO_LET, linea, col)
     sq_copiar_nombre(est, n, nombre)
@@ -223,6 +232,20 @@ funcion sq_let(est: ParserEst) -> entero:
         asm("(void)tiene_tipo")
     saltar_nl(est)
     retornar n
+
+funcion sq_let(est: ParserEst) -> entero:
+    // M3 §3 L122: declaracion_variable_local (dentro de funciones).
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    retornar sq_let_nucleo(est, linea, col)
+
+funcion sq_variable(est: ParserEst) -> entero:
+    // M3 §3 L74 (H-R87-1 cierre R92): declaracion a nivel de módulo.
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    retornar sq_let_nucleo(est, linea, col)
 
 funcion saltar_nl(est: ParserEst) -> nulo:
     mientras token_mirar(est) == T_NUEVALINEA:

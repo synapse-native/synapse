@@ -113,6 +113,8 @@ constante T_CORCH_IZQ = 86
 constante T_CORCH_DER = 87
 constante T_LLAVE_IZQ = 88
 constante T_LLAVE_DER = 89
+// H-R87-1 cierre R92 (M3 §3 L74): declaracion de modulo `variable ID ...`
+constante T_VARIABLE = 90
 
 // --- Ids de idioma (M2 §2.3 / M3 §1.1) ---
 constante IDIOMA_ES = 0
@@ -394,6 +396,11 @@ funcion sq_keyword(palabra: cadena, idioma: entero) -> entero:
         retornar T_EN
     si str_eq_sq(palabra, "paso") == 1:
         retornar T_PASO
+    si str_eq_sq(palabra, "variable") == 1:
+        // M3 §3 L74: keyword de declaracion a nivel de modulo. Solo español
+        // definido por el manual (s4 no lista traducciones); en/fr/pt la
+        // tratan como identificador hasta especificación.
+        retornar T_VARIABLE
     retornar 0
 
 // --- Detección de idioma (#lang: es|en|fr|pt) ---
