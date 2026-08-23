@@ -171,14 +171,14 @@ Leyenda: ⬜ PENDIENTE · 💀 EN PROGRESO · ✅ VERIFICADO (con evidencia) · 
 | # | Punto | Manual | Estado |
 |---|-------|--------|--------|
 | 22 | `syquex/`: lexer, parser, traductor, `nucleo/ast_abi.syn` | Manual 3 | ✅ Completado |
-| 23 | Modelo de memoria Syquex (arenas, RC, alcance) | Manual 3 | ⬜ no adelantar |
-| 24 | `lib/`: std lib de Syquex (io, math, texto, lista, mapa, json, web, gui, dom, db, tiempo, pruebas, ia) | Manual 3 | ⬜ no adelantar |
-| 25 | Backend WASM + frontend DOM para Syquex | Manual 3 | ⬜ no adelantar |
-| 26 | OpenSyn para Syquex (router, transpiler, contexto estático, bindings) | Manual 7 | ⬜ no adelantar |
-| 27 | Herramientas: LSP, VS Code, `--check` | Manual 8 | ⬜ no adelantar |
-| 28 | Certificación de Syquex | Manual 9 | ⬜ no adelantar |
-| 29 | Detección HW y gestión de modelos (`std/os.syn`, `opensyn/installer.syn`) | Manual 7 | ⬜ no adelantar |
-| 30 | Instalación unificada (Inno Setup, .deb, .dmg, firmas, update) | Manual 9 §9.9 | ⬜ no adelantar |
+| 23 | Modelo de memoria Syquex (arenas, RC, alcance) | Manual 3 | ⬜ pendiente (Fase 22) |
+| 24 | `lib/`: std lib de Syquex (io, math, texto, lista, mapa, json, web, gui, dom, db, tiempo, pruebas, ia) | Manual 3 | ⬜ pendiente (Fase 22-24) |
+| 25 | Backend WASM + frontend DOM para Syquex | Manual 3 | ⬜ pendiente (Fase 22-25) |
+| 26 | OpenSyn para Syquex (router, transpiler, contexto estático, bindings) | Manual 7 | ⬜ pendiente (Fase 22-26) |
+| 27 | Herramientas: LSP, VS Code, `--check` | Manual 8 | ⬜ pendiente (Fase 22-27) |
+| 28 | Certificación de Syquex | Manual 9 | ⬜ pendiente (Fase 22-28) |
+| 29 | Detección HW y gestión de modelos (`std/os.syn`, `opensyn/installer.syn`) | Manual 7 | ⬜ pendiente (Fase 22-29) |
+| 30 | Instalación unificada (Inno Setup, .deb, .dmg, firmas, update) | Manual 9 §9.9 | ⬜ pendiente (Fase 22-30) |
 
 ---
 
