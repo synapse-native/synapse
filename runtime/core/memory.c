@@ -585,6 +585,7 @@ void* rc_alloc(size_t tamano, void (*destructor)(void*)) {
     }
     h->ref_count = 1;
     h->weak_count = 0;
+    h->version = 0;
     h->data = (uint8_t*)h + sizeof(RcHeader);
     h->destructor = destructor;
     return h->data;
@@ -602,6 +603,10 @@ void rc_decrementar(void* ptr) {
     h->ref_count--;
     if (h->ref_count == 0) {
         if (h->destructor) h->destructor(ptr);
+        if (h->weak_count > 0) {
+            h->version++;
+            return;
+        }
         free(h);
     }
 }
@@ -615,6 +620,7 @@ void* arc_alloc(size_t tamano, void (*destructor)(void*)) {
     }
     h->ref_count = 1;
     h->weak_count = 0;
+    h->version = 0;
     h->data = (uint8_t*)h + sizeof(ArcHeader);
     h->destructor = destructor;
     return h->data;
@@ -632,6 +638,79 @@ void arc_decrementar(void* ptr) {
     uint32_t prev = __atomic_fetch_sub(&h->ref_count, 1, __ATOMIC_ACQ_REL);
     if (prev == 1) {
         if (h->destructor) h->destructor(ptr);
+        if (h->weak_count > 0) {
+            h->version++;
+            return;
+        }
         free(h);
     }
+}
+
+// ============================================================
+// WeakRef (débil<T>) — Manual 4 §4.2
+// No incrementa ref_count. Se invalida al destruir el fuerte.
+// El header sobrevive hasta que weak_count también llega a 0.
+// ============================================================
+
+WeakRef rc_weak_ref(void* ptr) {
+    WeakRef w = { .header = NULL, .version = 0 };
+    if (!ptr) return w;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->weak_count++;
+    w.header = h;
+    w.version = h->version;
+    return w;
+}
+
+WeakRef arc_weak_ref(void* ptr) {
+    WeakRef w = { .header = NULL, .version = 0 };
+    if (!ptr) return w;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    __atomic_fetch_add(&h->weak_count, 1, __ATOMIC_RELAXED);
+    w.header = (RcHeader*)h;
+    w.version = __atomic_load_n(&h->version, __ATOMIC_ACQUIRE);
+    return w;
+}
+
+void* rc_weak_upgrade(WeakRef* w) {
+    if (!w || !w->header) return NULL;
+    if (w->header->version != w->version) return NULL;
+    if (w->header->ref_count == 0) return NULL;
+    w->header->ref_count++;
+    return w->header->data;
+}
+
+void* arc_weak_upgrade(WeakRef* w) {
+    if (!w || !w->header) return NULL;
+    ArcHeader* h = (ArcHeader*)w->header;
+    uint32_t ver = __atomic_load_n(&h->version, __ATOMIC_ACQUIRE);
+    if (ver != w->version) return NULL;
+    uint32_t rc = __atomic_load_n(&h->ref_count, __ATOMIC_ACQUIRE);
+    if (rc == 0) return NULL;
+    __atomic_fetch_add(&h->ref_count, 1, __ATOMIC_ACQ_REL);
+    return h->data;
+}
+
+void rc_weak_release(WeakRef* w) {
+    if (!w || !w->header) return;
+    RcHeader* h = w->header;
+    h->weak_count--;
+    if (h->ref_count == 0 && h->weak_count == 0) {
+        free(h);
+    }
+    w->header = NULL;
+    w->version = 0;
+}
+
+void arc_weak_release(WeakRef* w) {
+    if (!w || !w->header) return;
+    ArcHeader* h = (ArcHeader*)w->header;
+    uint32_t wc = __atomic_fetch_sub(&h->weak_count, 1, __ATOMIC_ACQ_REL);
+    if (wc == 1) {
+        if (__atomic_load_n(&h->ref_count, __ATOMIC_ACQUIRE) == 0) {
+            free(h);
+        }
+    }
+    w->header = NULL;
+    w->version = 0;
 }

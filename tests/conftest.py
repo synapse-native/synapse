@@ -149,6 +149,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_arena_scope", "test_arena_scope.c", ["synapse_rt_memory.o"], []),
     # FASE 23 ME-2: rc<T>/arc<T> (Manual 4 §3.2) — solo memory.o
     ("test_rc_arc", "test_rc_arc.c", ["synapse_rt_memory.o"], []),
+    # FASE 23 ME-3: débil<T> WeakRef (Manual 4 §4.2) — solo memory.o
+    ("test_weak", "test_weak.c", ["synapse_rt_memory.o"], []),
 ]
 
 

@@ -126,17 +126,19 @@ void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion);
 void arena_free(Arena* arena);
 void arena_reset(Arena* arena);
 
-// --- RC/ARC reference counting (Manual 4 §3.2) ---
+// --- RC/ARC reference counting (Manual 4 §3.2, §4.2) ---
 typedef struct RcHeader {
-    uint32_t ref_count;          // Conteo de referencias (no atómico)
-    uint32_t weak_count;         // Conteo de referencias débiles
+    uint32_t ref_count;          // Conteo de referencias fuertes (no atómico)
+    uint32_t weak_count;         // Conteo de referencias débiles vivas
+    uint32_t version;            // Generación: incrementada al destruir fuerte (§4.2)
     void* data;                  // Datos del objeto (después del header)
     void (*destructor)(void*);   // Destructor opcional
 } RcHeader;
 
 typedef struct ArcHeader {
-    uint32_t ref_count;          // Conteo atómico (usamos volatile + __atomic)
+    uint32_t ref_count;          // Conteo atómico (usamos __atomic)
     uint32_t weak_count;         // Conteo atómico de débiles
+    uint32_t version;            // Generación (§4.2)
     void* data;
     void (*destructor)(void*);
 } ArcHeader;
@@ -151,11 +153,19 @@ void* arc_alloc(size_t tamano, void (*destructor)(void*));
 void arc_incrementar(void* ptr);
 void arc_decrementar(void* ptr);
 
-// --- WeakRef (Manual 4 §4.2) ---
+// WeakRef typedef (Manual 4 §4.2)
 typedef struct {
     RcHeader* header;
     uint32_t version;   // Versión del objeto (para detección de invalidación)
 } WeakRef;
+
+// --- WeakRef (débil<T>) API (Manual 4 §4.2) ---
+WeakRef rc_weak_ref(void* ptr);       // crea débil a un rc<T>
+WeakRef arc_weak_ref(void* ptr);      // crea débil a un arc<T>
+void* rc_weak_upgrade(WeakRef* w);    // intenta obtener fuerte (nullptr si muerto)
+void* arc_weak_upgrade(WeakRef* w);
+void rc_weak_release(WeakRef* w);     // libera débil (libera header si fuerte también 0)
+void arc_weak_release(WeakRef* w);
 
 // --- Thread tracker helpers ---
 struct _HiloArgs {
