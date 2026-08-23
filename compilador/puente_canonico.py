@@ -222,10 +222,15 @@ class _Puente:
                     parametros=[self._parametro(p)
                                 for p in self.cadena_ids(izq)],
                     tipo_retorno=self.txt2(i)))
+            if vi == 1:   # externo estructura (H-R90-3)
+                return con(DeclaracionExterna(
+                    nombre=self.txt(i),
+                    parametros=[],
+                    tipo_retorno="__extern_struct"))
             if vi == 2:
                 return con(StmtConstante(nombre=self.txt(i), tipo='',
                                          valor=self._nodo_opt(der)))
-            raise PuenteError("externo estructura sin clase S1 (H-R90-3)")
+            raise PuenteError("externo sin tipo reconocido (vi no 0/1/2)")
         if t == 29:
             return con(ExprIndice(expr=self._nodo(izq),
                                   indice=self._nodo(der)))

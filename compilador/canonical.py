@@ -370,8 +370,11 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
             lines.append(f"{prefijo}{_token_a_palabra(TokenID.IMPORTAR, dicc_inv)} {nodo.modulo}")
 
         elif isinstance(nodo, DeclaracionExterna):
-            params = ", ".join(f"{p.nombre}: {p.tipo}" for p in nodo.parametros)
-            lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}")
+            if nodo.tipo_retorno == "__extern_struct":
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} estructura {nodo.nombre}")
+            else:
+                params = ", ".join(f"{p.nombre}: {p.tipo}" for p in nodo.parametros)
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}")
 
         elif isinstance(nodo, StmtConstante):
             val = _render_expr(nodo.valor, dicc_inv)

@@ -325,6 +325,9 @@ def visitar_externa(ctx: GeneratorContext, nodo: DeclaracionExterna):
     """Genera código C para declaración externa de función."""
     ctx._externas[nodo.nombre] = [p.tipo for p in nodo.parametros]
     if not ctx._in_function_scope:
+        if nodo.tipo_retorno == "__extern_struct":
+            ctx.write_line(f"extern struct {nodo.nombre};")
+            return
         tipo_ret_c = (
             ctx.traducir_tipo_c(nodo.tipo_retorno.replace('*', ''))
             + ('*' if '*' in nodo.tipo_retorno else '')

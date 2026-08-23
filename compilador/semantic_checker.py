@@ -279,7 +279,16 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         nombre=s.nombre
                     )
             elif isinstance(s, DeclaracionExterna):
-                if not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
+                if s.tipo_retorno == "__extern_struct":
+                    if s.nombre in self._estructuras:
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_REDEFINICION,
+                            self._token(s.linea, s.columna),
+                            nombre=s.nombre
+                        )
+                    else:
+                        self._estructuras[s.nombre] = s
+                elif not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_REDEFINICION,
                         self._token(s.linea, s.columna),

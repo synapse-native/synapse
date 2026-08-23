@@ -18,7 +18,7 @@ from compilador.puente_canonico import (          # noqa: E402
 from compilador.ast_nodes import (                # noqa: E402
     Programa, DefinicionFuncion, DefinicionEstructura, SentenciaSi,
     NodoCoincidir, DeclaracionVariable, OpBinaria, LiteralNumero,
-    SentenciaRetornar,
+    SentenciaRetornar, DeclaracionExterna,
 )
 
 
@@ -150,3 +150,16 @@ def test_llamada_args_en_hijo_der():
 def test_esquema_incorrecto_rechazado():
     with pytest.raises(PuenteError):
         plano_a_programa({"syquex_flat": "1", "nodos": [], "raiz": 0})
+
+
+def test_externo_estructura_no_falla():
+    # H-R90-3: externo estructura (vi=1) -> DeclaracionExterna con marker
+    nodos = [
+        _reg(1, izq=1),
+        _reg(26, vi=1, t1=_b("Vec3")),
+    ]
+    prog = plano_a_programa(_flat(nodos))
+    ext = prog.sentencias[0]
+    assert isinstance(ext, DeclaracionExterna)
+    assert ext.nombre == "Vec3"
+    assert ext.tipo_retorno == "__extern_struct"
