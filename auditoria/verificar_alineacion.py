@@ -367,6 +367,10 @@ def verificar_modularizacion():
     for p in candidatos:
         if p.name == "generator.syn":
             continue
+        # Convencion regla 12: prefijo '_' = artefacto/instrumentacion
+        # temporal (harnesses _tmp_* de tests, probes) — nunca produccion.
+        if p.name.startswith("_"):
+            continue
         try:
             n = sum(1 for _ in p.open(encoding="utf-8", errors="replace"))
         except OSError:
