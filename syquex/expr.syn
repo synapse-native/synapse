@@ -307,6 +307,12 @@ funcion parse_postfix_sq(est: ParserEst) -> entero:
             sino:
                 token_avanzar(est)
                 base = sq_args(est, base)
+                // Marcador de LLAMADA (R91): un acceso a campo seguido de
+                // '(' es invocación de método aunque los argumentos sean
+                // vacíos (hijo_der=0 lo haría indistinguible del acceso
+                // simple p.x). valor_int=1 = hubo call-site.
+                inseguro:
+                    asm("if (base >= 0 && base < est->total_nodos) { est->nodos[base].valor_int = 1; }")
                 si gen_ini > 0:
                     inseguro:
                         asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")

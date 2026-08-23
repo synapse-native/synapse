@@ -60,12 +60,16 @@ def test_slot2_tipo_retorno_y_params(flat):
     fn = next(n for n in nodos
               if n[0] == 2 and bytes(n[8]).decode() == "visible")
     assert bytes(fn[9]).decode() == "entero"
-    # primer PARAMETRO de la cadena del __init__ (px) con tipo entero en slot2
+    # __init__ (crear): self TIPADO primero (M3 §6.1 + M6 §1.3 L105-107),
+    # luego los params explícitos — endurecimiento R91 (fix ciclo self).
     init_ = next(n for n in nodos
                  if n[0] == 2 and bytes(n[8]).decode() == "__init__")
-    p = nodos[init_[4]]
-    assert p[0] == 15 and bytes(p[8]).decode() == "px"
-    assert bytes(p[9]).decode() == "entero"
+    p0 = nodos[init_[4]]
+    assert p0[0] == 15 and bytes(p0[8]).decode() == "self"
+    assert bytes(p0[9]).decode() == "Punto"
+    p1 = nodos[p0[6]]
+    assert p1[0] == 15 and bytes(p1[8]).decode() == "px"
+    assert bytes(p1[9]).decode() == "entero"
 
 
 def test_raiz_programa_y_sin_bloque_sq(flat):

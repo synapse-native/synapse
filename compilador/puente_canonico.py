@@ -202,10 +202,13 @@ class _Puente:
             if extra > 0 and self.tipo(extra) == 46:   # CONTRATO fusionado
                 req = self.cadena(self.nodos[extra][4])
                 gar = self.cadena(self.nodos[extra][5])
+            # M3 §3 L91: [ "->" tipo ] es OPCIONAL en metodo/crear; sin
+            # flecha el procedimiento retorna 'nulo' (convención del
+            # parser S1, que exige anotación explícita y mapea a void).
             return con(DefinicionFuncion(
                 nombre=self.txt(i),
                 parametros=[self._parametro(p) for p in self.cadena_ids(izq)],
-                tipo_retorno=self.txt2(i),
+                tipo_retorno=self.txt2(i) or "nulo",
                 requiere=req,
                 garantiza=gar,
                 cuerpo=self.cadena(der)))
@@ -308,10 +311,10 @@ class _Puente:
         if t == 30:
             return con(ArgumentoTransferido(expr=self._nodo(izq)))
         if t == 31:
-            if der > 0:
-                # H-R90-5: lowering de method call obj.metodo(args)
-                # Manual 6 §1.3: MetodoDef -> NODO_FUNCION decorado
-                # "Struct_metodo" con self como primer parametro.
+            if vi == 1 or der > 0:
+                # H-R90-5: lowering de method call obj.metodo(args).
+                # vi==1 (marcador R91) distingue la llamada del acceso
+                # simple incluso con argumentos vacíos (hijo_der=0).
                 obj = self._nodo(izq)
                 obj_tipo = self._tipo_objeto(izq)
                 if obj_tipo and obj_tipo in self._struct_metodos:
