@@ -126,6 +126,37 @@ void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion);
 void arena_free(Arena* arena);
 void arena_reset(Arena* arena);
 
+// --- RC/ARC reference counting (Manual 4 §3.2) ---
+typedef struct RcHeader {
+    uint32_t ref_count;          // Conteo de referencias (no atómico)
+    uint32_t weak_count;         // Conteo de referencias débiles
+    void* data;                  // Datos del objeto (después del header)
+    void (*destructor)(void*);   // Destructor opcional
+} RcHeader;
+
+typedef struct ArcHeader {
+    uint32_t ref_count;          // Conteo atómico (usamos volatile + __atomic)
+    uint32_t weak_count;         // Conteo atómico de débiles
+    void* data;
+    void (*destructor)(void*);
+} ArcHeader;
+
+// rc<T>: no atómico, para objetos de una sola fibra
+void* rc_alloc(size_t tamano, void (*destructor)(void*));
+void rc_incrementar(void* ptr);
+void rc_decrementar(void* ptr);
+
+// arc<T>: atómico, para objetos entre fibras (canales)
+void* arc_alloc(size_t tamano, void (*destructor)(void*));
+void arc_incrementar(void* ptr);
+void arc_decrementar(void* ptr);
+
+// --- WeakRef (Manual 4 §4.2) ---
+typedef struct {
+    RcHeader* header;
+    uint32_t version;   // Versión del objeto (para detección de invalidación)
+} WeakRef;
+
 // --- Thread tracker helpers ---
 struct _HiloArgs {
     void* (*fn)(void*);

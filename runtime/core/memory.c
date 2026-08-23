@@ -566,3 +566,72 @@ void arena_reset(Arena* arena) {
     if (!arena || !arena->inicio) return;
     arena->puntero = arena->inicio;
 }
+
+// ============================================================
+// Reference Counting (Manual 4 §3.2)
+// rc<T>: no atómico — para objetos de una sola fibra.
+// arc<T>: atómico — para objetos compartidos entre fibras (canales).
+// El layout en memoria es: [Header][data...]. El usuario recibe (void*)data
+// y el header está justo antes. rc_decrementar/arc_decrementar hacen
+// pointer-math para recuperar el header.
+// ============================================================
+
+void* rc_alloc(size_t tamano, void (*destructor)(void*)) {
+    size_t total = sizeof(RcHeader) + tamano;
+    RcHeader* h = (RcHeader*)malloc(total);
+    if (!h) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: rc_alloc malloc fallo\n");
+        return NULL;
+    }
+    h->ref_count = 1;
+    h->weak_count = 0;
+    h->data = (uint8_t*)h + sizeof(RcHeader);
+    h->destructor = destructor;
+    return h->data;
+}
+
+void rc_incrementar(void* ptr) {
+    if (!ptr) return;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->ref_count++;
+}
+
+void rc_decrementar(void* ptr) {
+    if (!ptr) return;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->ref_count--;
+    if (h->ref_count == 0) {
+        if (h->destructor) h->destructor(ptr);
+        free(h);
+    }
+}
+
+void* arc_alloc(size_t tamano, void (*destructor)(void*)) {
+    size_t total = sizeof(ArcHeader) + tamano;
+    ArcHeader* h = (ArcHeader*)malloc(total);
+    if (!h) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arc_alloc malloc fallo\n");
+        return NULL;
+    }
+    h->ref_count = 1;
+    h->weak_count = 0;
+    h->data = (uint8_t*)h + sizeof(ArcHeader);
+    h->destructor = destructor;
+    return h->data;
+}
+
+void arc_incrementar(void* ptr) {
+    if (!ptr) return;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    __atomic_fetch_add(&h->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+void arc_decrementar(void* ptr) {
+    if (!ptr) return;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    uint32_t prev = __atomic_fetch_sub(&h->ref_count, 1, __ATOMIC_ACQ_REL);
+    if (prev == 1) {
+        if (h->destructor) h->destructor(ptr);
+        free(h);
+    }
+}

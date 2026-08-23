@@ -147,6 +147,8 @@ _RT_BINARIOS_EXTRA = [
     ("validate_formal_proof", "validate_formal_proof.c", ["proof_bridge.o"], ["-Wl,--stack,8388608"]),
     # FASE 23 ME-1: arena allocator (Manual 4 §2) — solo memory.o
     ("test_arena_scope", "test_arena_scope.c", ["synapse_rt_memory.o"], []),
+    # FASE 23 ME-2: rc<T>/arc<T> (Manual 4 §3.2) — solo memory.o
+    ("test_rc_arc", "test_rc_arc.c", ["synapse_rt_memory.o"], []),
 ]
 
 
