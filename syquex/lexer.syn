@@ -133,9 +133,11 @@ funcion str_len(s: cadena) -> entero:
         asm("r = s.longitud")
         retornar r
 
-// str_eq público: las tablas importadas de lexer_keywords.syn lo consumen
-// (en nucleo/ vive en lexer.syn; aquí se provee localmente hasta la
-// integración unity, donde habrá que deduplicar símbolos — nota R86).
+// H-R86-1 (dedup str_eq, R89; Manual 6 §1.3): `str_eq` se conserva
+// localmente para este harness (nucleo/lexer.syn no se concatena aquí);
+// la deduplicación en la integración unity (R89) la resuelve el merge
+// _seen_sym de pipeline.py y el drop de builtins del generador S1
+// (la definición local no se emite — ver probe T=1 en reporte R88).
 funcion str_eq(a: cadena, b: cadena) -> entero:
     inseguro:
         r = 0

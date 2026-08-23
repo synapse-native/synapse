@@ -251,7 +251,7 @@ funcion sq_campo_despues_punto(est: ParserEst, base: entero) -> entero:
     n = sq_nuevo(est, NODO_ACCESO_CAMPO, dot_linea, dot_col)
     inseguro:
         asm("est->nodos[n].hijo_izq = base")
-        asm("if (campo > 0 && campo < est->total_nodos && n < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[campo].ptr_str; est->nodos[n].len_str = est->nodos[campo].len_str; int* hi_f=(int*)parser_ptr_hi(); int* hi_t=(int*)sq_tokens_hi(); if (hi_f && hi_t) hi_t[n]=hi_f[campo]; }")
+        asm("if (campo > 0 && campo < est->total_nodos && n < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[campo].ptr_str; est->nodos[n].len_str = est->nodos[campo].len_str; int* hi_f=(int*)sq_tokens_hi(); int* hi_t=(int*)sq_tokens_hi(); if (hi_f && hi_t) hi_t[n]=hi_f[campo]; }")
     retornar n
 
 funcion sq_nodo_es_identificador(est: ParserEst, n: entero) -> entero:

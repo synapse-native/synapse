@@ -1,0 +1,93 @@
+#lang: es
+// R88 — driver del traductor Syquex -> SemNodo[] (Manual 6 §1.3).
+// Parsea la muestra M3 §6/§13 y traduce; emite el AST canónico.
+
+funcion principal() -> entero:
+    fuente = "#lang: es\nestructura Punto:\n    x: entero\n    yy: entero\n    crear(px: entero):\n        self.x = px\n    metodo desplazar(d: entero):\n        self.x = self.x + d\n\nenumeracion Color:\n    rojo\n    verde\n\nfuncion sumar(a: entero, b: entero = 2) -> entero:\n    retornar a + b\n\nfuncion mitad(x: entero) -> entero = x / 2\n\n@export(wasm) funcion visible(v: entero) -> entero:\n    retornar v * 2\n\nexterno funcion externa(k: entero) -> entero\n\ntipo EnteroAlias = entero\nconstante MAXIMO = 100\nlet global_sq = 5\n\nfuncion principal() -> entero:\n    let l = lista<entero>()\n    para i = 0 .. 4:\n        l.agregar(i)\n    para v en l:\n        let z = v\n    si z > 0:\n        m[\"clave\"] = 7\n    intentar:\n        let r = m[\"clave\"]?\n    atrapar e:\n        retornar 1\n    coincidir m[\"clave\"]:\n        0 => escribir_linea(\"cero\")\n        _ => escribir_linea(\"otro\")\n    coincidir c:\n        rojo(v) => escribir_linea(v)\n        verde => escribir_linea(\"verde\")\n    lanzar error_interno(3)\n    escuchar canal_eventos:\n        procesar()\n    retornar 0\n"
+
+    prog = sq_programa(fuente)
+    si prog < 0:
+        escribir_linea(concat("PARSE_ERROR=", entero_a_texto(prog)))
+        total = parser_obtener_total()
+        i = 0
+        mientras i < total:
+            si sq_token_tipo(i) == T_ERROR:
+                escribir_linea(concat(concat(concat("ERR_TOK:", entero_a_texto(i)), ":"), sq_token_lexema(i)))
+            i = i + 1
+        escribir_linea("FIN_DUMP")
+        retornar 1
+    r = traducir_programa(prog)
+    si r < 0:
+        escribir_linea(concat("TRAD_ERROR=", entero_a_texto(r)))
+        escribir_linea("FIN_DUMP")
+        retornar 2
+    total = trad_obtener_total()
+    escribir_linea(concat("TOTAL=", entero_a_texto(total)))
+    escribir_linea(concat("ROOT=", entero_a_texto(r)))
+    i = 0
+    mientras i < total:
+        t = trad_nodo_tipo(i)
+        lin = trad_nodo_linea(i)
+        col = trad_nodo_columna(i)
+        txt = trad_texto(i)
+        txt_out = txt
+        si txt == "":
+            txt_out = "-"
+        // TR:<i>:<tipo>:<linea>:<col>:<texto>
+        p1 = concat("TR:", entero_a_texto(i))
+        p2 = concat(p1, concat(":", entero_a_texto(t)))
+        p3 = concat(p2, concat(":", entero_a_texto(lin)))
+        p4 = concat(p3, concat(":", entero_a_texto(col)))
+        p5 = concat(p4, concat(":", txt_out))
+        escribir_linea(p5)
+        i = i + 1
+    // Dump de funciones con params (para verificar decoración y self)
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_FUNCION:
+            fn_txt = trad_texto(i)
+            params_txt = ""
+            p = trad_hizq(i)
+            primero = 1
+            mientras p > 0:
+                pt = trad_texto(p)
+                si primero == 0:
+                    params_txt = concat(params_txt, "|")
+                params_txt = concat(params_txt, pt)
+                primero = 0
+                p = trad_herm(p)
+            escribir_linea(concat(concat(concat("FN:", fn_txt), ":params="), params_txt))
+        i = i + 1
+    // Dump de casos (patrón span reconstruido)
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_CASO:
+            cs = trad_texto(i)
+            escribir_linea(concat("CASO:", cs))
+        i = i + 1
+    // Conteo de BLOQUE_SQ residual (debe ser 0)
+    cnt_bsq = 0
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_BLOQUE_SQ:
+            cnt_bsq = cnt_bsq + 1
+        i = i + 1
+    escribir_linea(concat("BLOQUE_SQ=", entero_a_texto(cnt_bsq)))
+    // Dump de estructura Punto y sus campos
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_ESTRUCTURA:
+            en = trad_texto(i)
+            campos = ""
+            f = trad_hizq(i)
+            primero = 1
+            mientras f > 0:
+                si primero == 0:
+                    campos = concat(campos, "|")
+                campos = concat(campos, trad_texto(f))
+                primero = 0
+                f = trad_herm(f)
+            escribir_linea(concat(concat(concat(concat("EST:", en), ":"), entero_a_texto(trad_nodo_linea(i))), concat(":", campos)))
+        i = i + 1
+    escribir_linea("FIN_DUMP")
+    retornar 0

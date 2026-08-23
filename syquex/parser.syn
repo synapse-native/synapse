@@ -160,9 +160,12 @@ funcion nombre_pos_previa(est: ParserEst, nodo_nombre: entero) -> entero:
     retornar 0
 
 funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> nulo:
-    // Copia ptr_str/len_str/hi desde el nodo IDENTIFICADOR fuente al destino.
+    // Copia ptr_str/len_str + bits altos desde el nodo IDENTIFICADOR fuente
+    // al destino (R88: los bits altos viven en sq_tokens_hi; sin ellos la
+    // reconstrucción 64-bit del nombre queda truncada).
+    // Nota: nodo_id puede ser 0 (primer nodo del buffer); se usa >=0.
     inseguro:
-        asm("if (nodo_id > 0 && nodo_id < est->total_nodos && n_destino >= 0 && n_destino < est->total_nodos) { est->nodos[n_destino].ptr_str = est->nodos[nodo_id].ptr_str; est->nodos[n_destino].len_str = est->nodos[nodo_id].len_str; int* hi_src=(int*)parser_ptr_hi(); int* hi_dst=(int*)sq_tokens_hi(); (void)hi_dst; if (hi_src) est->nodos[n_destino].ptr_extra = 0; int* hi_abi=(int*)parser_ptr_hi(); if (hi_abi) { /* hi se comparte: mismo array */ } }")
+        asm("if (nodo_id >= 0 && nodo_id < est->total_nodos && n_destino >= 0 && n_destino < est->total_nodos) { est->nodos[n_destino].ptr_str = est->nodos[nodo_id].ptr_str; est->nodos[n_destino].len_str = est->nodos[nodo_id].len_str; int* _hi_sq_c = (int*)sq_tokens_hi(); if (_hi_sq_c) { _hi_sq_c[n_destino] = _hi_sq_c[nodo_id]; } }")
     retornar
 
 funcion sq_let(est: ParserEst) -> entero:
@@ -547,9 +550,11 @@ funcion sq_estructura(est: ParserEst) -> entero:
                     inseguro:
                         asm("")
                 cuerpo = sq_cuerpo_bloque_sq(est, m_linea, m_col)
-                // M6 §1.3: MetodoDef -> NODO_FUNCION "Struct_metodo", self primero
+                // M6 §1.3: MetodoDef -> NODO_FUNCION con self primero; la
+                // decoración "Struct_metodo" y el hoisting viven en el
+                // traductor (R88).
                 miembro = sq_nuevo(est, NODO_FUNCION, m_linea, m_col)
-                sq_decorar_metodo(miembro, nombre_struct_actual(), nombre_m)
+                sq_copiar_nombre(est, miembro, nombre_m)
                 inseguro:
                     asm("est->nodos[miembro].hijo_izq = params_self")
                     asm("if (params != 0) { int _l = params_self; struct NodoAST* _ns=(struct NodoAST*)parser_nodos(); while (_ns[_l].hermano != 0) _l = _ns[_l].hermano; _ns[_l].hermano = params; }")
@@ -594,13 +599,10 @@ funcion sq_self_param(est: ParserEst, linea: entero, col: entero, nombre_m: ente
         asm("if (p < 65536) { est->nodos[p].ptr_str = (int)(uintptr_t)_SQ_SELF; est->nodos[p].len_str = 4; }")
     retornar p
 
-funcion sq_decorar_metodo(nodo: entero, struct_nombre: entero, nombre_m: entero) -> nulo:
-    // Decoración diferida a R88 (requiere concatenar cadenas): por ahora el
-    // método conserva su nombre simple y el struct se identifica por contexto.
-    retornar
-
-funcion nombre_struct_actual() -> entero:
-    retornar 0
+// H-R88 (R88; Manual 6 §1.3 L108, M3 §11.1): los stubs
+// `sq_decorar_metodo`/`nombre_struct_actual` se eliminan — la
+// decoración "Struct_metodo" y el hoisting ahora viven en
+// syquex/traductor.syn (traducir_programa hoistea y decora).
 
 funcion sq_enumeracion(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
@@ -899,7 +901,7 @@ funcion sq_intentar(est: ParserEst) -> entero:
     inseguro:
         asm("est->nodos[n].hijo_izq = try_body")
         asm("est->nodos[n].hijo_der = catch_body")
-        asm("if (var_exc > 0 && var_exc < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[var_exc].ptr_str; est->nodos[n].len_str = est->nodos[var_exc].len_str; int* hi_s=(int*)parser_ptr_hi(); int* hi_d=(int*)sq_tokens_hi(); if (hi_s && hi_d) hi_d[n]=hi_s[var_exc]; }")
+        asm("if (var_exc > 0 && var_exc < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[var_exc].ptr_str; est->nodos[n].len_str = est->nodos[var_exc].len_str; int* hi_s=(int*)sq_tokens_hi(); int* hi_d=(int*)sq_tokens_hi(); if (hi_s && hi_d) hi_d[n]=hi_s[var_exc]; }")
     saltar_nl(est)
     retornar n
 
@@ -940,6 +942,7 @@ funcion sq_parsear_decls(fuente: cadena) -> entero:
             sino:
                 inseguro:
                     asm("est.nodos[ultimo].hermano = d")
+                ultimo = d
         sino:
             parser_sinc_skip(est)
     si est.hay_error == verdadero:
