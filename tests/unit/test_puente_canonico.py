@@ -18,7 +18,8 @@ from compilador.puente_canonico import (          # noqa: E402
 from compilador.ast_nodes import (                # noqa: E402
     Programa, DefinicionFuncion, DefinicionEstructura, SentenciaSi,
     NodoCoincidir, DeclaracionVariable, OpBinaria, LiteralNumero,
-    SentenciaRetornar, DeclaracionExterna,
+    SentenciaRetornar, DeclaracionExterna, Identificador, LlamadaFuncion,
+    AsignacionVariable,
 )
 
 
@@ -163,3 +164,71 @@ def test_externo_estructura_no_falla():
     assert isinstance(ext, DeclaracionExterna)
     assert ext.nombre == "Vec3"
     assert ext.tipo_retorno == "__extern_struct"
+
+
+def test_metodo_call_lowering_h_r90_5():
+    """H-R90-5: ACCESO_CAMPO con hijo_der (method call) se lowering a
+    LlamadaFuncion con self inyectado (Manual 6 §1.3: metodo decorado
+    'Struct_method' recibe self como primer argumento)."""
+    nodos = [
+        # 0: PROGRAMA(1), hijo_izq=1
+        _reg(1, izq=1),
+        # 1: ESTRUCTURA(16) "Punto", hijo_izq=2 (fields), herm=3
+        _reg(16, izq=2, herm=3, t1=_b("Punto")),
+        # 2: PARAMETRO(15) "x" "entero", herm=0
+        _reg(15, t1=_b("x"), t2=_b("entero")),
+        # 3: FUNCION(2) "Punto_desplazar", hijo_izq=4 (self), der=0, herm=5
+        _reg(2, izq=4, der=0, herm=5, t1=_b("Punto_desplazar")),
+        # 4: PARAMETRO(15) "self", herm=0
+        _reg(15, t1=_b("self")),
+        # 5: FUNCION(2) "principal" ret="entero", der=6 (body), herm=0
+        _reg(2, der=6, t1=_b("principal"), t2=_b("entero")),
+        # 6: LET(48) "p" tipo="Punto", herm=7
+        _reg(48, t1=_b("p"), t2=_b("Punto"), herm=7),
+        # 7: ASIGNACION(7) p = p.desplazar(4): izq=8(Ident p), der=9(ACCESO_CAMPO)
+        _reg(7, izq=8, der=9),
+        # 8: IDENTIFICADOR(8) "p"
+        _reg(8, t1=_b("p")),
+        # 9: ACCESO_CAMPO(31) "desplazar", izq=10(obj p), der=11(arg 4)
+        _reg(31, izq=10, der=11, t1=_b("desplazar")),
+        # 10: IDENTIFICADOR(8) "p"
+        _reg(8, t1=_b("p")),
+        # 11: NUMERO(9) "4"
+        _reg(9, t1=_b("4")),
+    ]
+    prog = plano_a_programa(_flat(nodos))
+    fn = prog.sentencias[2]  # principal
+    assert isinstance(fn, DefinicionFuncion)
+    assert fn.nombre == "principal"
+    asignacion = fn.cuerpo[1]
+    assert isinstance(asignacion, AsignacionVariable)
+    assert asignacion.nombre == "p"
+    call = asignacion.expresion
+    assert isinstance(call, LlamadaFuncion)
+    assert call.nombre == "Punto_desplazar"
+    assert len(call.argumentos) == 2
+    assert isinstance(call.argumentos[0], Identificador)
+    assert call.argumentos[0].nombre == "p"  # self inyectado
+    assert isinstance(call.argumentos[1], LiteralNumero)
+    assert call.argumentos[1].valor == 4
+
+
+def test_metodo_call_sin_tipo_receptor_falla():
+    """H-R90-5: si el tipo del receptor no es resoluble, fail-fast."""
+    nodos = [
+        _reg(1, izq=1),
+        # ESTRUCTURA "Punto" sin metodo registrado
+        _reg(16, herm=2, t1=_b("Punto")),
+        # Funcion "principal" with p.metodo(4) but p has no struct type
+        _reg(2, der=3, t1=_b("principal"), t2=_b("entero"), herm=0),
+        # LET "p" tipo="entero" (no struct)
+        _reg(34, t1=_b("p"), t2=_b("entero"), herm=4),
+        # ASIGNACION p = p.metodo(4)
+        _reg(7, izq=5, der=6),
+        _reg(8, t1=_b("p")),
+        _reg(31, izq=7, der=8, t1=_b("metodo")),
+        _reg(8, t1=_b("p")),
+        _reg(9, t1=_b("4")),
+    ]
+    with pytest.raises(PuenteError, match="tipo de receptor"):
+        plano_a_programa(_flat(nodos))

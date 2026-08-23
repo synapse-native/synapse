@@ -21,6 +21,7 @@
 # ============================================================
 
 import json
+from typing import Optional
 
 from compilador.ast_nodes import (
     Programa, Parametro,
@@ -83,6 +84,52 @@ def cargar_flat(ruta_json: str) -> dict:
 class _Puente:
     def __init__(self, flat: dict):
         self.nodos = flat["nodos"]
+        self._build_contexto()
+
+    def _build_contexto(self):
+        """Pre-pase H-R90-5: construye mapas struct→metodos y var→tipo
+        para el lowering de call-sites OOP (Manual 6 §1.3: el traductor
+        hoistea metodos como NODO_FUNCION con nombre decorado
+        'Struct_method'; el puente resuelve el tipo del receptor y
+        genera LlamadaFuncion con self inyectado)."""
+        self._struct_nombres: set = set()
+        self._struct_metodos: dict = {}  # struct -> {method_name -> func_name}
+        self._var_tipo: dict = {}       # var_name -> Synapse type
+        self._func_retorno: dict = {}   # func_name -> return type
+        n = self.nodos
+        for i, nodo in enumerate(n):
+            if len(nodo) < 10:
+                continue
+            t = nodo[0]
+            if t == 16:   # ESTRUCTURA
+                nombre = self.txt(i)
+                if nombre:
+                    self._struct_nombres.add(nombre)
+                    self._struct_metodos[nombre] = {}
+            elif t == 2:  # FUNCION
+                nombre = self.txt(i)
+                if not nombre:
+                    continue
+                # método decorado: Struct_method → struct=prefix, method=suffix
+                if "_" in nombre and not nombre.startswith("__"):
+                    struct, sep, method = nombre.partition("_")
+                    if struct in self._struct_nombres:
+                        self._struct_metodos[struct][method] = nombre
+                ret = self.txt2(i)
+                if ret:
+                    self._func_retorno[nombre] = ret
+            elif t in (34, 48):  # DECLARACION / LET
+                var = self.txt(i)
+                t2 = self.txt2(i)
+                if var and t2:
+                    self._var_tipo[var] = t2
+                elif var and i + 1 < len(n) and n[i][5] > 0:
+                    # inferir tipo del constructor: let p = Punto(3)
+                    arg_idx = n[i][5]
+                    if arg_idx < len(n) and n[arg_idx][0] == 14:  # LLAMADA
+                        ctor = self.txt(arg_idx)
+                        if ctor in self._struct_nombres:
+                            self._var_tipo[var] = ctor
 
     # ---- helpers de registro ----
     def txt(self, i: int) -> str:
@@ -95,6 +142,30 @@ class _Puente:
 
     def tipo(self, i: int) -> int:
         return self.nodos[i][0]
+
+    def _tipo_objeto(self, idx: int) -> Optional[str]:
+        """Resuelve el tipo Synapse de una expresión base (H-R90-5).
+        Identificador: lookup en _var_tipo. ACCESO_CAMPO: lookup de campo
+        en _estructuras. LLAMADA a struct: el propio struct. None si
+        no resoluble (fallara al final en el call-site lowering)."""
+        if idx <= 0 or idx >= len(self.nodos):
+            return None
+        t = self.nodos[idx][0]
+        if t == 8:   # IDENTIFICADOR
+            return self._var_tipo.get(self.txt(idx))
+        if t == 31:   # ACCESO_CAMPO
+            nombre_campo = self.txt(idx)
+            obj_idx = self.nodos[idx][4]
+            obj_tipo = self._tipo_objeto(obj_idx)
+            if obj_tipo and obj_tipo in self._struct_nombres:
+                return None  # el campo no es un struct
+            return None
+        if t == 14:   # LLAMADA (posible constructor)
+            nombre = self.txt(idx)
+            if nombre in self._struct_nombres:
+                return nombre
+            return self._func_retorno.get(nombre)
+        return None
 
     # ---- cadenas por hermano ([6]) ----
     def cadena(self, idx: int):
@@ -238,10 +309,26 @@ class _Puente:
             return con(ArgumentoTransferido(expr=self._nodo(izq)))
         if t == 31:
             if der > 0:
-                # llamada a método: lowering requiere tipos (H-R90-5)
+                # H-R90-5: lowering de method call obj.metodo(args)
+                # Manual 6 §1.3: MetodoDef -> NODO_FUNCION decorado
+                # "Struct_metodo" con self como primer parametro.
+                obj = self._nodo(izq)
+                obj_tipo = self._tipo_objeto(izq)
+                if obj_tipo and obj_tipo in self._struct_metodos:
+                    metodos = self._struct_metodos[obj_tipo]
+                    nombre_metodo = self.txt(i)  # e.g. "desplazar"
+                    func_decorada = metodos.get(nombre_metodo)
+                    if func_decorada:
+                        args = [obj] + self.cadena(der)
+                        return con(LlamadaFuncion(
+                            nombre=func_decorada,
+                            argumentos=args))
+                    raise PuenteError(
+                        f"metodo '{nombre_metodo}' no encontrado en "
+                        f"estructura '{obj_tipo}' (H-R90-5)")
                 raise PuenteError(
-                    "llamada a metodo (obj.metodo(args)) sin lowering de "
-                    "call-site — pendiente decision H-R90-5")
+                    "llamada a metodo (obj.metodo(args)) sin tipo de "
+                    "receptor resoluble — pendiente H-R90-5")
             return con(ExprAccesoCampo(objeto=self._nodo(izq),
                                        nombre_campo=self.txt(i)))
         if t in (34, 48):   # DECLARACION / LET
