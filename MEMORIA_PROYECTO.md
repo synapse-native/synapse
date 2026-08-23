@@ -4,7 +4,7 @@
 
 ## 1. CONTEXTO ACTUAL
 
-- **Fase del roadmap:** FASE 22 FINALIZADA — R85 ✅ + R86 ✅ + R87 ✅ (`b22a37b`) + R88 ✅ (`58c8c5c`) + R89 ✅ (`c897c93`) + R90 ✅ (e2e 3/3; 40 passed) + R91 ✅ (`bad9536`; 54 passed) + R92 ✅ (`3967696`; Opción B Arquitecto: `variable` módulo, `let` local-only) + R93 ✅ (`abf7ad3`; DeclaracionVariable Pasada 1; 59 passed, 0 xfailed) + **R94 ✅ inventario paridad .syn/.syq + fix cuerpo_sino JSON** (`a05092f`; 5 pares estructurales 5/5 TRUE + test_si_sino_paridad + 4 regresión R92 = 10 passed; verificador 0 brechas). **Criterio ROADMAP F22 ("mismo AST canónico para construcciones equivalentes") CUMPLIDO.** Fase 22 formalmente cerrada.
+- **Fase del roadmap:** FASE 23 — Modelo de memoria SyQuex (Arenas + RC + análisis de alcance). **ME-F23-1 ✅** Arena allocator (Manual 4 §2): +Arena struct en synapse_rt_types.h + arena_crear/arena_alloc/arena_free/arena_reset/arena_crear_hijo en runtime/core/memory.c; tests/test_arena_scope.c + tests/syquex/test_arena_scope.py (5 tests, 30/30 C sub-tests, 0 regressions). Verificador 0 brechas. Siguiente: ME-F23-2 — rc<T> no atómico (Manual 4 §3.2). |
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecánica — `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocará y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producción modificada sin lectura registrada del día. Obligación adicional: archivo productivo nuevo sin mapeo también bloquea → añadir su entrada al mapa primero.
 
