@@ -167,6 +167,36 @@ void* arc_weak_upgrade(WeakRef* w);
 void rc_weak_release(WeakRef* w);     // libera débil (libera header si fuerte también 0)
 void arc_weak_release(WeakRef* w);
 
+// --- SemNodo AST walker (analizador_alcance.syq, Manual 4 §5.2) ---
+// Forward declaration del NodoAST canónico (Manual 6 §1.2)
+typedef struct NodoAST_ {
+    int64_t tipo_nodo;
+    int64_t linea;
+    int64_t columna;
+    int64_t valor_int;
+    double valor_dec;
+    int64_t ptr_str;
+    int64_t len_str;
+    int64_t hijo_izq;
+    int64_t hijo_der;
+    int64_t hermano;
+    int64_t ptr_extra;
+} NodoAST;
+
+// NodoID canónicos (Manual 2 §7.2)
+#define NODO_DECLARACION_TIPO 51
+#define NODO_DECLARACION      34
+#define NODO_LET              48
+#define NODO_FUNCION          2
+#define NODO_RETORNAR         5
+#define NODO_PROPAGAR         53
+
+// Runtime C para el analizador (externos del .syq)
+void _a_set_nodos_base(NodoAST* base);  // set base pointer for walker
+void _a_reset_rc_vars(void);
+void _a_analizar_bloque(int n);
+int _a_get_rc_count(void);
+
 // --- Thread tracker helpers ---
 struct _HiloArgs {
     void* (*fn)(void*);

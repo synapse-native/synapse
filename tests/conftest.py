@@ -151,6 +151,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_rc_arc", "test_rc_arc.c", ["synapse_rt_memory.o"], []),
     # FASE 23 ME-3: débil<T> WeakRef (Manual 4 §4.2) — solo memory.o
     ("test_weak", "test_weak.c", ["synapse_rt_memory.o"], []),
+    # FASE 23 ME-5: scope analyzer C runtime (Manual 4 §5.2-5.3) — solo memory.o
+    ("test_cleanup_blocks", "test_cleanup_blocks.c", ["synapse_rt_memory.o"], []),
 ]
 
 

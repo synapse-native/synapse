@@ -714,3 +714,42 @@ void arc_weak_release(WeakRef* w) {
     w->header = NULL;
     w->version = 0;
 }
+
+// ============================================================
+// SemNodo AST walker for analizador_alcance.syq (Manual 4 §5.2)
+// ============================================================
+
+static NodoAST* g_ast_base = NULL;
+static int g_rc_count = 0;
+
+void _a_set_nodos_base(NodoAST* base) {
+    g_ast_base = base;
+}
+
+void _a_reset_rc_vars(void) {
+    g_rc_count = 0;
+}
+
+void _a_analizar_bloque(int n) {
+    if (!g_ast_base || n < 0) return;
+    NodoAST* nodo = &g_ast_base[n];
+
+    // NODO_DECLARACION (34) / NODO_LET (48): variable con ownership
+    // valor_int flags: bit0=rc, bit1=arc, bit2=débil
+    if (nodo->tipo_nodo == NODO_DECLARACION || nodo->tipo_nodo == NODO_LET) {
+        int flags = (int)nodo->valor_int;
+        // rc (bit0) o arc (bit1) pero NO débil (bit2)
+        if ((flags & 3) > 0 && (flags & 4) == 0) {
+            g_rc_count++;
+        }
+    }
+
+    // Recursión en hijos
+    _a_analizar_bloque((int)nodo->hijo_izq);
+    _a_analizar_bloque((int)nodo->hijo_der);
+    _a_analizar_bloque((int)nodo->hermano);
+}
+
+int _a_get_rc_count(void) {
+    return g_rc_count;
+}
