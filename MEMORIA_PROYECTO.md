@@ -4,7 +4,7 @@
 
 ## 1. CONTEXTO ACTUAL
 
-- **Fase del roadmap:** FASE 23 — Modelo de memoria SyQuex (Arenas + RC + análisis de alcance). **ME-F23-1 ✅** Arena allocator (Manual 4 §2: `d6995ce`). **ME-F23-2 ✅** rc<T> + arc<T> (Manual 4 §3.2-3.3: `172cd8b`). Siguiente: ME-F23-3 — débil<T> (Manual 4 §4.2). |
+- **Fase del roadmap:** FASE 23 — Modelo de memoria SyQuex (Arenas + RC + análisis de alcance). **ME-F23-1 ✅** Arena allocator (`d6995ce`). **ME-F23-2 ✅** rc<T> + arc<T> (`172cd8b`). **ME-F23-3 ✅** débil<T> WeakRef (`e9b667e`). Siguiente: syquex/analizador_alcance.syq (Manual 3 §5 + Manual 4 §4.4/§5). |
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecánica — `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocará y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producción modificada sin lectura registrada del día. Obligación adicional: archivo productivo nuevo sin mapeo también bloquea → añadir su entrada al mapa primero.
 
