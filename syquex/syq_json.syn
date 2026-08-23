@@ -9,10 +9,11 @@
 // convierta al AST tipado que consume el pipeline S1
 // (pipeline.py compilar_desde_canonico, Manual 6 §1.2 ABI v1).
 //
-// Esquema emitido (solo ints — sin escaping):
-// {"syquex_flat":"1","total":N,"raiz":R,"nodos":[[t,l,c,vi,
-//   izq,der,herm,extra,txt|null], ...]}
-// txt = [byte0,byte1,...] (lexema/payload del nodo, UTF-8).
+// Esquema emitido (solo ints — sin escaping), version "2":
+// {"syquex_flat":"2","total":N,"raiz":R,"nodos":[[t,l,c,vi,
+//   izq,der,herm,extra,txt1|null,txt2|null], ...]}
+// txt1 = span primario (nombre/literal); txt2 = span slot2
+// (tipo de retorno/parametro/campo, alias de tipo) — Manual 3 §11.2.
 //
 // La salida va a STDOUT (el invocador la captura); ante error
 // se imprime SYQ_JSON_ERROR=<n> y se retorna <n>.
@@ -59,6 +60,19 @@ funcion sj_nodo_vi(i: entero) -> entero:
         retornar r
     retornar 0
 
+// Vista texto del span SLOT2 del nodo de salida (tipos; paridad
+// trad_copiar_payload que copia trad_s2p/s2h/s2l).
+funcion sj_texto2(i: entero) -> texto:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        let s: texto = ""
+        asm("int* _p2 = (int*)trad_s2p(); int* _h2 = (int*)trad_s2h(); int* _l2 = (int*)trad_s2l(); if (i < 65536 && _p2 && _h2 && _l2 && _l2[i] > 0) { uintptr_t _q = ((uintptr_t)(unsigned)_h2[i] << 32) | (unsigned)_p2[i]; CadenaSegura _c2; _c2.longitud = _l2[i]; _c2.datos = (char*)_q; s = _c2; }")
+        retornar s
+    retornar ""
+
 // Emite un entero seguido de separador "," (sin salto de línea).
 funcion sj_ent(p: entero) -> nulo:
     requiere:
@@ -91,6 +105,29 @@ funcion sj_txt(i: entero) -> nulo:
         j = j + 1
     escribir("]")
 
+// Igual que sj_txt pero sobre el span SLOT2.
+funcion sj_txt2(i: entero) -> nulo:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    t = sj_texto2(i)
+    n = sj_long_texto(t)
+    si n <= 0:
+        escribir("null")
+        retornar
+    escribir("[")
+    j = 0
+    mientras j < n:
+        b = sj_byte_en(t, j)
+        si b < 0:
+            b = 0
+        escribir(entero_a_texto(b))
+        si j + 1 < n:
+            escribir(",")
+        j = j + 1
+    escribir("]")
+
 // Serializa TODO el SemNodo[] de salida como JSON plano a stdout.
 // Retorna 0 en éxito o negativo (código del traductor/desborde).
 funcion syq_json_emitir(raiz: entero) -> entero:
@@ -102,7 +139,7 @@ funcion syq_json_emitir(raiz: entero) -> entero:
     si total <= 0:
         escribir_linea("SYQ_JSON_ERROR=-3")
         retornar -3
-    escribir("{\"syquex_flat\":\"1\",\"total\":")
+    escribir("{\"syquex_flat\":\"2\",\"total\":")
     escribir(entero_a_texto(total))
     escribir(",\"raiz\":")
     escribir(entero_a_texto(raiz))
@@ -119,6 +156,8 @@ funcion syq_json_emitir(raiz: entero) -> entero:
         sj_ent(trad_herm(i))
         sj_ent(0)
         sj_txt(i)
+        escribir(",")
+        sj_txt2(i)
         escribir("]")
         si i + 1 < total:
             escribir(",")

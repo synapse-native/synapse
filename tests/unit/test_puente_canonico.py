@@ -1,0 +1,138 @@
+"""
+test_puente_canonico.py — R90 corte 2: SemNodo[] plano -> AST tipado S1
+(Manual 1 s3.1 backend compartido; Manual 3 s11.1; Manual 6 s1.2).
+Registros planos construidos a mano: sin depender del exe.
+"""
+
+import os
+import sys
+
+import pytest
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, PROJECT_ROOT)
+
+from compilador.puente_canonico import (          # noqa: E402
+    PuenteError, plano_a_programa,
+)
+from compilador.ast_nodes import (                # noqa: E402
+    Programa, DefinicionFuncion, DefinicionEstructura, SentenciaSi,
+    NodoCoincidir, DeclaracionVariable, OpBinaria, LiteralNumero,
+    SentenciaRetornar,
+)
+
+
+def _reg(t, vi=0, izq=0, der=0, herm=0, extra=0, t1=None, t2=None, lin=1):
+    return [t, lin, 1, vi, izq, der, herm, extra, t1, t2]
+
+
+def _b(s):
+    return list(s.encode("utf-8"))
+
+
+def _flat(nodos):
+    return {"syquex_flat": "2", "total": len(nodos), "raiz": 0,
+            "nodos": nodos}
+
+
+def test_programa_minimo_con_funcion():
+    nodos = [
+        _reg(1, izq=1),
+        _reg(2, izq=2, der=4, t1=_b("sumar"), t2=_b("entero")),
+        _reg(15, herm=3, t1=_b("a"), t2=_b("entero")),
+        _reg(15, t1=_b("b"), t2=_b("entero")),
+        _reg(5, izq=5),
+        _reg(12, izq=6, der=7, t1=_b("+")),
+        _reg(8, t1=_b("a")),
+        _reg(8, t1=_b("b")),
+    ]
+    prog = plano_a_programa(_flat(nodos))
+    assert isinstance(prog, Programa)
+    fn = prog.sentencias[0]
+    assert isinstance(fn, DefinicionFuncion)
+    assert fn.nombre == "sumar" and fn.tipo_retorno == "entero"
+    assert [p.nombre for p in fn.parametros] == ["a", "b"]
+    ret = fn.cuerpo[0]
+    assert isinstance(ret, SentenciaRetornar)
+    bin_ = ret.expr
+    assert bin_.operador == "+"
+    assert bin_.izquierdo.nombre == "a"
+
+
+def test_operador_fallback_por_codigo():
+    # BINARIA sin lexema en slot1 (desugar para-rango): vi=201 -> "<"
+    nodos = [
+        _reg(1, izq=1),
+        _reg(12, izq=2, der=3, vi=201),
+        _reg(8, t1=_b("i")),
+        _reg(9, t1=_b("10")),
+    ]
+    op = plano_a_programa(_flat(nodos)).sentencias[0]
+    assert op.operador == "<"
+    assert isinstance(op.derecho, LiteralNumero)
+    assert op.derecho.valor == 10
+
+
+def test_estructura_y_si_sino():
+    nodos = [
+        _reg(1, izq=1),
+        _reg(16, izq=2, t1=_b("Punto"), herm=4),
+        _reg(15, herm=3, t1=_b("x"), t2=_b("entero")),
+        _reg(15, t1=_b("yy"), t2=_b("entero")),
+        _reg(3, izq=5, der=6, extra=8),
+        _reg(9, t1=_b("1")),
+        _reg(48, der=7, t1=_b("z"), t2=_b("entero")),
+        _reg(9, t1=_b("2")),
+        _reg(11, t1=_b("sino")),
+    ]
+    prog = plano_a_programa(_flat(nodos))
+    est, si = prog.sentencias[0], prog.sentencias[1]
+    assert [(c.nombre, c.tipo) for c in est.campos] == [("x", "entero"),
+                                                        ("yy", "entero")]
+    let = si.cuerpo[0]
+    assert isinstance(let, DeclaracionVariable) and let.nombre == "z"
+    assert si.cuerpo_sino and si.cuerpo_sino[0].valor == "sino"
+
+
+def test_coincidir_casos_patron_span():
+    nodos = [
+        _reg(1, izq=1),
+        _reg(38, izq=4, der=2),              # sujeto=n; casos: 2->3
+        _reg(39, der=5, herm=3, t1=_b("0"), lin=5),   # caso 0 => ret 1
+        _reg(39, der=7, t1=_b("_"), lin=6),           # caso _ => ret 0
+        _reg(8, t1=_b("n")),
+        _reg(5, izq=6),
+        _reg(9, t1=_b("1")),
+        _reg(9, t1=_b("0")),
+    ]
+    m = plano_a_programa(_flat(nodos)).sentencias[0]
+    assert isinstance(m, NodoCoincidir)
+    assert m.expresion.nombre == "n"
+    assert [c.patron for c in m.casos] == ["0", "_"]
+    assert m.casos[0].linea == 5
+
+
+def test_no_soportados_fallan_rapido():
+    for tid in (54, 55, 56, 57):
+        nodos = [_reg(1, izq=1), _reg(tid)]
+        with pytest.raises(PuenteError):
+            plano_a_programa(_flat(nodos))
+
+
+def test_asignacion_indexada_rechazada():
+    # H-R90-2: a[i] = ... sin clase en el AST tipado S1
+    nodos = [
+        _reg(1, izq=1),
+        _reg(7, izq=2, der=3),
+        _reg(29, izq=4, der=5),
+        _reg(8, t1=_b("m")),
+        _reg(9, t1=_b("0")),
+        _reg(9, t1=_b("7")),
+    ]
+    with pytest.raises(PuenteError):
+        plano_a_programa(_flat(nodos))
+
+
+def test_esquema_incorrecto_rechazado():
+    with pytest.raises(PuenteError):
+        plano_a_programa({"syquex_flat": "1", "nodos": [], "raiz": 0})

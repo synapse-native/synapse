@@ -43,10 +43,29 @@ def _texto(nodo: list) -> str:
 
 
 def test_esquema_cabecera(flat):
-    assert flat["syquex_flat"] == "1"
+    assert flat["syquex_flat"] == "2"
     assert flat["total"] == len(flat["nodos"])
     assert flat["total"] > 40
     assert flat["raiz"] == 0
+
+
+def test_registro_de_diez_campos(flat):
+    for n in flat["nodos"]:
+        assert len(n) == 10
+
+
+def test_slot2_tipo_retorno_y_params(flat):
+    nodos = flat["nodos"]
+    # visible(v: entero) -> entero: FUNCION con txt1 y txt2 (slot2 = tipo)
+    fn = next(n for n in nodos
+              if n[0] == 2 and bytes(n[8]).decode() == "visible")
+    assert bytes(fn[9]).decode() == "entero"
+    # primer PARAMETRO de la cadena del __init__ (px) con tipo entero en slot2
+    init_ = next(n for n in nodos
+                 if n[0] == 2 and bytes(n[8]).decode() == "__init__")
+    p = nodos[init_[4]]
+    assert p[0] == 15 and bytes(p[8]).decode() == "px"
+    assert bytes(p[9]).decode() == "entero"
 
 
 def test_raiz_programa_y_sin_bloque_sq(flat):
