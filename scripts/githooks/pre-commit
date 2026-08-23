@@ -73,6 +73,16 @@ fi
 
 echo "✅ Alineación verificada: 0 brechas"
 
+# --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
+echo "── Gate de lectura previa (regla 1) ──"
+if ! (cd "$RAIZ" && $PYTHON auditoria/registrar_lectura.py --verificar); then
+    echo "❌ LECTURA PREVIA PENDIENTE — commit bloqueado" >&2
+    echo "" >&2
+    echo "Lee la sección exigida en docs/mapa_manuales.md y registra:" >&2
+    echo '  python auditoria/registrar_lectura.py --registrar --archivos "<archivos>" --cita "<Manual N §S>" --puntos "<requisitos leidos>"' >&2
+    exit 1
+fi
+
 # --- D-9(e) preventivo: ast_nodos.h sincronizado con parser_constantes.syn ---
 echo "── Verificando header canónico NodoID/TokenID (D-9(e)) ──"
 if ! (cd "$RAIZ" && $PYTHON scripts/gen_ast_nodos_h.py --check); then

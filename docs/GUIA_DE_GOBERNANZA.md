@@ -15,6 +15,17 @@
 7. **Respeta el orden del roadmap.** No adelantes fases.
 8. **Cero dependencias no especificadas.** Solo Axon está autorizado.
 
+## 📖 GATE DE LECTURA PREVIA (regla 1 mecanizada)
+
+El pre-commit **bloquea** el commit si hay código de producción modificado sin lectura registrada (del mismo día) de las secciones exigidas en `docs/mapa_manuales.md`. Las citas se validan contra los encabezados reales de `docs/manuales/`: las secciones fabricadas se rechazan; registrar la subsección §X.Y cubre el requisito §X.
+
+```
+python auditoria/registrar_lectura.py --pendientes    # qué exige el mapa para tus cambios
+python auditoria/registrar_lectura.py --registrar --archivos "<rutas>" --cita "Manual N §S" --puntos "<requisitos leidos>"
+```
+
+Obligación del agente ANTES de codificar: ejecutar `--pendientes`, leer las secciones listadas y registrar la lectura con un resumen real de los requisitos. Un archivo productivo nuevo sin entrada en el mapa también bloquea: añade primero su mapeo a `docs/mapa_manuales.md`.
+
 ## 📋 PROTOCOLO DE ENTREGA (COPIA Y PEGA ESTO)
 Para cada micro-entregable, Opencode debe usar este formato (sin tablas ni markdown elegante):
 --- REPORTE DE MICRO-ENTREGABLE ---
