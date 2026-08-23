@@ -153,6 +153,9 @@ _RT_BINARIOS_EXTRA = [
     ("test_weak", "test_weak.c", ["synapse_rt_memory.o"], []),
     # FASE 23 ME-5: scope analyzer C runtime (Manual 4 §5.2-5.3) — solo memory.o
     ("test_cleanup_blocks", "test_cleanup_blocks.c", ["synapse_rt_memory.o"], []),
+    # FASE 23 ME-6: arc<T> atomic + component arena (Manual 4 §3.3, §2.4) — solo memory.o
+    ("test_arc", "test_arc.c", ["synapse_rt_memory.o"], []),
+    ("test_component_arena", "test_component_arena.c", ["synapse_rt_memory.o"], []),
 ]
 
 

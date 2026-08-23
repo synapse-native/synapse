@@ -524,11 +524,8 @@ Arena* arena_crear_hijo(Arena* padre, size_t tamano_inicial) {
 
 void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion) {
     if (!arena) {
-        void* p = malloc(tamano);
-        if (p) memset(p, 0, tamano);
-        return p;
+        return NULL;
     }
-
     while (1) {
         if (alineacion == 0) alineacion = 1;
         uintptr_t addr = (uintptr_t)arena->puntero;
