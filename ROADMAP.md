@@ -303,6 +303,7 @@ Estas fases construyen el lenguaje hermano de alto nivel (Syquex), integran Open
   - **Comando `opensyn ai bindings --header header.h`:** Generación automática de wrappers en Syquex a partir de cabeceras C.
   - **Comando `opensyn ai transpile --from python script.py --to syquex`:** Transpilación de Python a Syquex.
   - **Bucle de validación:** Implementación en el LSP de la orquestación del bucle de hasta 3 intentos para corregir código generado que no compila, utilizando el flag `--check` del CLI de Synapse.
+  - **Flag `--check` / `--no-emit` en el CLI:** Implementación en `synapse` de un modo de validación que solo verifica sintaxis y semántica sin generar código de salida, utilizado por el LSP para la validación rápida. **Subfase 26.1:** Este flag se adelanta a la Fase 26 para habilitar el bucle de validación de OpenSyn.
   - Pruebas de integración que verifiquen que el código transpilado compila, que los bindings son correctos y que el bucle de corrección funciona.
 - **Criterios de Aceptación:** OpenSyn genera código Syquex válido a partir de Python y de cabeceras C. Las explicaciones de código Syquex son precisas. El bucle de validación reduce la tasa de errores de compilación del código generado a menos del 5% en los primeros 3 intentos. El contexto estático se inyecta correctamente en cada prompt.
 - **Dependencias:** Fase 25, Fase 12 (IA Nativa de Synapse).
@@ -311,16 +312,15 @@ Estas fases construyen el lenguaje hermano de alto nivel (Syquex), integran Open
 
 ---
 
-### FASE 27: HERRAMIENTAS DE DESARROLLO (LSP, VS CODE, DEBUGGER, CLI CHECK)
+### FASE 27: HERRAMIENTAS DE DESARROLLO (LSP, VS CODE, DEBUGGER)
 
-- **Objetivo:** Completar el ecosistema de herramientas de desarrollo para Synapse y Syquex, incluyendo la integración completa del bucle de validación en el LSP y el flag `--check` en el CLI.
+- **Objetivo:** Completar el ecosistema de herramientas de desarrollo para Synapse y Syquex, incluyendo la integración completa del bucle de validación en el LSP. El flag `--check` del CLI se implementa en la Fase 26 (subfase 26.1) y se utiliza desde aquí.
 - **Entregables:**
   - `nucleo/lsp.syn`: Servidor LSP nativo con soporte para ambos lenguajes y orquestación del bucle de validación (hasta 3 intentos de corrección).
-  - **Flag `--check` / `--no-emit` en el CLI:** Implementación en `synapse` de un modo de validación que solo verifica sintaxis y semántica sin generar código de salida, utilizado por el LSP para la validación rápida.
   - `vscode-synapse/`: Extensión VS Code con resaltado, autocompletado, diagnóstico, comandos IA y soporte para el bucle de corrección (mostrar progreso, errores, etc.).
   - CLI unificado (`synapse`): `build`, `run`, `test`, `fetch`, `opensyn`, `debug`, `check`.
   - Debugger integrado (time-travel, breakpoints reversibles) con integración en VS Code.
-  - Pruebas E2E del LSP, la extensión y el flag `--check`.
+  - Pruebas E2E del LSP, la extensión y el flag `--check` (validación rápida).
 - **Criterios de Aceptación:** La experiencia de desarrollo (edición, depuración, asistencia IA) es fluida y comparable a la de lenguajes establecidos. El flag `--check` funciona correctamente y es utilizado por el LSP. Las pruebas E2E confirman la integración completa.
 - **Dependencias:** Fase 26.
 - **Riesgos y Mitigaciones:** Alto. El LSP debe manejar múltiples documentos y cambios incrementales sin fallos. Se debe implementar un mecanismo de sincronización robusto.
@@ -395,8 +395,8 @@ Estas fases construyen el lenguaje hermano de alto nivel (Syquex), integran Open
 | 23 | 6 | 22 |
 | 24 | 8 | 23 |
 | 25 | 4 | 24 |
-| 26 | 5 | 25, 12 |
-| 27 | 6 | 26 |
+| 26 | 5 | 25, 12 | *(incl. 26.1: flag `--check` adelantado del Manual 8 §4.2)* |
+| 27 | 6 | 26 | *(sin `--check`; lo cubre F26.1)* |
 | 28 | 4 | 27 |
 | 29 | 3 | 26, 11 |
 | 30 | 4 | 29, 11 |
@@ -437,8 +437,8 @@ Para cada fase, los equipos deben crear los archivos listados en los entregables
 **Fase 23:** `syquex/analizador_alcance.syq`, `runtime/core/memory.c` (ampliación).  
 **Fase 24:** `lib/io.syq`, `lib/math.syq`, `lib/texto.syq`, `lib/lista.syq`, `lib/mapa.syq`, `lib/json.syq`, `lib/web.syq`, `lib/gui.syq`, `lib/dom.syq`, `lib/db.syq`, `lib/tiempo.syq`, `lib/pruebas.syq`, `lib/ia.syq`, `syquex/ffi_marshaling.syq`, `runtime/core/component_arena.c`.  
 **Fase 25:** `lib/dom.syq` (completado).  
-**Fase 26:** `opensyn/router.syn`, `opensyn/transpiler.syn`, actualización de `synapse_rag.c` para inyección de contexto estático, `opensyn/installer.syn` (primera versión).  
-**Fase 27:** `nucleo/lsp.syn` (con bucle de validación), `vscode-synapse/`, CLI con flag `--check`.  
+**Fase 26:** `opensyn/router.syn`, `opensyn/transpiler.syn`, actualización de `synapse_rag.c` para inyección de contexto estático, `opensyn/installer.syn` (primera versión). **Subfase 26.1:** Flag `--check` / `--no-emit` en el CLI (`synapse check --no-emit`), especificado en Manual 8 §4.2, adelantado de la Fase 27.  
+**Fase 27:** `nucleo/lsp.syn` (con bucle de validación), `vscode-synapse/`, debugger integrado. *(El flag `--check` se implementa en F26.1 y se usa aquí.)*  
 **Fase 29:** `std/os.syn`, `opensyn/installer.syn` (completado).  
 **Fase 30:** Scripts de instalación (`.iss`, `.sh`, `.dmg`), `Makefile` / `build.py`.
 
@@ -460,7 +460,7 @@ Para cada fase, los equipos deben crear los archivos listados en los entregables
 
 ## CONCLUSIÓN
 
-Este roadmap define **todas las fases, hitos, entregables y criterios de aceptación** necesarios para construir el ecosistema Synapse + Syquex + OpenSyn desde cero. Cada fase está especificada con el nivel de detalle necesario para guiar a un equipo de ingenieros sin dejar espacio a interpretaciones ambiguas. Se han incorporado las modificaciones derivadas de los manuales 7 y 8, incluyendo la inyección de contexto estático para que la IA aprenda Synapse/Syquex sin fine‑tuning, el bucle de validación y corrección automática de código, y el flag `--check` en el CLI.
+Este roadmap define **todas las fases, hitos, entregables y criterios de aceptación** necesarios para construir el ecosistema Synapse + Syquex + OpenSyn desde cero. Cada fase está especificada con el nivel de detalle necesario para guiar a un equipo de ingenieros sin dejar espacio a interpretaciones ambiguas. Se han incorporado las modificaciones derivadas del ANEXO-MANUALES v8.1.0, incluyendo: la inyección de contexto estático para que la IA aprenda Synapse/Syquex sin fine‑tuning, el bucle de validación y corrección automática de código, el adelanto del flag `--check` a la Fase 26 (subfase 26.1), las reglas de inferencia de tipos para la transpilación (Manual 7 §5.1.1), los esquemas JSON de comandos LSP (Manual 7 §4.1), el archivo `modelos.toml` (Manual 9 §5.6), la API `std/os.syn` (Manual 9 §5.7), y la biblioteca estándar Syquex (`lib/`) documentada en Manual 3 §12.
 
 El plan está estructurado para minimizar riesgos mediante la construcción incremental, comenzando por el núcleo de Synapse y añadiendo capas de abstracción (Syquex) y servicios (OpenSyn) sobre una base sólida y probada.
 

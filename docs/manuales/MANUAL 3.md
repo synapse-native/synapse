@@ -242,8 +242,8 @@ Syquex comparte los tipos primitivos de Synapse (`entero`, `decimal`, `booleano`
 
 ### 5.2. Tipos de Colecciones (Nativos en la Biblioteca Estándar)
 
-- **`lista<T>`**: Lista dinámica (vector). Soporta `[]`, `len()`, `append()`, `pop()`, `iter()`.
-- **`mapa<K,V>`**: Diccionario hash. Soporte `[]`, `keys()`, `values()`, `iter()`.
+- **`Lista<T>`**: Lista dinámica (vector). Soporta `[]`, `len()`, `append()`, `pop()`, `iter()`.
+- **`Mapa<K,V>`**: Diccionario hash. Soporte `[]`, `keys()`, `values()`, `iter()`.
 
 ### 5.3. Tipos de Memoria Especiales (Para el Compilador)
 
@@ -453,7 +453,43 @@ El traductor conserva `archivo`, `linea` y `columna` originales para que los err
 
 ---
 
-## 12. PRUEBAS OBLIGATORIAS PARA ESTA ETAPA
+## 12. BIBLIOTECA ESTÁNDAR DE SYQUEX (`lib/`)
+
+Syquex incluye una biblioteca estándar modular ubicada en `lib/`, con archivos `.syq` que proporcionan funcionalidad de alto nivel. Esta sección describe la estructura general de la biblioteca; **las APIs específicas de cada módulo se especifican en los archivos `.syq` de la biblioteca estándar, cuyo diseño se detalla en la documentación de la Fase 24** (`docs/manuales/MANUAL 4.md`, §6; `ROADMAP.md`, Fase 24).
+
+### 12.1. Estructura de Módulos
+
+| Módulo | Archivo | Descripción |
+|--------|---------|-------------|
+| IO | `lib/io.syq` | Entrada/salida (consola, archivos). |
+| Web | `lib/web.syq` | Servidor HTTP basado en fibras (no bloqueante). |
+| DOM | `lib/dom.syq` | Manipulación del DOM para WASM con arenas de componente. |
+| JSON | `lib/json.syq` | Serialización/deserialización JSON (FFI a cJSON). |
+| Lista | `lib/lista.syq` | Operaciones con listas (map, filter, reduce, sort). |
+| Mapa | `lib/mapa.syq` | Operaciones con mapas/diccionarios. |
+| DB | `lib/db.syq` | Conexión a SQLite (FFI a libsqlite3) y PostgreSQL. |
+| Tiempo | `lib/tiempo.syq` | Fechas y tiempos. |
+| Pruebas | `lib/pruebas.syq` | Framework de testing (similar a unittest). |
+| IA | `lib/ia.syq` | Integración con OpenSyn. |
+| FFI | `lib/ffi.syq` | Utilidades para interoperabilidad. |
+
+### 12.2. Importación
+
+Los módulos se importan con `importar lib.modulo`:
+
+```syquex
+importar lib.io
+importar lib.web
+importar lib.json
+```
+
+### 12.3. Nota sobre FFI
+
+El servidor web (`lib/web.syq`) utiliza FFI a libmicrohttpd o sockets nativos. Cada conexión entrante se maneja en una fibra separada, según el modelo de fibras M:N del Manual 5. Para detalles de la API, consulte los archivos fuente en `lib/web.syq`.
+
+---
+
+## 13. PRUEBAS OBLIGATORIAS PARA ESTA ETAPA
 
 | Test | Comando | Criterio |
 |------|---------|----------|
@@ -468,7 +504,7 @@ El traductor conserva `archivo`, `linea` y `columna` originales para que los err
 
 ---
 
-## 13. EJEMPLO COMPLETO DE PROGRAMA SYQUEX
+## 14. EJEMPLO COMPLETO DE PROGRAMA SYQUEX
 
 **Código fuente (`ejemplo.syq`):**
 
@@ -521,7 +557,7 @@ funcion principal() -> Resultado<nulo, texto>:
 
 ---
 
-## 14. SIGUIENTES PASOS
+## 15. SIGUIENTES PASOS
 
 Con la sintaxis y semántica de Syquex definidas, el siguiente manual (Manual 4) se centrará en el **Modelo de Memoria de Syquex**: Arenas por ámbito, conteo de referencias, análisis de alcance, Cleanup Blocks y FFI Marshaling.
 

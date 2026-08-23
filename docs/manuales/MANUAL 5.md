@@ -487,7 +487,7 @@ funcion procesar(dato: entero) -> entero:
     retornar dato * 2
 
 funcion principal():
-    let resultados = lista<entero>()
+    let resultados = Lista<entero>()
     let c = Canal<Resultado<entero, Error>>(10)
     para i = 0 mientras i < 10:
         lanzar procesar_en_fibra(i, c)

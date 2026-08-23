@@ -326,23 +326,18 @@ funcion procesar_respuesta(respuesta_json: texto) -> Resultado<RespuestaProcesad
 
 ### 2.5. Instalador (`installer.syn`)
 
-El instalador de OpenSyn es un script en Synapse que se ejecuta la primera vez que el usuario activa OpenSyn. Detecta hardware, selecciona y descarga el modelo apropiado.
+El instalador de OpenSyn es un script en Synapse que se ejecuta la primera vez que el usuario activa OpenSyn. Detecta hardware, selecciona y descarga el modelo apropiado. Lee la lista de modelos disponibles y sus metadatos (URLs, hashes SHA‑256, tamaños) desde el archivo `modelos.toml` que se distribuye junto con el instalador (ver Manual 9, §5.6).
 
 **Flujo:**
-1. **Detección de hardware:** Usa `std.os` para obtener:
+1. **Detección de hardware:** Usa `std.os` (ver Manual 9, §5.7) para obtener:
    - RAM total y libre.
    - VRAM total y disponible (GPU NVIDIA, AMD, Apple).
    - Número de núcleos de CPU.
    - Sistema operativo y arquitectura.
 
-2. **Selección de modelo:** Según la VRAM disponible, selecciona una cuantización:
-   - `< 4 GB` → `deepseek-coder-1.3b-Q4_K_M.gguf` (~1 GB)
-   - `4-6 GB` → `codellama-7b-Q4_K_M.gguf` (~4 GB)
-   - `6-8 GB` → `codellama-7b-Q5_K_M.gguf` (~5 GB)
-   - `8-12 GB` → `codellama-13b-Q4_K_M.gguf` (~7 GB)
-   - `> 12 GB` → `codellama-34b-Q4_K_M.gguf` (~18 GB)
+2. **Selección de modelo:** Según la VRAM disponible, selecciona una cuantización (tabla de selección en Manual 9, §5.2). El instalador elige el modelo adecuado leyendo el archivo `modelos.toml`.
 
-3. **Descarga del modelo:** Descarga el modelo desde Hugging Face o Axon Hub, verificando su integridad mediante SHA‑256.
+3. **Descarga del modelo:** Descarga el modelo desde la URL especificada en `modelos.toml` (Hugging Face o Axon Hub), verificando su integridad mediante SHA‑256.
 
 4. **Configuración:** Escribe un archivo `~/.opensyn/config.toml` con la ruta del modelo, número de hilos, capas GPU, tamaño de contexto, etc.
 
@@ -364,11 +359,13 @@ funcion detectar_hardware() -> HardwareInfo:
     )
 
 funcion seleccionar_modelo(hw: HardwareInfo) -> ModeloInfo:
+    // Lee modelos.toml y selecciona según VRAM
+    let modelos = modelos_toml_leer()  // Desde modelos.toml (Manual 9 §5.6)
     si hw.vram_total < 4 * 1024 * 1024 * 1024:
-        retornar ModeloInfo(nombre: "deepseek-coder-1.3b-Q4_K_M", url: "...", sha256: "...", tamano: 1.1)
+        retornar modelos["deepseek-coder-1.3b-Q4_K_M"]
     si hw.vram_total < 6 * 1024 * 1024 * 1024:
-        retornar ModeloInfo(nombre: "codellama-7b-Q4_K_M", url: "...", sha256: "...", tamano: 4.0)
-    // ... más casos
+        retornar modelos["codellama-7b-Q4_K_M"]
+    // ... más casos según modelos.toml
 
 funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     let ruta = os.home() + "/.opensyn/models/" + info.nombre + ".gguf"
@@ -588,6 +585,31 @@ El LSP expone comandos personalizados que invocan OpenSyn:
 }
 ```
 
+**`synapse/aiTranspile` (petición):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "synapse/aiTranspile",
+  "params": {
+    "textDocument": { "uri": "file:///proyecto/script.py" },
+    "from": "python",
+    "to": "syquex"
+  }
+}
+```
+
+**`synapse/aiTranspile` (respuesta):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "codigo": "funcion procesar_datos(datos: Lista<entero>) -> Lista<entero>:\n    ..."
+  }
+}
+```
+
 ### 4.2. Flujo de una Petición de IA con Validación
 
 El LSP es el responsable de orquestar el bucle de validación (descrito en la sección 6.3). No se limita a ser un proxy pasivo.
@@ -660,6 +682,25 @@ funcion procesar_datos(datos: Lista<entero>) -> Lista<entero>:
             resultado.agregar(item * 2)
     retornar resultado
 ```
+
+#### 5.1.1. Reglas de Inferencia de Tipos para la Transpilación
+
+El transpiler de Python → Syquex aplica las siguientes reglas de inferencia de tipos:
+
+1. **Inferencia de tipos básicos:**
+   - Enteros literales (`42`) → `entero`.
+   - Flotantes literales (`3.14`) → `decimal`.
+   - Cadenas (`"hola"`) → `texto`.
+   - Listas homogéneas (`[1,2,3]`) → `Lista<entero>`.
+   - Diccionarios homogéneos (`{"a":1}`) → `Mapa<texto, entero>`.
+
+2. **Inferencia de funciones:**
+   - Si el cuerpo de la función usa operadores aritméticos con operandos del mismo tipo, se infiere ese tipo para los parámetros y el retorno.
+   - Si el cuerpo usa operaciones de concatenación de cadenas, se infiere `texto`.
+   - Si el cuerpo usa `raise`, el tipo de retorno se infiere como `Resultado<T, texto>` donde T es el tipo de los retornos exitosos.
+   - Si no se puede inferir un tipo, se usa `Objeto` (genérico) y se emite una advertencia. El usuario puede anotar manualmente.
+
+3. **Regla de fallback:** cualquier variable o parámetro sin tipo explícito y sin inferencia clara se declara como `Objeto` (equivalente a `any` en TypeScript). El compilador de Syquex acepta `Objeto` con operaciones dinámicas en tiempo de ejecución.
 
 ### 5.2. Generación de Bindings C → Syquex
 

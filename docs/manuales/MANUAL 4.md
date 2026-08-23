@@ -226,9 +226,9 @@ estructura Nodo:
     siguiente: débil<Nodo>   // Referencia débil para evitar ciclo
 
 funcion crear_lista():
-    let a = rc(Nodo(1, debil(nulo)))  // debil(nulo) es una referencia débil vacía
-    let b = rc(Nodo(2, debil(a)))     // b tiene una débil a a
-    a.siguiente = debil(b)             // a tiene una débil a b
+    let a = rc(Nodo(1, débil(nulo)))  // débil(nulo) es una referencia débil vacía
+    let b = rc(Nodo(2, débil(a)))     // b tiene una débil a a
+    a.siguiente = débil(b)             // a tiene una débil a b
     // Cuando a y b salen del ámbito, sus rc se decrementan y se liberan sin fugas
 ```
 
@@ -364,11 +364,51 @@ estructura Ventana:
         self.boton = Boton("Clic", self)      // se asigna en la arena
         self.boton.onclick = funcion():
             // Captura débil para evitar ciclo
-            let ventana = debil(self)
+            let ventana = débil(self)
             ventana?.cerrar()
 
     metodo cerrar():
         comp_destroy(self.arena)  // Libera toda la jerarquía de componentes
+```
+
+### 6.6. Arenas de Componente para WASM
+
+Los elementos DOM creados en Syquex deben asignarse en la arena de componente correspondiente. El `Elemento` es un puntero a un objeto JS que vive en la memoria lineal de WASM, y su ciclo de vida está vinculado a la arena de componente.
+
+```syquex
+// lib/dom.syq
+// Manipulación del DOM para WASM, con arenas de componente (§6.2, §6.3).
+
+estructura Elemento:
+    ptr: puntero     // puntero al objeto JS en la memoria lineal (ID)
+    arena_id: entero // identificador de la arena de componente
+
+funcion crear_elemento(tag: texto) -> Resultado<Elemento, texto>:
+    // Asigna el elemento en la arena de componente actual.
+    let arena = comp_arena_actual()
+    si arena == nulo:
+        retornar err("No hay arena de componente activa")
+    let id = externo js_create_element(tag.datos)  // FFI
+    comp_arena_asignar(arena, id)  // registra el ID en la arena
+    retornar ok(Elemento(id, arena.id))
+
+metodo set_texto(elemento: &Elemento, texto: texto) -> nulo:
+    externo js_set_text(elemento.ptr, texto.datos)
+
+metodo set_atributo(elemento: &Elemento, nombre: texto, valor: texto) -> nulo:
+    externo js_set_attribute(elemento.ptr, nombre.datos, valor.datos)
+
+metodo agregar_hijo(padre: &Elemento, hijo: Elemento) -> nulo:
+    externo js_append_child(padre.ptr, hijo.ptr)
+
+metodo onclick(elemento: &Elemento, handler: funcion() -> nulo) -> nulo:
+    // El callback se almacena en un mapa global (JS) y se asocia al elemento.
+    // El callback se ejecuta en el contexto de la fibra que lo registró.
+    let id_callback = _registrar_callback(handler)  // FFI
+    externo js_onclick(elemento.ptr, id_callback)
+
+// La arena de componente se destruye con comp_destroy (§6.3),
+// lo que libera todos los elementos DOM asociados en masa.
 ```
 
 ---
@@ -406,7 +446,7 @@ Cuando un callback de C captura un objeto Syquex, se usa una referencia débil. 
 externo funcion gtk_button_clicked(button: &Boton, callback: funcion(&Boton) -> nulo)
 
 funcion conectar_boton(boton: Boton):
-    let captura = debil(boton)  // captura débil
+    let captura = débil(boton)  // captura débil
     gtk_button_clicked(&boton, funcion(b):
         let b = captura.obtener()
         si b != nulo:

@@ -439,6 +439,50 @@ funcion prueba_inferencia():
         io.escribir_linea("⚠️  Prueba de OpenSyn fallida. Revisa la configuración.")
 ```
 
+### 5.6. Archivo `modelos.toml`
+
+El instalador de OpenSyn lee el archivo `modelos.toml` para obtener las URLs, hashes SHA‑256 y tamaños de los modelos disponibles. Este archivo se distribuye junto con el instalador y se actualiza periódicamente. Permite al instalador seleccionar el modelo apropiado según el hardware detectado sin modificar el código del instalador.
+
+**Ejemplo de `modelos.toml`:**
+```toml
+[modelos]
+"deepseek-coder-1.3b-Q4_K_M" = { url = "https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-Chat-GGUF/resolve/main/deepseek-coder-1.3b-Q4_K_M.gguf", sha256 = "abc123...", tamano_gb = 1.1 }
+"codellama-7b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q4_K_M-gguf/resolve/main/codellama-7b-q4_K_M.gguf", sha256 = "def456...", tamano_gb = 4.0 }
+"codellama-7b-Q5_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q5_K_M-gguf/resolve/main/codellama-7b-q5_K_M.gguf", sha256 = "ghi789...", tamano_gb = 5.0 }
+"codellama-13b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-13b-code-Q4_K_M-gguf/resolve/main/codellama-13b-q4_K_M.gguf", sha256 = "jkl012...", tamano_gb = 7.0 }
+"codellama-34b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-34b-code-Q4_K_M-gguf/resolve/main/codellama-34b-q4_K_M.gguf", sha256 = "mno345...", tamano_gb = 18.0 }
+```
+
+### 5.7. API de `std/os.syn`
+
+El módulo `std/os.syn` proporciona funciones de detección de hardware y sistema utilitarias, utilizadas por el instalador de OpenSyn (ver §5.1). Estas funciones están implementadas mediante FFI a llamadas del sistema operativo.
+
+```syquex
+// std/os.syn
+// Funciones de sistema y detección de hardware.
+
+funcion memoria_total() -> entero:
+    // RAM total en bytes.
+    externo sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE)
+
+funcion memoria_libre() -> entero:
+    // RAM libre en bytes.
+    externo sysconf(_SC_AVPHYS_PAGES) * sysconf(_SC_PAGESIZE)
+
+funcion vram_total() -> entero:
+    // VRAM total de la GPU en bytes (0 si no hay GPU).
+    // Implementación en C en detect_hardware.c.
+    externo detect_vram_total() -> int64_t
+
+funcion cpu_nucleos() -> entero:
+    // Número de núcleos de CPU.
+    externo sysconf(_SC_NPROCESSORS_ONLN)
+
+funcion arquitectura() -> texto:
+    // "x86_64", "arm64", etc.
+    externo detect_arquitectura() -> const char*
+```
+
 ---
 
 ## 6. CERTIFICACIÓN DE PRODUCCIÓN Y HARDENING FINAL
