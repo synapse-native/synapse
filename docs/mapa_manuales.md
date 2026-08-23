@@ -82,7 +82,9 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
 
 Tests (`tests/**`), documentación (`docs/**`, `*.md` raíz), auditoría,
 scripts de soporte (`scripts/**`, `auditoria/**`), fixtures, benchmarks,
-ejemplos y artefactos de IDE. La razón: la lectura obligatoria protege el
-CÓDIGO DE PRODUCCIÓN contra desviaciones de especificación; los tests son
-derivados del comportamiento especificado (y su modificación ya está
-gobernada por la regla 5 con aprobación del Arquitecto).
+ejemplos y artefactos de IDE. Además, **cualquier archivo cuyo nombre empiece
+con `_`** se considera artefacto/instrumentación temporal (convención regla
+12: harnesses `_tmp_*`, probes) y queda exento. La razón: la lectura
+obligatoria protege el CÓDIGO DE PRODUCCIÓN contra desviaciones de
+especificación; los tests son derivados del comportamiento especificado (y su
+modificación ya está gobernada por la regla 5 con aprobación del Arquitecto).

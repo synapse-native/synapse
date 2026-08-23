@@ -64,6 +64,10 @@ def es_produccion(ruta):
     r = ruta.replace("\\", "/")
     if r.startswith("./"):
         r = r[2:]
+    # Convención del repo (regla 12): prefijo '_' = artefacto/instrumentación
+    # temporal (harnesses _tmp_*, probes _*) — nunca código de producción.
+    if Path(r).name.startswith("_"):
+        return False
     for pat in EXCLUIDOS:
         if fnmatch.fnmatch(r, pat):
             return False
