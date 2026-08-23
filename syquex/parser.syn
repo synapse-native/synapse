@@ -123,11 +123,36 @@ funcion sq_declaracion(est: ParserEst) -> entero:
     si t == T_EXTERNO:
         token_avanzar(est)
         // M3 §3 L99: externo ::= "externo" funcion | "externo" estructura
-        // | "externo" "constante" ID "=" STRING — la muestra ejercita la
-        // forma funcion; estructura/constante quedan registradas (H-R87-2).
+        // | "externo" "constante" ID "=" STRING
         si token_mirar(est) == T_FUNCION:
             token_avanzar(est)
-        retornar sq_funcion_firma(est, NODO_EXTERNO, "", linea, col)
+            retornar sq_funcion_firma(est, NODO_EXTERNO, "", linea, col)
+        // H-R87-2: externo estructura — nombre del struct C externo
+        si token_mirar(est) == T_ESTRUCTURA:
+            token_avanzar(est)
+            nombre = sq_id(est)
+            n = sq_nuevo(est, NODO_EXTERNO, linea, col)
+            sq_copiar_nombre(est, n, nombre)
+            inseguro:
+                asm("est->nodos[n].valor_int = 1")
+            retornar n
+        // H-R87-2: externo constante ID "=" STRING
+        si token_mirar(est) == T_CONSTANTE:
+            token_avanzar(est)
+            nombre = sq_id(est)
+            inseguro:
+                asm("token_esperar(est, T_ASIGNAR)")
+            valor = parse_expresion_sq(est)
+            n = sq_nuevo(est, NODO_EXTERNO, linea, col)
+            sq_copiar_nombre(est, n, nombre)
+            inseguro:
+                asm("est->nodos[n].hijo_der = valor")
+                asm("est->nodos[n].valor_int = 2")
+            retornar n
+        inseguro:
+            asm("fprintf(stderr, \"SQ_DECL_UNKNOWN externo sin tipo\\n\")")
+            asm("est->hay_error = true;")
+        retornar -1
     si t == T_EXPORT:
         token_avanzar(est)
         inseguro:
@@ -140,6 +165,11 @@ funcion sq_declaracion(est: ParserEst) -> entero:
         n = sq_nuevo(est, NODO_EXPORT, lang_linea, col)
         inseguro:
             asm("est->nodos[n].hijo_izq = f")
+        // H-R88-1 (Manual 6 §1.2 L41 export_lang): preservar el identificador de
+        // lenguaje en el payload del NODO_EXPORT; el traductor propaga ptr_str/len_str
+        // a SemNodo vía trad_copiar_payload, exponiéndolo a codegen y tests.
+        sq_copiar_nombre(est, n, lang)
+        inseguro:
             asm("if (lang > 0) { struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); int pp=est->posicion; (void)pp; }")
         retornar n
     // Declaración no reconocida: error y sincronizar
