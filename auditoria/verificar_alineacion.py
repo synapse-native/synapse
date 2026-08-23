@@ -244,7 +244,7 @@ DEUDAS_CANONICAS = {
     "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
     "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
     "D-8":  {"estado": "CERRADA", "resolucion": "sin acción (por diseño, Manual 2 §2: cadenas multi-línea)"},
-    "D-9":  {"estado": "CERRADA", "resolucion": "R42: D-9(d) corte 6 CERRADA COMPLETA; (a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c 7.882->1.769 L, runtime/core/ 20+ modulos"},
+    "D-9":  {"estado": "CERRADA", "resolucion": "R42: D-9(d) corte 6 CERRADA COMPLETA; (a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c 7.882->1.769 L, runtime/core/ 20+ modulos; (e) NodoID/TokenID: tabla canonica unica runtime/core/ast_nodos.h (gen desde nucleo/parser_constantes.syn; generator.py emite #include; 9 archivos C/H migrados; tests cross-language 1:1; gen_ast_nodos_h.py --check en CI"},
     "H12":  {"estado": "PENDIENTE", "resolucion": "Fase 26 (opensyn stale)"},
     "R3":   {"estado": "CERRADA", "resolucion": "tests/unit/test_r3_param_adt.py + fixtures: S1/S2 compilan y ejecutan parámetros ADT instanciados (Resultado<entero,texto> -> Resultado_entero_texto)"},
 }
@@ -258,7 +258,7 @@ LIMITE_MODULO = 1200
 MODULOS_D9 = [
     "nucleo/lexer.syn",            # D-9(b): keywords extraidos en R32 (módulo 769 líneas, <límite)
     "nucleo/analizador_semantico.syn",  # D-9(e): cohesivo, vigilado
-    "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado
+    "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado; NodoID/TokenID canonico resuelto (R76)
     "synapse_rt.c",                # D-9(d): monolito en proceso (corte 2 tensor.c en R35; queda std.ai/cluster/debug)
 ]
 

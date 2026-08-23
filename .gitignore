@@ -126,3 +126,6 @@ test_lsp_bin
 venv/
 tests/probe_f46.c
 tests/probe_f46.syn.json
+
+# Estado local de agentes de edicion (kilo)
+.kilo/

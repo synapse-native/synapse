@@ -499,98 +499,24 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         visitar_coincidir(ctx, nodo)
 
 
-def _emitir_token_defines(ctx: GeneratorContext):
-    """Emite #define T_* desde TokenID enum (Manual 2 §2.3).
+def _emitir_ast_nodos_header(ctx: GeneratorContext):
+    """Emite include del header canónico con TokenID + NodoID (D-9(e)).
 
-    Fuente de verdad = el programa compilado: si el AST declara constantes
-    T_* propias (compilador auto-hospedado, p.ej. T_FIN = 57 en lexer.syn),
-    se usan ESOS valores; el enum Python (EOF=59) queda como fallback para
-    programas que no las declaran. Esto elimina de raiz la discrepancia
-    T_FIN (57 vs 59) en la compilacion modular.
+    La tabla canónica vive en runtime/core/ast_nodos.h, generada desde
+    nucleo/parser_constantes.syn por scripts/gen_ast_nodos_h.py.
+    ABI v1 congelada (F22/R85, nucleo/ast_abi.syn).
+
+    Reemplaza los 125 bloques #ifndef T_*/NODO_* emitidos inline
+    (duplicados en 8+ archivos C). Unica fuente de verdad:
+    parser_constantes.syn -> ast_nodos.h (verificado 1:1 por
+    tests/unit/test_ast_nodos_consistency.py).
     """
-    from compilador.ast_nodes import TokenID, StmtConstante
-    # AUDITORIA F1 (H23): claves = nombres actuales del enum TokenID (renombrados
-    # al Manual 2 §3); valores = constantes T_* del compilador auto-hospedado
-    # (nucleo/tokens.syn, renombradas T_SI/T_SINO). Incluye los 14 TokenID nuevos (H22).
-    _T_MAP = {
-        'SI':'T_SI','SINO':'T_SINO','FUNCION':'T_FUNCION','RETORNAR':'T_RETORNAR',
-        'LANZAR':'T_LANZAR','RECUPERAR':'T_RECUPERAR','ESCUCHAR':'T_ESCUCHAR',
-        'MIENTRAS':'T_MIENTRAS','IMPORTAR':'T_IMPORTAR','ESTRUCTURA':'T_ESTRUCTURA',
-        'ROMPER':'T_ROMPER','SIGUIENTE':'T_SIGUIENTE','AND':'T_Y','OR':'T_O',
-        'NOT':'T_NO','VERDADERO':'T_VERDADERO','FALSO':'T_FALSO',
-        'IDENTIFIER':'T_IDENTIFICADOR','NUMBER':'T_NUMERO','FLOAT':'T_FLOTANTE',
-        'STRING':'T_CADENA','GREATER':'T_MAYOR','LESS':'T_MENOR',
-        'EQUALS':'T_IGUAL','NOT_EQUALS':'T_DISTINTO','LESS_EQUALS':'T_MENOR_IGUAL',
-        'GREATER_EQUALS':'T_MAYOR_IGUAL','ASSIGN':'T_ASIGNAR','PLUS':'T_MAS',
-        'MINUS':'T_MENOS','STAR':'T_POR','SLASH':'T_DIV','MOD':'T_MOD',
-        'ARROW':'T_FLECHA','COINCIDIR':'T_COINCIDIR','ARROW_RIGHT':'T_FLECHA_DER',
-        'LPAREN':'T_PAREN_IZQ','RPAREN':'T_PAREN_DER','COLON':'T_DOSPUNTOS',
-        'COMMA':'T_COMA','NEWLINE':'T_NUEVALINEA','INDENT':'T_INDENTAR',
-        'DEDENT':'T_DESINDENTAR','AMPERSAND':'T_AMPERSAND','INSEGURO':'T_INSEGURO',
-        'IMPORTAR_C':'T_IMPORTAR_C','EXTERNO':'T_EXTERNO','ARROW_LEFT':'T_FLECHA_IZQ',
-        'REQUIERE':'T_REQUIERE','GARANTIZA':'T_GARANTIZA','CANAL':'T_CANAL',
-        'ASM':'T_ASM','CONSTANTE':'T_CONSTANTE','SEMICOLON':'T_PUNTOCOMA',
-        'PARA':'T_PARA','LBRACKET':'T_CORCH_IZQ','RBRACKET':'T_CORCH_DER',
-        'EOF':'T_FIN','DOT':'T_PUNTO',
-        # H22: 14 TokenID del Manual 2 §3 (activación de keywords en el lexer
-        # auto-hospedado pendiente de soporte de parser — ver deuda D-F1).
-        'LET':'T_LET','TIPO':'T_TIPO','TENSOR':'T_TENSOR','NULO':'T_NULO',
-        'OK':'T_OK','ERR':'T_ERR','ALGUN':'T_ALGUN','NINGUNO':'T_NINGUNO',
-        'MODULO':'T_MODULO','DELEGAR':'T_DELEGAR','EXPORT':'T_EXPORT',
-        'RC':'T_RC','ARC':'T_ARC','DEBIL':'T_DEBIL',
-        'INTERROGACION':'T_INTERROGACION',  # D-6: operador '?' postfijo
-    }
-    # Valores T_* declarados en el propio programa (fuente de verdad = codigo)
-    ast_vals = {}
-    for _s in ctx.programa.sentencias:
-        if isinstance(_s, StmtConstante) and _s.nombre.startswith('T_'):
-            _v = getattr(_s.valor, 'valor', None)
-            if isinstance(_v, int):
-                ast_vals[_s.nombre] = _v
-    ctx.write_line("// --- Token ID constants (Manual 2 §2.3) ---")
-    for name in TokenID._member_names_:
-        cname = _T_MAP.get(name, f'T_{name}')
-        val = ast_vals.get(cname, TokenID[name].value)
-        # Usar #ifndef guard para evitar redefinicion en unity file
-        ctx.write_line(f"#ifndef {cname}")
-        ctx.write_line(f"#define {cname} ({val}LL)")
-        ctx.write_line(f"#endif")
+    ctx.write_line("// --- TokenID + NodoID canonicos (D-9(e), Manual 2 2.3/7.2) ---")
+    ctx.write_line("// Fuente unica: nucleo/parser_constantes.syn")
+    ctx.write_line("// Header generado: runtime/core/ast_nodos.h (scripts/gen_ast_nodos_h.py)")
+    ctx.write_line('#include "runtime/core/ast_nodos.h"')
     ctx.write_line("")
 
-
-def _emitir_nodo_defines(ctx: GeneratorContext):
-    """Emite #define NODO_* constantes para tipos de nodo AST."""
-    NODOS = [
-        ("NODO_PROGRAMA",1),("NODO_FUNCION",2),("NODO_SI",3),
-        ("NODO_MIENTRAS",4),("NODO_RETORNAR",5),("NODO_EXPR",6),
-        ("NODO_ASIGNACION",7),("NODO_IDENTIFICADOR",8),("NODO_NUMERO",9),
-        ("NODO_DECIMAL",10),("NODO_CADENA_LIT",11),("NODO_BINARIA",12),
-        ("NODO_UNARIA",13),("NODO_LLAMADA",14),("NODO_PARAMETRO",15),
-        ("NODO_ESTRUCTURA",16),("NODO_IMPORTAR",17),("NODO_LANZAR",18),
-        ("NODO_ESCUCHAR",19),("NODO_ROMPER",20),("NODO_SIGUIENTE",21),
-        ("NODO_BOOLEANO",22),("NODO_CONSTANTE",23),("NODO_INSEGURO",24),
-        ("NODO_IMPORTAR_C",25),("NODO_EXTERNO",26),("NODO_RECUPERAR",27),
-        ("NODO_TENSOR",28),("NODO_INDICE",29),("NODO_TRANSFERIDO",30),
-        ("NODO_ACCESO_CAMPO",31),("NODO_ASIGNACION_CAMPO",32),("NODO_PARRAFO",33),
-        ("NODO_DECLARACION",34),("NODO_LOG",35),("NODO_PUNTERO",36),
-        ("NODO_DEREF",37),("NODO_COINCIDIR",38),("NODO_CASO",39),
-        ("NODO_ASM",40),("NODO_CANAL_CREAR",41),("NODO_ENVIAR_CANAL",42),
-        ("NODO_RECIBIR_CANAL",43),("NODO_VACIO",44),("NODO_PARA",45),
-        ("NODO_CONTRATO",46),
-        ("NODO_NULO",47),("NODO_LET",48),("NODO_DELEGAR",49),
-        ("NODO_EXPORT",50),("NODO_DECLARACION_TIPO",51),("NODO_CONSTRUCTOR",52),
-        ("NODO_PROPAGAR",53),  # D-6: operador '?' postfijo (Manual 3 §7)
-    ]
-    ctx.write_line("// --- Nodo type constants (AST node types) ---")
-    for name, val in NODOS:
-        # Usar #ifndef guard para evitar redefinicion
-        ctx.write_line(f"#ifndef {name}")
-        ctx.write_line(f"#define {name} ({val}LL)")
-        ctx.write_line(f"#endif")
-    ctx.write_line("")
-
-
-    ctx.write_line("")
 
 
 def _cargar_err_constantes_desde_diagnostics(ruta_diagnostics: str) -> dict[str, int]:
@@ -773,9 +699,10 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("")
     ctx.write_line("#include \"librerias/embedded_libs.h\"")
     ctx.write_line("")
-    # Emit T_*, NODO_*, ERR_*, y constantes del programa para compilacion modular
-    _emitir_token_defines(ctx)
-    _emitir_nodo_defines(ctx)
+    # TokenID + NodoID canonicos (D-9(e)): incluir header generado desde
+    # nucleo/parser_constantes.syn (scripts/gen_ast_nodos_h.py).
+    # ABI v1 congelada (F22/R85, nucleo/ast_abi.syn).
+    _emitir_ast_nodos_header(ctx)
     _emitir_error_defines(ctx)
     _emitir_constantes_programa(ctx)
     # NOTA: _syn_* y _toml_* externs ya estan en #include "librerias/embedded_libs.h"

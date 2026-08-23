@@ -72,4 +72,13 @@ if ! (cd "$RAIZ" && $PYTHON "$VERIFICADOR" --json > /tmp/auditoria_commit.json 2
 fi
 
 echo "✅ Alineación verificada: 0 brechas"
+
+# --- D-9(e) preventivo: ast_nodos.h sincronizado con parser_constantes.syn ---
+echo "── Verificando header canónico NodoID/TokenID (D-9(e)) ──"
+if ! (cd "$RAIZ" && $PYTHON scripts/gen_ast_nodos_h.py --check); then
+    echo "❌ runtime/core/ast_nodos.h DESACTUALIZADO vs nucleo/parser_constantes.syn" >&2
+    echo "Regenere con: python scripts/gen_ast_nodos_h.py" >&2
+    exit 1
+fi
+echo "✅ ast_nodos.h sincronizado (126 constantes)"
 exit 0
