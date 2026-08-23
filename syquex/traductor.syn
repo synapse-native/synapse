@@ -159,6 +159,17 @@ funcion trad_nodo_columna(i: entero) -> entero:
         retornar r
     retornar 0
 
+funcion trad_nodo_extra(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].ptr_extra;")
+        retornar r
+    retornar 0
+
 funcion trad_hizq(i: entero) -> entero:
     requiere:
         i >= 0

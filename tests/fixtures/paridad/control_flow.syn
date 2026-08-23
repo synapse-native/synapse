@@ -1,0 +1,7 @@
+#lang: es
+// Paridad: control de flujo si/sino + mientras
+funcion clamp(n: entero) -> entero:
+    si n > 100:
+        retornar 100
+    sino:
+        retornar n

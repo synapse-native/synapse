@@ -373,7 +373,7 @@ funcion sq_bloque_interno(est: ParserEst) -> entero:
     r = 1
     mientras r == 1:
         t = token_mirar(est)
-        si t == T_DESINDENTAR o t == T_FIN:
+        si t == T_DESINDENTAR o t == T_FIN o t == T_SINO:
             r = 0
             romper
         si t == T_NUEVALINEA:
@@ -393,7 +393,7 @@ funcion sq_bloque_interno(est: ParserEst) -> entero:
         sino:
             parser_sinc_skip(est)
     inseguro:
-        asm("token_esperar(est, T_DESINDENTAR)")
+        asm("if (token_mirar(est) == T_DESINDENTAR) token_esperar(est, T_DESINDENTAR)")
     retornar primero
 
 funcion sq_bloque(est: ParserEst) -> entero:

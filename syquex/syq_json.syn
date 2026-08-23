@@ -154,7 +154,7 @@ funcion syq_json_emitir(raiz: entero) -> entero:
         sj_ent(trad_hizq(i))
         sj_ent(trad_hder(i))
         sj_ent(trad_herm(i))
-        sj_ent(0)
+        sj_ent(trad_nodo_extra(i))
         sj_txt(i)
         escribir(",")
         sj_txt2(i)

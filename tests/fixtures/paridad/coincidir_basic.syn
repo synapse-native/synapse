@@ -1,0 +1,8 @@
+#lang: es
+// Paridad: coincidir sobre patrones variables + constante
+constante LIMITE = 10
+
+funcion clasifica(n: entero) -> entero:
+    coincidir n:
+        n => retornar n
+        _ => retornar LIMITE
