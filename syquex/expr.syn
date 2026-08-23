@@ -288,13 +288,29 @@ funcion parse_postfix_sq(est: ParserEst) -> entero:
     mientras salir == 0:
         t = token_mirar(est)
         si t == T_PAREN_IZQ:
-            token_avanzar(est)
-            base = sq_args(est, base)
-            si gen_ini > 0:
-                // El span <K,V> queda en slot2 del nodo de llamada (R88)
-                inseguro:
-                    asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")
-                gen_ini = 0
+            // Convención canónica (paridad puente nativo): una llamada
+            // sobre identificador simple es NODO_LLAMADA(nombre, args en
+            // hijo_der). Si la base es un acceso (método), los argumentos
+            // quedan en su hijo_der — lowering requiere tipos (H-R90-5).
+            si sq_nodo_es_identificador(est, base) == 1:
+                c_linea = token_linea(est, est.posicion)
+                c_col = token_columna(est, est.posicion)
+                token_avanzar(est)
+                llamada = sq_nuevo(est, NODO_LLAMADA, c_linea, c_col)
+                sq_copiar_nombre(est, llamada, base)
+                base = sq_args(est, llamada)
+                si gen_ini > 0:
+                    // El span <K,V> queda en slot2 del nodo de llamada
+                    inseguro:
+                        asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")
+                    gen_ini = 0
+            sino:
+                token_avanzar(est)
+                base = sq_args(est, base)
+                si gen_ini > 0:
+                    inseguro:
+                        asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")
+                    gen_ini = 0
         sino:
             si t == T_MENOR:
                 salto = sq_scan_genericos(est)
@@ -365,9 +381,13 @@ funcion parse_primario_sq(est: ParserEst) -> entero:
         token_avanzar(est)
         retornar n
     si t == T_CADENA:
+        // El lexer almacena el valor YA decodificado y SIN comillas
+        // (sq_push_valor con escapes uXXXX resueltos): el span es el
+        // valor completo. Recortar aquí truncaba literales (hallazgo
+        // R90: "cero" -> "er").
         n = sq_nuevo(est, NODO_CADENA_LIT, linea, col)
         inseguro:
-            asm("if (est->posicion < est->total_tokens) { struct SqLexerBuffers* _bs=(struct SqLexerBuffers*)sq_buffers(); CadenaSegura vs=((struct TokenLex*)_bs->tokens)[est->posicion].valor; uintptr_t tps=(uintptr_t)vs.datos; if (vs.longitud >= 2) { est->nodos[n].ptr_str=(int)((tps+1)&0xFFFFFFFFu); est->nodos[n].len_str=vs.longitud-2; int* his=(int*)sq_tokens_hi(); if(his) his[n]=(int)((tps+1)>>32); } }")
+            asm("if (est->posicion < est->total_tokens) { struct SqLexerBuffers* _bs=(struct SqLexerBuffers*)sq_buffers(); CadenaSegura vs=((struct TokenLex*)_bs->tokens)[est->posicion].valor; uintptr_t tps=(uintptr_t)vs.datos; est->nodos[n].ptr_str=(int)(tps&0xFFFFFFFFu); est->nodos[n].len_str=vs.longitud; int* his=(int*)sq_tokens_hi(); if(his) his[n]=(int)(tps>>32); }")
         token_avanzar(est)
         retornar n
     si t == T_VERDADERO o t == T_FALSO:

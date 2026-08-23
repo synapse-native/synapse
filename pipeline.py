@@ -469,6 +469,70 @@ def compilar_desde_canonico(ruta_json: str) -> Programa:
 
 
 # ============================================================
+# R90 — Frontend Syquex: .syq -> SemNodo[] plano -> AST tipado
+# (Manual 1 §3.1: el traductor alimenta el backend compartido).
+# El ejecutable del frontend (scripts/build_syquex_frontend.py)
+# emite el JSON plano por stdout; el puente lo convierte a las
+# clases de compilador/ast_nodes que consume este pipeline.
+# ============================================================
+_FRONTEND_SYQ = os.path.join("build", "syq_frontend.exe")
+
+
+def _fuentes_frontend_syquex():
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    nombres = [
+        os.path.join("nucleo", "parser_constantes.syn"),
+        os.path.join("nucleo", "parser_base.syn"),
+        os.path.join("nucleo", "lexer_keywords.syn"),
+        os.path.join("syquex", "lexer.syn"),
+        os.path.join("syquex", "expr.syn"),
+        os.path.join("syquex", "parser.syn"),
+        os.path.join("syquex", "traductor.syn"),
+        os.path.join("syquex", "syq_json.syn"),
+        os.path.join("syquex", "syq_main.syn"),
+    ]
+    return [os.path.join(raiz, n) for n in nombres]
+
+
+def _asegurar_frontend_syquex() -> str:
+    """Garantiza un exe del frontend NUEVO (regla anti-stale del repo)."""
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    exe = os.path.join(raiz, _FRONTEND_SYQ)
+    fuentes = _fuentes_frontend_syquex()
+    if os.path.exists(exe) and all(
+            os.path.getmtime(exe) >= os.path.getmtime(f) - 1 for f in fuentes):
+        return exe
+    print("[SYQ] construyendo frontend Syquex (~40 s, una vez)...")
+    r = subprocess.run(
+        [sys.executable, os.path.join(raiz, "scripts",
+                                      "build_syquex_frontend.py")],
+        capture_output=True, text=True, timeout=900, cwd=raiz)
+    if r.returncode != 0 or not os.path.exists(exe):
+        raise RuntimeError(
+            f"build del frontend Syquex fallo rc={r.returncode}: "
+            f"{(r.stderr or r.stdout)[-800:]}")
+    return exe
+
+
+def compilar_desde_syq(ruta_syq: str) -> Programa:
+    """.syq -> SemNodo[] (exe frontend) -> AST tipado S1 (R90).
+
+    Lanza RuntimeError con el detalle si el frontend o el puente fallan;
+    el llamador lo reporta como diagnóstico canónico.
+    """
+    from compilador.puente_canonico import plano_a_programa
+    exe = _asegurar_frontend_syquex()
+    res = subprocess.run([exe, ruta_syq], capture_output=True, text=True,
+                         timeout=120, encoding="utf-8", errors="replace")
+    if res.returncode != 0:
+        raise RuntimeError(
+            f"frontend Syquex rc={res.returncode}: "
+            f"{(res.stdout or res.stderr)[-500:]}")
+    flat = json.loads(res.stdout)
+    return plano_a_programa(flat)
+
+
+# ============================================================
 # MAIN ENTRY POINT
 # ============================================================
 def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
@@ -500,6 +564,16 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 diag.reportar(ErrorCodes.ERR_CANONICAL_FORMAT,
                               Token(TokenID.EOF, 0, 0))
                 print(diag.resumen(), file=sys.stderr)
+                return diag.codigo_salida()
+        elif ruta_archivo.endswith('.syq'):
+            # R90 (Manual 1 §3.1): frontend Syquex -> SemNodo[] -> tipado
+            try:
+                ast = compilar_desde_syq(ruta_archivo)
+            except (RuntimeError, ValueError, KeyError,
+                    json.JSONDecodeError) as e:
+                print(f"[ERROR] Syquex: {e}", file=sys.stderr)
+                diag.reportar(ErrorCodes.ERR_CANONICAL_FORMAT,
+                              Token(TokenID.EOF, 0, 0))
                 return diag.codigo_salida()
         else:
             archivos_procesados: Set[str] = set()

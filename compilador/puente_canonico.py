@@ -167,6 +167,13 @@ class _Puente:
             return con(AsignacionVariable(nombre=self.txt(destino),
                                           expresion=val))
         if t == 8:
+            if der > 0:
+                # Tras el fix R90 del postfix, una llamada sobre
+                # identificador es NODO_LLAMADA; si esto aparece, el parser
+                # regresó a la forma antigua — fallar, no perder args.
+                raise PuenteError(
+                    "IDENTIFICADOR con argumentos (llamada sin NODO_LLAMADA) "
+                    "— regression del parser Syquex")
             return con(Identificador(nombre=self.txt(i)))
         if t == 9:
             return con(LiteralNumero(valor=int(self.txt(i))))
@@ -181,9 +188,9 @@ class _Puente:
         if t == 13:   # UNARIA
             return con(OpUnaria(operador=self.txt(i) or "-",
                                 expr=self._nodo(izq)))
-        if t == 14:   # LLAMADA
+        if t == 14:   # LLAMADA (args en hijo_der — convención sq_args)
             return con(LlamadaFuncion(nombre=self.txt(i),
-                                      argumentos=self.cadena(izq)))
+                                      argumentos=self.cadena(der)))
         if t == 15:   # PARAMETRO suelto (miembro de estructura)
             return con(_campo_como_parametro(self, i))
         if t == 16:   # ESTRUCTURA
@@ -225,6 +232,11 @@ class _Puente:
         if t == 30:
             return con(ArgumentoTransferido(expr=self._nodo(izq)))
         if t == 31:
+            if der > 0:
+                # llamada a método: lowering requiere tipos (H-R90-5)
+                raise PuenteError(
+                    "llamada a metodo (obj.metodo(args)) sin lowering de "
+                    "call-site — pendiente decision H-R90-5")
             return con(ExprAccesoCampo(objeto=self._nodo(izq),
                                        nombre_campo=self.txt(i)))
         if t in (34, 48):   # DECLARACION / LET

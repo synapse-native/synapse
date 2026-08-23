@@ -1,0 +1,46 @@
+#lang: es
+// R90 corte 3 - fixture de compilacion e2e por el pipeline S1:
+// ejercita SOLO constructos con backend compartido disponible
+// (sin call-sites OOP: metodos/constructores quedan pendientes
+// del lowering H-R90-5). Funciones libres + coincidir + enum +
+// constante + externo + export + si/mientras/let.
+// Salida esperada al ejecutar:
+//   cero
+//   3
+//   7
+
+enumeracion Color:
+    rojo
+    verde
+
+constante LIMITE = 10
+
+@export(python) funcion visible(v: entero) -> entero:
+    retornar v * 2
+
+funcion clasifica(n: entero) -> entero:
+    // NOTA R90: coincidir con patrones literales sobre primitivos no tiene
+    // codegen compartido aún (H-R90-6, residual R11); equivalente si/sino.
+    si n == 0:
+        escribir_linea("cero")
+    sino:
+        escribir_linea("otro")
+    retornar n
+
+funcion suma_hasta(lim: entero) -> entero:
+    let acc = 0
+    let i = 0
+    mientras i < lim:
+        acc = acc + i
+        i = i + 1
+    retornar acc
+
+funcion principal() -> entero:
+    let r = clasifica(0)
+    let s = suma_hasta(4)
+    escribir_linea(entero_a_texto(s))
+    let v = visible(3)
+    escribir_linea(entero_a_texto(v))
+    si s < LIMITE:
+        retornar 0
+    retornar 1

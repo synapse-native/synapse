@@ -133,6 +133,20 @@ def test_asignacion_indexada_rechazada():
         plano_a_programa(_flat(nodos))
 
 
+def test_llamada_args_en_hijo_der():
+    # Convención sq_args: LLAMADA(nombre, hijo_der=cadena de argumentos)
+    nodos = [
+        _reg(1, izq=1),
+        _reg(14, der=2, t1=_b("suma_hasta")),
+        _reg(9, t1=_b("4")),
+    ]
+    prog = plano_a_programa(_flat(nodos))
+    call = prog.sentencias[0]
+    assert call.nombre == "suma_hasta"
+    assert len(call.argumentos) == 1
+    assert call.argumentos[0].valor == 4
+
+
 def test_esquema_incorrecto_rechazado():
     with pytest.raises(PuenteError):
         plano_a_programa({"syquex_flat": "1", "nodos": [], "raiz": 0})
