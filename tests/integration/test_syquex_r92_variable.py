@@ -31,12 +31,10 @@ def exe_path(tmp_path_factory):
     return out
 
 
-@pytest.mark.xfail(strict=True,
-                   reason="H-R92-1: el backend compartido aún no emite "
-                          "globales mutables (M2 no define el concepto; "
-                          "resolución asignada a R93: pasada 2 semántica + "
-                          "emisión C con init)")
 def test_variable_global_compila_y_ejecuta(exe_path):
+    """R93 cierra H-R92-1: globales mutables (`variable` a nivel módulo) ahora
+    registrados en la Pasada 1 del semántico y emitidos como vars C globales
+    (Manual 2 §2 §8.1 L457; Manual 3 §3 L74)."""
     e = subprocess.run([exe_path], capture_output=True, text=True,
                        timeout=60, encoding="utf-8", errors="replace")
     assert e.returncode == 0, f"run rc={e.returncode}\n{e.stdout}\n{e.stderr}"

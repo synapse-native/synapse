@@ -315,6 +315,24 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         )
                     else:
                         cur[s.nombre] = sim
+            elif isinstance(s, DeclaracionVariable):
+                # R93: registrar variable global MUTABLE en Pasada 1 (Manual 2
+                # §8.1 L457). Manual 2 §2 L47-54 no define globales mutables
+                # en Synapse nativo (solo constante); Manual 3 §3 L74 define
+                # `variable` como keyword a nivel módulo en SyQuex.
+                tipo_decl = s.tipo
+                if not tipo_decl:
+                    tipo_decl = self._inferir_tipo(s.expresion) or 'int'
+                sim = Simbolo(s.nombre, tipo_decl, s, es_constante=False)
+                cur = self.tabla._scopes[-1]
+                if s.nombre in cur:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(s.linea, s.columna),
+                        nombre=s.nombre
+                    )
+                else:
+                    cur[s.nombre] = sim
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre not in _FUNCIONES_BUILTIN:
                 self._analizar_funcion(s)
