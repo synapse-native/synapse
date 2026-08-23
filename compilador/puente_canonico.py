@@ -251,8 +251,11 @@ class _Puente:
         if t == 38:   # COINCIDIR
             casos = []
             for c in self.cadena_ids(der):
+                # H-R90-3: el traductor (traductor.syn:547-554) reconstruye el
+                # patrón como span1 (slot1) y almacena el CUERPO en hijo_izq
+                # (índice 4), no en hijo_der — el puente lo lee de hijo_izq.
                 caso = NodoCaso(patron=self.txt(c),
-                                cuerpo=self.cadena(self.nodos[c][5]))
+                                cuerpo=self.cadena(self.nodos[c][4]))
                 caso.linea = self.nodos[c][1]
                 casos.append(caso)
             return con(NodoCoincidir(expresion=self._nodo(izq), casos=casos))

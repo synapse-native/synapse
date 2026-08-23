@@ -2,8 +2,9 @@
 // R90 corte 3 - fixture de compilacion e2e por el pipeline S1:
 // ejercita SOLO constructos con backend compartido disponible
 // (sin call-sites OOP: metodos/constructores quedan pendientes
-// del lowering H-R90-5). Funciones libres + coincidir + enum +
-// constante + externo + export + si/mientras/let.
+// del lowering H-R90-5). Funciones libres + coincidir (H-R90-6
+// sobre primitivos) + enum + constante + externo + export +
+// si/mientras/para..en.
 // Salida esperada al ejecutar:
 //   cero
 //   3
@@ -19,12 +20,11 @@ constante LIMITE = 10
     retornar v * 2
 
 funcion clasifica(n: entero) -> entero:
-    // NOTA R90: coincidir con patrones literales sobre primitivos no tiene
-    // codegen compartido aún (H-R90-6, residual R11); equivalente si/sino.
-    si n == 0:
-        escribir_linea("cero")
-    sino:
-        escribir_linea("otro")
+    // H-R90-6 RESUELTO: coincidir sobre primitivos ahora tiene codegen
+    // compartido (switch sobre valor directo, case literal).
+    coincidir n:
+        0 => escribir_linea("cero")
+        _ => escribir_linea("otro")
     retornar n
 
 funcion suma_hasta(lim: entero) -> entero:

@@ -98,8 +98,8 @@ def test_coincidir_casos_patron_span():
     nodos = [
         _reg(1, izq=1),
         _reg(38, izq=4, der=2),              # sujeto=n; casos: 2->3
-        _reg(39, der=5, herm=3, t1=_b("0"), lin=5),   # caso 0 => ret 1
-        _reg(39, der=7, t1=_b("_"), lin=6),           # caso _ => ret 0
+        _reg(39, izq=5, herm=3, t1=_b("0"), lin=5),   # caso 0 => ret 1 (body hijo_izq per traductor:547-554)
+        _reg(39, izq=7, t1=_b("_"), lin=6),           # caso _ => ret 0 (body hijo_izq)
         _reg(8, t1=_b("n")),
         _reg(5, izq=6),
         _reg(9, t1=_b("1")),

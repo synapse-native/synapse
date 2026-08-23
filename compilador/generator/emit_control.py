@@ -99,15 +99,22 @@ def visitar_para(ctx: GeneratorContext, nodo: SentenciaPara):
 
 
 def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
-    """Genera código C para match/coincidir (switch sobre ADT tag)."""
+    """Genera código C para match/coincidir (switch sobre ADT tag o valor primitivo)."""
     expr = expr_a_c(ctx, nodo.expresion)
     tipo_syn = tipo_de_expr(ctx, nodo.expresion)  # Synapse type
     tipo_c = ctx.traducir_tipo_c(tipo_syn)  # C type for declaration
+    # H-R90-6: tipos primitivos no tienen .tag — switch sobre el valor directo
+    PRIMITIVOS = {'entero', 'decimal', 'booleano', 'texto', 'cadena',
+                  'int', 'float', 'logico', 'real', 'flotante'}
+    es_primitivo = tipo_syn in PRIMITIVOS
     ctx.write_line("{")
     ctx.inc_indent()
     var_temp = f"_match_{abs(hash(str(id(nodo))))}"
     ctx.write_line(f"{tipo_c} {var_temp} = {expr};")
-    ctx.write_line(f"switch ({var_temp}.tag) {{")
+    if es_primitivo:
+        ctx.write_line(f"switch ({var_temp}) {{")
+    else:
+        ctx.write_line(f"switch ({var_temp}.tag) {{")
     ctx.inc_indent()
     for caso in nodo.casos:
         if not isinstance(caso, NodoCaso):
@@ -115,6 +122,9 @@ def visitar_coincidir(ctx: GeneratorContext, nodo: NodoCoincidir):
         patron = caso.patron
         if patron == "_":
             ctx.write_line("default:")
+        elif es_primitivo:
+            # H-R90-6: patron literal como case value directo
+            ctx.write_line(f"case {patron}:")
         else:
             tag = patron.split("(")[0] if "(" in patron else patron
             # F1.2: el tag del ADT Opcion es TAG_ALGUNO (Manual 2 §4.2 / encabezado
