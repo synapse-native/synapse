@@ -4,7 +4,7 @@
 
 ## 1. CONTEXTO ACTUAL
 
-- **Fase del roadmap:** FASE 23 — Modelo de memoria SyQuex (Arenas + RC + análisis de alcance). **ME-F23-1 ✅** Arena allocator (Manual 4 §2): +Arena struct en synapse_rt_types.h + arena_crear/arena_alloc/arena_free/arena_reset/arena_crear_hijo en runtime/core/memory.c; tests/test_arena_scope.c + tests/syquex/test_arena_scope.py (5 tests, 30/30 C sub-tests, 0 regressions). Verificador 0 brechas. Siguiente: ME-F23-2 — rc<T> no atómico (Manual 4 §3.2). |
+- **Fase del roadmap:** FASE 23 — Modelo de memoria SyQuex (Arenas + RC + análisis de alcance). **ME-F23-1 ✅** Arena allocator (Manual 4 §2: `d6995ce`). **ME-F23-2 ✅** rc<T> + arc<T> (Manual 4 §3.2-3.3: `172cd8b`). Siguiente: ME-F23-3 — débil<T> (Manual 4 §4.2). |
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecánica — `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocará y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producción modificada sin lectura registrada del día. Obligación adicional: archivo productivo nuevo sin mapeo también bloquea → añadir su entrada al mapa primero.
 
