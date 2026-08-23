@@ -145,6 +145,8 @@ _RT_BINARIOS_EXTRA = [
     ("gen_axon_test_fixtures", "gen_axon_test_fixtures.c", ["tweetnacl.o"], []),
     # F14-2: validate_formal_proof necesita stack de 8MB (95 tests, buffers grandes)
     ("validate_formal_proof", "validate_formal_proof.c", ["proof_bridge.o"], ["-Wl,--stack,8388608"]),
+    # FASE 23 ME-1: arena allocator (Manual 4 §2) — solo memory.o
+    ("test_arena_scope", "test_arena_scope.c", ["synapse_rt_memory.o"], []),
 ]
 
 

@@ -456,3 +456,113 @@ CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
 void _syn_texto_liberar(CadenaSegura s) {
     if (s.datos) pool_free((void*)s.datos);
 }
+
+// ============================================================
+// Arena allocator (Manual 4 §2: Arenas por ámbito)
+// bump allocator: O(1) alloc, O(1) lib (bloque entero), 0 fragmentación.
+// Anidamiento padre-hijo: liberar padre libera hijos en cascada.
+// ============================================================
+
+static void arena_expandir(Arena* a, size_t tamano_extra) {
+    size_t nuevo = a->tamano * 2;
+    if (nuevo < a->tamano + tamano_extra + sizeof(Arena))
+        nuevo = a->tamano + tamano_extra + sizeof(Arena);
+
+    uint8_t* nuevo_bloque = (uint8_t*)malloc(nuevo);
+    if (!nuevo_bloque) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_expandir malloc fallo\n");
+        exit(1);
+    }
+
+    size_t usado = (size_t)(a->puntero - a->inicio);
+    memcpy(nuevo_bloque, a->inicio, usado);
+
+    free(a->inicio);
+    a->inicio = nuevo_bloque;
+    a->puntero = nuevo_bloque + usado;
+    a->fin = nuevo_bloque + nuevo;
+    a->tamano = nuevo;
+}
+
+Arena* arena_crear(size_t tamano_inicial) {
+    if (tamano_inicial < 4096) tamano_inicial = 4096;
+
+    Arena* a = (Arena*)malloc(sizeof(Arena));
+    if (!a) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_crear malloc fallo\n");
+        return NULL;
+    }
+
+    a->inicio = (uint8_t*)malloc(tamano_inicial);
+    if (!a->inicio) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_crear bloque fallo\n");
+        free(a);
+        return NULL;
+    }
+
+    a->puntero = a->inicio;
+    a->fin = a->inicio + tamano_inicial;
+    a->padre = NULL;
+    a->hijo = NULL;
+    a->sig_hermano = NULL;
+    a->tamano = tamano_inicial;
+    a->es_global = false;
+    return a;
+}
+
+Arena* arena_crear_hijo(Arena* padre, size_t tamano_inicial) {
+    if (!padre) return arena_crear(tamano_inicial);
+
+    Arena* a = arena_crear(tamano_inicial);
+    if (!a) return NULL;
+
+    a->padre = padre;
+    a->sig_hermano = padre->hijo;
+    padre->hijo = a;
+    return a;
+}
+
+void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion) {
+    if (!arena) {
+        void* p = malloc(tamano);
+        if (p) memset(p, 0, tamano);
+        return p;
+    }
+
+    while (1) {
+        if (alineacion == 0) alineacion = 1;
+        uintptr_t addr = (uintptr_t)arena->puntero;
+        uintptr_t aligned = (addr + alineacion - 1) & ~((uintptr_t)alineacion - 1);
+        size_t offset = aligned - addr;
+
+        if (arena->puntero + offset + tamano <= arena->fin) {
+            arena->puntero += offset + tamano;
+            return (void*)aligned;
+        }
+
+        if (arena->es_global) {
+            arena_expandir(arena, tamano);
+            continue;
+        }
+        return malloc(tamano);
+    }
+}
+
+void arena_free(Arena* arena) {
+    if (!arena) return;
+
+    Arena* child = arena->hijo;
+    while (child) {
+        Arena* next = child->sig_hermano;
+        arena_free(child);
+        child = next;
+    }
+
+    if (arena->inicio) free(arena->inicio);
+    free(arena);
+}
+
+void arena_reset(Arena* arena) {
+    if (!arena || !arena->inicio) return;
+    arena->puntero = arena->inicio;
+}

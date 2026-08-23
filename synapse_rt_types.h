@@ -107,6 +107,25 @@ typedef struct {
     uint32_t slab_slots_per_block[SLAB_COUNT];
 } MemoryPool;
 
+// --- Arena (Manual 4 §2.2: bump allocator, O(1) alloc/liberación) ---
+typedef struct Arena {
+    uint8_t* inicio;        // Inicio del bloque de memoria
+    uint8_t* puntero;       // Puntero actual (próxima posición libre)
+    uint8_t* fin;           // Fin del bloque
+    struct Arena* padre;    // Arena padre (para anidamiento)
+    struct Arena* hijo;     // Primer hijo (para seguimiento/cascada)
+    struct Arena* sig_hermano;  // Hermano siguiente en la lista de hijos
+    size_t tamano;          // Tamaño total del bloque
+    bool es_global;         // Si es la arena global de la aplicación
+} Arena;
+
+// Arena API (Manual 4 §2.2)
+Arena* arena_crear(size_t tamano_inicial);
+Arena* arena_crear_hijo(Arena* padre, size_t tamano_inicial);
+void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion);
+void arena_free(Arena* arena);
+void arena_reset(Arena* arena);
+
 // --- Thread tracker helpers ---
 struct _HiloArgs {
     void* (*fn)(void*);
