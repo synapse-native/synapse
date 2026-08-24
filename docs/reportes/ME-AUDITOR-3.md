@@ -29,5 +29,5 @@ RESUMEN DE FINDING 3 (auditoría externa):
   str_eq_sq; puente lee es_mutable de valor_int bit 0 (D-F22-SEM). Formalizada
   como decisión arquitectónica — no requiere más código.
 
-PRÓXIMO PASO: Finding 4 — No hay test e2e para structs multi-campo.
+PRÓXIMO PASO: Finding 4 — self-by-value en métodos (structs multi-campo): descubierto durante investigación F3, ver ME-AUDITOR-4.
 --- FIN ---

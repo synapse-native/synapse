@@ -1180,10 +1180,20 @@ class GeneradorC:
                     ctx.write_line(f"{_SPECIAL_SIGS[s.nombre]};")
                 else:
                     tipo_ret = ctx.traducir_tipo_c(s.tipo_retorno)
-                    params = ", ".join(
-                        f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
-                        for p in s.parametros
-                    ) if s.parametros else "void"
+                    if s.nombre in ctx._metodos_self:
+                        # F4: self por puntero en prototipo
+                        first_tipo = ctx.traducir_tipo_c(s.parametros[0].tipo)
+                        first_param = f"{first_tipo}* {s.parametros[0].nombre}"
+                        rest_params = ", ".join(
+                            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+                            for p in s.parametros[1:]
+                        ) if len(s.parametros) > 1 else ""
+                        params = (first_param + ", " + rest_params) if rest_params else first_param
+                    else:
+                        params = ", ".join(
+                            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+                            for p in s.parametros
+                        ) if s.parametros else "void"
                     ctx.write_line(f"{tipo_ret} {s.nombre}({params});")
         if any(
             isinstance(s, DefinicionFuncion)
@@ -1341,6 +1351,17 @@ class GeneradorC:
                     or c_tipo == nombre
                 ):
                     info['campos_pointer'].add(c_nombre)
+
+        # F4: Detectar métodos (Manual 3 §6.1: self como primer parámetro implícito).
+        # Las funciones con parametro 'self' cuyo tipo es un struct conocido
+        # se pasan self POR PUNTERO (struct X* self) para que las mutaciones
+        # de campos persistan en el llamador (Manual 6 §1.3).
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS:
+                if (s.parametros
+                    and s.parametros[0].nombre == 'self'
+                    and s.parametros[0].tipo in ctx._estructuras):
+                    ctx._metodos_self.add(s.nombre)
 
         # F1.2: pre-pass de DeclaracionTipo — registrar alias y ADTs ANTES de
         # prototipos/uso (traducir_tipo_c y visitar_coincidir dependen de ellos).

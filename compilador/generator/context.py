@@ -274,6 +274,8 @@ class GeneratorContext:
 
         # Struct + function tracking
         self._estructuras: Dict[str, dict] = {}
+
+        self._metodos_self: set = set()  # funciones metodo con self ptr (F4: Manual 3 §6.1)
         self._func_return_types: Dict[str, str] = {}
         self._func_param_types: Dict[str, List[str]] = {}
         self._in_function_scope = False

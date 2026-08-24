@@ -448,13 +448,28 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
             ctx._variables[p.nombre] = p.tipo + '*'
         else:
             ctx._variables[p.nombre] = p.tipo
+    # F4: self is passed by pointer for methods — store pointer type so
+    # tipo_de_expr returns 'Struct*' and ExprAccesoCampo uses '->'
+    if nodo.nombre in ctx._metodos_self:
+        ctx._variables[nodo.parametros[0].nombre] = nodo.parametros[0].tipo + '*'
 
     ctx._current_func_return_type = nodo.tipo_retorno
     tipo = ctx.traducir_tipo_c(nodo.tipo_retorno)
-    params = ", ".join(
-        f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
-        for p in nodo.parametros
-    ) if nodo.parametros else "void"
+    # F4: métodos pasan self por puntero (struct X* self) para mutaciones persistentes
+    if nodo.nombre in ctx._metodos_self:
+        param_list = list(nodo.parametros)
+        first_tipo = ctx.traducir_tipo_c(param_list[0].tipo)
+        first_param = f"{first_tipo}* {param_list[0].nombre}"
+        rest_params = ", ".join(
+            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+            for p in param_list[1:]
+        ) if len(param_list) > 1 else ""
+        params = (first_param + ", " + rest_params) if rest_params else first_param
+    else:
+        params = ", ".join(
+            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+            for p in nodo.parametros
+        ) if nodo.parametros else "void"
     ctx.write_line(f"{tipo} {nodo.nombre}({params}) {{")
     ctx.inc_indent()
     ctx.push_scope()

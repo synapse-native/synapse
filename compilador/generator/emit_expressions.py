@@ -341,6 +341,15 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
 
+        # F4: métodos pasan self por puntero — añadir & al primer argumento
+        # (Manual 3 §6.1: self es parametro implicito inyectado por el puente)
+        if nombre in ctx._metodos_self and args:
+            arg0_tipo = ''
+            if nodo.argumentos and nodo.argumentos:
+                arg0_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            if not arg0_tipo.endswith('*'):
+                args[0] = f"&({args[0]})"
+
         # Añadir & para parámetros que deben pasarse por puntero (Manual 3 §3.3)
         # Solo si el argumento NO es ya un puntero (evita &est cuando est es AnalizadorSemanticoEst*)
         if nombre in ctx._func_param_types:
