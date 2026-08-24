@@ -771,10 +771,15 @@ def _emitir_encabezado(ctx: GeneratorContext):
                    "uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
     ctx.write_line("typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
     ctx.write_line("")
-    # F1.2d/F1.4 (Manual 4 §5.2-5.3): destructores para cleanup blocks.
-    # Declaraciones de las funciones del runtime (memory.c) para rc/arc/débil.
+    # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2): rc/arc/débil runtime API.
+    # Constructor functions (rc/arc_alloc) use size_t + fnptr — no expressable
+    # from SyQuex → declared solo en C (no en .syq externos).
+    # Destructors: declarados aqui + llamados por cleanup blocks (§5.2).
+    ctx.write_line("extern void* rc_alloc(size_t tamano, void (*dtor)(void*));")
     ctx.write_line("extern void rc_decrementar(void* ptr);")
+    ctx.write_line("extern void* arc_alloc(size_t tamano, void (*dtor)(void*));")
     ctx.write_line("extern void arc_decrementar(void* ptr);")
+    ctx.write_line("extern WeakRef rc_weak_ref(void* ptr);")
     ctx.write_line("extern void rc_weak_release(WeakRef* w);")
     ctx.write_line("")
     # F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`

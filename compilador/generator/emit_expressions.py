@@ -128,6 +128,18 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, LlamadaFuncion):
         nombre = nodo.nombre
+        # Manual 4 §4.3: rc(T) → rc<T>, arc(T) → arc<T>, débil(T) → débil<T>
+        if nombre in ('rc', 'arc') and len(nodo.argumentos) >= 1:
+            inner_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            return f'{nombre} {inner_tipo}'
+        if nombre in ('débil', 'weak') and len(nodo.argumentos) >= 1:
+            arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            if arg_tipo == 'puntero' and isinstance(nodo.argumentos[0], LiteralNulo):
+                return 'débil entero'  # nil débil: inner irrelevante
+            inner = arg_tipo
+            if inner.startswith('rc ') or inner.startswith('arc '):
+                inner = inner.split(' ', 1)[1]
+            return f'débil {inner}'
         if nombre in ctx._BUILTINS:
             return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
@@ -421,6 +433,26 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                         dtor, _, _ = ctx._destructor_para_tipo(var_tipo, var_name) if var_tipo else ('', '', '')
                         if dtor and dtor == nombre:
                             ctx._consumed_vars.add(var_name)
+
+        # Manual 4 §3.3/§4.2: rc(T) / arc(T) constructores (alloc + copy)
+        if nombre in ('rc', 'arc') and len(nodo.argumentos) >= 1:
+            inner_arg = expr_a_c(ctx, nodo.argumentos[0])
+            inner_tipo_syn = tipo_de_expr(ctx, nodo.argumentos[0])
+            inner_tipo_c = ctx.traducir_tipo_c(inner_tipo_syn)
+            alloc_fn = 'rc_alloc' if nombre == 'rc' else 'arc_alloc'
+            # GCC statement expression: alloc, copy, return ptr
+            return (f"({{ {inner_tipo_c}* _p = "
+                    f"({inner_tipo_c}*)({alloc_fn})(sizeof({inner_tipo_c}), NULL); "
+                    f"*_p = ({inner_tipo_c}){{{inner_arg}}}; "
+                    f"(void*)_p; }})")
+
+        # Manual 4 §4.3: débil(nulo) → nil WeakRef, débil(ptr) → rc_weak_ref
+        if nombre in ('débil', 'weak') and len(nodo.argumentos) >= 1:
+            arg = nodo.argumentos[0]
+            if isinstance(arg, LiteralNulo):
+                return '((WeakRef){0})'
+            arg_c = expr_a_c(ctx, arg)
+            return f'rc_weak_ref({arg_c})'
 
         # len, subcadena, empieza_con builtins
         if nombre == 'len':

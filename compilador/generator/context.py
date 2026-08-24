@@ -127,6 +127,14 @@ class GeneratorContext:
             'ms_snapshot_tamano': 'int', 'ms_snapshot_contiene': 'texto',
             'len': 'int', 'subcadena': 'texto', 'empieza_con': 'int',
         }
+        # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2, §4.3): rc/arc/débil constructores
+        # `rc(T)` → rc<T>, `débil(T)` → débil<T> / `débil(nulo)` → nil WeakRef
+        self._BUILTINS['rc'] = 'rc'
+        self._BUILTINS['arc'] = 'arc'
+        self._BUILTINS['débil'] = 'débil'
+        self._BUILTINS['weak'] = 'débil'
+        self._BUILTINS['faible'] = 'débil'
+        self._BUILTINS['fraco'] = 'débil'
 
         self._RUNTIME_BUILTINS: frozenset = frozenset({
             'escribir', 'escribir_linea', 'leer_linea', 'str_eq', 'abrir', 'leer', 'cerrar_archivo',
