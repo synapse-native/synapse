@@ -186,4 +186,6 @@ El nodo `init` es un nodo huérfano. El bucle while nunca ejecuta `i = inicio`.
 6. **MED-2** (error recovery) — mejora de robustez
 7. **MED-3/MED-4/OP-1/OP-2/OP-3/OP-4** — mejoras de calidad y robustez
 
+---
 
+Commit de implementación: `500db49` (R86-FIX). Todos los fixes aplicados y verificados: 43/43 tests SyQuex PASSED, 0 brechas en `auditoria/verificar_alineacion.py`. Ver bitácora fila 2026-08-24 R86-FIX en `docs/AUDITORIA_ALINEACION_MANUALES.md`.
