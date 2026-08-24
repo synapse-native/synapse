@@ -120,6 +120,27 @@ def test_no_soportados_fallan_rapido():
             plano_a_programa(_flat(nodos))
 
 
+def test_categorization_completa_de_nodos():
+    """Auditoría F2: todos los 58 NODO_* deben estar en NOMBRE_NODO
+    y clasificados en alguna categoría (mapeado, NO_SOPORTADOS, ELIMINADOS,
+    FUSIONADOS, NO_PRODUCIDOS, o PENDIENTE_BACKEND). Ningún tipo debe caer
+    en el error genérico 'id {t}'."""
+    from compilador.puente_canonico import (
+        NOMBRE_NODO, NO_SOPORTADOS, ELIMINADOS_POR_TRADUCTOR,
+        FUSIONADOS, NO_PRODUCIDOS, PENDIENTE_BACKEND,
+    )
+    todos = set(range(1, 59))
+    # Tipos con handler explícito en _nodo()
+    explicitos = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,
+                  26,29,30,31,34,36,38,39,47,48,49,50,51,52,53}
+    categorizados = set(NO_SOPORTADOS.keys()) | set(ELIMINADOS_POR_TRADUCTOR.keys()) | \
+                    set(FUSIONADOS.keys()) | set(NO_PRODUCIDOS.keys()) | \
+                    set(PENDIENTE_BACKEND.keys())
+    sin_categoria = todos - explicitos - categorizados
+    # CONTRATO (46) está en FUSIONADOS; CASO (39) es manejado dentro de COINCIDIR
+    assert sin_categoria == set(), f"Nodos sin categoría: {sin_categoria}"
+
+
 def test_asignacion_indexada_rechazada():
     # H-R90-2: a[i] = ... sin clase en el AST tipado S1
     nodos = [

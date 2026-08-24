@@ -45,18 +45,57 @@ NOMBRE_NODO = {
     10: "DECIMAL", 11: "CADENA_LIT", 12: "BINARIA", 13: "UNARIA",
     14: "LLAMADA", 15: "PARAMETRO", 16: "ESTRUCTURA", 17: "IMPORTAR",
     18: "LANZAR", 19: "ESCUCHAR", 20: "ROMPER", 21: "SIGUIENTE",
-    22: "BOOLEANO", 23: "CONSTANTE", 26: "EXTERNO", 29: "INDICE",
-    30: "TRANSFERIDO", 31: "ACCESO_CAMPO", 38: "COINCIDIR", 39: "CASO",
-    46: "CONTRATO", 47: "NULO", 48: "LET", 49: "DELEGAR", 50: "EXPORT",
-    51: "DECLARACION_TIPO", 52: "CONSTRUCTOR", 53: "PROPAGAR",
-    36: "PUNTERO",
+    22: "BOOLEANO", 23: "CONSTANTE", 24: "INSEGURO", 25: "IMPORTAR_C",
+    26: "EXTERNO", 27: "RECUPERAR", 28: "TENSOR", 29: "INDICE",
+    30: "TRANSFERIDO", 31: "ACCESO_CAMPO", 32: "ASIGNACION_CAMPO",
+    33: "PARRAFO", 34: "DECLARACION", 35: "LOG", 36: "PUNTERO",
+    37: "DEREF", 38: "COINCIDIR", 39: "CASO",
+    40: "ASM", 41: "CANAL_CREAR", 42: "ENVIAR_CANAL", 43: "RECIBIR_CANAL",
+    44: "VACIO", 45: "PARA", 46: "CONTRATO", 47: "NULO", 48: "LET",
+    49: "DELEGAR", 50: "EXPORT", 51: "DECLARACION_TIPO", 52: "CONSTRUCTOR",
+    53: "PROPAGAR", 54: "INTENTO", 55: "LISTA_LIT", 56: "MAPA_LIT",
+    57: "PARA_EN", 58: "BLOQUE_SQ",
 }
 
+# Categorías de nodos no mapeados directamente en _nodo().
+# - NO_SOPORTADOS: backend pendiente (ME-4/5/8/Fase 23+/Fase 24)
+# - ELIMINADOS_POR_TRADUCTOR: nunca llegan al puente (traductor.syn los elimina)
+# - FUSIONADOS: manejados inline dentro de otro nodo (ej. CONTRATO en FUNCION)
+# - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
+# - PENDIENTE_BACKEND: feature futura del roadmap
 NO_SOPORTADOS = {
-    54: "INTENTO (multi-sentencia; backend pendiente H-R90-1)",
+    54: "INTENTO (multi-sentencia; backend pendiente ME-8 / H-R90-1)",
     55: "LISTA_LIT (backend Fase 24 lib/lista)",
     56: "MAPA_LIT (backend Fase 24 lib/mapa)",
-    57: "PARA_EN (cableado backend pendiente H-R90-1)",
+    57: "PARA_EN (cableado backend pendiente ME-5 / H-R90-1)",
+}
+
+ELIMINADOS_POR_TRADUCTOR = {
+    58: "BLOQUE_SQ — desenrollado por traductor.sin::trad_stmts (líneas 458-472)",
+}
+
+FUSIONADOS = {
+    46: "CONTRATO — fusionado en slot extra [7] de NODO_FUNCION (puente línea 244)",
+    32: "ASIGNACION_CAMPO — manejado vía ASIGNACION(7)+ACCESO_CAMPO(31) (puente línea 274)",
+}
+
+NO_PRODUCIDOS = {
+    35: "LOG — 'log(...)' se parsea como NODO_LLAMADA (Manual 3 §L303/L378)",
+    25: "IMPORTAR_C — import sintaxis C no producida por SyQuex frontend",
+    24: "INSEGURO — 'inseguro:' es bloque, no nodo (Manual 3 §3 L106)",
+    37: "DEREF — '*p' usa T_POR como binaria/unaria, no NODO_DEREF",
+    45: "PARA — 'para i=a; cond; paso' desugareado a MIENTRAS (parser.syn:861)",
+    33: "PARRAFO — nodo runtime nativo, no producido por SyQuex",
+    44: "VACIO — tipo nativo, no producido como nodo por SyQuex",
+}
+
+PENDIENTE_BACKEND = {
+    27: "RECUPERAR — recovery handler (try/catch completo, pendiente ME-8)",
+    28: "TENSOR — tipo tensor (Fase 4, Manual 3 §4.3)",
+    40: "ASM — bloque asm (Manual 3 §3 L106)",
+    41: "CANAL_CREAR — Canal<T>(n) (Fase 23 canales)",
+    42: "ENVIAR_CANAL — canal <- expr (Fase 23 canales)",
+    43: "RECIBIR_CANAL — recibir(canal) (ME-4 pendiente)",
 }
 
 # Códigos de operador de syquex/expr.syn (fallback cuando el lexema no
@@ -420,6 +459,19 @@ class _Puente:
             raise PuenteError(
                 f"NODO_{NO_SOPORTADOS[t]} — sin equivalente en el AST "
                 f"tipado S1 ({NO_SOPORTADOS[t].split('(', 1)[-1]}")
+        if t in ELIMINADOS_POR_TRADUCTOR:
+            raise PuenteError(
+                f"NODO_{ELIMINADOS_POR_TRADUCTOR[t]} — debería haber sido "
+                f"eliminado por el traductor antes de llegar al puente")
+        if t in FUSIONADOS:
+            raise PuenteError(
+                f"NODO_{FUSIONADOS[t]} — manejado inline, no debe aparecer individualmente")
+        if t in NO_PRODUCIDOS:
+            raise PuenteError(
+                f"NODO_{NO_PRODUCIDOS[t]} — el frontend SyQuex no genera este nodo")
+        if t in PENDIENTE_BACKEND:
+            raise PuenteError(
+                f"NODO_{PENDIENTE_BACKEND[t]} — mapeado pero backend pendiente")
         nombre = NOMBRE_NODO.get(t, f"id {t}")
         raise PuenteError(f"nodo canonico no mapeado en el puente: {nombre}")
 
