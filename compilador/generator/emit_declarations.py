@@ -105,6 +105,9 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
     tipo_c = ctx.traducir_tipo_c(tipo_syn)
     if nodo.expresion:
         val = expr_a_c(ctx, nodo.expresion)
+        # nulo -> WeakRef: ((void*)0) no inicializa struct (Manual 4 §4.2)
+        if ctx._es_tipo_debil(tipo_syn) and val == 'nulo':
+            val = '((WeakRef){0})'
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {val};")
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
@@ -115,6 +118,8 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
         ctx._canal_vars.add(nodo.nombre)
     elif tipo_syn == 'Tensor':
         ctx._tensor_vars.add(nodo.nombre)
+    elif ctx._tipo_tiene_destructor(tipo_syn):
+        ctx._scope_stack[-1][nodo.nombre] = tipo_syn
 
 
 def visitar_delegar(ctx: GeneratorContext, nodo: SentenciaDelegar):
@@ -150,14 +155,17 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx.register_var(nodo.nombre, tipo_syn, desde_llamada)
     else:
         old_tipo = ctx._variables.get(nodo.nombre)
-        if old_tipo in ctx._destructor_map:
-            dtor = ctx._destructor_map[old_tipo]
-            ctx.write_line(f"{dtor}({nodo.nombre});")
+        if old_tipo and ctx._tipo_tiene_destructor(old_tipo):
+            dtor, arg = ctx._destructor_para_tipo(old_tipo, nodo.nombre)
+            if dtor:
+                ctx.write_line(f"{dtor}({arg});")
             ctx.unregister_var(nodo.nombre)
         if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
         if _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
+        elif ctx._tipo_tiene_destructor(tipo_syn):
+            ctx._scope_stack[-1][nodo.nombre] = tipo_syn
         ctx.write_line(f"{nodo.nombre} = {val};")
 
 
@@ -407,7 +415,7 @@ def visitar_enviar_canal(ctx: GeneratorContext, nodo: SentenciaEnviarCanal):
         ctx.write_line(f"canal_enviar({canal}, (void*)({valor}));")
     if (
         isinstance(nodo.valor, Identificador)
-        and tipo_valor in ctx._destructor_map
+        and ctx._tipo_tiene_destructor(tipo_valor)
     ):
         ctx.write_line(f"{valor} = ({{0}});")
         ctx.unregister_var(nodo.valor.nombre)
@@ -474,11 +482,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx.inc_indent()
     ctx.push_scope()
 
-    # Register transfer parameters
+    # Register parameters with destructors (transfer + rc/arc/débil)
     for p in nodo.parametros:
-        if p.es_transferencia:
-            if p.tipo in ctx._destructor_map:
-                ctx._scope_stack[-1][p.nombre] = p.tipo
+        if p.es_transferencia or ctx._tipo_tiene_destructor(p.tipo):
+            ctx._scope_stack[-1][p.nombre] = p.tipo
 
     # Contract requires → asserts
     for expr in nodo.requiere:
@@ -517,9 +524,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     _collect_vars(nodo.cuerpo)
     for vn, vt_syn in _auto_vars:
         vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
-        # Zero-initialize if type has destructor (evita _syn_texto_liberar() en garbage)
-        if vt_syn in ctx._destructor_map:
+        # Zero-initialize if type has destructor (evita liberar garbage)
+        if ctx._tipo_tiene_destructor(vt_syn):
             ctx.write_line(f"{vt_c} {vn} = {{0}};")
+            ctx._scope_stack[-1][vn] = vt_syn
         else:
             ctx.write_line(f"{vt_c} {vn};")
 

@@ -829,3 +829,36 @@ void _a_analizar_bloque(int n) {
 int _a_get_rc_count(void) {
     return g_rc_count;
 }
+
+// ============================================================
+// Read-only SemNodo accessors for analizador_alcance.syq (§5.2)
+// tr_* son los externos del .syq que permiten al programa de
+// SyQuex traversear el SemNodo[] desde C. Comparten el mismo
+// g_ast_base que _a_analizar_bloque (§5.2: walker + accessors
+// sobre el mismo arreglo). (Manual 4 §5.2-5.3, Manual 3 §11.1)
+// ============================================================
+
+int64_t tr_tipo(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return -1;
+    return (int64_t)g_ast_base[n].tipo_nodo;
+}
+
+int64_t tr_hizq(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hijo_izq;
+}
+
+int64_t tr_hder(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hijo_der;
+}
+
+int64_t tr_herm(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hermano;
+}
+
+int64_t tr_vi(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].valor_int;
+}

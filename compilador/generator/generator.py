@@ -762,8 +762,21 @@ def _emitir_encabezado(ctx: GeneratorContext):
     ctx.write_line("extern int _G_fn_var_auto[2048];")
     ctx.write_line("extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting")
     ctx.write_line("extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero"
-)
+    )
     ctx.write_line("extern int _G_fn_ptr_vars_count;")
+    # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2): rc/arc/débil types.
+    # WeakRef pasa por valor (struct pequeño); destructors usan &var.
+    # Funciones declaradas por el .syq via externos (con wrappers simples).
+    ctx.write_line("typedef struct { uint32_t ref_count; uint32_t weak_count; "
+                   "uint32_t version; void* data; void (*destructor)(void*); } RcHeader;")
+    ctx.write_line("typedef struct { RcHeader* header; uint32_t version; } WeakRef;")
+    ctx.write_line("")
+    # F1.2d/F1.4 (Manual 4 §5.2-5.3): destructores para cleanup blocks.
+    # Declaraciones de las funciones del runtime (memory.c) para rc/arc/débil.
+    ctx.write_line("extern void rc_decrementar(void* ptr);")
+    ctx.write_line("extern void arc_decrementar(void* ptr);")
+    ctx.write_line("extern void rc_weak_release(WeakRef* w);")
+    ctx.write_line("")
     # F3-10: elemento (Canal<T>) de cada variable canal para el receive `ch ->`
     ctx.write_line("extern char _G_native_canal_names[512][64];")
     ctx.write_line("extern char _G_native_canal_elem[512][64];")

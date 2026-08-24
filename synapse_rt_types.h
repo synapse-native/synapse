@@ -199,6 +199,15 @@ void _a_reset_rc_vars(void);
 void _a_analizar_bloque(int n);
 int _a_get_rc_count(void);
 
+// Read-only SemNodo accessors (tr_*): externos del analizador_alcance.syq
+// que permiten al programa SyQuex traversear el SemNodo[] desde C.
+// Comparten el mismo g_ast_base que _a_analizar_bloque (Manual 4 §5.2-5.3).
+int64_t tr_tipo(int n);
+int64_t tr_hizq(int n);
+int64_t tr_hder(int n);
+int64_t tr_herm(int n);
+int64_t tr_vi(int n);
+
 // --- Thread tracker helpers ---
 struct _HiloArgs {
     void* (*fn)(void*);

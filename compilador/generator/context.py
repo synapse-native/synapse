@@ -368,9 +368,9 @@ class GeneratorContext:
             if var_name in self._consumed_vars:
                 self._consumed_vars.discard(var_name)
                 continue
-            dtor = self._destructor_map.get(scope[var_name])
+            dtor, arg = self._destructor_para_tipo(scope[var_name], var_name)
             if dtor:
-                self.write_line(f"{dtor}({var_name});")
+                self.write_line(f"{dtor}({arg});")
 
     def enable_safe_mode(self):
         """M22.1: Activa modo --safe, que emite /* BORROW_CHECK */ en &T y *ptr."""
@@ -378,22 +378,64 @@ class GeneratorContext:
 
     def emit_all_destructors(self, exclude_var: str = ''):
         for scope in reversed(self._scope_stack):
-            # Manual 3 §3.3: iteración lexicográfica sobre claves de diccionarios
             for var_name in reversed(sorted(scope.keys())):
                 if var_name == exclude_var:
                     continue
-                # Move semantics: skip vars already explicitly consumed/destroyed
                 if var_name in self._consumed_vars:
                     self._consumed_vars.discard(var_name)
                     continue
-                dtor = self._destructor_map.get(scope[var_name])
+                dtor, arg = self._destructor_para_tipo(scope[var_name], var_name)
                 if dtor:
-                    self.write_line(f"{dtor}({var_name});")
+                    self.write_line(f"{dtor}({arg});")
         for scope in self._scope_stack:
             scope.clear()
 
+    def _es_tipo_rc(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es rc<T> o `rc T` (Manual 4 §3.2, Manual 3 §3)."""
+        return tipo_synapse == 'rc' or (
+            tipo_synapse.startswith('rc<') and tipo_synapse.endswith('>')
+            or tipo_synapse.startswith('rc ')
+        )
+
+    def _es_tipo_arc(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es arc<T> o `arc T` (Manual 4 §3.3)."""
+        return tipo_synapse == 'arc' or (
+            tipo_synapse.startswith('arc<') and tipo_synapse.endswith('>')
+            or tipo_synapse.startswith('arc ')
+        )
+
+    def _es_tipo_debil(self, tipo_synapse: str) -> bool:
+        """True si tipo_synapse es débil<T>/débil<T>/weak<T>/weak (Manual 4 §4.2)."""
+        debil_prefixes = ('débil<', 'weak<', 'faible<', 'fraco<')
+        debil_exact = ('débil', 'weak', 'faible', 'fraco')
+        return (tipo_synapse.startswith(debil_prefixes)
+                or tipo_synapse in debil_exact
+                or any(tipo_synapse.startswith(p + ' ') for p in debil_exact))
+
+    def _tipo_tiene_destructor(self, tipo_synapse: str) -> bool:
+        """True si el tipo requiere cleanup en scope exit (Manual 4 §5.2)."""
+        return (self._destructor_map.get(tipo_synapse) is not None
+                or self._es_tipo_rc(tipo_synapse)
+                or self._es_tipo_arc(tipo_synapse)
+                or self._es_tipo_debil(tipo_synapse))
+
+    def _destructor_para_tipo(self, tipo_synapse: str,
+                              var_name: str = '') -> tuple:
+        """Devuelve (fn, arg_expr) para el destructor de un tipo, o ('', '').
+        Manual 4 §3.2 (rc), §3.3 (arc), §4.2 (débiles), §5.2 (cleanup)."""
+        dtor = self._destructor_map.get(tipo_synapse)
+        if dtor:
+            return (dtor, var_name)
+        if self._es_tipo_rc(tipo_synapse):
+            return ('rc_decrementar', var_name)
+        if self._es_tipo_arc(tipo_synapse):
+            return ('arc_decrementar', var_name)
+        if self._es_tipo_debil(tipo_synapse):
+            return ('rc_weak_release', f'&{var_name}')
+        return ('', '')
+
     def register_var(self, nombre: str, tipo: str, desde_llamada: bool):
-        if self._scope_stack and desde_llamada and tipo in self._destructor_map:
+        if self._scope_stack and desde_llamada and self._tipo_tiene_destructor(tipo):
             self._scope_stack[-1][nombre] = tipo
 
     def unregister_var(self, nombre: str):
@@ -456,12 +498,13 @@ class GeneratorContext:
             if inner in ('texto', 'cadena', 'CadenaSegura', 'Texto'):
                 return 'char*'
             return self.traducir_tipo_c(inner) + '*'
-        # F1.2d + F1.4: rc<T>/arc<T>/débil<T> (Manual 2 §4.3). ABI placeholder
-        # (void*) hasta la Fase 23 (runtime real de rc/arc/débil — ROADMAP Fase
-        # 23 L213-214). 'rc' se añadió en F1.4 (Manual 2 §4 L151: "rc" tipo).
-        if (tipo_synapse.startswith(('rc<', 'arc<', 'débil<', 'weak<', 'faible<', 'fraco<'))
-                or tipo_synapse in ('rc', 'arc', 'débil', 'weak', 'faible', 'fraco')):
+        # F1.2d/F1.4: rc/arc/débil/arena (Manual 4 §3.2-3.3, §4.2-4.4).
+        # Sintaxis SyQuex: `rc entero` (espacio, Manual 3 §3 L155-169) — pero
+        # también soporta `rc<entero>` (ángulos). ABI: void* en C.
+        if self._es_tipo_rc(tipo_synapse) or self._es_tipo_arc(tipo_synapse):
             return 'void*'
+        if self._es_tipo_debil(tipo_synapse):
+            return 'WeakRef'
         if tipo_synapse.startswith('Canal<') and tipo_synapse.endswith('>'):
             return 'CanalConcurrencia*'
         # D-2: instanciación de ADT genérico registrada (monomorfización).

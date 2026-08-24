@@ -24,8 +24,17 @@ _TIPOS_RC = frozenset({'rc', 'arc', 'debil', 'débil', 'weak', 'faible', 'fraco'
 
 
 def _es_tipo_referencia_rc(tipo: str) -> bool:
-    """True si `tipo` es un tipo de conteo de referencias (rc/arc/débil)."""
-    base = tipo.split('<')[0].strip()
+    """True si `tipo` es un tipo de conteo de referencias (rc/arc/débil).
+    Soporta sintaxis SyQuex `rc entero` (Manual 3 §3 L155-169) y
+    `rc<entero>` (ángulos)."""
+    if tipo in _TIPOS_RC:
+        return True
+    if '<' in tipo:
+        base = tipo.split('<')[0].strip()
+    elif ' ' in tipo:
+        base = tipo.split()[0].strip()
+    else:
+        base = tipo.strip()
     return base in _TIPOS_RC
 
 
