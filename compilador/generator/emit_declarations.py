@@ -156,9 +156,12 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
     else:
         old_tipo = ctx._variables.get(nodo.nombre)
         if old_tipo and ctx._tipo_tiene_destructor(old_tipo):
-            dtor, arg = ctx._destructor_para_tipo(old_tipo, nodo.nombre)
+            dtor, arg, guard = ctx._destructor_para_tipo(old_tipo, nodo.nombre)
             if dtor:
-                ctx.write_line(f"{dtor}({arg});")
+                if guard:
+                    ctx.write_line(f"if ({guard}) {dtor}({arg});")
+                else:
+                    ctx.write_line(f"{dtor}({arg});")
             ctx.unregister_var(nodo.nombre)
         if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
@@ -526,7 +529,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
         vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
         # Zero-initialize if type has destructor (evita liberar garbage)
         if ctx._tipo_tiene_destructor(vt_syn):
-            ctx.write_line(f"{vt_c} {vn} = {{0}};")
+            if vt_c == 'void*':
+                ctx.write_line(f"{vt_c} {vn} = NULL;")
+            else:
+                ctx.write_line(f"{vt_c} {vn} = {{0}};")
             ctx._scope_stack[-1][vn] = vt_syn
         else:
             ctx.write_line(f"{vt_c} {vn};")

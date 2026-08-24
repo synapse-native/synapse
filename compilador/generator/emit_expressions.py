@@ -418,7 +418,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     # Caso 2: funcion es el destructor directo del tipo de la variable
                     else:
                         var_tipo = ctx._variables.get(var_name, '')
-                        dtor, _ = ctx._destructor_para_tipo(var_tipo, var_name) if var_tipo else ('', '')
+                        dtor, _, _ = ctx._destructor_para_tipo(var_tipo, var_name) if var_tipo else ('', '', '')
                         if dtor and dtor == nombre:
                             ctx._consumed_vars.add(var_name)
 

@@ -368,9 +368,12 @@ class GeneratorContext:
             if var_name in self._consumed_vars:
                 self._consumed_vars.discard(var_name)
                 continue
-            dtor, arg = self._destructor_para_tipo(scope[var_name], var_name)
+            dtor, arg, guard = self._destructor_para_tipo(scope[var_name], var_name)
             if dtor:
-                self.write_line(f"{dtor}({arg});")
+                if guard:
+                    self.write_line(f"if ({guard}) {dtor}({arg});")
+                else:
+                    self.write_line(f"{dtor}({arg});")
 
     def enable_safe_mode(self):
         """M22.1: Activa modo --safe, que emite /* BORROW_CHECK */ en &T y *ptr."""
@@ -384,9 +387,12 @@ class GeneratorContext:
                 if var_name in self._consumed_vars:
                     self._consumed_vars.discard(var_name)
                     continue
-                dtor, arg = self._destructor_para_tipo(scope[var_name], var_name)
+                dtor, arg, guard = self._destructor_para_tipo(scope[var_name], var_name)
                 if dtor:
-                    self.write_line(f"{dtor}({arg});")
+                    if guard:
+                        self.write_line(f"if ({guard}) {dtor}({arg});")
+                    else:
+                        self.write_line(f"{dtor}({arg});")
         for scope in self._scope_stack:
             scope.clear()
 
@@ -420,19 +426,22 @@ class GeneratorContext:
                 or self._es_tipo_debil(tipo_synapse))
 
     def _destructor_para_tipo(self, tipo_synapse: str,
-                              var_name: str = '') -> tuple:
-        """Devuelve (fn, arg_expr) para el destructor de un tipo, o ('', '').
-        Manual 4 §3.2 (rc), §3.3 (arc), §4.2 (débiles), §5.2 (cleanup)."""
+                               var_name: str = '') -> tuple:
+        """Devuelve (fn, arg_expr, guard) para el destructor de un tipo,
+        o ('', '', ''). Manual 4 §3.2 (rc), §3.3 (arc), §4.2 (débiles),
+        §5.2 (cleanup). El 3er elemento es la condición C que guarda against
+        nil (Manual 4 §4.1: nulo valor valido; rc_flag bitmask §5.4)."""
         dtor = self._destructor_map.get(tipo_synapse)
         if dtor:
-            return (dtor, var_name)
+            return (dtor, var_name, '')
         if self._es_tipo_rc(tipo_synapse):
-            return ('rc_decrementar', var_name)
+            return ('rc_decrementar', var_name, f'{var_name}')
         if self._es_tipo_arc(tipo_synapse):
-            return ('arc_decrementar', var_name)
+            return ('arc_decrementar', var_name, f'{var_name}')
         if self._es_tipo_debil(tipo_synapse):
-            return ('rc_weak_release', f'&{var_name}')
-        return ('', '')
+            # WeakRef: rc_weak_release checks !w->header internally (§4.2)
+            return ('rc_weak_release', f'&{var_name}', '')
+        return ('', '', '')
 
     def register_var(self, nombre: str, tipo: str, desde_llamada: bool):
         if self._scope_stack and desde_llamada and self._tipo_tiene_destructor(tipo):
