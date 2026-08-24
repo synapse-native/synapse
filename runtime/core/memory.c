@@ -636,7 +636,11 @@ void arc_decrementar(void* ptr) {
     if (prev == 1) {
         if (h->destructor) h->destructor(ptr);
         if (h->weak_count > 0) {
-            h->version++;
+            // Manual 4 §4.2: la débil se invalida al destruir el fuerte.
+            // version es compartido con lecturas __atomic_load_n en
+            // arc_weak_ref/arc_weak_upgrade (F7): el incremento debe ser
+            // una RMW atómica para no competir con ellas.
+            __atomic_fetch_add(&h->version, 1, __ATOMIC_RELEASE);
             return;
         }
         free(h);
@@ -682,10 +686,20 @@ void* arc_weak_upgrade(WeakRef* w) {
     ArcHeader* h = (ArcHeader*)w->header;
     uint32_t ver = __atomic_load_n(&h->version, __ATOMIC_ACQUIRE);
     if (ver != w->version) return NULL;
+    // Manual 4 §4.2 / F8: el camino arc entre fibras es concurrente. La
+    // lectura de ref_count seguida de un fetch_add separado era un TOCTOU
+    // (UAF): otro hilo podía llevar ref_count a 0 y free(h) entre medias.
+    // CAS loop: solo promovemos la débil a fuerte si ref_count > 0, en una
+    // sola operación atómica. Si ref_count llega a 0 el objeto ya murió.
     uint32_t rc = __atomic_load_n(&h->ref_count, __ATOMIC_ACQUIRE);
-    if (rc == 0) return NULL;
-    __atomic_fetch_add(&h->ref_count, 1, __ATOMIC_ACQ_REL);
-    return h->data;
+    while (rc > 0) {
+        if (__atomic_compare_exchange_n(&h->ref_count, &rc, rc + 1, false,
+                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            return h->data;
+        }
+        // rc se reescribió con el valor actual; reintentar mientras viva.
+    }
+    return NULL;
 }
 
 void rc_weak_release(WeakRef* w) {
