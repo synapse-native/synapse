@@ -420,6 +420,8 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
                 if sim_existente:
+                    # Manual 2 L516: reasignación resetea ownership (después de move, nueva asignación restaura)
+                    self.tabla.desmarcar_movido(nodo.nombre)
                     # Variable already declared: validate type compatibility
                     norm_existente = _tipo_normalizado(sim_existente.tipo)
                     norm_expr = _tipo_normalizado(tipo_expr)

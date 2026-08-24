@@ -47,6 +47,7 @@ class ErrorCodes(Enum):
     ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = auto()
     ERR_MEM_BORROW_CONFLICT = auto()
     ERR_SEM_TYPE_AMBIGUOUS = auto()  # 2.4: Hindley-Milner (Manual 2 §8.2)
+    ERR_SEM_CONTRATO_REQUIERE = auto()  # Manual 2 §5.1: violación estática de requiere
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -87,6 +88,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acceso a variable '{nombre}' despues de move por lanzar/concurrencia (E-504)",
         ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Expresion con tipo ambiguo: no se puede inferir '{tipo}'",
+        ErrorCodes.ERR_SEM_CONTRATO_REQUIERE: "Contrato 'requiere' violado en llamada a '{nombre}': {condicion} (Manual 2 §5.1)",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Bucle 'mientras' sin cota estatica comprobable en modo --safe (E-700). Use 'para' con rango fijo.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Mutacion de variable global '{nombre}' prohibida en modo --safe (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Funcion '{nombre}' recursiva sin convergencia estructural comprobable en modo --safe (E-702)",
@@ -129,6 +131,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Access to variable '{nombre}' after move by lanzar/concurrency (E-504)",
         ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Ambiguous expression type: cannot infer '{tipo}'",
+        ErrorCodes.ERR_SEM_CONTRATO_REQUIERE: "Contract 'requires' violated in call to '{nombre}': {condicion} (Manual 2 §5.1)",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Unbounded 'while' loop without static bound in --safe mode (E-700). Use 'for' with fixed range.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Global variable '{nombre}' mutation forbidden in --safe mode (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Recursive function '{nombre}' without structural convergence in --safe mode (E-702)",
