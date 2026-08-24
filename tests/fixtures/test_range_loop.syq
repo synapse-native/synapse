@@ -1,0 +1,12 @@
+#lang: es
+
+// R86 FIX CRIT-1+2: fixture de rango
+// Verifica:
+//   1. Lexer `..` no se consume como float (CRIT-1)
+//   2. Parser `para i = 0 .. 4` produce init → mientras → cuerpo → incr (CRIT-2)
+// Salida esperada: 0 1 2 3 4
+
+funcion principal() -> entero:
+    para i = 0 .. 4:
+        escribir_linea(entero_a_texto(i))
+    retornar 0

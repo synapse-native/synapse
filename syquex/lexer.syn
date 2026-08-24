@@ -526,13 +526,21 @@ funcion sq_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                     si i < len_texto:
                         asm("c = (unsigned char)((const char*)ptr_texto)[i]")
                         si c == 46:
-                            es_float = 1
-                            asm("i = i + 1")
-                            mientras i < len_texto:
-                                asm("c = (unsigned char)((const char*)ptr_texto)[i]")
-                                si sq_es_digito(c) == 0:
-                                    romper
+                            // R86 FIX CRIT-1: peek siguiente — si NO es dígito,
+                            // el '.' no pertenece al número (Manual 3 §4:
+                            // numero ::= DIGITO+ [ "." DIGITO+ ]). Puede ser
+                            // '..' (rango, Manual 3 §3 L132) o '.' (campo M3 §3),
+                            // dejarse para el loop principal.
+                            c2 = 0
+                            asm("c2 = (i + 1 < len_texto) ? (unsigned char)((const char*)ptr_texto)[i + 1] : 0")
+                            si sq_es_digito(c2) != 0:
+                                es_float = 1
                                 asm("i = i + 1")
+                                mientras i < len_texto:
+                                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                                    si sq_es_digito(c) == 0:
+                                        romper
+                                    asm("i = i + 1")
                     // R86 M3: exponente 'e'/'E' ['-'] dígitos
                     si i < len_texto:
                         asm("c = (unsigned char)((const char*)ptr_texto)[i]")

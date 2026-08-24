@@ -271,9 +271,12 @@ funcion sq_guardar_span_sq(est: ParserEst, nodo: entero, pos_ini: entero, pos_fi
         asm("    }")
         asm("}")
 
-// Tipo Syquex (M3 §3): primitivos | ID | lista<T> | mapa<K,V> | Resultado<E,T>
-// | Opcion<T> | Canal<T> | [T] | &T/&mut T | rc/arc/débil/arena prefix.
-// Consume con profundidad de < > y deja el cursor tras el tipo.
+// Tipo Syquex (M3 §3 L155-169): primitivos | ID | Lista<T> | Mapa<K,V>
+// | Resultado<T,E> | Opcion<T> | Canal<T> | [T] | &T | rc/arc/débil/arena T
+// | funcion(tipos)->T (M3 §3 L162). Consume con profundidad de < > y deja
+// el cursor tras el tipo.
+// NOTA M3 §2: el desarrollador nunca escribe &mut en annotations; &T es
+// solo para modo sistema/FFI (M3 §5.3). Ver D-F22-A para &mut en exprs.
 funcion sq_tipo(est: ParserEst) -> nulo:
     t = token_mirar(est)
     si t == T_CORCH_IZQ:
@@ -283,10 +286,24 @@ funcion sq_tipo(est: ParserEst) -> nulo:
             asm("token_esperar(est, T_CORCH_DER)")
         retornar
     si t == T_AMPERSAND:
+        // M3 §5.3: &T — préstamo inmutable SOLO en modo sistema/FFI.
+        // M3 §2: el desarrollador nunca escribe &mut. No consumir 'mut'.
         token_avanzar(est)
-        si token_mirar(est) == T_IDENTIFICADOR:
-            si token_len_valor(est, est.posicion) == 3:
+        sq_tipo(est)
+        retornar
+    si t == T_FUNCION:
+        // M3 §3 L162: funcion "(" [ tipos ] ")" "->" tipo
+        token_avanzar(est)
+        inseguro:
+            asm("token_esperar(est, T_PAREN_IZQ)")
+        si token_mirar(est) != T_PAREN_DER:
+            sq_tipo(est)
+            mientras token_mirar(est) == T_COMA:
                 token_avanzar(est)
+                sq_tipo(est)
+        inseguro:
+            asm("token_esperar(est, T_PAREN_DER)")
+            asm("token_esperar(est, T_FLECHA_DER)")
         sq_tipo(est)
         retornar
     si t == T_RC o t == T_ARC o t == T_DEBIL o t == T_ARENA:
@@ -296,6 +313,9 @@ funcion sq_tipo(est: ParserEst) -> nulo:
     si token_es_nombre(t) == 1:
         token_avanzar(est)
     sino:
+        // MED-2 FIX: error recovery — reportar token inesperado en tipo
+        inseguro:
+            asm("est->hay_error = 1;")
         token_avanzar(est)
     si token_mirar(est) == T_MENOR:
         token_avanzar(est)
@@ -303,6 +323,9 @@ funcion sq_tipo(est: ParserEst) -> nulo:
         mientras prof > 0:
             tt = token_mirar(est)
             si tt == T_FIN:
+                // MED-2 FIX: error recovery — '>' de cierre faltante
+                inseguro:
+                    asm("est->hay_error = 1;")
                 romper
             si tt == T_MENOR:
                 prof = prof + 1
@@ -909,19 +932,26 @@ funcion sq_para(est: ParserEst) -> entero:
     inseguro:
         asm("est->nodos[incr].hijo_izq = idv")
         asm("est->nodos[incr].hijo_der = incr_val")
-    // cuerpo: incr antepuesto a la cadena original
+    // CRIT-2 FIX: cuerpo → incr (el incremento va DESPUÉS del cuerpo, no antes).
+    // El patrón de cadena previamente usado (incr → cuerpo) invertía el orden.
+    // Manual 3 §3 L132: "incremento i = i + paso dentro del cuerpo" (después).
     si cuerpo != 0:
         inseguro:
-            asm("est->nodos[incr].hermano = cuerpo")
-        cuerpo_final = incr
+            // CRIT-2 FIX: cuerpo es NODO_BLOQUE_SQ(58) → la cadena real está en hijo_izq.
+            // Append incr al final de esa cadena interior (hijo_izq → hermano).
+            asm("{ struct NodoAST* _ns = (struct NodoAST*)parser_nodos(); int _l = _ns[cuerpo].hijo_izq; while (_l > 0 && _l < est->total_nodos && _ns[_l].hermano != 0) _l = _ns[_l].hermano; if (_l > 0 && _l < est->total_nodos) _ns[_l].hermano = incr; }")
+        cuerpo_final = cuerpo
     sino:
         cuerpo_final = incr
     n = sq_nuevo(est, NODO_MIENTRAS, linea, col)
+    bloqueador = sq_nuevo(est, NODO_BLOQUE_SQ, linea, col)
     inseguro:
         asm("est->nodos[n].hijo_izq = lt")
         asm("est->nodos[n].hijo_der = cuerpo_final")
+        asm("est->nodos[init].hermano = n")
+        asm("est->nodos[bloqueador].hijo_izq = init")
     saltar_nl(est)
-    retornar n
+    retornar bloqueador
 
 funcion sq_coincidir(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)

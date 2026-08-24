@@ -251,9 +251,13 @@ class _Puente:
     # ---- cadenas por hermano ([6]) ----
     def cadena(self, idx: int):
         out = []
+        visitados = set()
         while idx > 0:
             if idx >= len(self.nodos):
                 raise PuenteError(f"indice fuera de rango en cadena: {idx}")
+            if idx in visitados:
+                raise PuenteError(f"bucle detectado en cadena de hermanos: {idx}")
+            visitados.add(idx)
             n = self._nodo(idx)
             if n is not None:
                 out.append(n)
@@ -480,7 +484,11 @@ class _Puente:
 
     def cadena_ids(self, idx: int):
         out = []
+        visitados = set()
         while idx > 0:
+            if idx in visitados:
+                raise PuenteError(f"bucle detectado en cadena de params: {idx}")
+            visitados.add(idx)
             out.append(idx)
             idx = self.nodos[idx][6]
         return out

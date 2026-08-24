@@ -4,7 +4,7 @@
 // (sin call-sites OOP: metodos/constructores quedan pendientes
 // del lowering H-R90-5). Funciones libres + coincidir (H-R90-6
 // sobre primitivos) + enum + constante + externo + export +
-// si/mientras/para..en.
+// si/mientras (sin para..en, que requiere lowering H-R90-5).
 // Salida esperada al ejecutar:
 //   cero
 //   3
