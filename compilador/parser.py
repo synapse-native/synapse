@@ -96,6 +96,13 @@ class Parser(
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ARROW_LEFT):
                 return self._parsear_enviar_canal()
+            # Manual 5 §4.2: `ch ->` como expression statement (receive)
+            if (es_token_identificador(t)
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+                expr = self._parsear_recibir_canal()
+                if expr is not None:
+                    return SentenciaExpr(expr=expr, linea=t.linea, columna=t.columna)
             if (es_token_identificador(t)
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ASSIGN):

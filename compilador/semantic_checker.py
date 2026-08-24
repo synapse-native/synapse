@@ -38,6 +38,17 @@ def _es_tipo_referencia_rc(tipo: str) -> bool:
     return base in _TIPOS_RC
 
 
+def _tipo_necesita_move(tipo: str) -> bool:
+    """True si el tipo necesita move semantics (tiene destructor).
+    Tipos con destructor: rc, arc, weak, texto, cadena, NodoJson, NodoToml.
+    Tipos valor (copian): entero, decimal, nulo, bool, enteroptr."""
+    if _es_tipo_referencia_rc(tipo):
+        return True
+    _TIPOS_CON_DESTRUCTOR = ('texto', 'cadena', 'CadenaSegura', 'NodoJson', 'NodoToml')
+    base = tipo.split('<')[0].strip().split()[0].strip() if ('<' in tipo or ' ' in tipo) else tipo.strip()
+    return base in _TIPOS_CON_DESTRUCTOR
+
+
 # --- Lifetime/Region type constants (Manual 4.3) ---
 LT_ESTATICO = 0       # 'static
 LT_LOCAL = 1          # Variable local
@@ -625,9 +636,15 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, SentenciaLanzar):
             self._inferir_tipo(nodo.llamada)
             if isinstance(nodo.llamada, LlamadaFuncion):
+                # Manual 5 §2.4: args a lanzar se mueven si son tipos con destructor
+                # (rc, arc, weak, texto, etc.). Tipos valor (entero, decimal) se copian.
                 for arg in nodo.llamada.argumentos:
                     if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
                         self.tabla.marcar_movido(arg.expr.nombre)
+                    elif isinstance(arg, Identificador):
+                        sim = self.tabla.buscar(arg.nombre)
+                        if sim and _tipo_necesita_move(sim.tipo):
+                            self.tabla.marcar_movido(arg.nombre)
         elif isinstance(nodo, SentenciaExpr):
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):
