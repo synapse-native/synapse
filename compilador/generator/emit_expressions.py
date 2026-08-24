@@ -70,6 +70,9 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, ExprObtenerDireccion):
         base_tipo = tipo_de_expr(ctx, nodo.expr)
+        # FFI: &texto -> char* (zero-copy .datos, Manual 3 §9.3)
+        if base_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return 'puntero'
         return f"{base_tipo}*"
 
     if isinstance(nodo, ExprDereferencia):
@@ -185,16 +188,6 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
             return 'texto'
         return 'int'
-
-    if isinstance(nodo, ExprObtenerDireccion):
-        base_tipo = tipo_de_expr(ctx, nodo.expr)
-        return f"{base_tipo}*"
-
-    if isinstance(nodo, ExprDereferencia):
-        base_tipo = tipo_de_expr(ctx, nodo.expr)
-        if base_tipo.endswith('*'):
-            return base_tipo[:-1]
-        return base_tipo
 
     if isinstance(nodo, ArgumentoTransferido):
         return tipo_de_expr(ctx, nodo.expr)
@@ -453,12 +446,20 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             adjusted = []
             for i, a in enumerate(args):
                 if i < len(expected_types) and expected_types[i] == 'char*':
-                    adjusted.append(f"{a}.datos")
+                    # Skip .datos if arg is already char* (ExprObtenerDireccion
+                    # of texto produces .datos → tipo_de_expr returns 'puntero')
+                    arg_tipo = ''
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                    if arg_tipo == 'puntero':
+                        adjusted.append(a)
+                    else:
+                        adjusted.append(f"({a}).datos")
                 else:
                     adjusted.append(a)
             return f"{nombre}({', '.join(adjusted)})"
 
-        # Add .datos for string args passed to puntero (void*) params
+        # Add .datos for string args passed to puntero (void*) or &texto params (FFI)
         if nombre in ctx._func_param_types:
             param_types = ctx._func_param_types[nombre]
             adjusted = []
@@ -467,7 +468,16 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     if nodo.argumentos and i < len(nodo.argumentos):
                         arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
                         if arg_tipo in ('texto', 'cadena', 'CadenaSegura'):
-                            adjusted.append(f"{a}.datos")
+                            adjusted.append(f"({a}).datos")
+                            continue
+                # FFI: &texto param expects char* — pass .datos if arg is texto
+                if (i < len(param_types)
+                        and param_types[i] in ('&texto', '&cadena', '&Texto')
+                        and param_types[i] not in ctx._POINTER_TYPES):
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                        if arg_tipo in ('texto', 'cadena', 'CadenaSegura'):
+                            adjusted.append(f"({a}).datos")
                             continue
                 adjusted.append(a)
             return f"{nombre}({', '.join(adjusted)})"
@@ -532,6 +542,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, ExprObtenerDireccion):
         inner = expr_a_c(ctx, nodo.expr)
+        base_tipo = tipo_de_expr(ctx, nodo.expr)
+        # FFI: &texto -> char* (zero-copy .datos, Manual 3 §9.3)
+        if base_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return f"({inner}).datos"
         if ctx._safe_mode:
             # Use GCC statement expression ({...}) instead of comma operator
             # (GCC -O2 eliminates comma-operator assert in provably UB paths)

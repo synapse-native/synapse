@@ -20,12 +20,22 @@ constante AST_ABI_VERSION = 1
 // Capacidad máxima del array aplanado SemNodo[] (Manual 2 §7.3)
 constante AST_ABI_MAX_NODOS = 65536
 
-// Campos obligatorios de cada nodo (Manual 6 §1.2):
-//   tipo, linea, columna, archivo, owner_id, scope_id,
-//   es_owned, es_prestado_inmutable, es_prestado_mutable,
-//   es_transferido, es_exportado, export_lang
-// Preservación de metadatos (archivo/línea/columna) OBLIGATORIA en el
-// traductor de Syquex (Manual 3 §11.2).
+// Número de campos del registro plano SemNodo[] (Manual 6 §1.2 forma real):
+// [tipo, linea, columna, valor_int, hijo_izq, hijo_der, hermano, extra, txt1, txt2]
+constante AST_ABI_NODOS_CAMPOS = 10
+
+// Formato real del SemNodo[] aplanado (Manual 6 §1.2, Manual 2 §7.3):
+// Cada nodo es un registro de 10 campos enteros/float (NodoAST en
+// synapse_rt_types.h): tipo, linea, columna, valor_int, hijo_izq, hijo_der,
+// hermano, ptr_extra, ptr_str+len_str (span texto como byte-array).
+// El struct rico de Manual 6 §1.2 (con archivo/owner_id/scope_id/es_owned/
+// union de sub-structs) es el MODELO CONCEPTUAL del AST; la representacion
+// aplanada canónica usada por el runtime C y el puente Python es la de 10
+// campos arriba. La verificacion cross-language de este formato se realiza
+// en tests/unit/test_ast_nodos_consistency.py (ast_nodos.h vs parser_constantes)
+// y tests/unit/test_ast_abi.py (verificador + tabla canónica 1:1).
+// Preservación de metadatos (linea/columna) OBLIGATORIA en el traductor de
+// Syquex (Manual 3 §11.2).
 
 // Verifica que la tabla canónica de nodos coincide con parser_constantes.
 // Retorna el número de divergencias (0 = ABI íntegra).
@@ -137,6 +147,21 @@ funcion ast_abi_verificar() -> entero:
     si NODO_CONSTRUCTOR != 52:
         divergencias = divergencias + 1
     si NODO_PROPAGAR != 53:
+        divergencias = divergencias + 1
+    // AUDITORIA F1 (H23): extensiones SyQuex — verificadas contra parser_constantes
+    si NODO_INTENTO != 54:
+        divergencias = divergencias + 1
+    si NODO_LISTA_LIT != 55:
+        divergencias = divergencias + 1
+    si NODO_MAPA_LIT != 56:
+        divergencias = divergencias + 1
+    si NODO_PARA_EN != 57:
+        divergencias = divergencias + 1
+    si NODO_BLOQUE_SQ != 58:
+        divergencias = divergencias + 1
+
+    // Self-check de campos: el registro plano tiene 10 campos (Manual 6 §1.2)
+    si AST_ABI_NODOS_CAMPOS != 10:
         divergencias = divergencias + 1
 
     retornar divergencias

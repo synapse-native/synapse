@@ -443,9 +443,17 @@ class GeneratorContext:
     def traducir_tipo_c(self, tipo_synapse: str) -> str:
         # Manual 4 §4.2: &T y &mut T son punteros en C
         if tipo_synapse.startswith('&mut '):
-            return self.traducir_tipo_c(tipo_synapse[5:]) + '*'
+            inner = tipo_synapse[5:].lstrip()
+            # FFI: &texto/&cadena -> char* (Manual 3 §9.3 zero-copy .datos)
+            if inner in ('texto', 'cadena', 'CadenaSegura', 'Texto'):
+                return 'char*'
+            return self.traducir_tipo_c(inner) + '*'
         if tipo_synapse.startswith('&'):
-            return self.traducir_tipo_c(tipo_synapse[1:]) + '*'
+            inner = tipo_synapse[1:].lstrip()
+            # FFI: &texto/&cadena -> char* (Manual 3 §9.3 zero-copy .datos)
+            if inner in ('texto', 'cadena', 'CadenaSegura', 'Texto'):
+                return 'char*'
+            return self.traducir_tipo_c(inner) + '*'
         # F1.2d + F1.4: rc<T>/arc<T>/débil<T> (Manual 2 §4.3). ABI placeholder
         # (void*) hasta la Fase 23 (runtime real de rc/arc/débil — ROADMAP Fase
         # 23 L213-214). 'rc' se añadió en F1.4 (Manual 2 §4 L151: "rc" tipo).

@@ -328,6 +328,11 @@ def visitar_externa(ctx: GeneratorContext, nodo: DeclaracionExterna):
         if nodo.tipo_retorno == "__extern_struct":
             ctx.write_line(f"extern struct {nodo.nombre};")
             return
+        # Skip extern declaration for C builtin functions already declared
+        # in C headers (e.g. strlen in string.h). The declaration is provided
+        # by the included header — emitting our own conflicts with libc types.
+        if nodo.nombre in ctx._C_FUNCTIONS_NEED_DATOS:
+            return
         tipo_ret_c = (
             ctx.traducir_tipo_c(nodo.tipo_retorno.replace('*', ''))
             + ('*' if '*' in nodo.tipo_retorno else '')

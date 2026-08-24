@@ -142,4 +142,13 @@ constante NODO_CONSTRUCTOR = 52
 // AUDITORIA FASE A (A5/D-6): NODO_PROPAGAR para el operador '?' postfijo
 // (Manual 3 §7 L331-342).
 constante NODO_PROPAGAR = 53
+// AUDITORIA F1 (H23): NODO_INTENTO/NODO_LISTA_LIT/NODO_MAPA_LIT/NODO_PARA_EN/
+// NODO_BLOQUE_SQ — extensiones SyQuex (Manual 3 §3 L132-197, §7 L333-342, §11.1).
+// Movidos desde syquex/expr.syn para ser fuente unica (Manual 6 §1.2: la
+// numeracion canonica vive en parser_constantes.syn).
+constante NODO_INTENTO = 54
+constante NODO_LISTA_LIT = 55
+constante NODO_MAPA_LIT = 56
+constante NODO_PARA_EN = 57
+constante NODO_BLOQUE_SQ = 58
 

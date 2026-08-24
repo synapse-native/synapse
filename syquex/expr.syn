@@ -13,13 +13,6 @@
 importar parser_constantes
 importar parser_base
 importar lexer
-
-constante NODO_INTENTO = 54
-constante NODO_LISTA_LIT = 55
-constante NODO_MAPA_LIT = 56
-constante NODO_PARA_EN = 57
-constante NODO_BLOQUE_SQ = 58
-
 funcion sq_nuevo(est: ParserEst, tipo: entero, linea: entero, col: entero) -> entero:
     retornar parser_nuevo_nodo(est, tipo, linea, col)
 

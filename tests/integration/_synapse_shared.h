@@ -82,8 +82,11 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #define TAMANO_BLOQUE 4096
 
 #include "librerias/embedded_libs.h"
-#include "runtime/core/ast_nodos.h"
 
+// --- TokenID + NodoID canonicos (D-9(e), Manual 2 2.3/7.2) ---
+// Fuente unica: nucleo/parser_constantes.syn
+// Header generado: runtime/core/ast_nodos.h (scripts/gen_ast_nodos_h.py)
+#include "runtime/core/ast_nodos.h"
 
 // --- Error code constants (Manual 3 §3.5) ---
 #ifndef ERR_CANONICAL_FORMAT

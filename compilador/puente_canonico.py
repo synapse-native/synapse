@@ -33,6 +33,7 @@ from compilador.ast_nodes import (
     AsignacionCampo, OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
     LiteralNulo, ExprAccesoCampo, ExprIndice, ExprPropagar,
+    ExprObtenerDireccion,
     ArgumentoTransferido, NodoCoincidir, NodoCaso,
 )
 
@@ -48,6 +49,7 @@ NOMBRE_NODO = {
     30: "TRANSFERIDO", 31: "ACCESO_CAMPO", 38: "COINCIDIR", 39: "CASO",
     46: "CONTRATO", 47: "NULO", 48: "LET", 49: "DELEGAR", 50: "EXPORT",
     51: "DECLARACION_TIPO", 52: "CONSTRUCTOR", 53: "PROPAGAR",
+    36: "PUNTERO",
 }
 
 NO_SOPORTADOS = {
@@ -93,7 +95,9 @@ class _Puente:
         'Struct_method'; el puente resuelve el tipo del receptor y
         genera LlamadaFuncion con self inyectado)."""
         self._struct_nombres: set = set()
-        self._struct_metodos: dict = {}  # struct -> {method_name -> func_name}
+        self._struct_metodos: dict = {}   # struct -> {method_name -> func_name}
+        self._struct_ctores: dict = {}    # struct -> "__init__" func name (ME-9)
+        self._struct_campos: dict = {}   # struct -> {field_name -> field_type} (ME-10)
         self._var_tipo: dict = {}       # var_name -> Synapse type
         self._func_retorno: dict = {}   # func_name -> return type
         n = self.nodos
@@ -106,15 +110,46 @@ class _Puente:
                 if nombre:
                     self._struct_nombres.add(nombre)
                     self._struct_metodos[nombre] = {}
+                    self._struct_ctores[nombre] = None
+                    # ME-10: registrar campos del struct (Manual 3 §6.2)
+                    self._struct_campos[nombre] = {}
+                    for c in self.cadena_ids(nodo[4]):
+                        cnombre = self.txt(c)
+                        ctipo = self.txt2(c)
+                        if cnombre and ctipo:
+                            self._struct_campos[nombre][cnombre] = ctipo
             elif t == 2:  # FUNCION
                 nombre = self.txt(i)
                 if not nombre:
                     continue
-                # método decorado: Struct_method → struct=prefix, method=suffix
-                if "_" in nombre and not nombre.startswith("__"):
-                    struct, sep, method = nombre.partition("_")
+                vi = self.nodos[i][3]   # valor_int: 0 = libre, >0 = método/ctor (índice del struct)
+                if vi > 0 and self.tipo(vi) == 16:  # ESTRUCTURA marcado (ME-9)
+                    struct = self.txt(vi)
                     if struct in self._struct_nombres:
-                        self._struct_metodos[struct][method] = nombre
+                        if nombre == "__init__":
+                            self._struct_ctores[struct] = nombre
+                        else:
+                            method = nombre[len(struct) + 1:] if nombre.startswith(struct + "_") else nombre
+                            self._struct_metodos[struct][method] = nombre
+                elif vi == 0:
+                    # Compatibilidad: funciones con valor_int=0 que usan
+                    # decoración "Struct_method" (fixture de test heredado).
+                    # Probamos prefijos de struct mas largos (ME-9: handles _).
+                    for struct in sorted(self._struct_nombres, key=len, reverse=True):
+                        prefixo = struct + "_"
+                        if nombre.startswith(prefixo):
+                            method = nombre[len(prefixo):]
+                            if struct not in self._struct_metodos:
+                                self._struct_metodos[struct] = {}
+                            self._struct_metodos[struct][method] = nombre
+                            break
+                # ME-10: poblar _var_tipo desde parámetros de función
+                # (Manual 3 §6.2: param.metodo() requiere tipo del param).
+                for p in self.cadena_ids(nodo[4]):
+                    pnombre = self.txt(p)
+                    ptipo = self.txt2(p)
+                    if pnombre and ptipo and ptipo in self._struct_nombres:
+                        self._var_tipo[pnombre] = ptipo
                 ret = self.txt2(i)
                 if ret:
                     self._func_retorno[nombre] = ret
@@ -130,6 +165,12 @@ class _Puente:
                         ctor = self.txt(arg_idx)
                         if ctor in self._struct_nombres:
                             self._var_tipo[var] = ctor
+                        # ME-10: inferir tipo desde retorno de función
+                        # (Manual 3 §6.3: x = factory() → tipo retorno)
+                        elif ctor in self._func_retorno:
+                            ret_tipo = self._func_retorno[ctor]
+                            if ret_tipo in self._struct_nombres:
+                                self._var_tipo[var] = ret_tipo
 
     # ---- helpers de registro ----
     def txt(self, i: int) -> str:
@@ -157,8 +198,9 @@ class _Puente:
             nombre_campo = self.txt(idx)
             obj_idx = self.nodos[idx][4]
             obj_tipo = self._tipo_objeto(obj_idx)
-            if obj_tipo and obj_tipo in self._struct_nombres:
-                return None  # el campo no es un struct
+            if obj_tipo and obj_tipo in self._struct_campos:
+                campos = self._struct_campos[obj_tipo]
+                return campos.get(nombre_campo)
             return None
         if t == 14:   # LLAMADA (posible constructor)
             nombre = self.txt(idx)
@@ -334,6 +376,10 @@ class _Puente:
                     "receptor resoluble — pendiente H-R90-5")
             return con(ExprAccesoCampo(objeto=self._nodo(izq),
                                        nombre_campo=self.txt(i)))
+        if t == 36:   # PUNTERO (&T — FFI, Manual 3 §9.1/§9.3)
+            return con(ExprObtenerDireccion(
+                expr=self._nodo(izq),
+                es_mutable=False))
         if t in (34, 48):   # DECLARACION / LET
             return con(DeclaracionVariable(nombre=self.txt(i),
                                            tipo=self.txt2(i),

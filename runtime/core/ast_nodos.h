@@ -147,5 +147,10 @@
 #define NODO_DECLARACION_TIPO    (51LL)
 #define NODO_CONSTRUCTOR         (52LL)
 #define NODO_PROPAGAR            (53LL)
+#define NODO_INTENTO             (54LL)
+#define NODO_LISTA_LIT           (55LL)
+#define NODO_MAPA_LIT            (56LL)
+#define NODO_PARA_EN             (57LL)
+#define NODO_BLOQUE_SQ           (58LL)
 
 #endif /* AST_NODOS_H */

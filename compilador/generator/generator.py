@@ -1314,6 +1314,7 @@ class GeneradorC:
                 ctx._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
             elif isinstance(s, DeclaracionExterna):
                 ctx._func_return_types[s.nombre] = s.tipo_retorno
+                ctx._func_param_types[s.nombre] = [p.tipo for p in s.parametros]
             elif isinstance(s, DeclaracionExport) and isinstance(s.funcion, DefinicionFuncion):
                 # F1.2d: registrar retorno/params de funciones envueltas en @export
                 # (inferencia de tipos en sitios de llamada, paridad con orquestador ME-B6).

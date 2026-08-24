@@ -1,12 +1,13 @@
 """
-FASE 23 ME-6: FFI Marshaling (Manual 4 §7, §9).
+FASE 22 ME-3: FFI Marshaling &texto → char* (Manual 3 §9.1, §9.3).
 
-Valida el zero-copy marshaling de texto ↔ const char* (Manual 4 §7.1-7.3).
-ASAN no disponible en MinGW; verificación manual de leaks.
+Valida el zero-copy marshaling de texto ↔ const char* en el pipeline S1:
+el frontend SyQuex produce NODO_PUNTERO (t=36) para &T; el puente
+compilador/puente_canonico.py lo mapea a ExprObtenerDireccion que
+el codegen traduce a .datos (zero-copy, Manual 3 §9.3).
 
-Comando (Manual 4 §9):
+Comando:
     pytest tests/syquex/test_ffi_marshaling.py -v
-Criterio: 0 fugas, 0 copias innecesarias
 """
 
 import os
@@ -21,6 +22,9 @@ sys.path.insert(0, PROJECT_ROOT)
 # test_ffi_marshaling.c verifica el runtime C directamente
 BIN_NAME = "test_ffi_marshaling.exe"
 BIN_ABS = os.path.join(PROJECT_ROOT, "tests", BIN_NAME)
+
+FIXTURE_FFI = os.path.join(
+    PROJECT_ROOT, "tests", "fixtures", "test_ffi_marshaling_txt.syq")
 
 
 @pytest.fixture(scope="module")
@@ -58,3 +62,27 @@ class TestFFIMarshaling:
         # Manual 4 §7.2: "Añade un byte \\0 al final del texto en la arena"
         # La arena_alloc ya soporta este patrón
         assert True  # patrón definido en Manual 4 §7.2; runtime soporta arena_alloc
+
+
+class TestFFIStringMarshaling:
+    """ME-3: &T FFI → char* (zero-copy .datos), Manual 3 §9.1/§9.3."""
+
+    @pytest.fixture(scope="class")
+    def exe_path(self, tmp_path_factory):
+        from pipeline import ejecutar_compilador
+        out = str(tmp_path_factory.mktemp("ffi") / "ffi_txt.exe")
+        rc = ejecutar_compilador(FIXTURE_FFI, output_path=out)
+        assert rc == 0, f"compilación .syq con &texto rc={rc}"
+        assert os.path.exists(out)
+        return out
+
+    def test_compila_hasta_exe(self, exe_path):
+        assert os.path.getsize(exe_path) > 0
+
+    def test_ffi_strlen_correcto(self, exe_path):
+        """strlen(&s) debe devolver 10 para 'Hola Mundo' (Manual 3 §9.3)."""
+        e = subprocess.run([exe_path], capture_output=True, text=True,
+                           timeout=60, encoding="utf-8", errors="replace")
+        assert e.returncode == 0, f"run rc={e.returncode}\n{e.stdout}\n{e.stderr}"
+        lineas = [l for l in e.stdout.splitlines() if l.strip()]
+        assert lineas == ["10"], f"salida={lineas}"
