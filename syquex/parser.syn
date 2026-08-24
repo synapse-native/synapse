@@ -313,8 +313,13 @@ funcion sq_tipo(est: ParserEst) -> nulo:
     si token_es_nombre(t) == 1:
         token_avanzar(est)
     sino:
-        // MED-2 FIX: error recovery — reportar token inesperado en tipo
+        // MED-2 FIX: error recovery — diagnóstico observable con línea/columna
+        // (convención del frontend: patrón SQ_DECL_UNKNOWN, parser.syn:187;
+        // lección R21: los diagnósticos mudos son invisibles para el usuario).
+        linea_err = token_linea(est, est.posicion)
+        col_err = token_columna(est, est.posicion)
         inseguro:
+            asm("fprintf(stderr, \"SQ_TIPO_INVALIDA tipo=%d linea=%d col=%d\\n\", t, linea_err, col_err);")
             asm("est->hay_error = 1;")
         token_avanzar(est)
     si token_mirar(est) == T_MENOR:
@@ -324,7 +329,10 @@ funcion sq_tipo(est: ParserEst) -> nulo:
             tt = token_mirar(est)
             si tt == T_FIN:
                 // MED-2 FIX: error recovery — '>' de cierre faltante
+                linea_err = token_linea(est, est.posicion)
+                col_err = token_columna(est, est.posicion)
                 inseguro:
+                    asm("fprintf(stderr, \"SQ_GENERICO_SIN_CERRAR linea=%d col=%d\\n\", linea_err, col_err);")
                     asm("est->hay_error = 1;")
                 romper
             si tt == T_MENOR:

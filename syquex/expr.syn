@@ -274,8 +274,12 @@ funcion sq_scan_genericos(est: ParserEst) -> entero:
     inseguro:
         r = 0
         // MED-1 FIX: token set completo de sq_tipo (M3 §3 L155-169).
-        // Agregados: T_FUNCION(3), T_CANAL(52), T_NULO(62), T_OK(63), T_ERR(64)
-        asm("do { int _gn = est->total_tokens; int _gp = est->posicion; if (_gp < _gn && est->tokens[_gp].tipo == T_MENOR) { int _gi = _gp + 1; int _gprof = 1; int _gok = 1; int _gcer = 0; while (_gi < _gn) { int _gt = est->tokens[_gi].tipo; if (_gt == T_MENOR) { _gprof++; } else if (_gt == T_MAYOR) { _gprof--; if (_gprof == 0) { _gi++; _gcer = 1; break; } } else if (_gt == T_FIN || _gt == T_NUEVALINEA) { _gok = 0; break; } else if (!(_gt == T_IDENTIFICADOR || _gt == T_COMA || _gt == T_LISTA || _gt == T_MAPA || _gt == T_RC || _gt == T_ARC || _gt == T_DEBIL || _gt == T_ARENA || _gt == T_CORCH_IZQ || _gt == T_CORCH_DER || _gt == T_AMPERSAND || _gt == T_FUNCION || _gt == T_CANAL || _gt == T_NULO || _gt == T_OK || _gt == T_ERR)) { _gok = 0; break; } _gi++; } if (_gok && _gcer && _gi < _gn && est->tokens[_gi].tipo == T_PAREN_IZQ) { r = _gi - _gp; } } } while (0);")
+        // Agregados: T_FUNCION(3), T_CANAL(52), T_NULO(62), T_OK(63), T_ERR(64),
+        // T_TENSOR(61), T_ALGUN(65), T_NINGUNO(66). T_TENSOR es necesario para
+        // el ejemplo canónico del manual (M3 §14: 'Resultado<tensor, texto>');
+        // T_ALGUN/T_NINGUNO son reservadas de la tabla M3 §4 que no deben
+        // romper el escaneo léxico de genéricos.
+        asm("do { int _gn = est->total_tokens; int _gp = est->posicion; if (_gp < _gn && est->tokens[_gp].tipo == T_MENOR) { int _gi = _gp + 1; int _gprof = 1; int _gok = 1; int _gcer = 0; while (_gi < _gn) { int _gt = est->tokens[_gi].tipo; if (_gt == T_MENOR) { _gprof++; } else if (_gt == T_MAYOR) { _gprof--; if (_gprof == 0) { _gi++; _gcer = 1; break; } } else if (_gt == T_FIN || _gt == T_NUEVALINEA) { _gok = 0; break; } else if (!(_gt == T_IDENTIFICADOR || _gt == T_COMA || _gt == T_LISTA || _gt == T_MAPA || _gt == T_RC || _gt == T_ARC || _gt == T_DEBIL || _gt == T_ARENA || _gt == T_CORCH_IZQ || _gt == T_CORCH_DER || _gt == T_AMPERSAND || _gt == T_FUNCION || _gt == T_CANAL || _gt == T_NULO || _gt == T_OK || _gt == T_ERR || _gt == T_TENSOR || _gt == T_ALGUN || _gt == T_NINGUNO)) { _gok = 0; break; } _gi++; } if (_gok && _gcer && _gi < _gn && est->tokens[_gi].tipo == T_PAREN_IZQ) { r = _gi - _gp; } } } while (0);")
         retornar r
     retornar 0
 
@@ -468,10 +472,14 @@ funcion parse_primario_sq(est: ParserEst) -> entero:
         // los TokenID propios 75+ no están en token_es_nombre del módulo
         // compartido; se aceptan aquí como nombre contextual (patrón FASE A).
         retornar sq_id(est)
+    linea_err = token_linea(est, est.posicion)
+    col_err = token_columna(est, est.posicion)
     inseguro:
         // MED-3 FIX: reportar token inesperado en posición de expresión primaria.
-        // Código de error -1 (no 0, que es un nodo válido). Marcar hay_error
-        // (paridad con parser_base nativo que usa est->hay_error).
+        // Código de error -1 (no 0, que es un nodo válido). Diagnóstico
+        // observable con línea/columna (patrón parser.syn:187; lección R21)
+        // + marca hay_error (paridad con parser_base nativo).
+        asm("fprintf(stderr, \"SQ_EXPR_INESPERADA tipo=%d linea=%d col=%d\\n\", t, linea_err, col_err);")
         asm("est->hay_error = 1;")
     token_avanzar(est)
     retornar -1
