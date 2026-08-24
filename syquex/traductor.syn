@@ -238,6 +238,22 @@ funcion trad_copiar_payload(src: entero, dst: entero) -> nulo:
     inseguro:
         asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); struct NodoAST* _out = (struct NodoAST*)trad_nodos(); int _tot = *((int*)parser_meta()); if (src < _tot && dst >= 0 && dst < 65536) { _out[dst].valor_int = _in[src].valor_int; _out[dst].valor_dec = _in[src].valor_dec; _out[dst].ptr_str = _in[src].ptr_str; _out[dst].len_str = _in[src].len_str; _out[dst].ptr_extra = _in[src].ptr_extra; int* _ih = (int*)sq_tokens_hi(); int* _oh = (int*)trad_hi(); if (_ih && _oh) { _oh[dst] = _ih[src]; } int* _sp = (int*)parser_str2_ptr(); int* _sh = (int*)parser_str2_hi(); int* _sl = (int*)parser_str2_len(); int* _dp = (int*)trad_s2p(); int* _dh = (int*)trad_s2h(); int* _dl = (int*)trad_s2l(); if (_sp && _dp) { _dp[dst] = _sp[src]; } if (_sh && _dh) { _dh[dst] = _sh[src]; } if (_sl && _dl) { _dl[dst] = _sl[src]; } }")
 
+// ---- Marcado de ownership (F4: Manual 4 §3.1/§4.3/§5.2) ----
+// Lee el span de tipo (slot2) del nodo de salida y marca valor_int con los
+// bits de ownership: bit0=rc, bit1=arc, bit2=débil. Solo aplica a
+// NODO_LET / NODO_DECLARACION / NODO_PARAMETRO (los que llevan tipo).
+// Esto alimenta a _a_analizar_bloque (memory.c) y a analizar_ciclos
+// (analizador_alcance.syq), que dependen de estos bits (F4 cierra la
+// conexion frontend<->analizador).
+funcion trad_set_ownership(n: entero) -> nulo:
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("{ int _nt = -1; { struct NodoAST* _on = (struct NodoAST*)trad_nodos(); if (_on && n >= 0 && n < 65536) _nt = _on[n].tipo_nodo; } if (_nt == NODO_LET || _nt == NODO_DECLARACION || _nt == NODO_PARAMETRO) { int* _s2p = (int*)trad_s2p(); int* _s2h = (int*)trad_s2h(); int* _s2l = (int*)trad_s2l(); if (_s2p && _s2h && _s2l && n >= 0 && n < 65536) { uintptr_t _p = ((uintptr_t)(unsigned)_s2h[n] << 32) | (unsigned)_s2p[n]; int _len = _s2l[n]; struct NodoAST* _on = (struct NodoAST*)trad_nodos(); int _bits = 0; if (_len >= 2) { char _c0 = ((char*)_p)[0]; char _c1 = ((char*)_p)[1]; if (_c0 == 114 && _c1 == 99) { _bits |= 1; } else if (_c0 == 97 && _c1 == 114) { if (_len >= 3 && ((char*)_p)[2] == 99) _bits |= 2; } else if (_c0 == 100) { if (_len >= 5 && ((char*)_p)[2] == 98) _bits |= 4; if (_len >= 6 && ((char*)_p)[3] == 98) _bits |= 4; } } _on[n].valor_int |= _bits; } } }")
+    retornar
+
 // ---- Arena de cadenas (nombres decorados y spans reconstruidos) ----
 funcion trad_arena_escribir(lo: entero, hi_bits: entero, len: entero) -> entero:
     requiere:
@@ -373,6 +389,7 @@ funcion trad_expr_uno(e: entero) -> entero:
     si n < 0:
         retornar -1
     trad_copiar_payload(e, n)
+    trad_set_ownership(n)
     izq = trad_expr(tr_hizq(e))
     si izq < 0:
         retornar izq
@@ -656,6 +673,7 @@ funcion trad_stmt_uno(s: entero) -> entero:
     si n < 0:
         retornar -1
     trad_copiar_payload(s, n)
+    trad_set_ownership(n)
     izq = trad_expr(tr_hizq(s))
     si izq < 0:
         retornar izq
