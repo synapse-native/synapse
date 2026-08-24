@@ -108,6 +108,8 @@ funcion ast_abi_verificar() -> entero:
         divergencias = divergencias + 1
     si NODO_ACCESO_CAMPO != 31:
         divergencias = divergencias + 1
+    si NODO_PARRAFO != 33:
+        divergencias = divergencias + 1
     si NODO_ASIGNACION_CAMPO != 32:
         divergencias = divergencias + 1
     si NODO_DECLARACION != 34:
@@ -133,6 +135,8 @@ funcion ast_abi_verificar() -> entero:
     si NODO_PARA != 45:
         divergencias = divergencias + 1
     si NODO_CONTRATO != 46:
+        divergencias = divergencias + 1
+    si NODO_VACIO != 44:
         divergencias = divergencias + 1
     si NODO_NULO != 47:
         divergencias = divergencias + 1

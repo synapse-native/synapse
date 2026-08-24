@@ -199,13 +199,17 @@ funcion parse_unario_sq(est: ParserEst) -> entero:
         retornar n
     si t == T_AMPERSAND:
         token_avanzar(est)
+        es_mut = 0
         si token_mirar(est) == T_IDENTIFICADOR:
-            si token_len_valor(est, est.posicion) == 3:
+            lexema = sq_token_lexema(est.posicion)
+            si str_eq_sq(lexema, "mut") == 1:
+                es_mut = 1
                 token_avanzar(est)
         operando = parse_postfix_sq(est)
         n = sq_nuevo(est, NODO_PUNTERO, linea, col)
         inseguro:
             asm("est->nodos[n].hijo_izq = operando")
+            asm("est->nodos[n].valor_int = es_mut")
         retornar n
     retornar parse_postfix_sq(est)
 

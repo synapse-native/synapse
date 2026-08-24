@@ -376,10 +376,12 @@ class _Puente:
                     "receptor resoluble — pendiente H-R90-5")
             return con(ExprAccesoCampo(objeto=self._nodo(izq),
                                        nombre_campo=self.txt(i)))
-        if t == 36:   # PUNTERO (&T — FFI, Manual 3 §9.1/§9.3)
+        if t == 36:   # PUNTERO (&T / &mut T — FFI, Manual 3 §9.1/§9.3)
+            # D-F22-SEM: valor_int bit 0 = es_mutable (0=& / 1=&mut).
+            # El parser SyQuex establece vi=1 cuando ve &mut.
             return con(ExprObtenerDireccion(
                 expr=self._nodo(izq),
-                es_mutable=False))
+                es_mutable=bool(vi & 1)))
         if t in (34, 48):   # DECLARACION / LET
             return con(DeclaracionVariable(nombre=self.txt(i),
                                            tipo=self.txt2(i),
