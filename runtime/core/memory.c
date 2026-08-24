@@ -460,28 +460,52 @@ void _syn_texto_liberar(CadenaSegura s) {
 // ============================================================
 // Arena allocator (Manual 4 §2: Arenas por ámbito)
 // bump allocator: O(1) alloc, O(1) lib (bloque entero), 0 fragmentación.
-// Anidamiento padre-hijo: liberar padre libera hijos en cascada.
+// Anidamiento padre-hijo: liberar padre libera hijos en cascada (§2.4).
+// Expansión (§2.3): se encadena un NUEVO segmento SIN mover el bloque
+//   actual, de modo que los punteros ya devueltos por arena_alloc siguen
+//   válidos (F9). El fallback a heap de arenas no globales se rastrea y
+//   libera en arena_free (F10: 0 fugas).
 // ============================================================
 
-static void arena_expandir(Arena* a, size_t tamano_extra) {
-    size_t nuevo = a->tamano * 2;
-    if (nuevo < a->tamano + tamano_extra + sizeof(Arena))
-        nuevo = a->tamano + tamano_extra + sizeof(Arena);
+// Nodo de la lista de bloques fallback (malloc) rastreados para liberar en
+// arena_free (F10). Interno al runtime.
+typedef struct ArenaFallback {
+    void* ptr;
+    struct ArenaFallback* sig;
+} ArenaFallback;
 
-    uint8_t* nuevo_bloque = (uint8_t*)malloc(nuevo);
-    if (!nuevo_bloque) {
+static void arena_expandir(Arena* a, size_t tamano_extra) {
+    // F9: crear un NUEVO segmento encadenado; NO reubicar el bloque actual
+    // (los punteros ya devueltos por arena_alloc quedarían colgantes).
+    size_t nuevo = (a->tamano > tamano_extra) ? a->tamano * 2
+                                              : tamano_extra * 2 + 4096;
+    uint8_t* bloque = (uint8_t*)malloc(nuevo);
+    if (!bloque) {
         fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_expandir malloc fallo\n");
         exit(1);
     }
-
-    size_t usado = (size_t)(a->puntero - a->inicio);
-    memcpy(nuevo_bloque, a->inicio, usado);
-
-    free(a->inicio);
-    a->inicio = nuevo_bloque;
-    a->puntero = nuevo_bloque + usado;
-    a->fin = nuevo_bloque + nuevo;
-    a->tamano = nuevo;
+    Arena* seg = (Arena*)malloc(sizeof(Arena));
+    if (!seg) {
+        free(bloque);
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_expandir malloc fallo\n");
+        exit(1);
+    }
+    seg->inicio = bloque;
+    seg->puntero = bloque;
+    seg->fin = bloque + nuevo;
+    seg->tamano = nuevo;
+    seg->padre = NULL;
+    seg->hijo = NULL;
+    seg->sig_hermano = NULL;
+    seg->seg_sig = NULL;
+    seg->fb_list = NULL;
+    seg->es_global = false;
+    // Encadenar al final de la cadena de segmentos.
+    Arena* cur = a;
+    while (cur->seg_sig) cur = cur->seg_sig;
+    cur->seg_sig = seg;
+    // Tamaño reportado crece (semántica de "tamaño total" del Manual §2.2).
+    a->tamano += nuevo;
 }
 
 Arena* arena_crear(size_t tamano_inicial) {
@@ -505,6 +529,8 @@ Arena* arena_crear(size_t tamano_inicial) {
     a->padre = NULL;
     a->hijo = NULL;
     a->sig_hermano = NULL;
+    a->seg_sig = NULL;
+    a->fb_list = NULL;
     a->tamano = tamano_inicial;
     a->es_global = false;
     return a;
@@ -523,36 +549,70 @@ Arena* arena_crear_hijo(Arena* padre, size_t tamano_inicial) {
 }
 
 void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion) {
-    if (!arena) {
-        return NULL;
-    }
+    if (!arena) return NULL;
+    if (alineacion == 0) alineacion = 1;
     while (1) {
-        if (alineacion == 0) alineacion = 1;
-        uintptr_t addr = (uintptr_t)arena->puntero;
-        uintptr_t aligned = (addr + alineacion - 1) & ~((uintptr_t)alineacion - 1);
-        size_t offset = aligned - addr;
-
-        if (arena->puntero + offset + tamano <= arena->fin) {
-            arena->puntero += offset + tamano;
-            return (void*)aligned;
+        // Buscar un segmento (cadena bump) con espacio; el último es el actual.
+        Arena* seg = arena;
+        while (1) {
+            uintptr_t addr = (uintptr_t)seg->puntero;
+            uintptr_t aligned = (addr + alineacion - 1) & ~((uintptr_t)alineacion - 1);
+            size_t offset = aligned - addr;
+            if (seg->puntero + offset + tamano <= seg->fin) {
+                seg->puntero += offset + tamano;
+                return (void*)aligned;
+            }
+            if (seg->seg_sig) { seg = seg->seg_sig; continue; }
+            break;
         }
-
         if (arena->es_global) {
+            // F9: expandir encadenando un nuevo segmento (punteros previos válidos).
             arena_expandir(arena, tamano);
             continue;
         }
-        return malloc(tamano);
+        // F10: fallback a heap para arenas no globales. El bloque se rastrea en
+        // fb_list para liberarlo en arena_free (0 fugas).
+        void* p = malloc(tamano);
+        if (!p) {
+            fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_alloc fallback malloc fallo\n");
+            return NULL;
+        }
+        ArenaFallback* fb = (ArenaFallback*)malloc(sizeof(ArenaFallback));
+        if (!fb) { free(p); return NULL; }
+        fb->ptr = p;
+        fb->sig = (ArenaFallback*)arena->fb_list;
+        arena->fb_list = fb;
+        return p;
     }
 }
 
 void arena_free(Arena* arena) {
     if (!arena) return;
 
+    // Cascada de hijos (jerarquía, §2.4)
     Arena* child = arena->hijo;
     while (child) {
         Arena* next = child->sig_hermano;
         arena_free(child);
         child = next;
+    }
+
+    // F10: liberar bloques fallback rastreados (0 fugas)
+    ArenaFallback* fb = (ArenaFallback*)arena->fb_list;
+    while (fb) {
+        ArenaFallback* nxt = fb->sig;
+        free(fb->ptr);
+        free(fb);
+        fb = nxt;
+    }
+
+    // F9: liberar cadena de segmentos (cada uno con su propio bloque)
+    Arena* seg = arena->seg_sig;
+    while (seg) {
+        Arena* nxt = seg->seg_sig;
+        free(seg->inicio);
+        free(seg);
+        seg = nxt;
     }
 
     if (arena->inicio) free(arena->inicio);
@@ -561,7 +621,12 @@ void arena_free(Arena* arena) {
 
 void arena_reset(Arena* arena) {
     if (!arena || !arena->inicio) return;
-    arena->puntero = arena->inicio;
+    // Reset de TODOS los segmentos (F9): cada uno vuelve a su inicio.
+    Arena* seg = arena;
+    while (seg) {
+        if (seg->inicio) seg->puntero = seg->inicio;
+        seg = seg->seg_sig;
+    }
 }
 
 // ============================================================

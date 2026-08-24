@@ -113,9 +113,11 @@ typedef struct Arena {
     uint8_t* puntero;       // Puntero actual (próxima posición libre)
     uint8_t* fin;           // Fin del bloque
     struct Arena* padre;    // Arena padre (para anidamiento)
-    struct Arena* hijo;     // Primer hijo (para seguimiento/cascada)
+    struct Arena* hijo;           // Primer hijo (para seguimiento/cascada)
     struct Arena* sig_hermano;  // Hermano siguiente en la lista de hijos
-    size_t tamano;          // Tamaño total del bloque
+    struct Arena* seg_sig;       // Cadena de segmentos por expansión (F9: preserva punteros ya devueltos)
+    void* fb_list;               // Lista de bloques fallback (malloc) rastreados para liberar en arena_free (F10)
+    size_t tamano;          // Tamaño total (crece con cada expansión de segmento)
     bool es_global;         // Si es la arena global de la aplicación
 } Arena;
 

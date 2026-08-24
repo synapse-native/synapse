@@ -115,7 +115,8 @@ int main(void) {
           "s2 fuera del bloque arena (es malloc)");
     memset(s2, 0xAB, 5000);
     CHECK(((unsigned char*)s2)[2500] == 0xAB, "malloc fallback escribe OK");
-    free(s2);  // s2 es malloc, libre correctamente
+    // s2 es malloc de fallback: arena_free(small) lo libera (F10, 0 fugas).
+    // No se libera manualmente aqui para evitar doble-liberacion.
     arena_free(small);
 
     printf("\n=== RESULTADO: %d passed, %d failed ===\n", passed, failed);
