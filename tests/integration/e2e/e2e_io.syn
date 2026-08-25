@@ -1,0 +1,7 @@
+#lang: es
+
+importar std.io
+
+funcion principal() -> nulo:
+    escribir("std.io: ")
+    escribir_linea("cargada correctamente")

@@ -10538,7 +10538,7 @@
     },
     {
       "SPDXID": "SPDXRef-FILE-553",
-      "name": "tests/test_runner.py",
+      "name": "scripts/test_runner.py",
       "versionInfo": "1.0.0",
       "supplier": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
@@ -44017,7 +44017,7 @@
       ]
     },
     {
-      "fileName": "tests/test_runner.py",
+      "fileName": "scripts/test_runner.py",
       "SPDXID": "SPDXRef-FILE-553",
       "checksums": [
         {

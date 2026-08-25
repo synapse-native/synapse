@@ -1,0 +1,13 @@
+#lang: es
+#pragma: no_std
+
+funcion __syn_asignar(tamano: entero) -> puntero:
+    retornar nulo
+
+funcion __syn_liberar(ptr: puntero) -> nulo:
+    retornar
+
+funcion principal() -> entero:
+    t = tensor(2, 3)
+    t = tensor(4, 5)
+    retornar 0

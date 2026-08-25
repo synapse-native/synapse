@@ -1,0 +1,5 @@
+#lang: es
+
+funcion expr() -> int:
+    x = -5
+    retornar x * (2 + 3)

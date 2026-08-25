@@ -1,0 +1,2 @@
+funcion principal() -> nulo:
+    log("Bootstrap exitoso!")

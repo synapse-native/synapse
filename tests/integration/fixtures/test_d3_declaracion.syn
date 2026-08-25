@@ -1,0 +1,16 @@
+#lang: es
+
+// D-3 (FASE A): declaracion de variable con tipo anotado SIN inicializador,
+// seguida de asignacion. El pre-pass de hoisting S2 (orquestador.syn) recorria
+// el cuerpo en orden INVERSO (LIFO) -> registraba la AsignacionVariable `t = ...`
+// como auto=1 antes que la DeclaracionVariable `t` (auto=0), y el hoisting
+// emitia `int64_t t = {0};` + `Tensor t = ;` (C invalido).
+// Fix: recorrido FIFO (orden de aparicion, paridad _collect_vars S1) +
+// `= {0};` sin expresion en gen_visitar_declaracion.
+// Manual 2 §2 L134 (let con tipo opcional/inferido); Manual 8 (tensor/Tensor).
+
+funcion principal() -> nulo:
+    let t: Tensor
+    t = crear_tensor(2, 3)
+    escribir_linea(entero_a_texto(t.filas))
+    retornar

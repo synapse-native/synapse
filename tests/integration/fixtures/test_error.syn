@@ -1,0 +1,19 @@
+#lang: es
+// Archivo con multiples errores para probar recovery
+
+funcion buena() -> nulo:
+    log("Esta funcion es valida")
+
+funcion mal_a() -> nulo:
+    esto Esta mal
+    log("Error arriba")
+
+funcion mal_b() nulo:
+    log("Falta flecha")
+
+funcion buena2() -> nulo:
+    x = -5
+    si x != 0:
+        log("x no es cero")
+    log("Fin")
+    retornar

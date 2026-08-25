@@ -1,0 +1,27 @@
+#lang: es
+
+// D-6 (FASE A/A5): operador '?' postfijo (Manual 3 §7 L331-342).
+// Resultado CONCRETO (sin genericos T/E — D-2 los mapea a void*): el tagged
+// union se emite con tipos reales y el '?' desempaqueta el campo ok.
+// El '?' solo se usa en funciones que retornan Resultado (la propagacion del
+// err requiere un tipo de retorno compatible; Manual 3 §7.2).
+tipo Resultado = ok(entero) | err(texto)
+
+funcion dividir(a: entero, b: entero) -> Resultado:
+    si b == 0:
+        retornar err("division por cero")
+    retornar ok(a / b)
+
+// Desempaqueta el valor ok de dividir y lo imprime; si dividir devuelve err,
+// `calcular` retorna ese err inmediatamente (propagacion).
+funcion calcular(a: entero, b: entero) -> Resultado:
+    r = dividir(a, b)?
+    escribir_linea(entero_a_texto(r))
+    retornar ok(r)
+
+funcion principal() -> nulo:
+    p = calcular(10, 2)
+    escribir_linea(entero_a_texto(p.tag))
+    q = calcular(1, 0)
+    escribir_linea(entero_a_texto(q.tag))
+    retornar

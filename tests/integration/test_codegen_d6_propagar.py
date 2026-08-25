@@ -40,7 +40,7 @@ from compilador.canonical import ast_a_canonico, canonico_a_ast
 from compilador.generator import GeneradorC
 from cli import _resolver_gcc
 
-_FIXTURE = os.path.join(RAIZ, "tests", "fixtures", "test_d6_propagar.syn")
+_FIXTURE = os.path.join(RAIZ, "tests", "integration", "fixtures", "test_d6_propagar.syn")
 with open(_FIXTURE, "r", encoding="utf-8") as _f:
     _PROGRAMA = _f.read()
 

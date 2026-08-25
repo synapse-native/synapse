@@ -1,0 +1,14 @@
+#lang: es
+
+funcion suma(a: entero, b: entero) -> entero:
+    resultado = a + b
+    retornar resultado
+
+externo funcion printf(formato: texto) -> entero
+
+funcion main() -> entero:
+    x = 10
+    y = 20
+    z = suma(x, y)
+    printf("z = %d\n", z)
+    retornar 0

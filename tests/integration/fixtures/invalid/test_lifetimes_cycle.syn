@@ -1,0 +1,12 @@
+#lang: es
+
+// M21.5: Test fixture for ERR_MEM_LIFETIME_CYCLE
+// NOTA: La deteccion completa via pipeline .syn requiere que
+// el generador de constraints cree dependencias ciclicas.
+// Por ahora, la validacion se hace via tests/test_lifetimes.py (Python unit).
+
+funcion test_prestamo_ciclico() -> entero:
+    a = 1
+    b = &a
+    a = &b  # Esto crearia un ciclo: a depende de b, b depende de a
+    retornar *a

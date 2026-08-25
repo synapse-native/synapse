@@ -1,0 +1,5 @@
+#lang: es
+funcion principal() -> nulo:
+    si 1:
+        interna = 42
+    log(interna)

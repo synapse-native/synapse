@@ -1,0 +1,34 @@
+#lang: es
+// R94-MC / AUDITOR-4: fixture e2e para structs de MULTI-CAMPO (Manual 3 §6.2)
+// Verifica que structs con ≥2 campos compila por el pipeline S1 completo
+// y ejecuta correctamente: field access (read), field assignment (write),
+// method call con self inyectado, constructor. Todos los tests existentes
+// (r90_compila, r91_fullstack) usan structs de 1 campo — gap detectado
+// por auditoría externa. Este fixture cierra el gap.
+//
+// Salida esperada del binario:
+//   5
+//   8
+//   3
+
+estructura Punto:
+    xx: entero
+    yy: entero
+    crear():
+        self.xx = 0
+        self.yy = 0
+    metodo sumar(ox: entero, oy: entero) -> entero:
+        self.xx = self.xx + ox
+        self.yy = self.yy + oy
+        retornar self.xx + self.yy
+    metodo total() -> entero:
+        retornar self.xx + self.yy
+
+funcion principal() -> entero:
+    let p = Punto()
+    p.xx = 3
+    p.yy = 5
+    escribir_linea(entero_a_texto(p.total()))
+    escribir_linea(entero_a_texto(p.sumar(2, 1)))
+    escribir_linea(entero_a_texto(p.xx))
+    retornar 0

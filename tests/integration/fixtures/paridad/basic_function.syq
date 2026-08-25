@@ -1,0 +1,5 @@
+#lang: es
+// Paridad: funcion con locals simples
+funcion principal() -> entero:
+    let x = 42
+    retornar x

@@ -1,0 +1,137 @@
+#lang: es
+
+// D-5 (FASE A/A5): programa de cobertura del generador S1 (generator.py >=70%).
+// Ejercita las ramas del codegen: control de flujo (si/mientras/para/coincidir),
+// lanzar/recuperar, canales, tensores, punteros, contratos (requiere/garantiza),
+// @export, asm, structs, alias/ADT genérico, constante, importar_c y externa.
+// Salida: 6 (suma), 24 (factorial 4), par/impar, tags, 12 (propagar), -1 (recuperar).
+
+constante LIMITE = 10
+
+importar_c "stddef.h"
+
+externo funcion ayuda_externa(x: entero) -> entero
+
+tipo Resultado<T, E> = ok(T) | err(E)
+tipo Paridad = par(entero) | impar(entero)
+tipo AliasEntero = entero
+
+estructura Punto:
+    x: entero
+    z: entero
+
+funcion sumar_puntos(a: Punto, b: Punto) -> Punto:
+    p = Punto()
+    p.x = a.x + b.x
+    p.z = a.z + b.z
+    retornar p
+
+funcion factorial(n: entero) -> entero:
+    si n <= 1:
+        retornar 1
+    retornar n * factorial(n - 1)
+
+funcion paridad(v: entero) -> Paridad:
+    si v % 2 == 0:
+        retornar par(v)
+    retornar impar(v)
+
+funcion clasificar(v: entero) -> texto:
+    coincidir paridad(v):
+        par(x) => retornar "par"
+        impar(x) => retornar "impar"
+
+funcion clasificar_adt(v: entero) -> Resultado<entero,texto>:
+    si v >= 0:
+        retornar ok(v)
+    sino:
+        retornar err("negativo")
+
+funcion usar_coincidir_generico(v: entero) -> texto:
+    coincidir clasificar_adt(v):
+        ok(x) => retornar entero_a_texto(x)
+        err(m) => retornar m
+
+funcion usar_mientras(n: entero) -> entero:
+    i = 0
+    acc = 0
+    mientras i < n:
+        i = i + 1
+        si i == 5:
+            siguiente
+        si i == 8:
+            romper
+        acc = acc + i
+    retornar acc
+
+funcion usar_para(n: entero) -> entero:
+    total = 0
+    para i = 0 mientras i < n:
+        total = total + i
+        i = i + 1
+    retornar total
+
+funcion dividir(a: entero, b: entero) -> Resultado<entero,texto>:
+    si b == 0:
+        retornar err("div0")
+    retornar ok(a / b)
+
+funcion propagar(a: entero, b: entero) -> Resultado<entero,texto>:
+    r = dividir(a, b)?
+    retornar ok(r + 1)
+
+funcion con_delegar(a: entero, b: entero) -> Resultado<entero,texto>:
+    delegar dividir(a, b)
+    retornar ok(0)
+
+funcion con_recuperar(v: texto) -> entero:
+    texto_a_entero(v) recuperar: -1
+    retornar -1
+
+funcion trabajar(n: entero) -> nulo:
+    escribir_linea(entero_a_texto(n))
+
+funcion trabajar_sin_args() -> nulo:
+    retornar
+
+funcion con_lanzar(n: entero) -> nulo:
+    lanzar trabajar(n)
+    lanzar trabajar_sin_args()
+    synapse_esperar_hilos()
+
+funcion con_tensor() -> nulo:
+    t = crear_tensor(2, 3)
+    escribir_linea(entero_a_texto(t.filas))
+    libera(t)
+
+funcion con_asm() -> nulo:
+    inseguro:
+        asm("escribir_linea((CadenaSegura){7, \"ok\"});")
+    retornar
+
+@export ( c ) funcion exportada(x: entero) -> entero:
+    retornar x * 2
+
+funcion llamar_exportada() -> nulo:
+    escribir_linea(entero_a_texto(exportada(21)))
+
+funcion con_contrato(x: entero) -> entero:
+    requiere:
+        x > 0
+    garantiza:
+        _resultado_ >= 0
+    retornar x + 1
+
+funcion principal() -> nulo:
+    p = sumar_puntos(Punto(), Punto())
+    escribir_linea(entero_a_texto(p.x + p.z))
+    escribir_linea(entero_a_texto(factorial(4)))
+    escribir_linea(clasificar(3))
+    r = clasificar_adt(4)
+    escribir_linea(entero_a_texto(r.tag))
+    escribir_linea(usar_coincidir_generico(4))
+    escribir_linea(entero_a_texto(usar_mientras(10)))
+    escribir_linea(entero_a_texto(usar_para(5)))
+    escribir_linea(entero_a_texto(con_recuperar("no-numero")))
+    escribir_linea(entero_a_texto(con_contrato(1)))
+    retornar
