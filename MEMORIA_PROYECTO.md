@@ -39,6 +39,8 @@
 
 - **Fase 21 (RAII/scopes):** PARCIAL — RAII runtime completada (F3-2); destructor maps = Fase 23 (Syquex).
 
+- **FASE 5 (Contratos y Bootstrap):** ✅ **TESTS REPARADOS (R98, commit d47d400).** Las 8 fallas preexistentes en tests de contratos `requiere`/`garantiza` corregidas: (A) type check de expresiones booleanas en todos los modos (antes solo `--safe`); (B) eliminada evaluación estática que bloqueaba compilación — contratos son runtime-only via `assert()` (Manual 2 §5.1/§5.3); (C) `main()` retorna `0` en éxito. **62/62 PASS** (contratos+bootstrap+verificación); FASE 4 regresión 28/28 PASS; E2E 73/73 PASS; alignment 0 brechas. **Deuda preexistente registrada (no causada por R98):** 7 fallas en `test_ownership_10.py` (`ERR_MEM_USE_AFTER_MOVE`) — verificadas como preexistentes via stash (fallan en HEAD sin cambios). Causa raíz pendiente de investigación. Código muerto elimado: `ERR_SEM_CONTRATO_REQUIERE` (diagnostics.py).
+
 - **Fases 22-30 (Syquex/Ecosistema):** NO ADELANTAR (regla 7).
 
 - **Deuda técnica registrada (preexistente, F17-descubierta 2026-08-20):**

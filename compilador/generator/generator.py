@@ -1256,11 +1256,12 @@ class GeneradorC:
                 # mataba el proceso sin esperar. F4.4: además de los pthreads
                 # residuales (synapse_esperar_hilos) espera a las FIBRAS M:N
                 # (synapse_esperar_fibras). Paridad con el nativo.
-                ctx.write_line(f"int64_t _rc = {principal}();")
+                # Manual 2 §5 e2e: exit code 0 en éxito (el output va por stdout).
+                ctx.write_line(f"{principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
                 ctx.write_line("pool_destroy();")
-                ctx.write_line("return _rc;")
+                ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")
 
@@ -1383,6 +1384,11 @@ class GeneradorC:
 
         # F1.2: pre-pass de DeclaracionTipo — registrar alias y ADTs ANTES de
         # prototipos/uso (traducir_tipo_c y visitar_coincidir dependen de ellos).
+        # Manual 2 §4.2: constructores de ADTs predefinidos (Resultado/Opcion).
+        ctx._constructores_adt['ok'] = ('Resultado', 0, 'T')
+        ctx._constructores_adt['err'] = ('Resultado', 1, 'E')
+        ctx._constructores_adt['algun'] = ('Opcion', 0, 'T')
+        ctx._constructores_adt['ninguno'] = ('Opcion', 1, '')
         for s in ctx.programa.sentencias:
             if not isinstance(s, DeclaracionTipo):
                 continue

@@ -347,9 +347,6 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                         self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),
                         tipo1=tipo_arg, tipo2=param.tipo, operacion=nodo.nombre
                     )
-            # Verificación estática de contratos requiere (Manual 2 §5.1)
-            if def_func.requiere:
-                self._verificar_requiere_estatico(nodo, def_func)
             # Manual 2 L60: parámetros con -> transfieren ownership (move)
             for arg, param in zip(nodo.argumentos, def_func.parametros):
                 if param.es_transferencia and isinstance(arg, Identificador):
@@ -519,6 +516,29 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         for c in cadenas:
             self._validar_aridad_instanciaciones(c, def_func.linea, tvars)
 
+    def _validar_contratos_tipos(self, def_func: DefinicionFuncion) -> None:
+        """Manual 2 §5.1: valida que las expresiones de requiere/garantiza
+        sean booleanas. Se ejecuta en modo normal (no solo --safe)."""
+        from compilador.verificador_formal import _es_expresion_booleana_valida
+        for expr in def_func.requiere:
+            if not _es_expresion_booleana_valida(expr):
+                self.diag.reportar(
+                    ErrorCodes.ERR_VER_CONTRATO_INVALIDO,
+                    self._token(getattr(expr, 'linea', def_func.linea),
+                                getattr(expr, 'columna', def_func.columna)),
+                    nombre=def_func.nombre,
+                    detalle="Expresión inválida en cláusula 'requiere': debe ser una condición lógica",
+                )
+        for expr in def_func.garantiza:
+            if not _es_expresion_booleana_valida(expr):
+                self.diag.reportar(
+                    ErrorCodes.ERR_VER_CONTRATO_INVALIDO,
+                    self._token(getattr(expr, 'linea', def_func.linea),
+                                getattr(expr, 'columna', def_func.columna)),
+                    nombre=def_func.nombre,
+                    detalle="Expresión inválida en cláusula 'garantiza': debe ser una condición lógica",
+                )
+
     def _inferir_llamada_hm(self, nodo: LlamadaFuncion,
                             def_func: DefinicionFuncion) -> Optional[str]:
         """2.4: llamada a función con parámetros de tipo (T/E) o ADT
@@ -598,94 +618,3 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             )
             return None
         return cadena
-
-    def _verificar_requiere_estatico(self, nodo: LlamadaFuncion, def_func: 'DefinicionFuncion'):
-        """Verificación estática de contratos requiere (Manual 2 §5.1).
-        Si un argumento es un literal que viola una condición simple, reporta error."""
-        from compilador.ast_nodes import LiteralNumero, LiteralDecimal, OpUnaria
-        # Mapear nombre de parámetro -> valor literal del argumento
-        valores_literales = {}
-        for arg, param in zip(nodo.argumentos, def_func.parametros):
-            val = self._resolver_valor_literal(arg, {})
-            if val is not None:
-                valores_literales[param.nombre] = val
-
-        if not valores_literales:
-            return
-
-        for cond_nodo in def_func.requiere:
-            self._evaluar_condicion_requiere(cond_nodo, valores_literales, nodo)
-
-    def _evaluar_condicion_requiere(self, nodo, valores: dict, llamada: LlamadaFuncion):
-        """Evalúa una condición requiere con valores literales conocidos."""
-        from compilador.ast_nodes import OpBinaria, Identificador, LiteralNumero
-        if not isinstance(nodo, OpBinaria):
-            return
-
-        op = nodo.operador
-        izq = nodo.izquierdo
-        der = nodo.derecho
-
-        # Obtener valores conocidos
-        val_izq = self._resolver_valor_literal(izq, valores)
-        val_der = self._resolver_valor_literal(der, valores)
-
-        if val_izq is None or val_der is None:
-            return
-
-        # Evaluar la condición
-        viola = False
-        if op in ('!=', '~='):
-            viola = val_izq == val_der
-        elif op == '==':
-            viola = val_izq != val_der
-        elif op == '>':
-            viola = val_izq <= val_der
-        elif op == '<':
-            viola = val_izq >= val_der
-        elif op == '>=':
-            viola = val_izq < val_der
-        elif op == '<=':
-            viola = val_izq > val_der
-
-        if viola:
-            self.diag.reportar(
-                ErrorCodes.ERR_SEM_CONTRATO_REQUIERE,
-                self._token(llamada.linea, llamada.columna),
-                nombre=llamada.nombre,
-                condicion=f"{self._expr_a_str(izq, valores)} {op} {self._expr_a_str(der, valores)}"
-            )
-
-    def _resolver_valor_literal(self, nodo, valores: dict):
-        """Resuelve el valor de un nodo si es un literal o identificador conocido."""
-        from compilador.ast_nodes import Identificador, LiteralNumero, LiteralDecimal, OpUnaria
-        if isinstance(nodo, (int, float)):
-            return nodo
-        if isinstance(nodo, LiteralNumero):
-            return nodo.valor
-        if isinstance(nodo, LiteralDecimal):
-            return nodo.valor
-        if isinstance(nodo, Identificador):
-            return valores.get(nodo.nombre)
-        # Manejar unario: -literal
-        if isinstance(nodo, OpUnaria) and nodo.operador == '-':
-            val = self._resolver_valor_literal(nodo.expr, valores)
-            if val is not None:
-                return -val
-        return None
-
-    def _expr_a_str(self, nodo, valores: dict):
-        """Convierte una expresión a string legible para diagnósticos."""
-        from compilador.ast_nodes import Identificador, LiteralNumero, LiteralDecimal
-        if isinstance(nodo, Identificador):
-            val = valores.get(nodo.nombre)
-            if val is not None:
-                return f"{nodo.nombre}({val})"
-            return nodo.nombre
-        if isinstance(nodo, (int, float)):
-            return str(nodo)
-        if isinstance(nodo, LiteralNumero):
-            return str(nodo.valor)
-        if isinstance(nodo, LiteralDecimal):
-            return str(nodo.valor)
-        return '?'

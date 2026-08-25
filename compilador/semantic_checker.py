@@ -393,6 +393,9 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         # 2.4: Hindley-Milner (Manual 2 §8.2) — validar la firma (parámetros y
         # retorno): aridad de instanciaciones de ADT y argumentos conocidos.
         self._validar_firma_funcion(nodo)
+        # Manual 2 §5.1: validar que las expresiones de requiere/garantiza
+        # sean booleanas (en todos los modos, no solo --safe).
+        self._validar_contratos_tipos(nodo)
         self.tabla.entrar_scope()
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre
