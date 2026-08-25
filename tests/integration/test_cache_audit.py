@@ -63,6 +63,7 @@ def test_cache_hit():
         return rc1 == 0 and rc2 == 0
     return False
 
+    assert FAIL == 0, "Checks fallaron"
 def test_cache_stale():
     """Modificar std/ leaf file y detectar STALE en recompilacion incremental"""
     print("\n--- [Cache T2] STALE: detectar cambio en dependencia std/ ---")
@@ -111,6 +112,7 @@ def test_cache_stale():
             print(f"  SKIP: {std_io} not found")
             return True
 
+    assert FAIL == 0, "Checks fallaron"
 def test_cache_determinismo():
     """Mismo contenido debe producir mismo hash SHA-256"""
     print("\n--- [Cache T3] Determinismo SHA-256 ---")
@@ -127,6 +129,7 @@ def test_cache_determinismo():
 
     return h1 == h2 and h1 != h3
 
+    assert FAIL == 0, "Checks fallaron"
 def test_axon_lock_existente():
     """Ejecutar test_axon_e2e.py existente"""
     print("\n--- [Axon T1] Suite E2E existente ---")
@@ -155,3 +158,5 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(0 if main() else 1)
+
+    assert FAIL == 0, "Checks fallaron"

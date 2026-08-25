@@ -174,6 +174,29 @@ def _rt_resolver_gcc() -> str:
         return "gcc"
 
 
+@pytest.fixture
+def find_gcc():
+    """Fixture compartido: encuentra GCC toolchain.
+
+    ME-TQ-7: elimina duplicación de _find_gcc() en 8+ archivos de tests/integration/.
+    Busca primero en toolchain_gcc12 local, luego en PATH.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    candidates = [
+        os.path.join(root, "toolchain_gcc12", "mingw64", "bin", "gcc.exe"),
+        "gcc", "gcc.exe",
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+        try:
+            subprocess.run([c, "--version"], capture_output=True)
+            return c
+        except FileNotFoundError:
+            continue
+    return candidates[0]
+
+
 def _rt_mtime_max(paths):
     """Maximo mtime de las dependencias (archivos existentes)."""
     mx = 0.0

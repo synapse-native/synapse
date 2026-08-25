@@ -81,6 +81,7 @@ def test_binaries_exist():
               f"Path: {path}")
 
 
+    assert FAIL == 0, "Checks fallaron"
 def test_ed25519_binary():
     print("\n" + "=" * 60)
     print("[ESCENARIO 1] Verificacion Ed25519 (test_ed25519_axon)")
@@ -95,6 +96,7 @@ def test_ed25519_binary():
 
 # ── Test 3: Path traversal ────────────────────────────────────────
 
+    assert FAIL == 0, "Checks fallaron"
 def test_path_traversal_binary():
     print("\n" + "=" * 60)
     print("ESCENARIO 2: Path Traversal (test_path_traversal)")
@@ -106,6 +108,7 @@ def test_path_traversal_binary():
 
 # ── Test 4: Gen helper (fixture generation) ───────────────────────
 
+    assert FAIL == 0, "Checks fallaron"
 def test_gen_helper():
     print("\n" + "=" * 60)
     print("ESCENARIO 3: Generador de fixtures Ed25519")
@@ -151,6 +154,7 @@ def test_gen_helper():
 
 # ── Test 5: axon.lock (pure Python, SHA-256 + format) ────────────
 
+    assert FAIL == 0, "Checks fallaron"
 def test_axon_lock():
     print("\n" + "=" * 60)
     print("[ESCENARIO 4] axon.lock - registro determinista")
@@ -283,3 +287,5 @@ def main():
 if __name__ == "__main__":
     success = main()
     sys.exit(0 if success else 1)
+
+    assert FAIL == 0, "Checks fallaron"
