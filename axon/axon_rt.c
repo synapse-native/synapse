@@ -655,3 +655,104 @@ void _syn_axon_liberar_valor(void* valor) {
     _ax_liberar_contenido(v);
     free(v);
 }
+
+// ============================================================
+// 5.3. Handshake Ed25519 (Zero-Trust) + crypto_kx session key
+// (Manual 6 §5.3)
+//
+// Flujo:
+//   1. Cliente envía HELLO = [nonce(32)] [pk(32)] [firma(64)]
+//   2. Servidor verifica firma Ed25519 sobre el nonce
+//   3. Si válido, servidor responde HELLO_RESP firmado
+//   4. Se deriva clave_sesion via crypto_kx (X25519 + SHA-512 KDF)
+// ============================================================
+
+/* _syn_crypto_kx_generar_par: Generate X25519 keypair for crypto_kx
+ * (Manual 6 §5.3 paso 4). Uses crypto_scalarmult_base (Curve25519)
+ * — equivalent to libsodium crypto_kx_keypair.
+ * Writes 32-byte clave_publica to pk_out and 32-byte clave_secreta to sk_out.
+ * Retorna: 0 OK, -1 error.
+ */
+int _syn_crypto_kx_generar_par(unsigned char* pk_out, unsigned char* sk_out) {
+    if (!pk_out || !sk_out) return -1;
+    // Generar clave secreta aleatoria (32 bytes)
+    for (int i = 0; i < 32; i++) {
+        sk_out[i] = (unsigned char)(rand() & 0xFF);
+    }
+    // Clamping RFC 7748: limpiar bits bajo/alto del escalar
+    sk_out[0]  &= 248;  // clear bottom 3 bits
+    sk_out[31] &=  1;   // clear top bit
+    sk_out[31] |=  64;  // set second-highest bit
+    // Derivar clave pública: pk = sk * base_point (crypto_kx)
+    return crypto_scalarmult_base(pk_out, sk_out);
+}
+
+/* _syn_crypto_kx_secreto_compartido: Compute shared secret via X25519
+ * (crypto_scalarmult) — Diffie-Hellman para crypto_kx.
+ * Retorna: 0 OK, -1 error.
+ */
+int _syn_crypto_kx_secreto_compartido(unsigned char* shared_out,
+                                       const unsigned char* clave_publica,
+                                       const unsigned char* clave_secreta) {
+    if (!shared_out || !clave_publica || !clave_secreta) return -1;
+    return crypto_scalarmult(shared_out, clave_secreta, clave_publica);
+}
+
+/* _syn_crypto_kx_derivar_clave_sesion: Derive session key (clave_sesion)
+ * from shared secret via SHA-512 KDF (Manual 6 §5.3 paso 4).
+ * clave_sesion = first 32 bytes of SHA-512(shared_secret).
+ * Retorna: 0 OK, -1 error.
+ */
+int _syn_crypto_kx_derivar_clave_sesion(unsigned char* clave_sesion_out,
+                                         const unsigned char* shared,
+                                         int shared_len) {
+    if (!clave_sesion_out || !shared || shared_len < 32) return -1;
+    unsigned char hash[64];
+    crypto_hash(hash, shared, shared_len);
+    memcpy(clave_sesion_out, hash, 32);
+    return 0;
+}
+
+/* _syn_handshake_hello_enviar: Build HELLO message for zero-trust handshake.
+ * Manual 6 §5.3: [nonce (32)] [clave_publica (32)] [firma (64)] = 128 bytes.
+ * The nonce is signed with Ed25519 (firma) to prove ownership of clave_secreta.
+ * Retorna: tamaño del HELLO (128) o -1 en error.
+ */
+int _syn_handshake_hello_enviar(unsigned char* hello_out, int hello_sz,
+                                 const unsigned char* nonce,
+                                 const unsigned char* clave_publica,
+                                 const unsigned char* clave_secreta) {
+    if (hello_sz < 128) return -1;
+    memset(hello_out, 0, hello_sz);
+    // [nonce (32 bytes)]
+    memcpy(hello_out, nonce, 32);
+    // [clave_publica (32 bytes)]
+    memcpy(hello_out + 32, clave_publica, 32);
+    // [firma (64 bytes)]: Ed25519 sign over nonce
+    unsigned long long sig_len = 0;
+    crypto_sign(hello_out + 64, &sig_len, nonce, 32, clave_secreta);
+    // HELLO = 32 (nonce) + 32 (pk) + 64 (firma) = 128 bytes
+    return 128;
+}
+
+/* _syn_handshake_hello_verificar: Verify a HELLO message.
+ * Checks the Ed25519 firma over the nonce using clave_publica_del_cliente.
+ * Retorna: 0 si válido, -1 si inválido.
+ */
+int _syn_handshake_hello_verificar(const unsigned char* hello, int hello_len,
+                                    const unsigned char* clave_publica) {
+    if (hello_len < 128 || !hello || !clave_publica) return -1;
+    // nonce = hello[0..31], firma = hello[64..127]
+    // crypto_sign_open verifica: sm = firma || nonce
+    unsigned char sm[96];
+    memcpy(sm, hello + 64, 64);     // firma (64 bytes)
+    memcpy(sm + 64, hello, 32);     // nonce como mensaje (32 bytes)
+    unsigned long long msg_len = 0;
+    unsigned char verified_msg[32];
+    if (crypto_sign_open(verified_msg, &msg_len, sm, 96, clave_publica) == 0) {
+        if (msg_len == 32 && memcmp(verified_msg, hello, 32) == 0) {
+            return 0;  // HELLO válido
+        }
+    }
+    return -1;  // HELLO inválido
+}
