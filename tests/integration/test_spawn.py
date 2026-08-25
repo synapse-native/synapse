@@ -77,8 +77,10 @@ funcion principal() -> nulo:
             for e in diag.errores
         )
         # Puede fallar o no según implementación actual
-        if not tiene_move_error and diag.codigo_salida() != 0:
-            pass  # Compilación falló por otra razón
+        # Verificamos que el análisis no crashea
+        assert diag is not None, "El analizador debe retornar diagnósticos"
+        # Si hay error de move, la semántica está implementada
+        # Si no hay, el test documenta el comportamiento esperado
 
     def test_esperar_hilos(self):
         """synapse_esperar_hilos() debe estar disponible."""

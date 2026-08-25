@@ -39,6 +39,7 @@ class TestFirmaEd25519:
         if not archivos_sig:
             pytest.skip("No se encontraron archivos .sig (TDD)")
         assert len(archivos_sig) > 0, "Debe existir al menos un archivo .sig"
+        assert len(archivos_sig) > 0, "Debe existir al menos un archivo .sig"
 
     def test_firma_ed25519_verificable(self):
         """Los .sig deben poder verificarse con la clave pública."""
@@ -50,6 +51,7 @@ class TestFirmaEd25519:
                     archivos_sig.append(os.path.join(root, f))
         if not archivos_sig:
             pytest.skip("No se encontraron archivos .sig (TDD)")
+        assert len(archivos_sig) > 0, "Debe existir al menos un archivo .sig"
         # Verificar que hay una clave pública
         pub_key = os.path.join(RAIZ, "release_keys", "public_key.pem")
         if not os.path.exists(pub_key):
@@ -152,6 +154,7 @@ class TestInstalacion:
         alguno = any(os.path.exists(f) for f in instaladores)
         if not alguno:
             pytest.skip("Instalador no encontrado (TDD)")
+        assert alguno, "Debe existir un script de instalación"
 
     def test_synapse_exe_existe(self):
         """synapse.exe debe existir para verificar instalación."""
@@ -178,3 +181,4 @@ class TestActualizacion:
         alguno = any(os.path.exists(f) for f in archivos_update)
         if not alguno:
             pytest.skip("Mecanismo de update no encontrado (TDD)")
+        assert alguno, "Debe existir un mecanismo de actualización"

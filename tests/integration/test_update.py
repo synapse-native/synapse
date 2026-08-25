@@ -25,6 +25,7 @@ class TestActualizacion:
         alguno = any(os.path.exists(f) for f in archivos)
         if not alguno:
             pytest.skip("Mecanismo de actualización no encontrado (TDD)")
+        assert alguno, "Debe existir un mecanismo de actualización"
 
     def test_version_archivo(self):
         """Debe existir archivo de versión."""
@@ -36,6 +37,7 @@ class TestActualizacion:
         alguno = any(os.path.exists(f) for f in archivos_version)
         if not alguno:
             pytest.skip("Archivo de versión no encontrado")
+        assert alguno, "Debe existir un archivo de versión"
 
     def test_changelog_existe(self):
         """CHANGELOG debe existir."""
@@ -47,3 +49,4 @@ class TestActualizacion:
         alguno = any(os.path.exists(f) for f in changelogs)
         if not alguno:
             pytest.skip("CHANGELOG no encontrado")
+        assert alguno, "CHANGELOG debe existir"

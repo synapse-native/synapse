@@ -247,6 +247,8 @@ punto_entrada = "lib.syn"
               tar_hash == tar_hash2,
               f"Run 1: {tar_hash[:16]}... Run 2: {tar_hash2[:16]}...")
 
+    assert FAIL == 0, "Checks fallaron"
+
 
 # ── Main ───────────────────────────────────────────────────────────
 

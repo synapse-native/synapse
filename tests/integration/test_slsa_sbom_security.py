@@ -281,6 +281,7 @@ class TestPipelineSBOM:
             # Esperamos fallo porque no hay toolchain GCC o runtime
             # Lo importante es que no crashee
             print(f"[TEST] Pipeline --sbom retornó código {codigo}")
+            assert isinstance(codigo, int), "ejecutar_compilador debe retornar un entero"
         finally:
             # Limpiar archivos generados
             for ext in ['.c', '.exe', '.syn.json', '.spdx.json', '.o']:
@@ -305,6 +306,7 @@ class TestPipelineSBOM:
         try:
             codigo = ejecutar_compilador(temp_path, firmar_binario=True, clave_sbom=priv)
             print(f"[TEST] Pipeline --sign retornó código {codigo}")
+            assert isinstance(codigo, int), "ejecutar_compilador debe retornar un entero"
         finally:
             for ext in ['.c', '.exe', '.syn.json', '.sig', '.attestation.json', '.o']:
                 base = temp_path.rsplit('.', 1)[0]

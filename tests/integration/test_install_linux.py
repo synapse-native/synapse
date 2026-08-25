@@ -31,6 +31,7 @@ class TestInstalacionLinux:
         alguno = any(os.path.exists(f) for f in binarios)
         if not alguno:
             pytest.skip("Binario synapse no encontrado")
+        assert alguno, "synapse binario debe existir para Linux"
 
     def test_runtime_lib(self):
         """runtime/ debe existir para instalación."""

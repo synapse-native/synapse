@@ -135,7 +135,7 @@ def test_axon_lock_existente():
     print("\n--- [Axon T1] Suite E2E existente ---")
     rc, out, err = run([PYTHON, "tests/test_axon_e2e.py"], timeout=60)
     check("test_axon_e2e.py ejecuta sin error", rc == 0, err[-300:] + out[-300:])
-    return rc == 0
+    assert FAIL == 0, "Checks fallaron"
 
 def main():
     print("=" * 60)

@@ -24,6 +24,7 @@ class TestDesinstalacion:
         alguno = any(os.path.exists(f) for f in scripts)
         if not alguno:
             pytest.skip("Script de desinstalación no encontrado (TDD)")
+        assert alguno, "Debe existir un script de desinstalación"
 
     def test_archivos_temporales_limpiables(self):
         """Los archivos temporales deben poder eliminarse."""

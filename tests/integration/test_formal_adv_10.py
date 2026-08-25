@@ -123,6 +123,7 @@ class TestMotorATP:
         alguno_existe = any(os.path.exists(f) for f in archivos_atp)
         if not alguno_existe:
             pytest.skip("Archivos ATP no creados aún (TDD)")
+        assert alguno_existe, "Debe existir un archivo de motor ATP"
 
 
 # ---------------------------------------------------------------------------

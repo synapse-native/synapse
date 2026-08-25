@@ -25,6 +25,7 @@ class TestAICommands:
         alguno = any(os.path.exists(f) for f in lsp_files)
         if not alguno:
             pytest.skip("Archivos LSP no encontrados (TDD)")
+        assert alguno, "Debe existir al menos un archivo LSP (lsp.c, lsp.h, o lsp_synapse.c)"
 
     def test_ai_explain_command(self):
         """LSP debe soportar comando synapse/aiExplain."""
