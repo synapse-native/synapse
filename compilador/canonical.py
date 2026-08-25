@@ -165,73 +165,206 @@ def _repr_nodo(n: Nodo) -> str:
 # ============================================================
 # CANONICAL ENCODER / DECODER
 # ============================================================
+# Mapeo de nombres de nodos: clase Python -> nombre canónico M2 §13
+# Solo mapeamos los que DIFIEREN del nombre de la clase Python
+_NODO_A_TIPO = {
+    "DefinicionFuncion": "FuncionDef",
+    "OpBinaria": "ExpresionArit",
+}
+
+# Mapeo de campos por tipo de nodo: {clase_python: {campo_python: campo_canonico}}
+_CAMPO_POR_NODO = {
+    "Programa": {"sentencias": "declaraciones"},
+    "DefinicionFuncion": {},  # Manejado especialmente
+    "SentenciaRetornar": {"expr": "valor"},
+    "OpBinaria": {"izquierdo": "izquierda", "derecho": "derecha"},
+    "OpUnaria": {"expr": "valor"},
+    "SentenciaSi": {"cuerpo_sino": "sino"},
+    "SentenciaMientras": {"cuerpo": "cuerpo"},
+    "SentenciaEscuchar": {"cuerpo": "cuerpo"},
+}
+
+# Campos que NO se serializan (internos)
+_CAMPOS_OMITIR = frozenset(['linea', 'columna'])
+
+
+def _serializar_parametro(p) -> dict:
+    """Serializa un Parametro según M2 §13: {nombre, tipo, es_transferencia}."""
+    return {
+        "nombre": p.nombre,
+        "tipo": p.tipo,
+        "es_transferencia": p.es_transferencia,
+    }
+
+
 def _nodo_a_dict(nodo: Nodo) -> dict:
-    d = {"_tipo": type(nodo).__name__}
+    """Serializa un Nodo AST a dict según formato canónico M2 §13."""
+    nombre_clase = type(nodo).__name__
+    tipo_canonico = _NODO_A_TIPO.get(nombre_clase, nombre_clase)
+    d = {"tipo": tipo_canonico}
+
+    # Obtener mapeo de campos para este tipo de nodo
+    campos_map = _CAMPO_POR_NODO.get(nombre_clase, {})
+
+    # --- Caso especial: DefinicionFuncion ---
+    if isinstance(nodo, DefinicionFuncion):
+        d["nombre"] = nodo.nombre
+        d["parametros"] = [_serializar_parametro(p) for p in nodo.parametros]
+        d["tipo_retorno"] = nodo.tipo_retorno
+        contratos = None
+        if nodo.requiere or nodo.garantiza:
+            contratos = {
+                "requiere": [_nodo_a_dict(c) for c in nodo.requiere] if nodo.requiere else [],
+                "garantiza": [_nodo_a_dict(c) for c in nodo.garantiza] if nodo.garantiza else [],
+            }
+        d["contratos"] = contratos
+        d["cuerpo"] = {
+            "tipo": "Bloque",
+            "sentencias": [_nodo_a_dict(s) for s in nodo.cuerpo],
+        }
+        return d
+
+    # --- Serialización genérica ---
     for campo, valor in nodo.__dict__.items():
-        if campo in ('linea', 'columna'):
+        if campo in _CAMPOS_OMITIR:
             continue
         if valor is None:
             continue
+        # Renombrar campo según mapeo de este nodo
+        campo_canonico = campos_map.get(campo, campo)
         if isinstance(valor, Nodo):
-            d[campo] = _nodo_a_dict(valor)
+            d[campo_canonico] = _nodo_a_dict(valor)
         elif isinstance(valor, list):
             processed = []
             for v in valor:
                 if isinstance(v, Nodo):
                     processed.append(_nodo_a_dict(v))
                 elif isinstance(v, Parametro):
-                    processed.append({"nombre": v.nombre, "tipo": v.tipo})
+                    processed.append(_serializar_parametro(v))
                 else:
                     processed.append(v)
-            d[campo] = processed
+            d[campo_canonico] = processed
         elif isinstance(valor, Parametro):
-            d[campo] = {"nombre": valor.nombre, "tipo": valor.tipo, "es_transferencia": valor.es_transferencia}
+            d[campo_canonico] = _serializar_parametro(valor)
         else:
-            d[campo] = valor
+            d[campo_canonico] = valor
     return d
 
 
+# Mapeo inverso: nombre canónico -> clase Python
+_TIPO_A_NODO = {v: k for k, v in _NODO_A_TIPO.items()}
+
+# Mapeo inverso por nodo: {clase_python: {campo_canonico: campo_python}}
+_CAMPO_INVERSO_POR_NODO = {}
+for _cls, _map in _CAMPO_POR_NODO.items():
+    _CAMPO_INVERSO_POR_NODO[_cls] = {v: k for k, v in _map.items()}
+
+
 def _dict_a_nodo(d: dict) -> Nodo:
-    tipo = d["_tipo"]
-    cls = globals().get(tipo)
+    """Deserializa un dict canónico M2 §13 a un Nodo AST."""
+    tipo = d["tipo"]
+    nombre_clase = _TIPO_A_NODO.get(tipo, tipo)
+    cls = globals().get(nombre_clase)
     if cls is None:
-        cls = getattr(__import__('compilador.ast_nodes', fromlist=[tipo]), tipo)
+        try:
+            cls = getattr(__import__('compilador.ast_nodes', fromlist=[nombre_clase]), nombre_clase)
+        except (ImportError, AttributeError):
+            raise ValueError(f"Tipo de nodo desconocido: {tipo} (clase: {nombre_clase})")
+
+    # Obtener mapeo inverso de campos para este tipo de nodo
+    campos_inv = _CAMPO_INVERSO_POR_NODO.get(nombre_clase, {})
+
+    # --- Caso especial: FuncionDef -> DefinicionFuncion ---
+    if tipo == "FuncionDef":
+        requiere = []
+        garantiza = []
+        contratos = d.get("contratos")
+        if contratos:
+            if isinstance(contratos, dict):
+                requiere = [_dict_a_nodo(c) for c in contratos.get("requiere", [])]
+                garantiza = [_dict_a_nodo(c) for c in contratos.get("garantiza", [])]
+        cuerpo_raw = d.get("cuerpo", [])
+        if isinstance(cuerpo_raw, dict) and "sentencias" in cuerpo_raw:
+            cuerpo = [_dict_a_nodo(s) for s in cuerpo_raw["sentencias"]]
+        elif isinstance(cuerpo_raw, list):
+            cuerpo = [_dict_a_nodo(s) if isinstance(s, dict) and "tipo" in s else s for s in cuerpo_raw]
+        else:
+            cuerpo = []
+        params_raw = d.get("parametros", [])
+        parametros = []
+        for p in params_raw:
+            if isinstance(p, dict):
+                parametros.append(Parametro(
+                    nombre=p.get("nombre", ""),
+                    tipo=p.get("tipo", ""),
+                    es_transferencia=p.get("es_transferencia", False),
+                ))
+        return DefinicionFuncion(
+            nombre=d.get("nombre", ""),
+            parametros=parametros,
+            tipo_retorno=d.get("tipo_retorno", ""),
+            requiere=requiere,
+            garantiza=garantiza,
+            cuerpo=cuerpo,
+        )
+
+    # --- Caso genérico ---
     kwargs = {}
     for campo, valor in d.items():
-        if campo == "_tipo":
+        if campo == "tipo":
             continue
-        if isinstance(valor, dict) and "_tipo" in valor:
-            kwargs[campo] = _dict_a_nodo(valor)
+        # Renombrar campo canónico -> Python usando mapeo de este nodo
+        campo_python = campos_inv.get(campo, campo)
+        if isinstance(valor, dict) and "nombre" in valor and "tipo" in valor and "es_transferencia" in valor:
+            # Parametro dict (tiene es_transferencia)
+            kwargs[campo_python] = Parametro(**valor)
+        elif isinstance(valor, dict) and "tipo" in valor:
+            # Nodo dict (tiene tipo como nombre de nodo)
+            kwargs[campo_python] = _dict_a_nodo(valor)
         elif isinstance(valor, list):
             processed = []
             for v in valor:
-                if isinstance(v, dict) and "_tipo" in v:
-                    processed.append(_dict_a_nodo(v))
-                elif isinstance(v, dict) and "nombre" in v and "tipo" in v:
+                if isinstance(v, dict) and "nombre" in v and "tipo" in v and "es_transferencia" in v:
                     processed.append(Parametro(**v))
+                elif isinstance(v, dict) and "tipo" in v:
+                    processed.append(_dict_a_nodo(v))
                 else:
                     processed.append(v)
-            kwargs[campo] = processed
-        elif isinstance(valor, dict) and "nombre" in valor and "tipo" in valor:
-            kwargs[campo] = Parametro(**valor)
+            kwargs[campo_python] = processed
         else:
-            kwargs[campo] = valor
+            kwargs[campo_python] = valor
     return cls(**kwargs)
 
 
 def ast_a_canonico(programa: Programa) -> str:
-    data = {
-        "synapse": "2.0",
-        "ast": _nodo_a_dict(programa),
+    """Serializa AST a formato JSON canónico M2 §13.
+
+    Formato:
+    {
+      "tipo": "Programa",
+      "declaraciones": [ { "tipo": "FuncionDef", ... } ]
     }
+    """
+    data = _nodo_a_dict(programa)
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
 def canonico_a_ast(json_str: str) -> Programa:
+    """Deserializa JSON canónico M2 §13 a AST.
+
+    Acepta tanto el formato nuevo ("tipo" en raíz) como el legacy
+    ("synapse" + "ast") para compatibilidad.
+    """
     data = json.loads(json_str)
-    if data.get("synapse") != "2.0":
-        raise ValueError("Formato canónico no reconocido")
-    return _dict_a_nodo(data["ast"])
+    # Formato legacy: {"synapse": "2.0", "ast": {...}}
+    if "synapse" in data and "ast" in data:
+        data = data["ast"]
+        # Converter _tipo -> tipo, sentencias -> declaraciones
+        if "_tipo" in data:
+            data["tipo"] = data.pop("_tipo")
+        if "sentencias" in data:
+            data["declaraciones"] = data.pop("sentencias")
+    return _dict_a_nodo(data)
 
 
 # ============================================================
