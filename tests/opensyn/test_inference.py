@@ -44,7 +44,7 @@ class TestInferencia:
         assert "llama_client_completion" in contenido, \
             "llama_client.h debe declarar llama_client_completion()"
 
-    def test_orchestrator lifecycle(self):
+    def test_orchestrator_lifecycle(self):
         """orchestrator debe gestionar lifecycle de llama-server."""
         orch_h = os.path.join(RAIZ, "opensyn", "orchestrator.h")
         if not os.path.exists(orch_h):

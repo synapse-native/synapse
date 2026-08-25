@@ -4,7 +4,7 @@ M20.2: Auditoria de Caché Incremental SHA-256
 """
 import subprocess, os, sys, tempfile, time, hashlib, shutil
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def _find_python():
     for exe in ["python3", "python"]:

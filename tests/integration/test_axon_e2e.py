@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 import hashlib
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TESTS_DIR = os.path.join(ROOT, "tests")
 
 BIN_ED25519 = os.path.join(TESTS_DIR, "test_ed25519_axon_new.exe")
