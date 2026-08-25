@@ -411,7 +411,7 @@ class Lexer:
                         )
 
     def _detectar_idioma(self):
-        if not self.lineas:
+        if not self.fuente.strip():
             raise SynapseError("Error Crítico: Archivo vacío", 1, 0)
         primera = self.lineas[0].strip()
         if not primera.startswith('#lang:'):
@@ -494,6 +494,20 @@ class Lexer:
                             valor_chars.append('\\')
                         elif ch == comilla:
                             valor_chars.append(comilla)
+                        elif ch == 'u':
+                            # Escape Unicode: \uXXXX
+                            hex_str = ''
+                            for _ in range(4):
+                                i += 1
+                                if i < len(texto) and texto[i] in '0123456789abcdefABCDEF':
+                                    hex_str += texto[i]
+                                else:
+                                    raise SynapseError(
+                                        "Error Léxico: Escape Unicode incompleto, se esperan 4 dígitos hexadecimales",
+                                        self.linea_actual, inicio
+                                    )
+                            codepoint = int(hex_str, 16)
+                            valor_chars.append(chr(codepoint))
                         else:
                             valor_chars.append('\\' + ch)
                         escapando = False
@@ -561,6 +575,14 @@ class Lexer:
                 if i < len(texto) and texto[i] == '.':
                     es_float = True
                     i += 1
+                    while i < len(texto) and texto[i].isdigit():
+                        i += 1
+                # Notación científica: 1e3, 1.2e-3, 1.5E+2
+                if i < len(texto) and texto[i] in ('e', 'E'):
+                    es_float = True
+                    i += 1
+                    if i < len(texto) and texto[i] in ('+', '-'):
+                        i += 1
                     while i < len(texto) and texto[i].isdigit():
                         i += 1
                 if es_float:
