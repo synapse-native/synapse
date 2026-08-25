@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-test_ownership_10.py — Tests avanzados de ownership para cobertura 10/10.
+test_ownership_10.py — Tests de ownership (move semantics) verificando comportamiento real.
 
-Manual 2 L59-60: "->" antes del parámetro indica transferencia de ownership (move).
-Sin "->" el parámetro recibe copia.
+Manual 2 §9: Ownership (move) — ERR_MEM_USE_AFTER_MOVE.
+Manual 5 §2: lanzar mueve argumentos.
 
-Complementa test_ownership.py con:
-  1. USE_AFTER_MOVE con -> (move explícito)
-  2. Move con reasignación
-  3. Move con structs
-  4. Move con canales
-  5. Casos borde
+Consolida los tests de ownership de los 3 archivos anteriores.
+Cada test verifica que el compilador detecta o permite ownership correctamente.
 """
 import pytest
 from conftest import compilar_texto
@@ -18,18 +14,18 @@ from compilador.diagnostics import ErrorCodes
 
 
 def _hay_error(diag, codigo):
+    """Verifica si un error específico está en los diagnósticos."""
     return any(e.get('codigo') == codigo for e in diag.errores)
 
 
 # ---------------------------------------------------------------------------
-# 1. USE_AFTER_MOVE DETECCIÓN (con -> explícito)
+# 1. USE_AFTER_MOVE — DEBE FALLAR (Manual 2 §9)
 # ---------------------------------------------------------------------------
-
-class TestUseAfterMove:
-    """Valida que USE_AFTER_MOVE es detectado con parámetros ->."""
+class TestUseAfterMoveFallan:
+    """Verifica que ERR_MEM_USE_AFTER_MOVE es detectado."""
 
     def test_use_after_move_simple(self):
-        """Variable movida (->) y luego usada debe fallar."""
+        """Variable movida y luego usada debe fallar."""
         fuente = '''#lang: es
 funcion consumir(-> t: entero) -> nulo:
     retornar
@@ -39,10 +35,11 @@ funcion principal() -> entero:
     retornar t1
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0 or _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE debe ser detectado con código ERR_MEM_USE_AFTER_MOVE"
 
     def test_use_after_move_en_expresion(self):
-        """Variable movida (->) y usada en expresión debe fallar."""
+        """Variable movida usada en expresión debe fallar."""
         fuente = '''#lang: es
 funcion consumir(-> t: entero) -> nulo:
     retornar
@@ -53,10 +50,11 @@ funcion principal() -> entero:
     retornar y
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0 or _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE en expresión debe ser detectado"
 
     def test_use_after_move_en_condicional(self):
-        """Variable movida (->) y usada en condición si debe fallar."""
+        """Variable movida usada en condición si debe fallar."""
         fuente = '''#lang: es
 funcion consumir(-> t: entero) -> nulo:
     retornar
@@ -68,10 +66,11 @@ funcion principal() -> entero:
     retornar 0
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0 or _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE en condición debe ser detectado"
 
     def test_doble_move(self):
-        """Variable movida (->) dos veces debe fallar."""
+        """Variable movida dos veces debe fallar."""
         fuente = '''#lang: es
 funcion consumir(-> t: entero) -> nulo:
     retornar
@@ -81,15 +80,74 @@ funcion principal() -> nulo:
     consumir(x)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0
+        assert diag.codigo_salida() != 0, \
+            "Doble move debería fallar"
+
+    def test_move_en_lanzar(self):
+        """'lanzar f(x)' mueve x; uso posterior debe fallar (Manual 5 §2)."""
+        fuente = '''#lang: es
+funcion destinatario(-> t: entero) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    x = 10
+    lanzar destinatario(x)
+    y = x
+'''
+        ast, diag = compilar_texto(fuente)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE después de lanzar debe ser detectado"
+
+    def test_move_en_expresion_compuesta(self):
+        """Variable movida usada en expresión compuesta debe fallar."""
+        fuente = '''#lang: es
+funcion consumir(-> t: entero) -> nulo:
+    retornar
+funcion obtener() -> entero:
+    retornar 10
+funcion principal() -> nulo:
+    x = 42
+    consumir(x)
+    z = obtener() + x
+'''
+        ast, diag = compilar_texto(fuente)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE en expresión compuesta debe ser detectado"
+
+    def test_move_en_condicion_si(self):
+        """Variable movida dentro de 'si', luego usada fuera."""
+        fuente = '''#lang: es
+funcion consumir(-> t: entero) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    x = 42
+    si verdadero:
+        consumir(x)
+    y = x
+'''
+        ast, diag = compilar_texto(fuente)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "USE_AFTER_MOVE después de move en rama condicional"
+
+    def test_lanzar_mueve_texto(self):
+        """lanzar mueve texto; log(texto) después = USE_AFTER_MOVE."""
+        fuente = '''#lang: es
+funcion trabajador(msg: texto) -> nulo:
+    log(msg)
+funcion principal() -> nulo:
+    msg = "hola"
+    lanzar trabajador(msg)
+    log(msg)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
+            "lanzar mueve msg; log(msg) después debería fallar"
 
 
 # ---------------------------------------------------------------------------
-# 2. MOVE VÁLIDO (no debe fallar)
+# 2. MOVE VÁLIDO — NO DEBE FALLAR
 # ---------------------------------------------------------------------------
-
 class TestMoveValido:
-    """Casos donde el move es válido y no debe fallar."""
+    """Verifica que move válido no produce errores."""
 
     def test_move_y_reasignacion(self):
         """Move seguido de reasignación es válido."""
@@ -104,10 +162,11 @@ funcion principal() -> entero:
     retornar 0
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0
+        assert diag.codigo_salida() == 0, \
+            "Move con reasignación debería compilar OK"
 
     def test_move_en_parametro(self):
-        """Move con parámetro ->."""
+        """Move con parámetro -> es válido."""
         fuente = '''#lang: es
 funcion tomar(-> x: entero) -> entero:
     retornar x
@@ -131,7 +190,7 @@ funcion principal() -> entero:
         assert diag.codigo_salida() == 0
 
     def test_copia_sin_move(self):
-        """Sin -> es copia, no move (sin ->t no invalida variable)."""
+        """Sin -> es copia, no move (variable sigue válida)."""
         fuente = '''#lang: es
 funcion consumir(t: entero) -> nulo:
     retornar
@@ -143,11 +202,22 @@ funcion principal() -> entero:
         ast, diag = compilar_texto(fuente)
         assert diag.codigo_salida() == 0
 
+    def test_move_valido_no_falla(self):
+        """Variable movida una sola vez, sin uso posterior → OK."""
+        fuente = '''#lang: es
+funcion consumir(-> t: entero) -> nulo:
+    retornar
+funcion principal() -> nulo:
+    x = 42
+    consumir(x)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
 
 # ---------------------------------------------------------------------------
 # 3. MOVE CON STRUCTS
 # ---------------------------------------------------------------------------
-
 class TestMoveStructs:
     """Move de estructuras."""
 
@@ -185,7 +255,6 @@ funcion principal() -> nulo:
 # ---------------------------------------------------------------------------
 # 4. MOVE CON CANALES
 # ---------------------------------------------------------------------------
-
 class TestMoveCanales:
     """Move de canales."""
 
@@ -217,7 +286,6 @@ funcion principal() -> nulo:
 # ---------------------------------------------------------------------------
 # 5. CASOS BORDE
 # ---------------------------------------------------------------------------
-
 class TestMoveCasosBorde:
     """Casos borde de move semantics."""
 

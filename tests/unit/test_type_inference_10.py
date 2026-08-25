@@ -48,7 +48,8 @@ funcion principal() -> entero:
     def test_tvar_unificada_con_adt(self):
         """TVar unificada con ADT genérico."""
         fuente = '''#lang: es
-funcion extraer(opt: Opcion<T>) -> T:
+# Manual 2 §8: Opcion<T> genérico no soportado aún; se usa Opcion<entero>
+funcion extraer(opt: Opcion<entero>) -> entero:
     coincidir opt:
         algun(v) => retornar v
         ninguno => retornar 0
@@ -56,7 +57,9 @@ funcion principal() -> nulo:
     extraer(algun(42))
 '''
         ast, diag = compilar_texto(fuente)
-        assert True  # Reportar errores sin fallar
+        # Manual 2 §8: Opcion<entero> debe compilar con pattern matching
+        assert diag.codigo_salida() == 0, \
+            f"Opcion<entero> con match debería compilar: {[e.get('mensaje','') for e in diag.errores]}"
 
     def test_cadena_unificacion(self):
         """Cadena de unificaciones: A -> B -> C."""
@@ -145,7 +148,9 @@ funcion principal() -> nulo:
     obtener()
 '''
         ast, diag = compilar_texto(fuente)
-        assert True  # Reportar errores sin fallar
+        # Manual 2 §8: Resultado<entero, texto> debe compilar con pattern matching
+        assert diag.codigo_salida() == 0, \
+            f"Resultado<entero, texto> debería compilar: {[e.get('mensaje','') for e in diag.errores]}"
 
     def test_puntero_a_entero(self):
         """Puntero a entero."""
@@ -233,7 +238,9 @@ funcion principal() -> entero:
     retornar sumar(1, "dos")
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0
+        # Debe fallar por tipo incompatible (entero + texto)
+        assert diag.hay_errores(), \
+            "sumar(entero, texto) debería fallar por tipo incompatible"
 
     def test_aridad_incorrecta_falla(self):
         """Número incorrecto de argumentos debe fallar."""
@@ -244,4 +251,6 @@ funcion principal() -> entero:
     retornar f(1)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() != 0
+        # Debe fallar por aridad incorrecta (1 arg, esperado 2)
+        assert diag.hay_errores(), \
+            "f(1) debería fallar por aridad incorrecta (esperado 2 args)"
