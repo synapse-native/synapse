@@ -103,13 +103,12 @@
 - **2026-08-10 — `nucleo/generator.syn` es un UNITY regenerado:** editar cualquier `nucleo/generador/*.syn` sin ejecutar `python nucleo/_rebuild_generator.py` produce un bootstrap sin los cambios (link error). El script tiene orden de concatenación estricto (contexto → emision_c → expr_eval → nodos_flujo → frontend_nativo → orquestador).
 - **2026-08-10 — Los builds completos tardan >30 s:** `python main.py nucleo/principal.syn -o synapse_stage1.exe` necesita timeout ≥ 900 s en el basher; con timeout corto el exe queda STALE (verificar con `strings synapse_stage1.exe | grep -c simbolo`).
 - **2026-08-09 — El aborto semántico global rompe el bootstrap:** el analizador nativo genera ruido pre-existente; usar flags dedicados (`hay_error_2_4`) y abortar solo para la validación en curso.
-- **2026-08-09 — El puente `puente_ast.syn` es la fuente de verdad de nombres de campo:** los nodos aplanados no siempre usan `tipo` (p.ej. `Parametro.tipo_param` vía `ptr_extra`); verificar contra el flatten F8 en `principal.syn` antes de asumir.
-- **2026-08-09 — S1 `semantic_checker.py` es el espejo del analizador nativo:** para paridad de comportamiento, consultar primero cómo lo hace el S1 (`_analizar_funcion`, `_analizar_sentencia`).
-
----
-
-## 5. TAREAS PENDIENTES
-
+- **2026-08-09 — El puente `puente_ast.syn` es la fuente de verdad de nombres de campo:** los nodos aplanados no siempre usan `tipo` (p.ej. `Parametro.tipo_param` vía `ptr_extra`); verificar contra el flatten F8 en `principal.syn` antes de asumir.- **2026-08-09 — S1 `semantic_checker.py` es el espejo del analizador nativo:** para paridad de comportamiento, consultar primero cómo lo hace el S1 (`_analizar_funcion`, `_analizar_sentencia`).
+- **2026-08-25 — CORRECCIÓN DE LECCIÓN (ME-TQ-2):** la lección anterior estaba INVERTIDA. El proceso correcto de TDD industrial es: (1) LEER el MANUAL para requisitos; (2) ESCRIBIR el test SIN leer código fuente — el test es la especificación; (3) El código se escribe/ajusta para cumplir el test; (4) NUNCA se modifica el test para que pase — si falla, se corrige el CÓDIGO. El error fue escribir tests leyendo canonical.py/ast_nodes.py primero — eso convierte el test en espejo del código existente en lugar de especificación del manual. **Regla corregida:** el test nace del MANUAL, no del código. Si el código no implementa lo que el manual pide, el test falla y se corrige el código.
+- **2026-08-25 — REGLAS DE MODIFICACIÓN (aclaración del Arquitecto):** (1) El manual NO se modifica para endurecer — es la fuente de verdad. (2) Los tests SÍ se pueden modificar para endurecer, PERO únicamente con autorización expresa del Arquitecto. (3) Si un test exige un formato del manual y el código no lo cumple, el test FALLA y eso es correcto — se corrige el CÓDIGO, no el test. (4) El test es la especificación del manual; los fallbacks que ocultan desviaciones del código son incorrectos.
+- **2026-08-25 — TDD ESTRICTO: todo test debe fallar si el código no existe (ME-TQ-5):** pytest.skip NO es TDD — marca el test como SKIPPED y lo ignora, sin presión para implementar. Los tests deben escribirse SIN pytest.skip: si el código no existe, el test FALLA, lo que fuerza la implementación. Si el módulo/binario no existe, el test falla con pytest.fail("... no implementado") o ImportError. Cuando se escriba el código, el test pasa. Si se usa pytest.skip, el test nunca se ejecuta y puede quedarse olvidado para siempre. **Regla:** todo test nuevo debe ser funcional y fallar si el código no está implementado.
+- **2026-08-25 — Consolidación estructural M1 §2:** todos los directorios de tests deben existir en M1 §2. Directorios no documentados (opensyn/, e2e/, fixtures/, synapse/, auditoria/, axon_modules/, security/) se consolidaron dentro de integration/. Colisiones de nombres de módulo (pytest importa el primero y luego falla al importar el segundo con el mismo basename) se resuelven renombrando con sufijo (_opensyn, _integration, _security). Fixtures duplicados (_cripto.c, _io.c, _sistema.c) deduplicados. Paths hardcoded en tests actualizados.
+- **2026-08-25 — CERO DEUDA TÉCNICA:** todo error de collection, warning o desviación del manual DEBE resolverse antes de commitear. No se permite “preexistente” como excusa — o se repara o se registra con resolución asignada. Los 3 errores de collection (opensyn naming, syquex/ffi naming) persistieron 3 commits antes de resolverse. Regla: verificar `pytest --collect-only -q` = 0 errores ANTES de cada commit.
 - [x] R2 — anti-cuelgue parser nativo (tipos anidados) — commit `8f9dc54`
 - [x] R5 — pipeline nativo aborta en errores de parseo (rc=8) — commit `54f5ee7`
 - [x] R7 — 653 falsos positivos «variable no declarada» → 0 — commit `3e9cb84`
@@ -169,3 +168,22 @@ ucleo/diagnostics.syn (fuente de verdad); _emitir_constantes_programa salta cons
 untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Walloc-size-larger-than. **Validación**: stage1 build 0 warnings; tests 147 passed (lexer/parser/generator/semántico/verificación).
 
 - ✅ **H27 — Build modular `std/*.syn` falla con `undefined reference to concat`** **RESUELTA** (2026-08-21): `concat` movido al runtime (`runtime/core/sistema.c` + `runtime/core/sistema.h` + `synapse_rt.h`); codegen S1 (`compilador/generator/generator.py`) y nativo (`librerias/compiler/generator.c`) ya no emiten la definición de `concat` en el código generado, solo el `extern` en el encabezado. Link modular verificado con `tests/bootstrap_test.syn` (ejecutable generado, salida correcta). Unity fallback mantenido como respaldo en `pipeline.py`.
+- ✅ **ME-TQ-1 (2026-08-25):** reorganización estructural tests/ según M1 §2 — 22 archivos movidos root→integration, 5 unit→syquex, 63 tmp eliminados, micro_bootstrap creado, pytest.ini creado, 0 collection errors, 1721 tests coleccionables. Commit `63bd30d`.
+- ✅ **ME-TQ-2 (2026-08-25):** tests M2 §12 serialización AST — `tests/unit/test_ast_serialization.py` creado (25 tests, 25 PASSED). Commit `fec63ef`.
+- ✅ **ME-TQ-3 (2026-08-25):** tests M3 §13 FFI + exportación Syquex — `tests/syquex/test_ffi.py` (11 tests) + `tests/syquex/test_export.py` (8 tests). Commit `18c21ae`.
+- ✅ **ME-TQ-4 (2026-08-25):** tests M6 §9 FFI C + export Python + transpile — `tests/integration/test_ffi_integration.py` (9 tests) + `test_export_python.py` (12 tests) + `test_transpile_integration.py` (10 tests). Commit `f863bf3`.
+- ✅ **ME-TQ-5 (2026-08-25):** tests M8 §9 LSP/AI/CLI/Debugger — 9 archivos (21 tests): completion, hover, ai_explain, ai_complete, ai_fix, ai_correction, cli_check, debug_record, debug_reverse. Tests sin pytest.skip (TDD estricto). Commit `b93b015`.
+- ✅ **Consolidación estructural (2026-08-25):** M1 §2 — 0 directorios no documentados. Mover opensyn/, e2e/, fixtures/, synapse/, auditoria/, axon_modules/, security/ dentro de integration/. Fixtures deduplicados. 122 files changed. Commit `52d199f`.
+- ✅ **ME-TQ-6 (2026-08-25):** tests M3 §7-8 concurrencia y Resultado Syquex — `test_concurrency.py` (5 tests: Canal, lanzar, escuchar, enviar) + `test_result.py` (5 tests: Resultado, ?, intentar/atrapar). Tests vacíos con pytest.skip reemplazados por tests TDD funcionales via pipeline.ejecutar_compilador. Commit `b668273`.
+- ✅ **ME-TQ-7 (2026-08-25):** Quality hardening — 5 commits:
+  - `3114095`: conftest find_gcc fixture + asserts axon_e2e/cache_audit
+  - `de197a2`: asserts a 18 tests en 12 archivos (28→10 tests sin asserts)
+  - `47e77c8`: cobertura lexer 86%→95% (M2 §12 >95%)
+  - `6871295`: parametrización tests multi-idioma (5 @parametrize en test_lexer.py)
+  - `085eb29`: markers pytest en 183 archivos (unit/integration/syquex/fuzz)
+- ✅ **Deuda técnica eliminada (2026-08-25):** 3 errores de collection preexistentes:
+  - Eliminados 8 archivos duplicados en tests/opensyn/
+  - Eliminados 3 archivos duplicados (_integration suffixed)
+  - Renombrado syquex/test_ffi.py → test_ffi_syquex.py (evita conflicto con integration/)
+  - Resultado: 0 errores de collection, 1882 tests. Commit `b28ffa1`.
+- ✅ **ME-TQ-8 (2026-08-25):** Infraestructura de testing — `tests/micro_bootstrap/__init__.py` creado (M1 §2), eliminado `tests/test_runner.py` duplicado (existe en `scripts/`). pytest.ini con markers y timeout ya configurados en ME-TQ-7. Commit `d308c63`.
