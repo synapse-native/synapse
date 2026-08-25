@@ -13,6 +13,8 @@ import tempfile
 import time
 import pytest
 
+pytestmark = pytest.mark.fuzz
+
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
 # F3-15 + D-9(d) corte 8 (sin hardcoding, regla 13): los .o del runtime se

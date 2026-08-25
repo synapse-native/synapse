@@ -7,6 +7,8 @@ from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
 from compilador.generator import GeneradorC
 
+pytestmark = pytest.mark.integration
+
 
 def test_match_resultado_ok_y_err():
     fuente = '''#lang: es

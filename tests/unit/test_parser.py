@@ -8,6 +8,9 @@ Criterio 1.6: los errores de sintaxis reportan ubicación precisa
 """
 from compilador.lexer import Lexer
 from compilador.parser import Parser
+import pytest
+
+pytestmark = pytest.mark.unit
 from compilador.ast_nodes import (
     TokenID, Nodo, SentenciaSi, AsignacionVariable,
     OpBinaria, OpUnaria, DeclaracionVariable, DefinicionFuncion,

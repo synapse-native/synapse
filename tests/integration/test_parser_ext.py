@@ -5,6 +5,8 @@ from conftest import DIR_VALID, compilar_texto, ast_a_canonico_test
 from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.diagnostics import DiagnosticManager
+
+pytestmark = pytest.mark.integration
 from compilador.ast_nodes import (
     Programa, DefinicionFuncion, DefinicionEstructura,
     SentenciaSi, SentenciaMientras, SentenciaLanzar, SentenciaRetornar,

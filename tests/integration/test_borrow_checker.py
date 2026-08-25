@@ -5,6 +5,8 @@ import pytest
 from compilador.ast_nodes import Programa
 from compilador.generator.context import GeneratorContext
 
+pytestmark = pytest.mark.integration
+
 
 def test_safe_mode_flag_inactivo_por_defecto():
     """Verifica que _safe_mode comienza en False."""

@@ -3,6 +3,9 @@ test_toml_raii.py — Verifica que el generador inyecte destructores RAII
 para NodoToml y que el pipeline Synapse→C→ejecutable funcione correctamente.
 """
 import os, sys, subprocess, tempfile
+import pytest
+
+pytestmark = pytest.mark.integration
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 

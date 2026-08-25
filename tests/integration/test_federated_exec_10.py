@@ -7,6 +7,8 @@ Manual 5 §6 (concurrencia distribuida): orquestador federado, FedAvg.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 RAIZ = None  # not needed
 
 

@@ -1,6 +1,9 @@
 import os
 import sys
 import tempfile
+import pytest
+
+pytestmark = pytest.mark.integration
 
 # Usar directorio del script + tempdir para compatibilidad cross-platform
 _base_dir = os.path.dirname(os.path.abspath(__file__))

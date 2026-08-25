@@ -10,6 +10,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
 
+pytestmark = pytest.mark.integration
+
 
 def _tiene_borrow_conflict(diag):
     """True si el diagnosticador reportó ERR_MEM_BORROW_CONFLICT."""

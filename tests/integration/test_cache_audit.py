@@ -3,6 +3,9 @@ tests/test_cache_audit.py
 M20.2: Auditoria de Caché Incremental SHA-256
 """
 import subprocess, os, sys, tempfile, time, hashlib, shutil
+import pytest
+
+pytestmark = pytest.mark.integration
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

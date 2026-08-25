@@ -16,6 +16,9 @@ import json
 import hashlib
 import struct
 import tempfile
+import pytest
+
+pytestmark = pytest.mark.integration
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 

@@ -14,6 +14,8 @@ import pytest
 from compilador.lexer import Lexer
 from compilador.ast_nodes import TokenID
 
+pytestmark = pytest.mark.unit
+
 
 def _tokens(source: str):
     return Lexer(source).tokenizar()

@@ -38,6 +38,8 @@ import tempfile
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)

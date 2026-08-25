@@ -12,6 +12,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
 
+pytestmark = pytest.mark.integration
+
 
 def _hay_error(diag, codigo):
     """Verifica si un error específico está en los diagnósticos."""

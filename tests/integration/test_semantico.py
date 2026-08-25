@@ -2,6 +2,9 @@ from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 class TestAnalizadorSemanticoVariables:

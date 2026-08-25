@@ -8,6 +8,8 @@ import os
 import subprocess
 import pytest
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 

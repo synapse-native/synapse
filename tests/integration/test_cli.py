@@ -4,6 +4,8 @@ import subprocess as sp
 from unittest.mock import patch, MagicMock
 import pytest
 
+pytestmark = pytest.mark.integration
+
 
 class TestCLIHelpFlag:
     def test_help_flag_exits_before_linker_invocation(self, monkeypatch):

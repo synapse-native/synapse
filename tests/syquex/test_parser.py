@@ -22,6 +22,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.syquex
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MODULOS = [
     os.path.join(PROJECT_ROOT, "nucleo", "parser_constantes.syn"),

@@ -5,6 +5,8 @@ Valida la proteccion contra path traversal (../) en nombres de archivo dentro de
 import pytest
 import os
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 
 

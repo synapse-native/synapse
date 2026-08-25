@@ -3,6 +3,9 @@ from compilador.lexer import Lexer, DICCIONARIOS, TOKEN_UNICARACTER, TOKEN_BICAR
 from compilador.ast_nodes import TokenID, Token
 from compilador.parser import Parser
 from compilador.diagnostics import DiagnosticManager
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 class TestLexerBasico:

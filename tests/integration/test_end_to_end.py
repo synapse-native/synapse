@@ -8,6 +8,8 @@ from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
 
+pytestmark = pytest.mark.integration
+
 
 class TestIntegrationEndToEnd:
     """Tests de integraci??n end-to-end del pipeline de compilaci??n"""

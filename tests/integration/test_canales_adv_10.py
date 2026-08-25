@@ -8,6 +8,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.generator import GeneradorC
 
+pytestmark = pytest.mark.integration
+
 
 # ---------------------------------------------------------------------------
 # 1. CANALES CON DIFERENTES BUFFERS

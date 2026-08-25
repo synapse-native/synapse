@@ -9,6 +9,8 @@ import pytest
 
 from conftest import rt_objs
 
+pytestmark = pytest.mark.integration
+
 RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))

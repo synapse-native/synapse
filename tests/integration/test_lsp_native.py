@@ -11,6 +11,8 @@ import logging
 import traceback
 import pytest
 
+pytestmark = pytest.mark.integration
+
 BINARIO_LSP = os.path.join(
     os.path.dirname(__file__),
     "..", "..", "nucleo", "lsp_test.exe"

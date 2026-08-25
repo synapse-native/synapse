@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 RAIZ = Path(r"D:\proyecto_synapse")
 STAGE1 = RAIZ / "synapse_stage1.exe"
 STAGE2 = RAIZ / "synapse_stage2.exe"

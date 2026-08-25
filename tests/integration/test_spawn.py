@@ -8,6 +8,8 @@ Manual 5 §2: lanzar mueve argumentos, M:N scheduling.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 class TestLanzarBasico:
     """Manual 5 §9: lanzar básico — fibras se crean y ejecutan."""

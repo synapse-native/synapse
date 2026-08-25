@@ -15,6 +15,9 @@ import sys
 import time
 
 from conftest import rt_objs
+import pytest
+
+pytestmark = pytest.mark.integration
 
 RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
 

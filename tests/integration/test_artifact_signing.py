@@ -20,6 +20,9 @@ import hashlib
 import tempfile
 import struct
 from typing import Tuple
+import pytest
+
+pytestmark = pytest.mark.integration
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 

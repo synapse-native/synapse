@@ -21,6 +21,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.syquex
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LEXER_PATH = os.path.join(PROJECT_ROOT, "syquex", "lexer.syn")
 DRIVER_PATH = os.path.join(PROJECT_ROOT, "tests", "fixtures", "test_syquex_lexer_drv.syn")

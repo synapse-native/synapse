@@ -5,6 +5,8 @@ Valida deteccion de ERR_MEM_USE_AFTER_MOVE en transferencia de ownership.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 def test_move_simple_valido():
     """Asignacion por move: origen invalidado, no se reusa."""

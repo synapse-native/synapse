@@ -6,6 +6,9 @@ import subprocess
 import os
 import sys
 import tempfile
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 SYNAPSE_BIN = os.path.normpath(

@@ -15,6 +15,8 @@ from compilador.lexer import Lexer
 from compilador.ast_nodes import TokenID
 from exceptions import SynapseError
 
+pytestmark = pytest.mark.unit
+
 
 def _tipos(fuente: str):
     return [t.tipo for t in Lexer(fuente).tokenizar()]

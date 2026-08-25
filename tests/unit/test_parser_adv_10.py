@@ -8,6 +8,8 @@ Cubre: anidamiento profundo, recuperación de errores, casos borde.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.unit
+
 
 # ---------------------------------------------------------------------------
 # 1. ANIDAMIENTO PROFUNDO (>5 niveles)

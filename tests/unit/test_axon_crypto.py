@@ -7,6 +7,8 @@ import subprocess
 import os
 import sys
 
+pytestmark = pytest.mark.unit
+
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 
 

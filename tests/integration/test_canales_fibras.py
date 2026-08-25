@@ -25,6 +25,8 @@ import pytest
 
 from conftest import rt_objs
 
+pytestmark = pytest.mark.integration
+
 RT_OBJS = rt_objs()
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

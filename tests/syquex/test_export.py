@@ -18,6 +18,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.syquex
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from compilador.lexer import Lexer

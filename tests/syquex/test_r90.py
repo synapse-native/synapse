@@ -13,6 +13,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.syquex
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 FRONTEND = os.path.join(PROJECT_ROOT, "build", "syq_frontend.exe")
 FIXTURE_SYQ = os.path.join(PROJECT_ROOT, "tests", "fixtures", "test_r90_e2e.syq")

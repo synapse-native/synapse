@@ -5,6 +5,9 @@ from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
 from compilador.ast_nodes import Programa
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 class TestGeneradorCFunciones:

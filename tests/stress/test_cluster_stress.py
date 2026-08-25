@@ -20,6 +20,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.stress
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TARGET = os.path.join(PROJECT_ROOT, "tests", "integration", "test_fibras_estres.py")
 

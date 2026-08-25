@@ -4,6 +4,8 @@ import pytest
 from conftest import DIR_INVALID, compilar_texto
 from compilador.diagnostics import ErrorCodes
 
+pytestmark = pytest.mark.integration
+
 
 # Mapa: nombre del fixture → códigos de error esperados (al menos uno debe aparecer)
 ERRORES_ESPERADOS: dict[str, set[ErrorCodes]] = {

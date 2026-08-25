@@ -8,6 +8,8 @@ Manual 5 §3: escuchar traduce a loop infinito con canal_recibir + break on clos
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 class TestEscuchar:
     """Manual 5 §3: escuchar traduce a loop con canal_recibir."""

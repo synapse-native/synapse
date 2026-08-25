@@ -13,6 +13,8 @@ import subprocess
 import tempfile
 import pytest
 
+pytestmark = pytest.mark.fuzz
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(RAIZ, "tests", "fuzz"))
 

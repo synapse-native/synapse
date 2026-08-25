@@ -10,6 +10,8 @@ import glob
 import shutil
 import pytest
 
+pytestmark = pytest.mark.unit
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from pipeline import ejecutar_compilador

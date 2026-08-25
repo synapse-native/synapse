@@ -15,6 +15,8 @@ import pytest
 
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TESTS_DIR = os.path.join(RAIZ, "tests")
 

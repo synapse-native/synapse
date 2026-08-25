@@ -22,6 +22,9 @@ import time
 import logging
 import traceback
 import hashlib
+import pytest
+
+pytestmark = pytest.mark.fuzz
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 MAIN_PY = os.path.join(PROJECT_ROOT, 'main.py')

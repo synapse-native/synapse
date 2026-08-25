@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "auditoria" / "registrar_lectura.py"
 

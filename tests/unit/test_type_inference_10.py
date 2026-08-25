@@ -15,6 +15,8 @@ Complementa test_type_inference.py con:
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.unit
+
 
 # ---------------------------------------------------------------------------
 # 1. UNIFICACIÓN DE MÚLTIPLES TVars

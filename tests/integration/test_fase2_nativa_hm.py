@@ -37,6 +37,8 @@ import tempfile
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # --- Programas de prueba ----------------------------------------------------

@@ -12,6 +12,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.generator import GeneradorC
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 EJECUTABLE = os.path.join(RAIZ, "synapse.exe")

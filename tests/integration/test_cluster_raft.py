@@ -7,6 +7,9 @@ replicación de log y consistencia linealizable en cluster de 5 nodos.
 import os
 import sys
 import subprocess
+import pytest
+
+pytestmark = pytest.mark.integration
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 

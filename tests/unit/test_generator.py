@@ -2,6 +2,8 @@ import pytest
 from compilador.ast_nodes import Programa
 from compilador.generator import GeneradorC
 
+pytestmark = pytest.mark.unit
+
 
 class TestGeneradorCUnit:
 

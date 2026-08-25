@@ -22,6 +22,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABI_PATH = os.path.join(PROJECT_ROOT, "nucleo", "ast_abi.syn")
 CONSTS_PATH = os.path.join(PROJECT_ROOT, "nucleo", "parser_constantes.syn")

@@ -10,6 +10,8 @@ import os
 import sys
 import pytest
 
+pytestmark = pytest.mark.integration
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))

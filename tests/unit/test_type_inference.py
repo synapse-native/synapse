@@ -15,6 +15,9 @@ from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
+import pytest
+
+pytestmark = pytest.mark.unit
 from compilador.tipos import (
     ContadorTVar, Tipo, TipoKind, UnificadorHM,
     tipo_desde_cadena, tipo_a_cadena, es_tipo_conocido,

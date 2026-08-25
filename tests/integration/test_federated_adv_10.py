@@ -9,6 +9,8 @@ Verifica compilación, codegen y lógica real de std.federated.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 def _federated_existe() -> bool:
     """Verifica si std.federated compila sin errores."""

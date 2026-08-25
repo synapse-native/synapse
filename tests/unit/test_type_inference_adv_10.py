@@ -7,6 +7,8 @@ Manual 2 §8.2: Hindley-Milner con unificación compleja, 20+ TVars.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.unit
+
 
 # ---------------------------------------------------------------------------
 # 1. UNIFICACIÓN CON MUCHAS TVars

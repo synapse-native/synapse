@@ -23,13 +23,17 @@ import os
 
 from conftest import rt_objs
 
+
 RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
 import sys
 import subprocess
 import tempfile
 import json
 import time
+
 import pytest
+
+pytestmark = pytest.mark.integration
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 TEST_C = os.path.join(PROJECT_ROOT, "tests", "test_live_migration.c")

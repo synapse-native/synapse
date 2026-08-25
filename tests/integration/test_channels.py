@@ -8,6 +8,8 @@ Manual 5 §3: Canal<T>, canal(entero, N), enviar <-, recibir ->, cerrar.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 class TestCanalesBasicos:
     """Manual 5 §3: Canales síncronos y asíncronos."""

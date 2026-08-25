@@ -13,6 +13,8 @@ import pytest
 
 from conftest import rt_objs, compilar_texto
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 RT_OBJS = rt_objs()
 TESTS_DIR = os.path.join(RAIZ, "tests")

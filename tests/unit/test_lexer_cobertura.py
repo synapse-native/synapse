@@ -6,6 +6,8 @@ import pytest
 from compilador.lexer import Lexer, TokenID
 from exceptions import SynapseError
 
+pytestmark = pytest.mark.unit
+
 
 class TestLexerCoberturaExtra:
     """Tests para lineas del lexer sin cobertura segun M2 §12 (>95%)."""

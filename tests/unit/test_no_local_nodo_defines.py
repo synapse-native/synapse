@@ -19,6 +19,9 @@ Si este test falla:
 import os
 import re
 import subprocess
+import pytest
+
+pytestmark = pytest.mark.unit
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

@@ -7,6 +7,8 @@ Manual 9 §7: "Extensión VS Code — Instalar .vsix en VS Code limpio — Exten
 import os
 import pytest
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 

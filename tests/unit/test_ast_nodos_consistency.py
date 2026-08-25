@@ -15,6 +15,9 @@ Header canónico:  runtime/core/ast_nodos.h
 import os
 import re
 import sys
+import pytest
+
+pytestmark = pytest.mark.unit
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SYN_SOURCE = os.path.join(PROJECT_ROOT, "nucleo", "parser_constantes.syn")

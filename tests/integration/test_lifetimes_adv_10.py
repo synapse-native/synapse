@@ -13,6 +13,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
 
+pytestmark = pytest.mark.integration
+
 
 def _tiene_lifetime_error(diag):
     """True si el diagnosticador reportó algún error de lifetime."""

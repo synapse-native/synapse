@@ -7,6 +7,8 @@ import os
 import hashlib
 import json
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 
 

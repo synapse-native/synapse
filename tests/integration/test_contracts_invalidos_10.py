@@ -15,6 +15,8 @@ from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
 
+pytestmark = pytest.mark.integration
+
 
 def _generar_c(fuente: str) -> str:
     """Genera código C desde Synapse."""

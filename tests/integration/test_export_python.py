@@ -17,6 +17,8 @@ import sys
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from compilador.lexer import Lexer
