@@ -253,6 +253,16 @@ extern int _G_fn_var_auto[2048];
 extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 extern int _G_fn_ptr_vars_count;
+typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;
+typedef struct { RcHeader* header; uint32_t version; } WeakRef;
+
+extern void* rc_alloc(size_t tamano, void (*dtor)(void*));
+extern void rc_decrementar(void* ptr);
+extern void* arc_alloc(size_t tamano, void (*dtor)(void*));
+extern void arc_decrementar(void* ptr);
+extern WeakRef rc_weak_ref(void* ptr);
+extern void rc_weak_release(WeakRef* w);
+
 extern char _G_native_canal_names[512][64];
 extern char _G_native_canal_elem[512][64];
 extern int _G_native_canal_count;

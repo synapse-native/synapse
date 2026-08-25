@@ -112,6 +112,7 @@ class AnalizadorSemanticoScope:
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False
         self._inicializar_estructuras_nativas()
+        self._registrar_constructores_builtin()
 
     def _inicializar_estructuras_nativas(self):
         tensor_campos = [
@@ -124,6 +125,26 @@ class AnalizadorSemanticoScope:
                                           linea=0, columna=0)
         self._estructuras['tensor'] = tensor_def
         self._estructuras['Tensor'] = tensor_def
+
+    def _registrar_constructores_builtin(self):
+        """Manual 2 §4.2: constructores de ADTs predefinidos (Resultado/Opcion).
+
+        Registra ok/err en _constructores_adt apuntando a Resultado, y
+        algun/ninguno apuntando a Opcion, para que el semantic checker los
+        reconozca como constructores ADT (no como llamadas a función).
+        """
+        self._constructores_adt['ok'] = 'Resultado'
+        self._constructores_adt['err'] = 'Resultado'
+        self._constructores_adt['algun'] = 'Opcion'
+        self._constructores_adt['ninguno'] = 'Opcion'
+        self._adt_constructores['Resultado'] = [
+            ('ok', 'T'),
+            ('err', 'E'),
+        ]
+        self._adt_constructores['Opcion'] = [
+            ('algun', 'T'),
+            ('ninguno', ''),
+        ]
 
     def _token(self, linea: int, columna: int) -> Token:
         return Token(TokenID.IDENTIFIER, linea, columna)

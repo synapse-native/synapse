@@ -233,6 +233,9 @@ int64_t prueba_clave_incorrecta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par_b);
+    _syn_texto_liberar(par_a);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -320,6 +323,7 @@ int64_t prueba_enviar_hello(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -346,6 +350,8 @@ int64_t prueba_firma_corrupta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -381,6 +387,8 @@ int64_t prueba_firmar_verificar(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -402,6 +410,7 @@ int64_t prueba_generar_par(void) {
         escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] generar_par() no retorna vacio"), .datos = "[OK] generar_par() no retorna vacio" });
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -474,6 +483,10 @@ int64_t prueba_handshake_bidireccional(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par_b);
+    _syn_texto_liberar(par_a);
+    _syn_texto_liberar(firma_b);
+    _syn_texto_liberar(firma_a);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }

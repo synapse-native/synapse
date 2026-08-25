@@ -609,7 +609,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return nodo.instruccion
 
     if isinstance(nodo, ExprCrearCanal):
-        cap = expr_a_c(ctx, nodo.capacidad) if nodo.capacidad else "10"
+        if nodo.capacidad and isinstance(nodo.capacidad, LiteralNumero):
+            cap = str(nodo.capacidad.valor)
+        else:
+            cap = expr_a_c(ctx, nodo.capacidad) if nodo.capacidad else "10"
         return f"canal_crear({cap})"
 
     if isinstance(nodo, ExprRecibirCanal):

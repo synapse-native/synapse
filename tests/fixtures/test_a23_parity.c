@@ -73,139 +73,121 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #define POOL_BLOQUES 64
 #define TAMANO_BLOQUE 4096
 
-#define _GEN_TMP_SIZE (4096)
 #include "librerias/embedded_libs.h"
+
+// --- TokenID + NodoID canonicos (D-9(e), Manual 2 2.3/7.2) ---
+// Fuente unica: nucleo/parser_constantes.syn
+// Header generado: runtime/core/ast_nodos.h (scripts/gen_ast_nodos_h.py)
 #include "runtime/core/ast_nodos.h"
 
 // --- Error code constants (Manual 3 §3.5) ---
-#ifndef ERR_SYNTAX_EXPECTED_TOKEN
-#define ERR_SYNTAX_EXPECTED_TOKEN (1)
-#endif
-#ifndef ERR_SYNTAX_UNEXPECTED_TOKEN
-#define ERR_SYNTAX_UNEXPECTED_TOKEN (2)
-#endif
-#ifndef ERR_SYNTAX_UNEXPECTED_EXPR
-#define ERR_SYNTAX_UNEXPECTED_EXPR (3)
-#endif
-#ifndef ERR_SYNTAX_EXPECTED_NEWLINE
-#define ERR_SYNTAX_EXPECTED_NEWLINE (4)
-#endif
-#ifndef ERR_LANG_MISSING
-#define ERR_LANG_MISSING (5)
-#endif
-#ifndef ERR_LANG_UNSUPPORTED
-#define ERR_LANG_UNSUPPORTED (6)
-#endif
-#ifndef ERR_INDENT_INVALID
-#define ERR_INDENT_INVALID (7)
-#endif
-#ifndef ERR_INDENT_INCONSISTENT
-#define ERR_INDENT_INCONSISTENT (8)
-#endif
-#ifndef ERR_STRING_UNCLOSED
-#define ERR_STRING_UNCLOSED (9)
-#endif
-#ifndef ERR_LEX_CHAR_UNEXPECTED
-#define ERR_LEX_CHAR_UNEXPECTED (10)
-#endif
-#ifndef ERR_LEX
-#define ERR_LEX (11)
-#endif
-#ifndef ERR_FILE_NOT_FOUND
-#define ERR_FILE_NOT_FOUND (12)
-#endif
 #ifndef ERR_CANONICAL_FORMAT
-#define ERR_CANONICAL_FORMAT (13)
-#endif
-#ifndef ERR_SEM_VAR_NO_DECLARADA
-#define ERR_SEM_VAR_NO_DECLARADA (14)
-#endif
-#ifndef ERR_SEM_TIPO_INCOMPATIBLE
-#define ERR_SEM_TIPO_INCOMPATIBLE (15)
-#endif
-#ifndef ERR_SEM_TIPO_RETORNO
-#define ERR_SEM_TIPO_RETORNO (16)
-#endif
-#ifndef ERR_SEM_FUNC_NO_DEFINIDA
-#define ERR_SEM_FUNC_NO_DEFINIDA (17)
-#endif
-#ifndef ERR_SEM_REDEFINICION
-#define ERR_SEM_REDEFINICION (18)
-#endif
-#ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
-#define ERR_SEM_ARGUMENTOS_INVALIDOS (19)
-#endif
-#ifndef ERR_SEM_ESTRUCTURA_NO_DEFINIDA
-#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20)
-#endif
-#ifndef ERR_SEM_CAMPO_NO_EXISTE
-#define ERR_SEM_CAMPO_NO_EXISTE (21)
-#endif
-#ifndef ERR_SEM_VAR_MOVIDA
-#define ERR_SEM_VAR_MOVIDA (22)
-#endif
-#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
-#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23)
-#endif
-#ifndef ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR
-#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24)
-#endif
-#ifndef ERR_MANIFEST_NOT_FOUND
-#define ERR_MANIFEST_NOT_FOUND (25)
-#endif
-#ifndef ERR_MODULE_STD_NOT_FOUND
-#define ERR_MODULE_STD_NOT_FOUND (26)
-#endif
-#ifndef ERR_MODULE_AXON_NOT_FOUND
-#define ERR_MODULE_AXON_NOT_FOUND (27)
+#define ERR_CANONICAL_FORMAT (13LL)
 #endif
 #ifndef ERR_DEP_NOT_DECLARED
-#define ERR_DEP_NOT_DECLARED (28)
+#define ERR_DEP_NOT_DECLARED (28LL)
 #endif
-#ifndef ERR_LOCK_HASH_MISMATCH
-#define ERR_LOCK_HASH_MISMATCH (29)
+#ifndef ERR_FILE_NOT_FOUND
+#define ERR_FILE_NOT_FOUND (12LL)
 #endif
 #ifndef ERR_GIT_FAILURE
-#define ERR_GIT_FAILURE (30)
+#define ERR_GIT_FAILURE (30LL)
 #endif
-#ifndef ERR_SEM_ASM_FUERA_INSEGURO
-#define ERR_SEM_ASM_FUERA_INSEGURO (31)
+#ifndef ERR_INDENT_INCONSISTENT
+#define ERR_INDENT_INCONSISTENT (8LL)
 #endif
-#ifndef ERR_SEM_CONSTANTE_INMUTABLE
-#define ERR_SEM_CONSTANTE_INMUTABLE (32)
+#ifndef ERR_INDENT_INVALID
+#define ERR_INDENT_INVALID (7LL)
 #endif
-#ifndef ERR_MEM_USE_AFTER_MOVE
-#define ERR_MEM_USE_AFTER_MOVE (33)
+#ifndef ERR_LANG_MISSING
+#define ERR_LANG_MISSING (5LL)
 #endif
-#ifndef ERR_VER_WHILE_INACOTADO
-#define ERR_VER_WHILE_INACOTADO (34)
+#ifndef ERR_LANG_UNSUPPORTED
+#define ERR_LANG_UNSUPPORTED (6LL)
 #endif
-#ifndef ERR_VER_MUTACION_GLOBAL
-#define ERR_VER_MUTACION_GLOBAL (35)
+#ifndef ERR_LEX
+#define ERR_LEX (11LL)
 #endif
-#ifndef ERR_VER_RECURSION_NO_TERMINAL
-#define ERR_VER_RECURSION_NO_TERMINAL (36)
+#ifndef ERR_LEX_CHAR_UNEXPECTED
+#define ERR_LEX_CHAR_UNEXPECTED (10LL)
 #endif
-#ifndef ERR_VER_CONTRATO_INVALIDO
-#define ERR_VER_CONTRATO_INVALIDO (37)
+#ifndef ERR_LOCK_HASH_MISMATCH
+#define ERR_LOCK_HASH_MISMATCH (29LL)
 #endif
-#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
-#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (38)
+#ifndef ERR_MANIFEST_NOT_FOUND
+#define ERR_MANIFEST_NOT_FOUND (25LL)
 #endif
 #ifndef ERR_MEM_BORROW_CONFLICT
-#define ERR_MEM_BORROW_CONFLICT (39)
-#endif
-#ifndef ERR_SEM_TYPE_AMBIGUOUS
-#define ERR_SEM_TYPE_AMBIGUOUS (40)
-#endif
-#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
-#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
-#endif
-#ifndef ERR_MEM_LIFETIME_MISMATCH
-#define ERR_MEM_LIFETIME_MISMATCH (34)
+#define ERR_MEM_BORROW_CONFLICT (39LL)
 #endif
 #ifndef ERR_MEM_LIFETIME_CYCLE
-#define ERR_MEM_LIFETIME_CYCLE (35)
+#define ERR_MEM_LIFETIME_CYCLE (35LL)
+#endif
+#ifndef ERR_MEM_LIFETIME_MISMATCH
+#define ERR_MEM_LIFETIME_MISMATCH (34LL)
+#endif
+#ifndef ERR_MODULE_AXON_NOT_FOUND
+#define ERR_MODULE_AXON_NOT_FOUND (27LL)
+#endif
+#ifndef ERR_MODULE_STD_NOT_FOUND
+#define ERR_MODULE_STD_NOT_FOUND (26LL)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
+#endif
+#ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
+#define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
+#endif
+#ifndef ERR_SEM_ASM_FUERA_INSEGURO
+#define ERR_SEM_ASM_FUERA_INSEGURO (31LL)
+#endif
+#ifndef ERR_SEM_CAMPO_NO_EXISTE
+#define ERR_SEM_CAMPO_NO_EXISTE (21LL)
+#endif
+#ifndef ERR_SEM_CONSTANTE_INMUTABLE
+#define ERR_SEM_CONSTANTE_INMUTABLE (32LL)
+#endif
+#ifndef ERR_SEM_ESTRUCTURA_NO_DEFINIDA
+#define ERR_SEM_ESTRUCTURA_NO_DEFINIDA (20LL)
+#endif
+#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
+#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33LL)
+#endif
+#ifndef ERR_SEM_FUNC_NO_DEFINIDA
+#define ERR_SEM_FUNC_NO_DEFINIDA (17LL)
+#endif
+#ifndef ERR_SEM_REDEFINICION
+#define ERR_SEM_REDEFINICION (18LL)
+#endif
+#ifndef ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR
+#define ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR (24LL)
+#endif
+#ifndef ERR_SEM_TIPO_INCOMPATIBLE
+#define ERR_SEM_TIPO_INCOMPATIBLE (15LL)
+#endif
+#ifndef ERR_SEM_TIPO_RETORNO
+#define ERR_SEM_TIPO_RETORNO (16LL)
+#endif
+#ifndef ERR_SEM_VAR_MOVIDA
+#define ERR_SEM_VAR_MOVIDA (22LL)
+#endif
+#ifndef ERR_SEM_VAR_NO_DECLARADA
+#define ERR_SEM_VAR_NO_DECLARADA (14LL)
+#endif
+#ifndef ERR_STRING_UNCLOSED
+#define ERR_STRING_UNCLOSED (9LL)
+#endif
+#ifndef ERR_SYNTAX_EXPECTED_NEWLINE
+#define ERR_SYNTAX_EXPECTED_NEWLINE (4LL)
+#endif
+#ifndef ERR_SYNTAX_EXPECTED_TOKEN
+#define ERR_SYNTAX_EXPECTED_TOKEN (1LL)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_EXPR
+#define ERR_SYNTAX_UNEXPECTED_EXPR (3LL)
+#endif
+#ifndef ERR_SYNTAX_UNEXPECTED_TOKEN
+#define ERR_SYNTAX_UNEXPECTED_TOKEN (2LL)
 #endif
 
 // --- Constantes del programa (fuente de verdad = codigo) ---
@@ -263,6 +245,16 @@ extern int _G_fn_var_auto[2048];
 extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 extern int _G_fn_ptr_vars_count;
+typedef struct { uint32_t ref_count; uint32_t weak_count; uint32_t version; void* data; void (*destructor)(void*); } RcHeader;
+typedef struct { RcHeader* header; uint32_t version; } WeakRef;
+
+extern void* rc_alloc(size_t tamano, void (*dtor)(void*));
+extern void rc_decrementar(void* ptr);
+extern void* arc_alloc(size_t tamano, void (*dtor)(void*));
+extern void arc_decrementar(void* ptr);
+extern WeakRef rc_weak_ref(void* ptr);
+extern void rc_weak_release(WeakRef* w);
+
 extern char _G_native_canal_names[512][64];
 extern char _G_native_canal_elem[512][64];
 extern int _G_native_canal_count;
@@ -327,6 +319,7 @@ extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
+extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
 extern void synapse_esperar_fibras(void);
@@ -529,16 +522,6 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
-    int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: malloc fallo en concat()\\n"); exit(1); }
-    memcpy(_buf, a.datos, a.longitud);
-    memcpy(_buf + a.longitud, b.datos, b.longitud);
-    _buf[_tl] = 0;
-    return (CadenaSegura){_tl, _buf};
-}
-
 struct NodoLista;
 
 typedef struct NodoLista {
@@ -555,11 +538,13 @@ void principal(void) {
     int64_t x = 5LL;
     int64_t edad = 10LL;
     CadenaSegura s = (CadenaSegura){ .longitud = (int)strlen("hola"), .datos = "hola" };
-    void* ref = nulo;
+    WeakRef ref = ((WeakRef){0});
     Tensor t = crear_tensor(2LL, 3LL);
     escribir_linea(entero_a_texto((x + edad)));
     escribir_linea(s);
     escribir_linea(entero_a_texto(t.filas));
+    _syn_texto_liberar(s);
+    rc_weak_release(&ref);
     return;
     if (!t.es_mapeado) { pool_free(t.datos); }
       /* [Lifetime Scope: exit depth=0] */

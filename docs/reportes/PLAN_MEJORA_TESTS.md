@@ -89,12 +89,13 @@
 
 ---
 
-### ME-TQ-2: Tests M2 — Serialización AST
+### ME-TQ-2: Tests M2 — Serialización AST ✅ COMPLETADO
 
 **Manual:** M2 §12 — Serialización AST  
 **Criterio:** Serialización y deserialización correcta a `.syn.json`  
-**Estado actual:** Existe `test_ast_serialization_10.py` (no citado por M2)  
-**Acción:** Crear test de serialización en unit/
+**Fecha de ejecución:** 2026-08-25  
+**Tests creados:** 24 (todos PASSED)  
+**Archivo:** tests/unit/test_ast_serialization.py
 
 | Test | Descripción |
 |---|---|
