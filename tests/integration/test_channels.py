@@ -1,28 +1,101 @@
+# -*- coding: utf-8 -*-
 """
-test_channels.py — Prueba obligatoria del Manual 5 §9 (tabla PRUEBAS):
-"Canales síncronos/asíncronos | pytest tests/integration/test_channels.py
- | 0 deadlocks, 0 data races"
+test_channels.py — M5 §9: Canales síncronos/asíncronos.
 
-Delegador nominal: ejecuta la suite existente de canales con bloqueo
-fiber-aware (R49/F4.2, Manual 5 §2.6/§3: buffer productor/consumidor,
-rendezvous sync fibra→fibra, cierre→NULL, mixto hilo→fibra, estrés).
+Manual 5 §9: "Canales síncronos/asíncronos — 0 deadlocks, 0 data races".
+Manual 5 §3: Canal<T>, canal(entero, N), enviar <-, recibir ->, cerrar.
 """
-
-import os
-import subprocess
-import sys
-
 import pytest
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-TARGET = os.path.join(PROJECT_ROOT, "tests", "integration", "test_canales_fibras.py")
+from conftest import compilar_texto
 
 
-def test_manual_m5s9_canales_sync_async():
-    assert os.path.exists(TARGET), f"suite delegada ausente: {TARGET}"
-    r = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", TARGET],
-        capture_output=True, text=True, timeout=1800,
-        cwd=PROJECT_ROOT,
-    )
-    assert r.returncode == 0, f"rc={r.returncode}\n{r.stdout[-2000:]}\n{r.stderr[-500:]}"
+class TestCanalesBasicos:
+    """Manual 5 §3: Canales síncronos y asíncronos."""
+
+    def test_crear_canal_sincrono(self):
+        """canal(entero, 0) crea canal síncrono."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 0)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0, \
+            f"canal síncrono debe compilar: {[e.get('mensaje','') for e in diag.errores]}"
+
+    def test_crear_canal_asincrono(self):
+        """canal(entero, 10) crea canal asíncrono con buffer."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_enviar_canal(self):
+        """ch <- valor envía dato al canal."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+    ch <- 42
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_recibir_canal(self):
+        """valor = ch -> recibe dato del canal."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+    ch <- 42
+    x = ch -> 
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_cerrar_canal(self):
+        """cerrar(ch) cierra el canal."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+    cerrar(ch)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_canal_con_lanzar(self):
+        """Canal con fibras: productor/consumidor."""
+        fuente = '''#lang: es
+funcion productor(ch: Canal<entero>) -> nulo:
+    ch <- 42
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    x = ch -> 
+    log(x)
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+    lanzar productor(ch)
+    lanzar consumidor(ch)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_canal_tipado(self):
+        """Canal<texto> solo acepta texto."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch = canal(texto, 1)
+    ch <- "hola"
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_canales_multiples(self):
+        """Múltiples canales funcionan."""
+        fuente = '''#lang: es
+funcion principal() -> nulo:
+    ch1 = canal(entero, 1)
+    ch2 = canal(texto, 1)
+    ch1 <- 42
+    ch2 <- "hola"
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0

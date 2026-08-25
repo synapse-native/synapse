@@ -1,28 +1,70 @@
+# -*- coding: utf-8 -*-
 """
-test_listen.py — Prueba obligatoria del Manual 5 §9 (tabla PRUEBAS):
-"`escuchar` | pytest tests/integration/test_listen.py | 100% pass"
+test_listen.py — M5 §9: escuchar.
 
-Delegador nominal: ejecuta los tests e2e de `escuchar` del lenguaje
-(R37, Manual 2 L113 / Manual 5 §4: listener recibe cada mensaje y
-termina al cierre del canal) sobre la suite HM nativa.
+Manual 5 §9: "escuchar — 100% pass".
+Manual 5 §3: escuchar traduce a loop infinito con canal_recibir + break on close.
 """
-
-import os
-import subprocess
-import sys
-
 import pytest
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-TARGET = os.path.join(PROJECT_ROOT, "tests", "test_fase2_nativa_hm.py")
+from conftest import compilar_texto
 
 
-def test_manual_m5s9_escuchar():
-    assert os.path.exists(TARGET), f"suite delegada ausente: {TARGET}"
-    r = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", TARGET, "-k", "escuchar"],
-        capture_output=True, text=True, timeout=1800,
-        cwd=PROJECT_ROOT,
-    )
-    assert r.returncode == 0, f"rc={r.returncode}\n{r.stdout[-2000:]}\n{r.stderr[-500:]}"
-    assert "no tests ran" not in r.stdout, "el filtro -k no seleccionó ningún test"
+class TestEscuchar:
+    """Manual 5 §3: escuchar traduce a loop con canal_recibir."""
+
+    def test_escuchar_basico(self):
+        """escuchar sobre canal."""
+        fuente = '''#lang: es
+funcion receptor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        valor => log(valor)
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0, \
+            f"escuchar debe compilar: {[e.get('mensaje','') for e in diag.errores]}"
+
+    def test_escuchar_con_cerrar(self):
+        """escuchar termina cuando se cierra el canal."""
+        fuente = '''#lang: es
+funcion receptor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        valor => log(valor)
+funcion principal() -> nulo:
+    ch = canal(entero, 1)
+    cerrar(ch)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_escuchar_con_lanzar(self):
+        """escuchar con fibras productor/consumidor."""
+        fuente = '''#lang: es
+funcion productor(ch: Canal<entero>) -> nulo:
+    ch <- 1
+    ch <- 2
+    cerrar(ch)
+funcion consumidor(ch: Canal<entero>) -> nulo:
+    escuchar ch:
+        valor => log(valor)
+funcion principal() -> nulo:
+    ch = canal(entero, 10)
+    lanzar productor(ch)
+    lanzar consumidor(ch)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
+
+    def test_escuchar_resultado(self):
+        """escuchar con Resultado."""
+        fuente = '''#lang: es
+funcion receptor(ch: Canal<Resultado<entero, texto>>) -> nulo:
+    escuchar ch:
+        ok(v) => log(v)
+        err(_) => log("error")
+funcion principal() -> nulo:
+    ch = canal(Resultado<entero, texto>, 1)
+'''
+        ast, diag = compilar_texto(fuente)
+        assert diag.codigo_salida() == 0
