@@ -1,44 +1,122 @@
-// runtime/core/tiempo.c — std.tiempo: Time & Profiling
-// D-9(d) corte 10: extraído de synapse_rt.c (modularización, patrón toml.c R64)
-// Texto byte-idéntico al original (CRLF preservado).
-//
-// Manual 5 §10 (std.tiempo: ahora_ms/dormir_ms); regla 13 (modularización)
-// + canon D-9(d).
+// runtime/core/tiempo.c — Time module for Syquex standard library
+// Manual 3 §12.1: lib/tiempo.syq — Fechas y tiempos
+// Compilar: gcc -c runtime/core/tiempo.c -o tiempo.o
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include "synapse_rt_types.h"
-#include "runtime/core/tiempo.h"
-
-#ifdef _WIN32
-  #include <windows.h>
-#else
-  #include <time.h>
-#endif
+#include "tiempo.h"
 
 // ============================================================
-// std.tiempo — Time & Profiling
+// §12.1 — Timestamp
 // ============================================================
 
-int64_t _syn_ahora_ms(void) {
-#ifdef _WIN32
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
-    uint64_t t = ((uint64_t)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
-    // Convert from 100-ns intervals since 1601-01-01 to ms since 1970-01-01
-    return (int64_t)((t - 116444736000000000ULL) / 10000);
-#else
+int64_t _syn_timestamp_unix(void) {
+    return (int64_t)time(NULL);
+}
+
+int64_t _syn_timestamp_ms(void) {
     struct timespec ts;
+    /* Windows: usamos clock_gettime si disponible, sino time() * 1000 */
+#ifdef _WIN32
+    /* clock_getres no está en MinGW por defecto */
+    return (int64_t)time(NULL) * 1000;
+#else
     clock_gettime(CLOCK_REALTIME, &ts);
     return (int64_t)ts.tv_sec * 1000 + (int64_t)ts.tv_nsec / 1000000;
 #endif
 }
 
-void _syn_dormir_ms(int ms) {
-#ifdef _WIN32
-    Sleep((DWORD)ms);
-#else
-    struct timespec ts;
-    ts.tv_sec = ms / 1000;
-    ts.tv_nsec = (long)(ms % 1000) * 1000000L;
-    nanosleep(&ts, NULL);
-#endif
+// ============================================================
+// §12.1 — Componentes de fecha/hora (helpers)
+// ============================================================
+
+static struct tm* _tiempo_local(void) {
+    time_t now = time(NULL);
+    return localtime(&now);
+}
+
+int64_t _syn_tiempo_anio(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)(t->tm_year + 1900) : 0;
+}
+
+int64_t _syn_tiempo_mes(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)(t->tm_mon + 1) : 0; /* tm_mon es 0-11 */
+}
+
+int64_t _syn_tiempo_dia(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)t->tm_mday : 0;
+}
+
+int64_t _syn_tiempo_hora(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)t->tm_hour : 0;
+}
+
+int64_t _syn_tiempo_minuto(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)t->tm_min : 0;
+}
+
+int64_t _syn_tiempo_segundo(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)t->tm_sec : 0;
+}
+
+int64_t _syn_tiempo_dia_semana(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)t->tm_wday : 0; /* 0=domingo */
+}
+
+int64_t _syn_tiempo_dia_anio(void) {
+    struct tm* t = _tiempo_local();
+    return t ? (int64_t)(t->tm_yday + 1) : 0; /* tm_yday es 0-365 */
+}
+
+// ============================================================
+// §12.1 — Formateo
+// ============================================================
+
+CadenaSegura _syn_tiempo_fecha_actual(void) {
+    char* buf = (char*)malloc(11); /* YYYY-MM-DD\0 */
+    if (!buf) return (CadenaSegura){0, ""};
+    struct tm* t = _tiempo_local();
+    if (!t) { free(buf); return (CadenaSegura){0, ""}; }
+    int len = snprintf(buf, 11, "%04d-%02d-%02d",
+                       t->tm_year + 1900, t->tm_mon + 1, t->tm_mday);
+    return (CadenaSegura){.longitud = len, .datos = buf};
+}
+
+CadenaSegura _syn_tiempo_hora_actual(void) {
+    char* buf = (char*)malloc(9); /* HH:MM:SS\0 */
+    if (!buf) return (CadenaSegura){0, ""};
+    struct tm* t = _tiempo_local();
+    if (!t) { free(buf); return (CadenaSegura){0, ""}; }
+    int len = snprintf(buf, 9, "%02d:%02d:%02d",
+                       t->tm_hour, t->tm_min, t->tm_sec);
+    return (CadenaSegura){.longitud = len, .datos = buf};
+}
+
+CadenaSegura _syn_tiempo_datetime_actual(void) {
+    char* buf = (char*)malloc(20); /* YYYY-MM-DD HH:MM:SS\0 */
+    if (!buf) return (CadenaSegura){0, ""};
+    struct tm* t = _tiempo_local();
+    if (!t) { free(buf); return (CadenaSegura){0, ""}; }
+    int len = snprintf(buf, 20, "%04d-%02d-%02d %02d:%02d:%02d",
+                       t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+                       t->tm_hour, t->tm_min, t->tm_sec);
+    return (CadenaSegura){.longitud = len, .datos = buf};
+}
+
+// ============================================================
+// §12.1 — Diferencia
+// ============================================================
+
+int64_t _syn_tiempo_diferencia_segundos(int64_t ts1, int64_t ts2) {
+    return ts2 - ts1;
 }

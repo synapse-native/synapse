@@ -168,6 +168,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_math", "test_math.c", [], []),
     # FASE 24: Texto manipulación (Manual 3 §12.1)
     ("test_texto", "test_texto.c", [], []),
+    # FASE 24: Tiempo fecha/hora (Manual 3 §12.1)
+    ("test_tiempo", "test_tiempo.c", [], []),
 ]
 
 
