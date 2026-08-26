@@ -170,6 +170,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_texto", "test_texto.c", [], []),
     # FASE 24: Tiempo fecha/hora (Manual 3 §12.1)
     ("test_tiempo", "test_tiempo.c", [], []),
+    # FASE 24: DB SQLite bundled (Manual 3 §12.1)
+    ("test_db", "test_db.c", ["vendor/sqlite3/sqlite3.o"], []),
 ]
 
 
