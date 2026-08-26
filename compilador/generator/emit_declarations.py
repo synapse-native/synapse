@@ -489,7 +489,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
             f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
             for p in nodo.parametros
         ) if nodo.parametros else "void"
-    ctx.write_line(f"{tipo} {nodo.nombre}({params}) {{")
+    # Rename 'principal' to '_principal_impl' to avoid conflict with C main()
+    c_name = '_principal_impl' if nodo.nombre == 'principal' else nodo.nombre
+    ctx.write_line(f"{tipo} {c_name}({params}) {{")
     ctx.inc_indent()
     ctx.push_scope()
 

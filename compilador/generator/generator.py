@@ -1220,6 +1220,9 @@ class GeneradorC:
             key=lambda f: f.nombre
         )
         for s in funciones:
+                # main/principal se genera via _emit_main(), no como prototipo
+                if s.nombre in ('main', 'principal'):
+                    continue
                 if s.nombre in _SPECIAL_SIGS:
                     ctx.write_line(f"{_SPECIAL_SIGS[s.nombre]};")
                 else:
@@ -1285,8 +1288,11 @@ class GeneradorC:
                 ctx.write_line("_G_safe_mode = 1;  // --safe activo: aserciones de lifetimes")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
             ret_tipo = ctx._func_return_types.get(principal, 'int')
+            # principal() is renamed to _principal_impl() in C to avoid
+            # conflicting types with int main(int argc, char** argv)
+            c_principal = '_principal_impl' if principal == 'principal' else principal
             if ret_tipo in ('nulo', 'void'):
-                ctx.write_line(f"{principal}();")
+                ctx.write_line(f"{c_principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
                 ctx.write_line("pool_destroy();")
@@ -1298,7 +1304,7 @@ class GeneradorC:
                 # residuales (synapse_esperar_hilos) espera a las FIBRAS M:N
                 # (synapse_esperar_fibras). Paridad con el nativo.
                 # Manual 2 §5 e2e: exit code 0 en éxito (el output va por stdout).
-                ctx.write_line(f"{principal}();")
+                ctx.write_line(f"{c_principal}();")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
                 ctx.write_line("pool_destroy();")

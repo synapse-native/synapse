@@ -1,6 +1,7 @@
 #lang: es
 
 importar std.io
+externo funcion entero_a_texto(n: entero) -> texto
 
 # examples/syquex/python_pipeline/fibonacci.py
 # Script de ejemplo para el pipeline Python -> Syquex
@@ -11,15 +12,15 @@ funcion fibonacci(n: entero) -> entero:
         retornar n
     retornar fibonacci(n - 1) + fibonacci(n - 2)
 
-funcion main() -> entero:
+funcion _main_py() -> entero:
     escribir_linea("Fibonacci sequence:")
     para i = 0 mientras i < 10:
         result = fibonacci(i)
-        escribir_linea(result)
+        escribir_linea(entero_a_texto(result))
 
         i = i + 1
 
 
 funcion principal() -> entero:
-    main()
+    _main_py()
     retornar 0

@@ -313,7 +313,14 @@ def _envolver_en_principal(codigo_syq: str) -> str:
         lineas_nuevas.append("    " + l.strip())
     lineas_nuevas.append("    retornar 0")
     
-    return "\n".join(lineas_nuevas)
+    # Renombrar funcion main() a _main_py() para evitar conflicto con C main()
+    #Debe hacerse DESPUÉS de agregar lineas_fuera
+    resultado = "\n".join(lineas_nuevas)
+    resultado = resultado.replace('funcion main()', 'funcion _main_py()')
+    # Renombrar llamadas main() -> _main_py() en líneas de llamada
+    resultado = re.sub(r'^(\s+)main\(\)', r'\1_main_py()', resultado, flags=re.MULTILINE)
+    
+    return resultado
 
 
 def transpilar_codigo_python(codigo_python: str) -> str:
