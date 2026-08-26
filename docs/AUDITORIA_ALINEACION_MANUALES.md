@@ -459,3 +459,4 @@ Comprueba de forma automatizada:
 | 2026-08-26 | **R110/F26**: Runtime bindings automaticos 91 funciones desde 7 headers | 45b4913 | Manual 4 §7 | 0 brechas |
 | 2026-08-26 | **R111/F26**: Auto-regeneracion bindings en pre-commit hook | 60d6fa1 | Manual 1 §2 | 0 brechas |
 | 2026-08-26 | **R112/F26**: Pipeline completo .py -> .syq -> .c -> .exe --pipeline flag | 3a307ee | Manual 1 §5 | 0 brechas |
+| 2026-08-26 | **R113/F26**: Ejemplo end-to-end Python a Syquex a C + bugfixes transpiler | 331e406 | Manual 7 §1 | 0 brechas |
