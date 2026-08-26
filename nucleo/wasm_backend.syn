@@ -20,7 +20,7 @@
 #     )
 #   )
 #
-# Tipos WASM soportados: i32 (entero de 32 bits)
+# Tipos WASM soportados: i32, i64, f64, memoria, imports/exports, globals
 # =============================================================================
 
 # -------------------------------------------------------------------
@@ -50,6 +50,24 @@ constante WASM_I32_GT_S = 20
 constante WASM_I32_LE_S = 21
 constante WASM_I32_GE_S = 22
 constante WASM_DROP = 23
+constante WASM_CONST_I64 = 24
+constante WASM_CONST_F64 = 25
+constante WASM_I64_ADD = 26
+constante WASM_I64_SUB = 27
+constante WASM_I64_MUL = 28
+constante WASM_I64_DIV_S = 29
+constante WASM_F64_ADD = 30
+constante WASM_F64_SUB = 31
+constante WASM_F64_MUL = 32
+constante WASM_F64_DIV = 33
+constante WASM_I32_LOAD = 34
+constante WASM_I32_STORE = 35
+constante WASM_MEMORY_GROW = 36
+constante WASM_MEMORY_SIZE = 37
+constante WASM_EXPORT = 38
+constante WASM_IMPORT = 39
+constante WASM_GLOBAL_GET = 40
+constante WASM_GLOBAL_SET = 41
 
 # -------------------------------------------------------------------
 # Estado del generador WASM
@@ -63,6 +81,10 @@ estructura EstadoWasm:
 # Inicializar estado del generador WASM
 # -------------------------------------------------------------------
 funcion wasm_inicializar() -> EstadoWasm:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     r = EstadoWasm()
     r.nivel_indentacion = 0
     r.etiqueta_contador = 0
@@ -73,6 +95,10 @@ funcion wasm_inicializar() -> EstadoWasm:
 # Emitir una línea de código WAT con indentación
 # -------------------------------------------------------------------
 funcion wasm_emitir(est: EstadoWasm, linea: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     inseguro:
         asm("")
         asm("extern CadenaSegura _wasm_emit(EstadoWasm* _e, const char* _linea) {")
@@ -102,6 +128,10 @@ funcion wasm_emitir(est: EstadoWasm, linea: texto) -> nulo:
 # Emitir una línea sin buffer acumulador (solo para test directo)
 # -------------------------------------------------------------------
 funcion wasm_emitir_directo(est: EstadoWasm, linea: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     inseguro:
         asm("")
         asm("extern void _wasm_emit_direct(EstadoWasm* _e, const char* _linea) {")
@@ -118,18 +148,30 @@ funcion wasm_emitir_directo(est: EstadoWasm, linea: texto) -> nulo:
 # Obtener el buffer de salida como texto
 # -------------------------------------------------------------------
 funcion wasm_obtener_salida(est: EstadoWasm) -> texto:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     retornar est.buffer_salida
 
 # -------------------------------------------------------------------
 # Incrementar indentación
 # -------------------------------------------------------------------
 funcion wasm_indentar(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     est.nivel_indentacion = est.nivel_indentacion + 1
 
 # -------------------------------------------------------------------
 # Decrementar indentación
 # -------------------------------------------------------------------
 funcion wasm_desindentar(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     si est.nivel_indentacion > 0:
         est.nivel_indentacion = est.nivel_indentacion - 1
 
@@ -137,10 +179,18 @@ funcion wasm_desindentar(est: EstadoWasm) -> nulo:
 # Emitir cabecera de módulo
 # -------------------------------------------------------------------
 funcion wasm_iniciar_modulo(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "(module")
     wasm_indentar(est)
 
 funcion wasm_finalizar_modulo(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_desindentar(est)
     wasm_emitir(est, ")")
 
@@ -152,6 +202,10 @@ funcion wasm_finalizar_modulo(est: EstadoWasm) -> nulo:
 #   )
 # -------------------------------------------------------------------
 funcion wasm_declarar_funcion(est: EstadoWasm, nombre: texto,
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     num_params: entero, num_results: entero) -> nulo:
 
     linea = "(func $" + nombre
@@ -167,6 +221,10 @@ funcion wasm_declarar_funcion(est: EstadoWasm, nombre: texto,
     wasm_indentar(est)
 
 funcion wasm_finalizar_funcion(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_desindentar(est)
     wasm_emitir(est, ")")
 
@@ -176,29 +234,53 @@ funcion wasm_finalizar_funcion(est: EstadoWasm) -> nulo:
 
 # i32.const <valor>
 funcion wasm_const_i32(est: EstadoWasm, valor: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "i32.const " + texto(valor)
     wasm_emitir(est, linea)
 
 # i32.add
 funcion wasm_add(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.add")
 
 # i32.sub
 funcion wasm_sub(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.sub")
 
 # i32.mul
 funcion wasm_mul(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.mul")
 
 # i32.div_s
 funcion wasm_div_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.div_s")
 
 # -------------------------------------------------------------------
 # Emitir llamada a función
 # -------------------------------------------------------------------
 funcion wasm_llamar(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "call $" + nombre
     wasm_emitir(est, linea)
 
@@ -206,20 +288,36 @@ funcion wasm_llamar(est: EstadoWasm, nombre: texto) -> nulo:
 # Emitir return (devuelve el valor en la cima de la pila)
 # -------------------------------------------------------------------
 funcion wasm_retorno(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "return")
 
 # -------------------------------------------------------------------
 # Emitir variables locales
 # -------------------------------------------------------------------
 funcion wasm_declarar_local(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "(local $" + nombre + " i32)"
     wasm_emitir(est, linea)
 
 funcion wasm_local_get(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "local.get $" + nombre
     wasm_emitir(est, linea)
 
 funcion wasm_local_set(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "local.set $" + nombre
     wasm_emitir(est, linea)
 
@@ -227,28 +325,52 @@ funcion wasm_local_set(est: EstadoWasm, nombre: texto) -> nulo:
 # Emitir control de flujo básico
 # -------------------------------------------------------------------
 funcion wasm_if(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "if")
     wasm_indentar(est)
 
 funcion wasm_else(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_desindentar(est)
     wasm_emitir(est, "else")
     wasm_indentar(est)
 
 funcion wasm_end(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_desindentar(est)
     wasm_emitir(est, "end")
 
 funcion wasm_block(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "block $" + nombre
     wasm_emitir(est, linea)
     wasm_indentar(est)
 
 funcion wasm_br_if(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "br_if $" + nombre
     wasm_emitir(est, linea)
 
 funcion wasm_br(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     linea = "br $" + nombre
     wasm_emitir(est, linea)
 
@@ -256,21 +378,41 @@ funcion wasm_br(est: EstadoWasm, nombre: texto) -> nulo:
 # Emitir drop (descarta valor de la cima de la pila)
 # -------------------------------------------------------------------
 funcion wasm_drop(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "drop")
 
 # -------------------------------------------------------------------
 # Emitir comparaciones (dejan i32 en la pila: 0=falso, 1=verdadero)
 # -------------------------------------------------------------------
 funcion wasm_i32_eq(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.eq")
 
 funcion wasm_i32_ne(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.ne")
 
 funcion wasm_i32_lt_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.lt_s")
 
 funcion wasm_i32_gt_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_emitir(est, "i32.gt_s")
 
 # -------------------------------------------------------------------
@@ -285,6 +427,10 @@ funcion wasm_i32_gt_s(est: EstadoWasm) -> nulo:
 #     )
 #   )
 funcion wasm_programa_minimo(est: EstadoWasm, valor_retorno: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_iniciar_modulo(est)
     wasm_declarar_funcion(est, "main", 0, 1)
     wasm_const_i32(est, valor_retorno)
@@ -295,6 +441,10 @@ funcion wasm_programa_minimo(est: EstadoWasm, valor_retorno: entero) -> nulo:
 # Generar un programa WASM aritmético: retorna lhs <op> rhs
 #   op: 0=suma, 1=resta, 2=multiplicacion, 3=division
 funcion wasm_programa_aritmetico(est: EstadoWasm, op: entero,
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     lhs: entero, rhs: entero) -> nulo:
 
     wasm_iniciar_modulo(est)
@@ -329,6 +479,10 @@ funcion wasm_programa_aritmetico(est: EstadoWasm, op: entero,
 #     )
 #   )
 funcion wasm_programa_con_llamada(est: EstadoWasm, a: entero, b: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_iniciar_modulo(est)
 
     # (func $suma (param i32 i32) (result i32)
@@ -351,6 +505,10 @@ funcion wasm_programa_con_llamada(est: EstadoWasm, a: entero, b: entero) -> nulo
 
 # Generar un programa WASM if-else: retorna 1 si a < b, sino 0
 funcion wasm_programa_if_else(est: EstadoWasm, a: entero, b: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
     wasm_iniciar_modulo(est)
     wasm_declarar_funcion(est, "main", 0, 1)
     wasm_const_i32(est, a)
@@ -363,4 +521,449 @@ funcion wasm_programa_if_else(est: EstadoWasm, a: entero, b: entero) -> nulo:
     wasm_end(est)
     wasm_retorno(est)
     wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# =============================================================================
+# FASE 25: Extensiones para Syquex — i64, f64, memoria, strings, imports/exports
+# =============================================================================
+
+# -------------------------------------------------------------------
+# i64 support
+# -------------------------------------------------------------------
+funcion wasm_const_i64(est: EstadoWasm, valor: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "i64.const " + texto(valor)
+    wasm_emitir(est, linea)
+
+funcion wasm_i64_add(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.add")
+
+funcion wasm_i64_sub(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.sub")
+
+funcion wasm_i64_mul(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.mul")
+
+funcion wasm_i64_div_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.div_s")
+
+funcion wasm_i64_eq(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.eq")
+
+funcion wasm_i64_ne(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.ne")
+
+funcion wasm_i64_lt_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.lt_s")
+
+funcion wasm_i64_gt_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.gt_s")
+
+funcion wasm_i64_le_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.le_s")
+
+funcion wasm_i64_ge_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.ge_s")
+
+# -------------------------------------------------------------------
+# f64 support (decimal)
+# -------------------------------------------------------------------
+funcion wasm_const_f64(est: EstadoWasm, valor: decimal) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "f64.const " + texto(valor)
+    wasm_emitir(est, linea)
+
+funcion wasm_f64_add(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.add")
+
+funcion wasm_f64_sub(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.sub")
+
+funcion wasm_f64_mul(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.mul")
+
+funcion wasm_f64_div(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.div")
+
+funcion wasm_f64_eq(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.eq")
+
+funcion wasm_f64_ne(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.ne")
+
+funcion wasm_f64_lt(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.lt")
+
+funcion wasm_f64_gt(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.gt")
+
+funcion wasm_f64_le(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.le")
+
+funcion wasm_f64_ge(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.ge")
+
+# Conversión entre tipos
+funcion wasm_i32_wrap_i64(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i32.wrap_i64")
+
+funcion wasm_i64_extend_i32_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.extend_i32_s")
+
+funcion wasm_f64_convert_i32_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.convert_i32_s")
+
+funcion wasm_f64_convert_i64_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "f64.convert_i64_s")
+
+funcion wasm_i32_trunc_f64_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i32.trunc_f64_s")
+
+funcion wasm_i64_trunc_f64_s(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "i64.trunc_f64_s")
+
+# -------------------------------------------------------------------
+# Memory operations (i32 load/store)
+# -------------------------------------------------------------------
+funcion wasm_memory_grow(est: EstadoWasm, paginas: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "memory.grow " + texto(paginas)
+    wasm_emitir(est, linea)
+
+funcion wasm_memory_size(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_emitir(est, "memory.size")
+
+funcion wasm_i32_load(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "i32.load offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+funcion wasm_i32_store(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "i32.store offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+funcion wasm_i64_load(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "i64.load offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+funcion wasm_i64_store(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "i64.store offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+funcion wasm_f64_load(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "f64.load offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+funcion wasm_f64_store(est: EstadoWasm, offset: entero, align: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "f64.store offset=" + texto(offset) + " align=" + texto(align)
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Imports/Exports for JS interop
+# -------------------------------------------------------------------
+
+# Exportar una función: (export "nombre" (func $nombre))
+funcion wasm_exportar_funcion(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "(export \"" + nombre + "\" (func $" + nombre + "))"
+    wasm_emitir(est, linea)
+
+# Exportar la memoria: (export "memory" (memory 0))
+funcion wasm_exportar_memoria(est: EstadoWasm, num_paginas: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "(memory " + texto(num_paginas) + ")"
+    wasm_emitir(est, linea)
+    linea2 = "(export \"memory\" (memory 0))"
+    wasm_emitir(est, linea2)
+
+# Importar una función de JS:
+# (import "env" "func_name" (func $func_name (param i32) (result i32)))
+funcion wasm_importar_funcion(est: EstadoWasm, modulo: texto, nombre: texto,
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    num_params: entero, num_results: entero) -> nulo:
+    linea = "(import \"" + modulo + "\" \"" + nombre + "\" (func $" + nombre
+    i = 0
+    mientras i < num_params:
+        linea = linea + " (param i32)"
+        i = i + 1
+    si num_results > 0:
+        linea = linea + " (result i32)"
+    linea = linea + "))"
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Global variables
+# -------------------------------------------------------------------
+funcion wasm_global_get(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "global.get $" + nombre
+    wasm_emitir(est, linea)
+
+funcion wasm_global_set(est: EstadoWasm, nombre: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "global.set $" + nombre
+    wasm_emitir(est, linea)
+
+# Declarar un global mutable:
+# (global $name (mut i32) (i32.const 0))
+funcion wasm_declarar_global(est: EstadoWasm, nombre: texto, tipo: texto, valor_inicial: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "(global $" + nombre + " (mut " + tipo + ") (" + tipo + ".const " + valor_inicial + "))"
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Declarar función con tipos mixtos (i32, i64, f64)
+# -------------------------------------------------------------------
+funcion wasm_declarar_funcion_tipos(est: EstadoWasm, nombre: texto,
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    tipos_params: texto, num_results: entero, tipo_result: texto) -> nulo:
+    linea = "(func $" + nombre + " " + tipos_params
+    si num_results > 0:
+        linea = linea + " (result " + tipo_result + ")"
+    linea = linea + ""
+    wasm_emitir(est, linea)
+    wasm_indentar(est)
+
+# -------------------------------------------------------------------
+# Declarar variable local con tipo específico
+# -------------------------------------------------------------------
+funcion wasm_declarar_local_tipo(est: EstadoWasm, nombre: texto, tipo: texto) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    linea = "(local $" + nombre + " " + tipo + ")"
+    wasm_emitir(est, linea)
+
+# -------------------------------------------------------------------
+# Programas de ejemplo extendidos
+# -------------------------------------------------------------------
+
+# Programa WASM con i64: retorna a + b como i64
+funcion wasm_programa_i64(est: EstadoWasm, a: entero, b: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_iniciar_modulo(est)
+    wasm_declarar_funcion_tipos(est, "main", "", 1, "i64")
+    wasm_const_i64(est, a)
+    wasm_const_i64(est, b)
+    wasm_i64_add(est)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# Programa WASM con f64: retorna a + b como f64
+funcion wasm_programa_f64(est: EstadoWasm, a: decimal, b: decimal) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_iniciar_modulo(est)
+    wasm_declarar_funcion_tipos(est, "main", "", 1, "f64")
+    wasm_const_f64(est, a)
+    wasm_const_f64(est, b)
+    wasm_f64_add(est)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# Programa WASM con memoria: almacena y carga un i32
+funcion wasm_programa_memoria(est: EstadoWasm, valor: entero) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_iniciar_modulo(est)
+    wasm_exportar_memoria(est, 1)
+    wasm_declarar_funcion(est, "main", 0, 1)
+    # Store valor en dirección 0
+    wasm_const_i32(est, valor)
+    wasm_const_i32(est, 0)
+    wasm_i32_store(est, 0, 4)
+    # Load desde dirección 0
+    wasm_const_i32(est, 0)
+    wasm_i32_load(est, 0, 4)
+    wasm_retorno(est)
+    wasm_finalizar_funcion(est)
+    wasm_finalizar_modulo(est)
+
+# Programa WASM con importaciones de JS y exportaciones
+funcion wasm_programa_js_interop(est: EstadoWasm) -> nulo:
+    requiere:
+        est != nulo
+    garantiza:
+        verdadero
+    wasm_iniciar_modulo(est)
+    # Importar console_log desde "env"
+    wasm_importar_funcion(est, "env", "console_log", 1, 0)
+    # Declarar función main que llama a console_log
+    wasm_declarar_funcion(est, "main", 0, 0)
+    wasm_const_i32(est, 42)
+    wasm_llamar(est, "console_log")
+    wasm_finalizar_funcion(est)
+    # Exportar main
+    wasm_exportar_funcion(est, "main")
     wasm_finalizar_modulo(est)
