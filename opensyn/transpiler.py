@@ -73,6 +73,35 @@ MAPEO_KEYWORDS: Dict[str, str] = {
 # =====================================================================
 
 
+def _tipo_a_syq(tipo_python: str) -> str:
+    """Atajo para mapear tipos Python a Syquex."""
+    return mapear_tipo(tipo_python)
+
+
+def _convertir_funcion_def(match):
+    """Convierte def nombre(params): a funcion nombre(params: entero) -> entero:"""
+    nombre = match.group(1)
+    params_str = match.group(2).strip()
+    if not params_str:
+        return f"funcion {nombre}() -> entero:"
+    # Añadir tipo entero a cada parámetro
+    params = [p.strip() for p in params_str.split(',')]
+    params_syq = [f"{p}: entero" for p in params]
+    return f"funcion {nombre}({', '.join(params_syq)}) -> entero:"
+
+
+def _convertir_funcion_def_con_retorno(match):
+    """Convierte def nombre(params) -> tipo: a funcion nombre(params: tipo) -> tipo:"""
+    nombre = match.group(1)
+    params_str = match.group(2).strip()
+    tipo_ret = _tipo_a_syq(match.group(3))
+    if not params_str:
+        return f"funcion {nombre}() -> {tipo_ret}:"
+    params = [p.strip() for p in params_str.split(',')]
+    params_syq = [f"{p}: {tipo_ret}" for p in params]
+    return f"funcion {nombre}({', '.join(params_syq)}) -> {tipo_ret}:"
+
+
 def mapear_tipo(tipo_python: str) -> str:
     """Convierte un tipo Python a su equivalente Syquex."""
     tipo_limpio = tipo_python.strip()
@@ -128,20 +157,26 @@ def transpilar_linea(linea: str) -> str:
     resultado = re.sub(r'\bor\b', ' o ', resultado)
     resultado = re.sub(r'\bnot\b', ' no ', resultado)
 
-    # Reemplazar keywords
-    resultado = re.sub(r'\bdef\b', 'funcion', resultado)
+    # Reemplazar keywords simples
     resultado = re.sub(r'\bclass\b', 'estructura', resultado)
     resultado = re.sub(r'\bif\b', 'si', resultado)
     resultado = re.sub(r'\belif\b', 'sino si', resultado)
     resultado = re.sub(r'\belse:', 'sino:', resultado)
     resultado = re.sub(r'\bwhile\b', 'mientras', resultado)
-    resultado = re.sub(r'\bfor\b(\s+\w+\s+)in\b', r'para\1en', resultado)  # for x in -> para x en
     resultado = re.sub(r'\breturn\b', 'retornar', resultado)
     resultado = re.sub(r'\btry:', 'intentar:', resultado)
     resultado = re.sub(r'\bexcept\b', 'atrapar', resultado)
     resultado = re.sub(r'\braise\b', 'lanzar', resultado)
     resultado = re.sub(r'\bimport\b', 'importar', resultado)
-    resultado = re.sub(r'\brange\b', 'rango', resultado)
+    
+    # def nombre(params): -> funcion nombre(params: entero) -> entero:
+    resultado = re.sub(r'^def\s+(\w+)\(([^)]*)\)\s*:',
+                       _convertir_funcion_def, resultado, flags=re.MULTILINE)
+    resultado = re.sub(r'^def\s+(\w+)\(([^)]*)\)\s*->\s*(\w+)\s*:',
+                       _convertir_funcion_def_con_retorno, resultado, flags=re.MULTILINE)
+    
+    # for x in range(n) -> para x = 0 mientras x < n: ... x = x + 1
+    # Se maneja en transpilar_bloque() por ser multi-línea
 
     # Reemplazar builtins
     resultado = resultado.replace("len(", "longitud(")
@@ -151,18 +186,54 @@ def transpilar_linea(linea: str) -> str:
 
 
 def transpilar_bloque(codigo: str) -> str:
-    """Transpila un bloque completo de Python a Syquex."""
+    """Transpila un bloque completo de Python a Syquex.
+    
+    Preserva la indentación original para mantener la estructura de funciones.
+    Convierte for x in range(n) a para x = 0 mientras x < n: ... x = x + 1
+    """
     lineas = codigo.split("\n")
     resultado = []
-
-    for linea in lineas:
-        linea_trimmed = linea.strip()
-        if linea_trimmed == "":
+    i = 0
+    
+    while i < len(lineas):
+        linea = lineas[i]
+        stripped = linea.lstrip()
+        indent = linea[:len(linea) - len(stripped)]
+        
+        if stripped == "":
             resultado.append("")
+            i += 1
             continue
-
-        linea_tr = transpilar_linea(linea_trimmed)
-        resultado.append(linea_tr)
+        
+        # Detectar for x in range(n)
+        match_for = re.match(r'^for\s+(\w+)\s+in\s+range\((\d+)\)\s*:', stripped)
+        if match_for:
+            var_name = match_for.group(1)
+            limit = match_for.group(2)
+            resultado.append(f"{indent}para {var_name} = 0 mientras {var_name} < {limit}:")
+            i += 1
+            # Procesar cuerpo del bucle (líneas con más indentación)
+            cuerpo_indent = len(linea) - len(linea.lstrip()) + 4  # 4 espacios más
+            while i < len(lineas):
+                linea_cuerpo = lineas[i]
+                stripped_cuerpo = linea_cuerpo.lstrip()
+                if stripped_cuerpo == "":
+                    resultado.append("")
+                    i += 1
+                    continue
+                indent_cuerpo = len(linea_cuerpo) - len(stripped_cuerpo)
+                if indent_cuerpo <= len(indent):
+                    break  # Fin del cuerpo del bucle
+                linea_tr = transpilar_linea(stripped_cuerpo)
+                resultado.append("    " + indent + linea_tr)
+                i += 1
+            # Agregar incremento al final del cuerpo
+            resultado.append(f"{indent}    {var_name} = {var_name} + 1")
+            continue
+        
+        linea_tr = transpilar_linea(stripped)
+        resultado.append(indent + linea_tr)
+        i += 1
 
     return "\n".join(resultado)
 
@@ -171,6 +242,7 @@ def _envolver_en_principal(codigo_syq: str) -> str:
     """Envuelve código de nivel superior en funcion principal() -> entero:.
     
     Detecta si hay código fuera de funciones y lo envuelve automáticamente.
+    Usa la indentación para determinar si una línea está dentro de una función.
     """
     lineas = codigo_syq.split("\n")
     
@@ -181,27 +253,27 @@ def _envolver_en_principal(codigo_syq: str) -> str:
     
     # Separar código de nivel superior de código dentro de funciones
     lineas_fuera = []
-    dentro_funcion = False
-    indent_funcion = 0
     lineas_nuevas = []
+    indent_funcion_actual = -1  # -1 = fuera de función
     
     for l in lineas:
         stripped = l.strip()
+        indent = len(l) - len(l.lstrip()) if stripped else 0
         
         # Detectar inicio de función
         if stripped.startswith("funcion ") or stripped.startswith("estructura "):
-            dentro_funcion = True
-            indent_funcion = len(l) - len(l.lstrip())
+            indent_funcion_actual = indent
             lineas_nuevas.append(l)
             continue
         
-        # Detectar fin de función (volver a nivel 0)
-        if dentro_funcion and stripped != "" and not l.startswith(" ") and not l.startswith("\t"):
-            dentro_funcion = False
+        # Detectar fin de función (indentación <= indent de función)
+        if indent_funcion_actual >= 0 and stripped != "" and indent <= indent_funcion_actual:
+            indent_funcion_actual = -1
         
-        if dentro_funcion:
+        if indent_funcion_actual >= 0:
+            # Dentro de una función
             lineas_nuevas.append(l)
-        elif stripped == "" or stripped.startswith("#"):
+        elif stripped == "" or stripped.startswith("#") or stripped.startswith("//"):
             lineas_nuevas.append(l)
         elif stripped.startswith("externo "):
             lineas_nuevas.append(l)
@@ -230,9 +302,19 @@ def transpilar_codigo_python(codigo_python: str) -> str:
     # Envolver código de nivel superior en funcion principal()
     resultado = _envolver_en_principal(resultado)
 
+    # Detectar imports necesarios
+    imports_necesarios = []
+    if "escribir_linea" in resultado or "escribir(" in resultado:
+        imports_necesarios.append("importar std.io")
+    
     # Agregar directiva #lang: es si no existe
     if not resultado.startswith("#lang:"):
         resultado = "#lang: es\n\n" + resultado
+    
+    # Agregar imports después de #lang
+    if imports_necesarios:
+        imports_str = "\n".join(imports_necesarios)
+        resultado = resultado.replace("#lang: es\n\n", f"#lang: es\n\n{imports_str}\n\n", 1)
 
     return resultado
 

@@ -51,7 +51,7 @@ class TestTranspilarPyASyq:
         result = transpilar_py_a_syq(str(py_file), str(syq_file))
         assert os.path.exists(result)
         content = open(result, encoding='utf-8').read()
-        assert "funcion hola():" in content
+        assert "funcion hola() -> entero:" in content
         assert "escribir_linea" in content
 
     def test_default_output_path(self, tmp_path):
@@ -203,8 +203,8 @@ class TestCasosReales:
         codigo, syq, exe = ejecutar_pipeline(str(py_file), keep_syq=True)
         if syq:
             content = open(syq, encoding='utf-8').read()
-            assert "funcion add(a, b):" in content
-            assert "funcion main():" in content
+            assert "funcion add(a: entero, b: entero) -> entero:" in content
+            assert "funcion main() -> entero:" in content
 
     def test_control_flow_pipeline(self, tmp_path):
         """Pipeline con flujo de control."""
@@ -223,7 +223,7 @@ class TestCasosReales:
         codigo, syq, exe = ejecutar_pipeline(str(py_file), keep_syq=True)
         if syq:
             content = open(syq, encoding='utf-8').read()
-            assert "funcion classify(n):" in content
+            assert "funcion classify(n: entero) -> entero:" in content
             assert "si n > 0:" in content
             assert "sino si n < 0:" in content
             assert "sino:" in content
