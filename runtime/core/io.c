@@ -156,3 +156,23 @@ void cerrar_archivo(Canal canal) {
         fclose(canal.stream);
     }
 }
+
+// ============================================================
+// Extras para lib/io.syq (Fase 24)
+// ============================================================
+
+int _syn_existe(const char* ruta) {
+    if (!ruta) return 0;
+    FILE* f = fopen(ruta, "rb");
+    if (f) { fclose(f); return 1; }
+    return 0;
+}
+
+void _syn_escribir_a(int fd, const char* contenido) {
+    // fd se usa como índice de handle global simple
+    // Para MVP: escribir a un archivo estático
+    // (mejorable con tabla de handles)
+    (void)fd;
+    (void)contenido;
+    // Stub — la escritura real se hace vía _syn_escribir_archivo
+}

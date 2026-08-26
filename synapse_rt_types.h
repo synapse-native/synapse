@@ -227,6 +227,32 @@ int64_t tr_hder(int n);
 int64_t tr_herm(int n);
 int64_t tr_vi(int n);
 
+// --- Lista (Manual 3 §5.2, lib/lista.syq) ---
+void* _syn_lista_crear(void);
+int _syn_lista_longitud(void* l);
+void _syn_lista_agregar(void* l, int64_t elemento);
+int64_t _syn_lista_obtener(void* l, int indice);
+void _syn_lista_establecer(void* l, int indice, int64_t valor);
+void _syn_lista_eliminar(void* l, int indice);
+void _syn_lista_limpiar(void* l);
+void _syn_lista_liberar(void* l);
+
+// --- Mapa (Manual 3 §5.2, lib/mapa.syq) ---
+void* _syn_mapa_crear(void);
+int _syn_mapa_longitud(void* m);
+void _syn_mapa_poner(void* m, const char* clave, int64_t valor);
+int64_t _syn_mapa_obtener(void* m, const char* clave);
+int _syn_mapa_contiene(void* m, const char* clave);
+void _syn_mapa_eliminar(void* m, const char* clave);
+void _syn_mapa_limpiar(void* m);
+void* _syn_mapa_claves(void* m);
+void* _syn_mapa_valores(void* m);
+void _syn_mapa_liberar(void* m);
+
+// --- IO extras (lib/io.syq) ---
+int _syn_existe(const char* ruta);
+void _syn_escribir_a(int fd, const char* contenido);
+
 // --- Thread tracker helpers ---
 struct _HiloArgs {
     void* (*fn)(void*);
