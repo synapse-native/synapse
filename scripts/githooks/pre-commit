@@ -59,6 +59,25 @@ find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycac
     -exec rm -rf {} + 2>/dev/null || true
 echo "✅ Artefactos limpiados"
 
+# --- Regeneración automática de bindings si headers del runtime cambiaron ---
+echo "── Verificando cambios en headers del runtime ──"
+CHANGED_HEADERS=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '^runtime/core/.*\.h$' || true)
+if [ -n "$CHANGED_HEADERS" ]; then
+    echo "  Headers modificados: $CHANGED_HEADERS"
+    BINDINGS_GEN="$RAIZ/opensyn/generate_runtime_bindings.py"
+    if [ -f "$BINDINGS_GEN" ]; then
+        echo "  Regenerando lib/runtime_bindings.syq..."
+        if (cd "$RAIZ" && $PYTHON "$BINDINGS_GEN" 2>&1); then
+            git add lib/runtime_bindings.syq 2>/dev/null || true
+            echo "  ✅ Bindings regenerados y añadidos al commit"
+        else
+            echo "  ⚠️  Error regenerando bindings (no bloqueante)" >&2
+        fi
+    fi
+else
+    echo "  ✅ Sin cambios en headers del runtime"
+fi
+
 echo "── Verificando alineación con los manuales (auditoria/verificar_alineacion.py) ──"
 
 if ! (cd "$RAIZ" && $PYTHON "$VERIFICADOR" --json > /tmp/auditoria_commit.json 2>&1); then
