@@ -47,7 +47,7 @@ MAPEO_KEYWORDS: Dict[str, str] = {
     "def": "funcion",
     "class": "estructura",
     "if": "si",
-    "elif": "sino si",
+    "elif": "sino_si",
     "else": "sino",
     "while": "mientras",
     "for": "para",
@@ -98,8 +98,17 @@ def _convertir_funcion_def_con_retorno(match):
     if not params_str:
         return f"funcion {nombre}() -> {tipo_ret}:"
     params = [p.strip() for p in params_str.split(',')]
-    params_syq = [f"{p}: {tipo_ret}" for p in params]
-    return f"funcion {nombre}({', '.join(params_syq)}) -> {tipo_ret}:"
+    # Strip original type annotations from parameters
+    params_limpios = []
+    for p in params:
+        if ':' in p:
+            # Has type annotation, extract just the name
+            nombre_param = p.split(':')[0].strip()
+            params_limpios.append(f"{nombre_param}: {tipo_ret}")
+        else:
+            # No type annotation, add the Syquex type
+            params_limpios.append(f"{p}: {tipo_ret}")
+    return f"funcion {nombre}({', '.join(params_limpios)}) -> {tipo_ret}:"
 
 
 def mapear_tipo(tipo_python: str) -> str:
@@ -181,7 +190,7 @@ def transpilar_linea(linea: str) -> str:
     # Reemplazar keywords simples
     resultado = re.sub(r'\bclass\b', 'estructura', resultado)
     resultado = re.sub(r'\bif\b', 'si', resultado)
-    resultado = re.sub(r'\belif\b', 'sino si', resultado)
+    resultado = re.sub(r'\belif\b', 'sino_si', resultado)
     resultado = re.sub(r'\belse:', 'sino:', resultado)
     resultado = re.sub(r'\bwhile\b', 'mientras', resultado)
     resultado = re.sub(r'\breturn\b', 'retornar', resultado)
@@ -189,6 +198,13 @@ def transpilar_linea(linea: str) -> str:
     resultado = re.sub(r'\bexcept\b', 'atrapar', resultado)
     resultado = re.sub(r'\braise\b', 'lanzar', resultado)
     resultado = re.sub(r'\bimport\b', 'importar', resultado)
+    
+    # Convertir anotaciones de tipo Python → Syquex en campos de estructura
+    # Patrón: "nombre: tipo" donde tipo es int/float/str/bool
+    resultado = re.sub(r':\s*int\b', ': entero', resultado)
+    resultado = re.sub(r':\s*float\b', ': decimal', resultado)
+    resultado = re.sub(r':\s*str\b', ': texto', resultado)
+    resultado = re.sub(r':\s*bool\b', ': booleano', resultado)
     
     # def nombre(params): -> funcion nombre(params: entero) -> entero:
     resultado = re.sub(r'^def\s+(\w+)\(([^)]*)\)\s*:',
@@ -349,15 +365,30 @@ def transpilar_codigo_python(codigo_python: str) -> str:
     return resultado
 
 
-def transpilar_archivo(ruta_python: str) -> str:
-    """Transpila un archivo Python completo a Syquex."""
+def transpilar_archivo(ruta_python: str, ruta_syq: Optional[str] = None) -> str:
+    """Transpila un archivo Python completo a Syquex.
+    
+    Args:
+        ruta_python: Ruta al archivo Python de entrada
+        ruta_syq: Ruta opcional donde guardar el resultado .syq
+    
+    Returns:
+        Código Syquex generado
+    """
     with open(ruta_python, "r", encoding="utf-8") as f:
         contenido = f.read()
 
     if not contenido.strip():
-        return ""
-
-    return transpilar_codigo_python(contenido)
+        resultado = ""
+    else:
+        resultado = transpilar_codigo_python(contenido)
+    
+    # Si se especifica ruta de salida, escribir el archivo
+    if ruta_syq is not None:
+        with open(ruta_syq, "w", encoding="utf-8") as f:
+            f.write(resultado)
+    
+    return resultado
 
 
 # =====================================================================
