@@ -736,6 +736,8 @@ def main():
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
     parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
     parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
+    parser.add_argument("--check", action="store_true",
+                        help="Solo verificar sintaxis y semántica (sin generar código). Usado por el LSP y OpenSyn.")
     parser.add_argument("--migrate", type=str, default=None,
                         help="Migrar archivo Python (.py) a Synapse (.syn)")
     parser.add_argument("--detect-hardware", action="store_true",
@@ -887,6 +889,7 @@ def main():
                     break
         
         modo_safe = "--safe" in sys.argv
+        check_only = "--check" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
         clave_sbom = args.sign or ""
         codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
@@ -899,7 +902,8 @@ def main():
                                      clave_sbom=clave_sbom,
                                     target=target,
                                       modo_release=args.release,
-                                      modo_debug=args.debug)
+                                      modo_debug=args.debug,
+                                      check_only=check_only)
         return codigo
 
     if args.help:

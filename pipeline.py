@@ -564,7 +564,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                         clave_sbom: str = '',
                         target: str = 'native',
                         modo_release: bool = False,
-                        modo_debug: bool = False) -> int:
+                        modo_debug: bool = False,
+                        check_only: bool = False) -> int:
     _module_asts.clear()
     _imports_usados.clear()
     diag = DiagnosticManager()
@@ -629,6 +630,13 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
         if dump_ast:
             imprimir_ast(ast)
+            return 0
+
+        # === CHECK MODE (--check / --no-emit) ===
+        # Manual 1 §1.1: modo de validación rápido sin generar código.
+        # Usado por el LSP y OpenSyn para validar código generado.
+        if check_only:
+            print(f"[CHECK] {ruta_archivo} — sintaxis OK, semántica OK")
             return 0
 
         # === CACHE INCREMENTAL ===
