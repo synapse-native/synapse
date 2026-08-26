@@ -172,7 +172,7 @@ class TestTranspilarBloque:
         py = "if x:\n    print(x)"
         result = transpilar_bloque(py)
         assert "si x:" in result
-        assert "escribir_linea(x)" in result
+        assert "escribir_linea(entero_a_texto(x))" in result
 
     def test_empty_lines(self):
         py = "def a():\n    pass\n\ndef b():\n    pass"
@@ -313,7 +313,7 @@ print(len(nums))
         result = transpilar_codigo_python(py)
         assert "para i = 0 mientras i < 10:" in result
         assert ".agregar(i)" in result
-        assert "escribir_linea(longitud(nums))" in result
+        assert "escribir_linea(entero_a_texto(longitud(nums)))" in result
 
     def test_while_loop(self):
         py = """\
@@ -324,4 +324,4 @@ while x < 10:
 """
         result = transpilar_codigo_python(py)
         assert "mientras x < 10:" in result
-        assert "escribir_linea(x)" in result
+        assert "escribir_linea(entero_a_texto(x))" in result

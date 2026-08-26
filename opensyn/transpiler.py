@@ -140,12 +140,33 @@ def mapear_palabra_clave(palabra: str) -> str:
 # =====================================================================
 
 
+def _envolver_escribir_linea(linea: str) -> str:
+    """Envuelve argumentos de escribir_linea() con entero_a_texto() si no son strings."""
+    # Detectar escribir_linea(...) y envolver argumentos no-string
+    def reemplazar_escribir(match):
+        args = match.group(1).strip()
+        # Si el argumento es un string literal, no envolver
+        if args.startswith('"') or args.startswith("'"):
+            return match.group(0)
+        # Si es una concatenación con strings, no envolver
+        if '+' in args:
+            return match.group(0)
+        # Envolver con entero_a_texto()
+        return f'escribir_linea(entero_a_texto({args}))'
+    
+    resultado = re.sub(r'escribir_linea\(([^)]+)\)', reemplazar_escribir, linea)
+    return resultado
+
+
 def transpilar_linea(linea: str) -> str:
     """Transpila una línea de Python a Syquex."""
     resultado = linea
 
     # Reemplazar print() → escribir_linea()
     resultado = resultado.replace("print(", "escribir_linea(")
+    
+    # Envolver argumentos de escribir_linea() con entero_a_texto() si no son strings
+    resultado = _envolver_escribir_linea(resultado)
 
     # Reemplazar True/False/None
     resultado = resultado.replace("True", "verdadero")
@@ -306,6 +327,8 @@ def transpilar_codigo_python(codigo_python: str) -> str:
     imports_necesarios = []
     if "escribir_linea" in resultado or "escribir(" in resultado:
         imports_necesarios.append("importar std.io")
+    if "entero_a_texto" in resultado:
+        imports_necesarios.append("externo funcion entero_a_texto(n: entero) -> texto")
     
     # Agregar directiva #lang: es si no existe
     if not resultado.startswith("#lang:"):
