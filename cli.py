@@ -740,6 +740,8 @@ def main():
                         help="Solo verificar sintaxis y semántica (sin generar código). Usado por el LSP y OpenSyn.")
     parser.add_argument("--migrate", type=str, default=None,
                         help="Migrar archivo Python (.py) a Synapse (.syn)")
+    parser.add_argument("--transpile", type=str, default=None,
+                        help="Transpilar archivo Python (.py) a Syquex (.syq)")
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
     parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
@@ -988,6 +990,24 @@ def main():
 
         syn_pretty_print_file(syn_ast, output_path)
         print(f"[OK] Migrado: {py_path} -> {output_path}")
+        sys.exit(0)
+
+    if args.transpile:
+        from opensyn.transpiler import transpilar_archivo
+
+        py_path = args.transpile
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+
+        output_path = args.output
+        if output_path is None:
+            output_path = os.path.splitext(py_path)[0] + ".syq"
+
+        resultado = transpilar_archivo(py_path)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[OK] Transpilado: {py_path} -> {output_path}")
         sys.exit(0)
 
     if args.construir == "construir":
