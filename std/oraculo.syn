@@ -23,8 +23,6 @@ externo funcion _syn_obtener_codigo_generado() -> texto
 externo funcion _syn_obtener_error_compilacion() -> texto
 externo funcion _syn_obtener_linea_error() -> entero
 externo funcion _syn_extraer_bloque_codigo(texto: texto) -> texto
-externo funcion _syn_modelo_generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto
-
 // --- Wrappers públicos ---
 
 funcion compilar_codigo(fuente: texto) -> entero:
@@ -42,8 +40,7 @@ funcion obtener_linea_error() -> entero:
 funcion extraer_bloque_codigo(texto: texto) -> texto:
     retornar _syn_extraer_bloque_codigo(texto)
 
-funcion generar_texto(ctx: puntero, prompt: texto, max_tokens: entero, temperatura: decimal, top_k: entero, top_p: decimal) -> texto:
-    retornar _syn_modelo_generar_texto(ctx, prompt, max_tokens, temperatura, top_k, top_p)
+// generar_texto se importa de std.modelo (importar std.modelo arriba)
 
 // --- Bucle del Oráculo ---
 
