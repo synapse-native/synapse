@@ -460,3 +460,4 @@ Comprueba de forma automatizada:
 | 2026-08-26 | **R111/F26**: Auto-regeneracion bindings en pre-commit hook | 60d6fa1 | Manual 1 §2 | 0 brechas |
 | 2026-08-26 | **R112/F26**: Pipeline completo .py -> .syq -> .c -> .exe --pipeline flag | 3a307ee | Manual 1 §5 | 0 brechas |
 | 2026-08-26 | **R113/F26**: Ejemplo end-to-end Python a Syquex a C + bugfixes transpiler | 331e406 | Manual 7 §1 | 0 brechas |
+| 2026-08-26 | **R114/F26**: Fix SQLite linker - pipeline end-to-end funcional | 5bc0dff | Manual 3 §12.1 | 0 brechas |
