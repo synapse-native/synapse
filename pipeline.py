@@ -684,12 +684,27 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
         if target == 'wasm':
             wat_path = ruta_base + ".wat"
+            wasm_path = ruta_base + ".wasm"
             from compilador.wat_generator import WATGenerator
             wat_gen = WATGenerator(ast, diag)
             wat_code = wat_gen.generar()
             with open(wat_path, 'w', encoding='utf-8') as f:
                 f.write(wat_code)
             print(f"[OK] WAT generado: {wat_path}")
+
+            # FASE 25: .wat → .wasm via wat2wasm
+            wat2wasm = shutil.which('wat2wasm') or shutil.which('wat2wasm.exe')
+            if wat2wasm:
+                r = subprocess.run([wat2wasm, wat_path, '-o', wasm_path],
+                                   capture_output=True, text=True, timeout=30)
+                if r.returncode == 0:
+                    size = os.path.getsize(wasm_path)
+                    print(f"[OK] WASM generado: {wasm_path} ({size} bytes)")
+                else:
+                    print(f"[WARN] wat2wasm falló: {r.stderr[:200]}")
+            else:
+                print(f"[INFO] wat2wasm no encontrado — solo WAT generado")
+
             return 0
 
         linker_extra = generador.linker_flags
