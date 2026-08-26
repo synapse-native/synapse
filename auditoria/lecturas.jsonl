@@ -146,3 +146,4 @@
 {"fecha": "2026-08-26", "archivos": ["tests/integration/test_opensyn_integration.py"], "cita": "Manual 7 §6.3 §7", "puntos": "Bucle corrección automática 3 intentos, pruebas y validación OpenSyn, pipeline completo transpilación"}
 {"fecha": "2026-08-26", "archivos": ["tests/integration/test_opensyn_integration.py"], "cita": "Manual 7 §1 §6.3 §7", "puntos": "Transpilación Python→Syquex mapeo tipos, Bucle corrección 3 intentos, Pruebas y validación OpenSyn"}
 {"fecha": "2026-08-26", "archivos": ["opensyn/transpiler.py"], "cita": "Manual 7 §5.1", "puntos": "Mapeo Python→Syquex: elif→sino_si, tipos struct, transpilación completa"}
+{"fecha": "2026-08-26", "archivos": ["docs/reportes/R120.md"], "cita": "Manual 7 §1 §7", "puntos": "Criterios aceptación OpenSyn: código válido, explicaciones precisas, bucle validación, contexto estático"}

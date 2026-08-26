@@ -466,3 +466,4 @@ Comprueba de forma automatizada:
 | 2026-08-26 | **R117/F26**: ME-F26-12 sistema de inyecciÃ³n de contexto estÃ¡tico (M7 Â§2.3) | 57f4943 | Manual 7 Â§2.3 | 0 brechas |
 | 2026-08-26 | **R118/F26**: ME-F26-13 bucle de corrección automática 3 intentos (M7 §6.3) | e8d148a | Manual 7 §6.3 | 0 brechas |
 | 2026-08-26 | **R119/F26**: ME-F26-14 pruebas integración completas OpenSyn (M7 §5.1 §6.3 §7) | 65b505e | Manual 7 §5.1 §6.3 §7 | 0 brechas |
+| 2026-08-26 | **R120/F26**: ME-F26-15 cierre Fase 26 - 50/50 tests PASS, criterios aceptación verificados (M7 §1 §7) | pendiente | Manual 7 §1 §7 | 0 brechas |
