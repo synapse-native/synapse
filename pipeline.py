@@ -105,6 +105,7 @@ _RT_FUENTES = (
     "synapse_rt.c",
 ) + _RT_CORE_FUENTES + (
     "axon/tweetnacl.c",
+    "vendor/sqlite3/sqlite3.c",  # SQLite bundled (lib/db.syq)
 )
 _RT_QUANTUM_FUENTES = (
     "nucleo/quantum_runtime.c",

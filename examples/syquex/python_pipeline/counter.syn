@@ -1,7 +1,7 @@
 #lang: es
 
 # examples/syquex/python_pipeline/counter.py
-# Ejemplo simple: calcula factorial sin usar std.io
+# Ejemplo simple: calcula factorial
 
 funcion factorial(n: entero) -> entero:
     si n <= 1:
@@ -12,4 +12,5 @@ funcion factorial(n: entero) -> entero:
 
 funcion principal() -> entero:
     result = factorial(5)
+    result = result + 0
     retornar 0
