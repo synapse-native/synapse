@@ -14,4 +14,8 @@ NodoJson _json_nodo_clonar(NodoJson src);
 NodoJson _json_array_get(NodoJson nodo, int indice);
 NodoJson _json_object_get(NodoJson nodo, CadenaSegura clave);
 
+// Serializador: NodoJson → CadenaSegura (JSON texto)
+// Manual 3 §12.2: a_texto — genera JSON determinista desde un árbol NodoJson
+CadenaSegura _json_a_texto(NodoJson nodo);
+
 #endif /* JSON_H */

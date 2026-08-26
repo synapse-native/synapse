@@ -1,6 +1,7 @@
-// runtime/core/json.c — std.json: Deterministic JSON Parser
+// runtime/core/json.c — std.json: Deterministic JSON Parser + Serializer
 // D-9(d) corte 7: extraído de synapse_rt.c (lines 72-461, byte-identical)
 // Manual 5 §7: std.json (Deserializador Determinista, arquitectura simdjson-style)
+// Manual 3 §12.2: a_texto — serializador determinista NodoJson → CadenaSegura
 //
 // Arquitectura simdjson-style: arena contigua + strings in-place.
 // Sin malloc por clave/nodo. Arena unica liberada al final.
@@ -108,13 +109,10 @@ static int _advance() {
 }
 
 // Skip whitespace using AVX2 when available (32 bytes/ciclo)
-// (immintrin.h already included above under __AVX2__ guard)
 #ifdef __AVX2__
 static void _skip_ws() {
     while (_p_pos + 32 <= _p_input.longitud) {
         __m256i chunk = _mm256_loadu_si256((const __m256i*)(_p_input.datos + _p_pos));
-        // Compare each byte with space (0x20), tab (0x09), newline (0x0A), CR (0x0D)
-        __m256i ws_chars = _mm256_set1_epi8(' ');
         __m256i cmp_space = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8(' '));
         __m256i cmp_tab   = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\t'));
         __m256i cmp_nl    = _mm256_cmpeq_epi8(chunk, _mm256_set1_epi8('\n'));
@@ -122,17 +120,14 @@ static void _skip_ws() {
         __m256i ws = _mm256_or_si256(_mm256_or_si256(cmp_space, cmp_tab),
                                      _mm256_or_si256(cmp_nl, cmp_cr));
         int mask = _mm256_movemask_epi8(ws);
-        if (mask == 0xFFFFFFFF) {
-            // All 32 bytes are whitespace
+        if (mask == (int)0xFFFFFFFF) {
             _p_pos += 32;
         } else {
-            // Found at least one non-whitespace byte
             int ws_count = __builtin_ctz(~(unsigned int)mask);
             _p_pos += ws_count;
             return;
         }
     }
-    // Fallback to scalar for remaining < 32 bytes
     while (_p_pos < _p_input.longitud) {
         char c = _p_input.datos[_p_pos];
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r') _p_pos++;
@@ -149,12 +144,12 @@ static void _skip_ws() {
 }
 #endif
 
-// AVX2-accelerated string value scanning: find closing quote in 32-byte chunks
+// --- String parser ---
+
 #ifdef __AVX2__
 static CadenaSegura _parse_string_value() {
     if (_advance() != '"') return (CadenaSegura){0};
     int start = _p_pos;
-    // AVX2: search for quote or backslash in 32-byte chunks
     __m256i quote = _mm256_set1_epi8('"');
     __m256i bslash = _mm256_set1_epi8('\\');
     while (_p_pos + 32 <= _p_input.longitud) {
@@ -164,25 +159,21 @@ static CadenaSegura _parse_string_value() {
         __m256i special = _mm256_or_si256(cmp_q, cmp_b);
         int mask = _mm256_movemask_epi8(special);
         if (mask != 0) {
-            // Found quote or backslash; find first position
             int pos = __builtin_ctz((unsigned int)mask);
             _p_pos += pos;
             if (_p_input.datos[_p_pos] == '\\') {
-                // Escaped character: skip it and continue
                 _p_pos += 2;
             } else {
-                // Found closing quote: in-place string (sin malloc)
                 int len = _p_pos - start;
                 char* p = (char*)_p_input.datos + start;
-                p[len] = '\0';  // null-terminate in buffer (writable)
-                _p_pos++;  // consume closing quote
+                p[len] = '\0';
+                _p_pos++;
                 return (CadenaSegura){ .longitud = len, .datos = p };
             }
         } else {
-            _p_pos += 32;  // No special chars in this chunk
+            _p_pos += 32;
         }
     }
-    // Fallback to scalar for remaining characters
     while (_p_pos < _p_input.longitud) {
         char c = _p_input.datos[_p_pos];
         if (c == '"') break;
@@ -194,7 +185,7 @@ static CadenaSegura _parse_string_value() {
     _p_pos++;
     int len = end - start;
     char* p = (char*)_p_input.datos + start;
-    p[len] = '\0';  // null-terminate in buffer (writable)
+    p[len] = '\0';
     return (CadenaSegura){ .longitud = len, .datos = p };
 }
 #else
@@ -212,7 +203,7 @@ static CadenaSegura _parse_string_value() {
     _p_pos++;
     int len = end - start;
     char* p = (char*)_p_input.datos + start;
-    p[len] = '\0';  // null-terminate in buffer (in-place, sin malloc)
+    p[len] = '\0';
     return (CadenaSegura){ .longitud = len, .datos = p };
 }
 #endif
@@ -242,7 +233,7 @@ static float _parse_number_value() {
     }
     int len = _p_pos - start;
     char buf[64];
-    if (len > 63) return 0.0f;  // safety guard
+    if (len > 63) return 0.0f;
     memcpy(buf, _p_input.datos + start, len);
     buf[len] = '\0';
     float val = (float)strtod(buf, NULL);
@@ -283,7 +274,7 @@ static NodoJson _parse_object() {
         NodoJson val = _parse_value();
         if (val.tipo < 0) {
             _json_nodo_liberar(val);
-            return val; // propagate error
+            return val;
         }
         NodoJson* val_ptr = (NodoJson*)pool_alloc(sizeof(NodoJson));
         if (val_ptr) *val_ptr = val;
@@ -315,7 +306,7 @@ static NodoJson _parse_array() {
         NodoJson val = _parse_value();
         if (val.tipo < 0) {
             _json_nodo_liberar(val);
-            return val; // propagate error
+            return val;
         }
         nodo_arr_append(&arr, val);
     }
@@ -412,4 +403,119 @@ NodoJson _json_object_get(NodoJson nodo, CadenaSegura clave) {
             return _json_nodo_clonar(*p->valor);
     }
     return (NodoJson){0};
+}
+
+// ============================================================
+// Serializador: NodoJson → CadenaSegura (JSON texto)
+// Manual 3 §12.2: a_texto — genera JSON determinista desde un arbol NodoJson
+// ============================================================
+
+// Buffer temporal para serializacion (recursivo, sin malloc por nodo).
+// Max 64KB — suficiente para JSON de hasta ~16K campos.
+#define _SER_BUF_SIZE (64 * 1024)
+
+static char _ser_buf[_SER_BUF_SIZE];
+static int _ser_pos;
+
+static void _ser_emit(const char* s, int len) {
+    if (_ser_pos + len <= _SER_BUF_SIZE) {
+        memcpy(_ser_buf + _ser_pos, s, len);
+        _ser_pos += len;
+    }
+}
+
+static void _ser_char(char c) {
+    if (_ser_pos < _SER_BUF_SIZE) {
+        _ser_buf[_ser_pos++] = c;
+    }
+}
+
+// Forward declaration
+static void _serializar_nodo(NodoJson nodo);
+
+// Escapa una cadena: copia caracteres especiales con backslash
+static void _serializar_cadena(CadenaSegura s) {
+    _ser_char('"');
+    for (int i = 0; i < s.longitud; i++) {
+        char c = s.datos[i];
+        switch (c) {
+            case '"':  _ser_emit("\\\"", 2); break;
+            case '\\': _ser_emit("\\\\", 2); break;
+            case '\n': _ser_emit("\\n", 2); break;
+            case '\r': _ser_emit("\\r", 2); break;
+            case '\t': _ser_emit("\\t", 2); break;
+            default:
+                if ((unsigned char)c < 0x20) {
+                    char hex[8];
+                    int n = snprintf(hex, sizeof(hex), "\\u%04x", (unsigned char)c);
+                    _ser_emit(hex, n);
+                } else {
+                    _ser_char(c);
+                }
+                break;
+        }
+    }
+    _ser_char('"');
+}
+
+// Serializa un numero float → string con formato determinista
+static void _serializar_numero(float val) {
+    char buf[64];
+    // Usar %g para formato compacto (sin ceros innecesarios)
+    int n = snprintf(buf, sizeof(buf), "%g", (double)val);
+    _ser_emit(buf, n);
+}
+
+static void _serializar_nodo(NodoJson nodo) {
+    switch (nodo.tipo) {
+        case -1: // Error → null como fallback
+            _ser_emit("null", 4);
+            break;
+        case 0: // Null
+            _ser_emit("null", 4);
+            break;
+        case 1: // Booleano
+            if (nodo.valor_bool)
+                _ser_emit("true", 4);
+            else
+                _ser_emit("false", 5);
+            break;
+        case 2: // Numero
+            _serializar_numero(nodo.valor_num);
+            break;
+        case 3: // Cadena
+            _serializar_cadena(nodo.valor_str);
+            break;
+        case 4: // Arreglo
+            _ser_char('[');
+            for (int i = 0; i < nodo.longitud; i++) {
+                if (i > 0) _ser_char(',');
+                _serializar_nodo(nodo.arreglo_hijos[i]);
+            }
+            _ser_char(']');
+            break;
+        case 5: // Objeto
+            _ser_char('{');
+            for (int i = 0; i < nodo.longitud; i++) {
+                if (i > 0) _ser_char(',');
+                _serializar_cadena(nodo.objeto_pares[i].clave);
+                _ser_char(':');
+                _serializar_nodo(*nodo.objeto_pares[i].valor);
+            }
+            _ser_char('}');
+            break;
+        default:
+            _ser_emit("null", 4);
+            break;
+    }
+}
+
+CadenaSegura _json_a_texto(NodoJson nodo) {
+    _ser_pos = 0;
+    _serializar_nodo(nodo);
+    // Null-terminate
+    if (_ser_pos < _SER_BUF_SIZE) {
+        _ser_buf[_ser_pos] = '\0';
+    }
+    return (CadenaSegura){ .longitud = _ser_pos, .datos = _ser_buf };
 }

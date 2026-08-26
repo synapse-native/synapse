@@ -162,6 +162,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_lista", "test_lista.c", ["lista.o"], []),
     # FASE 24: Mapa hash (Manual 3 §5.2) — necesita lista.o para claves/valores
     ("test_mapa", "test_mapa.c", ["mapa.o", "lista.o"], []),
+    # FASE 24: JSON parser + serializador (Manual 3 §12.2) — necesita json.o + memory.o (pool_alloc)
+    ("test_json", "test_json.c", ["json.o", "synapse_rt_memory.o"], []),
 ]
 
 
