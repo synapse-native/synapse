@@ -174,6 +174,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_db", "test_db.c", ["vendor/sqlite3/sqlite3.o"], []),
     # FASE 24: Web HTTP server (Manual 3 §12.1)
     ("test_web", "test_web.c", [], ["-lws2_32"]),
+    # FASE 24.B: FFI Marshaling automático (Manual 4 §7)
+    ("test_ffi_marshaling_auto", "test_ffi_marshaling_auto.c", ["ffi_marshaling.o", "synapse_rt_memory.o"], []),
 ]
 
 
