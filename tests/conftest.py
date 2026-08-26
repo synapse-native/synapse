@@ -158,6 +158,10 @@ _RT_BINARIOS_EXTRA = [
     ("test_component_arena", "test_component_arena.c", ["synapse_rt_memory.o"], []),
     # FASE 23 §7: FFI Marshaling zero-copy texto_a_c_string (Manual 4 §7) — solo memory.o
     ("test_ffi_marshaling", "test_ffi_marshaling.c", ["synapse_rt_memory.o"], []),
+    # FASE 24: Lista dinámica (Manual 3 §5.2)
+    ("test_lista", "test_lista.c", ["lista.o"], []),
+    # FASE 24: Mapa hash (Manual 3 §5.2) — necesita lista.o para claves/valores
+    ("test_mapa", "test_mapa.c", ["mapa.o", "lista.o"], []),
 ]
 
 
