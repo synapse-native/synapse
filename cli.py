@@ -742,6 +742,8 @@ def main():
                         help="Migrar archivo Python (.py) a Synapse (.syn)")
     parser.add_argument("--transpile", type=str, default=None,
                         help="Transpilar archivo Python (.py) a Syquex (.syq)")
+    parser.add_argument("--pipeline", type=str, default=None,
+                        help="Pipeline completo: .py -> .syq -> .c -> .exe")
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
     parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
@@ -1009,6 +1011,51 @@ def main():
             f.write(resultado)
         print(f"[OK] Transpilado: {py_path} -> {output_path}")
         sys.exit(0)
+
+    if args.pipeline:
+        from opensyn.transpiler import transpilar_archivo
+
+        py_path = args.pipeline
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+
+        # Paso 1: .py -> .syq
+        syn_path = os.path.splitext(py_path)[0] + ".syn"
+        resultado = transpilar_archivo(py_path)
+        with open(syn_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[PIPELINE] .py -> .syq: {py_path} -> {syn_path}")
+
+        # Paso 2: .syq -> .c -> .exe
+        output_path = args.output or os.path.splitext(py_path)[0]
+        if sys.platform == 'win32' and not output_path.endswith('.exe'):
+            output_path += '.exe'
+
+        print(f"[PIPELINE] .syq -> .exe: {syn_path} -> {output_path}")
+        codigo = ejecutar_compilador(
+            syn_path,
+            mostrar_tokens=False,
+            output_lang=None,
+            dump_ast=False,
+            modo_safe=False,
+            output_path=output_path,
+            incremental=False,
+            generar_sbom=False,
+            firmar_binario=False,
+            clave_sbom='',
+            target="native",
+            modo_release=args.release,
+            modo_debug=args.debug,
+            check_only=False,
+        )
+
+        if codigo == 0:
+            print(f"[PIPELINE] ✅ {py_path} -> {output_path}")
+        else:
+            print(f"[PIPELINE] ❌ Fallo en compilación (código {codigo})", file=sys.stderr)
+
+        sys.exit(codigo)
 
     if args.construir == "construir":
         tokens_flag = "--tokens" in sys.argv

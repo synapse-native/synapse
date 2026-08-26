@@ -167,9 +167,68 @@ def transpilar_bloque(codigo: str) -> str:
     return "\n".join(resultado)
 
 
+def _envolver_en_principal(codigo_syq: str) -> str:
+    """Envuelve código de nivel superior en funcion principal() -> entero:.
+    
+    Detecta si hay código fuera de funciones y lo envuelve automáticamente.
+    """
+    lineas = codigo_syq.split("\n")
+    
+    # Buscar si ya existe una funcion principal
+    tiene_principal = any("funcion principal" in l for l in lineas)
+    if tiene_principal:
+        return codigo_syq
+    
+    # Separar código de nivel superior de código dentro de funciones
+    lineas_fuera = []
+    dentro_funcion = False
+    indent_funcion = 0
+    lineas_nuevas = []
+    
+    for l in lineas:
+        stripped = l.strip()
+        
+        # Detectar inicio de función
+        if stripped.startswith("funcion ") or stripped.startswith("estructura "):
+            dentro_funcion = True
+            indent_funcion = len(l) - len(l.lstrip())
+            lineas_nuevas.append(l)
+            continue
+        
+        # Detectar fin de función (volver a nivel 0)
+        if dentro_funcion and stripped != "" and not l.startswith(" ") and not l.startswith("\t"):
+            dentro_funcion = False
+        
+        if dentro_funcion:
+            lineas_nuevas.append(l)
+        elif stripped == "" or stripped.startswith("#"):
+            lineas_nuevas.append(l)
+        elif stripped.startswith("externo "):
+            lineas_nuevas.append(l)
+        else:
+            # Código de nivel superior — mover a función principal
+            lineas_fuera.append(l)
+    
+    if not lineas_fuera:
+        return codigo_syq
+    
+    # Agregar función principal al final
+    lineas_nuevas.append("")
+    lineas_nuevas.append("funcion principal() -> entero:")
+    for l in lineas_fuera:
+        # Mantener indentación relativa
+        lineas_nuevas.append("    " + l.strip())
+    lineas_nuevas.append("    retornar 0")
+    
+    return "\n".join(lineas_nuevas)
+
+
 def transpilar_codigo_python(codigo_python: str) -> str:
     """Función principal de transpilación: Python → Syquex."""
     resultado = transpilar_bloque(codigo_python)
+    
+    # Envolver código de nivel superior en funcion principal()
+    resultado = _envolver_en_principal(resultado)
 
     # Agregar directiva #lang: es si no existe
     if not resultado.startswith("#lang:"):
