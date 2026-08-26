@@ -14,7 +14,7 @@ from compilador.ast_nodes import (
     BloqueInseguro, NodoCoincidir,
     ImportarC, DeclaracionExterna, StmtConstante,
     SentenciaEnviarCanal, DeclaracionTipo,
-    ExprAsm,
+    ExprAsm, LlamadaFuncion,
 )
 from .context import GeneratorContext, _dividir_args_tipo
 from .emit_control import visitar_si, visitar_mientras, visitar_para, visitar_coincidir
@@ -88,6 +88,12 @@ def _recolectar_instancias_adt(ctx: GeneratorContext):
         ctx._instancias_adt[clave] = {'nombre_c': nombre_c, 'campos': campos}
 
     def _walk(nodo):
+        # H-R90-15: detectar uso de `dividir` builtin (no definido localmente)
+        # para el pre-scan antes del header mode. Duck-typing: LlamadaFuncion
+        # nombres de función.
+        nombre = getattr(nodo, 'nombre', None)
+        if nombre == 'dividir' and 'dividir' not in ctx._funciones_usuario:
+            ctx._usa_dividir = True
         if isinstance(nodo, DefinicionFuncion):
             _registrar(nodo.tipo_retorno)
             for p in nodo.parametros:
@@ -113,7 +119,8 @@ def _recolectar_instancias_adt(ctx: GeneratorContext):
             for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
                          'expresion', 'objeto', 'condicion', 'accion_critica',
                          'plan_b', 'inicializacion', 'incremento', 'casos',
-                         'valor', 'canal'):
+                         'valor', 'canal', 'funcion',
+                         'cuerpo_critico', 'cuerpo_atrapar'):
                 hijo = getattr(nodo, attr, None)
                 if hijo is None:
                     continue
@@ -338,19 +345,20 @@ def _contar_escuchar_emision(
     def _walk(nodo):
         if isinstance(nodo, SentenciaEscuchar):
             total[0] += 1
-        for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
-                     'expresion', 'objeto', 'condicion', 'accion_critica',
-                     'plan_b', 'inicializacion', 'incremento', 'casos',
-                     'valor', 'canal', 'funcion'):
-            hijo = getattr(nodo, attr, None)
-            if hijo is None:
-                continue
-            if isinstance(hijo, list):
-                for h in hijo:
-                    if hasattr(h, '__dict__'):
-                        _walk(h)
-            elif hasattr(hijo, '__dict__'):
-                _walk(hijo)
+            for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                         'expresion', 'objeto', 'condicion', 'accion_critica',
+                         'plan_b', 'inicializacion', 'incremento', 'casos',
+                         'valor', 'canal', 'funcion',
+                         'cuerpo_critico', 'cuerpo_atrapar'):
+                hijo = getattr(nodo, attr, None)
+                if hijo is None:
+                    continue
+                if isinstance(hijo, list):
+                    for h in hijo:
+                        if hasattr(h, '__dict__'):
+                            _walk(h)
+                elif hasattr(hijo, '__dict__'):
+                    _walk(hijo)
 
     funciones = sorted(
         [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)],
@@ -1175,6 +1183,24 @@ class GeneradorC:
 
     def _emit_prototipos_funciones(self, ctx):
         """Helper: forward-declares de funciones (prototipos) en orden alfabético (Manual 8 §8.2)."""
+        # H-R90-14b: stubs para funciones de test FFI no definidas en runtime.
+        # NOTA: los stubs con structs (dividir) se emiten DESPUÉS de los
+        # typedefs ADT (línea _emitir_typedefs_instancias, antes de esta función)
+        # — disponibles tanto en header mode como en body mode.
+        # El pre-scan (línea ~1471) detecta uso de dividir ANTES del header.
+        if getattr(ctx, '_usa_dividir', False) and 'dividir' not in ctx._RUNTIME_BUILTINS and 'dividir' not in ctx._funciones_usuario:
+            ctx.write_line(
+                'static inline Resultado_decimal_texto dividir(double a, double b) { '
+                'if (b == 0.0) { return (Resultado_decimal_texto){.tag=1, .dato.err=(CadenaSegura){.longitud=13, .datos="División por cero"}}; } '
+                'return (Resultado_decimal_texto){.tag=0, .dato.ok=(a / b)}; }'
+            )
+        _STUBS = {
+            'risky_call': 'static inline int risky_call(void) { return 0; }',
+        }
+        # Emitir stubs SOLO si la función no está en runtime ni definida local
+        for name, stub in sorted(_STUBS.items()):
+            if name not in ctx._RUNTIME_BUILTINS and name not in ctx._funciones_usuario:
+                ctx.write_line(stub)
         _SPECIAL_SIGS = {
             # A5.2 (D-7): tokenizar/generar retornan `entero` (Manual 2 §4.1
             # L267-268) → int64_t en C; 'int' entraba en conflicto con la
@@ -1221,10 +1247,25 @@ class GeneradorC:
             ctx.write_line("")
 
     def _emit_main(self, ctx, scope_names: set[str] | None = None):
-        """Helper: emite main() SOLO si existe funci\u00f3n 'principal' en este m\u00f3dulo
-        y est\u00e1 dentro del alcance (scope_names)."""
+        """Helper: emite main() SOLO si existe función 'principal' en este módulo
+        y está dentro del alcance (scope_names). Si no hay principal, emite un
+        main() stub (H-R90-8) para permitir compilar bibliotecas sin entry point."""
         principal = ctx.encontrar_principal()
         if principal is None:
+            # H-R90-8: programa sin 'funcion principal' — main stub que
+            # enlaza y retorna 0 (útil para tests de compilación de funciones
+            # individuales, Manual 3 §3 L78: principal es el entry point opcional
+            # en .syq que solo prueban sintaxis de funciones auxiliares).
+            ctx.write_line("int main(int argc, char** argv) {")
+            ctx.inc_indent()
+            ctx.write_line("(void)argc; (void)argv;")
+            ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
+            ctx.write_line("synapse_esperar_hilos();")
+            ctx.write_line("synapse_esperar_fibras();")
+            ctx.write_line("pool_destroy();")
+            ctx.write_line("return 0;")
+            ctx.dec_indent()
+            ctx.write_line("}")
             return
         if scope_names is not None and principal not in scope_names:
             return
@@ -1429,7 +1470,39 @@ class GeneradorC:
         # un struct C especializado por cada instanciación concreta.
         _recolectar_instancias_adt(ctx)
 
+        # H-R90-15: pre-scan dedicado — detectar uso de `dividir` builtin (no
+        # definido localmente) ANTES del header mode, para emitir el stub inline.
+        def _prescan_dividir(nodo):
+            if getattr(nodo, 'nombre', None) == 'dividir':
+                if 'dividir' not in ctx._funciones_usuario:
+                    ctx._usa_dividir = True
+                    return True
+            for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                         'expresion', 'objeto', 'condicion', 'accion_critica',
+                         'plan_b', 'inicializacion', 'incremento', 'casos',
+                         'derecho', 'izquierdo', 'valor', 'canal', 'funcion',
+                         'cuerpo_critico', 'cuerpo_atrapar'):
+                hijo = getattr(nodo, attr, None)
+                if hijo is None:
+                    continue
+                if isinstance(hijo, list):
+                    for h in hijo:
+                        if hasattr(h, '__dict__') and _prescan_dividir(h):
+                            return True
+                elif hasattr(hijo, '__dict__') and _prescan_dividir(hijo):
+                    return True
+            return False
+        for _stmt in ctx.programa.sentencias:
+            _prescan_dividir(_stmt)
+
+        # H-R90-13: registrar definiciones de funciones para resolver
+        # parámetros con valor por defecto (Manual 3 §3: parametro = expr)
+        for s in ctx.programa.sentencias:
+            if isinstance(s, DefinicionFuncion):
+                ctx._funciones_usuario[s.nombre] = s
+
         if modo == 'header':
+            ctx._modo = 'header'
             # Solo cabecera: #includes, tipos, prototipos + extern declarations
             # IMPORTANTE: NO llamar _emit_cabecera_comun (emite DEFINICIONES _g_argc/_argc/salir/concat)
             # M22.2: Declarar extern de variables de scope RAII

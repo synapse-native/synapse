@@ -162,12 +162,24 @@ funcion parse_mult_sq(est: ParserEst) -> entero:
     r = 1
     mientras r == 1:
         t = token_mirar(est)
-        si sq_es_op_mult(t) == 1:
+        si t == T_FLECHA_IZQ:
+            // H-R90-7: canal <- valor (NODO_ENVIAR_CANAL)
+            e_linea = token_linea(est, est.posicion)
+            e_col = token_columna(est, est.posicion)
             token_avanzar(est)
             der = parse_unario_sq(est)
-            izq = sq_binaria(est, izq, sq_codigo_mult(t), der)
+            n = sq_nuevo(est, NODO_ENVIAR_CANAL, e_linea, e_col)
+            inseguro:
+                asm("est->nodos[n].hijo_izq = izq")
+                asm("est->nodos[n].hijo_der = der")
+            izq = n
         sino:
-            r = 0
+            si sq_es_op_mult(t) == 1:
+                token_avanzar(est)
+                der = parse_unario_sq(est)
+                izq = sq_binaria(est, izq, sq_codigo_mult(t), der)
+            sino:
+                r = 0
     retornar izq
 
 funcion parse_unario_sq(est: ParserEst) -> entero:
@@ -361,7 +373,17 @@ funcion parse_postfix_sq(est: ParserEst) -> entero:
                                 asm("est->nodos[n].hijo_izq = base")
                             base = n
                         sino:
-                            salir = 1
+                            si t == T_FLECHA:
+                                // H-R90-7: canal -> recibe un valor del canal (NODO_RECIBIR_CANAL)
+                                r_linea = token_linea(est, est.posicion)
+                                r_col = token_columna(est, est.posicion)
+                                token_avanzar(est)
+                                n = sq_nuevo(est, NODO_RECIBIR_CANAL, r_linea, r_col)
+                                inseguro:
+                                    asm("est->nodos[n].hijo_izq = base")
+                                base = n
+                            sino:
+                                salir = 1
     retornar base
 
 funcion sq_lexema_contiene_punto_o_e(est: ParserEst, pos: entero) -> entero:

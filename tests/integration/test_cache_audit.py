@@ -136,7 +136,7 @@ def test_cache_determinismo():
 def test_axon_lock_existente():
     """Ejecutar test_axon_e2e.py existente"""
     print("\n--- [Axon T1] Suite E2E existente ---")
-    rc, out, err = run([PYTHON, "tests/test_axon_e2e.py"], timeout=60)
+    rc, out, err = run([sys.executable, "-m", "pytest", "tests/integration/test_axon_e2e.py", "-v", "--tb=short"], timeout=120)
     check("test_axon_e2e.py ejecuta sin error", rc == 0, err[-300:] + out[-300:])
     assert FAIL == 0, "Checks fallaron"
 

@@ -390,7 +390,8 @@ externo funcion ws_ultima_robada() -> texto
 externo funcion ws_reenviar_respuesta(ip: texto, puerto: entero, respuesta: texto) -> entero
 
 // ============================================================
-// Funciones Externas — M8.3 (Raft Consensus)
+// Funciones Externas — M8.3 (Raft Consensus, tolerante a fallos)
+// Manual 5 §6.5: sistemas distribuidos tolerantes a fallos
 // ============================================================
 
 // raft_inicializar — Inicializa estado Raft para un nodo
@@ -448,6 +449,33 @@ externo funcion raft_reiniciar_nodo(node_id: entero) -> entero
 
 // raft_info — Retorna string diagnóstico "term,state,leader,log,commit"
 externo funcion raft_info(node_id: entero) -> texto
+
+// ============================================================
+// Funciones Externas — Work-Stealing Scheduler (Manual 5 §6.5)
+// ============================================================
+
+// Worker — Worker del scheduler de fibras con work-stealing.
+// Manual 5 §6.5: cola_local es un deque (double-ended queue) por hilo OS.
+// Worker con cola_local para balanceo de carga entre hilos.
+estructura Worker:
+    hilo_os: entero        // pthread_t del hilo OS (identificador)
+    cola_local: entero    // índice base de la cola local de fibras (deque)
+    cola_primero: entero  // índice del primer elemento (pop local)
+    cola_ultimo: entero   // índice del último elemento (push local / pop remoto)
+    num_workers: entero   // número total de workers
+
+// worker_ejecutar — Ejecuta el bucle principal del worker:
+//   procesa fibras de su cola_local; si está vacía, roba (worker_robar).
+//   balanceo correcto entre hilos (Manual 5 §6.5).
+externo funcion worker_ejecutar(worker_id: entero) -> entero
+
+// worker_robar — Roba una fibra de la cola_local de otro worker.
+//   Retorna el ID de la fibra robada, o -1 si no hay nada que robar.
+//   Work-stealing: balanceo de carga entre hilos del sistema.
+externo funcion worker_robar(worker_id: entero) -> entero
+
+// worker_cola_vacia — Retorna 1 si la cola_local del worker está vacía.
+externo funcion worker_cola_vacia(worker_id: entero) -> entero
 
 // ============================================================
 // Funciones Externas — M8.4 (Checkpoint/Restore — Migración Live)

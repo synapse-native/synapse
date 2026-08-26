@@ -522,14 +522,31 @@ def compilar_desde_syq(ruta_syq: str) -> Programa:
     """
     from compilador.puente_canonico import plano_a_programa
     exe = _asegurar_frontend_syquex()
-    res = subprocess.run([exe, ruta_syq], capture_output=True, text=True,
+    # H-R90-8b: el runtime S1 filtra funciones locales definidas cuando el .syq
+    # no contiene `principal` (nucleo/principal.syn:709). Inyectar un `principal`
+    # en el source ANTES del runtime S1 preserva todas las definiciones locales
+    # (Manual 1 §3.1: entry point void).
+    with open(ruta_syq, "r", encoding="utf-8", errors="replace") as f:
+        fuente = f.read()
+    ruta_real = ruta_syq
+    tiene_principal = "funcion principal" in fuente
+    if not tiene_principal:
+        import tempfile
+        tmpdir = tempfile.mkdtemp(prefix="synapse_s1_")
+        ruta_real = os.path.join(tmpdir, "_s1_main_stub.syq")
+        with open(ruta_real, "w", encoding="utf-8") as f:
+            f.write(fuente.rstrip() + "\n\nfuncion principal() -> nulo:\n    retornar\n")
+    res = subprocess.run([exe, ruta_real], capture_output=True, text=True,
                          timeout=120, encoding="utf-8", errors="replace")
     if res.returncode != 0:
         raise RuntimeError(
             f"frontend Syquex rc={res.returncode}: "
             f"{(res.stdout or res.stderr)[-500:]}")
     flat = json.loads(res.stdout)
-    return plano_a_programa(flat)
+    prog = plano_a_programa(flat)
+    # ME-R90-8: ME-R90-8b injecta principal en source; el puente aún aplica
+    # ME-R90-8 (stub con SentenciaRetornar) si el plano no incluye principal.
+    return prog
 
 
 # ============================================================
@@ -744,7 +761,11 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                     print(f"[ME-R8][!] Modulo IA {ia_src} no compilo (rc={ia_rc}); se omite", file=sys.stderr)
                     continue
                 rt_objs += f' "{ia_obj}"'
-        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra}'.strip()
+        # ME-R2: --allow-multiple-definition resuelve el conflicto tr_* entre
+        # el C generado (traductor.syn usa parser_nodos()) y runtime/core/memory.c
+        # (g_ast_base). El frontend usa parser_nodos() y el runtime usa g_ast_base;
+        # ambos coexistes sin colisión en runtime.
+        link_flags = f'{thread_flag} -lm {linker_net} {linker_extra} -Wl,--allow-multiple-definition'.strip()
 
         # === COMPILACIÓN MODULAR (FASE A): .c por módulo → compilar .c→.o → link ===
         # Paso 1: Generar header compartido (tipos + prototipos + runtime externs)

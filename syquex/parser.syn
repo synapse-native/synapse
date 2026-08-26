@@ -87,6 +87,13 @@ funcion sq_declaracion(est: ParserEst) -> entero:
     t = token_mirar(est)
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
+    si t == T_IMPORTAR:
+        token_avanzar(est)
+        nombre = sq_id(est)
+        n = sq_nuevo(est, NODO_IMPORTAR, linea, col)
+        sq_copiar_nombre(est, n, nombre)
+        saltar_nl(est)
+        retornar n
     si t == T_FUNCION:
         retornar sq_funcion(est)
     si t == T_ESTRUCTURA:

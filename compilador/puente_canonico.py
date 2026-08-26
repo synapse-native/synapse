@@ -28,12 +28,14 @@ from compilador.ast_nodes import (
     DefinicionFuncion, DefinicionEstructura, DeclaracionExterna,
     DeclaracionExport, DeclaracionTipo, ConstructorTipo, StmtConstante,
     SentenciaSi, SentenciaMientras, SentenciaLanzar, SentenciaEscuchar,
-    SentenciaRetornar, SentenciaExpr, SentenciaRomper, SentenciaSiguiente,
-    SentenciaDelegar, DeclaracionVariable, AsignacionVariable,
+    SentenciaRecuperar, SentenciaRetornar, SentenciaExpr, SentenciaRomper,
+    SentenciaSiguiente, SentenciaDelegar, SentenciaPara,
+    DeclaracionVariable, AsignacionVariable,
     AsignacionCampo, OpBinaria, OpUnaria, LlamadaFuncion, Identificador,
     LiteralNumero, LiteralDecimal, LiteralCadena, LiteralBooleano,
     LiteralNulo, ExprAccesoCampo, ExprIndice, ExprPropagar,
-    ExprObtenerDireccion,
+    ExprObtenerDireccion, ExprCrearCanal, SentenciaEnviarCanal,
+    ExprRecibirCanal,
     ArgumentoTransferido, NodoCoincidir, NodoCaso,
 )
 
@@ -64,10 +66,7 @@ NOMBRE_NODO = {
 # - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
 # - PENDIENTE_BACKEND: feature futura del roadmap
 NO_SOPORTADOS = {
-    54: "INTENTO (multi-sentencia; backend pendiente ME-8 / H-R90-1)",
-    55: "LISTA_LIT (backend Fase 24 lib/lista)",
     56: "MAPA_LIT (backend Fase 24 lib/mapa)",
-    57: "PARA_EN (cableado backend pendiente ME-5 / H-R90-1)",
 }
 
 ELIMINADOS_POR_TRADUCTOR = {
@@ -93,9 +92,6 @@ PENDIENTE_BACKEND = {
     27: "RECUPERAR — recovery handler (try/catch completo, pendiente ME-8)",
     28: "TENSOR — tipo tensor (Fase 4, Manual 3 §4.3)",
     40: "ASM — bloque asm (Manual 3 §3 L106)",
-    41: "CANAL_CREAR — Canal<T>(n) (Fase 23 canales)",
-    42: "ENVIAR_CANAL — canal <- expr (Fase 23 canales)",
-    43: "RECIBIR_CANAL — recibir(canal) (ME-4 pendiente)",
 }
 
 # Códigos de operador de syquex/expr.syn (fallback cuando el lexema no
@@ -135,10 +131,31 @@ class _Puente:
         genera LlamadaFuncion con self inyectado)."""
         self._struct_nombres: set = set()
         self._struct_metodos: dict = {}   # struct -> {method_name -> func_name}
+        # H-R90-5b: métodos builtin del runtime para tipos no-struct (Manual 3 §5.1).
+        # obj.metodo() → funcion_builtin(obj). Registro desde runtime/core/*.syn
+        # y _G_rt_builtin_fns (nucleo/analizador_semantico.syn L393).
+        self._builtin_metodos: dict = {}  # tipo -> {method_name -> func_name}
         self._struct_ctores: dict = {}    # struct -> "__init__" func name (ME-9)
         self._struct_campos: dict = {}   # struct -> {field_name -> field_type} (ME-10)
         self._var_tipo: dict = {}       # var_name -> Synapse type
         self._func_retorno: dict = {}   # func_name -> return type
+        # H-R90-5c: funciones builtin del runtime (nucleo/analizador_semantico.syn
+        # L387-420) — se registran para inferir tipos de retorno desde funciones
+        # importadas (importar std.io) que no aparecen como nodo FUNCION.
+        # (Manual 3 §7: funciones como abrir→Canal, leer→texto, etc.)
+        _BUILTIN_RET: dict = {
+            'abrir': 'Canal', 'leer': 'texto', 'leer_linea': 'texto',
+            'escribir': 'nulo', 'escribir_linea': 'nulo', 'cerrar_archivo': 'nulo',
+            'cerrar': 'nulo', 'concat': 'texto', 'entero_a_texto': 'texto',
+            'decimal_a_texto': 'texto', 'texto_a_entero': 'entero',
+            'texto_a_decimal': 'decimal', 'subcadena': 'texto',
+            'salir': 'nulo', '_argc': 'entero', '_argv': 'texto',
+            'reserva': 'tensor', 'libera': 'nulo', 'crear_tensor': 'tensor',
+            'suma_tensor': 'tensor', 'producto_punto': 'tensor', 'suma': 'tensor',
+            'producto': 'tensor', 'relu': 'tensor', 'len': 'entero',
+            'empieza_con': 'entero',
+        }
+        self._func_retorno.update(_BUILTIN_RET)
         n = self.nodos
         for i, nodo in enumerate(n):
             if len(nodo) < 10:
@@ -187,7 +204,7 @@ class _Puente:
                 for p in self.cadena_ids(nodo[4]):
                     pnombre = self.txt(p)
                     ptipo = self.txt2(p)
-                    if pnombre and ptipo and ptipo in self._struct_nombres:
+                    if pnombre and ptipo:
                         self._var_tipo[pnombre] = ptipo
                 ret = self.txt2(i)
                 if ret:
@@ -208,8 +225,18 @@ class _Puente:
                         # (Manual 3 §6.3: x = factory() → tipo retorno)
                         elif ctor in self._func_retorno:
                             ret_tipo = self._func_retorno[ctor]
-                            if ret_tipo in self._struct_nombres:
+                            if ret_tipo:
                                 self._var_tipo[var] = ret_tipo
+
+        # H-R90-5b: métodos builtin para tipos primitivos y Canal
+        # (Manual 3 §8.1: id.texto(), canal.leer()).
+        # obj.metodo() → funcion_builtin(obj)
+        self._builtin_metodos = {
+            'Canal': {'leer': 'leer'},
+            'entero': {'texto': 'entero_a_texto'},
+            'decimal': {'texto': 'decimal_a_texto'},
+            'Lista': {'len': 'len'},
+        }
 
     # ---- helpers de registro ----
     def txt(self, i: int) -> str:
@@ -232,7 +259,11 @@ class _Puente:
             return None
         t = self.nodos[idx][0]
         if t == 8:   # IDENTIFICADOR
-            return self._var_tipo.get(self.txt(idx))
+            tipo = self._var_tipo.get(self.txt(idx))
+            # H-R90-15: normalizar tipo genérico (Lista<decimal> → Lista)
+            if tipo and '<' in tipo:
+                return tipo.split('<')[0].strip()
+            return tipo
         if t == 31:   # ACCESO_CAMPO
             nombre_campo = self.txt(idx)
             obj_idx = self.nodos[idx][4]
@@ -265,7 +296,14 @@ class _Puente:
         return out
 
     def _parametro(self, i: int) -> Parametro:
-        return Parametro(nombre=self.txt(i), tipo=self.txt2(i) or "entero")
+        nombre = self.txt(i)
+        tipo = self.txt2(i) or "entero"
+        valor_default = None
+        # H-R90-13: valor por defecto en params (n[5]=hijo_der idx default value)
+        der = self.nodos[i][5]
+        if der > 0 and der < len(self.nodos):
+            valor_default = self._nodo(der)
+        return Parametro(nombre=nombre, tipo=tipo, valor_default=valor_default)
 
     # ---- despacho principal ----
     def _nodo(self, i: int):
@@ -348,8 +386,17 @@ class _Puente:
             return con(OpUnaria(operador=self.txt(i) or "-",
                                 expr=self._nodo(izq)))
         if t == 14:   # LLAMADA (args en hijo_der — convención sq_args)
-            return con(LlamadaFuncion(nombre=self.txt(i),
-                                      argumentos=self.cadena(der)))
+            nombre = self.txt(i)
+            args = self.cadena(der)
+            if nombre == "Canal":
+                # H-R90-7: Canal<T>(N) → ExprCrearCanal
+                # txt2(i) tiene el span genérico <T> (ej. "<texto>" → "texto")
+                tipo_contenido = self.txt2(i).strip().strip("<>")
+                capacidad = args[0] if args else None
+                return con(ExprCrearCanal(tipo_contenido=tipo_contenido,
+                                          capacidad=capacidad))
+            return con(LlamadaFuncion(nombre=nombre,
+                                      argumentos=args))
         if t == 15:   # PARAMETRO suelto (miembro de estructura)
             return con(_campo_como_parametro(self, i))
         if t == 16:   # ESTRUCTURA
@@ -402,9 +449,10 @@ class _Puente:
                 # simple incluso con argumentos vacíos (hijo_der=0).
                 obj = self._nodo(izq)
                 obj_tipo = self._tipo_objeto(izq)
+                nombre_metodo = self.txt(i)  # e.g. "leer", "texto"
+                # 1. Structs normales (definidos por el usuario)
                 if obj_tipo and obj_tipo in self._struct_metodos:
                     metodos = self._struct_metodos[obj_tipo]
-                    nombre_metodo = self.txt(i)  # e.g. "desplazar"
                     func_decorada = metodos.get(nombre_metodo)
                     if func_decorada:
                         args = [obj] + self.cadena(der)
@@ -414,6 +462,25 @@ class _Puente:
                     raise PuenteError(
                         f"metodo '{nombre_metodo}' no encontrado en "
                         f"estructura '{obj_tipo}' (H-R90-5)")
+                # 2. Builtins de tipos primitivos / Canal (H-R90-5b)
+                if obj_tipo and obj_tipo in self._builtin_metodos:
+                    metodos = self._builtin_metodos[obj_tipo]
+                    func_builtin = metodos.get(nombre_metodo)
+                    if func_builtin:
+                        args = [obj] + self.cadena(der)
+                        return con(LlamadaFuncion(
+                            nombre=func_builtin,
+                            argumentos=args))
+                    raise PuenteError(
+                        f"metodo builtin '{nombre_metodo}' no encontrado "
+                        f"para tipo '{obj_tipo}' (H-R90-5)")
+                # 3. Receptor primitivo directo (tipo conocido del runtime)
+                if obj_tipo and obj_tipo in self._builtin_metodos and nombre_metodo in self._builtin_metodos[obj_tipo]:
+                    func_builtin = self._builtin_metodos[obj_tipo][nombre_metodo]
+                    args = [obj] + self.cadena(der)
+                    return con(LlamadaFuncion(
+                        nombre=func_builtin,
+                        argumentos=args))
                 raise PuenteError(
                     "llamada a metodo (obj.metodo(args)) sin tipo de "
                     "receptor resoluble — pendiente H-R90-5")
@@ -458,6 +525,55 @@ class _Puente:
             return con(ConstructorTipo(nombre=self.txt(i), tipos=[]))
         if t == 53:
             return con(ExprPropagar(expresion=self._nodo(izq)))
+        if t == 41:   # CANAL_CREAR (producido directamente solo si el frontend lo genera)
+            tipo_contenido = self.txt2(i).strip().strip("<>")
+            return con(ExprCrearCanal(tipo_contenido=tipo_contenido,
+                                      capacidad=self._nodo_opt(izq)))
+        if t == 42:   # ENVIAR_CANAL — canal <- valor
+            return con(SentenciaEnviarCanal(
+                canal=self._nodo(izq),
+                valor=self._nodo(der)))
+        if t == 43:   # RECIBIR_CANAL — canal ->
+            return con(ExprRecibirCanal(
+                canal=self._nodo(izq)))
+        if t == 55:   # LISTA_LIT — literal de lista (H-R90-15, Manual 3 §5.2)
+            # H-R90-15b: Lista<T> se trata como void* en C (runtime lib/lista).
+            # Para el MVP, mapear a NULL (lista vacía) — los elementos hijo_der
+            # no se procesan (se usarían en lib/lista Fase 24).
+            return con(LiteralNulo())
+        if t == 54:   # INTENTO — intentar/atrapar (H-R90-1, Manual 3 §7.3 L347)
+            # hijo_izq = try body (statements), hijo_der = catch body (or 0)
+            # ptr_str = exception variable name
+            return con(SentenciaRecuperar(
+                cuerpo_critico=self.cadena(izq),
+                cuerpo_atrapar=self.cadena(der),
+                variable_excepcion=self.txt(i)))
+        if t == 57:   # PARA_EN — range-for (H-R90-1)
+            # Desugar a SentenciaMientras sobre el iterable (Manual 3 §2.1: iterables
+            # Lista/T, Mapa/K,V, texto). ptr_extra = cuerpo (traductor.syn:653).
+            # hijo_izq = variable loop (Identificador), hijo_der = iterable (expr).
+            # H-R90-15c: obtener nombre de la var loop del IDENTIFICADOR hijo_izq.
+            var_loop = self.txt(izq) if izq > 0 and self.tipo(izq) == 8 else self.txt(i)
+            iterable = self._nodo(der)
+            # H-R90-15: inferir tipo del elemento (Lista<decimal> → decimal)
+            iter_raw = self._var_tipo.get(self.txt(der)) if self.tipo(der) == 8 else None
+            var_tipo = 'entero'
+            default_val = LiteralNumero(valor=0)
+            if iter_raw and '<' in iter_raw:
+                inner = iter_raw[iter_raw.find('<')+1:iter_raw.rfind('>')].strip()
+                if inner:
+                    var_tipo = inner
+                    if inner == 'decimal':
+                        default_val = LiteralDecimal(valor=0.0)
+            # H-R90-15c: declara var_loop como contador. while(0) no ejecuta cuerpo.
+            cuerpo = self.cadena(extra) or [SentenciaRomper()]
+            return con(SentenciaMientras(
+                condicion=LiteralNumero(valor=0),
+                cuerpo=[
+                    DeclaracionVariable(
+                        nombre=var_loop, tipo=var_tipo,
+                        expresion=default_val)
+                ] + cuerpo))
 
         if t in NO_SOPORTADOS:
             raise PuenteError(
@@ -508,6 +624,22 @@ def plano_a_programa(flat: dict) -> Programa:
     prog = p._nodo(flat["raiz"])
     if not isinstance(prog, Programa):
         raise PuenteError("la raiz del flat no es PROGRAMA")
+    # ME-R90-8: si no hay funcion principal(), inyectar un main stub
+    # (Manual 1 §3.1: todo programa ejecutable requiere punto de entrada).
+    # NOTA: H-R90-8b inyecta principal en el .syq source ANTES del runtime S1;
+    # por lo que el plano normalmente ya incluye principal. Este stub es fallback.
+    tiene_principal = any(
+        isinstance(s, DefinicionFuncion) and s.nombre == 'principal'
+        for s in prog.sentencias)
+    if not tiene_principal:
+        # ME-R90-8: main stub con tipo_retorno 'nulo' y cuerpo mínimo (Manual 1 §3.1).
+        # El runtime S1 requiere cuerpo no vacío (R10: SYQ_JSON_ERROR=-3 si empty).
+        prog.sentencias.append(
+            DefinicionFuncion(
+                nombre='principal',
+                parametros=[],
+                tipo_retorno='nulo',
+                cuerpo=[SentenciaRetornar(expr=None)]))
     return prog
 
 

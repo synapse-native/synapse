@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     ExprPropagar, DefinicionFuncion, Parametro,
 )
 from compilador.diagnostics import ErrorCodes
-from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
+from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, _BUILTIN_PARAMS_DEFAULT, AnalizadorSemanticoScope
 # 2.4: Hindley-Milner (Manual 2 §8.2) — representación estructurada de tipos
 # (TipoKind) y unificación con occurs check para validar argumentos de tipo.
 from compilador.tipos import (
@@ -329,12 +329,16 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             # unificación de TVar y occurs check.
             if self._firma_generica(def_func):
                 return self._inferir_llamada_hm(nodo, def_func)
-            if len(nodo.argumentos) != len(def_func.parametros):
+            # H-R90-13: permitir omitir params con valor por defecto
+            n_params = len(def_func.parametros)
+            n_args = len(nodo.argumentos)
+            n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
+            if n_args < n_params - n_default or n_args > n_params:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre,
-                    esperados=len(def_func.parametros)
+                    esperados=n_params
                 )
                 return def_func.tipo_retorno
             for i, (arg, param) in enumerate(zip(nodo.argumentos, def_func.parametros)):
@@ -362,12 +366,17 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         if nodo.nombre in _FUNCIONES_BUILTIN:
             sig = _FUNCIONES_BUILTIN[nodo.nombre]
             tipos_esperados, tipo_retorno = sig
-            if len(nodo.argumentos) != len(tipos_esperados):
+            # H-R90-13: permitir omitir params con valor por defecto
+            n_args = len(nodo.argumentos)
+            n_params = len(tipos_esperados)
+            idx_defaults = _BUILTIN_PARAMS_DEFAULT.get(nodo.nombre, [])
+            n_min = n_params - len(idx_defaults)
+            if n_args < n_min or n_args > n_params:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre,
-                    esperados=len(tipos_esperados)
+                    esperados=n_params
                 )
                 return tipo_retorno
             for i, (arg, esperado) in enumerate(zip(nodo.argumentos, tipos_esperados)):
@@ -375,6 +384,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 if tipo_arg and _tipo_normalizado(tipo_arg) != _tipo_normalizado(esperado):
                     # Allow int/decimal -> texto only for concat (string interpolation)
                     if esperado == 'texto' and tipo_arg in ('int', 'decimal') and nodo.nombre == 'concat':
+                        continue
+                    # H-R90-15: len() acepta Lista<T> (Manual 3 §5.2)
+                    if nodo.nombre == 'len' and tipo_arg and tipo_arg.startswith('Lista'):
+                        continue
+                    # H-R90-15b: [] lista literal (inferido como void*/nulo)
+                    # compatible con Lista<T> en assignación de param
+                    if tipo_arg in ('void*', 'nulo', 'puntero') and esperado.startswith('Lista'):
                         continue
                     # Allow void* to accept numeric types (pointer arithmetic)
                     if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
@@ -553,11 +569,15 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         # La firma ya se validó en pasada 2 (_analizar_funcion ->
         # _validar_firma_funcion); no repetir aquí para evitar duplicados.
         conocidos = set(self._estructuras) | set(self._adt_parametros)
-        if len(nodo.argumentos) != len(def_func.parametros):
+        # H-R90-13: permitir omitir params con valor por defecto
+        n_params = len(def_func.parametros)
+        n_args = len(nodo.argumentos)
+        n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
+        if n_args < n_params - n_default or n_args > n_params:
             self.diag.reportar(
                 ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                 self._token(nodo.linea, nodo.columna),
-                nombre=nodo.nombre, esperados=len(def_func.parametros)
+                nombre=nodo.nombre, esperados=n_params
             )
             return self._instanciar_retorno(def_func, uf, contador, tvars,
                                             tvar_cache, conocidos,

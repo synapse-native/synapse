@@ -589,11 +589,16 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, SentenciaMientras):
             tipo_cond = self._inferir_tipo(nodo.condicion)
             if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
-                self.diag.reportar(
-                    ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                    self._token(nodo.linea, nodo.columna),
-                    tipo1=tipo_cond, tipo2='int', operacion='condicion mientras'
-                )
+                # H-R90-15c: range-for lowering usa iterable como condición
+                # (Lista<T>/texto → iterable válido como bool en C)
+                if not (tipo_cond and (tipo_cond.startswith('Lista')
+                                       or tipo_cond.startswith('Mapa')
+                                       or tipo_cond in ('texto', 'cadena', 'puntero', 'void*'))):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(nodo.linea, nodo.columna),
+                        tipo1=tipo_cond, tipo2='int', operacion='condicion mientras'
+                    )
             self.tabla.entrar_scope()
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
@@ -605,11 +610,17 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if nodo.condicion:
                 tipo_cond = self._inferir_tipo(nodo.condicion)
                 if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                        self._token(nodo.linea, nodo.columna),
-                        tipo1=tipo_cond, tipo2='int', operacion='condicion para'
-                    )
+                    # H-R90-15c: range-for sobre colecciones iterables (Manual 3 §2.1)
+                    # Lista<T>, Mapa<K,V>, texto son iterables válidos
+                    if not (tipo_cond and (tipo_cond.startswith('Lista')
+                                           or tipo_cond.startswith('Mapa')
+                                           or tipo_cond == 'texto'
+                                           or tipo_cond == 'cadena')):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                            self._token(nodo.linea, nodo.columna),
+                            tipo1=tipo_cond, tipo2='int', operacion='condicion para'
+                        )
             if nodo.incremento:
                 self._analizar_sentencia(nodo.incremento)
             for s in nodo.cuerpo:
@@ -659,8 +670,18 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
         elif isinstance(nodo, SentenciaRecuperar):
-            self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
-            self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
+            if nodo.cuerpo_critico:
+                for s in nodo.cuerpo_critico:
+                    self._analizar_sentencia(s)
+                if nodo.cuerpo_atrapar:
+                    # H-R90-14: registrar variable_excepcion en scope (Manual 3 §7.3)
+                    if nodo.variable_excepcion:
+                        self.tabla.declarar(nodo.variable_excepcion, 'texto', nodo)
+                    for s in nodo.cuerpo_atrapar:
+                        self._analizar_sentencia(s)
+            else:
+                self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
+                self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
         elif isinstance(nodo, BloqueInseguro):
             self.tabla.entrar_scope()
             _prev_inseguro = self._dentro_de_inseguro

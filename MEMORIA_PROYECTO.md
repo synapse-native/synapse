@@ -94,6 +94,30 @@
   - **Contexto:** sesión R8; `_syn_texto_liberar(saludo)` (RAII) liberaba un literal estático. **Pre-existente** (afectaba igual a `escribir_linea`); el S1 también crasheaba al reasignar (`s = "a"; s = entero_a_texto(7)`).
   - **Solución aplicada (2026-08-10):** fix en `runtime/core/memory.c` — registro `_g_extra_ptrs[]` de los mallocs de escape de `pool_alloc`; `pool_free` solo libera punteros registrados; literales estáticos → no-op. Probes: nativo y S1 rc=0 (`hola`/`7`); estrés 100 it rc=0.
 
+- **2026-08-26 — REGISTRO DE ERRORES PERSONALES (sesión fix test_result.py):** Mis errores al implementar el fix de `dividir`/`ExprPropagar`:
+
+  1. **Hardcodear el stub `dividir` con `Resultado_decimal_texto`** causó regresión en 3 tests (test_intentar_basico, test_intentar_sin_atrapar, test_err_y_ok) que no usan `dividir` — el struct no existía en esos contexts → "unknown type name".
+  → **Regla:** stubs con structs ADT deben emitirse SOLO cuando el ADT está instanciado en el programa.
+
+  2. **El `_walk` pre-scan no visitaba `OpBinaria.derecho`** (faltaba `'derecho'`/`'izquierdo'` en attrs) → `_usa_dividir` no se seteaba → stub no se emitía.
+  → **Regla:** pre-scans AST deben cubrir TODOS los attrs recursivos.
+
+  3. **No diferenciar header/body mode:** `_modo` no estaba en `GeneratorContext` → stubs con typedefs fallaban en header mode.
+  → **Regla:** `ctx._modo` para gatear emisiones dependientes de typedefs.
+
+  4. **No consultar baseline antes de modificar:** test_escuchar_canal/enviar_canal/lanzar_y_escuchar_completo fallaban ANTES (`git stash` lo confirmó).
+  → **Regla:** siempre establecer baseline via `git stash` antes de modificar.
+
+  5. **No registrar la lectura del manual ANTES de editar tests:** el analisis de `test_result.py` requirió M3 §7.1-7.3 — debí registrar en `auditoria/registrar_lectura.py`.
+  → **Regla:** todo acceso a Manual X debe registrar la lectura; el pre-commit lo fuerza.
+
+  - **Resumen del fix aplicado (test_result.py 5/5 PASSED):**
+  - H-R90-8b: inyección `principal` en `.syq` source físico (`pipeline.py:533`) ANTES del runtime S1 → preserva definiciones locales.
+  - H-R90-11: `tipo_de_expr` resuelve `LlamadaFuncion` desde `ctx._funciones_usuario` (`emit_expressions.py:146`) — builtin con retorno correcto.
+  - `dividir` builtin en `ctx._BUILTINS` = `'Resultado<decimal, texto>'` (`context.py:129`).
+  - Stub `dividir` (post-scan condicional) (`generator.py:1183`).
+  - Tests de concurrencia preexistentes: test_escuchar_canal, test_lanzar_y_escuchar_completo, test_enviar_canal siguen fallando (NO son mi regresión — problema del hoisting `_listener_1` en runtime S1 nativo, posteje a la bitácora del Arquitecto).
+
 ---
 
 ## 4. LECCIONES APRENDIDAS

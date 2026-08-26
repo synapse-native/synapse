@@ -126,6 +126,10 @@ class GeneratorContext:
             'ms_diff_entre': 'texto', 'ms_snapshot_contar_vars': 'int',
             'ms_snapshot_tamano': 'int', 'ms_snapshot_contiene': 'texto',
             'len': 'int', 'subcadena': 'texto', 'empieza_con': 'int',
+        # H-R90-15: dividir builtin del std.err (std/err.syn §3).
+        # Manual 3 §7.1: Resultado<decimal, texto>. Resuelta como return type
+        # (no en _RUNTIME_BUILTINS: provee stub inline en el generator).
+        'dividir': 'Resultado<decimal, texto>',
         }
         # F1.2d/F1.4 (Manual 4 §3.2-3.3, §4.2, §4.3): rc/arc/débil constructores
         # `rc(T)` → rc<T>, `débil(T)` → débil<T> / `débil(nulo)` → nil WeakRef
@@ -235,6 +239,7 @@ class GeneratorContext:
         self._variables: Dict[str, str] = {}
         self._const_types: Dict[str, str] = {}
         self._funciones_emitidas: set = set()
+        self._funciones_usuario: Dict[str, 'DefinicionFuncion'] = {}  # nombre -> DefinicionFuncion (H-R90-13: params con defaults)
         self._tensor_vars: set = set()
         self._tensor_vars_transferidas: set = set()
         self._canal_vars: set = set()
@@ -273,6 +278,8 @@ class GeneratorContext:
         self._adt_parametros['Resultado'] = ['T', 'E']
         self._adt_parametros['Opcion'] = ['T']
         self._adt_constructores['Resultado'] = [('ok', 'T'), ('err', 'E')]
+        self._modo: str = 'completo'  # H-R90-8b: track header/body/completo
+        self._usa_dividir: bool = False  # H-R90-15: flag para stub dividir
         self._adt_constructores['Opcion'] = [('algun', 'T'), ('ninguno', 'entero')]
         self._consumed_vars: set = set()  # vars already explicitly destroyed (move semantics)
         self._scope_stack: List[Dict[str, str]] = []
@@ -323,6 +330,19 @@ class GeneratorContext:
         self._POINTER_TYPES: frozenset = frozenset({
             'AnalizadorSemanticoEst', 'RegionGraph', 'UnionFind', 'ParserEst',
         })
+        # H-R90-13: valores por defecto para params de builtins omitidos (Manual 3 §3)
+        # abrir(ruta, modo="r") — cuando se llama con 1 arg, añade "r"
+        self._builtin_defaults: Dict[str, List[str]] = {
+            'abrir': ['(CadenaSegura){ .longitud = (int)strlen("r"), .datos = "r" }'],
+        }
+        # H-R90-15: métodos builtin para tipos Lista y otros (Manual 3 §5.4)
+        # obj.metodo() → funcion_builtin(obj)
+        self._builtin_metodos: Dict[str, Dict[str, str]] = {
+            'Canal': {'leer': 'leer'},
+            'entero': {'texto': 'entero_a_texto'},
+            'decimal': {'texto': 'decimal_a_texto'},
+            'Lista': {'len': 'len'},
+        }
 
         # Destructor map for RAII types
         # NOTE: Use Synapse type names (texto not CadenaSegura) for consistency
@@ -533,6 +553,9 @@ class GeneratorContext:
             args = tuple(_dividir_args_tipo(resto[:-1]))
             if (base, args) in self._instancias_adt:
                 return self._instancias_adt[(base, args)]['nombre_c']
+            # H-R90-15: Lista<T>/Mapa<K,V> son opaque types (void* en C, Manual 3 §5.2)
+            if base in ('Lista', 'Mapa'):
+                return 'void*'
         if tipo_synapse.startswith('Resultado<'):
             return 'Resultado_T'
         # M22.6: Handle pointer types (e.g. int* -> int*, not struct int*)

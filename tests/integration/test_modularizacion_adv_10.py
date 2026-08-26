@@ -116,17 +116,75 @@ class TestLinkadoModulos:
         main_c = os.path.join(TESTS_DIR, "_test_link_main.c")
         with open(main_c, 'w') as f:
             f.write("int main() { return 0; }\n")
+        # MinGW ld.bfd: cannot write to 'nul' device — use temp file output
+        temp_exe = os.path.join(TESTS_DIR, "_test_link_out.exe")
         try:
             gcc = _find_gcc()
-            cmd = [gcc, main_c, *objs_existentes, "-o", os.devnull,
-                   "-lm", "-lpthread", "-lws2_32"]
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            # Manual 1 §4: Linkado debe exitosamente (sin errores de símbolos)
-            assert r.returncode == 0, \
-                f"Linkado falló: {r.stderr[:500]}"
+            # Manual 1 §4: Linkado debe ser exitoso (sin errores de símbolos)
+            cmd = [gcc, main_c, *objs_existentes, "-o", temp_exe,
+                   "-lm", "-lpthread", "-lws2_32", "-Wl,--no-keep-memory"]
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if r.returncode == 0:
+                pass
+            elif "file truncated" in r.stderr:
+                # Workaround for MinGW ld.bfd bug #12754:
+                # Merge all .o into one relocatable via -r (no symbol
+                # resolution → less BFD memory), then final-link merged + main_c.
+                temp_obj = os.path.join(TESTS_DIR, "_test_merged.o")
+                try:
+                    cmd_m = [gcc, "-r", "-o", temp_obj, *objs_existentes,
+                             "-Wl,--no-keep-memory"]
+                    r_m = subprocess.run(
+                        cmd_m, capture_output=True, text=True, timeout=60)
+                    if r_m.returncode == 0:
+                        cmd_f = [gcc, main_c, temp_obj, "-o", temp_exe,
+                                 "-lm", "-lpthread", "-lws2_32"]
+                        r_f = subprocess.run(
+                            cmd_f, capture_output=True, text=True, timeout=30)
+                        assert r_f.returncode == 0, \
+                            f"Link final falló: {r_f.stderr[:500]}"
+                    else:
+                        # Merge of all failed — try incremental 2-stage merge
+                        temp2 = os.path.join(TESTS_DIR, "_test_m2.o")
+                        try:
+                            mid = len(objs_existentes) // 2
+                            cmd_s = [gcc, "-r", "-o", temp_obj,
+                                     *objs_existentes[:mid],
+                                     "-Wl,--no-keep-memory"]
+                            r_s = subprocess.run(
+                                cmd_s, capture_output=True, text=True,
+                                timeout=60)
+                            assert r_s.returncode == 0, \
+                                f"Merge S1 falló: {r_s.stderr[:500]}"
+                            cmd_s2 = [gcc, "-r", "-o", temp2,
+                                      temp_obj, *objs_existentes[mid:],
+                                      "-Wl,--no-keep-memory"]
+                            r_s2 = subprocess.run(
+                                cmd_s2, capture_output=True, text=True,
+                                timeout=60)
+                            assert r_s2.returncode == 0, \
+                                f"Merge S2 falló: {r_s2.stderr[:500]}"
+                            cmd_f = [gcc, main_c, temp2, "-o", temp_exe,
+                                     "-lm", "-lpthread", "-lws2_32"]
+                            r_f = subprocess.run(
+                                cmd_f, capture_output=True, text=True,
+                                timeout=30)
+                            assert r_f.returncode == 0, \
+                                f"Link final falló: {r_f.stderr[:500]}"
+                        finally:
+                            if os.path.exists(temp2):
+                                os.remove(temp2)
+                finally:
+                    if os.path.exists(temp_obj):
+                        os.remove(temp_obj)
+            else:
+                assert r.returncode == 0, \
+                    f"Linkado falló: {r.stderr[:500]}"
         finally:
             if os.path.exists(main_c):
                 os.remove(main_c)
+            if os.path.exists(temp_exe):
+                os.remove(temp_exe)
 
 
 # ---------------------------------------------------------------------------

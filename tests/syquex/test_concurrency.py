@@ -38,7 +38,7 @@ class TestRecepcionCanal:
 
     def test_canal_basico(self, compilar_syquex):
         """M3 §8.1: Canal<texto>(10) crea un canal con buffer."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion principal():
@@ -49,7 +49,7 @@ funcion principal():
 
     def test_lanzar_fibra(self, compilar_syquex):
         """M3 §8.1: lanzar trabajador(1, c) lanza una fibra."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion trabajador(id: entero, canal: Canal<texto>):
@@ -64,7 +64,7 @@ funcion principal():
 
     def test_escuchar_canal(self, compilar_syquex):
         """M3 §8.1: escuchar c: + c -> recibe un valor del canal."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion principal():
@@ -77,7 +77,7 @@ funcion principal():
 
     def test_lanzar_y_escuchar_completo(self, compilar_syquex):
         """M3 §8.1: ejemplo completo de §8.1 — lanzar + escuchar."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion trabajador(id: entero, canal: Canal<texto>):
@@ -96,7 +96,7 @@ funcion principal():
 
     def test_enviar_canal(self, compilar_syquex):
         """M3 §8.1: canal <- valor envía un valor al canal."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion productor(canal: Canal<entero>):

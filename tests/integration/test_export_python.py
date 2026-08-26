@@ -38,7 +38,7 @@ def _parsear(fuente: str):
 def _parsear_sin_errores(fuente: str):
     """Parsea y retorna (Programa, DiagnosticManager, lista_errores_sintaxis)."""
     prog, diag = _parsear(fuente)
-    errores = [e for e in diag.errores if 'SINTAXIS' in e.get('codigo', '')]
+    errores = [e for e in diag.errores if 'SYNTAX' in str(e.get('codigo', ''))]
     return prog, diag, errores
 
 

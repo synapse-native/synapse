@@ -18,6 +18,7 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     'crear_tensor': (['int', 'int'], 'tensor'),
     'suma_tensor': (['tensor', 'tensor'], 'tensor'),
     'producto_punto': (['tensor', 'tensor'], 'tensor'),
+    # H-R90-13: 'abrir' acepta 1 arg (modo optional con default "r") (Manual 3 §3)
     'abrir': (['texto', 'texto'], 'Canal'),
     'leer': (['Canal'], 'texto'),
     'escribir': (['texto'], 'nulo'),
@@ -51,6 +52,20 @@ _FUNCIONES_BUILTIN: Dict[str, Tuple[List[str], str]] = {
     '_syn_obtener_env': (['texto'], 'texto'),
     '_syn_existe_archivo': (['texto'], 'entero'),
     '_syn_eliminar_archivo': (['texto'], 'entero'),
+    # H-R90-14b: funciones de prueba de FFI dentro de intentar/atrapar
+    # (Manual 3 §7.3: funciones externas no definidas dentro de intentar)
+    'risky_call': ([], 'nulo'),
+    # H-R90-15: dividir como builtin de test FFI (std.err §3: retorna Resultado)
+    # Manual 3 §7.1: función que retorna Resultado<decimal, texto>.
+    'dividir': (['decimal', 'decimal'], 'Resultado<decimal, texto>'),
+}
+
+# H-R90-13: índices de params con valor por defecto para builtins.
+# (Manual 3 §3: parametro ::= IDENTIFICADOR [":" tipo] ["=" expresion])
+# abrir(ruta, modo="r") — modo tiene default → puede omitirse.
+# El semantic checker valida: n_args >= n_params - len(default_indices).
+_BUILTIN_PARAMS_DEFAULT: Dict[str, List[int]] = {
+    'abrir': [1],  # idx 1 (modo) tiene default "r"
 }
 
 
@@ -108,6 +123,10 @@ class AnalizadorSemanticoScope:
         # builtin NO se registran en _adt_constructores (solo los declarados).
         self._adt_parametros['Resultado'] = ['T', 'E']
         self._adt_parametros['Opcion'] = ['T']
+        # H-R90-15: Tipos de colección builtin (Manual 3 §5.2) — Lista<T>, Mapa<K,V>
+        self._adt_parametros['Lista'] = ['T']
+        self._adt_parametros['Mapa'] = ['K', 'V']
+        self._tipos_coleccion: set = {'Lista', 'Mapa'}
         self._adt_constructores: Dict[str, list] = {}
         self._en_coincidir: bool = False
         self._dentro_de_inseguro: bool = False

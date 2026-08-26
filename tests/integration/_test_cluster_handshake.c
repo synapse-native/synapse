@@ -583,9 +583,9 @@ int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    int64_t _rc = principal();
+    principal();
     synapse_esperar_hilos();
     synapse_esperar_fibras();
     pool_destroy();
-    return _rc;
+    return 0;
 }

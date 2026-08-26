@@ -122,6 +122,7 @@ class Parametro:
     nombre: str = ''
     tipo: str = 'entero'
     es_transferencia: bool = False
+    valor_default: Optional[Nodo] = None
 
 
 @dataclass
@@ -156,6 +157,9 @@ class SentenciaLanzar(Nodo):
 class SentenciaRecuperar(Nodo):
     accion_critica: Optional[Nodo] = None
     plan_b: Optional[Nodo] = None
+    cuerpo_critico: List[Nodo] = field(default_factory=list)
+    cuerpo_atrapar: List[Nodo] = field(default_factory=list)
+    variable_excepcion: str = ''
 
 
 @dataclass
@@ -296,6 +300,8 @@ class DeclaracionExterna(Nodo):
     nombre: str = ''
     parametros: List[Parametro] = field(default_factory=list)
     tipo_retorno: str = ''
+    kind: str = 'funcion'      # 'funcion' | 'estructura' | 'constante'
+    valor: Optional[str] = None  # para kind='constante': el STRING literal
 
 
 @dataclass

@@ -205,19 +205,27 @@ class Parser(
             columna=tok_delegar.columna,
         )
 
-    def _parsear_export(self) -> DeclaracionExport:
+    def _parsear_export(self) -> Optional[Nodo]:
         """F1.2d: `@export ( IDENTIFICADOR ) funcion` (Manual 2 §2 L81)."""
         tok_export = self._esperar(TokenID.EXPORT)
         self._esperar(TokenID.LPAREN)
         tok_destino = self._esperar_identificador()
         self._esperar(TokenID.RPAREN)
-        funcion = self._parsear_def_funcion()
-        return DeclaracionExport(
-            destino=nombre_de_token(tok_destino) if tok_destino is not None else '',
-            funcion=funcion,
-            linea=tok_export.linea if tok_export is not None else 0,
-            columna=tok_export.columna if tok_export is not None else 0,
-        )
+        # Manual 6 §4.1: NEWLINE permitted between @export(...) and declaration
+        self._saltar_nueva_linea()
+        # Manual 6 §4.1: @export can precede funcion or estructura
+        if self._mirar().tipo == TokenID.FUNCION:
+            funcion = self._parsear_def_funcion()
+            return DeclaracionExport(
+                destino=nombre_de_token(tok_destino) if tok_destino is not None else '',
+                funcion=funcion,
+                linea=tok_export.linea if tok_export is not None else 0,
+                columna=tok_export.columna if tok_export is not None else 0,
+            )
+        elif self._mirar().tipo == TokenID.ESTRUCTURA:
+            # @export before estructura: parse structure directly (Manual 6 §4.1)
+            return self._parsear_def_estructura()
+        return None
 
     def _parsear_declaracion_tipo(self) -> Optional[DeclaracionTipo]:
         """F1.2: `tipo <Nombre> [<T, E>] = <tipo> | ctor(...) [| ctor(...)]`

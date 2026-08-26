@@ -144,6 +144,10 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
+        # H-R90-11: resolver retorno de funciones definidas localmente
+        # (definición usuario, no builtin). Manual 3 §3: -> tipo_retorno.
+        if nombre in ctx._funciones_usuario:
+            return ctx._funciones_usuario[nombre].tipo_retorno
         # Struct constructor call
         if nombre in ctx._estructuras:
             return nombre
@@ -353,6 +357,43 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
 
+        # H-R90-15: flag para stub dividir (solo si se usa y es builtin)
+        if nombre == 'dividir' and nombre not in ctx._funciones_usuario:
+            ctx._usa_dividir = True
+
+        # H-R90-13: rellenar argumentos omitidos con valores por defecto.
+        # (Manual 3 §3: parametro ::= IDENTIFICADOR [":" tipo] ["=" expresion])
+        if nombre in ctx._funciones_usuario:
+            def_func = ctx._funciones_usuario[nombre]
+            n_args = len(args)
+            n_params = len(def_func.parametros)
+            if n_args < n_params:
+                for j in range(n_args, n_params):
+                    p = def_func.parametros[j]
+                    if p.valor_default is not None:
+                        args.append(expr_a_c(ctx, p.valor_default))
+                    else:
+                        args.append('0')
+        # H-R90-13b: rellenar args de builtins importados (abrir, etc.)
+        # ctx._builtin_defaults[nombre] = [default_value_str] para params que
+        # pueden omitirse (p.ej. abrir: modo="r" → ['"r"'] for param idx 1)
+        # Si n_args < n_total_params, usar defaults para los faltantes.
+        from compilador.semantic_scope import _FUNCIONES_BUILTIN, _BUILTIN_PARAMS_DEFAULT
+        if nombre in _FUNCIONES_BUILTIN and nombre not in ctx._funciones_usuario:
+            params = _FUNCIONES_BUILTIN[nombre][0]
+            n_total = len(params)
+            n_args = len(args)
+            if n_args < n_total:
+                defaults = ctx._builtin_defaults.get(nombre, [])
+                default_indices = _BUILTIN_PARAMS_DEFAULT.get(nombre, [])
+                for j in range(n_args, n_total):
+                    if j in default_indices:
+                        idx_in_defaults = default_indices.index(j)
+                        if idx_in_defaults < len(defaults):
+                            args.append(defaults[idx_in_defaults])
+                    else:
+                        args.append('0')
+
         # F4: métodos pasan self por puntero — añadir & al primer argumento
         # (Manual 3 §6.1: self es parametro implicito inyectado por el puente)
         if nombre in ctx._metodos_self and args:
@@ -457,6 +498,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # len, subcadena, empieza_con builtins
         if nombre == 'len':
             if args:
+                arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else None
+                # H-R90-15: len(Lista<T>) → stub 0 (runtime no implementado, Manual 3 §5.2)
+                if arg_tipo and (arg_tipo.startswith('Lista') or arg_tipo.startswith('Mapa')):
+                    return "0"
                 return f"({args[0]}).longitud"
             return "0"
         if nombre == 'subcadena':

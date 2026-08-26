@@ -10,7 +10,7 @@
 
 importar std.sistema
 
-funcion abrir(ruta: texto, modo: texto) -> Canal:
+funcion abrir(ruta: texto, modo: texto = "r") -> Canal:
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar 0

@@ -265,6 +265,11 @@ def _emitir_typedefs_instancias(ctx: GeneratorContext):
             t_c = ctx.traducir_tipo_c(t_syn)
             if t_c.startswith('struct '):
                 t_c += '*'
+            # H-R90-12: 'void' no es válido como miembro de union en C.
+            # para nulo/void (p.ej. Resultado<nulo, texto>.ok()), usar
+            # 'char' como placeholder (Manual 3 §5.1 L175: nulo es void/nulo).
+            if t_c in ('void', 'nulo'):
+                t_c = 'char'
             partes_i.append(f"{t_c} {ctor};")
         if not partes_i:
             partes_i.append("int _unidad;")
@@ -297,6 +302,9 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             tipo_c = ctx.traducir_tipo_c(tipo_campo)
             if tipo_c.startswith('struct '):
                 tipo_c += '*'
+            # H-R90-12: 'void' no es válido como miembro de union en C
+            if tipo_c in ('void', 'nulo'):
+                tipo_c = 'char'
             partes.append(f"{tipo_c} {c.nombre};")
         if not partes:
             partes.append("int _unidad;")
@@ -515,6 +523,16 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 # Hoist ALL auto-declared variables to function scope
                 _auto_vars.append((s.nombre, t_syn))
                 ctx._variables[s.nombre] = t_syn
+            # H-R90-14: recoger cuerpo_critico/cuerpo_atrapar de SentenciaRecuperar
+            if isinstance(s, SentenciaRecuperar):
+                if s.variable_excepcion and s.variable_excepcion not in _explicit_vars:
+                    if s.variable_excepcion not in ctx._variables:
+                        _auto_vars.append((s.variable_excepcion, 'texto'))
+                        ctx._variables[s.variable_excepcion] = 'texto'
+                if s.cuerpo_critico:
+                    _collect_vars(s.cuerpo_critico)
+                if s.cuerpo_atrapar:
+                    _collect_vars(s.cuerpo_atrapar)
             if isinstance(s, BloqueInseguro):
                 _collect_vars(s.cuerpo)
             elif hasattr(s, 'cuerpo') and isinstance(
@@ -725,14 +743,32 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
 
 
 def visitar_recuperar(ctx: GeneratorContext, nodo: SentenciaRecuperar):
-    """Genera código C para try/recover."""
-    accion = expr_a_c(ctx, nodo.accion_critica)
-    plan_b = expr_a_c(ctx, nodo.plan_b)
-    ctx.write_line("{")
-    ctx.inc_indent()
-    ctx.write_line(f"if ({accion} != 0) {{ {plan_b}; }}")
-    ctx.dec_indent()
-    ctx.write_line("}")
+    """Genera código C para try/recover.
+    
+    Soporte para dos formas:
+    1. S1 expr recuperar expr2 (accion_critica/plan_b) → if (accion != 0) { plan_b; }
+    2. SyQuex intentar/atrapar e: (cuerpo_critico/cuerpo_atrapar) → bloques
+       anidados (Manual 3 §7.3 L347). El catch se ejecuta si el runtime
+       establece _synapse_ultimo_error (FFI panics).
+    """
+    if nodo.cuerpo_critico:
+        # SyQuex intentar/atrapar
+        # Emitir cuerpo_critico directamente (vars hoisteadas al scope función)
+        for s in nodo.cuerpo_critico:
+            _visitar_stmt(ctx, s)
+        if nodo.cuerpo_atrapar:
+            # Emitir atapar directamente (vars hoisteadas al scope función)
+            for s in nodo.cuerpo_atrapar:
+                _visitar_stmt(ctx, s)
+    else:
+        # S1 expr recuperar expr2
+        accion = expr_a_c(ctx, nodo.accion_critica)
+        plan_b = expr_a_c(ctx, nodo.plan_b)
+        ctx.write_line("{")
+        ctx.inc_indent()
+        ctx.write_line(f"if ({accion} != 0) {{ {plan_b}; }}")
+        ctx.dec_indent()
+        ctx.write_line("}")
 
 
 def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):

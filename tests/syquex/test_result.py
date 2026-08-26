@@ -40,7 +40,7 @@ class TestIntentarAtrapar:
 
     def test_funcion_retorna_resultado(self, compilar_syquex):
         """M3 §7.1: función que retorna Resultado<decimal, texto>."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion dividir(a: decimal, b: decimal) -> Resultado<decimal, texto>:
@@ -53,7 +53,7 @@ funcion dividir(a: decimal, b: decimal) -> Resultado<decimal, texto>:
 
     def test_operador_propagacion(self, compilar_syquex):
         """M3 §7.2: operador ? propaga errores."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion calcular_media(operaciones: Lista<decimal>) -> Resultado<decimal, texto>:
@@ -67,7 +67,7 @@ funcion calcular_media(operaciones: Lista<decimal>) -> Resultado<decimal, texto>
 
     def test_intentar_basico(self, compilar_syquex):
         """M3 §7.3: intentar:/atrapar e: bloque básico."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion operacion_riesgosa() -> Resultado<nulo, texto>:
@@ -83,7 +83,7 @@ funcion operacion_riesgosa() -> Resultado<nulo, texto>:
 
     def test_intentar_sin_atrapar(self, compilar_syquex):
         """M3 §7.3: intentar sin atrapar es válido (solo envuelve)."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion operar() -> Resultado<nulo, texto>:
@@ -96,7 +96,7 @@ funcion operar() -> Resultado<nulo, texto>:
 
     def test_err_y_ok(self, compilar_syquex):
         """M3 §7.1: err(texto) y ok(valor) son constructores de Resultado."""
-        codigo = """#lang: sq
+        codigo = """#lang: es
 importar std
 
 funcion validar(valor: entero) -> Resultado<entero, texto>:

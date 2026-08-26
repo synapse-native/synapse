@@ -52,10 +52,19 @@ def imprimir_ast(nodo: Nodo, nivel: int = 0):
         imprimir_ast(nodo.llamada, nivel + 1)
 
     elif isinstance(nodo, SentenciaRecuperar):
-        print(f"{prefijo}Recuperar (Acción Crítica):")
-        imprimir_ast(nodo.accion_critica, nivel + 1)
-        print(f"{prefijo}Plan B:")
-        imprimir_ast(nodo.plan_b, nivel + 1)
+        if nodo.cuerpo_critico:
+            print(f"{prefijo}Intentar:")
+            for s in nodo.cuerpo_critico:
+                imprimir_ast(s, nivel + 1)
+            if nodo.cuerpo_atrapar:
+                print(f"{prefijo}Atrapar {nodo.variable_excepcion}:")
+                for s in nodo.cuerpo_atrapar:
+                    imprimir_ast(s, nivel + 1)
+        else:
+            print(f"{prefijo}Recuperar (Acción Crítica):")
+            imprimir_ast(nodo.accion_critica, nivel + 1)
+            print(f"{prefijo}Plan B:")
+            imprimir_ast(nodo.plan_b, nivel + 1)
 
     elif isinstance(nodo, SentenciaRetornar):
         if nodo.expr:
@@ -450,9 +459,16 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
             lines.append(f"{prefijo}{_token_a_palabra(TokenID.LANZAR, dicc_inv)} {llam}")
 
         elif isinstance(nodo, SentenciaRecuperar):
-            acc = _render_expr(nodo.accion_critica, dicc_inv)
-            plan = _render_expr(nodo.plan_b, dicc_inv)
-            lines.append(f"{prefijo}{acc} {_token_a_palabra(TokenID.RECUPERAR, dicc_inv)}: {plan}")
+            if nodo.cuerpo_critico:
+                for s in nodo.cuerpo_critico:
+                    lines.extend(_render_nodo(s, indent + 1))
+                if nodo.cuerpo_atrapar:
+                    for s in nodo.cuerpo_atrapar:
+                        lines.extend(_render_nodo(s, indent + 1))
+            else:
+                acc = _render_expr(nodo.accion_critica, dicc_inv)
+                plan = _render_expr(nodo.plan_b, dicc_inv)
+                lines.append(f"{prefijo}{acc} {_token_a_palabra(TokenID.RECUPERAR, dicc_inv)}: {plan}")
 
         elif isinstance(nodo, SentenciaRetornar):
             if nodo.expr:
@@ -503,11 +519,17 @@ def ast_a_texto(programa: Programa, idioma: str = 'es') -> str:
             lines.append(f"{prefijo}{_token_a_palabra(TokenID.IMPORTAR, dicc_inv)} {nodo.modulo}")
 
         elif isinstance(nodo, DeclaracionExterna):
-            if nodo.tipo_retorno == "__extern_struct":
+            if nodo.kind == 'estructura':
                 lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} estructura {nodo.nombre}")
+            elif nodo.kind == 'constante':
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} constante {nodo.nombre} = \"{nodo.valor}\"")
             else:
                 params = ", ".join(f"{p.nombre}: {p.tipo}" for p in nodo.parametros)
-                lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} {nodo.nombre}({params}) -> {nodo.tipo_retorno}")
+                if nodo.tipo_retorno.startswith('&'):
+                    tipo = nodo.tipo_retorno
+                else:
+                    tipo = nodo.tipo_retorno
+                lines.append(f"{prefijo}{_token_a_palabra(TokenID.EXTERNO, dicc_inv)} funcion {nodo.nombre}({params}) -> {tipo}")
 
         elif isinstance(nodo, StmtConstante):
             val = _render_expr(nodo.valor, dicc_inv)
