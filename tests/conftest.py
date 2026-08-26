@@ -172,6 +172,8 @@ _RT_BINARIOS_EXTRA = [
     ("test_tiempo", "test_tiempo.c", [], []),
     # FASE 24: DB SQLite bundled (Manual 3 §12.1)
     ("test_db", "test_db.c", ["vendor/sqlite3/sqlite3.o"], []),
+    # FASE 24: Web HTTP server (Manual 3 §12.1)
+    ("test_web", "test_web.c", [], ["-lws2_32"]),
 ]
 
 
