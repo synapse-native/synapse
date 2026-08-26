@@ -1,0 +1,57 @@
+#lang: es
+// lib/mapa.syq — Operaciones con mapas de Syquex
+// Manual 3 §5.2: Mapa<K,V> — diccionario hash
+// Manual 3 §12.1: Módulo Mapa
+//
+// Uso desde Syquex:
+//   importar lib.mapa
+//   let m = mapa.crear()
+//   mapa.poner(m, "nombre", 42)
+//   let v = mapa.obtener(m, "nombre")
+
+// --- Creación ---
+
+funcion crear() -> mapa:
+    retornar _syn_mapa_crear()
+
+// --- Operaciones básicas ---
+
+funcion longitud(m: mapa) -> entero:
+    retornar _syn_mapa_longitud(m)
+
+funcion poner(m: mapa, clave: texto, valor: entero) -> nulo:
+    _syn_mapa_poner(m, clave, valor)
+
+funcion obtener(m: mapa, clave: texto) -> entero:
+    retornar _syn_mapa_obtener(m, clave)
+
+funcion contiene(m: mapa, clave: texto) -> booleano:
+    retornar _syn_mapa_contiene(m, clave)
+
+// --- Eliminación ---
+
+funcion eliminar(m: mapa, clave: texto) -> nulo:
+    _syn_mapa_eliminar(m, clave)
+
+funcion limpiar(m: mapa) -> nulo:
+    _syn_mapa_limpiar(m)
+
+// --- Iteración (básica) ---
+
+funcion claves(m: mapa) -> lista:
+    retornar _syn_mapa_claves(m)
+
+funcion valores(m: mapa) -> lista:
+    retornar _syn_mapa_valores(m)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_mapa_crear() -> mapa
+externo funcion _syn_mapa_longitud(m: mapa) -> entero
+externo funcion _syn_mapa_poner(m: mapa, clave: texto, valor: entero) -> nulo
+externo funcion _syn_mapa_obtener(m: mapa, clave: texto) -> entero
+externo funcion _syn_mapa_contiene(m: mapa, clave: texto) -> booleano
+externo funcion _syn_mapa_eliminar(m: mapa, clave: texto) -> nulo
+externo funcion _syn_mapa_limpiar(m: mapa) -> nulo
+externo funcion _syn_mapa_claves(m: mapa) -> lista
+externo funcion _syn_mapa_valores(m: mapa) -> lista

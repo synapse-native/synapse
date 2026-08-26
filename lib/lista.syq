@@ -1,0 +1,67 @@
+#lang: es
+// lib/lista.syq — Operaciones con listas de Syquex
+// Manual 3 §5.2: Lista<T> — lista dinámica (vector)
+// Manual 3 §12.1: Módulo Lista
+//
+// Uso desde Syquex:
+//   importar lib.lista
+//   let l = lista.crear()
+//   lista.agregar(l, 42)
+//   let n = lista.longitud(l)
+
+// --- Creación ---
+
+funcion crear() -> lista:
+    retornar _syn_lista_crear()
+
+// --- Operaciones básicas ---
+
+funcion longitud(l: lista) -> entero:
+    retornar _syn_lista_longitud(l)
+
+funcion agregar(l: lista, elemento: entero) -> nulo:
+    _syn_lista_agregar(l, elemento)
+
+funcion obtener(l: lista, indice: entero) -> entero:
+    retornar _syn_lista_obtener(l, indice)
+
+funcion establecer(l: lista, indice: entero, valor: entero) -> nulo:
+    _syn_lista_establecer(l, indice, valor)
+
+// --- Búsqueda ---
+
+funcion contiene(l: lista, elemento: entero) -> booleano:
+    let n = _syn_lista_longitud(l)
+    let i = 0
+    mientras i < n:
+        si _syn_lista_obtener(l, i) == elemento:
+            retornar verdadero
+        i = i + 1
+    retornar falso
+
+funcion indice_de(l: lista, elemento: entero) -> entero:
+    let n = _syn_lista_longitud(l)
+    let i = 0
+    mientras i < n:
+        si _syn_lista_obtener(l, i) == elemento:
+            retornar i
+        i = i + 1
+    retornar -1
+
+// --- Eliminación ---
+
+funcion eliminar(l: lista, indice: entero) -> nulo:
+    _syn_lista_eliminar(l, indice)
+
+funcion limpiar(l: lista) -> nulo:
+    _syn_lista_limpiar(l)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_lista_crear() -> lista
+externo funcion _syn_lista_longitud(l: lista) -> entero
+externo funcion _syn_lista_agregar(l: lista, elemento: entero) -> nulo
+externo funcion _syn_lista_obtener(l: lista, indice: entero) -> entero
+externo funcion _syn_lista_establecer(l: lista, indice: entero, valor: entero) -> nulo
+externo funcion _syn_lista_eliminar(l: lista, indice: entero) -> nulo
+externo funcion _syn_lista_limpiar(l: lista) -> nulo
