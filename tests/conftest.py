@@ -164,6 +164,10 @@ _RT_BINARIOS_EXTRA = [
     ("test_mapa", "test_mapa.c", ["mapa.o", "lista.o"], []),
     # FASE 24: JSON parser + serializador (Manual 3 §12.2) — necesita json.o + memory.o (pool_alloc)
     ("test_json", "test_json.c", ["json.o", "synapse_rt_memory.o"], []),
+    # FASE 24: Math funciones (Manual 3 §12.1) — usa math.h (-lm ya en link flags)
+    ("test_math", "test_math.c", [], []),
+    # FASE 24: Texto manipulación (Manual 3 §12.1)
+    ("test_texto", "test_texto.c", [], []),
 ]
 
 
