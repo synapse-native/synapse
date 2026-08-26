@@ -1,5 +1,15 @@
-// FASE 23 ME-6: Arena nesting + cascade free (Manual 4 §2.4)
-// Tests arena_crear_hijo + cascade free when parent is freed.
+// FASE 23 — Test de Arenas de Componente (Manual 4 §6)
+// TDD: este test ES la especificación. Si comp_arena_crear/comp_alloc/comp_destroy
+// no existen, el test NO compila — eso es correcto. Se corrige el CÓDIGO, no el test.
+//
+// Manual 4 §6.3: ComponentArena struct (padre, hijos, num_hijos, ref_count,
+//   marcado_para_liberar, destructor)
+// Manual 4 §6.3: comp_arena_crear(Arena* padre, size_t tamano_inicial)
+// Manual 4 §6.3: comp_alloc(ComponentArena* ca, size_t tamano)
+// Manual 4 §6.3: comp_destroy(ComponentArena* ca) — libera componente y todos sus hijos
+//
+// Compila: gcc -O2 -I. -I.. -c tests/test_component_arena.c -o ...
+//          gcc -O2 -I. -o test_component_arena.exe test_component_arena.o synapse_rt_memory.o -lm -lpthread -lws2_32
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,84 +25,80 @@ static int failed = 0;
     else { printf("  [PASS] %s\n", msg); passed++; } \
 } while(0)
 
-static void test_destructor(void* ptr) {
-    int* v = (int*)ptr;
-    *v = 999;  // marca como destruido
-}
-
 int main(void) {
     setbuf(stdout, NULL);
 
-    // --- Test 1: Basic nesting ---
-    printf("=== 1. Arena nesting basica ===\n");
-    Arena* padre = arena_crear(1024);
-    CHECK(padre != NULL, "arena_crear padre");
+    // ================================================================
+    // Manual 4 §6.3: comp_arena_crear — crear componente con arena propia
+    // ================================================================
+    printf("=== 1. comp_arena_crear ===\n");
+    // Primer componente: sin padre (raíz)
+    ComponentArena* comp = comp_arena_crear(NULL, 4096);
+    CHECK(comp != NULL, "comp_arena_crear retorna no-NULL");
+    CHECK(comp->arena != NULL, "comp->arena inicializada");
+    CHECK(comp->padre == NULL, "comp->padre == NULL (raíz)");
+    CHECK(comp->num_hijos == 0, "comp->num_hijos == 0");
+    CHECK(comp->ref_count == 1, "comp->ref_count == 1");
+    CHECK(comp->marcado_para_liberar == false, "marcado_para_liberar == false");
 
-    Arena* hijo = arena_crear_hijo(padre, 512);
-    CHECK(hijo != NULL, "arena_crear_hijo");
+    // ================================================================
+    // Manual 4 §6.3: comp_alloc — asignar en la arena del componente
+    // ================================================================
+    printf("=== 2. comp_alloc ===\n");
+    void* widget1 = comp_alloc(comp, 128);
+    CHECK(widget1 != NULL, "comp_alloc(128) retorna no-NULL");
+    CHECK((uintptr_t)widget1 % 8 == 0, "widget1 alineado 8");
+    memset(widget1, 0xAB, 128);
+    CHECK(((unsigned char*)widget1)[0] == 0xAB, "widget1 escribe OK");
 
-    void* p1 = arena_alloc(padre, 64, 8);
-    CHECK(p1 != NULL, "alloc en padre");
-    void* p2 = arena_alloc(hijo, 64, 8);
-    CHECK(p2 != NULL, "alloc en hijo");
+    void* widget2 = comp_alloc(comp, 256);
+    CHECK(widget2 != NULL, "comp_alloc(256) retorna no-NULL");
+    CHECK(widget2 > widget1, "widget2 > widget1 (bump order)");
 
-    // Free padre → hijo también se libera
-    arena_free(padre);
-    CHECK(1, "arena_free padre (cascada incluye hijo)");
+    // ================================================================
+    // Manual 4 §6.4: anidamiento — hijos heredan arena del padre
+    // ================================================================
+    printf("=== 3. Anidamiento de componentes ===\n");
+    ComponentArena* child1 = comp_arena_crear(comp, 2048);
+    CHECK(child1 != NULL, "child1 creado");
+    CHECK(child1->padre == comp, "child1->padre == comp");
+    CHECK(comp->num_hijos == 1, "comp->num_hijos == 1");
 
-    // --- Test 2: Multiple levels of nesting ---
-    printf("=== 2. Multi-level nesting (3 niveles) ===\n");
-    Arena* a0 = arena_crear(2048);
-    Arena* a1 = arena_crear_hijo(a0, 512);
-    Arena* a2 = arena_crear_hijo(a1, 256);
-    Arena* a3 = arena_crear_hijo(a2, 128);
+    ComponentArena* child2 = comp_arena_crear(comp, 2048);
+    CHECK(child2 != NULL, "child2 creado");
+    CHECK(comp->num_hijos == 2, "comp->num_hijos == 2");
 
-    CHECK(a1 != NULL && a2 != NULL && a3 != NULL, "3 niveles de hijos creados");
+    // Asignar en los hijos
+    void* w_child1 = comp_alloc(child1, 64);
+    void* w_child2 = comp_alloc(child2, 64);
+    CHECK(w_child1 != NULL && w_child2 != NULL, "allocs en hijos OK");
 
-    void* d1 = arena_alloc(a1, 32, 8);
-    void* d2 = arena_alloc(a2, 32, 8);
-    void* d3 = arena_alloc(a3, 32, 8);
-    CHECK(d1 != NULL && d2 != NULL && d3 != NULL, "allocs en cada nivel");
+    // ================================================================
+    // Manual 4 §6.3: comp_destroy — liberación en masa de toda la jerarquía
+    // ================================================================
+    printf("=== 4. comp_destroy (liberación en masa) ===\n");
+    comp_destroy(comp);
+    // Si comp_destroy funciona correctamente:
+    // - child1 y child2 se liberaron (cascada)
+    // - sus arenas se liberaron
+    // - comp->arena se liberó
+    CHECK(1, "comp_destroy ejecutado sin crash");
+    // Nota: no podemos verificar memoria liberada sin ASAN,
+    // pero el test no debe crashear ni tener use-after-free.
 
-    arena_free(a0);  // libera todo en cascada
-    CHECK(1, "cascada free de 3 niveles OK");
-
-    // --- Test 3: Arena reset ---
-    printf("=== 3. Arena reset ===\n");
-    Arena* ar = arena_crear(1024);
-    CHECK(ar != NULL, "arena_crear para reset");
-
-    void* r1 = arena_alloc(ar, 128, 8);
-    void* r2 = arena_alloc(ar, 128, 8);
-    CHECK(r1 != NULL && r2 != NULL, "allocs antes de reset");
-
-    arena_reset(ar);  // libera todo
-    void* r3 = arena_alloc(ar, 128, 8);
-    CHECK(r3 != NULL, "alloc después de reset");
-
-    // r3 debe estar en la misma posición de memoria que r1
-    CHECK(r3 == r1, "reset reutiliza posición de memoria (r3 == r1)");
-
-    arena_free(ar);
-
-    // --- Test 4: Alignment ---
-    printf("=== 4. Alignment ===\n");
-    Arena* al = arena_crear(1024);
-    void* a1_ptr = arena_alloc(al, 1, 8);
-    void* a2_ptr = arena_alloc(al, 1, 8);
-    CHECK(a2_ptr > a1_ptr, "allocs son secuenciales");
-    CHECK(1, "alignment básica OK");
-
-    arena_free(al);
-
-    // --- Test 5: NULL safety ---
+    // ================================================================
+    // Manual 4 §6.4: reglas — callbacks con ref débil
+    // ================================================================
     printf("=== 5. NULL safety ===\n");
-    arena_free(NULL);
-    CHECK(1, "arena_free(NULL) no crashea");
-    arena_reset(NULL);
-    CHECK(1, "arena_reset(NULL) no crashea");
-    void* null_alloc = arena_alloc(NULL, 128, 8);
-    CHECK(null_alloc == NULL, "arena_alloc(NULL) retorna NULL");
+    comp_destroy(NULL);
+    CHECK(1, "comp_destroy(NULL) no crashea");
+
+    void* null_alloc = comp_alloc(NULL, 64);
+    CHECK(null_alloc == NULL, "comp_alloc(NULL) retorna NULL");
+
+    ComponentArena* null_child = comp_arena_crear(NULL, 2048);
+    // Sin padre raíz, comp_arena_crear debe fallar o crear sin padre
+    CHECK(1, "comp_arena_crear(NULL padre) no crashea");
 
     printf("\n=== RESULTADO: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;

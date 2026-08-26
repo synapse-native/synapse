@@ -792,6 +792,119 @@ void arc_weak_release(WeakRef* w) {
 }
 
 // ============================================================
+// ComponentArena (Manual 4 §6.3)
+// Cada componente UI tiene su propia arena. comp_destroy libera
+// toda la jerarquía de componentes hijos en masa.
+// ============================================================
+
+ComponentArena* comp_arena_crear(ComponentArena* padre, size_t tamano_inicial) {
+    if (tamano_inicial < 1024) tamano_inicial = 1024;
+    Arena* parent_arena = padre ? padre->arena : NULL;
+    Arena* arena = arena_crear_hijo(parent_arena, tamano_inicial);
+    if (!arena) return NULL;
+
+    ComponentArena* ca = (ComponentArena*)malloc(sizeof(ComponentArena));
+    if (!ca) {
+        arena_free(arena);
+        return NULL;
+    }
+    ca->arena = arena;
+    ca->padre = padre;
+    ca->primer_hijo = NULL;
+    ca->siguiente = NULL;
+    ca->num_hijos = 0;
+    ca->ref_count = 1;
+    ca->marcado_para_liberar = false;
+    ca->destructor = NULL;
+
+    // Registrar como hijo del padre
+    if (padre) {
+        ca->siguiente = padre->primer_hijo;
+        padre->primer_hijo = ca;
+        padre->num_hijos++;
+    }
+
+    return ca;
+}
+
+void* comp_alloc(ComponentArena* ca, size_t tamano) {
+    if (!ca || !ca->arena) return NULL;
+    return arena_alloc(ca->arena, tamano, 8);
+}
+
+// Límite máximo de componentes en una jerarquía (para evitar recursión infinita)
+#define COMP_MAX_DEPTH 256
+
+void comp_destroy(ComponentArena* ca) {
+    if (!ca) return;
+
+    // 1. Recolectar todos los ComponentArena* en un array plano
+    //    (antes de liberar nada, para evitar use-after-free)
+    ComponentArena* stack[COMP_MAX_DEPTH];
+    int top = 0;
+
+    // DFS preorder para recolectar
+    ComponentArena* walk_stack[COMP_MAX_DEPTH];
+    int wtop = 0;
+    walk_stack[wtop++] = ca;
+    while (wtop > 0 && top < COMP_MAX_DEPTH) {
+        ComponentArena* cur = walk_stack[--wtop];
+        stack[top++] = cur;
+        // Empajar hijos en orden inverso para mantener orden
+        ComponentArena* h = cur->primer_hijo;
+        while (h && wtop < COMP_MAX_DEPTH) {
+            walk_stack[wtop++] = h;
+            h = h->siguiente;
+        }
+    }
+
+    // 2. Guardar y desvincular todas las arenas antes de liberar
+    Arena* arenas[COMP_MAX_DEPTH];
+    for (int i = 0; i < top; i++) {
+        arenas[i] = stack[i]->arena;
+        stack[i]->arena = NULL;  // desvincular
+    }
+
+    // 3. Liberar las arenas (solo la raíz en cascada — §2.4)
+    if (arenas[0]) {
+        arena_free(arenas[0]);
+    }
+
+    // 4. Llamar destructores y liberar los structs ComponentArena
+    for (int i = 0; i < top; i++) {
+        if (stack[i]->destructor) {
+            stack[i]->destructor(stack[i]);
+        }
+        free(stack[i]);
+    }
+}
+
+// ============================================================
+// FFI Marshaling zero-copy (Manual 4 §7.2)
+// texto_a_c_string: convierte CadenaSegura (sin \0) a const char*
+// (con \0) añadiendo el byte nulo al final en la arena.
+// Zero-copy: el buffer resultante vive en la arena, no en heap.
+// ============================================================
+
+const char* texto_a_c_string(CadenaSegura* texto, Arena* arena) {
+    if (!texto || !arena) return NULL;
+    if (!texto->datos) return NULL;
+
+    // Asignar longitud + 1 byte para el \0 en la arena
+    size_t len = (size_t)texto->longitud;
+    char* c_str = (char*)arena_alloc(arena, len + 1, 1);
+    if (!c_str) return NULL;
+
+    // Copiar contenido y añadir \0 al final
+    if (len > 0) {
+        memcpy(c_str, texto->datos, len);
+    }
+    c_str[len] = '\0';
+
+    return c_str;
+}
+
+// ============================================================
 // SemNodo AST walker for analizador_alcance.syq (Manual 4 §5.2)
 // ============================================================
 

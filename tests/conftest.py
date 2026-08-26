@@ -156,6 +156,8 @@ _RT_BINARIOS_EXTRA = [
     # FASE 23 ME-6: arc<T> atomic + component arena (Manual 4 §3.3, §2.4) — solo memory.o
     ("test_arc", "test_arc.c", ["synapse_rt_memory.o"], []),
     ("test_component_arena", "test_component_arena.c", ["synapse_rt_memory.o"], []),
+    # FASE 23 §7: FFI Marshaling zero-copy texto_a_c_string (Manual 4 §7) — solo memory.o
+    ("test_ffi_marshaling", "test_ffi_marshaling.c", ["synapse_rt_memory.o"], []),
 ]
 
 

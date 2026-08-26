@@ -264,11 +264,13 @@ MODULOS_D9 = [
 
 
 def limpiar_ref(ruta: str) -> str:
-    """Quita sufijos de línea (:343), rangos (:176-178), (:535:0) y símbolos (::metodo)."""
+    """Quita sufijos de línea (:343), rangos (:176-178), (:535:0), listas (:129,282,549)
+    y símbolos (::metodo)."""
     r = ruta.strip()
     r = re.sub(r"::\S+$", "", r)                    # compilador/parser_base.py::_parsear...
-    while re.search(r":\d+(-\d+)?$", r):
-        r = re.sub(r":\d+(-\d+)?$", "", r)          # nucleo/generator.syn:343 / :535:0
+    # Quitar suffixes de línea: :N, :N-M, :N:0, :N,M,O (listas de líneas)
+    while re.search(r":\d+([,:-]?\d+)*$", r):
+        r = re.sub(r":\d+([,:-]?\d+)*$", "", r)
     return r
 
 

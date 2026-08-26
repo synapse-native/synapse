@@ -161,6 +161,25 @@ typedef struct {
     uint32_t version;   // Versión del objeto (para detección de invalidación)
 } WeakRef;
 
+// --- ComponentArena (Manual 4 §6.3) ---
+typedef struct ComponentArena {
+    Arena* arena;                    // Arena subyacente
+    struct ComponentArena* padre;    // Componente padre
+    struct ComponentArena* primer_hijo;  // Primer hijo
+    struct ComponentArena* siguiente;    // Hermano siguiente
+    int num_hijos;
+    int ref_count;                   // Cuenta de referencias desde el árbol UI
+    bool marcado_para_liberar;
+    void (*destructor)(void*);       // Destructor para el componente completo
+} ComponentArena;
+
+ComponentArena* comp_arena_crear(ComponentArena* padre, size_t tamano_inicial);
+void* comp_alloc(ComponentArena* ca, size_t tamano);
+void comp_destroy(ComponentArena* ca);
+
+// --- FFI Marshaling (Manual 4 §7.2) ---
+const char* texto_a_c_string(CadenaSegura* texto, Arena* arena);
+
 // --- WeakRef (débil<T>) API (Manual 4 §4.2) ---
 WeakRef rc_weak_ref(void* ptr);       // crea débil a un rc<T>
 WeakRef arc_weak_ref(void* ptr);      // crea débil a un arc<T>
