@@ -456,3 +456,4 @@ Comprueba de forma automatizada:
 | 2026-08-26 | **R108/F25**: E2E tests Playwright para SPA Counter App WASM | ✅ Resuelto | **Manual 4 §6.6 (Arenas de componente WASM).** test_e2e.js: 14 tests E2E Chromium headless (page load, WASM instantiate 515B, increment/decrement/reset, negative values, DOM structure, no JS errors). **Validación:** 14/14 E2E PASS. Hash: 515f3b7. Reporte: pendiente. |
 | 2026-08-26 | **R108/F26**: OpenSyn transpiler + bindings generator + --check flag | d5c6858 | Manual 1 §5, Manual 7 §1 | 0 brechas |
 | 2026-08-26 | **R109/F26**: --transpile flag + transpiler Python→Syquex wrapper | dba93b3 | Manual 1 §5 | 0 brechas |
+| 2026-08-26 | **R110/F26**: Runtime bindings automaticos 91 funciones desde 7 headers | 45b4913 | Manual 4 §7 | 0 brechas |
