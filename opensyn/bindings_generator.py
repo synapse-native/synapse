@@ -260,8 +260,9 @@ def generar_syquex_desde_funciones(funciones: List[FuncionC], nombre_archivo: st
     lineas.append("")
 
     for fn in funciones:
-        if fn.es_estatica or fn.nombre.startswith('_'):
-            continue  # No generar bindings para funciones estáticas/privadas
+        if fn.es_estatica:
+            continue  # No generar bindings para funciones estáticas
+        # No filtrar por nombre.startswith('_') — _syn_* es el API público del runtime
 
         # Tipo de retorno
         ret_syq = mapear_tipo_c(fn.retorno)
