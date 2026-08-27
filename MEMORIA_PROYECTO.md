@@ -82,6 +82,22 @@
   un `plan_ME_*.md`; así el trabajo legado sin citas `// cumple` no se ve
   afectado.
 
+- **DEUDA ownership (2026-08-27, ME-own10, commit `afb628e`, R101):** las 7
+  fallas de `tests/integration/test_ownership_10.py` (ERR_MEM_USE_AFTER_MOVE)
+  tenian MULTIPLES causas. Fix real aplicado: el compilador S1
+  (`compilador/semantic_types.py`) emitia `ERR_SEM_VAR_MOVIDA` (E-501) para
+  uso tras move; se corrigio a `ERR_MEM_USE_AFTER_MOVE` (Manual 2 §9). Eso
+  deja 18/21 en verde. Las 3 restantes (`test_use_after_move_en_expresion`,
+  `test_move_en_lanzar`, `test_move_en_condicion_si`) son FIXTURE DEFECTUOSO:
+  usan `y` como variable, pero `y` es la palabra reservada AND
+  (`compilador/lexer.py:20`) -> no compilan. Probe con `y`->`w` confirma que el
+  codigo S1 ya detecta bien el move en esos 3 casos. **H-OWN-10:** renombrar `y`
+  en esos 3 tests exige aprobacion del Arquitecto (regla 5, tests inmutables).
+  **H-OWN-10b:** paridad S1/nativo en el codigo de uso-tras-move (S1=ERR_MEM_USE_AFTER_MOVE,
+  nativo=E-501/ERR_SEM_VAR_MOVIDA); alinear el nativo requiere crear
+  ERR_MEM_USE_AFTER_MOVE en `nucleo/*.syn` y modificar ~16 assertions inmutables
+  de `test_fase2_nativa_hm.py` (opcion C, aprobacion del Arquitecto).
+
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 
 - **2026-08-10 â€” R7 (fix `3e9cb84`):** la pasada 3 del analizador nativo declara los parÃ¡metros en el scope de la funciÃ³n; `NODO_ASIGNACION` hace declaraciÃ³n implÃ­cita ("primera declaraciÃ³n del scope", paridad S1) y chequea `ERR_SEM_CONSTANTE_INMUTABLE`; `NODO_DECLARACION` reporta REDEFINICIÃ“N solo del MISMO scope (vÃ­a retorno de `tabla_declarar`). **653 falsos positivos Â«variable no declaradaÂ» â†’ 0.**
