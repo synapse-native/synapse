@@ -13,6 +13,13 @@
         genera crash silencioso -> investigar frontera de llamadas FFI Synapse.
     (10) Test `hover_variable` posicion original (line=4, char=15) apuntaba a espacio en blanco;
          corregido a (line=3, char=8) que apunta a 'resultado'.
+    (11) CadenaSegura sin campo `es_externo`: C functions retornan malloc'd ptr, Synapse RAII
+         libera via pool_free -> crash. Solucion: campo `uint8_t es_externo` en CadenaSegura,
+         _syn_texto_liberar lo verifica antes de pool_free. Actualizar synapse_rt_types.h
+         Y generator.py para mantener consistencia.
+    (12) lsp_build_completion_items() retorna CadenaSegura con es_externo=1; funciona desde
+         dispatch Synapse (NO desde handler interno). Patron exitoso: C func retorna items,
+         Synapse concat y enviar_respuesta.RAII no libera por es_externo.
     **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
