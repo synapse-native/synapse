@@ -48,8 +48,8 @@ funcion consumir(-> t: entero) -> nulo:
 funcion principal() -> entero:
     x = 10
     consumir(x)
-    y = x + 1
-    retornar y
+    w = x + 1
+    retornar w
 '''
         ast, diag = compilar_texto(fuente)
         assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
@@ -93,7 +93,7 @@ funcion destinatario(-> t: entero) -> nulo:
 funcion principal() -> nulo:
     x = 10
     lanzar destinatario(x)
-    y = x
+    w = x
 '''
         ast, diag = compilar_texto(fuente)
         assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \
@@ -124,7 +124,7 @@ funcion principal() -> nulo:
     x = 42
     si verdadero:
         consumir(x)
-    y = x
+    w = x
 '''
         ast, diag = compilar_texto(fuente)
         assert _hay_error(diag, ErrorCodes.ERR_MEM_USE_AFTER_MOVE), \

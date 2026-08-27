@@ -91,8 +91,9 @@
   `test_move_en_lanzar`, `test_move_en_condicion_si`) son FIXTURE DEFECTUOSO:
   usan `y` como variable, pero `y` es la palabra reservada AND
   (`compilador/lexer.py:20`) -> no compilan. Probe con `y`->`w` confirma que el
-  codigo S1 ya detecta bien el move en esos 3 casos. **H-OWN-10:** renombrar `y`
-  en esos 3 tests exige aprobacion del Arquitecto (regla 5, tests inmutables).
+  codigo S1 ya detecta bien el move en esos 3 casos. **H-OWN-10 (CERRADO
+  2026-08-27):** el Arquitecto aprobo renombrar `y`->`w` en los 3 tests (regla 5);
+  aplicado -> test_ownership_10.py 21 passed / 21.
   **H-OWN-10b:** paridad S1/nativo en el codigo de uso-tras-move (S1=ERR_MEM_USE_AFTER_MOVE,
   nativo=E-501/ERR_SEM_VAR_MOVIDA); alinear el nativo requiere crear
   ERR_MEM_USE_AFTER_MOVE en `nucleo/*.syn` y modificar ~16 assertions inmutables
