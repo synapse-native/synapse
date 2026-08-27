@@ -157,7 +157,7 @@ class TestLSPHover:
             "method": "textDocument/hover",
             "params": {
                 "textDocument": {"uri": "file:///test_hover.syn"},
-                "position": {"line": 10, "character": 12},
+                "position": {"line": 7, "character": 12},
             },
         })
         mensajes = _cerrar_lsp(proc)

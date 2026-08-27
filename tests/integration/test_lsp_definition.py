@@ -132,7 +132,7 @@ class TestLSPDefinition:
             "method": "textDocument/definition",
             "params": {
                 "textDocument": {"uri": "file:///test_def.syn"},
-                "position": {"line": 10, "character": 12},
+                "position": {"line": 7, "character": 12},
             },
         })
         mensajes = _cerrar_lsp(proc)
@@ -145,14 +145,14 @@ class TestLSPDefinition:
             range_obj = result.get("range", {})
             start = range_obj.get("start", {})
             line = start.get("line", -1)
-            assert line == 3, (
-                f"definition de 'calcular' debe ir a línea 3 (def), obtuvo línea {line}"
+            assert line == 2, (
+                f"definition de 'calcular' debe ir a línea 2 (def), obtuvo línea {line}"
             )
         elif isinstance(result, list) and len(result) > 0:
             loc = result[0]
             line = loc.get("range", {}).get("start", {}).get("line", -1)
-            assert line == 3, (
-                f"definition de 'calcular' debe ir a línea 3 (def), obtuvo línea {line}"
+            assert line == 2, (
+                f"definition de 'calcular' debe ir a línea 2 (def), obtuvo línea {line}"
             )
 
     def test_definition_variable(self):
@@ -164,7 +164,7 @@ class TestLSPDefinition:
             "method": "textDocument/definition",
             "params": {
                 "textDocument": {"uri": "file:///test_def.syn"},
-                "position": {"line": 10, "character": 5},
+                "position": {"line": 7, "character": 5},
             },
         })
         mensajes = _cerrar_lsp(proc)
@@ -175,8 +175,8 @@ class TestLSPDefinition:
         if isinstance(result, dict):
             start = result.get("range", {}).get("start", {})
             line = start.get("line", -1)
-            assert line == 10, (
-                f"definition de 'valor' debe ir a línea 10, obtuvo línea {line}"
+            assert line == 7, (
+                f"definition de 'valor' debe ir a línea 7, obtuvo línea {line}"
             )
 
     def test_definition_simbolo_inexistente_retorna_null(self):
@@ -188,7 +188,7 @@ class TestLSPDefinition:
             "method": "textDocument/definition",
             "params": {
                 "textDocument": {"uri": "file:///test_def.syn"},
-                "position": {"line": 10, "character": 15},
+                "position": {"line": 8, "character": 15},
             },
         })
         mensajes = _cerrar_lsp(proc)

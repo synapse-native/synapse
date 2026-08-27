@@ -478,7 +478,8 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
         retornar
 
     // Buscar función
-    let func_idx = buscar_def_funcion(doc, palabra)
+    let patron_func = "funcion " + palabra + "("
+    let func_idx = strstr_f(doc, patron_func)
     si func_idx >= 0:
         let def_linea = linea_de_posicion(doc, func_idx)
         let def_lin_inicio = func_idx
@@ -494,12 +495,24 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
                 romper
             def_lin_fin = def_lin_fin + 1
         let firma = subcadena(doc, def_lin_inicio, def_lin_fin - def_lin_inicio)
-        let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**funcion** `" + firma + "\"}}"
+        let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**funcion** `" + escapar_json(firma) + "\"}}"
         enviar_respuesta(construir_respuesta(id, result))
         retornar
 
     // Buscar variable
-    let var_idx = buscar_def_variable(doc, palabra)
+    let patron_var1 = palabra + " = "
+    let patron_var2 = "let " + palabra + " = "
+    let var_idx1 = strstr_f(doc, patron_var1)
+    let var_idx2 = strstr_f(doc, patron_var2)
+    let var_idx = -1
+    si var_idx1 >= 0:
+        var_idx = var_idx1
+    si var_idx2 >= 0:
+        si var_idx < 0:
+            var_idx = var_idx2
+        sino:
+            si var_idx2 < var_idx:
+                var_idx = var_idx2
     si var_idx >= 0:
         let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" + palabra + "\"}}"
         enviar_respuesta(construir_respuesta(id, result))
@@ -584,14 +597,27 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
         enviar_respuesta(construir_respuesta(id, "null"))
         retornar
 
-    let func_idx = buscar_def_funcion(doc, palabra)
+    let patron_func = "funcion " + palabra + "("
+    let func_idx = strstr_f(doc, patron_func)
     si func_idx >= 0:
         let def_linea = linea_de_posicion(doc, func_idx)
         let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":" + a_texto(def_linea) + ",\"character\":9},\"end\":{\"line\":" + a_texto(def_linea) + ",\"character\":9}}}"
         enviar_respuesta(construir_respuesta(id, result))
         retornar
 
-    let var_idx = buscar_def_variable(doc, palabra)
+    let patron_var1 = palabra + " = "
+    let patron_var2 = "let " + palabra + " = "
+    let var_idx1 = strstr_f(doc, patron_var1)
+    let var_idx2 = strstr_f(doc, patron_var2)
+    let var_idx = -1
+    si var_idx1 >= 0:
+        var_idx = var_idx1
+    si var_idx2 >= 0:
+        si var_idx < 0:
+            var_idx = var_idx2
+        sino:
+            si var_idx2 < var_idx:
+                var_idx = var_idx2
     si var_idx >= 0:
         let def_linea = linea_de_posicion(doc, var_idx)
         let scan_l = var_idx
