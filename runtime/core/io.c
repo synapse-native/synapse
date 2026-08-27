@@ -8,14 +8,30 @@
 
 #include "synapse_rt_types.h"
 #include "librerias/embedded_libs.h"
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 // ============================================================
 // Thread-safe console I/O
 // ============================================================
 
+static int _syn_stdout_binary_init = 0;
+
+static void _syn_ensure_stdout_binary(void) {
+    if (!_syn_stdout_binary_init) {
+        _syn_stdout_binary_init = 1;
+#ifdef _WIN32
+        _setmode(_fileno(stdout), _O_BINARY);
+#endif
+    }
+}
+
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void escribir(CadenaSegura contenido) {
+    _syn_ensure_stdout_binary();
     pthread_mutex_lock(&io_mutex);
     fwrite(contenido.datos, 1, contenido.longitud, stdout);
     fflush(stdout);

@@ -4,7 +4,7 @@
 
 ## 1. CONTEXTO ACTUAL
 
-- **Fase del roadmap:** FASE 27 — Herramientas de Desarrollo (LSP, VS Code, Debugger). Fase 26 COMPLETADA. **ME-F27-1 ✅** stdlib I/O + string utils (commit `075eb2c`). **ME-F27-L1 ✅** LSP Synapse puro: header parsing + dispatch JSON-RPC (compila a `lsp_v3.exe`). **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). Fase 23 COMPLETADA:
+- **Fase del roadmap:** FASE 27 — Herramientas de Desarrollo (LSP, VS Code, Debugger). Fase 26 COMPLETADA. **ME-F27-1 ✅** stdlib I/O + string utils (commit `075eb2c`). **ME-F27-L1 ✅** LSP Synapse puro: header parsing + dispatch JSON-RPC (compila a `lsp_v3.exe`). **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
 

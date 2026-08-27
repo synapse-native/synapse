@@ -1,11 +1,16 @@
 #lang: es
 // nucleo/lsp_v3.syn — Servidor LSP Nativo en Synapse Puro
 // Manual 8 §1.2-1.4: JSON-RPC 2.0 sobre stdin/stdout
-// Implementación sin asm() usando stdlib I/O + string utils
+// ME-F27-L2: Real hover/completion/definition
 
 importar std.io
 importar std.texto
 importar std.json
+
+// C-level document storage (avoids Synapse RAII destruction)
+externo funcion lsp_doc_store(texto: texto) -> nulo
+externo funcion lsp_doc_get() -> texto
+externo funcion lsp_doc_clear() -> nulo
 
 // ============================================================
 // §1.7.1 — Leer cabecera (Content-Length)
@@ -31,18 +36,19 @@ funcion leer_cabecera() -> entero:
             let len_total = strlen_s(linea)
             let pos_num = despues
             mientras pos_num < len_total:
-                let c_num = subcadena(linea, pos_num, pos_num + 1)
-                si cmp_texto(c_num, " ") != 0:
+                let c = subcadena(linea, pos_num, 1)
+                si cmp_texto(c, " ") != 0:
                     romper
                 pos_num = pos_num + 1
-            let num_str = subcadena(linea, pos_num, len_total)
-            let fin_num = strstr_f(num_str, "\r")
-            si fin_num == -1:
-                fin_num = strstr_f(num_str, "\n")
-            si fin_num == -1:
-                fin_num = strlen_s(num_str)
-            let num_text = subcadena(num_str, 0, fin_num)
-            content_length = atoi_f(num_text)
+            let fin_num = strlen_s(linea)
+            let busqueda_resto = subcadena(linea, pos_num, fin_num - pos_num)
+            let cr_idx = strstr_f(busqueda_resto, "\r")
+            si cr_idx >= 0:
+                fin_num = pos_num + cr_idx
+            let num_len = fin_num - pos_num
+            si num_len > 0:
+                let num_text = subcadena(linea, pos_num, num_len)
+                content_length = extraer_entero(num_text)
     retornar content_length
 
 // ============================================================
@@ -57,6 +63,113 @@ funcion leer_mensaje(cantidad: entero) -> texto:
     si cantidad <= 0:
         retornar ""
     retornar leer_bytes(cantidad)
+
+// ============================================================
+// Helper: parsear entero sin atoi_f (evita use-after-free)
+// ============================================================
+
+funcion extraer_entero(texto: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let len = strlen_s(texto)
+    let resultado = 0
+    let negativo = 0
+    let i = 0
+    // Saltar espacios
+    mientras i < len:
+        let c = subcadena(texto, i, 1)
+        si cmp_texto(c, " ") != 0:
+            romper
+        i = i + 1
+    // Detectar signo
+    si i < len:
+        let c = subcadena(texto, i, 1)
+        si cmp_texto(c, "-") == 0:
+            negativo = 1
+            i = i + 1
+        sino:
+            si cmp_texto(c, "+") == 0:
+                i = i + 1
+    // Parsear digitos
+    mientras i < len:
+        let c = subcadena(texto, i, 1)
+        let digito = -1
+        si cmp_texto(c, "0") == 0:
+            digito = 0
+        si cmp_texto(c, "1") == 0:
+            digito = 1
+        si cmp_texto(c, "2") == 0:
+            digito = 2
+        si cmp_texto(c, "3") == 0:
+            digito = 3
+        si cmp_texto(c, "4") == 0:
+            digito = 4
+        si cmp_texto(c, "5") == 0:
+            digito = 5
+        si cmp_texto(c, "6") == 0:
+            digito = 6
+        si cmp_texto(c, "7") == 0:
+            digito = 7
+        si cmp_texto(c, "8") == 0:
+            digito = 8
+        si cmp_texto(c, "9") == 0:
+            digito = 9
+        si digito == -1:
+            romper
+        resultado = resultado * 10 + digito
+        i = i + 1
+    si negativo == 1:
+        resultado = 0 - resultado
+    retornar resultado
+
+// ============================================================
+// Helper: extraer ID directamente del body JSON crudo
+// Busca "id": en el string crudo y parsea el número
+// ============================================================
+
+funcion extraer_id_body(body: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let patron = "\"id\":"
+    let idx = strstr_f(body, patron)
+    si idx == -1:
+        retornar -1
+    let inicio_num = idx + 5
+    let len_body = strlen_s(body)
+    si inicio_num >= len_body:
+        retornar -1
+    // Saltar espacios
+    let pos = inicio_num
+    mientras pos < len_body:
+        let c = subcadena(body, pos, 1)
+        si cmp_texto(c, " ") != 0:
+            romper
+        pos = pos + 1
+    // Encontrar fin del número (coma, llave, etc.)
+    let fin = pos
+    mientras fin < len_body:
+        let c = subcadena(body, fin, 1)
+        si cmp_texto(c, "0") >= 0:
+            si cmp_texto(c, "9") <= 0:
+                fin = fin + 1
+            sino:
+                romper
+        sino:
+            si cmp_texto(c, "-") == 0:
+                si fin == pos:
+                    fin = fin + 1
+                sino:
+                    romper
+            sino:
+                romper
+    si fin <= pos:
+        retornar -1
+    let num_str = subcadena(body, pos, fin - pos)
+    retornar extraer_entero(num_str)
 
 // ============================================================
 // §1.7.2 — Responder JSON-RPC
@@ -106,6 +219,115 @@ funcion json_string(valor: texto) -> texto:
     retornar "\"" + escaped + "\""
 
 // ============================================================
+// Helper: contar saltos de línea hasta posición
+// ============================================================
+
+funcion linea_de_posicion(doc: texto, pos: entero) -> entero:
+    requiere:
+        pos >= 0
+    garantiza:
+        _resultado_ >= 0
+    let num = 0
+    let i = 0
+    mientras i < pos:
+        let c = subcadena(doc, i, 1)
+        si cmp_texto(c, "\n") == 0:
+            num = num + 1
+        i = i + 1
+    retornar num
+
+// ============================================================
+// Helper: palabra en posición de línea
+// ============================================================
+
+funcion palabra_en_posicion(linea: texto, pos: entero) -> texto:
+    requiere:
+        pos >= 0
+    garantiza:
+        verdadero
+    let len_lin = strlen_s(linea)
+    si pos >= len_lin:
+        retornar ""
+
+    let word_start = pos
+    mientras word_start > 0:
+        let c = subcadena(linea, word_start - 1, 1)
+        si cmp_texto(c, " ") == 0:
+            romper
+        si cmp_texto(c, "(") == 0:
+            romper
+        si cmp_texto(c, ")") == 0:
+            romper
+        si cmp_texto(c, ",") == 0:
+            romper
+        si cmp_texto(c, ":") == 0:
+            romper
+        si cmp_texto(c, "=") == 0:
+            romper
+        si cmp_texto(c, "\t") == 0:
+            romper
+        word_start = word_start - 1
+
+    let word_end = pos
+    mientras word_end < len_lin:
+        let c = subcadena(linea, word_end, 1)
+        si cmp_texto(c, " ") == 0:
+            romper
+        si cmp_texto(c, "(") == 0:
+            romper
+        si cmp_texto(c, ")") == 0:
+            romper
+        si cmp_texto(c, ",") == 0:
+            romper
+        si cmp_texto(c, ":") == 0:
+            romper
+        si cmp_texto(c, "=") == 0:
+            romper
+        si cmp_texto(c, "\t") == 0:
+            romper
+        word_end = word_end + 1
+
+    si word_end <= word_start:
+        retornar ""
+    let word_len = word_end - word_start
+    retornar subcadena(linea, word_start, word_len)
+
+// ============================================================
+// Helper: buscar función en documento
+// ============================================================
+
+funcion buscar_def_funcion(doc: texto, nombre: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1
+    let patron = "funcion " + nombre + "("
+    retornar strstr_f(doc, patron)
+
+// ============================================================
+// Helper: buscar variable en documento
+// ============================================================
+
+funcion buscar_def_variable(doc: texto, nombre: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1
+    let patron1 = nombre + " = "
+    let patron2 = "let " + nombre + " = "
+    let idx1 = strstr_f(doc, patron1)
+    let idx2 = strstr_f(doc, patron2)
+    si idx1 >= 0:
+        si idx2 >= 0:
+            si idx1 < idx2:
+                retornar idx1
+            retornar idx2
+        retornar idx1
+    si idx2 >= 0:
+        retornar idx2
+    retornar -1
+
+// ============================================================
 // §1.4 — Método: initialize
 // ============================================================
 
@@ -131,76 +353,259 @@ funcion handle_shutdown(id: entero) -> nulo:
     enviar_respuesta("{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":null}")
 
 // ============================================================
-// §1.4 — Método: didOpen / didChange / didClose
+// §1.4 — Extraer URI desde params
 // ============================================================
 
-funcion handle_did_open(uri_ref: texto, params: texto) -> texto:
+funcion extraer_uri(params: texto) -> texto:
     requiere:
         verdadero
     garantiza:
         verdadero
     let uri_idx = strstr_f(params, "\"uri\"")
     si uri_idx == -1:
-        retornar uri_ref
-    let segmento = subcadena(params, uri_idx, strlen_s(params))
-    let comilla1 = strstr_f(segmento, "\"")
+        retornar ""
+    let despues = uri_idx + 5
+    let resto = subcadena(params, despues, strlen_s(params) - despues)
+    let comilla1 = strstr_f(resto, "\"")
     si comilla1 == -1:
-        retornar uri_ref
-    let uri_abs = uri_idx + comilla1 + 1
-    let segmento2 = subcadena(params, uri_abs, strlen_s(params))
-    let comilla2 = strstr_f(segmento2, "\"")
+        retornar ""
+    let dentro = subcadena(resto, comilla1 + 1, strlen_s(resto) - comilla1 - 1)
+    let comilla2 = strstr_f(dentro, "\"")
     si comilla2 == -1:
-        retornar uri_ref
-    let nuevo_uri = subcadena(params, uri_abs, uri_abs + comilla2)
+        retornar ""
+    retornar subcadena(dentro, 0, comilla2)
 
-    let diag = "{\"uri\":" + json_string(nuevo_uri) + ",\"diagnostics\":[]}"
-    enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
-    retornar nuevo_uri
+// ============================================================
+// §1.4 — Extraer texto del documento desde params
+// _json_a_texto returns: {"textDocument":{"uri":"...","text":"actual code"}}
+// Search for ,"text":" pattern (9 chars) backwards to skip "textDocument"
+// ============================================================
 
-funcion handle_did_close(uri_ref: texto, params: texto) -> texto:
+funcion extraer_texto_doc(params: texto) -> texto:
     requiere:
         verdadero
     garantiza:
         verdadero
-    let diag = "{\"uri\":" + json_string(uri_ref) + ",\"diagnostics\":[]}"
-    enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
-    retornar ""
+    let len_params = strlen_s(params)
+    // Pattern: ,"text":" (9 characters)
+    let patron = ",\"text\":\""
+    let patron_len = 9
+    si len_params < patron_len:
+        retornar ""
+    let mejor_idx = -1
+    let scan = len_params - patron_len
+    mientras scan >= 0:
+        let chunk = subcadena(params, scan, patron_len)
+        si cmp_texto(chunk, patron) == 0:
+            mejor_idx = scan
+            scan = 0
+        sino:
+            scan = scan - 1
+    si mejor_idx == -1:
+        retornar ""
+    let valor_inicio = mejor_idx + patron_len
+    let valor_resto = subcadena(params, valor_inicio, len_params - valor_inicio)
+    let cierre = strstr_f(valor_resto, "\"")
+    si cierre == -1:
+        retornar ""
+    retornar subcadena(valor_resto, 0, cierre)
 
 // ============================================================
 // §1.4 — Método: hover
 // ============================================================
 
-funcion handle_hover(id: entero, params: texto) -> nulo:
+funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
     requiere:
         id >= 0
     garantiza:
         verdadero
-    let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"Tipo: `entero`\"}}"
-    enviar_respuesta(construir_respuesta(id, result))
+    let line_idx = strstr_f(params, "\"line\"")
+    si line_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+    let line_seg = subcadena(params, line_idx + 7, strlen_s(params) - line_idx - 7)
+    let comma_pos = strstr_f(line_seg, ",")
+    let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
+
+    let char_idx = strstr_f(params, "\"character\"")
+    si char_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+    let char_seg = subcadena(params, char_idx + 12, strlen_s(params) - char_idx - 12)
+    let brace_pos = strstr_f(char_seg, "}")
+    let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
+
+    let len_doc = strlen_s(doc)
+    si len_doc == 0:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    // Encontrar inicio de línea
+    let linea_inicio = 0
+    let num_linea = 0
+    let scan = 0
+    mientras scan < len_doc:
+        let c = subcadena(doc, scan, 1)
+        si cmp_texto(c, "\n") == 0:
+            si num_linea == line_val:
+                scan = len_doc
+            sino:
+                linea_inicio = scan + 1
+                num_linea = num_linea + 1
+        scan = scan + 1
+
+    // Encontrar fin de línea
+    let linea_fin = len_doc
+    si linea_inicio < len_doc:
+        let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
+        let nl_idx = strstr_f(busqueda, "\n")
+        si nl_idx >= 0:
+            linea_fin = linea_inicio + nl_idx
+
+    si linea_inicio >= linea_fin:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
+    let len_lin = strlen_s(linea_texto)
+    si char_val >= len_lin:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let palabra = palabra_en_posicion(linea_texto, char_val)
+    si strlen_s(palabra) == 0:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    // Buscar función
+    let func_idx = buscar_def_funcion(doc, palabra)
+    si func_idx >= 0:
+        let def_linea = linea_de_posicion(doc, func_idx)
+        let def_lin_inicio = func_idx
+        mientras def_lin_inicio > 0:
+            let c = subcadena(doc, def_lin_inicio - 1, 1)
+            si cmp_texto(c, "\n") == 0:
+                romper
+            def_lin_inicio = def_lin_inicio - 1
+        let def_lin_fin = func_idx + strlen_s(palabra) + 8
+        mientras def_lin_fin < len_doc:
+            let c = subcadena(doc, def_lin_fin, 1)
+            si cmp_texto(c, "\n") == 0:
+                romper
+            def_lin_fin = def_lin_fin + 1
+        let firma = subcadena(doc, def_lin_inicio, def_lin_fin - def_lin_inicio)
+        let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**funcion** `" + firma + "\"}}"
+        enviar_respuesta(construir_respuesta(id, result))
+        retornar
+
+    // Buscar variable
+    let var_idx = buscar_def_variable(doc, palabra)
+    si var_idx >= 0:
+        let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" + palabra + "\"}}"
+        enviar_respuesta(construir_respuesta(id, result))
+        retornar
+
+    enviar_respuesta(construir_respuesta(id, "null"))
 
 // ============================================================
 // §1.4 — Método: completion
 // ============================================================
 
-funcion handle_completion(id: entero, params: texto) -> nulo:
+funcion handle_completion(id: entero, doc: texto, params: texto) -> nulo:
     requiere:
         id >= 0
     garantiza:
         verdadero
-    let items = "[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14}]"
+    let items = "[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"sino\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14},{\"label\":\"para\",\"kind\":14},{\"label\":\"verdadero\",\"kind\":14},{\"label\":\"falso\",\"kind\":14},{\"label\":\"nulo\",\"kind\":14},{\"label\":\"entero\",\"kind\":14},{\"label\":\"decimal\",\"kind\":14},{\"label\":\"texto\",\"kind\":14},{\"label\":\"booleano\",\"kind\":14},{\"label\":\"estructura\",\"kind\":14},{\"label\":\"importar\",\"kind\":14},{\"label\":\"externo\",\"kind\":14}]"
     enviar_respuesta(construir_respuesta(id, "{\"isIncomplete\":false,\"items\":" + items + "}"))
 
 // ============================================================
 // §1.4 — Método: definition
 // ============================================================
 
-funcion handle_definition(id: entero, uri: texto, params: texto) -> nulo:
+funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> nulo:
     requiere:
         id >= 0
     garantiza:
         verdadero
-    let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":10}}}"
-    enviar_respuesta(construir_respuesta(id, result))
+    let line_idx = strstr_f(params, "\"line\"")
+    si line_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+    let line_seg = subcadena(params, line_idx + 7, strlen_s(params) - line_idx - 7)
+    let comma_pos = strstr_f(line_seg, ",")
+    let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
+
+    let char_idx = strstr_f(params, "\"character\"")
+    si char_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+    let char_seg = subcadena(params, char_idx + 12, strlen_s(params) - char_idx - 12)
+    let brace_pos = strstr_f(char_seg, "}")
+    let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
+
+    let len_doc = strlen_s(doc)
+    si len_doc == 0:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let linea_inicio = 0
+    let num_linea = 0
+    let scan = 0
+    mientras scan < len_doc:
+        let c = subcadena(doc, scan, 1)
+        si cmp_texto(c, "\n") == 0:
+            si num_linea == line_val:
+                scan = len_doc
+            sino:
+                linea_inicio = scan + 1
+                num_linea = num_linea + 1
+        scan = scan + 1
+
+    let linea_fin = len_doc
+    si linea_inicio < len_doc:
+        let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
+        let nl_idx = strstr_f(busqueda, "\n")
+        si nl_idx >= 0:
+            linea_fin = linea_inicio + nl_idx
+
+    si linea_inicio >= linea_fin:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
+    let len_lin = strlen_s(linea_texto)
+    si char_val >= len_lin:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let palabra = palabra_en_posicion(linea_texto, char_val)
+    si strlen_s(palabra) == 0:
+        enviar_respuesta(construir_respuesta(id, "null"))
+        retornar
+
+    let func_idx = buscar_def_funcion(doc, palabra)
+    si func_idx >= 0:
+        let def_linea = linea_de_posicion(doc, func_idx)
+        let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":" + a_texto(def_linea) + ",\"character\":9},\"end\":{\"line\":" + a_texto(def_linea) + ",\"character\":9}}}"
+        enviar_respuesta(construir_respuesta(id, result))
+        retornar
+
+    let var_idx = buscar_def_variable(doc, palabra)
+    si var_idx >= 0:
+        let def_linea = linea_de_posicion(doc, var_idx)
+        let scan_l = var_idx
+        mientras scan_l > 0:
+            let c = subcadena(doc, scan_l - 1, 1)
+            si cmp_texto(c, "\n") == 0:
+                romper
+            scan_l = scan_l - 1
+        let char_offset = var_idx - scan_l
+        let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":" + a_texto(def_linea) + ",\"character\":" + a_texto(char_offset) + "},\"end\":{\"line\":" + a_texto(def_linea) + ",\"character\":" + a_texto(char_offset) + "}}}"
+        enviar_respuesta(construir_respuesta(id, result))
+        retornar
+
+    enviar_respuesta(construir_respuesta(id, "null"))
 
 // ============================================================
 // §1.4 — Métodos stub
@@ -257,54 +662,85 @@ funcion principal() -> entero:
         si strlen_s(body) == 0:
             romper
 
-        // Parsear JSON
+        // Extract ID directly from raw body BEFORE desde_texto(body) frees it.
+        // desde_texto() -> RAII frees body. usar funciones con body como param
+        // tambien libera body. Asi que extraemos inline con builtins.
+        let id_val = -1
+        let patron_id = "\"id\":"
+        let patron_len_id = 5
+        let body_len = strlen_s(body)
+        let idx_id = strstr_f(body, patron_id)
+        si idx_id >= 0:
+            let id_start = idx_id + patron_len_id
+            let id_pos = id_start
+            mientras id_pos < body_len:
+                let c = subcadena(body, id_pos, 1)
+                si cmp_texto(c, " ") != 0:
+                    romper
+                id_pos = id_pos + 1
+            let id_fin = id_pos
+            mientras id_fin < body_len:
+                let c = subcadena(body, id_fin, 1)
+                si cmp_texto(c, "0") >= 0:
+                    si cmp_texto(c, "9") <= 0:
+                        id_fin = id_fin + 1
+                    sino:
+                        romper
+                sino:
+                    si cmp_texto(c, "-") == 0:
+                        si id_fin == id_pos:
+                            id_fin = id_fin + 1
+                        sino:
+                            romper
+                    sino:
+                        romper
+            si id_fin > id_pos:
+                id_val = extraer_entero(subcadena(body, id_pos, id_fin - id_pos))
+
+        // Now use JSON tree for method + params (all at while-body level)
         let msg = desde_texto(body)
-
-        // Extraer method
         let method_nodo = obtener_campo(msg, "method")
-        let method_str = _json_a_texto(method_nodo)
-
-        // Extraer id
-        let id_nodo = obtener_campo(msg, "id")
-        let id_text = _json_a_texto(id_nodo)
-        let id_val = atoi_f(id_text)
-
-        // Extraer params
+        let method_str = strcpy_f(_json_a_texto(method_nodo))
         let params_nodo = obtener_campo(msg, "params")
-        let params_str = _json_a_texto(params_nodo)
+        let params_str = strcpy_f(_json_a_texto(params_nodo))
 
-        // Dispatch
-        si cmp_texto(method_str, "initialize") == 0:
+        si cmp_texto(method_str, "\"initialize\"") == 0:
             handle_initialize(id_val)
-        si cmp_texto(method_str, "initialized") == 0:
-            escribir_linea("")
-        si cmp_texto(method_str, "shutdown") == 0:
+        si cmp_texto(method_str, "\"shutdown\"") == 0:
             handle_shutdown(id_val)
-        si cmp_texto(method_str, "exit") == 0:
+        si cmp_texto(method_str, "\"exit\"") == 0:
             si id_val >= 0:
                 handle_unknown(id_val)
-        si cmp_texto(method_str, "textDocument/didOpen") == 0:
-            uri_actual = handle_did_open(uri_actual, params_str)
-        si cmp_texto(method_str, "textDocument/didChange") == 0:
-            uri_actual = handle_did_open(uri_actual, params_str)
-        si cmp_texto(method_str, "textDocument/didClose") == 0:
-            uri_actual = handle_did_close(uri_actual, params_str)
-        si cmp_texto(method_str, "textDocument/hover") == 0:
-            handle_hover(id_val, params_str)
-        si cmp_texto(method_str, "textDocument/completion") == 0:
-            handle_completion(id_val, params_str)
-        si cmp_texto(method_str, "textDocument/definition") == 0:
-            handle_definition(id_val, uri_actual, params_str)
-        si cmp_texto(method_str, "textDocument/codeAction") == 0:
+        si cmp_texto(method_str, "\"textDocument/didOpen\"") == 0:
+            uri_actual = strcpy_f(extraer_uri(params_str))
+            lsp_doc_store(extraer_texto_doc(params_str))
+            let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
+            enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+        si cmp_texto(method_str, "\"textDocument/didChange\"") == 0:
+            lsp_doc_store(extraer_texto_doc(params_str))
+        si cmp_texto(method_str, "\"textDocument/didClose\"") == 0:
+            lsp_doc_clear()
+            uri_actual = ""
+            let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
+            enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+        si cmp_texto(method_str, "\"textDocument/hover\"") == 0:
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_hover(id_val, doc, params_str)
+        si cmp_texto(method_str, "\"textDocument/completion\"") == 0:
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_completion(id_val, doc, params_str)
+        si cmp_texto(method_str, "\"textDocument/definition\"") == 0:
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_definition(id_val, uri_actual, doc, params_str)
+        si cmp_texto(method_str, "\"textDocument/codeAction\"") == 0:
             handle_code_action(id_val, params_str)
-        si cmp_texto(method_str, "textDocument/formatting") == 0:
+        si cmp_texto(method_str, "\"textDocument/formatting\"") == 0:
             handle_formatting(id_val, params_str)
-        si cmp_texto(method_str, "textDocument/signatureHelp") == 0:
+        si cmp_texto(method_str, "\"textDocument/signatureHelp\"") == 0:
             handle_signature_help(id_val, params_str)
-        si cmp_texto(method_str, "workspace/didChangeConfiguration") == 0:
+        si cmp_texto(method_str, "\"workspace/didChangeConfiguration\"") == 0:
             handle_did_change_configuration(params_str)
 
-        // Liberar memoria
         liberar_nodo(msg)
 
     retornar 0

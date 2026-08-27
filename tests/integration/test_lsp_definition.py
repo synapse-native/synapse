@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-tests/integration/test_lsp_hover.py — Manual 8 §1.4, §9
+tests/integration/test_lsp_definition.py — Manual 8 §1.4, §9
 
 Criterio M8 §9: "Hover / Definition — Información precisa"
-M8 §1.4: textDocument/hover y textDocument/definition.
+M8 §1.4: textDocument/definition navega a la definición del símbolo.
 
 TDD: Tests escritos PRIMERO. Implementar en lsp.syn para que pasen.
 """
@@ -75,10 +75,8 @@ funcion principal() -> entero:
 
 
 def _iniciar_lsp_con_codigo(codigo: str) -> subprocess.Popen:
-    """Inicializa el LSP, envía initialize + initialized + didChange con código."""
     if BINARIO_LSP is None:
         pytest.skip("Binario LSP no encontrado")
-
     proc = subprocess.Popen(
         [BINARIO_LSP],
         stdin=subprocess.PIPE,
@@ -101,7 +99,7 @@ def _iniciar_lsp_con_codigo(codigo: str) -> subprocess.Popen:
         "method": "textDocument/didOpen",
         "params": {
             "textDocument": {
-                "uri": "file:///test_hover.syn",
+                "uri": "file:///test_def.syn",
                 "languageId": "synapse",
                 "version": 1,
                 "text": codigo,
@@ -112,7 +110,6 @@ def _iniciar_lsp_con_codigo(codigo: str) -> subprocess.Popen:
 
 
 def _cerrar_lsp(proc: subprocess.Popen) -> list:
-    """Envía shutdown y parsea todas las respuestas."""
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "shutdown",
@@ -123,67 +120,81 @@ def _cerrar_lsp(proc: subprocess.Popen) -> list:
     return _parsear_respuesta(stdout)
 
 
-class TestLSPHover:
-    """M8 §1.4: textDocument/hover — información sobre símbolo bajo cursor."""
+class TestLSPDefinition:
+    """M8 §1.4: textDocument/definition — navegación a definición."""
 
-    def test_hover_sobre_variable_muestra_tipo(self):
-        """M8 §1.4: hover sobre variable 'resultado' muestra tipo 'entero'."""
+    def test_definition_funcion(self):
+        """M8 §1.4: definition sobre llamada 'calcular' va a la línea de definición."""
         proc = _iniciar_lsp_con_codigo(CODIGO_CON_FUNCION)
         _enviar_mensaje(proc.stdin, {
             "jsonrpc": "2.0",
-            "id": 10,
-            "method": "textDocument/hover",
+            "id": 30,
+            "method": "textDocument/definition",
             "params": {
-                "textDocument": {"uri": "file:///test_hover.syn"},
-                "position": {"line": 4, "character": 15},
-            },
-        })
-        mensajes = _cerrar_lsp(proc)
-        hover_resp = [m for m in mensajes if m.get("id") == 10]
-        assert len(hover_resp) >= 1, f"No hay respuesta a hover: {mensajes}"
-        result = hover_resp[0].get("result", {})
-        contents = result.get("contents", {})
-        value = contents.get("value", "") if isinstance(contents, dict) else str(contents)
-        assert "entero" in value.lower(), (
-            f"hover sobre variable debe mostrar tipo 'entero'. Obtenido: {value}"
-        )
-
-    def test_hover_sobre_funcion_muestra_firma(self):
-        """M8 §1.4: hover sobre 'calcular' muestra firma con parámetros."""
-        proc = _iniciar_lsp_con_codigo(CODIGO_CON_FUNCION)
-        _enviar_mensaje(proc.stdin, {
-            "jsonrpc": "2.0",
-            "id": 11,
-            "method": "textDocument/hover",
-            "params": {
-                "textDocument": {"uri": "file:///test_hover.syn"},
+                "textDocument": {"uri": "file:///test_def.syn"},
                 "position": {"line": 10, "character": 12},
             },
         })
         mensajes = _cerrar_lsp(proc)
-        hover_resp = [m for m in mensajes if m.get("id") == 11]
-        assert len(hover_resp) >= 1, f"No hay respuesta a hover de función: {mensajes}"
-        result = hover_resp[0].get("result", {})
-        contents = result.get("contents", {})
-        value = contents.get("value", "") if isinstance(contents, dict) else str(contents)
-        assert "calcular" in value, (
-            f"hover sobre función debe mostrar firma. Obtenido: {value}"
-        )
+        def_resp = [m for m in mensajes if m.get("id") == 30]
+        assert len(def_resp) >= 1, f"No hay respuesta a definition: {mensajes}"
+        result = def_resp[0].get("result")
+        assert result is not None, "definition debe retornar ubicación"
+        if isinstance(result, dict):
+            uri = result.get("uri", "")
+            range_obj = result.get("range", {})
+            start = range_obj.get("start", {})
+            line = start.get("line", -1)
+            assert line == 3, (
+                f"definition de 'calcular' debe ir a línea 3 (def), obtuvo línea {line}"
+            )
+        elif isinstance(result, list) and len(result) > 0:
+            loc = result[0]
+            line = loc.get("range", {}).get("start", {}).get("line", -1)
+            assert line == 3, (
+                f"definition de 'calcular' debe ir a línea 3 (def), obtuvo línea {line}"
+            )
 
-    def test_hover_fuera_de_simbolo_retorna_null(self):
-        """M8 §1.4: hover sobre espacio vacío retorna null."""
+    def test_definition_variable(self):
+        """M8 §1.4: definition sobre 'valor' va a la línea de asignación."""
         proc = _iniciar_lsp_con_codigo(CODIGO_CON_FUNCION)
         _enviar_mensaje(proc.stdin, {
             "jsonrpc": "2.0",
-            "id": 12,
-            "method": "textDocument/hover",
+            "id": 31,
+            "method": "textDocument/definition",
             "params": {
-                "textDocument": {"uri": "file:///test_hover.syn"},
-                "position": {"line": 0, "character": 0},
+                "textDocument": {"uri": "file:///test_def.syn"},
+                "position": {"line": 10, "character": 5},
             },
         })
         mensajes = _cerrar_lsp(proc)
-        hover_resp = [m for m in mensajes if m.get("id") == 12]
-        assert len(hover_resp) >= 1, f"No hay respuesta a hover: {mensajes}"
-        result = hover_resp[0].get("result")
-        assert result is None, f"hover en espacio vacío debe retornar null. Obtenido: {result}"
+        def_resp = [m for m in mensajes if m.get("id") == 31]
+        assert len(def_resp) >= 1, f"No hay respuesta a definition: {mensajes}"
+        result = def_resp[0].get("result")
+        assert result is not None, "definition de variable debe retornar ubicación"
+        if isinstance(result, dict):
+            start = result.get("range", {}).get("start", {})
+            line = start.get("line", -1)
+            assert line == 10, (
+                f"definition de 'valor' debe ir a línea 10, obtuvo línea {line}"
+            )
+
+    def test_definition_simbolo_inexistente_retorna_null(self):
+        """M8 §1.4: definition sobre símbolo no declarado retorna null."""
+        proc = _iniciar_lsp_con_codigo(CODIGO_CON_FUNCION)
+        _enviar_mensaje(proc.stdin, {
+            "jsonrpc": "2.0",
+            "id": 32,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": "file:///test_def.syn"},
+                "position": {"line": 10, "character": 15},
+            },
+        })
+        mensajes = _cerrar_lsp(proc)
+        def_resp = [m for m in mensajes if m.get("id") == 32]
+        assert len(def_resp) >= 1, f"No hay respuesta a definition: {mensajes}"
+        result = def_resp[0].get("result")
+        assert result is None, (
+            f"definition de símbolo inexistente debe retornar null. Obtenido: {result}"
+        )

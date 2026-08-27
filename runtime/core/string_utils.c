@@ -151,3 +151,36 @@ CadenaSegura _syn_strncpy(CadenaSegura texto, int64_t max_len) {
     dup[len] = '\0';
     return (CadenaSegura){.longitud = len, .datos = dup};
 }
+
+// ============================================================
+// LSP Document storage (avoids Synapse RAII destruction)
+// Manual 8 §1.4: didOpen/didChange store document text here;
+// hover/completion/definition read from here across messages.
+// ============================================================
+static char _G_lsp_doc_buf[1048576];
+static int _G_lsp_doc_len = 0;
+
+void lsp_doc_store(CadenaSegura s) {
+    int len = s.longitud;
+    if (len > 1048575) len = 1048575;
+    if (len < 0) len = 0;
+    memcpy(_G_lsp_doc_buf, s.datos, len);
+    _G_lsp_doc_buf[len] = '\0';
+    _G_lsp_doc_len = len;
+}
+
+CadenaSegura lsp_doc_get(void) {
+    // Return a malloc'd copy so Synapse RAII can safely free it
+    // (previous: returned pointer to static buffer, RAII freed it -> heap corruption)
+    if (_G_lsp_doc_len <= 0) return (CadenaSegura){0, ""};
+    char* dup = (char*)malloc((size_t)(_G_lsp_doc_len + 1));
+    if (!dup) return (CadenaSegura){0, ""};
+    memcpy(dup, _G_lsp_doc_buf, (size_t)_G_lsp_doc_len);
+    dup[_G_lsp_doc_len] = '\0';
+    return (CadenaSegura){ .longitud = _G_lsp_doc_len, .datos = dup };
+}
+
+void lsp_doc_clear(void) {
+    _G_lsp_doc_len = 0;
+    _G_lsp_doc_buf[0] = '\0';
+}
