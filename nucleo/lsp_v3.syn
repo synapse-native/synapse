@@ -1,0 +1,310 @@
+#lang: es
+// nucleo/lsp_v3.syn — Servidor LSP Nativo en Synapse Puro
+// Manual 8 §1.2-1.4: JSON-RPC 2.0 sobre stdin/stdout
+// Implementación sin asm() usando stdlib I/O + string utils
+
+importar std.io
+importar std.texto
+importar std.json
+
+// ============================================================
+// §1.7.1 — Leer cabecera (Content-Length)
+// ============================================================
+
+funcion leer_cabecera() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= -1
+    let content_length = -1
+    mientras verdadero:
+        let linea = leer_linea()
+        si linea == "":
+            romper
+        si linea == "\r":
+            romper
+        let idx = strstr_f(linea, "Content-Length:")
+        si idx == -1:
+            idx = strstr_f(linea, "content-length:")
+        si idx >= 0:
+            let despues = idx + 15
+            let len_total = strlen_s(linea)
+            let pos_num = despues
+            mientras pos_num < len_total:
+                let c_num = subcadena(linea, pos_num, pos_num + 1)
+                si cmp_texto(c_num, " ") != 0:
+                    romper
+                pos_num = pos_num + 1
+            let num_str = subcadena(linea, pos_num, len_total)
+            let fin_num = strstr_f(num_str, "\r")
+            si fin_num == -1:
+                fin_num = strstr_f(num_str, "\n")
+            si fin_num == -1:
+                fin_num = strlen_s(num_str)
+            let num_text = subcadena(num_str, 0, fin_num)
+            content_length = atoi_f(num_text)
+    retornar content_length
+
+// ============================================================
+// §1.7.1 — Leer mensaje (body JSON)
+// ============================================================
+
+funcion leer_mensaje(cantidad: entero) -> texto:
+    requiere:
+        cantidad >= 0
+    garantiza:
+        verdadero
+    si cantidad <= 0:
+        retornar ""
+    retornar leer_bytes(cantidad)
+
+// ============================================================
+// §1.7.2 — Responder JSON-RPC
+// ============================================================
+
+funcion enviar_respuesta(respuesta: texto) -> nulo:
+    requiere:
+        strlen_s(respuesta) > 0
+    garantiza:
+        verdadero
+    let len = strlen_s(respuesta)
+    let header = "Content-Length: " + a_texto(len) + "\r\n\r\n"
+    escribir(header)
+    escribir(respuesta)
+
+funcion construir_respuesta(id: entero, resultado: texto) -> texto:
+    requiere:
+        id >= 0
+    garantiza:
+        strlen_s(_resultado_) > 0
+    retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":" + resultado + "}"
+
+funcion construir_error(id: entero, codigo: entero, mensaje: texto) -> texto:
+    requiere:
+        id >= 0
+    garantiza:
+        strlen_s(_resultado_) > 0
+    retornar "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"error\":{\"code\":" + a_texto(codigo) + ",\"message\":\"" + mensaje + "\"}}"
+
+funcion construir_notificacion(metodo: texto, params: texto) -> texto:
+    requiere:
+        strlen_s(metodo) > 0
+    garantiza:
+        strlen_s(_resultado_) > 0
+    retornar "{\"jsonrpc\":\"2.0\",\"method\":\"" + metodo + "\",\"params\":" + params + "}"
+
+// ============================================================
+// §1.7.3 — Utilidades JSON
+// ============================================================
+
+funcion json_string(valor: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        strlen_s(_resultado_) >= 2
+    let escaped = escapar_json(valor)
+    retornar "\"" + escaped + "\""
+
+// ============================================================
+// §1.4 — Método: initialize
+// ============================================================
+
+funcion handle_initialize(id: entero) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    let caps = "{\"textDocumentSync\":{\"openClose\":true,\"change\":1,\"save\":{\"includeText\":true}},\"hoverProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"(\"]},\"definitionProvider\":true,\"codeActionProvider\":true,\"documentFormattingProvider\":true,\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"],\"workspace\":{\"didChangeConfiguration\":{\"supported\":true}}}}"
+    let server_info = "{\"name\":\"synapse-lsp-native\",\"version\":\"0.3.0\"}"
+    let result = "{\"capabilities\":" + caps + ",\"serverInfo\":" + server_info + "}"
+    enviar_respuesta(construir_respuesta(id, result))
+
+// ============================================================
+// §1.4 — Método: shutdown
+// ============================================================
+
+funcion handle_shutdown(id: entero) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta("{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":null}")
+
+// ============================================================
+// §1.4 — Método: didOpen / didChange / didClose
+// ============================================================
+
+funcion handle_did_open(uri_ref: texto, params: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let uri_idx = strstr_f(params, "\"uri\"")
+    si uri_idx == -1:
+        retornar uri_ref
+    let segmento = subcadena(params, uri_idx, strlen_s(params))
+    let comilla1 = strstr_f(segmento, "\"")
+    si comilla1 == -1:
+        retornar uri_ref
+    let uri_abs = uri_idx + comilla1 + 1
+    let segmento2 = subcadena(params, uri_abs, strlen_s(params))
+    let comilla2 = strstr_f(segmento2, "\"")
+    si comilla2 == -1:
+        retornar uri_ref
+    let nuevo_uri = subcadena(params, uri_abs, uri_abs + comilla2)
+
+    let diag = "{\"uri\":" + json_string(nuevo_uri) + ",\"diagnostics\":[]}"
+    enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+    retornar nuevo_uri
+
+funcion handle_did_close(uri_ref: texto, params: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let diag = "{\"uri\":" + json_string(uri_ref) + ",\"diagnostics\":[]}"
+    enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+    retornar ""
+
+// ============================================================
+// §1.4 — Método: hover
+// ============================================================
+
+funcion handle_hover(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"Tipo: `entero`\"}}"
+    enviar_respuesta(construir_respuesta(id, result))
+
+// ============================================================
+// §1.4 — Método: completion
+// ============================================================
+
+funcion handle_completion(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    let items = "[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14}]"
+    enviar_respuesta(construir_respuesta(id, "{\"isIncomplete\":false,\"items\":" + items + "}"))
+
+// ============================================================
+// §1.4 — Método: definition
+// ============================================================
+
+funcion handle_definition(id: entero, uri: texto, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    let result = "{\"uri\":" + json_string(uri) + ",\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":10}}}"
+    enviar_respuesta(construir_respuesta(id, result))
+
+// ============================================================
+// §1.4 — Métodos stub
+// ============================================================
+
+funcion handle_code_action(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "[]"))
+
+funcion handle_formatting(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "[]"))
+
+funcion handle_signature_help(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+
+funcion handle_did_change_configuration(params: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    retornar
+
+funcion handle_unknown(id: entero) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_error(id, -32601, "Method not found"))
+
+// ============================================================
+// FUNCIÓN PRINCIPAL — Bucle del LSP
+// ============================================================
+
+funcion principal() -> entero:
+    let ejecutando = 1
+    let uri_actual = ""
+    mientras ejecutando == 1:
+        let content_length = leer_cabecera()
+        si content_length <= 0:
+            romper
+
+        let body = leer_mensaje(content_length)
+        si strlen_s(body) == 0:
+            romper
+
+        // Parsear JSON
+        let msg = desde_texto(body)
+
+        // Extraer method
+        let method_nodo = obtener_campo(msg, "method")
+        let method_str = _json_a_texto(method_nodo)
+
+        // Extraer id
+        let id_nodo = obtener_campo(msg, "id")
+        let id_text = _json_a_texto(id_nodo)
+        let id_val = atoi_f(id_text)
+
+        // Extraer params
+        let params_nodo = obtener_campo(msg, "params")
+        let params_str = _json_a_texto(params_nodo)
+
+        // Dispatch
+        si cmp_texto(method_str, "initialize") == 0:
+            handle_initialize(id_val)
+        si cmp_texto(method_str, "initialized") == 0:
+            escribir_linea("")
+        si cmp_texto(method_str, "shutdown") == 0:
+            handle_shutdown(id_val)
+        si cmp_texto(method_str, "exit") == 0:
+            si id_val >= 0:
+                handle_unknown(id_val)
+        si cmp_texto(method_str, "textDocument/didOpen") == 0:
+            uri_actual = handle_did_open(uri_actual, params_str)
+        si cmp_texto(method_str, "textDocument/didChange") == 0:
+            uri_actual = handle_did_open(uri_actual, params_str)
+        si cmp_texto(method_str, "textDocument/didClose") == 0:
+            uri_actual = handle_did_close(uri_actual, params_str)
+        si cmp_texto(method_str, "textDocument/hover") == 0:
+            handle_hover(id_val, params_str)
+        si cmp_texto(method_str, "textDocument/completion") == 0:
+            handle_completion(id_val, params_str)
+        si cmp_texto(method_str, "textDocument/definition") == 0:
+            handle_definition(id_val, uri_actual, params_str)
+        si cmp_texto(method_str, "textDocument/codeAction") == 0:
+            handle_code_action(id_val, params_str)
+        si cmp_texto(method_str, "textDocument/formatting") == 0:
+            handle_formatting(id_val, params_str)
+        si cmp_texto(method_str, "textDocument/signatureHelp") == 0:
+            handle_signature_help(id_val, params_str)
+        si cmp_texto(method_str, "workspace/didChangeConfiguration") == 0:
+            handle_did_change_configuration(params_str)
+
+        // Liberar memoria
+        liberar_nodo(msg)
+
+    retornar 0

@@ -152,3 +152,14 @@
 {"fecha": "2026-08-26", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 8 §1", "puntos": "§1.4 métodos hover/completion/definition soportados, §1.5 mapeo coordenadas lineas 1-based a 0-based, §1.6 formato diagnostics JSON"}
 {"fecha": "2026-08-26", "archivos": ["std/io.syn", "std/texto.syn", "compilador/analizador_semantico.syn"], "cita": "Manual 2 §3, Manual 8 §1.2", "puntos": "Builtins string: len, subcadena, empieza_con, concat. Tipos: texto, entero, puntero. std.io: escribir, escribir_linea, leer_linea. LSP: leer_cabecera, leer_mensaje, responder_json"}
 {"fecha": "2026-08-26", "archivos": ["tests/unit/test_lsp_io.syn"], "cita": "Manual 8 §1.7", "puntos": "leer_bytes, a_texto, contiene, indice_de, reemplazar, escapar_json, termina_con, recortar"}
+{"fecha": "2026-08-26", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 8 §1.2-1.4", "puntos": "Protocolo de cabecera Content-Length, ciclo de vida LSP, métodos soportados"}
+{"fecha": "2026-08-26", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 8 §1.7", "puntos": "Funciones de utilidad para LSP: leer_bytes, construir_respuesta_json, escapar_json"}
+{"fecha": "2026-08-26", "archivos": ["tests/unit/test_lsp_v3_header.syn"], "cita": "Manual 8 §1.2, §1.7", "puntos": "Tests para header parsing: extraer_content_length, strstr_f, atoi_f"}
+{"fecha": "2026-08-26", "archivos": ["compilador/generator/emit_declarations.py"], "cita": "Manual 2 §2", "puntos": "Gramática formal: declaracion_variable, scope de variables"}
+{"fecha": "2026-08-26", "archivos": ["docs/manuales/ANEXO_INVENTARIO_ARCHIVOS.md"], "cita": "Manual 8 Anexo", "puntos": "Inventario de archivos del proyecto según manuales v8.1.0"}
+{"fecha": "2026-08-26", "archivos": ["tests/unit/test_lsp_io.syn"], "cita": "Manual 8 §1.7", "puntos": "Tests para stdlib I/O y string utils"}
+{"fecha": "2026-08-26", "archivos": ["tests/unit/test_lsp_io_v2.syn"], "cita": "Manual 8 §1.7", "puntos": "Tests para stdlib string utils v2"}
+{"fecha": "2026-08-26", "archivos": ["std/texto.syn"], "cita": "Manual 8 §1.7.3", "puntos": "Funciones de string: contiene, indice_de, reemplazar"}
+{"fecha": "2026-08-26", "archivos": ["std/io.syn"], "cita": "Manual 8 §1.7.1", "puntos": "Funciones de I/O: leer_bytes, fgetc_stdin, fprintf"}
+{"fecha": "2026-08-26", "archivos": ["runtime/core/string_utils.c"], "cita": "Manual 8 §1.7.3", "puntos": "Implementación C de funciones de string"}
+{"fecha": "2026-08-26", "archivos": ["runtime/core/io.c"], "cita": "Manual 8 §1.7.1", "puntos": "Implementación C de funciones de I/O"}

@@ -119,7 +119,8 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
     elif tipo_syn == 'Tensor':
         ctx._tensor_vars.add(nodo.nombre)
     elif ctx._tipo_tiene_destructor(tipo_syn):
-        ctx._scope_stack[-1][nodo.nombre] = tipo_syn
+        if ctx._scope_stack:
+            ctx._scope_stack[-1][nodo.nombre] = tipo_syn
 
 
 def visitar_delegar(ctx: GeneratorContext, nodo: SentenciaDelegar):
@@ -168,7 +169,8 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
         if _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
         elif ctx._tipo_tiene_destructor(tipo_syn):
-            ctx._scope_stack[-1][nodo.nombre] = tipo_syn
+            if ctx._scope_stack:
+                ctx._scope_stack[-1][nodo.nombre] = tipo_syn
         ctx.write_line(f"{nodo.nombre} = {val};")
 
 
