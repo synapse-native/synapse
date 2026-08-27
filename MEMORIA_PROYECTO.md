@@ -1,10 +1,19 @@
-﻿# MEMORIA DEL PROYECTO SYNAPSE
+# MEMORIA DEL PROYECTO SYNAPSE
 
 ---
 
 ## 1. CONTEXTO ACTUAL
 
-- **Fase del roadmap:** FASE 27 — Herramientas de Desarrollo (LSP, VS Code, Debugger). Fase 26 COMPLETADA. **ME-F27-1 ✅** stdlib I/O + string utils (commit `075eb2c`). **ME-F27-L1 ✅** LSP Synapse puro: header parsing + dispatch JSON-RPC (compila a `lsp_v3.exe`). **ME-F27-L2 ✅** Fix atoi_f use-after-free + hover/completion/definition reales (commit `73f13ac`). Tests LSP: 0→4/9. **Hallazgos críticos Synapse RAII descubiertos:** (1) `atoi_f()` libera argumento ANTES de parsear → use-after-free; (2) `_json_a_texto()` usa buffer estático `_ser_buf` → cada llamada sobreescribe anterior; (3) `desde_texto()` libera body vía RAII → body queda invalid después; (4) `obtener_campo()` libera nodo → doble free en llamadas encadenadas; (5) `lsp_doc_get()` retornaba puntero a buffer estático → RAII lo liberaba → heap corruption; (6) Windows stdout text mode duplica \r en \n → headers LSP corruptos. **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
+- **Fase del roadmap:** FASE 27 — Herramientas de Desarrollo (LSP, VS Code, Debugger). Fase 26 COMPLETADA. **ME-F27-1 ✅** stdlib I/O + string utils (commit `075eb2c`). **ME-F27-L1 ✅** LSP Synapse puro: header parsing + dispatch JSON-RPC (compila a `lsp_v3.exe`). **ME-F27-L2 ✅** Fix atoi_f use-after-free + hover/completion/definition reales (commit `73f13ac`). Tests LSP: 0→4/9. **ME-F27-L2.1 ✅** hover funcion + definition tests (commit `b453276`). Tests: 4→7/9. **ME-F27-L2.2 ✅** lsp_extract_doc_functions C helper + fix hover test pos (commit `c91ecf6`). Tests: 7/9. **Hallazgos críticos Synapse RAII descubiertos:** (1) `atoi_f()` libera argumento ANTES de parsear → use-after-free; (2) `_json_a_texto()` usa buffer estático `_ser_buf` → cada llamada sobreescribe anterior; (3) `desde_texto()` libera body vía RAII → body queda invalid después; (4) `obtener_campo()` libera nodo → doble free en llamadas encadenadas; (5) `lsp_doc_get()` retornaba puntero a buffer estático → RAII lo liberaba → heap corruption; (6) Windows stdout text mode duplica \r en \n → headers LSP corruptos.
+    (7) `subcadena()` en bucles while con RAII libera `doc` al salir del scope -> hover variable
+        no encuentra funcion contenedora (periodo de vida de `doc` reducido).
+    (8) Cadenas concatenadas con `var = var + ...` en Synapse: RAII libera valor antiguo ANTES
+        de evaluar la expresion derecha -> use-after-free (patron `items = items + ...`).
+    (9) `lsp_extract_doc_functions()` (C puro) funciona en C pero Integracion Synapse-FFI
+        genera crash silencioso -> investigar frontera de llamadas FFI Synapse.
+    (10) Test `hover_variable` posicion original (line=4, char=15) apuntaba a espacio en blanco;
+         corregido a (line=3, char=8) que apunta a 'resultado'.
+    **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
 
