@@ -71,8 +71,9 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 )
                 return None
             if self.tabla.esta_movido(nodo.nombre):
+                # cumple Manual 2 §9: uso de variable invalidada por move previo -> ERR_MEM_USE_AFTER_MOVE
                 self.diag.reportar(
-                    ErrorCodes.ERR_SEM_VAR_MOVIDA,
+                    ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre
                 )
@@ -355,8 +356,9 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             for arg, param in zip(nodo.argumentos, def_func.parametros):
                 if param.es_transferencia and isinstance(arg, Identificador):
                     if self.tabla.esta_movido(arg.nombre):
+                        # cumple Manual 2 §9: uso de variable ya movida (doble move / use-after-move) -> ERR_MEM_USE_AFTER_MOVE
                         self.diag.reportar(
-                            ErrorCodes.ERR_SEM_VAR_MOVIDA,
+                            ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
                             self._token(arg.linea, arg.columna),
                             nombre=arg.nombre
                         )
