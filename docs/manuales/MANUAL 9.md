@@ -457,6 +457,8 @@ El instalador de OpenSyn lee el archivo `modelos.toml` para obtener las URLs, ha
 
 El módulo `std/os.syn` proporciona funciones de detección de hardware y sistema utilitarias, utilizadas por el instalador de OpenSyn (ver §5.1). Estas funciones están implementadas mediante FFI a llamadas del sistema operativo.
 
+> **Nota de implementación (2026-08-27):** `std/os.syn` está especificado pero aún no implementado como módulo Synapse; su funcionalidad (detección de HW) vive hoy en `runtime/core/detect_hardware.c` vía FFI. Pendiente de la Fase 29. No debe crearse un archivo `std/os.syn` ficticio: la fuente de verdad es el runtime hasta esa fase.
+
 ```syquex
 // std/os.syn
 // Funciones de sistema y detección de hardware.

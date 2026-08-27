@@ -464,7 +464,7 @@ Syquex incluye una biblioteca estándar modular ubicada en `lib/`, con archivos 
 | IO | `lib/io.syq` | Entrada/salida (consola, archivos). |
 | Web | `lib/web.syq` | Servidor HTTP basado en fibras (no bloqueante). |
 | DOM | `lib/dom.syq` | Manipulación del DOM para WASM con arenas de componente. |
-| JSON | `lib/json.syq` | Serialización/deserialización JSON (FFI a cJSON). |
+| JSON | `std/json.syn` | Serialización/deserialización JSON (ADT; FFI a cJSON en runtime). |
 | Lista | `lib/lista.syq` | Operaciones con listas (map, filter, reduce, sort). |
 | Mapa | `lib/mapa.syq` | Operaciones con mapas/diccionarios. |
 | DB | `lib/db.syq` | Conexión a SQLite (FFI a libsqlite3) y PostgreSQL. |
