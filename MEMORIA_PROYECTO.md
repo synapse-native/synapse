@@ -236,5 +236,24 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
   - **Orden sugerido:** ME-3 → ME-1 → ME-2 → ME-4.
   - **Excluidos (no ejecutar sin decisión del Arquitecto):** (1) renombrar `lsp_v3.syn`→`lsp.syn`, `syq_main.syn`→`syquex.syn`, `std/json.syn`→`lib/json.syq` — rompe bootstrap S1→S2→S3 y la regla de tests inmutables; ya corregido el documento en `f61f299`; (2) `nucleo/builtins.syn` standalone — builtins embebidas en el codegen por diseño, refactor de alto riesgo sin beneficio; (3) `lib/gui.syq`/GTK — dependencia nueva no autorizada por regla 8 de gobernanza (solo Axon).
 
+- **HALLAZGOS DE SEGURIDAD (auditoría estática 2026-08-27, red-team):** revisión de `runtime/core/*.c`, `nucleo/lsp_v3.c`, `compilador/generator/emit_expressions.py`, flags de build. Críticos:
+  - **H-SEC-1 (CRÍTICO):** `runtime/core/json.c:513-520` — `_json_a_texto` retorna `(CadenaSegura){.datos=_ser_buf}` donde `_ser_buf` es estático global de 64 KB (líns. 415-417). Misma clase que el hallazgo RAII (5) ya corregido en `lsp_doc_get()`. Impacto: (a) no fiber/thread-safe (data race), (b) use-after-overwrite si se retiene el primer resultado tras otra llamada, (c) truncamiento silencioso >64 KB → JSON inválido sin error.
+  - **H-SEC-2 (ALTO):** `nucleo/lsp_v3.c` usa `requiere/garantiza` (compilan a `assert()`) para validar entrada del LSP. MANUAL 2 §5.3 dice que en `release` (`-DNDEBUG`) las aserciones se eliminan → la validación de entrada JSON-RPC externa desaparece en producción. NOTA: esto es *por diseño* para contratos (debug-only); el fallo real es usar contratos para validación de protocolo no confiable. La reparación debe separar ambas (ver ME-SEC-2).
+  - **H-SEC-3 (MEDIO):** `runtime/core/modelo.c:736,815,827,972,974,1849` — `atoi`/`atof` sin validación en metadata GGUF → 0 silencioso (bos/eos id).
+  - **H-SEC-4 (MEDIO):** estado estático mutable no fiber-safe: `io.c:50 _buf[4096]`, `texto.c:19 _split_store`, `modelo.c:1763 _cached_codigo_c` (json.c `_ser_buf` resuelto en H-SEC-1).
+  - **H-SEC-5 (MEDIO):** `compilador/generator/emit_expressions.py:284-295` — escape de string incompleto (solo `\ " \n \r \t`); no escapa `<0x20`/NUL → literal C malformado / `.longitud` incorrecta.
+  - **H-SEC-6 (BAJO):** `web.c:120`/`http.c:67` — `sscanf` sobre buffer de `recv` sin confirmar null-terminación previa.
+  - **H-SEC-7 (BAJO):** `axon.c:427` — `strncpy(path_copy, axon_path, sizeof-1)` sin `path_copy[...]=0`.
+
+- **PLAN DE ME DE SEGURIDAD (2026-08-27, PENDIENTE DE APROBACIÓN):** reparaciones alineadas a manuales.
+  - **ME-SEC-1 — `_json_a_texto` sin buffer estático (Manual 4 §2.1 + precedente D-F27):** en `runtime/core/json.c`, `_json_a_texto` debe retornar buffer *propio* (malloc/pool) que el llamador libera; `_ser_buf` queda solo como scratch de recursión y se copia al salir. Sobre 64 KB: devolver error/Resultado vacío, no truncar silenciosamente. Aceptación: test que dos serializaciones consecutivas retienen valores distintos + test >64 KB devuelve error; tsan sin races. Estado: PENDIENTE.
+  - **ME-SEC-2 — Validación de protocolo LSP siempre activa (Manual 8 §1.2, Manual 2 §5.3):** mantener `requiere/garantiza` como contratos debug-only (Manual 2 §5.3), y AÑADIR validación explícita de protocolo en `leer_mensaje_lsp` (ya `-> Resultado<texto,texto>`): `Content-Length` presente, positivo y con tope máximo (rechazar asignación gigante → DoS), y cuerpo JSON parseable; retornar `err(...)` en TODOS los builds (no vía assert). Aceptación: build `--release` rechaza Content-Length inválido/negativo/sobredimensionado sin crash. Estado: PENDIENTE.
+  - **ME-SEC-3 — GGUF: `strtol`+`endptr` (Manual 7 §3):** en `modelo.c`, reemplazar `atoi`/`atof` por `strtol`/`strtod` validando `endptr` y rango; metadata no numérica → rechazar modelo o default documentado. Aceptación: test con metadata no numérica. Estado: PENDIENTE.
+  - **ME-SEC-4 — Estado estático → fiber-safe (Manual 4 §2.1, Manual 5):** `io.c _buf`, `texto.c _split_store`, `modelo.c _cached_codigo_c` → TLS/fiber-local o mutex, o documentar single-thread. `_ser_buf` ya cubierto por ME-SEC-1. Aceptación: build `-fsanitize=thread` sin races en test concurrente. Estado: PENDIENTE.
+  - **ME-SEC-5 — Escape completo de string en codegen (Manual 2 §literal/§determinismo):** en `emit_expressions.py` escapar todo `<0x20` como `\uXXXX` y tratar NUL explícitamente; conservar `"`/`\`. Aceptación: compilar fuente con NUL/control/comillas/backslash → exe válido y salida correcta. Estado: PENDIENTE.
+  - **ME-SEC-6 (BAJO) — null-term en parsing de red (Manual 8 §1.2):** asegurar `\0` antes de `sscanf` en `web.c`/`http.c`. Aceptación: revisión + test. Estado: PENDIENTE.
+  - **ME-SEC-7 (BAJO) — null-term `strncpy` (axon.c:427):** añadir `path_copy[sizeof-1]=0`. Estado: PENDIENTE.
+  - **Orden sugerido:** ME-SEC-1 → ME-SEC-2 → ME-SEC-5 → ME-SEC-3 → ME-SEC-4 → ME-SEC-6/7.
+
 
 
