@@ -468,3 +468,4 @@ Comprueba de forma automatizada:
 | 2026-08-26 | **R119/F26**: ME-F26-14 pruebas integración completas OpenSyn (M7 §5.1 §6.3 §7) | 65b505e | Manual 7 §5.1 §6.3 §7 | 0 brechas |
 | 2026-08-26 | **R120/F26**: ME-F26-15 cierre Fase 26 - 50/50 tests PASS, criterios aceptación verificados (M7 §1 §7) | 8c423c0 | Manual 7 §1 §7 | 0 brechas |
 | 2026-08-26 | **R121/F27**: ME-F27-L1 LSP Synapse puro + fix scope stack + move ANEXO + contratos (M8 §1.2-1.7) | 2eff12b | Manual 8 §1.2-1.7 | 0 brechas |
+| 2026-08-27 | **R100/F27**: ME-F27-L2 fix atoi_f use-after-free + LSP hover/completion/definition reales (M8 §1.2-1.4, M5 §3) | 73f13ac | Manual 8 §1.2-1.4, Manual 5 §3 | 0 brechas |
