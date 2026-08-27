@@ -12,6 +12,8 @@ externo funcion lsp_doc_store(texto: texto) -> nulo
 externo funcion lsp_doc_get() -> texto
 externo funcion lsp_doc_clear() -> nulo
 externo funcion lsp_get_enclosing_return_type(texto: texto) -> texto
+externo funcion lsp_build_completion_items() -> texto
+externo funcion lsp_send_completion_response(id: entero) -> nulo
 
 // ============================================================
 // §1.7.1 — Leer cabecera (Content-Length)

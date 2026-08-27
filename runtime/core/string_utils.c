@@ -358,3 +358,133 @@ CadenaSegura lsp_get_enclosing_return_type(CadenaSegura word) {
     result[type_len] = '\0';
     return (CadenaSegura){ .longitud = type_len, .datos = result };
 }
+
+
+// ============================================================
+// LSP: Build completion items JSON (keywords + document symbols)
+// Returns malloc'd CadenaSegura with full items JSON array.
+// Avoids Synapse RAII: pure C, no Synapse string ops.
+// ============================================================
+static char _result_buf_ci[8192];
+
+CadenaSegura lsp_build_completion_items(void) {
+    int pos = 0;
+    int doc_len = _G_lsp_doc_len;
+    const char* doc = _G_lsp_doc_buf;
+
+    // Start with keywords
+    const char* keywords =
+        "[{\"label\":\"funcion\",\"kind\":14},"
+        "{\"label\":\"retorno\",\"kind\":14},"
+        "{\"label\":\"si\",\"kind\":14},"
+        "{\"label\":\"sino\",\"kind\":14},"
+        "{\"label\":\"mientras\",\"kind\":14},"
+        "{\"label\":\"para\",\"kind\":14},"
+        "{\"label\":\"verdadero\",\"kind\":14},"
+        "{\"label\":\"falso\",\"kind\":14},"
+        "{\"label\":\"nulo\",\"kind\":14},"
+        "{\"label\":\"entero\",\"kind\":14},"
+        "{\"label\":\"decimal\",\"kind\":14},"
+        "{\"label\":\"texto\",\"kind\":14},"
+        "{\"label\":\"booleano\",\"kind\":14},"
+        "{\"label\":\"estructura\",\"kind\":14},"
+        "{\"label\":\"importar\",\"kind\":14},"
+        "{\"label\":\"externo\",\"kind\":14}]";
+
+    pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, "%s", keywords);
+
+    // Strip trailing ']' to append document symbols
+    if (pos > 0 && _result_buf_ci[pos - 1] == ']') {
+        pos--;
+    }
+
+    // Extract document function symbols
+    const char* patron = "funcion ";
+    int patron_len = 8;
+    int search_pos = 0;
+    int found_any = 0;
+
+    while (search_pos < doc_len) {
+        int found_offset = -1;
+        int limit = doc_len - patron_len;
+        if (limit < 0) break;
+        for (int i = search_pos; i <= limit; i++) {
+            if (memcmp(doc + i, patron, patron_len) == 0) {
+                found_offset = i;
+                break;
+            }
+        }
+        if (found_offset < 0) break;
+
+        int name_start = found_offset + patron_len;
+        int name_end = name_start;
+        while (name_end < doc_len) {
+            char c = doc[name_end];
+            if (c == '(' || c == ' ' || c == ':' || c == '\n') break;
+            name_end++;
+        }
+
+        if (name_end > name_start) {
+            int name_len = name_end - name_start;
+            if (name_len > 200) name_len = 200;
+            if (!found_any) {
+                pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, ",");
+            }
+            found_any = 1;
+            pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos,
+                "{\"label\":\"%.*s\",\"kind\":3,\"detail\":\"funcion\"}",
+                name_len, doc + name_start);
+        }
+
+        search_pos = name_end + 1;
+    }
+
+    // Close the array
+    pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, "]");
+
+    // Return malloc'd copy
+    char* dup = (char*)malloc((size_t)(pos + 1));
+    if (!dup) return (CadenaSegura){0, ""};
+    memcpy(dup, _result_buf_ci, (size_t)pos);
+    dup[pos] = '\0';
+    return (CadenaSegura){ .longitud = pos, .datos = dup };
+}
+
+
+// ============================================================
+// LSP: Send completion response directly from C
+// Bypasses Synapse concat which crashes with long strings.
+// ============================================================
+void lsp_send_completion_response(int64_t id) {
+    CadenaSegura items = lsp_build_completion_items();
+
+    // Build the full JSON-RPC response
+    static char resp_buf[16384];
+    int rpos = 0;
+    rpos += snprintf(resp_buf + rpos, sizeof(resp_buf) - rpos,
+        "{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":{\"isIncomplete\":false,\"items\":",
+        (long long)id);
+
+    // Copy items into response
+    int copy_len = items.longitud;
+    if (rpos + copy_len + 10 >= (int)sizeof(resp_buf)) {
+        copy_len = (int)sizeof(resp_buf) - rpos - 10;
+    }
+    if (copy_len > 0) {
+        memcpy(resp_buf + rpos, items.datos, (size_t)copy_len);
+        rpos += copy_len;
+    }
+
+    rpos += snprintf(resp_buf + rpos, sizeof(resp_buf) - rpos, "}}");
+
+    // Send via enviar_respuesta equivalent: Content-Length header + body
+    static char hdr_buf[64];
+    int hlen = snprintf(hdr_buf, sizeof(hdr_buf), "Content-Length: %d\r\n\r\n", rpos);
+
+    // Write header + body to stdout
+    fwrite(hdr_buf, 1, (size_t)hlen, stdout);
+    fwrite(resp_buf, 1, (size_t)rpos, stdout);
+    fflush(stdout);
+
+    _syn_texto_liberar(items);
+}
