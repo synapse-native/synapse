@@ -184,3 +184,63 @@ void lsp_doc_clear(void) {
     _G_lsp_doc_len = 0;
     _G_lsp_doc_buf[0] = '\0';
 }
+
+// ============================================================
+
+// ============================================================
+
+// ============================================================
+// LSP: Extract function names from document as JSON array
+// Avoids Synapse RAII use-after-free with var = var + pattern
+// ============================================================
+static char _result_buf_fn[4096];
+
+CadenaSegura lsp_extract_doc_functions(void) {
+    int pos = 0;
+    int doc_len = _G_lsp_doc_len;
+    const char* doc = _G_lsp_doc_buf;
+    const char* patron = "funcion ";
+    int patron_len = 8;
+    int first = 1;
+
+    pos += snprintf(_result_buf_fn + pos, sizeof(_result_buf_fn) - pos, "[");
+    int search_pos = 0;
+    while (search_pos < doc_len) {
+        int found_offset = -1;
+        int limit = doc_len - patron_len;
+        if (limit < 0) break;
+        for (int i = search_pos; i <= limit; i++) {
+            if (memcmp(doc + i, patron, patron_len) == 0) {
+                found_offset = i;
+                break;
+            }
+        }
+        if (found_offset < 0) break;
+        int name_start = found_offset + patron_len;
+        int name_end = name_start;
+        while (name_end < doc_len) {
+            char c = doc[name_end];
+            if (c == '(' || c == ' ' || c == ':' || c == '\n') break;
+            name_end++;
+        }
+        if (name_end > name_start) {
+            int name_len = name_end - name_start;
+            if (name_len > 200) name_len = 200;
+            if (!first) {
+                pos += snprintf(_result_buf_fn + pos, sizeof(_result_buf_fn) - pos, ",");
+            }
+            first = 0;
+            pos += snprintf(_result_buf_fn + pos, sizeof(_result_buf_fn) - pos,
+                "{\"label\":\"%.*s\",\"kind\":3,\"detail\":\"funcion\"}",
+                name_len, doc + name_start);
+        }
+        search_pos = name_end + 1;
+    }
+    pos += snprintf(_result_buf_fn + pos, sizeof(_result_buf_fn) - pos, "]");
+
+    char* dup = (char*)malloc((size_t)(pos + 1));
+    if (!dup) return (CadenaSegura){0, ""};
+    memcpy(dup, _result_buf_fn, (size_t)pos);
+    dup[pos] = '\0';
+    return (CadenaSegura){ .longitud = pos, .datos = dup };
+}
