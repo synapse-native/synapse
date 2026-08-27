@@ -92,6 +92,23 @@ fi
 
 echo "✅ Alineación verificada: 0 brechas"
 
+# --- MTS (Metodo de Trabajo Seguro, docs/METODO_TRABAJO.md): gate contrastar ---
+echo "--- Gate MTS (auditoria/contrastar.py) ---"
+PLAN_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '^docs/plan_ME_.*\.md$' || true)
+if [ -n "$PLAN_FILES" ]; then
+    for pf in $PLAN_FILES; do
+        echo "  Plan MTS detectado: $pf"
+        if ! (cd "$RAIZ" && $PYTHON auditoria/contrastar.py --plan "$pf"); then
+            echo "Error: MTS contrastar fallo para $pf -- commit bloqueado" >&2
+            echo "Cumple el MTS (docs/METODO_TRABAJO.md): cada requisito necesita oraculo," >&2
+            echo "cada archivo de produccion staged necesita '// cumple Manual X S Y'." >&2
+            exit 1
+        fi
+    done
+else
+    echo "  Sin plan_ME en este commit (gate MTS no aplica)"
+fi
+
 # --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
 echo "── Gate de lectura previa (regla 1) ──"
 if ! (cd "$RAIZ" && $PYTHON auditoria/registrar_lectura.py --verificar); then

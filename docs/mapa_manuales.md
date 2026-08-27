@@ -22,6 +22,28 @@ especifica el trabajo. Este mapa define QUÉ secciones exige el gate mecánico
    modificados sin lectura registrada EL MISMO DÍA, o si la cita citada no
    existe realmente en `docs/manuales/`.
 
+## Método de Trabajo Seguro (MTS) — `docs/METODO_TRABAJO.md`
+
+El MTS es el mecanismo anti-olvido que garantiza que lo leído en el manual se
+aplica en el código. Está integrado en el arranque de `AGENTS.md` (FUENTES DE
+VERDAD #5, REGLAS DURAS y fase 4b del CICLO) y en el gate de auditoría.
+
+- **Plan:** `docs/plan_ME_<id>.md` con un bloque por requisito:
+  `requisito:` / `texto:` / `implementacion:` / `oraculo:` (ruta al test).
+- **Código:** TODO archivo de producción modificado debe llevar un comentario
+  grep-chequeable anclado a la construcción real, p. ej.
+  `// cumple Manual 8 §1.2: leer Content-Length y validar tope máximo`.
+- **Gate (fase 4b, obligatorio si el commit incluye un `docs/plan_ME_*.md`):**
+  el pre-commit ejecuta `python auditoria/contrastar.py --plan <plan>` y
+  bloquea si: (1) algún `requisito:` carece de `oraculo:` existente; (2) algún
+  archivo de producción *staged* no contiene `cumple Manual X §Y`; (3)
+  `verificar_alineacion.py` reporta brechas; (4) falta `CUMPLE`/`NO CUMPLE` en
+  `docs/verificacion_ME_<id>.md`.
+
+El mapeo de abajo ya exige la sección del manual a leer por área de producción
+(p. ej. `*.c`/`*.h`/`*.py` → `Manual 1`); el comentario `cumple Manual X §Y`
+debe citar esa misma sección para satisfacer el gate MTS.
+
 ## Formato del mapa
 
 El bloque JSON de abajo es la fuente máquina (la parsea el registrador).

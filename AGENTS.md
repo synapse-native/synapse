@@ -14,6 +14,8 @@ trabajando en este repositorio con opencode (Windows).
 2. `ROADMAP.md`
 3. `docs/GUIA_DE_GOBERNANZA.md`
 4. `MEMORIA_PROYECTO.md` (bitácora viva)
+5. `docs/METODO_TRABAJO.md` (Método de Trabajo Seguro — MTS, mecanismo
+   anti-olvido: citas grep-chequeables del manual en el plan y en el código)
 
 ## SECUENCIA DE ARRANQUE (obligatoria, en orden, antes de escribir código)
 
@@ -42,17 +44,28 @@ trabajando en este repositorio con opencode (Windows).
 - Cero deuda sin seguimiento (resolver o registrar con resolución asignada);
   código muerto se elimina; módulos >1200 líneas requieren registro D-9.
 - Contratos requiere/garantiza en TODA función pública nueva (Manual 2 §12).
+- Método de Trabajo Seguro (MTS, `docs/METODO_TRABAJO.md`): el plan de cada ME
+  cita el requisito literal del manual (`requisito:`/`texto:`/`implementacion:`/
+  `oraculo:`) y TODO archivo de producción modificado lleva un comentario
+  `// cumple Manual X §Y` (grep-chequeable). El gate `auditoria/contrastar.py`
+  es OBLIGATORIO (fase 4b) antes de integrar cuando hay `docs/plan_ME_<id>.md`.
 - Prohibido: `--no-verify`, force-push, saltarte fases del roadmap.
 - Si no puedes cumplir algo o hay ambigüedad real: DETENTE Y PREGUNTA al Arquitecto.
 
 ## CICLO POR MICRO-ENTREGABLE
 
 1. Plan breve citando Manual X, Sección Y (qué requisito implementa cada cambio).
-2. Codifica. Valida mentalmente contra las reglas de sintaxis de Synapse.
+   Si usas MTS (`docs/METODO_TRABAJO.md`), el plan `docs/plan_ME_<id>.md` usa el
+   bloque estricto `requisito:`/`texto:`/`implementacion:`/`oraculo:`.
+2. Codifica. Valida mentalmente contra las reglas de sintaxis de Synapse. Cada
+   archivo de producción modificado lleva `// cumple Manual X §Y`.
 3. Prueba y verifica:
    - `.venv\Scripts\python.exe main.py <archivo.syn>` — compila a `.exe`; ejecútalo.
    - `.venv\Scripts\python.exe -m pytest <ruta-de-tests> -v` — suite afectada + regresión.
    - `.venv\Scripts\python.exe auditoria\verificar_alineacion.py` — 0 brechas, obligatorio.
+3b. Gate MTS (fase 4b, obligatorio si hay `docs/plan_ME_<id>.md`):
+   `python auditoria/contrastar.py --plan docs/plan_ME_<id>.md` — resuelve
+   cualquier brecha antes de integrar.
 4. Entrega el REPORTE DE MICRO-ENTREGABLE (formato exacto en GUIA_DE_GOBERNANZA).
 5. Commitea (hook automático: limpieza + verificador + gate de lectura + header ABI).
 6. Documenta DESPUÉS del commit con el hash real: fila en
