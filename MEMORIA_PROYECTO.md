@@ -94,10 +94,16 @@
   codigo S1 ya detecta bien el move en esos 3 casos. **H-OWN-10 (CERRADO
   2026-08-27):** el Arquitecto aprobo renombrar `y`->`w` en los 3 tests (regla 5);
   aplicado -> test_ownership_10.py 21 passed / 21.
-  **H-OWN-10b:** paridad S1/nativo en el codigo de uso-tras-move (S1=ERR_MEM_USE_AFTER_MOVE,
-  nativo=E-501/ERR_SEM_VAR_MOVIDA); alinear el nativo requiere crear
-  ERR_MEM_USE_AFTER_MOVE en `nucleo/*.syn` y modificar ~16 assertions inmutables
-  de `test_fase2_nativa_hm.py` (opcion C, aprobacion del Arquitecto).
+  **H-OWN-10b (REGISTRADO 2026-08-27, tarea de refactor aprobada por el Arquitecto):** paridad
+  S1/nativo en el codigo de uso-tras-move. S1 emite `ERR_MEM_USE_AFTER_MOVE` (Manual 2 §9);
+  nativo emite `ERR_SEM_VAR_MOVIDA` (E-501, valor 22) y NO tiene `ERR_MEM_USE_AFTER_MOVE`.
+  Estudio: el nativo ya define `ERR_SEM_ACCESO_MEMORIA_MOVIDA = 23` ("Acceso prohibido a
+  memoria movida") SIN EMITIR; es el candidato a reutilizar como canonico. La tabla
+  `compilador/generator/generator.py:579` (S1 string -> entero nativo) no mapea
+  `ERR_MEM_USE_AFTER_MOVE`. Plan de micro-entregables en `docs/plan_ME_paridad_own10b.md`
+  (ME-P1 unificar codigo canonico aditivo; ME-P2 cambiar emision nativa + actualizar ~16
+  assertions inmutables de `test_fase2_nativa_hm.py` ya aprobadas; ME-P3 limpieza de
+  codigo muerto/mensajes). Emision unica en nativo: `nucleo/analizador_semantico.syn:679`.
 
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 

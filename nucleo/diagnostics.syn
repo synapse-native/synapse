@@ -23,7 +23,7 @@ constante ERR_SEM_ARGUMENTOS_INVALIDOS = 19
 constante ERR_SEM_ESTRUCTURA_NO_DEFINIDA = 20
 constante ERR_SEM_CAMPO_NO_EXISTE = 21
 constante ERR_SEM_VAR_MOVIDA = 22
-constante ERR_SEM_ACCESO_MEMORIA_MOVIDA = 23
+constante ERR_MEM_USE_AFTER_MOVE = 23  // cumple Manual 2 §9: uso tras move (canonico)
 constante ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = 24
 constante ERR_MANIFEST_NOT_FOUND = 25
 constante ERR_MODULE_STD_NOT_FOUND = 26
@@ -141,7 +141,7 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
             retornar "La estructura '{struct}' no tiene un campo '{campo}'"
         si codigo == ERR_SEM_VAR_MOVIDA:
             retornar "Uso ilegal de variable ya movida '{nombre}'"
-        si codigo == ERR_SEM_ACCESO_MEMORIA_MOVIDA:
+        si codigo == ERR_MEM_USE_AFTER_MOVE:
             retornar "Acceso prohibido a memoria movida '{nombre}'"
         si codigo == ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR:
             retornar "Resultado de canal sin desempaquetar"
@@ -215,8 +215,8 @@ funcion obtener_plantilla_error(codigo: entero, idioma: cadena) -> cadena:
         retornar "Struct '{struct}' has no field '{campo}'"
     si codigo == ERR_SEM_VAR_MOVIDA:
         retornar "Illegal use of already moved variable '{nombre}'"
-    si codigo == ERR_SEM_ACCESO_MEMORIA_MOVIDA:
-        retornar "Forbidden access to moved memory '{nombre}'"
+        si codigo == ERR_MEM_USE_AFTER_MOVE:
+            retornar "Forbidden access to moved memory '{nombre}'"
     si codigo == ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR:
         retornar "Unpacked channel result"
     si codigo == ERR_MANIFEST_NOT_FOUND:

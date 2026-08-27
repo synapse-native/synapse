@@ -577,7 +577,7 @@ def _emitir_error_defines(ctx: GeneratorContext):
             "ERR_SEM_ESTRUCTURA_NO_DEFINIDA": 20,
             "ERR_SEM_CAMPO_NO_EXISTE": 21,
             "ERR_SEM_VAR_MOVIDA": 22,
-            "ERR_SEM_ACCESO_MEMORIA_MOVIDA": 23,
+            "ERR_MEM_USE_AFTER_MOVE": 23,  # cumple Manual 2 §9 (canonico; era ACCESO_MEMORIA_MOVIDA=23)
             "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR": 24,
             "ERR_MANIFEST_NOT_FOUND": 25,
             "ERR_MODULE_STD_NOT_FOUND": 26,
