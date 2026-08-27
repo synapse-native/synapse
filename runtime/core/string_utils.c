@@ -244,3 +244,117 @@ CadenaSegura lsp_extract_doc_functions(void) {
     dup[pos] = '\0';
     return (CadenaSegura){ .longitud = pos, .datos = dup };
 }
+
+
+// ============================================================
+// LSP: Get enclosing function's return type for a variable
+// Input: word = variable name
+// Returns: malloc'd CadenaSegura with the return type (e.g. "entero"),
+//          or empty CadenaSegura if not found.
+// Avoids Synapse RAII: pure C, no Synapse string ops.
+// ============================================================
+static char _result_buf_ret[256];
+
+CadenaSegura lsp_get_enclosing_return_type(CadenaSegura word) {
+    int doc_len = _G_lsp_doc_len;
+    const char* doc = _G_lsp_doc_buf;
+
+    if (doc_len <= 0 || word.longitud <= 0) {
+        return (CadenaSegura){0, ""};
+    }
+
+    // Step 1: Find the variable assignment in the document
+    // Search for "word = " or "let word = "
+    int var_pos = -1;
+
+    // Try "let word = " first (more specific)
+    if (word.longitud + 5 <= doc_len) {
+        for (int i = 0; i <= doc_len - (word.longitud + 5); i++) {
+            if (memcmp(doc + i, "let ", 4) == 0 &&
+                memcmp(doc + i + 4, word.datos, word.longitud) == 0 &&
+                doc[i + 4 + word.longitud] == ' ' &&
+                doc[i + 4 + word.longitud + 1] == '=') {
+                var_pos = i;
+                break;
+            }
+        }
+    }
+
+    // If not found, try "word = " (without let)
+    if (var_pos < 0 && word.longitud + 3 <= doc_len) {
+        for (int i = 0; i <= doc_len - (word.longitud + 3); i++) {
+            if (memcmp(doc + i, word.datos, word.longitud) == 0 &&
+                doc[i + word.longitud] == ' ' &&
+                doc[i + word.longitud + 1] == '=') {
+                var_pos = i;
+                break;
+            }
+        }
+    }
+
+    if (var_pos < 0) {
+        return (CadenaSegura){0, ""};
+    }
+
+    // Step 2: Scan backwards from var_pos to find "funcion "
+    int func_start = -1;
+    const char* patron = "funcion ";
+    int patron_len = 8;
+    for (int i = var_pos - 1; i >= patron_len; i--) {
+        if (memcmp(doc + i - patron_len + 1, patron, patron_len) == 0) {
+            func_start = i - patron_len + 1;
+            break;
+        }
+    }
+
+    if (func_start < 0) {
+        return (CadenaSegura){0, ""};
+    }
+
+    // Step 3: Find the line containing the function signature
+    // Go back to the start of the line (previous newline or start of doc)
+    int line_start = func_start;
+    while (line_start > 0 && doc[line_start - 1] != '\n') {
+        line_start--;
+    }
+
+    // Go forward to the end of the line
+    int line_end = func_start;
+    while (line_end < doc_len && doc[line_end] != '\n') {
+        line_end++;
+    }
+
+    // Step 4: Find "-> " in the function signature line
+    const char* arrow = "-> ";
+    int arrow_len = 3;
+    int arrow_pos = -1;
+    for (int i = line_start; i <= line_end - arrow_len; i++) {
+        if (memcmp(doc + i, arrow, arrow_len) == 0) {
+            arrow_pos = i;
+            break;
+        }
+    }
+
+    if (arrow_pos < 0) {
+        return (CadenaSegura){0, ""};
+    }
+
+    // Step 5: Extract the return type (after "-> " until ":" or end of line)
+    int type_start = arrow_pos + arrow_len;
+    int type_end = type_start;
+    while (type_end < line_end && doc[type_end] != ':') {
+        type_end++;
+    }
+
+    int type_len = type_end - type_start;
+    if (type_len <= 0 || type_len > 200) {
+        return (CadenaSegura){0, ""};
+    }
+
+    // Step 6: Return a malloc'd copy
+    char* result = (char*)malloc((size_t)(type_len + 1));
+    if (!result) return (CadenaSegura){0, ""};
+    memcpy(result, doc + type_start, (size_t)type_len);
+    result[type_len] = '\0';
+    return (CadenaSegura){ .longitud = type_len, .datos = result };
+}

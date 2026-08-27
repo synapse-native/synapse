@@ -11,6 +11,7 @@ importar std.json
 externo funcion lsp_doc_store(texto: texto) -> nulo
 externo funcion lsp_doc_get() -> texto
 externo funcion lsp_doc_clear() -> nulo
+externo funcion lsp_get_enclosing_return_type(texto: texto) -> texto
 
 // ============================================================
 // §1.7.1 — Leer cabecera (Content-Length)
@@ -514,6 +515,11 @@ funcion handle_hover(id: entero, doc: texto, params: texto) -> nulo:
             si var_idx2 < var_idx:
                 var_idx = var_idx2
     si var_idx >= 0:
+        let tipo = lsp_get_enclosing_return_type(palabra)
+        si strlen_s(tipo) > 0:
+            let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" + palabra + "` : `" + tipo + "`\"}}"
+            enviar_respuesta(construir_respuesta(id, result))
+            retornar
         let result = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" + palabra + "\"}}"
         enviar_respuesta(construir_respuesta(id, result))
         retornar
