@@ -70,6 +70,18 @@
 
 ---
 
+- **INTEGRACIÓN MTS (2026-08-27, commit `ce19055`, R100):** el Método de
+  Trabajo Seguro (`docs/METODO_TRABAJO.md`) quedó cableado en `AGENTS.md`
+  (FUENTES DE VERDAD #5, REGLAS DURAS, fase 4b del CICLO),
+  `docs/mapa_manuales.md` (nueva sección "Método de Trabajo Seguro") y
+  `scripts/githooks/pre-commit` (gate `contrastar.py` disparado al stagear
+  `docs/plan_ME_*.md`). `auditoria/contrastar.py` existía sin trackear y se
+  reforzó: evalúa solo archivos de producción *staged* (`git diff --cached`) y
+  usa `sys.stdout.reconfigure(utf-8)` para no romper en consolas Windows
+  cp1252. Rollout progresivo: el gate MTS solo bloquea cuando el commit incluye
+  un `plan_ME_*.md`; así el trabajo legado sin citas `// cumple` no se ve
+  afectado.
+
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 
 - **2026-08-10 â€” R7 (fix `3e9cb84`):** la pasada 3 del analizador nativo declara los parÃ¡metros en el scope de la funciÃ³n; `NODO_ASIGNACION` hace declaraciÃ³n implÃ­cita ("primera declaraciÃ³n del scope", paridad S1) y chequea `ERR_SEM_CONSTANTE_INMUTABLE`; `NODO_DECLARACION` reporta REDEFINICIÃ“N solo del MISMO scope (vÃ­a retorno de `tabla_declarar`). **653 falsos positivos Â«variable no declaradaÂ» â†’ 0.**
