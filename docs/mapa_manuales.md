@@ -42,6 +42,7 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "syquex/lexer.syn": ["Manual 3 §1", "Manual 3 §4"],
   "syquex/analizador_alcance.syq": ["Manual 3 §5", "Manual 4"],
   "syquex/*": ["Manual 3"],
+  "nucleo/lsp.syn": ["Manual 8 §1"],
   "nucleo/ast_abi.syn": ["Manual 6 §1"],
   "nucleo/parser_constantes.syn": ["Manual 2 §7"],
   "nucleo/puente_ast.syn": ["Manual 2 §7"],

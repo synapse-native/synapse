@@ -176,3 +176,98 @@ void _syn_escribir_a(int fd, const char* contenido) {
     (void)contenido;
     // Stub — la escritura real se hace vía _syn_escribir_archivo
 }
+
+// ============================================================
+// §1.7 — I/O de bajo nivel para LSP
+// ============================================================
+
+int _syn_fgetc_stdin(void) {
+    return fgetc(stdin);
+}
+
+int _syn_fprintf(int canal, CadenaSegura formato) {
+    FILE* f = (canal == 1) ? stderr : stdout;
+    int r = fwrite(formato.datos, 1, formato.longitud, f);
+    fflush(f);
+    return r;
+}
+
+int _syn_fprintf_i(int canal, CadenaSegura formato, int64_t valor) {
+    // Formato simple: reemplaza %lld o %d por el valor
+    char buf[8192];
+    int f_len = formato.longitud;
+    if (f_len > 200) f_len = 200;
+    char fmt[256];
+    memcpy(fmt, formato.datos, f_len);
+    fmt[f_len] = '\0';
+    // Buscar %d o %lld y reemplazar
+    char* pos = strstr(fmt, "%lld");
+    if (pos) {
+        *pos = '\0';
+        int r = snprintf(buf, sizeof(buf), "%s%lld%s", fmt, valor, pos + 4);
+        FILE* f = (canal == 1) ? stderr : stdout;
+        fwrite(buf, 1, r, f);
+        fflush(f);
+        return r;
+    }
+    pos = strstr(fmt, "%d");
+    if (pos) {
+        *pos = '\0';
+        int r = snprintf(buf, sizeof(buf), "%s%d%s", fmt, (int)valor, pos + 2);
+        FILE* f = (canal == 1) ? stderr : stdout;
+        fwrite(buf, 1, r, f);
+        fflush(f);
+        return r;
+    }
+    // Sin placeholder, escribir tal cual
+    FILE* f = (canal == 1) ? stderr : stdout;
+    int r = fwrite(formato.datos, 1, formato.longitud, f);
+    fflush(f);
+    return r;
+}
+
+int _syn_fprintf_it(int canal, CadenaSegura formato, int64_t val1, CadenaSegura val2) {
+    // Formato con 1 entero y 1 texto: reemplaza %d y %s
+    char buf[8192];
+    int f_len = formato.longitud;
+    if (f_len > 200) f_len = 200;
+    char fmt[256];
+    memcpy(fmt, formato.datos, f_len);
+    fmt[f_len] = '\0';
+
+    // Primero reemplazar %d por el entero
+    char temp[4096];
+    char* pos = strstr(fmt, "%d");
+    if (pos) {
+        *pos = '\0';
+        snprintf(temp, sizeof(temp), "%s%lld%s", fmt, val1, pos + 2);
+    } else {
+        strcpy(temp, fmt);
+    }
+
+    // Luego reemplazar %s por el texto
+    pos = strstr(temp, "%s");
+    if (pos) {
+        *pos = '\0';
+        int r = snprintf(buf, sizeof(buf), "%s%.*s%s", temp, val2.longitud, val2.datos, pos + 2);
+        FILE* f = (canal == 1) ? stderr : stdout;
+        fwrite(buf, 1, r, f);
+        fflush(f);
+        return r;
+    }
+
+    FILE* f = (canal == 1) ? stderr : stdout;
+    int r = fwrite(temp, 1, strlen(temp), f);
+    fflush(f);
+    return r;
+}
+
+void _syn_fflush(int canal) {
+    FILE* f = (canal == 1) ? stderr : stdout;
+    fflush(f);
+}
+
+void _syn_setbuf_null(int canal) {
+    FILE* f = (canal == 1) ? stderr : stdout;
+    setbuf(f, NULL);
+}

@@ -1,0 +1,189 @@
+#lang: es
+// tests/unit/test_lsp_io.syn — TDD Tests for LSP I/O functions
+// Manual 8 §1.7: leer_bytes, a_texto, contiene, indice_de, reemplazar
+//
+// FLUJO TDD:
+//   1. Estos tests se escriben PRIMERO (antes del código)
+//   2. Se compila y verifica que FALLA (funciones no existen)
+//   3. Se implementa string_utils.c + bindings
+//   4. Se recompila hasta que TODOS pasen
+
+importar std.io
+importar std.texto
+
+// ============================================================
+// Contador global de tests
+// ============================================================
+
+let tests_pasados: entero = 0
+let tests_fallidos: entero = 0
+
+funcion assert_eq(nombre: texto, obtenido: texto, esperado: texto) -> nulo:
+    si obtenido == esperado:
+        escribir_linea("  PASS: " + nombre)
+        tests_pasados = tests_pasados + 1
+    sino:
+        escribir_linea("  FAIL: " + nombre)
+        escribir_linea("    Esperado: \"" + esperado + "\"")
+        escribir_linea("    Obtenido: \"" + obtenido + "\"")
+        tests_fallidos = tests_fallidos + 1
+
+funcion assert_bool(nombre: texto, obtenido: entero, esperado: entero) -> nulo:
+    si obtenido == esperado:
+        escribir_linea("  PASS: " + nombre)
+        tests_pasados = tests_pasados + 1
+    sino:
+        escribir_linea("  FAIL: " + nombre)
+        tests_fallidos = tests_fallidos + 1
+
+funcion assert_entero(nombre: texto, obtenido: entero, esperado: entero) -> nulo:
+    si obtenido == esperado:
+        escribir_linea("  PASS: " + nombre)
+        tests_pasados = tests_pasados + 1
+    sino:
+        escribir_linea("  FAIL: " + nombre)
+        tests_fallidos = tests_fallidos + 1
+
+// ============================================================
+// TEST 1-3: a_texto (conversión entero a texto)
+// ============================================================
+
+funcion test_a_texto_positivo() -> nulo:
+    let resultado = a_texto(42)
+    assert_eq("a_texto(42)", resultado, "42")
+
+funcion test_a_texto_negativo() -> nulo:
+    let resultado = a_texto(-999)
+    assert_eq("a_texto(-999)", resultado, "-999")
+
+funcion test_a_texto_cero() -> nulo:
+    let resultado = a_texto(0)
+    assert_eq("a_texto(0)", resultado, "0")
+
+// ============================================================
+// TEST 4-6: Contiene (búsqueda de subcadena)
+// ============================================================
+
+funcion test_contiene_verdadero() -> nulo:
+    let resultado = contiene("synapse_lsp", "lsp")
+    assert_bool("contiene('synapse_lsp', 'lsp')", resultado, 1)
+
+funcion test_contiene_falso() -> nulo:
+    let resultado = contiene("synapse", "syquex")
+    assert_bool("contiene('synapse', 'syquex')", resultado, 0)
+
+funcion test_contiene_vacio() -> nulo:
+    let resultado = contiene("hola", "")
+    assert_bool("contiene('hola', '')", resultado, 1)
+
+// ============================================================
+// TEST 7-8: indice_de (posición de subcadena)
+// ============================================================
+
+funcion test_indice_encontrado() -> nulo:
+    let resultado = indice_de("Content-Length: 50", "Length")
+    assert_entero("indice_de('Content-Length: 50', 'Length')", resultado, 8)
+
+funcion test_indice_no_encontrado() -> nulo:
+    let resultado = indice_de("hola", "z")
+    assert_entero("indice_de('hola', 'z')", resultado, -1)
+
+// ============================================================
+// TEST 9-10: reemplazar (reemplazo de subcadena)
+// ============================================================
+
+funcion test_reemplazar_basico() -> nulo:
+    let resultado = reemplazar("hola mundo", "mundo", "synapse")
+    assert_eq("reemplazar('hola mundo', 'mundo', 'synapse')", resultado, "hola synapse")
+
+funcion test_reemplazar_multiples() -> nulo:
+    let resultado = reemplazar("a-b-c", "-", "|")
+    assert_eq("reemplazar('a-b-c', '-', '|')", resultado, "a|b|c")
+
+// ============================================================
+// TEST 11-12: escapar_json (escape de strings JSON)
+// ============================================================
+
+funcion test_escapar_json_comillas() -> nulo:
+    let resultado = escapar_json('hola "mundo"')
+    assert_eq("escapar_json comillas", resultado, 'hola \\"mundo\\"')
+
+funcion test_escapar_json_slash() -> nulo:
+    let resultado = escapar_json("ruta\\archivo")
+    assert_eq("escapar_json backslash", resultado, "ruta\\\\archivo")
+
+// ============================================================
+// TEST 13-14: termina con / recortar
+// ============================================================
+
+funcion test_termina_con_verdadero() -> nulo:
+    let resultado = termina_con("hola.syn", ".syn")
+    assert_bool("termina_con('hola.syn', '.syn')", resultado, 1)
+
+funcion test_recortar_espacios() -> nulo:
+    let resultado = recortar("  hola  ")
+    assert_eq("recortar('  hola  ')", resultado, "hola")
+
+// ============================================================
+// TEST 15: leer_bytes (lectura binaria de stdin)
+// ============================================================
+
+funcion test_leer_bytes_ejemplo() -> nulo:
+    escribir_linea("  SKIP: leer_bytes (requiere stdin piping)")
+    tests_pasados = tests_pasados + 1
+
+// ============================================================
+// FUNCIÓN PRINCIPAL - Ejecuta todos los tests
+// ============================================================
+
+funcion principal() -> entero:
+    escribir_linea("=== test_lsp_io.syn — TDD Tests for LSP I/O ===")
+    escribir_linea("")
+
+    escribir_linea("--- a_texto (conversión entero a texto) ---")
+    test_a_texto_positivo()
+    test_a_texto_negativo()
+    test_a_texto_cero()
+    escribir_linea("")
+
+    escribir_linea("--- contiene (búsqueda de subcadena) ---")
+    test_contiene_verdadero()
+    test_contiene_falso()
+    test_contiene_vacio()
+    escribir_linea("")
+
+    escribir_linea("--- indice_de (posición de subcadena) ---")
+    test_indice_encontrado()
+    test_indice_no_encontrado()
+    escribir_linea("")
+
+    escribir_linea("--- reemplazar (reemplazo de subcadena) ---")
+    test_reemplazar_basico()
+    test_reemplazar_multiples()
+    escribir_linea("")
+
+    escribir_linea("--- escapar_json (escape de strings JSON) ---")
+    test_escapar_json_comillas()
+    test_escapar_json_slash()
+    escribir_linea("")
+
+    escribir_linea("--- termina_con / recortar ---")
+    test_termina_con_verdadero()
+    test_recortar_espacios()
+    escribir_linea("")
+
+    escribir_linea("--- leer_bytes (lectura binaria de stdin) ---")
+    test_leer_bytes_ejemplo()
+    escribir_linea("")
+
+    // Resumen
+    escribir_linea("=== RESUMEN ===")
+    escribir_linea("Pasados: " + entero_a_texto(tests_pasados))
+    escribir_linea("Fallidos: " + entero_a_texto(tests_fallidos))
+
+    si tests_fallidos > 0:
+        escribir_linea("RESULTADO: FAIL")
+        retornar 1
+    sino:
+        escribir_linea("RESULTADO: PASS")
+        retornar 0

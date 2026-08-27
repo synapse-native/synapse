@@ -149,3 +149,6 @@
 {"fecha": "2026-08-26", "archivos": ["docs/reportes/R120.md"], "cita": "Manual 7 §1 §7", "puntos": "Criterios aceptación OpenSyn: código válido, explicaciones precisas, bucle validación, contexto estático"}
 {"fecha": "2026-08-26", "archivos": ["docs/manuales/MANUAL 7.md"], "cita": "Manual 7 §1 §7", "puntos": "§1 opensyn vision: oraculo es modulo de generacion IA; §7 testing: compilar sin errores de linkage"}
 {"fecha": "2026-08-26", "archivos": ["docs/manuales/MANUAL 7.md"], "cita": "Manual 7 §1 §7", "puntos": "H12 cerrado: std.oraculo sin duplicar generar_texto"}
+{"fecha": "2026-08-26", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 8 §1", "puntos": "§1.4 métodos hover/completion/definition soportados, §1.5 mapeo coordenadas lineas 1-based a 0-based, §1.6 formato diagnostics JSON"}
+{"fecha": "2026-08-26", "archivos": ["std/io.syn", "std/texto.syn", "compilador/analizador_semantico.syn"], "cita": "Manual 2 §3, Manual 8 §1.2", "puntos": "Builtins string: len, subcadena, empieza_con, concat. Tipos: texto, entero, puntero. std.io: escribir, escribir_linea, leer_linea. LSP: leer_cabecera, leer_mensaje, responder_json"}
+{"fecha": "2026-08-26", "archivos": ["tests/unit/test_lsp_io.syn"], "cita": "Manual 8 §1.7", "puntos": "leer_bytes, a_texto, contiene, indice_de, reemplazar, escapar_json, termina_con, recortar"}

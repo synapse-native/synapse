@@ -1,0 +1,132 @@
+#lang: es
+// std.texto — Manipulación de cadenas
+// Manual 8 §1.7.3: contiene, indice_de, reemplazar (builtins existentes)
+// Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
+
+importar std.sistema
+
+// ============================================================
+// §1.7.3 — Contiene (builtin existente en texto.c)
+// ============================================================
+
+funcion contiene(texto: texto, subcadena: texto) -> entero:
+    retornar _syn_texto_contiene(texto, subcadena)
+
+// ============================================================
+// §1.7.3 — Índice de (builtin existente en texto.c)
+// ============================================================
+
+funcion indice_de(texto: texto, subcadena: texto) -> entero:
+    retornar _syn_texto_indice_de(texto, subcadena)
+
+// ============================================================
+// §1.7.3 — Reemplazar (builtin existente en texto.c)
+// ============================================================
+
+funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
+    retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
+
+// ============================================================
+// §1.7.3 — Termina con (builtin existente en texto.c)
+// ============================================================
+
+funcion termina_con(texto: texto, sufijo: texto) -> entero:
+    retornar _syn_texto_termina_con(texto, sufijo)
+
+// ============================================================
+// §1.7.3 — Recortar (builtin existente en texto.c)
+// ============================================================
+
+funcion recortar(texto: texto) -> texto:
+    retornar _syn_texto_recortar(texto)
+
+// ============================================================
+// §1.7.3 — Mayúsculas / Minúsculas (builtin existente en texto.c)
+// ============================================================
+
+funcion mayusculas(texto: texto) -> texto:
+    retornar _syn_texto_mayusculas(texto)
+
+funcion minusculas(texto: texto) -> texto:
+    retornar _syn_texto_minusculas(texto)
+
+// ============================================================
+// §1.7.2 — Escapar JSON (nuevo en string_utils.c)
+// ============================================================
+
+funcion escapar_json(texto: texto) -> texto:
+    retornar _syn_escapar_json(texto)
+
+// ============================================================
+// §1.7.2 — A texto (entero / decimal) (nuevo en string_utils.c)
+// ============================================================
+
+funcion a_texto(valor: entero) -> texto:
+    retornar _syn_a_texto_entero(valor)
+
+funcion a_texto_decimal(valor: decimal) -> texto:
+    retornar _syn_a_texto_decimal(valor)
+
+// ============================================================
+// Externos C — texto.c (builtins existentes)
+// ============================================================
+
+externo funcion _syn_texto_contiene(texto: texto, subcadena: texto) -> entero
+externo funcion _syn_texto_indice_de(texto: texto, subcadena: texto) -> entero
+externo funcion _syn_texto_reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
+externo funcion _syn_texto_termina_con(texto: texto, sufijo: texto) -> entero
+externo funcion _syn_texto_recortar(texto: texto) -> texto
+externo funcion _syn_texto_mayusculas(texto: texto) -> texto
+externo funcion _syn_texto_minusculas(texto: texto) -> texto
+
+// ============================================================
+// Externos C — string_utils.c (nuevos)
+// ============================================================
+
+externo funcion _syn_escapar_json(texto: texto) -> texto
+externo funcion _syn_a_texto_entero(valor: entero) -> texto
+externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
+
+// ============================================================
+// §1.7 — Funciones string de bajo nivel para LSP
+// ============================================================
+
+// Compara dos strings: 0 si son iguales, <0 si a<b, >0 si a>b
+funcion cmp_texto(a: texto, b: texto) -> entero:
+    retornar _syn_strcmp(a, b)
+
+// Longitud de un string en bytes
+funcion strlen_s(a: texto) -> entero:
+    retornar _syn_strlen(a)
+
+// Busca subcadena dentro de string, retorna posición o -1
+funcion strstr_f(texto: texto, patron: texto) -> entero:
+    retornar _syn_strstr(texto, patron)
+
+// Busca carácter dentro de string, retorna posición o -1
+funcion strchr_f(texto: texto, caracter: entero) -> entero:
+    retornar _syn_strchr(texto, caracter)
+
+// Convierte string a entero
+funcion atoi_f(texto: texto) -> entero:
+    retornar _syn_atoi(texto)
+
+// Copia string (retorna nuevo string con memoria asignada)
+funcion strcpy_f(texto: texto) -> texto:
+    retornar _syn_strcpy(texto)
+
+// Copia a buffer con límite máximo
+funcion strncpy_f(texto: texto, max_len: entero) -> texto:
+    retornar _syn_strncpy(texto, max_len)
+
+// ============================================================
+// Externos C — funciones string de bajo nivel
+// ============================================================
+
+externo funcion _syn_strcmp(a: texto, b: texto) -> entero
+externo funcion _syn_strlen(a: texto) -> entero
+externo funcion _syn_strstr(texto: texto, patron: texto) -> entero
+externo funcion _syn_strchr(texto: texto, caracter: entero) -> entero
+externo funcion _syn_atoi(texto: texto) -> entero
+externo funcion _syn_strcpy(texto: texto) -> texto
+externo funcion _syn_strncpy(texto: texto, max_len: entero) -> texto
