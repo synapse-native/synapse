@@ -11,7 +11,7 @@
 #include <pthread.h>
 
 // --- Core type definitions (deben coincidir exactamente con las emitidas por el generador) ---
-typedef struct { int longitud; const char* datos; } CadenaSegura;
+typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
 

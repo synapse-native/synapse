@@ -177,7 +177,7 @@ CadenaSegura lsp_doc_get(void) {
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _G_lsp_doc_buf, (size_t)_G_lsp_doc_len);
     dup[_G_lsp_doc_len] = '\0';
-    return (CadenaSegura){ .longitud = _G_lsp_doc_len, .datos = dup };
+    return (CadenaSegura){ .longitud = _G_lsp_doc_len, .datos = dup, .es_externo = 1 };
 }
 
 void lsp_doc_clear(void) {
@@ -242,7 +242,7 @@ CadenaSegura lsp_extract_doc_functions(void) {
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _result_buf_fn, (size_t)pos);
     dup[pos] = '\0';
-    return (CadenaSegura){ .longitud = pos, .datos = dup };
+    return (CadenaSegura){ .longitud = pos, .datos = dup, .es_externo = 1 };
 }
 
 
@@ -356,7 +356,7 @@ CadenaSegura lsp_get_enclosing_return_type(CadenaSegura word) {
     if (!result) return (CadenaSegura){0, ""};
     memcpy(result, doc + type_start, (size_t)type_len);
     result[type_len] = '\0';
-    return (CadenaSegura){ .longitud = type_len, .datos = result };
+    return (CadenaSegura){ .longitud = type_len, .datos = result, .es_externo = 1 };
 }
 
 
@@ -427,9 +427,7 @@ CadenaSegura lsp_build_completion_items(void) {
         if (name_end > name_start) {
             int name_len = name_end - name_start;
             if (name_len > 200) name_len = 200;
-            if (!found_any) {
-                pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, ",");
-            }
+            pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, ",");
             found_any = 1;
             pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos,
                 "{\"label\":\"%.*s\",\"kind\":3,\"detail\":\"funcion\"}",
@@ -447,7 +445,7 @@ CadenaSegura lsp_build_completion_items(void) {
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _result_buf_ci, (size_t)pos);
     dup[pos] = '\0';
-    return (CadenaSegura){ .longitud = pos, .datos = dup };
+    return (CadenaSegura){ .longitud = pos, .datos = dup, .es_externo = 1 };
 }
 
 
@@ -484,5 +482,5 @@ CadenaSegura lsp_build_completion_response(int64_t id) {
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, resp_buf, (size_t)rpos);
     dup[rpos] = ' ';
-    return (CadenaSegura){ .longitud = rpos, .datos = dup };
+    return (CadenaSegura){ .longitud = rpos, .datos = dup, .es_externo = 1 };
 }

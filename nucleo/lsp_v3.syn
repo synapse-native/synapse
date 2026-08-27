@@ -12,7 +12,7 @@ externo funcion lsp_doc_store(texto: texto) -> nulo
 externo funcion lsp_doc_get() -> texto
 externo funcion lsp_doc_clear() -> nulo
 externo funcion lsp_get_enclosing_return_type(texto: texto) -> texto
-externo funcion lsp_send_completion_response(id: entero) -> nulo
+externo funcion lsp_build_completion_items() -> texto
 
 // ============================================================
 // §1.7.1 — Leer cabecera (Content-Length)
@@ -760,8 +760,8 @@ funcion principal() -> entero:
             let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
             handle_hover(id_val, doc, params_str)
         si cmp_texto(method_str, "\"textDocument/completion\"") == 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_completion(id_val, doc, params_str)
+            let items = lsp_build_completion_items()
+            enviar_respuesta(construir_respuesta(id_val, "{\"isIncomplete\":false,\"items\":" + items + "}"))
         si cmp_texto(method_str, "\"textDocument/definition\"") == 0:
             let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
             handle_definition(id_val, uri_actual, doc, params_str)
