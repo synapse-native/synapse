@@ -452,10 +452,10 @@ CadenaSegura lsp_build_completion_items(void) {
 
 
 // ============================================================
-// LSP: Send completion response directly from C
-// Bypasses Synapse concat which crashes with long strings.
+// LSP: Build full completion JSON-RPC response
+// Returns malloc'd CadenaSegura with the complete response.
 // ============================================================
-void lsp_send_completion_response(int64_t id) {
+CadenaSegura lsp_build_completion_response(int64_t id) {
     CadenaSegura items = lsp_build_completion_items();
 
     // Build the full JSON-RPC response
@@ -477,14 +477,12 @@ void lsp_send_completion_response(int64_t id) {
 
     rpos += snprintf(resp_buf + rpos, sizeof(resp_buf) - rpos, "}}");
 
-    // Send via enviar_respuesta equivalent: Content-Length header + body
-    static char hdr_buf[64];
-    int hlen = snprintf(hdr_buf, sizeof(hdr_buf), "Content-Length: %d\r\n\r\n", rpos);
-
-    // Write header + body to stdout
-    fwrite(hdr_buf, 1, (size_t)hlen, stdout);
-    fwrite(resp_buf, 1, (size_t)rpos, stdout);
-    fflush(stdout);
-
     _syn_texto_liberar(items);
+
+    // Return malloc'd copy
+    char* dup = (char*)malloc((size_t)(rpos + 1));
+    if (!dup) return (CadenaSegura){0, ""};
+    memcpy(dup, resp_buf, (size_t)rpos);
+    dup[rpos] = ' ';
+    return (CadenaSegura){ .longitud = rpos, .datos = dup };
 }
