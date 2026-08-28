@@ -22,7 +22,15 @@ Regla de los `skip`: no se dejan `pytest.skip` que oculten trabajo de la **etapa
 - Si la feature corresponde a la fase en curso → se **implementa el código mínimo** para que el test pase.
 - Si la feature es de una **fase futura** (F28/F29/F30) → se convierte en `pytest.fail("RED TDD ME_XX_Tn: ...")`
   explícito y rastreado por su ME de feature (deuda visible, nunca oculta en un skip).
-- Un `skip` solo es aceptable si cita un Manual Y está asignado a un ME de feature futuro específico.
+  - Un `skip` solo es aceptable si cita un Manual Y está asignado a un ME de feature futuro específico.
+
+- **Autoría ajena NO es excusa (decisión del Arquitecto — 2026-08-28):** no es válido
+  alegar "no toco lo que hizo el otro agente" para dejar deuda. Si al recorrer el camino
+  se encuentra una **deuda, error, falla o deficiencia** en el trabajo de cualquiera
+  (propio o ajeno), se **repara según los requerimientos de los manuales** (método de 4 pasos
+  arriba). Al reparar trabajo ajeno: regístralo en `MEMORIA_PROYECTO.md` (bitácora), verifica
+  contra el manual aplicable y mantén coordinación vía memoria; no se revierte trabajo ajeno
+  funcional, pero sí se corrige la deuda/deficiencia encontrada.
 
 ## Principios (no negociables)
 1. Trazabilidad obligatoria: todo `test_*.py` cita `Manual X §Y`.
