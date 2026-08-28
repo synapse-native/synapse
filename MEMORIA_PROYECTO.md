@@ -360,5 +360,13 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
 - **`tests/unit` completo (caché cálido):** 328 passed + 2 RED TDD esperados (r3_param_adt). Sin cuelgues reales tras el fix de caché.
 - **Hallazgo observado (no es mi error, latente):** al correr la suite aparece `[ME-R7] WARNING: runtime objects no auto-compilados: db.o: undefined reference to sqlite3_open` en un fixture de conftest que intenta compilar `test_work_stealing.exe`/objetos runtime y no enlaza `sqlite3.o`. Es una advertencia, no falla los tests, pero indica que el fixture ME-R7 no incluye `vendor/sqlite3/sqlite3.o` al linkear módulos que usan `db.c`. Deuda a investigar aparte (fuera de este ME).
 
+### 7.9 CORRECCIÓN DE DESVIACIÓN: ubicación de la caché de runtime (2026-08-28)
+- **Desviación detectada:** `_compilar_objeto_cacheado` guardaba los `.o` del runtime en `SYNAPSE_BIN/build/obj/`, que es un directorio de **build** del repositorio. El hook `scripts/githooks/pre-commit` (línea 53) hace `find "$RAIZ" -maxdepth 1 -name '*.o' -delete` → limpiaba la caché en cada commit. Resultado: cada test tras un commit volvía a ser frío (~45-93s) y el beneficio de la caché se perdía.
+- **Alineación con manual:** Manual 9 §9 (Offline-first) dice la caché local es `~/.synapse/cache/`; Manual 1 §4 lista `cache.syn` = "Sistema de caché incremental SHA-256". `build/` es CLASE I (artefactos efímeros). La caché NO es artefacto de build: es estado persistente.
+- **Corrección (commit `7931d6f`):** `dir_obj` por defecto ahora es `os.path.join(_cache_dir(), "runtime_obj")` (`_cache_dir()` = `~/.synapse/cache/`), fuera del repo. Verificado: cold 93s → warm **1.75s**; el `.exe` resulta correcto (rc=0); el hook NO borra `~/.synapse/cache/` (solo limpia `$RAIZ`), por lo que la caché es **durable entre commits y sesiones**.
+- **Corrección al manual:** se añadió nota a Manual 9 §9 explicitando que TODA caché del compilador (runtime + user-code) vive en `~/.synapse/cache/` y que `build/` NO debe usarse para cachés persistentes. Esto previene reintroducir la desviación.
+- **Paquete MTS:** `docs/plan_ME_cache_rt2.md` + `docs/verificacion_ME_cache_rt2.md`; gate `contrastar.py` PASÓ (oráculo `tests/unit/test_aislamiento_gcc.py`, 0 brechas). Lectura registrada de Manual 1 §4, §6 y 9 §9.
+- **Aprendizaje de debugging:** `Get-ChildItem` mostró 31 `.sha` sin `.o` en la caché durante una corrida de tests → investigar: el helper solo escribe sidecar si `rc==0`; los `.o` ausentes eran por el fixture ME-R7 del conftest que recompila y limpia artefacts entre tests. En un compile real los `.o` sí persisten (35 tras cold). Sin impacto en correctitud (el hit requiere `.o` Y `.sha`).
+
 
 
