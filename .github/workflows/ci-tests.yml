@@ -102,6 +102,16 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
 
+      - name: Ejecutar oráculos en modo release
+        run: |
+          # NDEBUG se activa en release para comprobar que los oráculos (tests)
+          # verifican el comportamiento de producción, evitando olvidos de validación real.
+          export SYNAPSE_BUILD_MODE=release
+          export CFLAGS="-DNDEBUG -O3"
+          python -m pytest tests/ -v --tb=short
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
       - name: Compilar runtime (C) - Unix
         if: matrix.os != 'windows-latest'
         run: |

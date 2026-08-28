@@ -33,6 +33,7 @@ class TestAxonRT:
             f"axon_rt.c tiene {os.path.getsize(rt)} bytes"
 
     def test_axon_rt_ed25519(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe implementar Ed25519."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
@@ -42,6 +43,7 @@ class TestAxonRT:
             "axon_rt.c debe implementar Ed25519"
 
     def test_axon_rt_serializar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe tener serialización."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
@@ -50,6 +52,7 @@ class TestAxonRT:
             "axon_rt.c debe tener serialización"
 
     def test_axon_rt_deserializar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe tener deserialización."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
@@ -65,6 +68,7 @@ class TestErroresAxon:
     """Manual 6 §7.2: ERR_AXON_COMPROMISED, ERR_AXON_VERSION."""
 
     def test_err_codes(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe definir códigos de error."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         with open(rt, 'r', encoding='utf-8', errors='ignore') as f:

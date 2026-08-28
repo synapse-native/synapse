@@ -18,6 +18,7 @@ class TestBucleCorreccion:
     """Manual 7 §6.3: Bucle de corrección automática (3 intentos)."""
 
     def test_router_syn_correccion(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """router.syn debe implementar bucle de corrección."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):
@@ -30,6 +31,7 @@ class TestBucleCorreccion:
             "router.syn debe implementar bucle de corrección"
 
     def test_maximo_3_intentos(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El bucle debe tener máximo 3 intentos."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):

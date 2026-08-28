@@ -6,3 +6,4 @@ tipo = "ejecutable"
 punto_entrada = "nucleo/principal.syn"
 
 [dependencias]
+lsp_v3 = "nucleo/lsp_v3.syn"

@@ -12,8 +12,10 @@ el error crítico ERR_MEM_USE_AFTER_MOVE."
 implementacion: en compilador/semantic_types.py, la detección de variable ya
 movida (self.tabla.esta_movido) emite ErrorCodes.ERR_MEM_USE_AFTER_MOVE en lugar
 de ERR_SEM_VAR_MOVIDA (E-501), en los sitios de inferencia de tipo de
-Identificador y de argumentos de llamada con transferencia (->).
-oraculo: tests/integration/test_ownership_10.py::TestUseAfterMoveFallan
+Identificador y de argumentos de llamada con transferencia (->). Los tests
+afectados: TestUseAfterMoveFallan (simple/condicional/expresion_compuesta/
+lanzar_mueve_texto) y test_doble_move.
+oraculo: tests/integration/test_ownership_10.py
 
 ## Requisito 2 — doble move / move tras lanzar
 
@@ -21,9 +23,7 @@ requisito: Manual 2 §9
 texto: "variable invalidada por move previo ... reutilizada ... ERR_MEM_USE_AFTER_MOVE"
 implementacion: mismo sitio de marcar_movido / esta_movido en argumentos de
 llamada; el doble move y el uso tras lanzar también reportan ERR_MEM_USE_AFTER_MOVE.
-oraculo: tests/integration/test_ownership_10.py::test_doble_move
-oraculo: tests/integration/test_ownership_10.py::test_lanzar_mueve_texto
-oraculo: tests/integration/test_ownership_10.py::test_move_en_lanzar
+oraculo: tests/integration/test_ownership_10.py
 
 ## Notas de alcance (paridad S1/nativo)
 

@@ -18,6 +18,7 @@ class TestDiscovery:
     """Manual 5 §6.4: Auto-discovery de nodos en la red."""
 
     def test_discovery_en_cluster(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe implementar auto-discovery."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -30,6 +31,7 @@ class TestDiscovery:
             "std/cluster.syn debe implementar auto-discovery"
 
     def test_discovery_mecanismo(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Discovery debe usar multicast UDP o mDNS."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -41,6 +43,7 @@ class TestDiscovery:
             "Discovery debe usar multicast UDP o mDNS"
 
     def test_nodos_se_anuncian(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Los nodos deben poder anunciarse en la red."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):

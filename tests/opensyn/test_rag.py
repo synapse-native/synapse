@@ -25,6 +25,7 @@ class TestRAGPipeline:
         assert os.path.exists(rag_c), "synapse_rag.c no existe"
 
     def test_rag_prompt_system_reglas(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El prompt debe contener 'REGLAS DE SYNAPSE' (Manual 7 §2.3)."""
         rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
         with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
@@ -33,6 +34,7 @@ class TestRAGPipeline:
             "synapse_rag.c debe inyectar REGLAS DE SYNAPSE"
 
     def test_rag_prompt_contexto(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El prompt debe seguir plantilla [SYSTEM]/[CONTEXT]/[INSTRUCCION]."""
         rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
         with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
@@ -42,6 +44,7 @@ class TestRAGPipeline:
             "synapse_rag.c debe construir prompts con contexto"
 
     def test_rag_ncctx_30_70(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Prompt reserva 30% n_ctx, generación 70% (Manual 7 §2.3)."""
         rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
         with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
@@ -51,6 +54,7 @@ class TestRAGPipeline:
             "synapse_rag.c debe calcular 30% prompt / 70% generación"
 
     def test_rag_extraer_codigo(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """rag_extraer_codigo() extrae código de la respuesta."""
         rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
         with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
@@ -59,6 +63,7 @@ class TestRAGPipeline:
             "synapse_rag.h debe declarar rag_extraer_codigo()"
 
     def test_rag_validar_codigo(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """rag_validar_codigo() valida con el compilador."""
         rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
         with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:

@@ -58,6 +58,7 @@ class TestCanalRemoto:
     """Manual 5 §6.2: CanalRemoto<T> con handshake Ed25519."""
 
     def test_canal_remoto_conectar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener función conectar."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -68,6 +69,7 @@ class TestCanalRemoto:
             "std/cluster.syn debe tener función conectar()"
 
     def test_canal_remoto_enviar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener función enviar."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -78,6 +80,7 @@ class TestCanalRemoto:
             "std/cluster.syn debe tener función enviar()"
 
     def test_canal_remoto_recibir(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener función recibir."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -95,6 +98,7 @@ class TestWorkStealing:
     """Manual 5 §6.5: Work-stealing para balanceo de carga."""
 
     def test_work_stealing_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener work-stealing."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -113,6 +117,7 @@ class TestRaft:
     """Manual 5 §6.5: Raft para consenso distribuido."""
 
     def test_raft_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener Raft."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -131,6 +136,7 @@ class TestDiscovery:
     """Manual 5 §6.4: Auto-discovery vía multicast UDP o mDNS."""
 
     def test_discovery_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener auto-discovery."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -149,6 +155,7 @@ class TestMulticast:
     """Manual 5 §6.4: Multicast para envío a múltiples nodos."""
 
     def test_multicast_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe tener multicast."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):

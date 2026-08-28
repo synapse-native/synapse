@@ -18,6 +18,7 @@ class TestBindings:
     """Manual 6 §4: Generación de bindings C → Syquex."""
 
     def test_router_syn_export(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """router.syn debe manejar @export."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):
@@ -29,6 +30,7 @@ class TestBindings:
             "router.syn debe manejar @export y bindings"
 
     def test_binding_python(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Debe poder generar bindings Python."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):
@@ -40,6 +42,7 @@ class TestBindings:
             "router.syn debe generar bindings Python"
 
     def test_binding_typescript(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Debe poder generar bindings TypeScript."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):

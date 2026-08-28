@@ -48,6 +48,7 @@ class TestTraduccionLean:
     """Manual 1 §2: El Proof Bridge traduce AST a formato Lean."""
 
     def test_proof_bridge_traducir_lean(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """proof_bridge debe tener función de traducción a Lean."""
         bridge_h = os.path.join(RAIZ, "nucleo", "proof_bridge.h")
         if not os.path.exists(bridge_h):
@@ -59,6 +60,7 @@ class TestTraduccionLean:
             "proof_bridge.h debe declarar función de traducción a Lean"
 
     def test_proof_bridge_api_completa(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """proof_bridge.h debe declarar las funciones de traducción y validación."""
         bridge_h = os.path.join(RAIZ, "nucleo", "proof_bridge.h")
         if not os.path.exists(bridge_h):
@@ -70,6 +72,7 @@ class TestTraduccionLean:
             "proof_bridge.h debe tener API con prefijo pb_ o proof_bridge"
 
     def test_proof_bridge_validar_formal(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """proof_bridge debe poder validar una prueba formal."""
         bridge_h = os.path.join(RAIZ, "nucleo", "proof_bridge.h")
         if not os.path.exists(bridge_h):

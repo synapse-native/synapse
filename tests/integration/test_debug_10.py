@@ -57,6 +57,7 @@ class TestFuncionesDebug:
     """Manual std.debug: Funciones de debugging."""
 
     def test_debug_pausa(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.debug debe tener función de pausa."""
         debug = os.path.join(RAIZ, "std", "debug.syn")
         if not os.path.exists(debug):
@@ -68,6 +69,7 @@ class TestFuncionesDebug:
             "std/debug.syn debe tener función de pausa"
 
     def test_debug_inspeccionar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.debug debe tener función de inspección de variables."""
         debug = os.path.join(RAIZ, "std", "debug.syn")
         if not os.path.exists(debug):

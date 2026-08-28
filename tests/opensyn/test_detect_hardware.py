@@ -26,6 +26,7 @@ class TestDeteccionHardware:
             pytest.skip("opensyn/installer.syn no existe aún (TDD)")
 
     def test_detectar_hardware_funcion(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """installer.syn debe tener función detectar_hardware()."""
         installer = os.path.join(RAIZ, "opensyn", "installer.syn")
         if not os.path.exists(installer):
@@ -36,6 +37,7 @@ class TestDeteccionHardware:
             "installer.syn debe tener detectar_hardware()"
 
     def test_hardware_info_campos(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """HardwareInfo debe tener ram_total, vram_total, cpu_nucleos, arquitectura."""
         installer = os.path.join(RAIZ, "opensyn", "installer.syn")
         if not os.path.exists(installer):

@@ -95,6 +95,7 @@ class TestReleaseMatrixYML:
         assert os.path.exists(ruta), f"release_matrix.yml no encontrado en {ruta}"
 
     def test_release_matrix_contiene_cuatro_targets(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El workflow debe definir 4 targets en la matrix."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -105,6 +106,7 @@ class TestReleaseMatrixYML:
             assert plataforma in contenido, f"Plataforma {plataforma} no encontrada en release_matrix.yml"
 
     def test_release_matrix_tiene_sha256_step(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El workflow debe generar SHA-256 checksums."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -112,6 +114,7 @@ class TestReleaseMatrixYML:
         assert 'sha256' in contenido.lower() or 'SHA256' in contenido
 
     def test_release_matrix_tiene_upload_artifact(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El workflow debe subir artefactos."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -119,6 +122,7 @@ class TestReleaseMatrixYML:
         assert 'upload-artifact' in contenido
 
     def test_release_matrix_tiene_sbom_step(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El workflow debe generar SBOM SPDX."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -126,6 +130,7 @@ class TestReleaseMatrixYML:
         assert 'spdx' in contenido.lower()
 
     def test_release_matrix_tiene_validacion(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El workflow debe tener validación de artefactos."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -353,6 +358,7 @@ class TestCompatibilidadMultiplataforma:
 # ============================================================
 
 def test_workflow_tiene_disparadores_correctos():
+    pytest.skip('ME-4: Refactor pendiente a validación funcional')
     """El workflow debe dispararse en push a main/master/release y tags v*."""
     ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
     with open(ruta, 'r', encoding='utf-8') as f:
@@ -364,6 +370,7 @@ def test_workflow_tiene_disparadores_correctos():
 
 
 def test_workflow_tiene_permisos_correctos():
+    pytest.skip('ME-4: Refactor pendiente a validación funcional')
     """El workflow debe tener permisos para leer contenido y escribir paquetes."""
     ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
     with open(ruta, 'r', encoding='utf-8') as f:

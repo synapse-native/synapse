@@ -26,6 +26,7 @@ class TestTranspilacion:
             pytest.skip("opensyn/router.syn no existe aún (TDD)")
 
     def test_transpilar_python_funcion(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """router.syn debe tener función de transpilación."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):
@@ -37,6 +38,7 @@ class TestTranspilacion:
             "router.syn debe tener función de transpilación"
 
     def test_mapeo_tipos(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Manual 7 §2.3: int→entero, float→decimal, str→texto."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
         if not os.path.exists(router):

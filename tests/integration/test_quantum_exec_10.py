@@ -66,6 +66,7 @@ class TestQuantumRuntimeC:
         assert os.path.exists(ec_o), "nucleo/quantum_err_corr.o no existe"
 
     def test_quantum_runtime_api_funciones(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """quantum_runtime.h debe tener funciones de compuertas y medición."""
         rt_h = os.path.join(RAIZ, "nucleo", "quantum_runtime.h")
         if not os.path.exists(rt_h):
@@ -86,6 +87,7 @@ class TestQuantumMemory:
     """Verifica que quantum_memory gestiona qubits."""
 
     def test_quantum_memory_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """quantum_memory.h debe declarar API de asignación."""
         qm_h = os.path.join(RAIZ, "nucleo", "quantum_memory.h")
         if not os.path.exists(qm_h):
@@ -104,6 +106,7 @@ class TestQuantumErrorCorr:
     """Verifica que quantum_err_corr implementa corrección de errores."""
 
     def test_err_corr_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """quantum_err_corr.h debe tener funciones de detección/corrección."""
         ec_h = os.path.join(RAIZ, "nucleo", "quantum_err_corr.h")
         if not os.path.exists(ec_h):

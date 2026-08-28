@@ -1,6 +1,6 @@
 # ANEXO: Inventario de Archivos Según los Manuales v8.1.0
 
-> Anexo informativo que reúne la **lista exhaustiva de archivos que deben estar
+> Anexo informativo que reúne una **línea base (NO exhaustiva) de archivos que deben estar
 > escritos en Synapse puro** (extensión `.syn` para Synapse, `.syq` para Syquex)
 > dentro del ecosistema. No incluye código C, Python, TypeScript, JSON, TOML, etc.
 > — solo lo que los manuales exigen que esté en Synapse. Derivado de la
@@ -189,6 +189,43 @@ He cotejado esta lista con:
 - **Manual 9** (Instalación)
 - **Roadmap F22–F30**
 
-**Resultado:** La lista es completa y coincide con la especificación de los
-manuales v8.1.0. No falta ningún archivo .syn/.syq que esté mencionado en los
-manuales.
+**Resultado:** La lista NO es exhaustiva y presenta las desviaciones señaladas en
+el Addendum §6. Coincide parcialmente con los manuales v8.1.0, pero debe reconciliarse
+con el árbol real antes de usarse como fuente de verdad (el código es fuente de verdad;
+ver `MEMORIA_PROYECTO.md`, decisión **D-F22-A**).
+
+---
+
+## 6. ADENDUM DE CORRECCIÓN DE VIGENCIA (2026-08-27)
+
+Este inventario fue auditado contra el árbol real (`glob` de `**/*.syn`/`**/*.syq`).
+No es exhaustivo y presenta las desviaciones siguientes. El código existente es la
+fuente de verdad; los nombres del manual se corrigen aquí hacia la práctica ratificada.
+
+| Ítem del inventario | Estado real | Reemplazo / nota |
+|---|---|---|
+| `syquex/lexer.syq`, `parser.syq`, `traductor.syq` | Renombrados | `syquex/lexer.syn`, `parser.syn`, `traductor.syn` — extensión `.syn` por **D-F22-A** (frontend en Synapse). |
+| `syquex/syquex.syn` | Renombrado | `syquex/syq_main.syn` (entry CLI del frontend; orquesta lexer→parser→traductor). |
+| `nucleo/builtins.syn` | No existe | Builtins (`a_texto`, `leer_bytes`, `escribir`…) embebidas en el codegen (`librerias/compiler/generator.c`) y runtime. |
+| `syquex/builtins.syq` | No existe | Builtins de Syquex embebidas en el compiler/librerías. |
+| `syquex/arena_componente.syq` | No existe | API de arenas en `lib/dom.syq` (FFI `_arena_componente_*`). |
+| `lib/json.syq` | No existe | JSON en `std/json.syn` (ADT, no en `lib/`). |
+| `lib/ia.syq` | No existe | Integración OpenSyn en `std/ai.syn` + `std/modelo.syn`. |
+| `lib/ffi.syq` | No existe | Marshaling en `syquex/ffi_marshaling.syq` + `lib/runtime_bindings.syq`. |
+| `lib/gui.syq` | No existe | Pendiente (bindings GTK no implementados). |
+| `std/os.syn` | No implementado | Pendiente Fase 29; detección HW hoy en `runtime/core/detect_hardware.c` (FFI). |
+| `opensyn/installer.syn` | No existe | Instalador en `.github/workflows/build-installer.yml` + `instalador_synapse.iss` (Inno Setup/PowerShell). |
+| `opensyn/transpiler.syn` | Renombrado | `opensyn/transpiler.syq`. |
+| `opensyn/synapse_rag.syn` | No existe | Pipeline RAG en C: `nucleo/synapse_rag.c` + `opensyn/router.syn`. |
+| `examples/synapse/01_basico.syn` | Renombrado | `examples/synapse/00_hola_mundo/main.syn`. |
+| `examples/synapse/02_estructuras.syn` | Renombrado | `examples/synapse/02_estructuras/main.syn`. |
+| `examples/synapse/03_tensores_ia.syn` | No existe (hay `03_concurrencia`) | Ejemplo de tensores/IA pendiente. |
+| `examples/syquex/01_basico.syq` | Renombrado | `examples/syquex/counter/test_counter.syq`, `examples/syquex/python_pipeline/fibonacci.syq`. |
+| `examples/syquex/02_web.syq`, `03_gui.syq` | No existen | Ejemplos web/GUI pendientes (los módulos `lib/web.syq`/`lib/dom.syq` sí existen). |
+
+Además, el árbol real contiene muchos más archivos `.syn/.syq` no listados
+(p.ej. `nucleo/generador/*`, `std/wasm.syn`, `std/tensor.syn`, `std/toml.syn`,
+`syquex/expr.syn`, `syquex/syq_json.syn`, `opensyn/principal.syn`,
+`opensyn/validation_loop.syn`, `lib/runtime_bindings.syq`). El recuento "59 archivos"
+está desactualizado. Asimismo, `librerias/` (std embebidas en C) es otra excepción
+de lenguaje no contemplada en §6 del presente Anexo.

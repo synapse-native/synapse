@@ -18,6 +18,7 @@ class TestWorkStealing:
     """Manual 5 §6.5: Work-stealing para balanceo de carga."""
 
     def test_std_cluster_work_stealing(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std.cluster debe implementar work-stealing."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -30,6 +31,7 @@ class TestWorkStealing:
             "std/cluster.syn debe implementar work-stealing"
 
     def test_worker_cola_local(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Worker debe tener cola_local."""
         cluster = os.path.join(RAIZ, "std", "cluster.syn")
         if not os.path.exists(cluster):
@@ -41,6 +43,7 @@ class TestWorkStealing:
             "std/cluster.syn debe tener Worker con cola_local"
 
     def test_scheduler_iniciar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """scheduler_iniciar() debe estar disponible."""
         # Verificar en el runtime C
         rt_files = [

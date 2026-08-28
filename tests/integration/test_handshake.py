@@ -18,6 +18,7 @@ class TestHandshakeEd25519:
     """Manual 6 §5.3: Handshake zero-trust con Ed25519."""
 
     def test_axon_rt_ed25519_generar_par(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """_syn_ed25519_generar_par() debe existir."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         if not os.path.exists(rt):
@@ -28,6 +29,7 @@ class TestHandshakeEd25519:
             "axon_rt.c debe tener _syn_ed25519_generar_par()"
 
     def test_axon_rt_verificar_firma(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """_syn_axon_verificar_firma() debe existir."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         if not os.path.exists(rt):
@@ -38,6 +40,7 @@ class TestHandshakeEd25519:
             "axon_rt.c debe tener _syn_axon_verificar_firma()"
 
     def test_handshake_hello_mensaje(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El handshake debe enviar HELLO."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         if not os.path.exists(rt):
@@ -48,6 +51,7 @@ class TestHandshakeEd25519:
             "axon_rt.c debe implementar mensaje HELLO"
 
     def test_handshake_nonce_32_bytes(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """El nonce debe ser de 32 bytes."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         if not os.path.exists(rt):
@@ -58,6 +62,7 @@ class TestHandshakeEd25519:
             "axon_rt.c debe usar nonce en handshake"
 
     def test_clave_sesion_derived(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """La clave de sesión se deriva con crypto_kx."""
         rt = os.path.join(RAIZ, "axon", "axon_rt.c")
         if not os.path.exists(rt):

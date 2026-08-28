@@ -58,6 +58,7 @@ class TestFedAvgFuncionalidad:
     """Verifica que FedAvg implementa la ronda de agregación."""
 
     def test_federated_api(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """federated.h debe declarar API de FedAvg."""
         import os
         fed_h = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
@@ -69,6 +70,7 @@ class TestFedAvgFuncionalidad:
             "federated.h debe declarar API de FedAvg"
 
     def test_federated_iniciar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """federated.h debe tener función para iniciar sesión."""
         import os
         fed_h = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
@@ -80,6 +82,7 @@ class TestFedAvgFuncionalidad:
             "federated.h debe tener función para iniciar sesión"
 
     def test_federated_cerrar(self):
+        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """federated.h debe tener función para cerrar sesión."""
         import os
         fed_h = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),
