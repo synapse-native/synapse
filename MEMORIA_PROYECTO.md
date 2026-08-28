@@ -104,6 +104,12 @@
   (ME-P1 unificar codigo canonico aditivo; ME-P2 cambiar emision nativa + actualizar ~16
   assertions inmutables de `test_fase2_nativa_hm.py` ya aprobadas; ME-P3 limpieza de
   codigo muerto/mensajes). Emision unica en nativo: `nucleo/analizador_semantico.syn:679`.
+  **ME-P1 CERRADO (9c4170f):** canonico ERR_MEM_USE_AFTER_MOVE unificado en
+  taxonomia nativa + mapeo generator.py + set LSP. **ME-P2 CERRADO:** emision
+  nativa cambiada a ERR_MEM_USE_AFTER_MOVE (E-504); tests inmutables
+  test_fase2_nativa_hm.py actualizados (aprobado Arquitecto); R14/R15 -> 10
+  passed; ownership S1 21/21. **PARIDAD S1<->nativo en use-after-move ALCANZADA.**
+  Pendiente ME-P3: limpieza de ERR_SEM_VAR_MOVIDA (22) ya muerto y mensaje S1.
 
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 

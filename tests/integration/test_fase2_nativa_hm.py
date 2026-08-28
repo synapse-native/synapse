@@ -926,10 +926,10 @@ def test_r13_tvar_en_adt_emite_diagnostico(stage, tmp_path):
 
 # ---------------------------------------------------------------------------
 # R14: use-after-move por envio de canal (Manual 4 §3.3) — paridad S1
-# semantic_checker.py SentenciaEnviarCanal (tabla.esta_movido -> E-501).
+# semantic_checker.py SentenciaEnviarCanal (tabla.esta_movido -> E-504).
 # El lexer nativo tokenizaba '-<' (orden invertido); el fix produce '<-' y
 # el nodo 42 nace: flatten F8 + analizador NODO_ENVIAR_CANAL marca movido y
-# NODO_IDENTIFICADOR emite ERR_SEM_VAR_MOVIDA en la lectura posterior.
+# NODO_IDENTIFICADOR emite ERR_MEM_USE_AFTER_MOVE en la lectura posterior.
 # ---------------------------------------------------------------------------
 
 _PROG_R14_ENVIO_VALIDO = '''#lang: es
@@ -988,38 +988,38 @@ def test_r14_envio_valido_compila(stage, tmp_path):
 
 
 def test_r14_uso_despues_move_falla(stage, tmp_path):
-    """R14: leer una variable tras enviarla por canal -> ERR_SEM_VAR_MOVIDA
-    (E-501) con linea real (paridad S1 6:4, Manual 4 §3.3)."""
+    """R14: leer una variable tras enviarla por canal -> ERR_MEM_USE_AFTER_MOVE
+    (E-504) con linea real (paridad S1 6:4, Manual 4 §3.3)."""
     proc = _compilar_con_stage(stage, _PROG_R14_USO_DESPUES_MOVE, str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
     assert "linea 6" in proc.stderr, (
         f"la linea del uso debe ser 6 (paridad S1):\n{proc.stderr[-1200:]}")
 
 
 def test_r14_doble_envio_falla(stage, tmp_path):
-    """R14: el segundo envio lee la variable ya movida -> E-501 (el analizador
+    """R14: el segundo envio lee la variable ya movida -> E-504 (el analizador
     analiza el valor del envio antes de marcar movido)."""
     proc = _compilar_con_stage(stage, _PROG_R14_DOBLE_ENVIO, str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
 
 
 def test_r14_uso_en_retorno_falla(stage, tmp_path):
-    """R14: usar la variable movida en el retorno -> E-501 (paridad S1 p5:
+    """R14: usar la variable movida en el retorno -> E-504 (paridad S1 p5:
     el retorno analiza la expresion, que lee el identificador movido)."""
     proc = _compilar_con_stage(stage, _PROG_R14_USO_EN_RETORNO, str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
 
 
 def test_r14_reasignacion_despues_move(stage, tmp_path):
     """R14: tras el envio, REASIGNAR no limpia el flag (paridad S1: el error
-    persiste en la lectura posterior) -> E-501 en la lectura."""
+    persiste en la lectura posterior) -> E-504 en la lectura."""
     proc = _compilar_con_stage(stage, _PROG_R14_REASIGNACION_DESPUES_MOVE,
                                str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
 
 
 # --- R15: transferencia por argumento ->expr en lanzar (Manual 4 S3.3) ---
@@ -1090,12 +1090,12 @@ def test_r15_lanzar_valido_compila(stage, tmp_path):
 
 
 def test_r15_uso_despues_lanzar_falla(stage, tmp_path):
-    """R15: leer una variable tras transferirla con lanzar -> E-501 con linea
+    """R15: leer una variable tras transferirla con lanzar -> E-504 con linea
     real (paridad S1 8:4, Manual 4 S3.3)."""
     proc = _compilar_con_stage(stage, _PROG_R15_USO_DESPUES_LANZAR,
                                str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
     assert "linea 8" in proc.stderr, (
         f"la linea del uso debe ser 8 (paridad S1):\n{proc.stderr[-1200:]}")
 
@@ -1113,20 +1113,20 @@ def test_r15_llamada_normal_con_flecha_no_marca(stage, tmp_path):
 
 
 def test_r15_doble_lanzar_falla(stage, tmp_path):
-    """R15: el segundo lanzar lee la variable ya movida -> E-501 (el
+    """R15: el segundo lanzar lee la variable ya movida -> E-504 (el
     analizador infiere el expr del ArgumentoTransferido antes de marcar)."""
     proc = _compilar_con_stage(stage, _PROG_R15_DOBLE_LANZAR, str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
 
 
 def test_r15_reasignacion_despues_lanzar(stage, tmp_path):
-    """R15: tras el lanzar, REASIGNAR no limpia el flag (paridad S1) -> E-501
+    """R15: tras el lanzar, REASIGNAR no limpia el flag (paridad S1) -> E-504
     en la lectura posterior."""
     proc = _compilar_con_stage(stage, _PROG_R15_REASIGNACION_DESPUES_LANZAR,
                                str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"diagnostico E-501 ausente:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"diagnostico E-504 ausente:\n{proc.stderr[-1200:]}")
     assert "linea 9" in proc.stderr, (
         f"la linea del uso debe ser 9 (paridad S1):\n{proc.stderr[-1200:]}")
 
@@ -2418,12 +2418,12 @@ def test_r30_para_cuerpo_analizado_use_after_move(stage, tmp_path):
     """R30: el cuerpo del `para` ahora se ANALIZA (flatten F8 + caso NODO_PARA
     en analizar_sentencia; antes el nodo no se aplanaba y el cuerpo era
     invisible) -> el envio de canal dentro del bucle marca la variable movida
-    y la lectura posterior emite E-501 (Manual 4 §3.3, paridad con el cuerpo
+    y la lectura posterior emite E-504 (Manual 4 §3.3, paridad con el cuerpo
     de `mientras` R14)."""
     proc = _compilar_con_stage(stage, _PROG_R30_PARA_BODY_ANALIZADO,
                                str(tmp_path))
-    assert "Uso ilegal de variable ya movida 'dato' (E-501)" in proc.stderr, (
-        f"E-501 ausente en el cuerpo del para:\n{proc.stderr[-1200:]}")
+    assert "Uso ilegal de variable ya movida 'dato' (E-504)" in proc.stderr, (
+        f"E-504 ausente en el cuerpo del para:\n{proc.stderr[-1200:]}")
 
 
 # --- F3-7 (Manual 2 L113 / Manual 5 §4): escuchar end-to-end HM — listener ---
