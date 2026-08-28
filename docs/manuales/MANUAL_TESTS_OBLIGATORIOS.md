@@ -27,7 +27,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M3-01 | Manual 3 §3 | Frontend Syquex parsea y traduce conforme al manual | unit | GREEN
 - OBL-M3-02 | Manual 3 §5 | Analizador de alcance (arena/rc/arc/débil) | unit | GREEN
 - OBL-M3-03 | Manual 3 §6 | Métodos con self por puntero (no by-value) | unit | GREEN
-- OBL-M3-04 | Manual 3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | RED ← ME_28_T1..T3
+- OBL-M3-04 | Manual 3 §3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | RED ← ME_28_T1..T3
 
 ## M4 — Gestión de memoria (RAII / alcance)
 - OBL-M4-01 | Manual 4 §2 | Arena allocator (bump O(1), cascada) | unit | GREEN
@@ -63,8 +63,8 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 
 ## M9 — Distribución / F29 / F30
 - OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | RED ← ME_29_T1
-- OBL-M9-02 | F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2
-- OBL-M9-03 | F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3
+- OBL-M9-02 | Manual 9 §9 / F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2
+- OBL-M9-03 | Manual 9 §9 / F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3
 - OBL-M9-04 | Manual 9 §9 / F30 | Instaladores .iss/.sh/.dmg unificados | TDD | RED ← ME_30_T1
 - OBL-M9-05 | Manual 9 §9 / F30 | Makefile / build.py reproducible | TDD | RED ← ME_30_T2
 - OBL-M9-06 | Manual 9 §9 / F30 | Distribución final empaquetada y firmada | TDD | RED ← ME_30_T3
