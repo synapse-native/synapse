@@ -65,8 +65,12 @@ NOMBRE_NODO = {
 # - FUSIONADOS: manejados inline dentro de otro nodo (ej. CONTRATO en FUNCION)
 # - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
 # - PENDIENTE_BACKEND: feature futura del roadmap
+# cumple Manual 3 §11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
 NO_SOPORTADOS = {
+    54: "INTENTO (backend pendiente, hallazgo H-R90-1)",
+    55: "LISTA_LIT (backend Fase 24 lib/lista)",
     56: "MAPA_LIT (backend Fase 24 lib/mapa)",
+    57: "PARA_EN (backend pendiente, hallazgo H-R90-1)",
 }
 
 ELIMINADOS_POR_TRADUCTOR = {
@@ -92,6 +96,9 @@ PENDIENTE_BACKEND = {
     27: "RECUPERAR — recovery handler (try/catch completo, pendiente ME-8)",
     28: "TENSOR — tipo tensor (Fase 4, Manual 3 §4.3)",
     40: "ASM — bloque asm (Manual 3 §3 L106)",
+    41: "CANAL_CREAR — ExprCrearCanal (channel runtime, pendiente backend nativo)",
+    42: "ENVIAR_CANAL — SentenciaEnviarCanal (channel runtime, pendiente backend nativo)",
+    43: "RECIBIR_CANAL — ExprRecibirCanal (channel runtime, pendiente backend nativo)",
 }
 
 # Códigos de operador de syquex/expr.syn (fallback cuando el lexema no
@@ -472,8 +479,8 @@ class _Puente:
                             nombre=func_builtin,
                             argumentos=args))
                     raise PuenteError(
-                        f"metodo builtin '{nombre_metodo}' no encontrado "
-                        f"para tipo '{obj_tipo}' (H-R90-5)")
+                        f"metodo '{nombre_metodo}' no encontrado en tipo "
+                        f"de receptor '{obj_tipo}' (H-R90-5)")
                 # 3. Receptor primitivo directo (tipo conocido del runtime)
                 if obj_tipo and obj_tipo in self._builtin_metodos and nombre_metodo in self._builtin_metodos[obj_tipo]:
                     func_builtin = self._builtin_metodos[obj_tipo][nombre_metodo]
@@ -536,44 +543,11 @@ class _Puente:
         if t == 43:   # RECIBIR_CANAL — canal ->
             return con(ExprRecibirCanal(
                 canal=self._nodo(izq)))
-        if t == 55:   # LISTA_LIT — literal de lista (H-R90-15, Manual 3 §5.2)
-            # H-R90-15b: Lista<T> se trata como void* en C (runtime lib/lista).
-            # Para el MVP, mapear a NULL (lista vacía) — los elementos hijo_der
-            # no se procesan (se usarían en lib/lista Fase 24).
-            return con(LiteralNulo())
-        if t == 54:   # INTENTO — intentar/atrapar (H-R90-1, Manual 3 §7.3 L347)
-            # hijo_izq = try body (statements), hijo_der = catch body (or 0)
-            # ptr_str = exception variable name
-            return con(SentenciaRecuperar(
-                cuerpo_critico=self.cadena(izq),
-                cuerpo_atrapar=self.cadena(der),
-                variable_excepcion=self.txt(i)))
-        if t == 57:   # PARA_EN — range-for (H-R90-1)
-            # Desugar a SentenciaMientras sobre el iterable (Manual 3 §2.1: iterables
-            # Lista/T, Mapa/K,V, texto). ptr_extra = cuerpo (traductor.syn:653).
-            # hijo_izq = variable loop (Identificador), hijo_der = iterable (expr).
-            # H-R90-15c: obtener nombre de la var loop del IDENTIFICADOR hijo_izq.
-            var_loop = self.txt(izq) if izq > 0 and self.tipo(izq) == 8 else self.txt(i)
-            iterable = self._nodo(der)
-            # H-R90-15: inferir tipo del elemento (Lista<decimal> → decimal)
-            iter_raw = self._var_tipo.get(self.txt(der)) if self.tipo(der) == 8 else None
-            var_tipo = 'entero'
-            default_val = LiteralNumero(valor=0)
-            if iter_raw and '<' in iter_raw:
-                inner = iter_raw[iter_raw.find('<')+1:iter_raw.rfind('>')].strip()
-                if inner:
-                    var_tipo = inner
-                    if inner == 'decimal':
-                        default_val = LiteralDecimal(valor=0.0)
-            # H-R90-15c: declara var_loop como contador. while(0) no ejecuta cuerpo.
-            cuerpo = self.cadena(extra) or [SentenciaRomper()]
-            return con(SentenciaMientras(
-                condicion=LiteralNumero(valor=0),
-                cuerpo=[
-                    DeclaracionVariable(
-                        nombre=var_loop, tipo=var_tipo,
-                        expresion=default_val)
-                ] + cuerpo))
+        # 54 INTENTO / 55 LISTA_LIT / 57 PARA_EN: backend pendiente (H-R90-1,
+        # Manual 1 §3.1 — sin equivalente en el AST tipado S1). Se rechazan
+        # fail-fast en el chequeo NO_SOPORTADOS al final de _nodo.
+        if t in (54, 55, 57):
+            pass  # cae al chequeo NO_SOPORTADOS
 
         if t in NO_SOPORTADOS:
             raise PuenteError(
