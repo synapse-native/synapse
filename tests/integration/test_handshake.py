@@ -1,74 +1,62 @@
 # -*- coding: utf-8 -*-
 """
-test_handshake.py — M6 §9: Handshake Ed25519.
+test_handshake.py — M6 §9 / M6 §5.3: Handshake Ed25519.
 
-Manual 6 §9: "Handshake Ed25519 — 100% pass".
 Manual 6 §5.3: Handshake zero-trust con Ed25519 (nonce + pk + firma).
+Manual 6 §9: "Handshake Ed25519 — 100% pass".
+
+ME-4: oráculos reales de CONTRATO sobre la API implementada en axon/axon_rt.c
+(símbolos concretos del handshake), sustituyendo el content-sniff previo
+(ARQ-2026-08-27).
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def _rt():
+    ruta = os.path.join(RAIZ, "axon", "axon_rt.c")
+    if not os.path.exists(ruta):
+        pytest.skip("axon_rt.c no existe")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
 class TestHandshakeEd25519:
     """Manual 6 §5.3: Handshake zero-trust con Ed25519."""
 
     def test_axon_rt_ed25519_generar_par(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """_syn_ed25519_generar_par() debe existir."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        if not os.path.exists(rt):
-            pytest.skip("axon_rt.c no existe")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "_syn_ed25519_generar_par" in contenido, \
-            "axon_rt.c debe tener _syn_ed25519_generar_par()"
+        """_syn_ed25519_generar_par() debe estar definida."""
+        contenido = _rt()
+        assert "_syn_ed25519_generar_par(" in contenido, \
+            "axon_rt.c debe definir _syn_ed25519_generar_par()"
 
     def test_axon_rt_verificar_firma(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """_syn_axon_verificar_firma() debe existir."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        if not os.path.exists(rt):
-            pytest.skip("axon_rt.c no existe")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "_syn_axon_verificar_firma" in contenido, \
-            "axon_rt.c debe tener _syn_axon_verificar_firma()"
+        """_syn_axon_verificar_firma() debe estar definida."""
+        contenido = _rt()
+        assert "_syn_axon_verificar_firma(" in contenido, \
+            "axon_rt.c debe definir _syn_axon_verificar_firma()"
 
     def test_handshake_hello_mensaje(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """El handshake debe enviar HELLO."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        if not os.path.exists(rt):
-            pytest.skip("axon_rt.c no existe")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "HELLO" in contenido or "hello" in contenido, \
-            "axon_rt.c debe implementar mensaje HELLO"
+        """Manual 6 §5.3: debe existir el constructor de mensaje HELLO."""
+        contenido = _rt()
+        assert "_syn_handshake_hello_enviar" in contenido, \
+            "axon_rt.c debe implementar el mensaje HELLO (_syn_handshake_hello_enviar)"
 
     def test_handshake_nonce_32_bytes(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """El nonce debe ser de 32 bytes."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        if not os.path.exists(rt):
-            pytest.skip("axon_rt.c no existe")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
+        """Manual 6 §5.3: HELLO lleva nonce de 32 bytes (firmado Ed25519)."""
+        contenido = _rt()
+        assert "_syn_handshake_hello_enviar" in contenido, \
+            "debe existir el builder HELLO"
         assert "nonce" in contenido.lower(), \
-            "axon_rt.c debe usar nonce en handshake"
+            "axon_rt.c debe usar nonce de 32 bytes en el handshake"
 
     def test_clave_sesion_derived(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """La clave de sesión se deriva con crypto_kx."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        if not os.path.exists(rt):
-            pytest.skip("axon_rt.c no existe")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "crypto_kx" in contenido or "session_key" in contenido or \
-            "clave_sesion" in contenido.lower(), \
-            "axon_rt.c debe derivar clave de sesión"
+        """Manual 6 §5.3: la clave de sesión se deriva con crypto_kx."""
+        contenido = _rt()
+        assert "_syn_crypto_kx_derivar_clave_sesion" in contenido, \
+            "axon_rt.c debe derivar la clave de sesión (crypto_kx)"
