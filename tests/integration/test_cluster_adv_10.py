@@ -4,124 +4,82 @@ test_cluster_adv_10.py — Concurrencia Distribuida Avanzada (Fase 19).
 
 Manual 5 §6: Serialización de datos, handshake Ed25519.
 Manual 6 §5.1: Formato de serialización binario MessagePack-like.
+
+ME-4: oráculos reales de CONTRATO sobre símbolos reales de std/cluster.syn,
+sustituyendo el content-sniff previo (ARQ-2026-08-27).
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
-# ---------------------------------------------------------------------------
-# 1. SERIALIZACIÓN (Manual 6 §5.1)
-# ---------------------------------------------------------------------------
+def _cluster():
+    ruta = os.path.join(RAIZ, "std", "cluster.syn")
+    if not os.path.exists(ruta):
+        pytest.skip("std/cluster.syn no existe")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
 class TestSerializacion:
     """Manual 6 §5.1: Formato de serialización binario MessagePack-like."""
 
     def test_serializacion_formato(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe soportar serialización de tipos básicos."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "serializar" in contenido.lower() or "serialize" in contenido.lower() or \
-            "empaquetar" in contenido.lower() or "pack" in contenido.lower(), \
-            "std/cluster.syn debe tener serialización"
+        """std.cluster debe soportar serialización (cm_serializar_checkpoint)."""
+        contenido = _cluster()
+        assert "cm_serializar_checkpoint" in contenido, \
+            "std/cluster.syn debe tener serialización (cm_serializar_checkpoint)"
 
     def test_deserializar(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe soportar deserialización."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "deserializar" in contenido.lower() or "deserialize" in contenido.lower() or \
-            "desempaquetar" in contenido.lower() or "unpack" in contenido.lower(), \
-            "std/cluster.syn debe tener deserialización"
+        """std.cluster debe soportar deserialización (cm_deserializar_checkpoint)."""
+        contenido = _cluster()
+        assert "cm_deserializar_checkpoint" in contenido, \
+            "std/cluster.syn debe tener deserialización (cm_deserializar_checkpoint)"
 
 
-# ---------------------------------------------------------------------------
-# 2. HANDSHAKE Ed25519 (Manual 6 §5.3)
-# ---------------------------------------------------------------------------
 class TestHandshakeEd25519:
     """Manual 6 §5.3: Handshake zero-trust con Ed25519."""
 
     def test_handshake_hello(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """El handshake debe enviar HELLO con nonce + pk + firma."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "hello" in contenido.lower() or "HELLO" in contenido or \
-            "handshake" in contenido.lower(), \
-            "std/cluster.syn debe implementar handshake HELLO"
+        """El handshake debe enviar HELLO firmado (cluster_enviar_hello_firmado)."""
+        contenido = _cluster()
+        assert "cluster_enviar_hello_firmado" in contenido, \
+            "std/cluster.syn debe implementar handshake HELLO firmado"
 
     def test_handshake_nonce(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """El handshake debe usar nonce aleatorio de 32 bytes."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "nonce" in contenido.lower(), \
-            "std/cluster.syn debe usar nonce en handshake"
+        """El handshake debe usar nonce aleatorio de 32 bytes (cluster_generar_nonce)."""
+        contenido = _cluster()
+        assert "cluster_generar_nonce" in contenido, \
+            "std/cluster.syn debe generar nonce de 32 bytes (cluster_generar_nonce)"
 
     def test_clave_sesion(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Después del handshake se deriva clave de sesión."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "session" in contenido.lower() or "sesion" in contenido.lower() or \
-            "crypto_kx" in contenido, \
-            "std/cluster.syn debe derivar clave de sesión"
+        """Tras el handshake se deriva clave de sesión (cluster_establecer_clave_sesion)."""
+        contenido = _cluster()
+        assert "cluster_establecer_clave_sesion" in contenido, \
+            "std/cluster.syn debe derivar clave de sesión (cluster_establecer_clave_sesion)"
 
 
-# ---------------------------------------------------------------------------
-# 3. ENVÍO/RECEPCIÓN (Manual 5 §6.2)
-# ---------------------------------------------------------------------------
 class TestEnvioRecepcion:
     """Manual 5 §6.2: Envío y recepción en canales remotos."""
 
     def test_enviar_datos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """canal_remoto.enviar() debe serializar y enviar."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "enviar" in contenido.lower() or "send" in contenido.lower(), \
+        contenido = _cluster()
+        assert "funcion enviar(" in contenido, \
             "std/cluster.syn debe tener enviar()"
 
     def test_recibir_datos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """canal_remoto.recibir() debe deserializar y recibir."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "recibir" in contenido.lower() or "receive" in contenido.lower(), \
+        contenido = _cluster()
+        assert "funcion recibir(" in contenido, \
             "std/cluster.syn debe tener recibir()"
 
     def test_cerrar_canal(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """cerrar(canal_remoto) debe cerrar la conexión."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "cerrar" in contenido.lower() or "close" in contenido.lower(), \
-            "std/cluster.syn debe tener cerrar()"
+        """cerrar(canal_remoto) debe cerrar la conexión (cerrar_remoto)."""
+        contenido = _cluster()
+        assert "cerrar_remoto" in contenido, \
+            "std/cluster.syn debe tener cerrar_remoto()"

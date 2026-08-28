@@ -4,19 +4,27 @@ test_cluster_10.py — Concurrencia Distribuida (Fase 19).
 
 Manual 5 §6: std.cluster — CanalRemoto, handshake, serialización.
 Manual 5 §9: Pruebas obligatorias — cluster_remote, work-stealing, raft, discovery, multicast.
+
+ME-4: oráculos reales de CONTRATO sobre símbolos reales de std/cluster.syn,
+sustituyendo el content-sniff previo (ARQ-2026-08-27).
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
-# ---------------------------------------------------------------------------
-# 1. STD.CLUSTER — MÓDULO
-# ---------------------------------------------------------------------------
+def _cluster():
+    ruta = os.path.join(RAIZ, "std", "cluster.syn")
+    if not os.path.exists(ruta):
+        pytest.skip("std/cluster.syn no existe")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
 class TestStdCluster:
     """Manual 5 §6: std/cluster.syn debe existir."""
 
@@ -32,14 +40,12 @@ class TestStdCluster:
             f"std/cluster.syn tiene {os.path.getsize(cluster)} bytes"
 
 
-# ---------------------------------------------------------------------------
-# 2. IMPORTAR STD.CLUSTER
-# ---------------------------------------------------------------------------
 class TestImportarCluster:
     """Verifica que importar std.cluster compila."""
 
     def test_importar_cluster_compila(self):
         """importar std.cluster compila."""
+        from conftest import compilar_texto
         fuente = '''#lang: es
 importar std.cluster
 funcion principal() -> nulo:
@@ -51,116 +57,64 @@ funcion principal() -> nulo:
         assert diag.codigo_salida() == 0
 
 
-# ---------------------------------------------------------------------------
-# 3. CANAL REMOTO (Manual 5 §6.2)
-# ---------------------------------------------------------------------------
 class TestCanalRemoto:
     """Manual 5 §6.2: CanalRemoto<T> con handshake Ed25519."""
 
     def test_canal_remoto_conectar(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener función conectar."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "conectar" in contenido.lower() or "connect" in contenido.lower(), \
-            "std/cluster.syn debe tener función conectar()"
+        """std.cluster debe definir conectar()."""
+        contenido = _cluster()
+        assert "funcion conectar(" in contenido, \
+            "std/cluster.syn debe definir conectar()"
 
     def test_canal_remoto_enviar(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener función enviar."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "enviar" in contenido.lower() or "send" in contenido.lower(), \
-            "std/cluster.syn debe tener función enviar()"
+        """std.cluster debe definir enviar()."""
+        contenido = _cluster()
+        assert "funcion enviar(" in contenido, \
+            "std/cluster.syn debe definir enviar()"
 
     def test_canal_remoto_recibir(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener función recibir."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "recibir" in contenido.lower() or "receive" in contenido.lower(), \
-            "std/cluster.syn debe tener función recibir()"
+        """std.cluster debe definir recibir()."""
+        contenido = _cluster()
+        assert "funcion recibir(" in contenido, \
+            "std/cluster.syn debe definir recibir()"
 
 
-# ---------------------------------------------------------------------------
-# 4. WORK-STEALING (Manual 5 §6.5)
-# ---------------------------------------------------------------------------
 class TestWorkStealing:
     """Manual 5 §6.5: Work-stealing para balanceo de carga."""
 
     def test_work_stealing_api(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener work-stealing."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "work_stealing" in contenido.lower() or "robar" in contenido.lower() or \
-            "steal" in contenido.lower() or "balance" in contenido.lower(), \
-            "std/cluster.syn debe implementar work-stealing"
+        """std.cluster debe implementar work-stealing (worker_robar)."""
+        contenido = _cluster()
+        assert "worker_robar" in contenido, \
+            "std/cluster.syn debe implementar work-stealing (worker_robar)"
 
 
-# ---------------------------------------------------------------------------
-# 5. RAFT CONSENSUS (Manual 5 §6.5)
-# ---------------------------------------------------------------------------
 class TestRaft:
     """Manual 5 §6.5: Raft para consenso distribuido."""
 
     def test_raft_api(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener Raft."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "raft" in contenido.lower() or "consenso" in contenido.lower() or \
-            "consensus" in contenido.lower() or "lider" in contenido.lower(), \
-            "std/cluster.syn debe implementar Raft"
+        """std.cluster debe implementar Raft (raft_inicializar)."""
+        contenido = _cluster()
+        assert "raft_inicializar" in contenido, \
+            "std/cluster.syn debe implementar Raft (raft_inicializar)"
 
 
-# ---------------------------------------------------------------------------
-# 6. DISCOVERY (Manual 5 §6.4)
-# ---------------------------------------------------------------------------
 class TestDiscovery:
-    """Manual 5 §6.4: Auto-discovery vía multicast UDP o mDNS."""
+    """Manual 5 §6.4: Auto-discovery vía multicast UDP/mDNS."""
 
     def test_discovery_api(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener auto-discovery."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "discovery" in contenido.lower() or "descubrir" in contenido.lower() or \
-            "anunciar" in contenido.lower() or "mdns" in contenido.lower(), \
-            "std/cluster.syn debe implementar auto-discovery"
+        """std.cluster debe implementar auto-discovery (multicast)."""
+        contenido = _cluster()
+        assert "cluster_anunciar_por_multicast" in contenido or \
+            "cluster_escuchar_multicast" in contenido, \
+            "std/cluster.syn debe implementar auto-discovery (multicast)"
 
 
-# ---------------------------------------------------------------------------
-# 7. MULTICAST (Manual 5 §6.4)
-# ---------------------------------------------------------------------------
 class TestMulticast:
     """Manual 5 §6.4: Multicast para envío a múltiples nodos."""
 
     def test_multicast_api(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """std.cluster debe tener multicast."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        if not os.path.exists(cluster):
-            pytest.skip("std/cluster.syn no existe")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "multicast" in contenido.lower() or "broadcast" in contenido.lower(), \
-            "std/cluster.syn debe implementar multicast"
+        """std.cluster debe implementar multicast."""
+        contenido = _cluster()
+        assert "cluster_multicast_iniciar" in contenido, \
+            "std/cluster.syn debe implementar multicast (cluster_multicast_iniciar)"
