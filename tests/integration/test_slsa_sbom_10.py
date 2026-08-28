@@ -161,9 +161,8 @@ class TestPipelineCICD:
     """Manual 9 §6.1: SBOM y SLSA se generan automáticamente en CI/CD."""
 
     def test_release_yml_genera_sbom(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """release.yml debe generar SBOM."""
-        release_yml = os.path.join(RAIZ, ".github", "workflows", "release.yml")
+        release_yml = os.path.join(RAIZ, ".github", "workflows", "release_matrix.yml")
         if not os.path.exists(release_yml):
             pytest.skip("release.yml no encontrado")
         with open(release_yml, 'r', encoding='utf-8') as f:
@@ -173,9 +172,8 @@ class TestPipelineCICD:
             "release.yml debe generar SBOM"
 
     def test_release_yml_genera_slssa(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """release.yml debe generar attestation SLSA."""
-        release_yml = os.path.join(RAIZ, ".github", "workflows", "release.yml")
+        release_yml = os.path.join(RAIZ, ".github", "workflows", "release_matrix.yml")
         if not os.path.exists(release_yml):
             pytest.skip("release.yml no encontrado")
         with open(release_yml, 'r', encoding='utf-8') as f:
@@ -185,9 +183,8 @@ class TestPipelineCICD:
             "release.yml debe generar attestation SLSA"
 
     def test_release_yml_genera_checksums(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """release.yml debe generar checksums SHA-256."""
-        release_yml = os.path.join(RAIZ, ".github", "workflows", "release.yml")
+        release_yml = os.path.join(RAIZ, ".github", "workflows", "release_matrix.yml")
         if not os.path.exists(release_yml):
             pytest.skip("release.yml no encontrado")
         with open(release_yml, 'r', encoding='utf-8') as f:

@@ -23,7 +23,6 @@ class TestOpenSynHardwareLimitado:
         assert os.path.exists(opensyn), "opensyn/ no existe"
 
     def test_modelo_q3_seleccionado(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """En 4GB VRAM, modelo Q3 debe ser seleccionado."""
         installer = os.path.join(RAIZ, "opensyn", "installer.syn")
         if not os.path.exists(installer):
@@ -35,7 +34,6 @@ class TestOpenSynHardwareLimitado:
             "Selección de modelo debe considerar VRAM < 4GB"
 
     def test_config_toml_modelo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """~/.opensyn/config.toml debe tener ruta de modelo."""
         config = os.path.expanduser("~/.opensyn/config.toml")
         if os.path.exists(config):

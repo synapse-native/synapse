@@ -217,7 +217,6 @@ class TestBindingsReal:
         assert len(funcs) > 0, "std/wasm.syn no tiene funciones"
 
     def test_llvm_syn_tiene_features(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std/llvm.syn tiene features de LLVM."""
         contenido = _leer_archivo("std/llvm.syn")
         features = ["llvm", "ir", "funcion", "tipo", "modulo"]
@@ -226,7 +225,6 @@ class TestBindingsReal:
             f"std/llvm.syn solo tiene {encontradas} features LLVM"
 
     def test_wasm_syn_tiene_features(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """std/wasm.syn tiene features de WASM."""
         contenido = _leer_archivo("std/wasm.syn")
         features = ["wasm", "wat", "modulo", "funcion", "local"]

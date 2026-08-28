@@ -6,7 +6,7 @@ Manual 7 §7: "Detección de hardware — 100% pass".
 Manual 7 §2.5: Detectar RAM, VRAM, CPU, arquitectura.
 
 ME-4: `opensyn/installer.syn` aún NO existe en el repositorio (Fase 23).
-Sustituyo `pytest.skip('ME-4...')` por TDD skips con cita Manual 9 §12, en lugar
+Sustituyo los skips interinos por TDD skips con cita Manual 9 §12, en lugar
 del content-sniff interino. Se reevalúa cuando installer.syn se implemente.
 """
 import os
