@@ -111,6 +111,46 @@
   passed; ownership S1 21/21. **PARIDAD S1<->nativo en use-after-move ALCANZADA.**
   Pendiente ME-P3: limpieza de ERR_SEM_VAR_MOVIDA (22) ya muerto y mensaje S1.
 
+- **AUDITORÍA DESVIACIONES + NONCE CSPRNG + SQLITE3 ENLAZADO (2026-08-28, commit `648cd65`,
+  sesión retome agente anterior):** Tres MEs del agente anterior completados:
+  (1) **ME_AUDIT_DESV:** auditoría código↔manuales M1-M9 (reporte R_AUDIT_DESV.md).
+      Hallazgos: A1 nonce PRNG→CSPRNG (corregido), A2 VRAM detect (medio), M1-M4
+      (medio/baja). (2) **ME_cluster_nonce:** `cluster_generar_nonce()` ahora usa
+      `randombytes()` CSPRNG en lugar de `rand()` (Manual 6 §5.3). (3) **ME_conftest_sqlite:**
+      `sqlite3.o` agregado a `_RT_OBJ_DEFS` en conftest.py (Manual 3 §12.1).
+  **Fixes propios:** eliminado enlace duplicado de sqlite3.o en test_distributed_fuzz.py;
+  test_a23_parity.py actualizado para aceptar WeakRef tipado (paridad S1↔S2).
+  **Hallazgo MTS gate:** archivos nucleo/*.c regenerados por bootstrap no tienen
+  `// cumple Manual X §Y` → commit sin esos archivos (working tree).
+  **Preexistente:** test_e2e_s2_runtime falla (GCC sqlite3 undefined ref en stage compiler;
+  el compilador stage no incluye vendor/sqlite3/sqlite3.c en su línea de enlazado).
+  Tests verificados: fuzz 15/15, stress 1/1, parity 5/5, bootstrap 10/10, ownership 21/21.
+
+- **A2 VRAM FIX (2026-08-28, commit `c1e7100`):** detección VRAM en Windows
+  corregida de WinSAT\GraphicsScore (WEI score 1-9.9, NO VRAM) a DXGI
+  `IDXGIFactory1` → `EnumAdapters1` → `GetDesc1` → `DedicatedVideoMemory`
+  (Manual 9 §5.7). Fallback `GetDeviceCaps(hdc,120)` (indocumentado) eliminado.
+  `nucleo/detect_hardware.c` ahora incluye `dxgi.h` + `INITGUID` + `-ldxgi`.
+  Test: 43/43 passed (perfils simulados + detección real + JSON + diff).
+  **Hallazgo:** detect_hardware.c no estaba en el runtime build (pipeline/conftest);
+  tiene test propio C compilado directamente. No se agregó al runtime para no
+  introducir dependencia DXGI en todos los binarios.
+
+- **M1 HELLO BINARIO (2026-08-28, commit `1fb33d2`):** formato wire del
+  handshake HELLO cambiado de texto colon-delimitado
+  `HELLO:<id>:<nonce_hex>:<pk_hex>:<firma_hex>` a layout binario
+  `"HELLO:" + [nonce 32B][pubkey 32B][firma 64B]` (134 bytes), alineado
+  con Manual 6 §5.3. HELLO_RESP también binario (139 bytes). Helpers
+  `_hex_a_bytes`/`_bytes_a_hex` añadidos. El campo `id` (no especificado
+  en manual) se eliminó del wire.  `cluster_enviar_hello` (no firmado, discovery) se mantuvo textual.
+
+- **FIX STAGE COMPILER SQLITE3 (2026-08-28, commit `c9d7440`):** el stage
+  compiler (synapse_stage2/3.exe) no incluía `vendor/sqlite3/sqlite3.c` en
+  su línea de enlazado GCC, causando "undefined reference to sqlite3_*" al
+  compilar programas con DB. Fix: agregado `strncat` de `vendor/sqlite3/sqlite3.c`
+  en `nucleo/principal.syn` (bloque asm del link nativo). Resuelve test_e2e_s2_runtime
+  (preexistente). Se reconstruyeron stage2 y stage3 con el fix.
+
 ## 2. ARQUITECTURA Y DECISIONES CLAVE
 
 - **2026-08-10 â€” R7 (fix `3e9cb84`):** la pasada 3 del analizador nativo declara los parÃ¡metros en el scope de la funciÃ³n; `NODO_ASIGNACION` hace declaraciÃ³n implÃ­cita ("primera declaraciÃ³n del scope", paridad S1) y chequea `ERR_SEM_CONSTANTE_INMUTABLE`; `NODO_DECLARACION` reporta REDEFINICIÃ“N solo del MISMO scope (vÃ­a retorno de `tabla_declarar`). **653 falsos positivos Â«variable no declaradaÂ» â†’ 0.**
