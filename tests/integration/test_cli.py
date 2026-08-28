@@ -1,3 +1,8 @@
+"""test_cli.py — Manual 8 §4.2 (CLI run/check) y Manual 8 §1.4.
+
+Verifica que --help/--version salen con código 0 y NO invocan el linker (gcc),
+validando comportamiento real del CLI (no sniff de texto).
+"""
 import sys
 import subprocess
 import subprocess as sp

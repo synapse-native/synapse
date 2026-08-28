@@ -1,7 +1,9 @@
 """Tests de integracion para el LSP Nativo (nucleo/lsp.syn).
 
-Envia mensajes JSON-RPC al binario synapse_lsp_test.exe y verifica
-las respuestas. Usa envio batch + wait() para evitar bloqueos de pipe en Windows.
+Manual 8 §1.2 (initialize/shutdown y capacidades) y Manual 8 §1.4
+(publishDiagnostics). Envia mensajes JSON-RPC al binario synapse_lsp_test.exe
+y verifica las respuestas del protocolo (oráculo conductual, no sniff).
+Usa envio batch + wait() para evitar bloqueos de pipe en Windows.
 """
 
 import subprocess

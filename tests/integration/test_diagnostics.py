@@ -1,3 +1,8 @@
+"""test_diagnostics.py — Manual 8 §1.4 (Diagnostics / publishDiagnostics).
+
+Compila fixtures .syn inválidos y verifica que el compilador reporta los
+códigos de error esperados (oráculo conductual, no sniff de texto).
+"""
 import os, glob, time
 import pytest
 
