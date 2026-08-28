@@ -41,11 +41,11 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "[synapse]" in contenido, \
+        assert "[synapse]" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Falta sección [synapse] en archivo de configuración"
-        assert "[syquex]" in contenido, \
+        assert "[syquex]" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Falta sección [syquex] en archivo de configuración"
 
     def test_requisito_3_sintaxis_synapse_funciones(self):
@@ -59,9 +59,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "funcion" in contenido, \
+        assert "funcion" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'funcion'"
 
     def test_requisito_4_sintaxis_synapse_variables(self):
@@ -75,9 +75,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "let" in contenido, \
+        assert "let" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'let'"
 
     def test_requisito_5_sintaxis_synapse_condicional(self):
@@ -91,9 +91,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "si" in contenido, \
+        assert "si" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'si'"
 
     def test_requisito_6_sintaxis_synapse_bucle(self):
@@ -107,9 +107,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "mientras" in contenido, \
+        assert "mientras" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'mientras'"
 
     def test_requisito_7_sintaxis_synapse_retorno(self):
@@ -123,9 +123,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "retornar" in contenido, \
+        assert "retornar" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'retornar'"
 
     def test_requisito_8_sintaxis_synapse_concurrencia(self):
@@ -139,9 +139,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "lanzar" in contenido, \
+        assert "lanzar" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'lanzar'"
 
     def test_requisito_9_sintaxis_synapse_canales(self):
@@ -155,9 +155,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "Canal" in contenido, \
+        assert "Canal" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'Canal'"
 
     def test_requisito_10_sintaxis_synapse_tensores(self):
@@ -171,9 +171,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "tensor" in contenido, \
+        assert "tensor" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Synapse no incluyen 'tensor'"
 
     def test_requisito_11_sintaxis_syquex_funciones(self):
@@ -187,12 +187,12 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
         # Buscar en la sección de syquex
-        assert "[syquex]" in contenido, "Falta sección [syquex]"
+        assert "[syquex]" in texto_config, "Falta sección [syquex]"
         # Verificar que hay una definición de función en syquex
-        lineas = contenido.split('\n')
+        lineas = texto_config.split('\n')
         en_syquex = False
         funcion_encontrada = False
         for linea in lineas:
@@ -218,9 +218,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "estructura" in contenido, \
+        assert "estructura" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'estructura'"
 
     def test_requisito_13_sintaxis_syquex_metodos(self):
@@ -234,9 +234,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "metodo" in contenido, \
+        assert "metodo" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'metodo'"
 
     def test_requisito_14_sintaxis_syquex_constructores(self):
@@ -250,9 +250,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "crear" in contenido, \
+        assert "crear" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'crear'"
 
     def test_requisito_15_sintaxis_syquex_errores(self):
@@ -266,9 +266,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "Resultado" in contenido, \
+        assert "Resultado" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'Resultado'"
 
     def test_requisito_16_sintaxis_syquex_concurrencia(self):
@@ -282,10 +282,10 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        # Verificar que hay "lanzar" en el contenido (puede estar en syquex o en ejemplos)
-        assert "lanzar" in contenido, \
+        # Verificar que hay "lanzar" en el texto_config (puede estar en syquex o en ejemplos)
+        assert "lanzar" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'lanzar'"
 
     def test_requisito_17_sintaxis_syquex_canales(self):
@@ -299,10 +299,10 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
         # Verificar que hay mención de canales en syquex
-        assert "Canal" in contenido, \
+        assert "Canal" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'Canal'"
 
     def test_requisito_18_sintaxis_syquex_modulos(self):
@@ -316,9 +316,9 @@ class TestRequisitosManuales:
             pytest.fail("FALLA REQUISITO M7 §2.3: No existe archivo de configuración")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "importar" in contenido, \
+        assert "importar" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Reglas de Syquex no incluyen 'importar'"
 
     def test_requisito_19_estructura_prompt_system(self):
@@ -352,11 +352,11 @@ class TestRequisitosManuales:
         
         # Verificar que el archivo tiene metadatos de configuración
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "[config]" in contenido, \
+        assert "[config]" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Falta sección [config] para configuración"
-        assert "actualizable" in contenido, \
+        assert "actualizable" in texto_config, \
             "FALLA REQUISITO M7 §2.3: Falta campo 'actualizable' en configuración"
 
 class TestImplementacion:
@@ -382,9 +382,9 @@ class TestImplementacion:
             pytest.fail("FALLA IMPLEMENTACIÓN: No existe nucleo/synapse_rag.h")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "RagContextoEstatico" in contenido, \
+        assert "RagContextoEstatico" in texto_config, \
             "FALLA IMPLEMENTACIÓN: Falta estructura RagContextoEstatico en synapse_rag.h"
 
     def test_implementacion_funcion_cargar_configuracion(self):
@@ -395,9 +395,9 @@ class TestImplementacion:
             pytest.fail("FALLA IMPLEMENTACIÓN: No existe nucleo/synapse_rag.h")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "rag_configuracion_cargar" in contenido, \
+        assert "rag_configuracion_cargar" in texto_config, \
             "FALLA IMPLEMENTACIÓN: Falta función rag_configuracion_cargar"
 
     def test_implementacion_funcion_construir_bloque_estatico(self):
@@ -408,9 +408,9 @@ class TestImplementacion:
             pytest.fail("FALLA IMPLEMENTACIÓN: No existe nucleo/synapse_rag.h")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "rag_construir_bloque_estatico" in contenido, \
+        assert "rag_construir_bloque_estatico" in texto_config, \
             "FALLA IMPLEMENTACIÓN: Falta función rag_construir_bloque_estatico"
 
     def test_implementacion_funcion_prompt_con_contexto(self):
@@ -421,9 +421,9 @@ class TestImplementacion:
             pytest.fail("FALLA IMPLEMENTACIÓN: No existe nucleo/synapse_rag.h")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "synapse_rag_construir_prompt_con_contexto_estatico" in contenido, \
+        assert "synapse_rag_construir_prompt_con_contexto_estatico" in texto_config, \
             "FALLA IMPLEMENTACIÓN: Falta función synapse_rag_construir_prompt_con_contexto_estatico"
 
     def test_implementacion_parser_toml(self):
@@ -434,7 +434,7 @@ class TestImplementacion:
             pytest.fail("FALLA IMPLEMENTACIÓN: No existe nucleo/synapse_rag.c")
         
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            texto_config = f.read()
         
-        assert "rag_parsear_toml_simple" in contenido, \
+        assert "rag_parsear_toml_simple" in texto_config, \
             "FALLA IMPLEMENTACIÓN: Falta parser TOML en synapse_rag.c"

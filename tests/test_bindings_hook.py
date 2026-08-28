@@ -3,6 +3,9 @@
 """
 tests/test_bindings_hook.py — Tests para la regeneración automática de bindings (Fase 26)
 
+Manual 6 §5.1 (serialización/FFI Axon) y Manual 7 §2.3 (inyección de contexto estático):
+valida que la regeneración de lib/runtime_bindings.syq produce bindings reales del runtime.
+
 Valida:
 - La lógica de detección de headers modificados
 - La regeneración automática de lib/runtime_bindings.syq

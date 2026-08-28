@@ -1,6 +1,9 @@
 """
 FASE 26.1 — Test del flag --check (modo validación sin generar código).
 
+Manual 8 §4.2 (CLI run/check) y Manual 7 §6.3 (bucle de validación usa --check):
+valida que el compilador acepta check_only y no emite código C.
+
 Valida que:
 - check_only=True ejecuta análisis sintáctico + semántico
 - check_only=True NO genera código C ni ejecuta GCC
