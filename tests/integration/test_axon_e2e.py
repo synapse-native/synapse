@@ -47,7 +47,9 @@ def check(description, condition, detail=""):
 
 
 def run_binary(bin_path, args=None, cwd=None, timeout=30):
-    """Run a compiled test binary and return (returncode, stdout, stderr)."""
+    """Run a compiled test binary and return (returncode, stdout, stderr).
+Manual 6
+"""
     cmd = [bin_path]
     if args:
         cmd.extend(args)

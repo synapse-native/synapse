@@ -1,3 +1,7 @@
+
+"""
+Manual 2
+"""
 """
 FASE 25 - Test del WATGenerator extendido (i64/f64/memory/imports/exports).
 """

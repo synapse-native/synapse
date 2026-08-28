@@ -26,7 +26,9 @@ HTML_FILE = os.path.join(SPA_DIR, "index.html")
 
 
 def _find_wat2wasm():
-    """Busca wat2wasm en PATH o en emsdk."""
+    """Busca wat2wasm en PATH o en emsdk.
+Manual 2
+"""
     for candidate in ("wat2wasm", "wat2wasm.exe"):
         try:
             r = subprocess.run([candidate, "--version"],

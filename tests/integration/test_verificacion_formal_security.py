@@ -126,7 +126,9 @@ funcion procesar_hasta(n: entero) -> nulo:
 # ================================================================
 
 def _verificar_safe(fuente: str) -> DiagnosticManager:
-    """Compila código en modo --safe y retorna el DiagnosticManager."""
+    """Compila código en modo --safe y retorna el DiagnosticManager.
+Manual 2
+"""
     ast, diag = compilar_texto(fuente)
     if not diag.hay_errores():
         verificador = VerificadorFormal(ast, diag)

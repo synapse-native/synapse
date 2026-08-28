@@ -14,7 +14,9 @@ MODELO = os.path.join(PROJECT_ROOT, "std", "modelo.syn")
 
 @pytest.mark.integration
 class TestH12OraculoModelo:
-    """H12: std.oraculo must NOT duplicate generar_texto from std.modelo."""
+    """H12: std.oraculo must NOT duplicate generar_texto from std.modelo.
+Manual 2
+"""
 
     def test_oraculo_no_define_generar_texto(self):
         """std/oraculo.syn must not define generar_texto (it imports it from std.modelo)."""

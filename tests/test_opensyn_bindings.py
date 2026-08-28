@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+"""
+Manual 7
+"""
 """
 tests/test_opensyn_bindings.py — Tests para opensyn/bindings_generator.py (Fase 26)
 

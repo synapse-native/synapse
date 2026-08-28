@@ -16,7 +16,7 @@
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
+typedef struct { int longitud; const char* datos; } CadenaSegura;
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -131,6 +131,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #endif
 #ifndef ERR_MODULE_STD_NOT_FOUND
 #define ERR_MODULE_STD_NOT_FOUND (26LL)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
 #endif
 #ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
 #define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
@@ -519,31 +522,11 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-struct NodoLista;
-
-typedef struct NodoLista {
-    int64_t valor;
-    void* siguiente;
-} NodoLista;
-
-typedef int64_t Edad;
-
 static inline int risky_call(void) { return 0; }
 
-void _principal_impl(void) {
+int64_t _principal_impl(void) {
     _simd_detectar();
-    int64_t x = 5LL;
-    int64_t edad = 10LL;
-    CadenaSegura s = (CadenaSegura){ .longitud = (int)strlen("hola"), .datos = "hola" };
-    WeakRef ref = ((WeakRef){0});
-    Tensor t = crear_tensor(2LL, 3LL);
-    escribir_linea(entero_a_texto((x + edad)));
-    escribir_linea(s);
-    escribir_linea(entero_a_texto(t.filas));
-    _syn_texto_liberar(s);
-    rc_weak_release(&ref);
-    return;
-    if (!t.es_mapeado) { pool_free(t.datos); }
+    return 0LL;
       /* [Lifetime Scope: exit depth=0] */
 }
 

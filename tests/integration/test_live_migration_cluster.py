@@ -83,7 +83,9 @@ def _run_test_binary(args: list = None) -> subprocess.CompletedProcess:
 
 
 def _limpiar_migracion():
-    """Limpia artefactos de migración de ejecuciones previas."""
+    """Limpia artefactos de migración de ejecuciones previas.
+Manual 2
+"""
     if os.path.exists(MIGRATION_DIR):
         import shutil
         shutil.rmtree(MIGRATION_DIR, ignore_errors=True)

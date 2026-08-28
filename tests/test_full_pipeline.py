@@ -172,7 +172,9 @@ class TestCLIPipeline:
 class TestCasosReales:
 
     def test_hello_world_pipeline(self, tmp_path):
-        """Pipeline completo con Hello World."""
+        """Pipeline completo con Hello World.
+Manual 2
+"""
         py_file = tmp_path / "hello.py"
         py_file.write_text(
             'print("Hello, World!")\n',

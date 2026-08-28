@@ -40,7 +40,9 @@ def _find_gcc() -> str:
 
 
 def test_compila_y_pasa_todos():
-    """Compila el test C y verifica que compile."""
+    """Compila el test C y verifica que compile.
+Manual 2
+"""
     gcc = _find_gcc()
     rc = subprocess.run(
         [gcc, "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, *RT_OBJS,

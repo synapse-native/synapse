@@ -23,7 +23,9 @@ sys.path.insert(0, PROJECT_ROOT)
 class TestTranspiler:
 
     def test_transpiler_module_exists(self):
-        """opensyn/transpiler.syq existe."""
+        """opensyn/transpiler.syq existe.
+Manual 7
+"""
         assert os.path.exists(os.path.join(PROJECT_ROOT, "opensyn", "transpiler.syq"))
 
     def test_transpiler_syq_has_lang_directive(self):

@@ -23,7 +23,9 @@ TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.exe")
 
 @pytest.fixture(scope="module", autouse=True)
 def ensure_toolchain():
-    """Verify toolchain exists and test source is available."""
+    """Verify toolchain exists and test source is available.
+Manual 2
+"""
     if not os.path.exists(TOOLCHAIN_GCC):
         pytest.skip(f"Toolchain GCC not found: {TOOLCHAIN_GCC}")
     if not any(os.path.exists(o) for o in RT_OBJS):

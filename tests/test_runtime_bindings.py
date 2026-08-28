@@ -188,7 +188,9 @@ class TestGenerateScript:
 class TestCoherencia:
 
     def test_math_bindings_match_lib(self):
-        """Los bindings generados deben incluir las mismas funciones que lib/math.syq."""
+        """Los bindings generados deben incluir las mismas funciones que lib/math.syq.
+Manual 2
+"""
         with open(os.path.join(PROJECT_ROOT, "lib", "runtime_bindings.syq"), encoding="utf-8") as f:
             bindings = f.read()
         with open(os.path.join(PROJECT_ROOT, "lib", "math.syq"), encoding="utf-8") as f:

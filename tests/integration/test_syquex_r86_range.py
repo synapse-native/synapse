@@ -1,3 +1,7 @@
+
+"""
+Manual 3
+"""
 """
 test_syquex_r86_range.py — FASE 22 / R86: valida que el lexer/paser de Syquex
 maneja correctamente el operador de rango `..` y el bucle `para i = a .. b`.

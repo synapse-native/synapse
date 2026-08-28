@@ -27,7 +27,9 @@ BIN_ABS = os.path.abspath(BIN)
 
 
 def test_compila_y_pasa_todos():
-    """Compila el test C y ejecuta la suite completa. Verifica 0 fallos."""
+    """Compila el test C y ejecuta la suite completa. Verifica 0 fallos.
+Manual 2
+"""
     rc = subprocess.run(
         ["gcc", "-I.", "-I" + COMPILADOR_DIR, "-o", BIN_ABS, TEST_C_SRC, *RT_OBJS, "-lm", "-lws2_32", "-static"],
         capture_output=True, text=True, cwd=os.path.dirname(TEST_C_SRC)

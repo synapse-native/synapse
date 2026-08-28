@@ -8,7 +8,9 @@ pytestmark = pytest.mark.integration
 
 
 class TestAnalizadorSemanticoVariables:
-    """Tests de análisis semántico de variables"""
+    """Tests de análisis semántico de variables
+Manual 2
+"""
     
     def test_variable_no_declarada(self):
         """Test que variable no declarada genera error"""

@@ -1,3 +1,7 @@
+
+"""
+Manual 2
+"""
 """
 test_live_migration.py — Integration tests for M8.4 Live Task Migration (Checkpoint/Restore)
 

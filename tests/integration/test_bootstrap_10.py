@@ -2,6 +2,7 @@
 """
 test_bootstrap_10.py — Tests avanzados de Fase 5 (contratos + bootstrap).
 
+Manual 9 §9.1 (bootstrap S1->S2->S3) y §9.7 (determinismo byte-idéntico).
 Complementa test_contracts.py y test_borrow_checker.py con:
   1. Determinismo: diff 0 bytes entre dos generaciones del mismo código
   2. Modo --safe: emite /* BORROW_CHECK */ en código C

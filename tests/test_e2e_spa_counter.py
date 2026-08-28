@@ -43,7 +43,9 @@ class TestE2ESPACounter:
 
     @pytest.fixture(scope="class")
     def page_context(self):
-        """Lanza navegador y crea página."""
+        """Lanza navegador y crea página.
+Manual 2
+"""
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)

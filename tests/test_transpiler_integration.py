@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+"""
+Manual 2
+"""
 """
 tests/test_transpiler_integration.py — Tests de integración transpilador Python→Syquex (Fase 26)
 

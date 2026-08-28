@@ -16,7 +16,7 @@
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
+typedef struct { int longitud; const char* datos; } CadenaSegura;
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -131,6 +131,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #endif
 #ifndef ERR_MODULE_STD_NOT_FOUND
 #define ERR_MODULE_STD_NOT_FOUND (26LL)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
 #endif
 #ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
 #define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
@@ -519,31 +522,231 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-struct NodoLista;
-
-typedef struct NodoLista {
-    int64_t valor;
-    void* siguiente;
-} NodoLista;
-
-typedef int64_t Edad;
-
 static inline int risky_call(void) { return 0; }
+CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
+CadenaSegura a_texto(int64_t valor);
+CadenaSegura a_texto_decimal(double valor);
+int64_t contiene(CadenaSegura texto, CadenaSegura subcadena);
+int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+int64_t ejecutar_comando(CadenaSegura cmd);
+int64_t eliminar_archivo(CadenaSegura ruta);
+CadenaSegura escapar_json(CadenaSegura texto);
+int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+int existe_archivo(CadenaSegura ruta);
+int64_t indice_de(CadenaSegura texto, CadenaSegura subcadena);
+CadenaSegura leer_archivo(CadenaSegura ruta);
+CadenaSegura leer_bytes(int64_t cantidad);
+CadenaSegura mayusculas(CadenaSegura texto);
+CadenaSegura minusculas(CadenaSegura texto);
+CadenaSegura obtener_env(CadenaSegura nombre);
+CadenaSegura recortar(CadenaSegura texto);
+CadenaSegura reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar);
+CadenaSegura sha256_texto(CadenaSegura datos);
+int64_t termina_con(CadenaSegura texto, CadenaSegura sufijo);
 
-void _principal_impl(void) {
+extern void cerrar_archivo(Canal c);
+extern Canal _syn_abrir(CadenaSegura ruta, CadenaSegura modo);
+extern CadenaSegura _syn_leer(Canal c);
+extern void _syn_escribir(CadenaSegura texto);
+extern void _syn_escribir_linea(CadenaSegura texto);
+extern CadenaSegura _syn_leer_linea(void);
+extern CadenaSegura _syn_leer_bytes(int64_t cantidad);
+extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
+extern int64_t _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
+extern CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
+extern CadenaSegura _syn_obtener_cwd(void);
+extern int64_t _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
+extern int64_t _syn_ejecutar_comando(CadenaSegura cmd);
+extern int64_t _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+extern CadenaSegura _syn_leer_archivo(CadenaSegura ruta);
+extern CadenaSegura _syn_obtener_env(CadenaSegura nombre);
+extern int64_t _syn_existe_archivo(CadenaSegura ruta);
+extern int64_t _syn_eliminar_archivo(CadenaSegura ruta);
+extern int64_t _syn_texto_contiene(CadenaSegura texto, CadenaSegura subcadena);
+extern int64_t _syn_texto_indice_de(CadenaSegura texto, CadenaSegura subcadena);
+extern CadenaSegura _syn_texto_reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar);
+extern int64_t _syn_texto_termina_con(CadenaSegura texto, CadenaSegura sufijo);
+extern CadenaSegura _syn_texto_recortar(CadenaSegura texto);
+extern CadenaSegura _syn_texto_mayusculas(CadenaSegura texto);
+extern CadenaSegura _syn_texto_minusculas(CadenaSegura texto);
+extern CadenaSegura _syn_escapar_json(CadenaSegura texto);
+extern CadenaSegura _syn_a_texto_entero(int64_t valor);
+extern CadenaSegura _syn_a_texto_decimal(double valor);
+CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
+    CadenaSegura normalizada = {0};
+    CadenaSegura cwd = {0};
+    _syn_texto_liberar(normalizada);
+    normalizada = _syn_normalizar_ruta(ruta);
+    _syn_texto_liberar(cwd);
+    cwd = _syn_obtener_cwd();
+    if ((!_syn_ruta_en_directorio(normalizada, cwd))) {
+        _syn_texto_liberar(ruta);
+        _syn_texto_liberar(normalizada);
+        _syn_texto_liberar(cwd);
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return normalizada;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura a_texto(int64_t valor) {
+    return _syn_a_texto_entero(valor);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura a_texto_decimal(double valor) {
+    return _syn_a_texto_decimal(valor);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t contiene(CadenaSegura texto, CadenaSegura subcadena) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(subcadena);
+    return _syn_texto_contiene(texto, subcadena);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
+    _syn_texto_liberar(mensaje);
+    _syn_texto_liberar(firma);
+    _syn_texto_liberar(clave_publica);
+    return _syn_ed25519_verificar(mensaje, firma, clave_publica);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t ejecutar_comando(CadenaSegura cmd) {
+    _syn_texto_liberar(cmd);
+    return _syn_ejecutar_comando(cmd);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t eliminar_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = {0};
+    _syn_texto_liberar(ruta_segura);
+    ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        _syn_texto_liberar(ruta_segura);
+        _syn_texto_liberar(ruta);
+        return (-1LL);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return _syn_eliminar_archivo(ruta_segura);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura escapar_json(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_escapar_json(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
+    CadenaSegura ruta_segura = {0};
+    _syn_texto_liberar(ruta_segura);
+    ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        _syn_texto_liberar(ruta_segura);
+        _syn_texto_liberar(ruta);
+        _syn_texto_liberar(contenido);
+        return (-1LL);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return _syn_escribir_archivo(ruta_segura, contenido);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int existe_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = {0};
+    _syn_texto_liberar(ruta_segura);
+    ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        _syn_texto_liberar(ruta_segura);
+        _syn_texto_liberar(ruta);
+        return 0;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return (_syn_existe_archivo(ruta_segura) == 1LL);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t indice_de(CadenaSegura texto, CadenaSegura subcadena) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(subcadena);
+    return _syn_texto_indice_de(texto, subcadena);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura leer_archivo(CadenaSegura ruta) {
+    CadenaSegura ruta_segura = {0};
+    _syn_texto_liberar(ruta_segura);
+    ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        _syn_texto_liberar(ruta_segura);
+        _syn_texto_liberar(ruta);
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return _syn_leer_archivo(ruta_segura);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura leer_bytes(int64_t cantidad) {
+    return _syn_leer_bytes(cantidad);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura mayusculas(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_mayusculas(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura minusculas(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_minusculas(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura obtener_env(CadenaSegura nombre) {
+    _syn_texto_liberar(nombre);
+    return _syn_obtener_env(nombre);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t _principal_impl(void) {
     _simd_detectar();
-    int64_t x = 5LL;
-    int64_t edad = 10LL;
-    CadenaSegura s = (CadenaSegura){ .longitud = (int)strlen("hola"), .datos = "hola" };
-    WeakRef ref = ((WeakRef){0});
-    Tensor t = crear_tensor(2LL, 3LL);
-    escribir_linea(entero_a_texto((x + edad)));
-    escribir_linea(s);
-    escribir_linea(entero_a_texto(t.filas));
-    _syn_texto_liberar(s);
-    rc_weak_release(&ref);
-    return;
-    if (!t.es_mapeado) { pool_free(t.datos); }
+    CadenaSegura resultado = a_texto(42LL);
+    escribir_linea(resultado);
+    _syn_texto_liberar(resultado);
+    return 0LL;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura recortar(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_recortar(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(reemplazar);
+    _syn_texto_liberar(buscar);
+    return _syn_texto_reemplazar(texto, buscar, reemplazar);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura sha256_texto(CadenaSegura datos) {
+    _syn_texto_liberar(datos);
+    return _syn_sha256_texto(datos);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t termina_con(CadenaSegura texto, CadenaSegura sufijo) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(sufijo);
+    return _syn_texto_termina_con(texto, sufijo);
       /* [Lifetime Scope: exit depth=0] */
 }
 

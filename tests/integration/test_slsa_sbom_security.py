@@ -43,7 +43,9 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 class TestSBOMGeneration:
 
     def test_sbom_formato_spdx(self):
-        """El SBOM debe ser JSON válido con campos SPDX 2.3."""
+        """El SBOM debe ser JSON válido con campos SPDX 2.3.
+Manual 2
+"""
         sbom_json = generar_sbom(PROJECT_ROOT)
         sbom = json.loads(sbom_json)
         assert sbom["spdxVersion"] == "SPDX-2.3", "Debe ser SPDX 2.3"

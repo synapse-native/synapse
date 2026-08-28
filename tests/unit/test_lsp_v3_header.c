@@ -16,7 +16,7 @@
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
+typedef struct { int longitud; const char* datos; } CadenaSegura;
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -131,6 +131,9 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #endif
 #ifndef ERR_MODULE_STD_NOT_FOUND
 #define ERR_MODULE_STD_NOT_FOUND (26LL)
+#endif
+#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
+#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
 #endif
 #ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
 #define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
@@ -519,47 +522,44 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-struct Opcion;
-struct Resultado;
-
-typedef struct Opcion {
-    int tag;
-    union {
-        int64_t valor;
-        CadenaSegura valor_str;
-        double valor_float;
-    } dato;
-} Opcion;
-
-typedef struct Resultado {
-    int tag;
-    union {
-        int64_t valor;
-        CadenaSegura valor_str;
-        double valor_float;
-    } dato;
-} Resultado;
-
 static inline int risky_call(void) { return 0; }
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
+CadenaSegura a_texto(int64_t valor);
+CadenaSegura a_texto_decimal(double valor);
+int64_t atoi_f(CadenaSegura texto);
+int64_t cmp_texto(CadenaSegura a, CadenaSegura b);
+int64_t contiene(CadenaSegura texto, CadenaSegura subcadena);
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 int64_t ejecutar_comando(CadenaSegura cmd);
 int64_t eliminar_archivo(CadenaSegura ruta);
+CadenaSegura escapar_json(CadenaSegura texto);
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
 int existe_archivo(CadenaSegura ruta);
+int64_t extraer_content_length(CadenaSegura cabecera);
+void fallar_e(CadenaSegura nombre, int64_t esp, int64_t obs);
+void fallar_t(CadenaSegura nombre, CadenaSegura esp, CadenaSegura obs);
+int64_t indice_de(CadenaSegura texto, CadenaSegura subcadena);
 CadenaSegura leer_archivo(CadenaSegura ruta);
 CadenaSegura leer_bytes(int64_t cantidad);
+CadenaSegura mayusculas(CadenaSegura texto);
+CadenaSegura minusculas(CadenaSegura texto);
 CadenaSegura obtener_env(CadenaSegura nombre);
-int64_t prueba_clave_incorrecta(void);
-int64_t prueba_enviar_datos_canal(void);
-int64_t prueba_enviar_hello(void);
-int64_t prueba_firma_corrupta(void);
-int64_t prueba_firmar_verificar(void);
-int64_t prueba_generar_par(void);
-int64_t prueba_handshake_bidireccional(void);
-int64_t prueba_iniciar_detener_nodo(void);
-int64_t prueba_resultado_algebraico(void);
+void pasar(CadenaSegura nombre);
+CadenaSegura recortar(CadenaSegura texto);
+CadenaSegura reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar);
 CadenaSegura sha256_texto(CadenaSegura datos);
+int64_t strchr_f(CadenaSegura texto, int64_t caracter);
+CadenaSegura strcpy_f(CadenaSegura texto);
+int64_t strlen_s(CadenaSegura a);
+CadenaSegura strncpy_f(CadenaSegura texto, int64_t max_len);
+int64_t strstr_f(CadenaSegura texto, CadenaSegura patron);
+int64_t termina_con(CadenaSegura texto, CadenaSegura sufijo);
+void verificar_atoi_subcadena(void);
+void verificar_cl_minusculas(void);
+void verificar_cl_no_encontrado(void);
+void verificar_cl_normal(void);
+void verificar_cl_sin_espacios(void);
+void verificar_strstr_con_subcadena(void);
 
 extern CadenaSegura _syn_sha256_texto(CadenaSegura datos);
 extern int64_t _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
@@ -585,13 +585,25 @@ extern int64_t _syn_fprintf_i(int64_t canalm, CadenaSegura formato, int64_t valo
 extern int64_t _syn_fprintf_it(int64_t canalm, CadenaSegura formato, int64_t val1, CadenaSegura val2);
 extern void _syn_fflush(int64_t canalm);
 extern void _syn_setbuf_null(int64_t canalm);
-extern CadenaSegura cluster_generar_par_claves(void);
-extern CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje, CadenaSegura clave_privada_hex);
-extern int64_t cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, CadenaSegura clave_publica_hex);
-extern int64_t cluster_iniciar_nodo(int64_t puerto);
-extern int64_t cluster_detener_nodo(void);
-extern int64_t cluster_enviar_hello(CadenaSegura ip, int64_t puerto, CadenaSegura id_origen, CadenaSegura pubkey_hex);
-extern int64_t cluster_canal_remoto_enviar(CadenaSegura ip, int64_t puerto, CadenaSegura datos, int64_t lon, int64_t chan_id);
+extern int64_t _syn_texto_contiene(CadenaSegura texto, CadenaSegura subcadena);
+extern int64_t _syn_texto_indice_de(CadenaSegura texto, CadenaSegura subcadena);
+extern CadenaSegura _syn_texto_reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar);
+extern int64_t _syn_texto_termina_con(CadenaSegura texto, CadenaSegura sufijo);
+extern CadenaSegura _syn_texto_recortar(CadenaSegura texto);
+extern CadenaSegura _syn_texto_mayusculas(CadenaSegura texto);
+extern CadenaSegura _syn_texto_minusculas(CadenaSegura texto);
+extern CadenaSegura _syn_escapar_json(CadenaSegura texto);
+extern CadenaSegura _syn_a_texto_entero(int64_t valor);
+extern CadenaSegura _syn_a_texto_decimal(double valor);
+extern int64_t _syn_strcmp(CadenaSegura a, CadenaSegura b);
+extern int64_t _syn_strlen(CadenaSegura a);
+extern int64_t _syn_strstr(CadenaSegura texto, CadenaSegura patron);
+extern int64_t _syn_strchr(CadenaSegura texto, int64_t caracter);
+extern int64_t _syn_atoi(CadenaSegura texto);
+extern CadenaSegura _syn_strcpy(CadenaSegura texto);
+extern CadenaSegura _syn_strncpy(CadenaSegura texto, int64_t max_len);
+int64_t tp = 0LL;
+int64_t tf = 0LL;
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
     CadenaSegura normalizada = {0};
     CadenaSegura cwd = {0};
@@ -607,6 +619,36 @@ CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
           /* [Lifetime Scope: exit depth=1] */
     }
     return normalizada;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura a_texto(int64_t valor) {
+    return _syn_a_texto_entero(valor);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura a_texto_decimal(double valor) {
+    return _syn_a_texto_decimal(valor);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t atoi_f(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_atoi(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t cmp_texto(CadenaSegura a, CadenaSegura b) {
+    _syn_texto_liberar(b);
+    _syn_texto_liberar(a);
+    return _syn_strcmp(a, b);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t contiene(CadenaSegura texto, CadenaSegura subcadena) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(subcadena);
+    return _syn_texto_contiene(texto, subcadena);
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -635,6 +677,12 @@ int64_t eliminar_archivo(CadenaSegura ruta) {
           /* [Lifetime Scope: exit depth=1] */
     }
     return _syn_eliminar_archivo(ruta_segura);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura escapar_json(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_escapar_json(texto);
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -667,6 +715,74 @@ int existe_archivo(CadenaSegura ruta) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
+int64_t extraer_content_length(CadenaSegura cabecera) {
+    int64_t idx = strstr_f(cabecera, (CadenaSegura){ .longitud = (int)strlen("Content-Length:"), .datos = "Content-Length:" });
+    if ((idx == (-1LL))) {
+        idx = strstr_f(cabecera, (CadenaSegura){ .longitud = (int)strlen("content-length:"), .datos = "content-length:" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((idx == (-1LL))) {
+        _syn_texto_liberar(cabecera);
+        return (-1LL);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    int64_t despues = (idx + 15LL);
+    int64_t len_total = strlen_s(cabecera);
+    while ((despues < len_total)) {
+        int64_t c = strchr_f(((CadenaSegura){.longitud=(despues + 1LL), .datos=((char*)memcpy(malloc((despues + 1LL)+1),(cabecera).datos+despues,(despues + 1LL)))}), 32LL);
+        if ((c == (-1LL))) {
+            break;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        despues = (despues + 1LL);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    CadenaSegura num_str = ((CadenaSegura){.longitud=len_total, .datos=((char*)memcpy(malloc(len_total+1),(cabecera).datos+despues,len_total))});
+    int64_t fin_num = strstr_f(num_str, (CadenaSegura){ .longitud = (int)strlen("\r"), .datos = "\r" });
+    if ((fin_num == (-1LL))) {
+        fin_num = strstr_f(num_str, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((fin_num == (-1LL))) {
+        fin_num = strlen_s(num_str);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    CadenaSegura num_text = ((CadenaSegura){.longitud=fin_num, .datos=((char*)memcpy(malloc(fin_num+1),(num_str).datos+0LL,fin_num))});
+    _syn_texto_liberar(num_text);
+    _syn_texto_liberar(num_str);
+    return atoi_f(num_text);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void fallar_e(CadenaSegura nombre, int64_t esp, int64_t obs) {
+    int64_t tf;
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("  FAIL: "), .datos = "  FAIL: " }, nombre));
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("    Esperado: "), .datos = "    Esperado: " }, entero_a_texto(esp)));
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("    Obtenido: "), .datos = "    Obtenido: " }, entero_a_texto(obs)));
+    tf = (tf + 1LL);
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(nombre);
+}
+
+void fallar_t(CadenaSegura nombre, CadenaSegura esp, CadenaSegura obs) {
+    int64_t tf;
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("  FAIL: "), .datos = "  FAIL: " }, nombre));
+    escribir_linea(concat(concat((CadenaSegura){ .longitud = (int)strlen("    Esperado: \""), .datos = "    Esperado: \"" }, esp), (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" }));
+    escribir_linea(concat(concat((CadenaSegura){ .longitud = (int)strlen("    Obtenido: \""), .datos = "    Obtenido: \"" }, obs), (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" }));
+    tf = (tf + 1LL);
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(obs);
+    _syn_texto_liberar(nombre);
+    _syn_texto_liberar(esp);
+}
+
+int64_t indice_de(CadenaSegura texto, CadenaSegura subcadena) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(subcadena);
+    return _syn_texto_indice_de(texto, subcadena);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
 CadenaSegura leer_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
     _syn_texto_liberar(ruta_segura);
@@ -686,415 +802,73 @@ CadenaSegura leer_bytes(int64_t cantidad) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
+CadenaSegura mayusculas(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_mayusculas(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura minusculas(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_minusculas(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
 CadenaSegura obtener_env(CadenaSegura nombre) {
     _syn_texto_liberar(nombre);
     return _syn_obtener_env(nombre);
       /* [Lifetime Scope: exit depth=0] */
 }
 
+void pasar(CadenaSegura nombre) {
+    int64_t tp;
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("  PASS: "), .datos = "  PASS: " }, nombre));
+    tp = (tp + 1LL);
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(nombre);
+}
+
 int64_t _principal_impl(void) {
-    int64_t total_fallos;
     _simd_detectar();
-    total_fallos = 0LL;
+    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== test_lsp_v3_header.syn — TDD Tests LSP Header ==="), .datos = "=== test_lsp_v3_header.syn — TDD Tests LSP Header ===" });
     escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("========================================"), .datos = "========================================" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("  M18.3: Handshake Ed25519 Zero-Trust"), .datos = "  M18.3: Handshake Ed25519 Zero-Trust" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("========================================"), .datos = "========================================" });
+    escribir_linea((CadenaSegura){ .longitud = (int)strlen("--- extraer_content_length ---"), .datos = "--- extraer_content_length ---" });
+    verificar_cl_normal();
+    verificar_cl_sin_espacios();
+    verificar_cl_minusculas();
+    verificar_cl_no_encontrado();
     escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    total_fallos = (total_fallos + prueba_generar_par());
-    total_fallos = (total_fallos + prueba_firmar_verificar());
-    total_fallos = (total_fallos + prueba_firma_corrupta());
-    total_fallos = (total_fallos + prueba_clave_incorrecta());
-    total_fallos = (total_fallos + prueba_handshake_bidireccional());
-    total_fallos = (total_fallos + prueba_iniciar_detener_nodo());
-    total_fallos = (total_fallos + prueba_enviar_hello());
-    total_fallos = (total_fallos + prueba_enviar_datos_canal());
-    total_fallos = (total_fallos + prueba_resultado_algebraico());
+    escribir_linea((CadenaSegura){ .longitud = (int)strlen("--- integración strstr + atoi ---"), .datos = "--- integración strstr + atoi ---" });
+    verificar_strstr_con_subcadena();
+    verificar_atoi_subcadena();
     escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("========================================"), .datos = "========================================" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("  RESULTADOS"), .datos = "  RESULTADOS" });
-    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("  Total fallos: "), .datos = "  Total fallos: " }, entero_a_texto(total_fallos)));
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("========================================"), .datos = "========================================" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    if ((total_fallos > 0LL)) {
+    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== RESUMEN ==="), .datos = "=== RESUMEN ===" });
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("Pasados: "), .datos = "Pasados: " }, entero_a_texto(tp)));
+    escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("Fallidos: "), .datos = "Fallidos: " }, entero_a_texto(tf)));
+    if ((tf > 0LL)) {
+        escribir_linea((CadenaSegura){ .longitud = (int)strlen("RESULTADO: FAIL"), .datos = "RESULTADO: FAIL" });
         return 1LL;
           /* [Lifetime Scope: exit depth=1] */
     }
     else {
+        escribir_linea((CadenaSegura){ .longitud = (int)strlen("RESULTADO: PASS"), .datos = "RESULTADO: PASS" });
         return 0LL;
           /* [Lifetime Scope: exit depth=1] */
     }
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int64_t prueba_clave_incorrecta(void) {
-    int64_t fallos;
-    CadenaSegura par_a = {0};
-    CadenaSegura par_b = {0};
-    CadenaSegura firma = {0};
-    int64_t resultado;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 4: Rechazo de clave publica incorrecta ==="), .datos = "=== Prueba 4: Rechazo de clave publica incorrecta ===" });
-    _syn_texto_liberar(par_a);
-    par_a = cluster_generar_par_claves();
-    _syn_texto_liberar(par_b);
-    par_b = cluster_generar_par_claves();
-    _syn_texto_liberar(firma);
-    firma = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par_a);
-    resultado = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, firma, par_b);
-    if ((resultado != 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] verificar_firma() rechaza clave publica incorrecta"), .datos = "[OK] verificar_firma() rechaza clave publica incorrecta" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] verificar_firma() debio rechazar clave incorrecta"), .datos = "[FALLO] verificar_firma() debio rechazar clave incorrecta" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par_b);
-    _syn_texto_liberar(par_a);
-    _syn_texto_liberar(firma);
-    return fallos;
+CadenaSegura recortar(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_texto_recortar(texto);
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int64_t prueba_enviar_datos_canal(void) {
-    int64_t fallos;
-    int64_t rc;
-    int64_t rc2;
-    int64_t rc3;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 8: Envio de datos por canal remoto ==="), .datos = "=== Prueba 8: Envio de datos por canal remoto ===" });
-    rc = cluster_iniciar_nodo(0LL);
-    if ((rc >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] nodo iniciado para canal"), .datos = "[OK] nodo iniciado para canal" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] no pudo iniciar nodo rc="), .datos = "[FALLO] no pudo iniciar nodo rc=" }, entero_a_texto(rc)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc2 = cluster_canal_remoto_enviar((CadenaSegura){ .longitud = (int)strlen("127.0.0.1"), .datos = "127.0.0.1" }, 19098LL, (CadenaSegura){ .longitud = (int)strlen("datos transmitidos"), .datos = "datos transmitidos" }, 18LL, 1LL);
-    if ((rc2 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] canal_remoto_enviar retorna >= 0"), .datos = "[OK] canal_remoto_enviar retorna >= 0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] canal_remoto_enviar() fallo rc="), .datos = "[FALLO] canal_remoto_enviar() fallo rc=" }, entero_a_texto(rc2)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc3 = cluster_detener_nodo();
-    if ((rc3 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] nodo detenido tras canal"), .datos = "[OK] nodo detenido tras canal" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] detener nodo fallo rc="), .datos = "[FALLO] detener nodo fallo rc=" }, entero_a_texto(rc3)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_enviar_hello(void) {
-    int64_t fallos;
-    CadenaSegura par = {0};
-    int64_t rc;
-    int64_t rc2;
-    int64_t rc3;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 7: Envio HELLO ==="), .datos = "=== Prueba 7: Envio HELLO ===" });
-    _syn_texto_liberar(par);
-    par = cluster_generar_par_claves();
-    rc = cluster_iniciar_nodo(0LL);
-    if ((rc >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] nodo iniciado"), .datos = "[OK] nodo iniciado" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] no pudo iniciar nodo rc="), .datos = "[FALLO] no pudo iniciar nodo rc=" }, entero_a_texto(rc)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc2 = cluster_enviar_hello((CadenaSegura){ .longitud = (int)strlen("127.0.0.1"), .datos = "127.0.0.1" }, 19099LL, (CadenaSegura){ .longitud = (int)strlen("nodo-test"), .datos = "nodo-test" }, par);
-    if ((rc2 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] enviar_hello a 127.0.0.1:19099 retorna >= 0"), .datos = "[OK] enviar_hello a 127.0.0.1:19099 retorna >= 0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] enviar_hello() fallo rc="), .datos = "[FALLO] enviar_hello() fallo rc=" }, entero_a_texto(rc2)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc3 = cluster_detener_nodo();
-    if ((rc3 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] nodo detenido"), .datos = "[OK] nodo detenido" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] detener nodo fallo rc="), .datos = "[FALLO] detener nodo fallo rc=" }, entero_a_texto(rc3)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par);
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_firma_corrupta(void) {
-    int64_t fallos;
-    CadenaSegura par = {0};
-    CadenaSegura firma = {0};
-    int64_t resultado;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ==="), .datos = "=== Prueba 3: Rechazo de firma corrupta (Zero-Trust) ===" });
-    _syn_texto_liberar(par);
-    par = cluster_generar_par_claves();
-    _syn_texto_liberar(firma);
-    firma = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test"), .datos = "synapse-handshake:test" }, par);
-    resultado = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-DIFFERENT"), .datos = "synapse-handshake:test-DIFFERENT" }, firma, par);
-    if ((resultado != 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] verificar_firma() rechaza mensaje incorrecto"), .datos = "[OK] verificar_firma() rechaza mensaje incorrecto" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] verificar_firma() debio rechazar mensaje incorrecto"), .datos = "[FALLO] verificar_firma() debio rechazar mensaje incorrecto" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par);
-    _syn_texto_liberar(firma);
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_firmar_verificar(void) {
-    int64_t fallos;
-    CadenaSegura par = {0};
-    CadenaSegura firma = {0};
-    int64_t resultado;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 2: Firma y verificacion Ed25519 ==="), .datos = "=== Prueba 2: Firma y verificacion Ed25519 ===" });
-    _syn_texto_liberar(par);
-    par = cluster_generar_par_claves();
-    _syn_texto_liberar(firma);
-    firma = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-message"), .datos = "synapse-handshake:test-message" }, par);
-    if ((str_eq(firma, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] firmar_mensaje() retorna firma vacia"), .datos = "[FALLO] firmar_mensaje() retorna firma vacia" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] firmar_mensaje() retorna firma no vacia"), .datos = "[OK] firmar_mensaje() retorna firma no vacia" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    resultado = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:test-message"), .datos = "synapse-handshake:test-message" }, firma, par);
-    if ((resultado == 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] verificar_firma() retorna 0 para firma valida"), .datos = "[OK] verificar_firma() retorna 0 para firma valida" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] verificar_firma() debio retornar 0, obtuvo "), .datos = "[FALLO] verificar_firma() debio retornar 0, obtuvo " }, entero_a_texto(resultado)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par);
-    _syn_texto_liberar(firma);
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_generar_par(void) {
-    int64_t fallos;
-    CadenaSegura par = {0};
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 1: Generar par Ed25519 ==="), .datos = "=== Prueba 1: Generar par Ed25519 ===" });
-    _syn_texto_liberar(par);
-    par = cluster_generar_par_claves();
-    if ((str_eq(par, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] generar_par() retorna vacio"), .datos = "[FALLO] generar_par() retorna vacio" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] generar_par() no retorna vacio"), .datos = "[OK] generar_par() no retorna vacio" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par);
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_handshake_bidireccional(void) {
-    int64_t fallos;
-    CadenaSegura par_a = {0};
-    CadenaSegura par_b = {0};
-    CadenaSegura firma_a = {0};
-    int64_t v1;
-    CadenaSegura firma_b = {0};
-    int64_t v2;
-    int64_t v3;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 5: Handshake bidireccional A <-> B ==="), .datos = "=== Prueba 5: Handshake bidireccional A <-> B ===" });
-    _syn_texto_liberar(par_a);
-    par_a = cluster_generar_par_claves();
-    _syn_texto_liberar(par_b);
-    par_b = cluster_generar_par_claves();
-    _syn_texto_liberar(firma_a);
-    firma_a = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-B"), .datos = "synapse-handshake:pubkey-B" }, par_a);
-    if ((str_eq(firma_a, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] A no genera firma de handshake"), .datos = "[FALLO] A no genera firma de handshake" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] A genera firma de handshake"), .datos = "[OK] A genera firma de handshake" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    v1 = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-B"), .datos = "synapse-handshake:pubkey-B" }, firma_a, par_a);
-    if ((v1 == 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] B verifica firma de A correctamente"), .datos = "[OK] B verifica firma de A correctamente" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] B debio verificar firma de A, obtuvo "), .datos = "[FALLO] B debio verificar firma de A, obtuvo " }, entero_a_texto(v1)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(firma_b);
-    firma_b = cluster_firmar_mensaje((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-A"), .datos = "synapse-handshake:pubkey-A" }, par_b);
-    if ((str_eq(firma_b, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] B no genera firma de respuesta"), .datos = "[FALLO] B no genera firma de respuesta" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] B genera firma de respuesta"), .datos = "[OK] B genera firma de respuesta" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    v2 = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("synapse-handshake:pubkey-A"), .datos = "synapse-handshake:pubkey-A" }, firma_b, par_b);
-    if ((v2 == 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] A verifica firma de B correctamente"), .datos = "[OK] A verifica firma de B correctamente" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] A debio verificar firma de B, obtuvo "), .datos = "[FALLO] A debio verificar firma de B, obtuvo " }, entero_a_texto(v2)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    v3 = cluster_verificar_firma((CadenaSegura){ .longitud = (int)strlen("mensaje-alterado"), .datos = "mensaje-alterado" }, firma_b, par_b);
-    if ((v3 != 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] A rechaza firma de B con mensaje alterado"), .datos = "[OK] A rechaza firma de B con mensaje alterado" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] A debio rechazar mensaje alterado"), .datos = "[FALLO] A debio rechazar mensaje alterado" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    _syn_texto_liberar(par_b);
-    _syn_texto_liberar(par_a);
-    _syn_texto_liberar(firma_b);
-    _syn_texto_liberar(firma_a);
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_iniciar_detener_nodo(void) {
-    int64_t fallos;
-    int64_t rc;
-    int64_t rc2;
-    int64_t rc3;
-    int64_t rc4;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 6: Iniciar/Detener nodo UDP ==="), .datos = "=== Prueba 6: Iniciar/Detener nodo UDP ===" });
-    rc = cluster_iniciar_nodo(0LL);
-    if ((rc >= 0LL)) {
-        escribir_linea(concat(concat((CadenaSegura){ .longitud = (int)strlen("[OK] iniciar_nodo(0) retorna >= 0 (rc="), .datos = "[OK] iniciar_nodo(0) retorna >= 0 (rc=" }, entero_a_texto(rc)), (CadenaSegura){ .longitud = (int)strlen(")"), .datos = ")" }));
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] iniciar_nodo(0) fallo rc="), .datos = "[FALLO] iniciar_nodo(0) fallo rc=" }, entero_a_texto(rc)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc2 = cluster_detener_nodo();
-    if ((rc2 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] detener_nodo() retorna >= 0"), .datos = "[OK] detener_nodo() retorna >= 0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] detener_nodo() fallo rc="), .datos = "[FALLO] detener_nodo() fallo rc=" }, entero_a_texto(rc2)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc3 = cluster_iniciar_nodo(9701LL);
-    if ((rc3 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] reiniciar_nodo(9701) retorna >= 0"), .datos = "[OK] reiniciar_nodo(9701) retorna >= 0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] reiniciar_nodo(9701) fallo rc="), .datos = "[FALLO] reiniciar_nodo(9701) fallo rc=" }, entero_a_texto(rc3)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    rc4 = cluster_detener_nodo();
-    if ((rc4 >= 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] redetener_nodo() retorna >= 0"), .datos = "[OK] redetener_nodo() retorna >= 0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea(concat((CadenaSegura){ .longitud = (int)strlen("[FALLO] redetener_nodo() fallo rc="), .datos = "[FALLO] redetener_nodo() fallo rc=" }, entero_a_texto(rc4)));
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    return fallos;
-      /* [Lifetime Scope: exit depth=0] */
-}
-
-int64_t prueba_resultado_algebraico(void) {
-    int64_t fallos;
-    struct Resultado r_ok;
-    struct Resultado r_err;
-    fallos = 0LL;
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
-    escribir_linea((CadenaSegura){ .longitud = (int)strlen("=== Prueba 9: Tipo algebraico Resultado ==="), .datos = "=== Prueba 9: Tipo algebraico Resultado ===" });
-    r_ok = (struct Resultado){0};
-    r_ok.tag = 0LL;
-    r_ok.valor_str = (CadenaSegura){ .longitud = (int)strlen("operacion exitosa"), .datos = "operacion exitosa" };
-    if ((r_ok.tag == 0LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] Resultado.ok tiene tag=0"), .datos = "[OK] Resultado.ok tiene tag=0" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] Resultado.ok tag debio ser 0"), .datos = "[FALLO] Resultado.ok tag debio ser 0" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    r_err = (struct Resultado){0};
-    r_err.tag = 1LL;
-    r_err.valor_str = (CadenaSegura){ .longitud = (int)strlen("error de autenticacion"), .datos = "error de autenticacion" };
-    if ((r_err.tag == 1LL)) {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] Resultado.err tiene tag=1"), .datos = "[OK] Resultado.err tiene tag=1" });
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    else {
-        escribir_linea((CadenaSegura){ .longitud = (int)strlen("[FALLO] Resultado.err tag debio ser 1"), .datos = "[FALLO] Resultado.err tag debio ser 1" });
-        fallos = (fallos + 1LL);
-          /* [Lifetime Scope: exit depth=1] */
-    }
-    return fallos;
+CadenaSegura reemplazar(CadenaSegura texto, CadenaSegura buscar, CadenaSegura reemplazar) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(reemplazar);
+    _syn_texto_liberar(buscar);
+    return _syn_texto_reemplazar(texto, buscar, reemplazar);
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1102,6 +876,126 @@ CadenaSegura sha256_texto(CadenaSegura datos) {
     _syn_texto_liberar(datos);
     return _syn_sha256_texto(datos);
       /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t strchr_f(CadenaSegura texto, int64_t caracter) {
+    _syn_texto_liberar(texto);
+    return _syn_strchr(texto, caracter);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura strcpy_f(CadenaSegura texto) {
+    _syn_texto_liberar(texto);
+    return _syn_strcpy(texto);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t strlen_s(CadenaSegura a) {
+    _syn_texto_liberar(a);
+    return _syn_strlen(a);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura strncpy_f(CadenaSegura texto, int64_t max_len) {
+    _syn_texto_liberar(texto);
+    return _syn_strncpy(texto, max_len);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t strstr_f(CadenaSegura texto, CadenaSegura patron) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(patron);
+    return _syn_strstr(texto, patron);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int64_t termina_con(CadenaSegura texto, CadenaSegura sufijo) {
+    _syn_texto_liberar(texto);
+    _syn_texto_liberar(sufijo);
+    return _syn_texto_termina_con(texto, sufijo);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void verificar_atoi_subcadena(void) {
+    CadenaSegura num = ((CadenaSegura){.longitud=2LL, .datos=((char*)memcpy(malloc(2LL+1),((CadenaSegura){ .longitud = (int)strlen("42\r\n"), .datos = "42\r\n" }).datos+0LL,2LL))});
+    int64_t r = atoi_f(num);
+    if ((r == 42LL)) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("atoi_f(subcadena('42')) == 42"), .datos = "atoi_f(subcadena('42')) == 42" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("atoi subcadena"), .datos = "atoi subcadena" }, 42LL, r);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(num);
+}
+
+void verificar_cl_minusculas(void) {
+    int64_t r = extraer_content_length((CadenaSegura){ .longitud = (int)strlen("content-length: 1024\r\n\r\n"), .datos = "content-length: 1024\r\n\r\n" });
+    if ((r == 1024LL)) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("extraer_content_length('1024') minusculas == 1024"), .datos = "extraer_content_length('1024') minusculas == 1024" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("CL minusculas"), .datos = "CL minusculas" }, 1024LL, r);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void verificar_cl_no_encontrado(void) {
+    int64_t r = extraer_content_length((CadenaSegura){ .longitud = (int)strlen("Accept: text/html\r\n\r\n"), .datos = "Accept: text/html\r\n\r\n" });
+    if ((r == (-1LL))) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("extraer_content_length(no encontrado) == -1"), .datos = "extraer_content_length(no encontrado) == -1" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("CL no encontrado"), .datos = "CL no encontrado" }, (-1LL), r);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void verificar_cl_normal(void) {
+    int64_t r = extraer_content_length((CadenaSegura){ .longitud = (int)strlen("Content-Length: 50\r\n\r\n"), .datos = "Content-Length: 50\r\n\r\n" });
+    if ((r == 50LL)) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("extraer_content_length('50') == 50"), .datos = "extraer_content_length('50') == 50" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("CL normal"), .datos = "CL normal" }, 50LL, r);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void verificar_cl_sin_espacios(void) {
+    int64_t r = extraer_content_length((CadenaSegura){ .longitud = (int)strlen("Content-Length:128\r\n\r\n"), .datos = "Content-Length:128\r\n\r\n" });
+    if ((r == 128LL)) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("extraer_content_length('128') == 128"), .datos = "extraer_content_length('128') == 128" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("CL sin espacios"), .datos = "CL sin espacios" }, 128LL, r);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void verificar_strstr_con_subcadena(void) {
+    CadenaSegura hdr = (CadenaSegura){ .longitud = (int)strlen("Content-Length: 42\r\n"), .datos = "Content-Length: 42\r\n" };
+    int64_t idx = strstr_f(hdr, (CadenaSegura){ .longitud = (int)strlen("Content-Length:"), .datos = "Content-Length:" });
+    if ((idx == 0LL)) {
+        pasar((CadenaSegura){ .longitud = (int)strlen("strstr_f en cabecera == 0"), .datos = "strstr_f en cabecera == 0" });
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    else {
+        fallar_e((CadenaSegura){ .longitud = (int)strlen("strstr cabecera"), .datos = "strstr cabecera" }, 0LL, idx);
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(hdr);
 }
 
 int main(int argc, char** argv) {

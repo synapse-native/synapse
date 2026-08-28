@@ -1,5 +1,6 @@
 """
 tests/test_frontend_embebido_d_f1.py
+Manual 2 §3 (tipos de datos AST) y Manual 3 §3.1 (parser Syquex).
 F1.2 / D-F1 (Micro-entregable): valida que el front-end embebido _P_*
 (S2/S3, espejo de emitir_parsear) reconoce declaracion_tipo (alias, ADT con
 genericos y con parentesis), 'nulo' -> LiteralNulo y 'tensor(filas, columnas)'

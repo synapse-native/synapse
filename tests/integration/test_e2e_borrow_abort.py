@@ -46,7 +46,9 @@ def _resolve_test_syn() -> str:
 
 
 def test_borrow_abort_seguro():
-    """M22.6: Compila con --safe, ejecuta y verifica crash por violacion de pointer."""
+    """M22.6: Compila con --safe, ejecuta y verifica crash por violacion de pointer.
+Manual 2
+"""
     python_exe = _find_python()
     main_py = _resolve_main_py()
     test_syn = _resolve_test_syn()

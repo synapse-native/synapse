@@ -26,7 +26,9 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def _leer_archivo(ruta_relativa: str) -> str:
-    """Lee un archivo del proyecto."""
+    """Lee un archivo del proyecto.
+Manual 2
+"""
     ruta = os.path.join(RAIZ, ruta_relativa)
     if not os.path.exists(ruta):
         return ""

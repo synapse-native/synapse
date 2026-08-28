@@ -1,3 +1,7 @@
+
+"""
+Manual 2
+"""
 """
 test_time_travel.py — Integration tests for M9.1 Deterministic Execution Recording (rr-style)
 

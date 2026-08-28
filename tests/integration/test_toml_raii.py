@@ -28,7 +28,9 @@ RT_OBJS = [o for o in rt_objs() if o and os.path.exists(o)]
 
 
 def build_toml_ast() -> Programa:
-    """Construye un programa Synapse que usa std.toml y verifica RAII."""
+    """Construye un programa Synapse que usa std.toml y verifica RAII.
+Manual 2
+"""
 
     def cs(name: str) -> str:
         return name
