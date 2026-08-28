@@ -7,9 +7,27 @@ Cada micro-entregable tiene su `docs/plan_ME_<id>.md` (MTS). Orden de ejecución
 El test nace del **MANUAL** (especificación) y valida *comportamiento*; debe FALLAR (RED) hasta que
 el código implemente lo que el manual dice. Toda prueba cita `Manual X §Y`.
 
+## REGLA TRANSVERSAL (decisión del Arquitecto — 2026-08-28, rige TODO el plan)
+No se deja deuda técnica, **aunque no sea propia**: se arregla todo lo que se encuentra en el camino.
+Esto extiende el alcance de cada ME más allá de su bloque `implementacion:` cuando, al ejecutarlo,
+aparece deuda (skips ocultos, sniff, fallos de implementación de la fase actual, etc.).
+
+Método obligatorio por cada ítem de trabajo:
+1. **Leer el manual** aplicable (la sección que rige el comportamiento en cuestión).
+2. **Idear el arreglo** que satisfaga esa sección.
+3. **Revisar que cumple el manual** (cita grep-chequeable `Manual X §Y` en el código/prueba).
+4. **Aplicar** el arreglo.
+
+Regla de los `skip`: no se dejan `pytest.skip` que oculten trabajo de la **etapa actual**.
+- Si la feature corresponde a la fase en curso → se **implementa el código mínimo** para que el test pase.
+- Si la feature es de una **fase futura** (F28/F29/F30) → se convierte en `pytest.fail("RED TDD ME_XX_Tn: ...")`
+  explícito y rastreado por su ME de feature (deuda visible, nunca oculta en un skip).
+- Un `skip` solo es aceptable si cita un Manual Y está asignado a un ME de feature futuro específico.
+
 ## Principios (no negociables)
 1. Trazabilidad obligatoria: todo `test_*.py` cita `Manual X §Y`.
-2. Sin desviación: cada ME = un objetivo; el agente no toca fuera del bloque `implementacion:`.
+2. Objetivo del ME = un foco; PERO se arregla toda deuda del camino (Regla Transversal arriba), aunque
+   no sea código propio, siguiendo su método de 4 pasos.
 3. Oráculo conductual: prohibido afirmar solo presencia de substring en artefacto sin compilar/ejecutar.
 4. TDD real para F27 residual + F28–F30: `def test_*` con asserts reales que fallan (no `pytest.skip`),
    marcados `@pytest.mark.tdd`, seguidos en `tests/tdd/REGISTRO_TDD.md`.
