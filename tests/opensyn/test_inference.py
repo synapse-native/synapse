@@ -4,14 +4,35 @@ test_inference.py — M7 §7: Inferencia básica.
 
 Manual 7 §7: "Inferencia básica — Respuesta no vacía".
 Manual 7 §2.2: llama_client.c envía prompts a llama-server.
+
+ME-4: `opensyn/llama_client.h` y `orchestrator.h` (Fase 23) aún NO están
+implementados en el repositorio. Sustituyo `pytest.skip('ME-4...')` por TDD skips
+con cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
+test_latencia_meta era ya un skip de rendimiento (no ME-4) — se conserva.
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _llama_client_h():
+    f = os.path.join(RAIZ, "opensyn", "llama_client.h")
+    if not os.path.exists(f):
+        pytest.skip("opensyn/llama_client.h no existe aún (TDD, Manual 9 §12)")
+    with open(f, "r", encoding="utf-8", errors="ignore") as fh:
+        return fh.read()
+
+
+def _orchestrator_h():
+    f = os.path.join(RAIZ, "opensyn", "orchestrator.h")
+    if not os.path.exists(f):
+        pytest.skip("opensyn/orchestrator.h no existe aún (TDD, Manual 9 §12)")
+    with open(f, "r", encoding="utf-8", errors="ignore") as fh:
+        return fh.read()
 
 
 class TestInferencia:
@@ -27,41 +48,24 @@ class TestInferencia:
             assert os.path.getsize(client_c) > 0
 
     def test_llama_client_crear(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """llama_client_crear() debe estar declarado."""
-        client_h = os.path.join(RAIZ, "opensyn", "llama_client.h")
-        if not os.path.exists(client_h):
-            pytest.skip("llama_client.h no existe aún")
-        with open(client_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
+        contenido = _llama_client_h()
         assert "llama_client_crear" in contenido, \
             "llama_client.h debe declarar llama_client_crear()"
 
     def test_llama_client_completion(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """llama_client_completion() debe estar declarado."""
-        client_h = os.path.join(RAIZ, "opensyn", "llama_client.h")
-        if not os.path.exists(client_h):
-            pytest.skip("llama_client.h no existe aún")
-        with open(client_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
+        contenido = _llama_client_h()
         assert "llama_client_completion" in contenido, \
             "llama_client.h debe declarar llama_client_completion()"
 
     def test_orchestrator_lifecycle(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """orchestrator debe gestionar lifecycle de llama-server."""
-        orch_h = os.path.join(RAIZ, "opensyn", "orchestrator.h")
-        if not os.path.exists(orch_h):
-            pytest.skip("orchestrator.h no existe aún")
-        with open(orch_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
+        contenido = _orchestrator_h()
         assert "iniciar" in contenido.lower() or "create" in contenido.lower() or \
             "start" in contenido.lower(), \
-            "orchestrator.h debe tener función de inicio"
+            "orchestrator.h debe tener funcion de inicio"
 
     def test_latencia_meta(self):
         """Manual 7 §7.2: Latencia < 1s para prompts cortos (7B GPU)."""
-        # Este es un requisito de rendimiento documentado en M7 §7.2
-        # Se verifica con benchmark real, no con test unitario
         pytest.skip("Requisito de rendimiento: latencia < 1s (verifica con benchmark)")
