@@ -124,45 +124,77 @@ _RT_IA_FUENTES = (
 )
 
 
+def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
+                              src_rel: str, nombre: str,
+                              dir_obj: Optional[str] = None,
+                              extra_flags: str = "") -> Optional[str]:
+    """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
+
+    cumple Manual 3 §3.1 (construcción incremental del runtime). ME-R2 evitó
+    depender de .o precompilados inexistentes en instalación limpia; este helper
+    CACHEA los .o generados y los recompila únicamente cuando el hash del fuente
+    o de los flags cambia. El runtime es grande (incluye sqlite3.c, tweetnacl.c,
+    etc.) y recompilarlo en cada invocación multiplicaba ~90s el coste de cada
+    compilación de usuario (causa de los timeouts en tests/unit).
+    """
+    src = os.path.join(SYNAPSE_BIN, src_rel)
+    if not os.path.exists(src):
+        return None
+    if dir_obj is None:
+        dir_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
+    os.makedirs(dir_obj, exist_ok=True)
+    ruta_obj = os.path.join(dir_obj, nombre + ".o")
+    sidecar = ruta_obj + ".sha"
+    key = f"{_cache_file_hash(src)}|{compiler}|{opt_flags}|{base_flags}|{extra_flags}"
+    if os.path.exists(ruta_obj) and os.path.exists(sidecar):
+        try:
+            with open(sidecar, 'r') as f:
+                if f.read() == key:
+                    return ruta_obj
+        except Exception:
+            pass
+    cmd = f'{compiler} {opt_flags} -c {base_flags} {extra_flags} "{src}" -o "{ruta_obj}"'
+    print(f"[RUNTIME] gcc -c (cache): {src_rel}")
+    rc = subprocess.run(cmd, shell=True).returncode
+    if rc != 0:
+        return None
+    try:
+        with open(sidecar, 'w') as f:
+            f.write(key)
+    except Exception:
+        pass
+    return ruta_obj
+
+
 def _compilar_runtime_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
     """Compila el runtime modular desde fuente a build/obj/ (Manual 3 §3.1).
 
     Retorna la lista de objetos .o. Lanza RuntimeError si alguna compilación
-    falla (el runtime es obligatorio para programas no-no_std).
+    falla (el runtime es obligatorio para programas no-no_std). Los .o se cachean
+    (ver _compilar_objeto_cacheado) y solo se recompilan si cambian fuente/flags.
     """
-    build_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
-    os.makedirs(build_obj, exist_ok=True)
     objs: List[str] = []
     for src_rel in _RT_FUENTES:
-        src = os.path.join(SYNAPSE_BIN, src_rel)
         nombre = os.path.splitext(os.path.basename(src_rel))[0]
-        ruta_obj = os.path.join(build_obj, nombre + ".o")
-        cmd = f'{compiler} {opt_flags} -c {base_flags} "{src}" -o "{ruta_obj}"'
-        print(f"[RUNTIME] gcc -c: {src_rel}")
-        rc = subprocess.run(cmd, shell=True).returncode
-        if rc != 0:
-            raise RuntimeError(f"Fallo al compilar runtime desde fuente: {src_rel} (rc={rc})")
-        objs.append(ruta_obj)
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, src_rel, nombre)
+        if o is None:
+            raise RuntimeError(f"Fallo al compilar runtime desde fuente: {src_rel}")
+        objs.append(o)
     return objs
 
 
 def _compilar_quantum_objetos(compiler: str, base_flags: str, opt_flags: str = "-O2") -> List[str]:
     """Compila los módulos cuánticos (M16.1-M16.4) desde fuente si existen. Opcionales."""
-    build_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
-    os.makedirs(build_obj, exist_ok=True)
     objs: List[str] = []
     for src_rel in _RT_QUANTUM_FUENTES:
-        src = os.path.join(SYNAPSE_BIN, src_rel)
-        if not os.path.exists(src):
+        if not os.path.exists(os.path.join(SYNAPSE_BIN, src_rel)):
             continue
         nombre = os.path.splitext(os.path.basename(src_rel))[0]
-        ruta_obj = os.path.join(build_obj, nombre + ".o")
-        cmd = f'{compiler} {opt_flags} -c {base_flags} "{src}" -o "{ruta_obj}"'
-        rc = subprocess.run(cmd, shell=True).returncode
-        if rc != 0:
-            print(f"[RUNTIME][!] Modulo cuantico {src_rel} no compilo (rc={rc}); se omite", file=sys.stderr)
+        o = _compilar_objeto_cacheado(compiler, opt_flags, base_flags, src_rel, nombre)
+        if o is None:
+            print(f"[RUNTIME][!] Modulo cuantico {src_rel} no compilo; se omite", file=sys.stderr)
             continue
-        objs.append(ruta_obj)
+        objs.append(o)
     return objs
 
 
@@ -773,18 +805,12 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 rt_objs += f' "{qo}"'
             # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
             for ia_src in _RT_IA_FUENTES:
-                ia_abs = os.path.join(SYNAPSE_BIN, ia_src)
-                if not os.path.exists(ia_abs):
-                    continue
                 ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
-                ia_obj = os.path.join(
-                    os.path.join(SYNAPSE_BIN, "build", "obj"), ia_nombre + ".o")
-                ia_cmd = f'{compiler} {gcc_opt} -c {base_flags} "{ia_abs}" -o "{ia_obj}"'
-                ia_rc = subprocess.run(ia_cmd, shell=True).returncode
-                if ia_rc != 0:
-                    print(f"[ME-R8][!] Modulo IA {ia_src} no compilo (rc={ia_rc}); se omite", file=sys.stderr)
+                o = _compilar_objeto_cacheado(compiler, gcc_opt, base_flags, ia_src, ia_nombre)
+                if o is None:
+                    print(f"[ME-R8][!] Modulo IA {ia_src} no compilo; se omite", file=sys.stderr)
                     continue
-                rt_objs += f' "{ia_obj}"'
+                rt_objs += f' "{o}"'
         # ME-R2: --allow-multiple-definition resuelve el conflicto tr_* entre
         # el C generado (traductor.syn usa parser_nodos()) y runtime/core/memory.c
         # (g_ast_base). El frontend usa parser_nodos() y el runtime usa g_ast_base;

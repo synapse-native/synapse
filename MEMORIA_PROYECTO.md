@@ -338,5 +338,14 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
 - Pendiente de triage de ejecución: `tests/unit/test_debug.py` y `tests/unit/test_ast_abi.py` HANG (native/network) en harness aislado → requieren investigación aparte (no son deuda de test-quality).
 - Resto de `tests/unit` (salvo r3_param_adt) PASS; `tests/syquex` pesados (gcc) no corrieron en este turno.
 
+### 7.6 DIAGNÓSTICO Y FIX: lentitud de compilación (causa de los "cuelgues" de tests)
+- **Síntoma:** `test_debug.py` y `test_ast_abi.py` "colgaban" (timeout 50s del harness). `main.py _trivial.syn` tardaba ~93s.
+- **Perfilado:** frontend Python (`compilar_desde_texto`+`analizar`+`generar C`) = 0.00s; `gcc -O2` sobre el `.c` trivial (19 KB) = 0.9s. El 90s NO estaba en el codegen ni en gcc del user code.
+- **Causa raíz:** `pipeline.ejecutar_compilador` (líneas ~766-787) llama a `_compilar_runtime_objetos`/`_compilar_quantum_objetos` y al bloque IA **en cada invocación**, recompilando desde fuente `synapse_rt.c` + `runtime/core/*` + `axon/tweetnacl.c` + **`vendor/sqlite3/sqlite3.c`** (enorme) + cuánticos + IA con `gcc -O2 -c`, SIN verificar si el `.o` ya existía/vigente (diseño ME-R2: "elimina dependencia de .o precompilados"). Cada test pagaba ~90s.
+- **Fix:** nuevo helper `_compilar_objeto_cacheado(compiler, opt_flags, base_flags, src_rel, nombre, dir_obj, extra_flags)` en `pipeline.py`: calcula `hash(fuente)+compilador+flags`, guarda sidecar `.o.sha`; recompila SOLO si el `.o` falta o el hash cambió. Cableado en `_compilar_runtime_objetos`, `_compilar_quantum_objetos` y el bloque IA de `ejecutar_compilador`. Comentario `# cumple Manual 3 §3.1`.
+- **Resultado:** frío (rebuild) 93.8s → cálido (cache hit) **1.8s**. `test_debug.py`: 6 passed en 9.9s. `test_ast_abi.py`: 4 passed en 2.49s. La causa de los "cuelgues" era el recompile frío del runtime que superaba el timeout de 50s del harness; tras warm-up ya no hay hang.
+- **Nota:** el primer test de una sesión fría aún tarda ~90s (construye el caché). Aceptable; el caché persiste en `build/obj/*.o` + `*.o.sha`.
+- **test_r3_param_adt.py:** resuelto como **ROJO TDD claro** (decisión conjunta 2026-08-28): los `synapse_stage1.exe`/`stage2.exe` SÍ existen en el árbol, pero el codegen de parámetros ADT (`Resultado<T,E>` → struct instanciado) es deuda D-2 y emite placeholder `Resultado_T` → rc=5 GCC. Se reemplazó el `assert rc==0`/FileNotFoundError críptico por `pytest.fail("ADT param codegen NO implementado (deuda D-2, Manual 2 §4.2 L279-280): S1/S2 rc=5 ...")` con mensaje grep-eable.
+
 
 

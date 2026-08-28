@@ -64,12 +64,28 @@ def _compilar_s2(fuente: str, salida: Path) -> int:
     return p.returncode
 
 
+def _requiere_stage(stage_exe: Path, etiqueta: str):
+    """ROJO TDD (deuda D-2): el codegen de parámetros ADT no está implementado
+    y los compiladores bootstrap S1/S2 no se construyen en este árbol (F29).
+    Falla con mensaje claro y grep-eable en vez de un críptico FileNotFoundError."""
+    if not stage_exe.exists():
+        pytest.fail(
+            f"ADT param codegen NO implementado (deuda D-2, Manual 2 §4.2 L279-280): "
+            f"{etiqueta} ({stage_exe.name}) no construido (F29 bootstrap/OpenSyn). "
+            f"Hoy el codegen emite el placeholder Resultado_T, que provoca rc=5 en GCC. "
+            f"Test en ROJO TDD — feature sin código y artifact de bootstrap ausente."
+        )
+
+
 def test_r3_param_adt_s1():
+    _requiere_stage(STAGE1, "S1")
     tmp = TESTS / "fixtures" / "tmp_r3_s1.syn"
     exe = TESTS / "fixtures" / "tmp_r3_s1.exe"
     tmp.write_text(_PROG, encoding="utf-8")
     rc = _compilar_s1(str(tmp), exe)
-    assert rc == 0, f"S1 compilation failed: rc={rc}"
+    if rc != 0:
+        pytest.fail(f"ADT param codegen no implementado (deuda D-2): S1 rc={rc} "
+                    f"(se espera struct instanciado Resultado_entero_texto, no placeholder Resultado_T)")
     out = subprocess.check_output([str(exe)], text=True, timeout=30).strip()
     assert out == "42", f"S1 execution output: {out!r}"
     if exe.exists():
@@ -79,11 +95,14 @@ def test_r3_param_adt_s1():
 
 
 def test_r3_param_adt_s2():
+    _requiere_stage(STAGE2, "S2")
     tmp = TESTS / "fixtures" / "tmp_r3_s2.syn"
     exe = TESTS / "fixtures" / "tmp_r3_s2.exe"
     tmp.write_text(_PROG, encoding="utf-8")
     rc = _compilar_s2(str(tmp), exe)
-    assert rc == 0, f"S2 compilation failed: rc={rc}"
+    if rc != 0:
+        pytest.fail(f"ADT param codegen no implementado (deuda D-2): S2 rc={rc} "
+                    f"(se espera struct instanciado Resultado_entero_texto, no placeholder Resultado_T)")
     out = subprocess.check_output([str(exe)], text=True, timeout=30).strip()
     assert out == "42", f"S2 execution output: {out!r}"
     if exe.exists():
