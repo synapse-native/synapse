@@ -70,68 +70,68 @@ class TestWebCrearDestruir:
     """§12.1 — Crear / Destruir."""
 
     def test_crear(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_web falló:\n{out}\n{err}"
-        assert "crear retorna servidor >= 0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_web falló:\n{bin_stdout}\n{err}"
+        assert "crear retorna servidor >= 0" in bin_stdout
 
     def test_destruir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "destruir no crashea" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "destruir no crashea" in bin_stdout
 
 
 class TestWebRutas:
     """§12.1 — Registrar rutas."""
 
     def test_registrar_ruta(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_web falló:\n{out}\n{err}"
-        assert "registrar_ruta rc=0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_web falló:\n{bin_stdout}\n{err}"
+        assert "registrar_ruta rc=0" in bin_stdout
 
     def test_registrar_ruta_codigo(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "registrar_ruta_codigo rc=0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "registrar_ruta_codigo rc=0" in bin_stdout
 
 
 class TestWebHTTP:
     """§12.1 — Requests HTTP."""
 
     def test_get_root(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_web falló:\n{out}\n{err}"
-        assert "GET / status 200" in out
-        assert "GET / body == 'Hola mundo'" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_web falló:\n{bin_stdout}\n{err}"
+        assert "GET / status 200" in bin_stdout
+        assert "GET / body == 'Hola mundo'" in bin_stdout
 
     def test_get_api(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "GET /api/status body JSON" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "GET /api/status body JSON" in bin_stdout
 
     def test_get_texto(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "GET /texto body" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "GET /texto body" in bin_stdout
 
     def test_get_404(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "GET /noexiste status 404" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "GET /noexiste status 404" in bin_stdout
 
 
 class TestWebLifecycle:
     """§12.1 — Iniciar / Detener."""
 
     def test_iniciar(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_web falló:\n{out}\n{err}"
-        assert "esta_corriendo == 1" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_web falló:\n{bin_stdout}\n{err}"
+        assert "esta_corriendo == 1" in bin_stdout
 
     def test_detener(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "esta_corriendo == 0 tras detener" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "esta_corriendo == 0 tras detener" in bin_stdout
 
 
 class TestWebIntegracion:
     """Tests de integración completos del módulo web."""
 
     def test_todos_los_tests_c_pasan(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_web falló (rc={rc}):\n{out}\n{err}"
-        assert "RESULTADO" in out, f"Sin resultados en stdout:\n{out}"
-        assert "[FAIL]" not in out, f"Hay FAILs en output C:\n{out}"
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_web falló (rc={rc}):\n{bin_stdout}\n{err}"
+        assert "RESULTADO" in bin_stdout, f"Sin resultados en stdout:\n{bin_stdout}"
+        assert "[FAIL]" not in bin_stdout, f"Hay FAILs en output C:\n{bin_stdout}"

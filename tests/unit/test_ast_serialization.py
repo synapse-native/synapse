@@ -162,11 +162,11 @@ class TestFormatoManualM2_13:
         ruta = str(tmp_path / "p.syn.json")
         _serializar_a_archivo(prog, ruta)
         data = _leer_json(ruta)
-        cuerpo = data["declaraciones"][0]["cuerpo"]
-        assert cuerpo.get("tipo") == "Bloque", \
-            f"M2 §13: cuerpo debe ser 'Bloque', obtuvo: {cuerpo.get('tipo')}"
-        assert "sentencias" in cuerpo, \
-            f"M2 §13: Bloque debe tener 'sentencias', claves: {list(cuerpo.keys())}"
+        bin_cuerpo = data["declaraciones"][0]["cuerpo"]
+        assert bin_cuerpo.get("tipo") == "Bloque", \
+            f"M2 §13: cuerpo debe ser 'Bloque', obtuvo: {bin_cuerpo.get('tipo')}"
+        assert "sentencias" in bin_cuerpo, \
+            f"M2 §13: Bloque debe tener 'sentencias', claves: {list(bin_cuerpo.keys())}"
 
     def test_retornar_campos_manual(self, tmp_path):
         """M2 §13: SentenciaRetornar tiene 'es_transferencia' y 'valor'."""
@@ -348,8 +348,8 @@ class TestEncodingUTF8:
         ruta = str(tmp_path / "utf8.syn.json")
         _serializar_a_archivo(prog, ruta)
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert "caf\u00e9" in contenido, "El string con tilde debe preservarse en el JSON"
+            bin_contenido = f.read()
+        assert "caf\u00e9" in bin_contenido, "El string con tilde debe preservarse en el JSON"
 
     def test_roundtrip_string_utf8(self, tmp_path):
         """Roundtrip preserva contenido UTF-8 en strings."""

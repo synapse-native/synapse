@@ -1,3 +1,4 @@
+# cumple Manual 3 §12.1
 """
 FASE 24 — Test E2E: compila .syq que usa lista + mapa (sin importar).
 

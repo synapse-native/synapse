@@ -1,3 +1,4 @@
+# cumple Manual 2 §3
 """
 test_no_local_nodo_defines.py — D-9(e): test de regresión
 

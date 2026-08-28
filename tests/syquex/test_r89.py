@@ -56,19 +56,19 @@ def _build_harness() -> str:
     # Dedup de constantes T_*/NODO_* — patrón R87: primera definición gana.
     lineas = combinado.splitlines()
     vistas = set()
-    out = []
+    bin_stdout = []
     for l in lineas:
         m = re.match(r"^constante (T_[A-Z_]+|NODO_[A-Z0-9_]+) = ", l)
         if m:
             if m.group(1) in vistas:
                 continue
             vistas.add(m.group(1))
-        out.append(l)
-    return "\n".join(out) + "\n"
+        bin_stdout.append(l)
+    return "\n".join(bin_stdout) + "\n"
 
 
 @pytest.fixture(scope="module")
-def salida() -> str:
+def bin_salida() -> str:
     combinado = _build_harness()
     nucleo_dir = os.path.join(PROJECT_ROOT, "nucleo")
     drv = os.path.join(nucleo_dir, "_tmp_sq_r89_drv.syn")
@@ -98,25 +98,25 @@ def salida() -> str:
     return e.stdout
 
 
-def _trs(salida: str) -> list:
+def _trs(bin_salida: str) -> list:
     """TR:<i>:<tipo>:<linea>:<col>:<texto>"""
-    out = []
-    for l in salida.splitlines():
+    bin_stdout = []
+    for l in bin_salida.splitlines():
         if l.startswith("TR:"):
             partes = l.split(":")
-            out.append((
+            bin_stdout.append((
                 int(partes[1]),          # índice
                 int(partes[2]),          # tipo
                 int(partes[3]),          # línea
                 int(partes[4]),          # columna
                 ":".join(partes[5:]),    # texto (puede contener ':')
             ))
-    return out
+    return bin_stdout
 
 
-def _fns(salida: str) -> dict:
+def _fns(bin_salida: str) -> dict:
     d = {}
-    for l in salida.splitlines():
+    for l in bin_salida.splitlines():
         if l.startswith("FN:"):
             resto = l[3:]
             if ":params=" in resto:
@@ -137,26 +137,26 @@ NODO_BLOQUE_SQ = 58
 
 # ---- Tests de integración ----
 
-def test_traduccion_sin_errores(salida):
+def test_traduccion_sin_errores(bin_salida):
     """Un .syq se traduce a SemNodo[] sin errores de parse o traducción."""
-    total_line = next(l for l in salida.splitlines() if l.startswith("TOTAL="))
+    total_line = next(l for l in bin_salida.splitlines() if l.startswith("TOTAL="))
     total = int(total_line.split("=")[1])
     assert total > 40, f"SemNodo[] demasiado pequeño ({total})"
-    tipos = [t[1] for t in _trs(salida)]
+    tipos = [t[1] for t in _trs(bin_salida)]
     assert len(tipos) == total
     assert tipos[0] == 1  # PROGRAMA en índice 0
 
 
-def test_bloque_sq_eliminado(salida):
+def test_bloque_sq_eliminado(bin_salida):
     """NODO_BLOQUE_SQ(58) desenrollado en todas las posiciones de cuerpo."""
-    tipos = [t[1] for t in _trs(salida)]
+    tipos = [t[1] for t in _trs(bin_salida)]
     assert NODO_BLOQUE_SQ not in tipos
-    assert "BLOQUE_SQ=0" in salida
+    assert "BLOQUE_SQ=0" in bin_salida
 
 
-def test_export_lang_preservado(salida):
+def test_export_lang_preservado(bin_salida):
     """H-R88-1: @export(python) y @export(typescript) preservan el lenguaje."""
-    export_nodes = [t for t in _trs(salida) if t[1] == NODO_EXPORT]
+    export_nodes = [t for t in _trs(bin_salida) if t[1] == NODO_EXPORT]
     assert len(export_nodes) >= 2, \
         f"Se esperaban >=2 NODO_EXPORT, hay {len(export_nodes)}"
     langs = set(t[4] for t in export_nodes if t[4] != "-")
@@ -164,9 +164,9 @@ def test_export_lang_preservado(salida):
     assert "typescript" in langs, f"typescript no preservado; export_langs={langs}"
 
 
-def test_externo_structura_y_constante(salida):
+def test_externo_structura_y_constante(bin_salida):
     """H-R87-2: externo estructura Vec3 y externo constante SALUDO = \"hola\"."""
-    externo_nodes = {t[4]: t for t in _trs(salida) if t[1] == NODO_EXTERNO}
+    externo_nodes = {t[4]: t for t in _trs(bin_salida) if t[1] == NODO_EXTERNO}
     assert "Vec3" in externo_nodes, \
         f"externo estructura Vec3 no encontrado; externos={list(externo_nodes)}"
     assert "SALUDO" in externo_nodes, \
@@ -175,41 +175,41 @@ def test_externo_structura_y_constante(salida):
         f"externo funcion externa no encontrado; externos={list(externo_nodes)}"
 
 
-def test_metodos_decorados_y_hoisted(salida):
+def test_metodos_decorados_y_hoisted(bin_salida):
     """M6 §1.3 L108: metodo -> NODO_FUNCION con nombre Struct_metodo."""
-    fns = _fns(salida)
+    fns = _fns(bin_salida)
     assert "__init__" in fns
     assert "Punto_desplazar" in fns
     assert len(fns) >= 5  # init + desplazar + visible + doble + principal
 
 
-def test_self_primer_parametro(salida):
+def test_self_primer_parametro(bin_salida):
     """El self antepuesto por el parser se preserva como primer param."""
-    fns = _fns(salida)
+    fns = _fns(bin_salida)
     params = fns.get("Punto_desplazar", "")
     assert params.split("|")[0] == "self", f"Punto_desplazar params={params!r}"
 
 
-def test_estructura_solo_campos(salida):
+def test_estructura_solo_campos(bin_salida):
     """La ESTRUCTURA conserva SOLO campos; los métodos se hoistearon."""
-    est_line = next(l for l in salida.splitlines() if l.startswith("EST:Punto:"))
+    est_line = next(l for l in bin_salida.splitlines() if l.startswith("EST:Punto:"))
     campos = est_line.rsplit(":", 1)[1]
     assert campos == "x|yy", f"campos de Punto={campos!r}"
 
 
-def test_enumeracion_canonica(salida):
+def test_enumeracion_canonica(bin_salida):
     """Enumeracion -> DECL_TIPO 51 + CONSTRUCTOR 52."""
-    tipos = [t[1] for t in _trs(salida)]
+    tipos = [t[1] for t in _trs(bin_salida)]
     assert 51 in tipos  # DECL_TIPO
     assert tipos.count(52) >= 2  # CONSTRUCTOR (rojo, verde)
 
 
-def test_syq_fixture_coherente(salida):
+def test_syq_fixture_coherente(bin_salida):
     """Verifica que el fixture .syq existe y es el esperado."""
     assert os.path.exists(SYQ_FIXTURE), "Fixture .syq no encontrado"
-    content = _read(SYQ_FIXTURE)
-    assert "#lang: es" in content
-    assert "@export(python)" in content
-    assert "@export(typescript)" in content
-    assert "externo estructura Vec3" in content
-    assert 'externo constante SALUDO = "hola"' in content
+    bin_content = _read(SYQ_FIXTURE)
+    assert "#lang: es" in bin_content
+    assert "@export(python)" in bin_content
+    assert "@export(typescript)" in bin_content
+    assert "externo estructura Vec3" in bin_content
+    assert 'externo constante SALUDO = "hola"' in bin_content

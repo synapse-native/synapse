@@ -70,124 +70,124 @@ class TestTextoLongitud:
     """§12.1 — Longitud de cadena."""
 
     def test_longitud_vacia(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'longitud("") == 0' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'longitud("") == 0' in bin_stdout
 
     def test_longitud_normal(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'longitud("hola") == 4' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'longitud("hola") == 4' in bin_stdout
 
 
 class TestTextoSubcadena:
     """§12.1 — Subcadena."""
 
     def test_subcadena(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'subcadena("hola mundo", 0, 4)' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'subcadena("hola mundo", 0, 4)' in bin_stdout
 
     def test_subcadena_vacia(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'subcadena("abc", 1, 1)' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'subcadena("abc", 1, 1)' in bin_stdout
 
 
 class TestTextoContiene:
     """§12.1 — Contiene."""
 
     def test_contiene_true(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'contiene("hola mundo", "mundo") == true' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'contiene("hola mundo", "mundo") == true' in bin_stdout
 
     def test_contiene_false(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'contiene("hola mundo", "xyz") == false' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'contiene("hola mundo", "xyz") == false' in bin_stdout
 
 
 class TestTextoReemplazar:
     """§12.1 — Reemplazar."""
 
     def test_reemplazar(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'reemplazar("hola mundo", "mundo", "syquex")' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'reemplazar("hola mundo", "mundo", "syquex")' in bin_stdout
 
     def test_reemplazar_multiples(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'reemplazar("aaa", "a", "b") == "bbb"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'reemplazar("aaa", "a", "b") == "bbb"' in bin_stdout
 
 
 class TestTextoDividir:
     """§12.1 — Dividir (split)."""
 
     def test_dividir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'dividir("a,b,c", ",") tiene 3 partes' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'dividir("a,b,c", ",") tiene 3 partes' in bin_stdout
 
 
 class TestTextoUnir:
     """§12.1 — Unir (join)."""
 
     def test_unir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'unir([a,b,c], " + ") == "a + b + c"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'unir([a,b,c], " + ") == "a + b + c"' in bin_stdout
 
 
 class TestTextoRecortar:
     """§12.1 — Recortar (trim)."""
 
     def test_recortar(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'recortar("  hola  ") == "hola"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'recortar("  hola  ") == "hola"' in bin_stdout
 
 
 class TestTextoMayusculas:
     """§12.1 — Mayúsculas / Minúsculas."""
 
     def test_mayusculas(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'mayusculas("hola") == "HOLA"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'mayusculas("hola") == "HOLA"' in bin_stdout
 
     def test_minusculas(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'minusculas("HOLA") == "hola"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'minusculas("HOLA") == "hola"' in bin_stdout
 
 
 class TestTextoOtros:
     """§12.1 — Comienza con, termina con, indice de, repetir, invertir."""
 
     def test_comienza_con(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló:\n{out}\n{err}"
-        assert 'comienza_con("hola mundo", "hola") == true' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló:\n{bin_stdout}\n{err}"
+        assert 'comienza_con("hola mundo", "hola") == true' in bin_stdout
 
     def test_termina_con(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'termina_con("hola mundo", "mundo") == true' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'termina_con("hola mundo", "mundo") == true' in bin_stdout
 
     def test_indice_de(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'indice_de("hola mundo", "mundo") == 5' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'indice_de("hola mundo", "mundo") == 5' in bin_stdout
 
     def test_repetir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'repetir("ab", 3) == "ababab"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'repetir("ab", 3) == "ababab"' in bin_stdout
 
     def test_invertir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert 'invertir("abc") == "cba"' in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert 'invertir("abc") == "cba"' in bin_stdout
 
 
 class TestTextoIntegracion:
     """Tests de integración completos del módulo texto."""
 
     def test_todos_los_tests_c_pasan(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_texto falló (rc={rc}):\n{out}\n{err}"
-        assert "RESULTADO" in out, f"Sin resultados en stdout:\n{out}"
-        assert "[FAIL]" not in out, f"Hay FAILs en output C:\n{out}"
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_texto falló (rc={rc}):\n{bin_stdout}\n{err}"
+        assert "RESULTADO" in bin_stdout, f"Sin resultados en stdout:\n{bin_stdout}"
+        assert "[FAIL]" not in bin_stdout, f"Hay FAILs en output C:\n{bin_stdout}"

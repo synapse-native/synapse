@@ -1,3 +1,4 @@
+# cumple Manual 3 §12.1
 """
 FASE 25 — WASM Backend Extendido (i64, f64, memoria, imports/exports).
 

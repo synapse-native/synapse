@@ -72,80 +72,80 @@ class TestDbOpenClose:
     """§12.1 — Apertura / Cierre."""
 
     def test_abrir(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_db falló:\n{out}\n{err}"
-        assert "abrir retorna conn >= 0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_db falló:\n{bin_stdout}\n{err}"
+        assert "abrir retorna conn >= 0" in bin_stdout
 
     def test_cerrar(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "cerrar no crashea" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "cerrar no crashea" in bin_stdout
 
 
 class TestDbCrud:
     """§12.1 — INSERT / SELECT / UPDATE / DELETE."""
 
     def test_create_table(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_db falló:\n{out}\n{err}"
-        assert "CREATE TABLE rc=0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_db falló:\n{bin_stdout}\n{err}"
+        assert "CREATE TABLE rc=0" in bin_stdout
 
     def test_insert(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "INSERT rc=0" in out
-        assert "ultima_id == 1" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "INSERT rc=0" in bin_stdout
+        assert "ultima_id == 1" in bin_stdout
 
     def test_select(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "fila 1 nombre == 'Ana'" in out
-        assert "fila 2 nombre == 'Bob'" in out
-        assert "fin de resultados" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "fila 1 nombre == 'Ana'" in bin_stdout
+        assert "fila 2 nombre == 'Bob'" in bin_stdout
+        assert "fin de resultados" in bin_stdout
 
     def test_update(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "UPDATE rc=0" in out
-        assert "cambios_fila == 1 tras UPDATE" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "UPDATE rc=0" in bin_stdout
+        assert "cambios_fila == 1 tras UPDATE" in bin_stdout
 
     def test_delete(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "DELETE rc=0" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "DELETE rc=0" in bin_stdout
 
 
 class TestDbNull:
     """§12.1 — NULL handling."""
 
     def test_null_detectado(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "nombre NULL detectado" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "nombre NULL detectado" in bin_stdout
 
 
 class TestDbTransacciones:
     """§12.1 — BEGIN / COMMIT / ROLLBACK."""
 
     def test_rollback(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "ROLLBACK rc=0" in out
-        assert "tras ROLLBACK: 0 filas" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "ROLLBACK rc=0" in bin_stdout
+        assert "tras ROLLBACK: 0 filas" in bin_stdout
 
     def test_commit(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "COMMIT rc=0" in out
-        assert "tras COMMIT: 1 fila" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "COMMIT rc=0" in bin_stdout
+        assert "tras COMMIT: 1 fila" in bin_stdout
 
 
 class TestDbError:
     """§12.1 — Errores."""
 
     def test_sql_invalido(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "SQL inválido rc != 0" in out
-        assert "ultimo_error no vacío" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "SQL inválido rc != 0" in bin_stdout
+        assert "ultimo_error no vacío" in bin_stdout
 
 
 class TestDbIntegracion:
     """Tests de integración completos del módulo db."""
 
     def test_todos_los_tests_c_pasan(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_db falló (rc={rc}):\n{out}\n{err}"
-        assert "RESULTADO" in out, f"Sin resultados en stdout:\n{out}"
-        assert "[FAIL]" not in out, f"Hay FAILs en output C:\n{out}"
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_db falló (rc={rc}):\n{bin_stdout}\n{err}"
+        assert "RESULTADO" in bin_stdout, f"Sin resultados en stdout:\n{bin_stdout}"
+        assert "[FAIL]" not in bin_stdout, f"Hay FAILs en output C:\n{bin_stdout}"

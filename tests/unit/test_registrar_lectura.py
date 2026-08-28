@@ -45,7 +45,7 @@ def test_mapa_carga(tmp_path):
     _raiz_tmp(tmp_path)
     mapa = mod.cargar_mapa()
     assert "syquex/traductor.syn" in mapa
-    assert any("\u00a7" in c for c in mapa["syquex/traductor.syn"])
+    assert any("\u00a7" in line for line in mapa["syquex/traductor.syn"])
 
 
 def test_cita_valida_con_seccion_existente(tmp_path):

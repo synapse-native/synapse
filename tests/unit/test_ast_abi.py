@@ -47,32 +47,32 @@ def _find_gcc() -> str:
 
 
 def test_archivo_y_constantes_de_version():
-    src = _read(ABI_PATH)
-    assert re.search(r"^constante AST_ABI_VERSION = 1\b", src, re.M), \
+    bin_src = _read(ABI_PATH)
+    assert re.search(r"^constante AST_ABI_VERSION = 1\b", bin_src, re.M), \
         "AST_ABI_VERSION=1 ausente"
-    assert re.search(r"^constante AST_ABI_MAX_NODOS = 65536\b", src, re.M), \
+    assert re.search(r"^constante AST_ABI_MAX_NODOS = 65536\b", bin_src, re.M), \
         "AST_ABI_MAX_NODOS ausente (Manual 2 §7.3)"
     # Política de ABI documentada (Manual 6 §1.2)
-    assert "ABI v1" in src and "CONGELADA" in src.upper()
+    assert "ABI v1" in bin_src and "CONGELADA" in bin_src.upper()
 
 
 def test_contratos_en_funciones_publicas():
     """Regla 4 de auditoría: funciones públicas con requiere/garantiza."""
-    src = _read(ABI_PATH)
+    bin_src = _read(ABI_PATH)
     for fn in ("ast_abi_verificar", "ast_abi_version"):
         m = re.search(
             rf"funcion {fn}\(\) -> entero:\s*\n\s*requiere:\s*\n.*?garantiza:",
-            src, re.S)
+            bin_src, re.S)
         assert m, f"{fn} sin bloque requiere/garantiza"
 
 
 def _tabla_canonica() -> dict:
     """Tabla esperada embebida en ast_abi.syn: NODO_X != <n> → valor n."""
-    src = _read(ABI_PATH)
+    bin_src = _read(ABI_PATH)
     return {
         nombre: int(valor)
         for nombre, valor in re.findall(
-            r"si (NODO_[A-Z0-9_]+) != (\d+):", src)
+            r"si (NODO_[A-Z0-9_]+) != (\d+):", bin_src)
     }
 
 

@@ -91,7 +91,7 @@ class TestArenaScope:
     def test_output_completo(self, exe_path):
         """Verifica que todos los grupos de tests aparecen en el output."""
         r = subprocess.run([exe_path], capture_output=True, text=True, timeout=30)
-        output = r.stdout
+        bin_output = r.stdout
         for seccion in [
             "1. Creacion y asignacion basica",
             "2. arena_reset",
@@ -100,7 +100,7 @@ class TestArenaScope:
             "5. Alineaciones",
             "7. Fallback malloc",
         ]:
-            assert seccion in output, f"Falta sección: {seccion}"
+            assert seccion in bin_output, f"Falta sección: {seccion}"
 
     def test_cuenta_pass_fail(self, exe_path):
         """El resultado final debe reportar 0 failures."""

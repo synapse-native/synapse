@@ -70,83 +70,83 @@ class TestTiempoTimestamp:
     """§12.1 — Timestamps."""
 
     def test_timestamp_unix(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_tiempo falló:\n{out}\n{err}"
-        assert "timestamp_unix > 1700000000" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_tiempo falló:\n{bin_stdout}\n{err}"
+        assert "timestamp_unix > 1700000000" in bin_stdout
 
     def test_timestamp_ms(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "timestamp_ms >= timestamp_unix * 1000" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "timestamp_ms >= timestamp_unix * 1000" in bin_stdout
 
 
 class TestTiempoFecha:
     """§12.1 — Componentes de fecha."""
 
     def test_anio(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_tiempo falló:\n{out}\n{err}"
-        assert "anio coincide con sistema" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_tiempo falló:\n{bin_stdout}\n{err}"
+        assert "anio coincide con sistema" in bin_stdout
 
     def test_mes(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "mes coincide con sistema" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "mes coincide con sistema" in bin_stdout
 
     def test_dia(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "dia coincide con sistema" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "dia coincide con sistema" in bin_stdout
 
 
 class TestTiempoHora:
     """§12.1 — Componentes de hora."""
 
     def test_hora(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_tiempo falló:\n{out}\n{err}"
-        assert "hora coincide con sistema" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_tiempo falló:\n{bin_stdout}\n{err}"
+        assert "hora coincide con sistema" in bin_stdout
 
     def test_minuto(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "minuto coincide con sistema" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "minuto coincide con sistema" in bin_stdout
 
     def test_segundo_rango(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "segundo en rango 0-59" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "segundo en rango 0-59" in bin_stdout
 
 
 class TestTiempoOtros:
     """§12.1 — Día semana, día año, formato, diferencia."""
 
     def test_dia_semana(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_tiempo falló:\n{out}\n{err}"
-        assert "dia_semana en rango 0-6" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_tiempo falló:\n{bin_stdout}\n{err}"
+        assert "dia_semana en rango 0-6" in bin_stdout
 
     def test_dia_anio(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "dia_anio en rango 1-366" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "dia_anio en rango 1-366" in bin_stdout
 
     def test_fecha_formato(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "fecha_actual formato YYYY-MM-DD" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "fecha_actual formato YYYY-MM-DD" in bin_stdout
 
     def test_hora_formato(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "hora_actual formato HH:MM:SS" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "hora_actual formato HH:MM:SS" in bin_stdout
 
     def test_datetime_formato(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "datetime_actual tiene espacio entre fecha y hora" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "datetime_actual tiene espacio entre fecha y hora" in bin_stdout
 
     def test_diferencia(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert "diferencia(10, 20) == 10" in out
+        rc, bin_stdout, err = _run(exe_path)
+        assert "diferencia(10, 20) == 10" in bin_stdout
 
 
 class TestTiempoIntegracion:
     """Tests de integración completos del módulo tiempo."""
 
     def test_todos_los_tests_c_pasan(self, exe_path):
-        rc, out, err = _run(exe_path)
-        assert rc == 0, f"test_tiempo falló (rc={rc}):\n{out}\n{err}"
-        assert "RESULTADO" in out, f"Sin resultados en stdout:\n{out}"
-        assert "[FAIL]" not in out, f"Hay FAILs en output C:\n{out}"
+        rc, bin_stdout, err = _run(exe_path)
+        assert rc == 0, f"test_tiempo falló (rc={rc}):\n{bin_stdout}\n{err}"
+        assert "RESULTADO" in bin_stdout, f"Sin resultados en stdout:\n{bin_stdout}"
+        assert "[FAIL]" not in bin_stdout, f"Hay FAILs en output C:\n{bin_stdout}"

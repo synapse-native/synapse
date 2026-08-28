@@ -44,7 +44,7 @@ def _read(path: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def salida() -> str:
+def bin_salida() -> str:
     partes = []
     for m in MODULOS:
         lineas = [l for l in _read(m).splitlines()
@@ -57,15 +57,15 @@ def salida() -> str:
     # definen el tramo T_*): primera gana — patrón R87.
     lineas = combinado.splitlines()
     vistas = set()
-    out = []
+    bin_stdout = []
     for l in lineas:
         mconst = re.match(r"^constante (T_[A-Z_]+|NODO_[A-Z0-9_]+) = ", l)
         if mconst:
             if mconst.group(1) in vistas:
                 continue
             vistas.add(mconst.group(1))
-        out.append(l)
-    combinado = "\n".join(out) + "\n"
+        bin_stdout.append(l)
+    combinado = "\n".join(bin_stdout) + "\n"
 
     nucleo_dir = os.path.join(PROJECT_ROOT, "nucleo")
     drv = os.path.join(nucleo_dir, "_tmp_sq_trad_drv.syn")
@@ -95,8 +95,8 @@ def salida() -> str:
     return e.stdout
 
 
-def _tipos(salida: str) -> list:
-    lineas = salida.splitlines()
+def _tipos(bin_salida: str) -> list:
+    lineas = bin_salida.splitlines()
     tipos = []
     for l in lineas:
         if l.startswith("TR:"):
@@ -106,14 +106,14 @@ def _tipos(salida: str) -> list:
     return tipos
 
 
-def _trs(salida: str) -> list:
-    return [l for l in salida.splitlines() if l.startswith("TR:")]
+def _trs(bin_salida: str) -> list:
+    return [l for l in bin_salida.splitlines() if l.startswith("TR:")]
 
 
-def _fns(salida: str) -> dict:
+def _fns(bin_salida: str) -> dict:
     """FN:<nombre>:params=<p1|p2|...>"""
     d = {}
-    for l in salida.splitlines():
+    for l in bin_salida.splitlines():
         if l.startswith("FN:"):
             # FN:<nombre>:params=<params>
             resto = l[3:]
@@ -126,8 +126,8 @@ def _fns(salida: str) -> dict:
     return d
 
 
-def _casos(salida: str) -> list:
-    return [l[5:] for l in salida.splitlines() if l.startswith("CASO:")]
+def _casos(bin_salida: str) -> list:
+    return [l[5:] for l in bin_salida.splitlines() if l.startswith("CASO:")]
 
 
 # IDs canónicos (parser_constantes.syn + extensión D-F22-C; ABI v1 R85)
@@ -145,20 +145,20 @@ PARA_EN = 57
 BLOQUE_SQ = 58
 
 
-def test_traduccion_sin_errores(salida):
+def test_traduccion_sin_errores(bin_salida):
     # TOTAL= puede no ser la primera línea si hay DBG_ previos (debug temporal)
-    total_line = next(l for l in salida.splitlines() if l.startswith("TOTAL="))
+    total_line = next(l for l in bin_salida.splitlines() if l.startswith("TOTAL="))
     assert total_line.startswith("TOTAL=")
     total = int(total_line.split("=")[1])
     assert total > 40, f"SemNodo[] demasiado pequeño ({total})"
-    tipos = _tipos(salida)
+    tipos = _tipos(bin_salida)
     assert len(tipos) == total
     assert tipos[0] == 1  # PROGRAMA reservado en índice 0 (contrato del puente)
 
 
-def test_metodos_decorados_y_hoisted(salida):
+def test_metodos_decorados_y_hoisted(bin_salida):
     """M6 §1.3 L108: metodo → NODO_FUNCION hoistada Struct_metodo."""
-    fns = _fns(salida)
+    fns = _fns(bin_salida)
     assert "__init__" in fns, f"__init__ no hoistado; fns={sorted(fns)}"
     assert "Punto_desplazar" in fns, \
         f"Punto_desplazar no decorado; fns={sorted(fns)}"
@@ -168,52 +168,52 @@ def test_metodos_decorados_y_hoisted(salida):
     assert len(fns) >= 6
 
 
-def test_self_primer_parametro(salida):
+def test_self_primer_parametro(bin_salida):
     """El self antepuesto por el parser se preserva como primer param."""
-    fns = _fns(salida)
+    fns = _fns(bin_salida)
     params = fns.get("Punto_desplazar", "")
     assert params.split("|")[0] == "self", f"Punto_desplazar params={params!r}"
 
 
-def test_estructura_solo_campos(salida):
+def test_estructura_solo_campos(bin_salida):
     """La ESTRUCTURA conserva SOLO campos; los métodos se hoistearon."""
     # EST:Punto:<linea>:<campos>
-    est_line = next(l for l in salida.splitlines() if l.startswith("EST:Punto:"))
+    est_line = next(l for l in bin_salida.splitlines() if l.startswith("EST:Punto:"))
     # EST:Punto:<lin>:<x|yy>  (y es keyword T_Y, se usa yy)
     campos = est_line.rsplit(":", 1)[1]
     assert campos == "x|yy", f"campos de Punto={campos!r} (metodos no hoistados?)"
 
 
-def test_bloque_sq_eliminado(salida):
+def test_bloque_sq_eliminado(bin_salida):
     """NODO_BLOQUE_SQ(58) desenrollado en todas las posiciones de cuerpo."""
-    tipos = _tipos(salida)
+    tipos = _tipos(bin_salida)
     assert BLOQUE_SQ not in tipos
     # Driver cuenta BLOQUE_SQ
-    assert "BLOQUE_SQ=0" in salida
+    assert "BLOQUE_SQ=0" in bin_salida
 
 
-def test_patron_caso_span_canonico(salida):
+def test_patron_caso_span_canonico(bin_salida):
     """R11/R22: CASO patrón como SPAN slot1 (0, _, rojo(v))."""
-    casos = _casos(salida)
-    assert "0" in casos, f"patrón 0 no reconstruido; casos={casos}"
-    assert "_" in casos, f"patrón _ no reconstruido; casos={casos}"
-    assert "rojo(v)" in casos, f"patrón ctor rojo(v) no reconstruido; casos={casos}"
-    assert "verde" in casos
+    bin_casos = _casos(bin_salida)
+    assert "0" in bin_casos, f"patrón 0 no reconstruido; casos={bin_casos}"
+    assert "_" in bin_casos, f"patrón _ no reconstruido; casos={bin_casos}"
+    assert "rojo(v)" in bin_casos, f"patrón ctor rojo(v) no reconstruido; casos={bin_casos}"
+    assert "verde" in bin_casos
 
 
-def test_contratos_fusionados(salida):
+def test_contratos_fusionados(bin_salida):
     """Contratos Syquex (cadena) → único NODO_CONTRATO canónico (cuando existen)."""
     # La muestra actual no incluye contratos (se retiraron porque el parser
     # Syquex los espera ANTES del bloque, no dentro; ver probe_line17).
     # Verificar que la fusión no introduce nodos espurios.
-    tipos = _tipos(salida)
+    tipos = _tipos(bin_salida)
     assert tipos.count(CONTRATO) == 0, f"Contratos espurios sin fuente; tipos={tipos}"
 
 
-def test_metadata_preservada(salida):
+def test_metadata_preservada(bin_salida):
     """M3 §11.2: línea/columna de la declaración preservada."""
     # estructura Punto declarada en línea 2 del fuente fixture
-    trs = _trs(salida)
+    trs = _trs(bin_salida)
     # Buscar ESTRUCTURA Punto
     for tr in trs:
         # TR:<i>:16:<lin>:<col>:Punto
@@ -226,10 +226,10 @@ def test_metadata_preservada(salida):
         pytest.fail("ESTRUCTURA Punto no encontrada en el dump canónico")
 
 
-def test_enumeracion_canonica(salida):
+def test_enumeracion_canonica(bin_salida):
     """Enumeracion M3 §3 L95 → DECL_TIPO 51 + CONSTRUCTOR 52 (M6 §1.3)."""
-    tipos = _tipos(salida)
+    tipos = _tipos(bin_salida)
     assert DECL_TIPO in tipos
     assert tipos.count(CONSTRUCTOR) >= 2  # rojo, verde
     # Los CONSTRUCTOR hijos de la enumeración deben aparecer
-    assert "rojo" in salida and "verde" in salida
+    assert "rojo" in bin_salida and "verde" in bin_salida

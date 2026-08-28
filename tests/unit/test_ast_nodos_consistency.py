@@ -1,3 +1,4 @@
+# cumple Manual 2 §4
 """
 test_ast_nodos_consistency.py — D-9(e): verificación cross-language
 de que runtime/core/ast_nodos.h coincide 1:1 con nucleo/parser_constantes.syn.
@@ -61,13 +62,13 @@ def test_tokenid_consistency():
     syn_vals = _parse_syn(SYN_SOURCE)
     c_vals = _parse_header(C_HEADER)
     syn_tok = {k: v for k, v in syn_vals.items() if k.startswith("T_")}
-    c_tok = {k: v for k, v in c_vals.items() if k.startswith("T_")}
+    bin_tok = {k: v for k, v in c_vals.items() if k.startswith("T_")}
     for name in syn_tok:
-        assert name in c_tok, f"TokenID {name} en parser_constantes.syn pero FALTA en ast_nodos.h"
-        assert c_tok[name] == syn_tok[name], (
-            f"TokenID {name}: syn={syn_tok[name]} header={c_tok[name]} — DIVERGENCIA"
+        assert name in bin_tok, f"TokenID {name} en parser_constantes.syn pero FALTA en ast_nodos.h"
+        assert bin_tok[name] == syn_tok[name], (
+            f"TokenID {name}: syn={syn_tok[name]} header={bin_tok[name]} — DIVERGENCIA"
         )
-    extra = set(c_tok) - set(syn_tok)
+    extra = set(bin_tok) - set(syn_tok)
     assert not extra, f"TokenID en header pero NO en syn: {sorted(extra)}"
 
 
@@ -75,13 +76,13 @@ def test_nodoid_consistency():
     syn_vals = _parse_syn(SYN_SOURCE)
     c_vals = _parse_header(C_HEADER)
     syn_nodos = {k: v for k, v in syn_vals.items() if k.startswith("NODO_")}
-    c_nodos = {k: v for k, v in c_vals.items() if k.startswith("NODO_")}
+    bin_nodos = {k: v for k, v in c_vals.items() if k.startswith("NODO_")}
     for name in syn_nodos:
-        assert name in c_nodos, f"NodoID {name} en syn pero FALTA en header"
-        assert c_nodos[name] == syn_nodos[name], (
-            f"NodoID {name}: syn={syn_nodos[name]} header={c_nodos[name]} — DIVERGENCIA"
+        assert name in bin_nodos, f"NodoID {name} en syn pero FALTA en header"
+        assert bin_nodos[name] == syn_nodos[name], (
+            f"NodoID {name}: syn={syn_nodos[name]} header={bin_nodos[name]} — DIVERGENCIA"
         )
-    extra = set(c_nodos) - set(syn_nodos)
+    extra = set(bin_nodos) - set(syn_nodos)
     assert not extra, f"NodoID en header pero NO en syn: {sorted(extra)}"
 
 

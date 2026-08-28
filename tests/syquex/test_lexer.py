@@ -34,7 +34,7 @@ def _read(path: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def salida() -> str:
+def bin_salida() -> str:
     modulo = _read(LEXER_PATH)
     driver = _read(DRIVER_PATH)
     lineas_mod = [l for l in modulo.splitlines() if not l.startswith("#lang")]
@@ -63,23 +63,23 @@ def salida() -> str:
     return e.stdout
 
 
-def _lineas(salida: str) -> list:
-    lineas = salida.splitlines()
+def _lineas(bin_salida: str) -> list:
+    lineas = bin_salida.splitlines()
     ini = next(i for i, l in enumerate(lineas) if l.startswith("TOTAL="))
     fin = next(i for i, l in enumerate(lineas) if l == "FIN_DUMP")
     return lineas[ini + 1:fin]
 
 
-def test_tokeniza_sin_errores(salida):
-    assert salida.startswith("TOTAL=")
-    total = int(salida.splitlines()[0].split("=")[1])
+def test_tokeniza_sin_errores(bin_salida):
+    assert bin_salida.startswith("TOTAL=")
+    total = int(bin_salida.splitlines()[0].split("=")[1])
     assert total > 40, f"muy pocos tokens ({total})"
-    assert "LEX_ERROR" not in salida
-    assert _lineas(salida)[-0:] is not None and "FIN_DUMP" in salida
+    assert "LEX_ERROR" not in bin_salida
+    assert _lineas(bin_salida)[-0:] is not None and "FIN_DUMP" in bin_salida
 
 
-def test_keywords_syquex_presentes(salida):
-    dump = "\n".join(_lineas(salida))
+def test_keywords_syquex_presentes(bin_salida):
+    dump = "\n".join(_lineas(bin_salida))
     esperados = [
         ("ESTRUCTURA", "estructura"),
         ("CREAR", "crear"),
@@ -95,7 +95,7 @@ def test_keywords_syquex_presentes(salida):
         ("FUNCION", "funcion"),
         ("EN", "en"),
     ]
-    lineas_l = _lineas(salida)
+    lineas_l = _lineas(bin_salida)
     for nombre, lexema in esperados:
         assert any(l.startswith(nombre + "|") and l.endswith("|" + lexema)
                    for l in lineas_l), f"falta {nombre} '{lexema}'"
@@ -107,16 +107,16 @@ def test_keywords_syquex_presentes(salida):
                for l in lineas_l), "falta ID 'Punto'"
 
 
-def test_exponente_numerico_es_flotante(salida):
+def test_exponente_numerico_es_flotante(bin_salida):
     """M3 §3 numero ::= DIGITO+ ['.'DIGITO+] ['e'['-']DIGITO+] → '2e1' es FLOT."""
-    lineas = _lineas(salida)
+    lineas = _lineas(bin_salida)
     assert any(l.startswith("FLOT|") and l.endswith("|2e1") for l in lineas), \
         "exponente '2e1' no clasificado como FLOTANTE"
 
 
-def test_cadena_unicode_escape(salida):
+def test_cadena_unicode_escape(bin_salida):
     """M2/M3 cadena_literal: \u00e9 → UTF-8 'é'; \n real dentro de la cadena."""
-    lineas = _lineas(salida)
+    lineas = _lineas(bin_salida)
     # La cadena es "A\u00e9\n" → decodificada "Aé\n" (el \n real corta el
     # lexema mostrado en el dump; comprobamos prefijo Aé)
     assert any(l.startswith("STR|") and "|A\xc3\xa9" in l for l in lineas) or \
