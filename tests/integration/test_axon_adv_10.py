@@ -6,6 +6,9 @@ Manual 6 §5.3: Handshake Ed25519 zero-trust con vectores NIST.
 Manual 6 §5.1: Serialización binaria MessagePack-like.
 Manual 6 §7.2: ERR_AXON_COMPROMISED, ERR_AXON_VERSION.
 Manual 6 §8.3: axon.lock SHA-256 determinista.
+
+ME-4: oráculos reales de CONTRATO sobre símbolos reales de axon/axon_rt.c,
+sustituyendo el content-sniff previo (ARQ-2026-08-27).
 """
 import os
 import subprocess
@@ -71,6 +74,14 @@ def _run_bin(bin_path, timeout=30):
     return -3, "", "FALLO_DESCONOCIDO"
 
 
+def _rt():
+    ruta = os.path.join(RAIZ, "axon", "axon_rt.c")
+    if not os.path.exists(ruta):
+        pytest.skip("axon_rt.c no existe")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
+
+
 # ---------------------------------------------------------------------------
 # 1. AXON RT — FUNCIONALIDAD REAL (Manual 6 §5.3)
 # ---------------------------------------------------------------------------
@@ -83,43 +94,28 @@ class TestAxonRTFuncionalidad:
         assert os.path.exists(rt), "axon/axon_rt.c no existe"
 
     def test_axon_rt_ed25519_generar_par(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 6 §5.3: _syn_ed25519_generar_par debe estar declarado."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "_syn_ed25519_generar_par" in contenido, \
+        """Manual 6 §5.3: _syn_ed25519_generar_par debe estar definida."""
+        contenido = _rt()
+        assert "_syn_ed25519_generar_par(" in contenido, \
             "axon_rt.c debe implementar _syn_ed25519_generar_par()"
 
     def test_axon_rt_verificar_firma(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 6 §5.3: _syn_axon_verificar_firma debe estar declarado."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "_syn_axon_verificar_firma" in contenido, \
+        """Manual 6 §5.3: _syn_axon_verificar_firma debe estar definida."""
+        contenido = _rt()
+        assert "_syn_axon_verificar_firma(" in contenido, \
             "axon_rt.c debe implementar _syn_axon_verificar_firma()"
 
     def test_axon_rt_handshake_hello(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Manual 6 §5.3: El handshake envía HELLO con nonce + pk + firma."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Manual 6 §5.3: mensaje HELLO = [nonce(32)] [pk(32)] [firma(64)]
-        assert "HELLO" in contenido or "hello" in contenido or \
-            "nonce" in contenido.lower(), \
-            "axon_rt.c debe implementar handshake HELLO"
+        contenido = _rt()
+        assert "_syn_handshake_hello_enviar" in contenido, \
+            "axon_rt.c debe implementar el builder HELLO (_syn_handshake_hello_enviar)"
 
     def test_axon_rt_crypto_kx(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 6 §5.3: Clave de sesión derivada via crypto_kx."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "crypto_kx" in contenido or "session_key" in contenido or \
-            "clave_sesion" in contenido.lower(), \
-            "axon_rt.c debe derivar clave de sesión"
+        """Manual 6 §5.3: Clave de sesión derivada vía crypto_kx."""
+        contenido = _rt()
+        assert "_syn_crypto_kx_derivar_clave_sesion" in contenido, \
+            "axon_rt.c debe derivar clave de sesión (_syn_crypto_kx_derivar_clave_sesion)"
 
 
 # ---------------------------------------------------------------------------
@@ -129,29 +125,15 @@ class TestNISTEd25519Runtime:
     """Manual 6 §5.3: Ed25519 verificado con el runtime C, NO con hashlib Python."""
 
     def test_nist_vector_clave_publica(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Vector NIST: la pk correspondiente a sk conocida debe ser verificable."""
-        # Vector NIST RFC 8032:
-        # sk: 9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
-        # pk: d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
-        # Este test verifica que el runtime puede generar claves y que la=pk es de 64 hex.
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Verificar que Ed25519 está implementado (no hashlib)
-        assert "ed25519" in contenido.lower() or "Ed25519" in contenido or \
-            "ED25519" in contenido, \
+        """Vector NIST: la implementación Ed25519 del runtime debe existir (no hashlib)."""
+        contenido = _rt()
+        assert "_syn_ed25519_generar_par" in contenido and "ed25519" in contenido.lower(), \
             "axon_rt.c debe implementar Ed25519 (no hashlib Python)"
 
     def test_firma_determinista_runtime(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Ed25519 es determinista: misma clave + mismo mensaje = misma firma."""
-        # Verificar en el runtime C que la firma es determinista
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Ed25519 es inherentemente determinista (RFC 8032 §5.1.6)
-        assert "determin" in contenido.lower() or "ed25519" in contenido.lower(), \
+        """Ed25519 es determinista (RFC 8032 §5.1.6): la implementación existe en el runtime."""
+        contenido = _rt()
+        assert "_syn_ed25519_generar_par" in contenido, \
             "axon_rt.c debe implementar firma determinista Ed25519"
 
 
@@ -162,15 +144,10 @@ class TestPathTraversal:
     """Manual 6 §5.3: Prevención de path traversal en extracción de paquetes."""
 
     def test_axon_rt_path_traversal(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """axon_rt.c debe prevenir path traversal (../)."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "path" in contenido.lower() and ("travers" in contenido.lower() or
-            "safe" in contenido.lower() or "sanitiz" in contenido.lower() or
-            ".." in contenido), \
-            "axon_rt.c debe prevenir path traversal"
+        """axon_rt.c debe prevenir path traversal (protección en extracción TAR)."""
+        contenido = _rt()
+        assert "traversal" in contenido.lower(), \
+            "axon_rt.c debe referenciar protección contra path traversal"
 
 
 # ---------------------------------------------------------------------------
@@ -180,32 +157,21 @@ class TestSerializacion:
     """Manual 6 §5.1: Serialización binaria MessagePack-like."""
 
     def test_axon_rt_serializar(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe tener funciones de serialización."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "serializar" in contenido.lower() or "serialize" in contenido.lower(), \
-            "axon_rt.c debe tener funciones de serialización"
+        contenido = _rt()
+        assert "_syn_axon_serializar_valor(" in contenido, \
+            "axon_rt.c debe tener _syn_axon_serializar_valor()"
 
     def test_axon_rt_deserializar(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """axon_rt.c debe tener funciones de deserialización."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "deserializar" in contenido.lower() or "deserialize" in contenido.lower(), \
-            "axon_rt.c debe tener funciones de deserialización"
+        contenido = _rt()
+        assert "_syn_axon_deserializar_valor(" in contenido, \
+            "axon_rt.c debe tener _syn_axon_deserializar_valor()"
 
     def test_serializacion_formato_tipos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 6 §5.1: Formato debe soportar nulo(0xC0), bool, int, float, texto(0x06), tensor(0x07)."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Verificar que los identificadores de tipo están presentes
-        tipos_requeridos = ["0xC0", "0x06", "0x07"]
-        for tipo in tipos_requeridos:
+        """Manual 6 §5.1: nulo(0xC0), texto(0x06), tensor(0x07)."""
+        contenido = _rt()
+        for tipo in ("0xC0", "0x06", "0x07"):
             assert tipo in contenido, \
                 f"axon_rt.c debe soportar tipo {tipo} en serialización"
 
@@ -245,18 +211,10 @@ class TestErroresAxon:
     """Manual 6 §7.2: ERR_AXON_COMPROMISED, ERR_AXON_VERSION."""
 
     def test_err_codes_definidos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Los códigos de error Axon deben estar definidos."""
-        rt = os.path.join(RAIZ, "axon", "axon_rt.c")
-        with open(rt, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Manual 6 §7.2: ERR_AXON_COMPROMISED y ERR_AXON_VERSION
-        assert "AXON_COMPROMISED" in contenido or "COMPROMISED" in contenido or \
-            "ERR_AXON" in contenido, \
-            "axon_rt.c debe definir ERR_AXON_COMPROMISED"
-        assert "AXON_VERSION" in contenido or "VERSION" in contenido or \
-            "ERR_AXON" in contenido, \
-            "axon_rt.c debe definir ERR_AXON_VERSION"
+        """Los códigos de error Axon deben estar definidos (ERR_AXON_COMPROMISED)."""
+        contenido = _rt()
+        assert "ERR_AXON_COMPROMISED" in contenido, \
+            "axon_rt.c debe definir ERR_AXON_COMPROMISED (Manual 6 §7.2)"
 
 
 # ---------------------------------------------------------------------------
