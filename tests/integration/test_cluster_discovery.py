@@ -1,5 +1,6 @@
 """
-test_cluster_discovery.py — Pruebas de integración para M8.5 (Auto-Descubrimiento y Membresía)
+test_cluster_discovery.py — Pruebas de integración para M8.5 (Auto-Descubrimiento y Membresía).
+Manual 5 §6.4: auto-descubrimiento y membresía (multicast UDP/mDNS).
 
 Valida:
 - Inicialización del subsistema de descubrimiento

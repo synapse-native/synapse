@@ -1,5 +1,6 @@
 """
-test_cluster_multicast.py — Pruebas de integración para M8.6 (UDP Multicast Real)
+test_cluster_multicast.py — Pruebas de integración para M8.6 (UDP Multicast Real).
+Manual 5 §6.4: multicast para descubrimiento y envío a múltiples nodos.
 
 Valida:
 - Inicialización de socket multicast con IP_ADD_MEMBERSHIP

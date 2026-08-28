@@ -1,5 +1,6 @@
 """
-test_artifact_signing.py — Validación de firmas Ed25519 para artefactos M11.2
+test_artifact_signing.py — Validación de firmas Ed25519 para artefactos M11.2.
+Manual 9 §4 / Manual 6 §5.3: firma y verificación Ed25519 de artefactos distribuidos.
 
 Verifica que:
   - La generación de firmas Ed25519 funciona correctamente
@@ -96,7 +97,7 @@ class TestGeneracionFirmas:
         """Las claves deben ser hexadecimales válidos."""
         priv, pub = _generar_par_claves()
         for clave in [priv, pub]:
-            assert all(c in '0123456789abcdef' for c in clave), \
+            assert set(clave) <= set('0123456789abcdef'), \
                 f"Clave no es hex válido: {clave[:16]}..."
 
     def test_generar_par_claves_determinismo(self):
@@ -120,7 +121,7 @@ class TestGeneracionFirmas:
         """La firma debe ser hexadecimal válido."""
         priv, _ = _generar_par_claves()
         firma = _firmar_mensaje(b"test", priv)
-        assert all(c in '0123456789abcdef' for c in firma), \
+        assert set(firma) <= set('0123456789abcdef'), \
             "Firma contiene caracteres no hex"
 
     def test_clave_publica_derivada_de_privada(self):
@@ -226,7 +227,7 @@ class TestFirmaArchivos:
         """Firmar y verificar un archivo debe funcionar."""
         priv, pub = _generar_par_claves()
         with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
-            f.write(b"contenido del binario simulado")
+            f.write(b"fuente del binario simulado")
             temp_path = f.name
         try:
             signer = _cargar_signer()
@@ -240,7 +241,7 @@ class TestFirmaArchivos:
         """Alterar el archivo después de firmar debe detectarse."""
         priv, pub = _generar_par_claves()
         with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as f:
-            f.write(b"contenido original")
+            f.write(b"fuente original")
             temp_path = f.name
         try:
             signer = _cargar_signer()
@@ -285,9 +286,9 @@ class TestFormatoArtefactos:
             firma = signer['firmar_archivo'](temp_path, priv, sig_path)
             # Leer archivo .sig
             with open(sig_path, 'r') as f:
-                contenido = f.read().strip()
-            assert contenido == firma, ".sig debe contener solo la firma hex"
-            assert len(contenido) == 128, ".sig debe tener 128 caracteres hex"
+                fuente = f.read().strip()
+            assert fuente == firma, ".sig debe contener solo la firma hex"
+            assert len(fuente) == 128, ".sig debe tener 128 caracteres hex"
         finally:
             os.unlink(temp_path)
             if os.path.exists(sig_path):
@@ -297,7 +298,7 @@ class TestFormatoArtefactos:
         """El archivo .pub debe contener solo la clave pública hex."""
         priv, pub = _generar_par_claves()
         assert len(pub) == 64, ".pub debe tener 64 caracteres hex"
-        assert all(c in '0123456789abcdef' for c in pub)
+        assert all(ch in '0123456789abcdef' for ch in pub)
 
     def test_formato_attestation_json(self):
         """La attestación SLSA debe tener la estructura correcta."""
@@ -357,57 +358,57 @@ class TestReleaseMatrixSigning:
         """El workflow debe incluir el paso de firma Ed25519."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'Sign binary with Ed25519' in contenido
-        assert 'nucleo.ed25519_signer' in contenido
+            fuente = f.read()
+        assert 'Sign binary with Ed25519' in fuente
+        assert 'nucleo.ed25519_signer' in fuente
 
     def test_release_matrix_sube_sig(self):
 
         """El workflow debe subir el archivo .sig."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert '.sig' in contenido
+            fuente = f.read()
+        assert '.sig' in fuente
 
     def test_release_matrix_sube_pub(self):
 
         """El workflow debe subir la clave pública."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert '.pub' in contenido
+            fuente = f.read()
+        assert '.pub' in fuente
 
     def test_release_matrix_sube_attestation(self):
 
         """El workflow debe subir la attestación SLSA."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'attestation.json' in contenido
+            fuente = f.read()
+        assert 'attestation.json' in fuente
 
     def test_release_matrix_verifica_firma(self):
 
         """El workflow debe verificar la firma automáticamente."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'SIGNATURE_VALID' in contenido or 'verificar_archivo' in contenido
+            fuente = f.read()
+        assert 'SIGNATURE_VALID' in fuente or 'verificar_archivo' in fuente
 
     def test_release_matrix_tiene_firma_checksum(self):
 
         """El workflow debe firmar también el checksum SHA-256."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'sha256.sig' in contenido
+            fuente = f.read()
+        assert 'sha256.sig' in fuente
 
     def test_release_matrix_soporta_secret_key(self):
 
         """El workflow debe soportar clave de release via secret."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'ED25519_PRIVATE_KEY' in contenido
+            fuente = f.read()
+        assert 'ED25519_PRIVATE_KEY' in fuente
 
 
 class TestIntegridadPipelineRelease:
@@ -418,12 +419,12 @@ class TestIntegridadPipelineRelease:
         """Verificar que el pipeline.py ya tiene la lógica de firma de M10.2."""
         ruta = os.path.join(PROJECT_ROOT, 'pipeline.py')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'firmar_binario' in contenido
-        assert 'clave_sbom' in contenido
-        assert 'nucleo.ed25519_signer' in contenido
-        assert 'firmar_archivo' in contenido
-        assert 'verificar_archivo' in contenido
+            fuente = f.read()
+        assert 'firmar_binario' in fuente
+        assert 'clave_sbom' in fuente
+        assert 'nucleo.ed25519_signer' in fuente
+        assert 'firmar_archivo' in fuente
+        assert 'verificar_archivo' in fuente
 
     def test_ed25519_signer_module_tiene_api_completa(self):
         """El módulo ed25519_signer debe tener todas las funciones necesarias."""
@@ -440,8 +441,8 @@ class TestIntegridadPipelineRelease:
         """El CLI debe tener flags para --sign."""
         ruta = os.path.join(PROJECT_ROOT, 'cli.py')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert '--sign' in contenido
+            fuente = f.read()
+        assert '--sign' in fuente
 
 
 # ============================================================

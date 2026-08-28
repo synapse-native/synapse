@@ -1,5 +1,6 @@
 """
-test_cluster_handshake_e2e.py — M18.3+M18.4: Arnes de prueba Handshake Ed25519
+test_cluster_handshake_e2e.py — M18.3+M18.4: Arnes de prueba Handshake Ed25519.
+Manual 6 §5.3: Handshake Ed25519 zero-trust (TweetNaCl).
 
 Cubre:
   1. Compilacion del binario C de handshake E2E
@@ -148,12 +149,12 @@ class TestM184_Unitarios:
                 raise RuntimeError("No se pudo compilar el binario")
 
     def test_unitarios_pasan(self):
-        """21 tests unitarios: Ed25519 keygen, firma, verificacion, rechazos, raw UDP."""
-        rc, out, err = _run_bin("", timeout=15)
-        assert rc == 0, f"Binario debe retornar 0 (rc={rc}): {err[:200]}"
-        assert "21" in out, f"Deben pasar 21 tests: {out}"
-        assert "Fallos: 0" in out, f"No debe haber fallos: {out}"
-        print(f"\n[OK] Tests unitarios C pasan:\n{out[-200:]}")
+        """21 tests unitarios: Ed25519 keygen, firma, verificacion, rechazos, raw UDP (Manual 6 §5.3)."""
+        rc, stdout_bin, stderr_bin = _run_bin("", timeout=15)
+        assert rc == 0, f"Binario debe retornar 0 (rc={rc}): {stderr_bin[:200]}"
+        assert "21" in stdout_bin, f"Deben pasar 21 tests: {stdout_bin}"
+        assert "Fallos: 0" in stdout_bin, f"No debe haber fallos: {stdout_bin}"
+        print(f"\n[OK] Tests unitarios C pasan:\n{stdout_bin[-200:]}")
 
 
 class TestM184_HandshakeCompleto:

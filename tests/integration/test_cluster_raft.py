@@ -1,5 +1,6 @@
 """
-test_cluster_raft.py — Pruebas de integración para M8.3 (Consenso Raft)
+test_cluster_raft.py — Pruebas de integración para M8.3 (Consenso Raft).
+Manual 5 §6.5: Raft para consenso distribuido.
 Valida elección de líder, heartbeats, re-elección tras caída,
 replicación de log y consistencia linealizable en cluster de 5 nodos.
 """
@@ -56,19 +57,19 @@ def _ejecutar_binario(path: str) -> tuple:
 
 
 def test_binario_raft_existe():
-    """El binario de test Raft debe existir y ejecutarse correctamente"""
+    """El binario de test Raft debe existir y ejecutarse correctamente (Manual 5 §6.5)."""
     assert os.path.exists(BIN_RAFT), f"Binary not found: {BIN_RAFT}"
-    rc, out, err = _ejecutar_binario(BIN_RAFT)
-    assert rc == 0, f"Binary execution failed (rc={rc}): {err[:200]}"
-    assert "77 passed, 0 failed" in out, "Missing success summary in output"
+    rc, stdout_bin, stderr_bin = _ejecutar_binario(BIN_RAFT)
+    assert rc == 0, f"Binary execution failed (rc={rc}): {stderr_bin[:200]}"
+    assert "77 passed, 0 failed" in stdout_bin, "Missing success summary"
 
 
 def test_todas_las_validaciones_raft_pasan():
-    """El binario Raft debe reportar 0 fallos"""
-    rc, out, err = _ejecutar_binario(BIN_RAFT)
+    """El binario Raft debe reportar 0 fallos (Manual 5 §6.5)."""
+    rc, stdout_bin, stderr_bin = _ejecutar_binario(BIN_RAFT)
     assert rc == 0, f"Raft binary returned {rc}"
-    passes = out.count("[PASS]")
-    fails = out.count("[FAIL]")
+    passes = stdout_bin.count("[PASS]")
+    fails = stdout_bin.count("[FAIL]")
     assert fails == 0, f"Se encontraron {fails} fallos"
     assert passes >= 77, f"Solo {passes} tests pasaron (se esperaban 77+)"
 
