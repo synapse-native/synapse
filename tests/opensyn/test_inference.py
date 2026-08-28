@@ -1,32 +1,36 @@
 # -*- coding: utf-8 -*-
 """
-test_inference.py — M7 §7: Inferencia básica.
+test_inference.py — M7 §7 / M7 §2.2: Inferencia básica OpenSyn.
 
 Manual 7 §7: "Inferencia básica — Respuesta no vacía".
 Manual 7 §2.2: llama_client.c envía prompts a llama-server.
 
-ME-4: opensyn/llama_client.h y orchestrator.h (Fase 23) aún NO están
-implementados en el repositorio. Sustituyo los skips interinos por TDD skips con
-cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
-test_latencia_meta era ya un skip de rendimiento (no ME-4) — se conserva.
+CALIDAD TOTAL (regla transversal plan_AUDITORIA_TESTS.md): especificación
+COMPLETA. Mientras opensyn/llama_client.h / .c y orchestrator.h (fase F29) no
+existan, FALLA en ROJO TDD (pytest.fail) apuntando a ME_29_T1/ME_29_T3 — sin
+pytest.skip. La meta de latencia (<1s) es requisito de rendimiento verificable
+por benchmark → también ROJO TDD (ME_29_T3), no skip.
 
-Anti-sniff (Manual 7 §2.3): los tests verifican CONTRATOS de la API ya declarada
-(declaración de función en el header fuente), no presencia de texto en un artefacto
-generado. El helper _declara comprueba que el símbolo se declara como función.
+Anti-sniff (Manual 7 §2.3): se verifican CONTRATOS de la API ya declarada
+(declaración de función en el header fuente), no texto en artefacto generado.
 """
 import os
 import re
 
 import pytest
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.tdd]
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+ME_INF = "ME_29_T1/ME_29_T3 (fase F29: llama_client / inferencia)"
 
 
-def _leer_fuente(ruta):
+def _leer_fuente(ruta, manual):
     if not os.path.exists(ruta):
-        pytest.skip(f"{ruta} no existe aún (TDD, Manual 9 §12)")
+        pytest.fail(
+            f"RED TDD {ME_INF}: {ruta} no implementado aún "
+            f"({manual}). Implementar en fase F29."
+        )
     with open(ruta, "r", encoding="utf-8", errors="ignore") as fh:
         return fh.read()
 
@@ -44,33 +48,51 @@ class TestInferencia:
     """Manual 7 §2.2: Inferencia vía llama_client.c."""
 
     def test_llama_client_archivos(self):
-        """opensyn/llama_client.h y .c deben existir."""
+        """opensyn/llama_client.h y .c deben existir y no estar vacíos (Manual 7 §2.2)."""
         client_h = os.path.join(RAIZ, "opensyn", "llama_client.h")
         client_c = os.path.join(RAIZ, "opensyn", "llama_client.c")
-        if os.path.exists(client_h):
-            assert os.path.getsize(client_h) > 0
-        if os.path.exists(client_c):
-            assert os.path.getsize(client_c) > 0
+        if not os.path.exists(client_h):
+            pytest.fail(
+                f"RED TDD {ME_INF}: opensyn/llama_client.h no existe "
+                f"(Manual 7 §2.2). Implementar en fase F29."
+            )
+        if not os.path.exists(client_c):
+            pytest.fail(
+                f"RED TDD {ME_INF}: opensyn/llama_client.c no existe "
+                f"(Manual 7 §2.2). Implementar en fase F29."
+            )
+        assert os.path.getsize(client_h) > 0
+        assert os.path.getsize(client_c) > 0
 
     def test_llama_client_crear(self):
-        """llama_client_crear() debe estar declarado (contrato de API)."""
-        fuente = _leer_fuente(os.path.join(RAIZ, "opensyn", "llama_client.h"))
+        """llama_client_crear() debe estar declarado (Manual 7 §2.2)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "llama_client.h"), "Manual 7 §2.2"
+        )
         assert _declara(fuente, "llama_client_crear"), \
             "llama_client.h debe declarar llama_client_crear()"
 
     def test_llama_client_completion(self):
-        """llama_client_completion() debe estar declarado (contrato de API)."""
-        fuente = _leer_fuente(os.path.join(RAIZ, "opensyn", "llama_client.h"))
+        """llama_client_completion() debe estar declarado (Manual 7 §2.2)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "llama_client.h"), "Manual 7 §2.2"
+        )
         assert _declara(fuente, "llama_client_completion"), \
             "llama_client.h debe declarar llama_client_completion()"
 
     def test_orchestrator_lifecycle(self):
-        """orchestrator debe gestionar lifecycle de llama-server."""
-        fuente = _leer_fuente(os.path.join(RAIZ, "opensyn", "orchestrator.h"))
+        """orchestrator debe gestionar lifecycle de llama-server (Manual 7 §2.2)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "orchestrator.h"), "Manual 7 §2.2"
+        )
         assert "iniciar" in fuente.lower() or "create" in fuente.lower() or \
             "start" in fuente.lower(), \
             "orchestrator.h debe tener funcion de inicio"
 
     def test_latencia_meta(self):
-        """Manual 7 §7.2: Latencia < 1s para prompts cortos (7B GPU)."""
-        pytest.skip("Requisito de rendimiento: latencia < 1s (verifica con benchmark)")
+        """Manual 7 §7.2: Latencia < 1s para prompts cortos (7B GPU). Requisito de
+        rendimiento verificable por benchmark → ROJO TDD hasta implementar/medir."""
+        pytest.fail(
+            "RED TDD ME_29_T3 (fase F29): meta de latencia < 1s (Manual 7 §7.2) "
+            "pendiente de implementación de inferencia y benchmark. No es skip."
+        )
