@@ -38,15 +38,15 @@ class TestRAGPipeline:
         assert os.path.exists(fuente_rag_c), "synapse_rag.c no existe"
 
     def test_rag_prompt_system_reglas(self):
-        """Manual 7 §7: existe el constructor de prompt RAG (synapse_fuente_rag_construir_prompt)."""
+        """Manual 7 §7: existe el constructor de prompt RAG (synapse_rag_construir_prompt)."""
         fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_fuente_rag_construir_prompt" in fuente_rag_c, \
-            "synapse_rag.c debe definir synapse_fuente_rag_construir_prompt()"
+        assert "synapse_rag_construir_prompt" in fuente_rag_c, \
+            "synapse_rag.c debe definir synapse_rag_construir_prompt()"
 
     def test_rag_prompt_contexto(self):
         """Manual 7 §2.3: el constructor de prompt inyecta el contexto extraído."""
         fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_fuente_rag_construir_prompt" in fuente_rag_c, "debe existir el builder de prompt"
+        assert "synapse_rag_construir_prompt" in fuente_rag_c, "debe existir el builder de prompt"
         assert "contexto_archivo" in fuente_rag_c, \
             "el builder debe inyectar el contexto extraído (contexto_archivo)"
 

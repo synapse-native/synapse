@@ -52,4 +52,5 @@ def test_ast_json_intermedio_generado(exe_path):
         import json
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
-        assert data.get("synapse") == "2.0"
+        assert data.get("tipo") == "Programa", \
+            f"AST debe tener tipo=Programa, obtuvo: {list(data.keys())}"

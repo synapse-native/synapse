@@ -52,7 +52,7 @@ funcion principal() -> nulo:
 '''
         ast, diag = compilar_texto(fuente)
         assert diag.codigo_salida() == 0, \
-            f"fed_ronda_fedavg debe compilar: {[e.mensaje for e in diag.errores]}"
+            f"fed_ronda_fedavg debe compilar: {[e['mensaje'] for e in diag.errores]}"
 
     def test_fed_entrenar_compila(self):
         """fed_entrenar compila y genera C válido."""
@@ -68,7 +68,7 @@ funcion principal() -> nulo:
 '''
         ast, diag = compilar_texto(fuente)
         assert diag.codigo_salida() == 0, \
-            f"fed_entrenar debe compilar: {[e.mensaje for e in diag.errores]}"
+            f"fed_entrenar debe compilar: {[e['mensaje'] for e in diag.errores]}"
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ funcion principal() -> nulo:
 '''
         ast, diag = compilar_texto(fuente)
         assert diag.codigo_salida() == 0, \
-            f"Ciclo completo debe compilar: {[e.mensaje for e in diag.errores]}"
+            f"Ciclo completo debe compilar: {[e['mensaje'] for e in diag.errores]}"
 
 
 # ---------------------------------------------------------------------------
