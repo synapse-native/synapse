@@ -424,21 +424,40 @@ CadenaSegura cluster_generar_nonce(void) {
     return (CadenaSegura){ .longitud = 64, .datos = out };
 }
 
+// --- Helper: decode hex string to raw bytes ---
+// cumple Manual 6 §5.3: decodificación hex para formato binario HELLO
+static void _hex_a_bytes(const char* hex, unsigned char* out, int n) {
+    for (int i = 0; i < n; i++) {
+        unsigned int b;
+        sscanf(hex + i * 2, "%02x", &b);
+        out[i] = (unsigned char)b;
+    }
+}
+
+// --- Helper: encode raw bytes to hex string ---
+static void _bytes_a_hex(const unsigned char* in, char* out, int n) {
+    for (int i = 0; i < n; i++) sprintf(out + i * 2, "%02x", in[i]);
+    out[n * 2] = '\0';
+}
+
 // --- Send signed HELLO handshake message ---
-// Formato: HELLO:id:nonce_hex:pubkey_hex:firma_hex
+// cumple Manual 6 §5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
+// Prefijo "HELLO:" (6 bytes) para identificación del tipo de mensaje.
 int cluster_enviar_hello_firmado(const char* ip, int puerto,
                                   CadenaSegura id_origen,
                                   CadenaSegura pubkey_hex,
                                   CadenaSegura nonce_hex,
                                   CadenaSegura firma_hex) {
     if (_cluster_sock_global < 0) return -1;
-    char buf[1024];
-    int len = snprintf(buf, sizeof(buf), "HELLO:%.*s:%.*s:%.*s:%.*s",
-                       (int)id_origen.longitud, id_origen.datos,
-                       (int)nonce_hex.longitud, nonce_hex.datos,
-                       (int)pubkey_hex.longitud, pubkey_hex.datos,
-                       (int)firma_hex.longitud, firma_hex.datos);
-    return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, len);
+    if (nonce_hex.longitud != 64 || pubkey_hex.longitud != 64 || firma_hex.longitud != 128)
+        return -1;
+    // Prefijo + 128 bytes binarios = 134 bytes
+    char buf[140];
+    memcpy(buf, "HELLO:", 6);
+    _hex_a_bytes(nonce_hex.datos, (unsigned char*)buf + 6, 32);   // [nonce 32B]
+    _hex_a_bytes(pubkey_hex.datos, (unsigned char*)buf + 38, 32); // [pubkey 32B]
+    _hex_a_bytes(firma_hex.datos, (unsigned char*)buf + 70, 64);  // [firma 64B]
+    return _cluster_udp_enviar(_cluster_sock_global, ip, puerto, buf, 134);
 }
 
 // --- Remote Channel: send data ---
@@ -485,20 +504,20 @@ static CadenaSegura cluster_deserializar_texto(const char* buf, int len) {
 }
 
 // --- Process incoming HELLO handshake and respond with HELLO_RESP ---
-// Formato HELLO: HELLO:id:nonce_hex:pubkey_hex:firma_hex
-// Formato HELLO_RESP: HELLO_RESP:id_servidor:nonce_hex:pubkey_hex:firma_hex
+// cumple Manual 6 §5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
+// Formato HELLO: "HELLO:" + 128 bytes binarios
+// Formato HELLO_RESP: "HELLO_RESP:" + 128 bytes binarios
 static int _cluster_procesar_hello_entrante(const char* buf, int n,
                                              const struct sockaddr_in* from) {
     if (n < 6 || memcmp(buf, "HELLO:", 6) != 0) return 0;
-    char id[128] = {0};
-    char nonce_hex[65] = {0};
-    char pubkey_hex[65] = {0};
-    char firma_hex[129] = {0};
-    int fields = sscanf(buf + 6, "%127[^:]:%64[^:]:%64[^:]:%128[^:]",
-                        id, nonce_hex, pubkey_hex, firma_hex);
-    if (fields != 4) return 0;
-    if (strlen(nonce_hex) != 64 || strlen(pubkey_hex) != 64 || strlen(firma_hex) != 128)
-        return 0;
+    // Formato binario: 6 (prefix) + 32 (nonce) + 32 (pubkey) + 64 (firma) = 134
+    if (n < 134) return 0;
+
+    // Decodificar bytes binarios a hex para verificación de firma
+    char nonce_hex[65], pubkey_hex[65], firma_hex[129];
+    _bytes_a_hex((const unsigned char*)buf + 6, nonce_hex, 32);    // [nonce 32B]
+    _bytes_a_hex((const unsigned char*)buf + 38, pubkey_hex, 32);  // [pubkey 32B]
+    _bytes_a_hex((const unsigned char*)buf + 70, firma_hex, 64);   // [firma 64B]
 
     CadenaSegura nonce = { .longitud = 64, .datos = nonce_hex };
     CadenaSegura firma = { .longitud = 128, .datos = firma_hex };
@@ -510,27 +529,31 @@ static int _cluster_procesar_hello_entrante(const char* buf, int n,
     snprintf(_cluster_peer_pk_hex, sizeof(_cluster_peer_pk_hex), "%s", pubkey_hex);
     snprintf(_cluster_peer_nonce_hex, sizeof(_cluster_peer_nonce_hex), "%s", nonce_hex);
 
+    // Generar nonce del servidor
+    unsigned char nonce_serv_raw[32];
+    randombytes(nonce_serv_raw, 32);
     char nonce_serv_hex[65];
-    CadenaSegura nonce_serv = cluster_generar_nonce();
-    if (nonce_serv.longitud != 64) return 0;
-    memcpy(nonce_serv_hex, nonce_serv.datos, 65);
+    _bytes_a_hex(nonce_serv_raw, nonce_serv_hex, 32);
     snprintf(_cluster_server_nonce_hex, sizeof(_cluster_server_nonce_hex), "%s", nonce_serv_hex);
 
     char pk_serv_hex[65];
-    for (int i = 0; i < 32; i++) sprintf(pk_serv_hex + i * 2, "%02x", _cluster_server_pk[i]);
-    pk_serv_hex[64] = '\0';
+    _bytes_a_hex(_cluster_server_pk, pk_serv_hex, 32);
 
+    // Firmar nonce del servidor con clave Ed25519 del servidor
     CadenaSegura mensaje_serv = { .longitud = 64, .datos = nonce_serv_hex };
     CadenaSegura sk_serv_hex = { .longitud = 128, .datos = _cluster_server_sk_hex };
     CadenaSegura firma_serv_hex = cluster_firmar_mensaje(mensaje_serv, sk_serv_hex);
     if (firma_serv_hex.longitud != 128) return 0;
 
-    char resp[1024];
-    int resp_len = snprintf(resp, sizeof(resp), "HELLO_RESP:%s:%s:%s:%s",
-                            _cluster_server_id, nonce_serv_hex, pk_serv_hex, firma_serv_hex.datos);
+    // Construir HELLO_RESP binario: "HELLO_RESP:" + [nonce 32B][pubkey 32B][firma 64B]
+    char resp[140];
+    memcpy(resp, "HELLO_RESP:", 11);
+    memcpy(resp + 11, nonce_serv_raw, 32);                       // [nonce 32B]
+    _hex_a_bytes(pk_serv_hex, (unsigned char*)resp + 43, 32);    // [pubkey 32B]
+    _hex_a_bytes(firma_serv_hex.datos, (unsigned char*)resp + 75, 64); // [firma 64B]
     char ip_str[64];
     snprintf(ip_str, sizeof(ip_str), "%s", inet_ntoa(from->sin_addr));
-    _cluster_udp_enviar(_cluster_sock_global, ip_str, ntohs(from->sin_port), resp, resp_len);
+    _cluster_udp_enviar(_cluster_sock_global, ip_str, ntohs(from->sin_port), resp, 139);
     return 1;
 }
 
