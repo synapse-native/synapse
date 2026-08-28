@@ -30,6 +30,11 @@ _*.c
 _*.c.o
 _*.h
 *.syn.json
+# C generado por el compilador Synapse a partir de .syn fuente (ej: lsp_v3.syn -> lsp_v3.c)
+nucleo/lsp_v3.c
+# Scratch/drivers temporales de verificacion (no fuente definitiva)
+nucleo/_tmp_*.syn
+tests/fixtures/tmp_*.syn
 # CLASE D1: C generado al lado de .syn fuente (ej: hola.syn → hola.c)
 examples/**/*.c
 tests/fixtures/*.c
