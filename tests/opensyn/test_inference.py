@@ -6,8 +6,7 @@ Manual 7 §7: "Inferencia básica — Respuesta no vacía".
 Manual 7 §2.2: llama_client.c envía prompts a llama-server.
 
 ME-4: `opensyn/llama_client.h` y `orchestrator.h` (Fase 23) aún NO están
-implementados en el repositorio. Sustituyo `pytest.skip('ME-4...')` por TDD skips
-con cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
+implementados en el repositorio. Sustituyo los skips interinos por TDD skips con cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
 test_latencia_meta era ya un skip de rendimiento (no ME-4) — se conserva.
 """
 import os

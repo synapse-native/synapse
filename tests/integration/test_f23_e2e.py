@@ -49,7 +49,6 @@ def test_binario_ejecuta_salida_esperada(exe_path):
 
 
 def test_codigo_c_contiene_destructores(exe_path):
-    pytest.skip('ME-4: Refactor pendiente a validación funcional')
     c_path = FIXTURE[:-4] + ".c"
     assert os.path.exists(c_path), f"No se genero {c_path}"
     with open(c_path, encoding="utf-8", errors="replace") as f:

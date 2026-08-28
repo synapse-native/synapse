@@ -7,8 +7,7 @@ Manual 7 §2.5: Descarga con verificación SHA-256.
 Manual 9 §5.3: Modelo verificado con hash.sha256_archivo().
 
 ME-4: las funcionalidades de descarga (modelos.toml, installer.syn) aún NO están
-implementadas en el repositorio. Sustituyo los `pytest.skip('ME-4...')` por TDD
-skips con cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
+implementadas en el repositorio. Sustituyo los skips interinos por TDD skips con cita Manual 9 §12 (símbolo no implementado), en lugar del content-sniff.
 """
 import os
 
