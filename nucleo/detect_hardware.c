@@ -6,7 +6,9 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
+#define INITGUID  // cumple Manual 9 §5.7: define GUIDs de DXGI (MinGW los necesita)
 #include <windows.h>
+#include <dxgi.h>
 #else
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -44,24 +46,25 @@ int synapse_detectar_hardware(HwProfile* perfil) {
     if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = perfil->cpu_logicos / 2;
     if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = 1;
 
-    HKEY hKey;
-    DWORD vram_mb = 0;
-    if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\WinSAT", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-        DWORD type = 0, size = sizeof(vram_mb);
-        RegQueryValueExA(hKey, "GraphicsScore", NULL, &type, (LPBYTE)&vram_mb, &size);
-        RegCloseKey(hKey);
-        if (vram_mb > 0) perfil->vram_gb = vram_mb * 0.001;
-    }
-    if (perfil->vram_gb < 0.1) {
-        DISPLAY_DEVICEA dd = { .cb = sizeof(dd) };
-        if (EnumDisplayDevicesA(NULL, 0, &dd, 0)) {
-            HDC hdc = CreateDCA(dd.DeviceName, NULL, NULL, NULL);
-            if (hdc) {
-                int vram = (int)GetDeviceCaps(hdc, 120);
-                if (vram > 0) perfil->vram_gb = vram / 1024.0;
-                DeleteDC(hdc);
+    // cumple Manual 9 §5.7: VRAM via DXGI DedicatedVideoMemory
+    // WinSAT GraphicsScore era un WEI score (1-9.9), NO VRAM en MB.
+    // GetDeviceCaps(hdc,120) es indocumentado y devuelve 0.
+    // DXGI provee DedicatedVideoMemory (bytes) del adaptador dedicado.
+    IDXGIFactory1* factory = NULL;
+    if (SUCCEEDED(CreateDXGIFactory1(&IID_IDXGIFactory1, (void**)&factory))) {
+        IDXGIAdapter1* adapter = NULL;
+        SIZE_T max_vram = 0;
+        for (UINT i = 0; factory->lpVtbl->EnumAdapters1(factory, i, &adapter) == S_OK; i++) {
+            DXGI_ADAPTER_DESC1 desc;
+            if (SUCCEEDED(adapter->lpVtbl->GetDesc1(adapter, &desc))) {
+                if (desc.DedicatedVideoMemory > max_vram)
+                    max_vram = desc.DedicatedVideoMemory;
             }
+            adapter->lpVtbl->Release(adapter);
         }
+        factory->lpVtbl->Release(factory);
+        if (max_vram > 0)
+            perfil->vram_gb = (double)max_vram / (1024.0 * 1024.0 * 1024.0);
     }
 
 #else
