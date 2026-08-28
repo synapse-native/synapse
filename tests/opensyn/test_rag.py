@@ -32,46 +32,46 @@ class TestRAGPipeline:
 
     def test_synapse_rag_archivos(self):
         """nucleo/synapse_rag.h y .c deben existir."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
-        assert os.path.exists(rag_h), "synapse_rag.h no existe"
-        assert os.path.exists(rag_c), "synapse_rag.c no existe"
+        fuente_rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
+        fuente_rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
+        assert os.path.exists(fuente_rag_h), "synapse_rag.h no existe"
+        assert os.path.exists(fuente_rag_c), "synapse_rag.c no existe"
 
     def test_rag_prompt_system_reglas(self):
-        """Manual 7 §7: existe el constructor de prompt RAG (synapse_rag_construir_prompt)."""
-        rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_rag_construir_prompt" in rag_c, \
-            "synapse_rag.c debe definir synapse_rag_construir_prompt()"
+        """Manual 7 §7: existe el constructor de prompt RAG (synapse_fuente_rag_construir_prompt)."""
+        fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
+        assert "synapse_fuente_rag_construir_prompt" in fuente_rag_c, \
+            "synapse_rag.c debe definir synapse_fuente_rag_construir_prompt()"
 
     def test_rag_prompt_contexto(self):
         """Manual 7 §2.3: el constructor de prompt inyecta el contexto extraído."""
-        rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_rag_construir_prompt" in rag_c, "debe existir el builder de prompt"
-        assert "contexto_archivo" in rag_c, \
+        fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
+        assert "synapse_fuente_rag_construir_prompt" in fuente_rag_c, "debe existir el builder de prompt"
+        assert "contexto_archivo" in fuente_rag_c, \
             "el builder debe inyectar el contexto extraído (contexto_archivo)"
 
     def test_rag_ncctx_30_70(self):
         """Manual 7 §2.3: 30% n_ctx a prompt / 70% a generación (RAG_RATIO_INYECCION_DEFAULT)."""
-        rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
-        assert "RAG_RATIO_INYECCION_DEFAULT" in rag_h, \
+        fuente_rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
+        assert "RAG_RATIO_INYECCION_DEFAULT" in fuente_rag_h, \
             "synapse_rag.h debe declarar RAG_RATIO_INYECCION_DEFAULT"
-        assert "0.3f" in rag_h, \
+        assert "0.3f" in fuente_rag_h, \
             "la relación de inyección debe ser 0.3 (30% prompt / 70% generación)"
 
     def test_rag_extraer_codigo(self):
         """Manual 7 §7: synapse_rag_extraer_contexto declarada en .h y definida en .c (paridad)."""
-        rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
-        rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_rag_extraer_contexto" in rag_h, \
+        fuente_rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
+        fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
+        assert "synapse_rag_extraer_contexto" in fuente_rag_h, \
             "synapse_rag.h debe declarar synapse_rag_extraer_contexto()"
-        assert "synapse_rag_extraer_contexto(" in rag_c, \
+        assert "synapse_rag_extraer_contexto(" in fuente_rag_c, \
             "synapse_rag.c debe definir synapse_rag_extraer_contexto()"
 
     def test_rag_validar_codigo(self):
         """Manual 7 §7: synapse_rag_liberar_contexto declarada en .h y definida en .c (paridad)."""
-        rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
-        rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
-        assert "synapse_rag_liberar_contexto" in rag_h, \
+        fuente_rag_h = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.h"))
+        fuente_rag_c = _leer(os.path.join(RAIZ, "nucleo", "synapse_rag.c"))
+        assert "synapse_rag_liberar_contexto" in fuente_rag_h, \
             "synapse_rag.h debe declarar synapse_rag_liberar_contexto()"
-        assert "synapse_rag_liberar_contexto(" in rag_c, \
+        assert "synapse_rag_liberar_contexto(" in fuente_rag_c, \
             "synapse_rag.c debe definir synapse_rag_liberar_contexto()"

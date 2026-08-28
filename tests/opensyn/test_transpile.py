@@ -26,12 +26,14 @@ class TestTranspilacion:
     """Manual 7 §2.3: Transpilación Python → Syquex."""
 
     def test_router_syn_existe(self):
-        """opensyn/router.syn debe existir."""
+        """opensyn/router.syn debe existir y declarar enrutamiento (Manual 7 §7)."""
         router = os.path.join(RAIZ, "opensyn", "router.syn")
-        if os.path.exists(router):
-            assert os.path.getsize(router) > 0
-        else:
-            pytest.skip("opensyn/router.syn no existe aún (TDD)")
+        if not os.path.exists(router):
+            pytest.fail(
+                "RED TDD ME_29_T3 (fase F29): opensyn/router.syn no existe "
+                "(Manual 7 §7 / transpilación Python→Syquex). Implementar en fase F29."
+            )
+        assert os.path.getsize(router) > 0
 
     def test_transpilar_python_funcion(self):
         """Manual 7 §7: el .syq generado COMPILA y usa funcion/retornar."""

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 tests/opensyn/test_model_mgmt.py — OpenSyn gestiona modelos (descargar/cachear).
+Manual 7 §7 / Manual 9 §5.3: descarga y verificación SHA-256 de modelos.
 F29 (gestion de modelos). TDD (ME_29_T3): este oráculo debe FALLAR (RED) hasta que el código
 implemente lo que dice el manual. No usar pytest.skip.
 """
