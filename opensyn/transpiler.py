@@ -10,6 +10,7 @@ Comando:
 
 Manual 7 §1: OpenSyn — Transpilación Python → Syquex
 """
+# cumple Manual 7 §2.3; Manual 7 §7 — transpilacion Python->Syquex con mapeo de tipos real
 import re
 import sys
 import os
@@ -99,14 +100,17 @@ def _convertir_funcion_def_con_retorno(match):
         return f"funcion {nombre}() -> {tipo_ret}:"
     params = [p.strip() for p in params_str.split(',')]
     # Strip original type annotations from parameters
+    # cumple Manual 7 §2.3; Manual 7 §7 — cada parametro conserva su tipo mapeado
     params_limpios = []
     for p in params:
         if ':' in p:
-            # Has type annotation, extract just the name
-            nombre_param = p.split(':')[0].strip()
-            params_limpios.append(f"{nombre_param}: {tipo_ret}")
+            # Tiene anotacion de tipo: mapear el tipo propio del parametro
+            nombre_param, tipo_param = p.split(':', 1)
+            nombre_param = nombre_param.strip()
+            tipo_param = tipo_param.strip()
+            params_limpios.append(f"{nombre_param}: {mapear_tipo(tipo_param)}")
         else:
-            # No type annotation, add the Syquex type
+            # Sin anotacion: usa el tipo de retorno como fallback
             params_limpios.append(f"{p}: {tipo_ret}")
     return f"funcion {nombre}({', '.join(params_limpios)}) -> {tipo_ret}:"
 
