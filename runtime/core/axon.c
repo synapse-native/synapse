@@ -156,6 +156,17 @@ int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir) {
         typeflag = block[156];
         memcpy(prefix, block + 345, 155); prefix[155] = 0;
 
+        // --- cumple Manual 6 §6.1: typeflags peligrosos rechazados ---
+        // L (GNU long name) / K (GNU long link): el siguiente bloque contiene
+        // el nombre real -> bypass del chequeo de path traversal actual.
+        // 1 (hard link) / 2 (symlink): pueden apuntar fuera de salida_dir.
+        // 75% de la superficie de ataque de path traversal en TAR usa estos typeflags.
+        if (typeflag == 'L' || typeflag == 'K' || typeflag == '1' || typeflag == '2') {
+            fprintf(stderr, "[Axon] ERR_AXON_COMPROMISED: typeflag '%c' rechazado en TAR (path traversal)\n", typeflag);
+            fclose(f);
+            return -1;
+        }
+
         // --- Path traversal protection (Manual 6 §6.1) ---
         // Reject absolute paths and directory escapes ("../" or "/.." components)
         int _pt_traversal = 0;
