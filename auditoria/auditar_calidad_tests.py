@@ -44,8 +44,8 @@ def scan_file(path):
         return issues
     if not MAN_PAT.search(src):
         issues.append(("SIN_CITA", path, "archivo sin cita Manual"))
-    # dividir por funcion test_ para analizar el cuerpo
-    blocks = re.split(r"(?m)^def\s+test_", src)
+    # dividir por funcion test_ (nivel modulo O metodo de clase) para analizar el cuerpo
+    blocks = re.split(r"(?m)^\s*def\s+test_", src)
     for blk in blocks[1:]:
         if SUBSTR_PAT.search(blk) and not EXEC_PAT.search(blk):
             issues.append(("SNIFF", path, "assert substring en artefacto sin ejecutar/compilar"))

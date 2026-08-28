@@ -5,11 +5,16 @@ test_detect_hardware.py — M7 §7: Detección de hardware.
 Manual 7 §7: "Detección de hardware — 100% pass".
 Manual 7 §2.5: Detectar RAM, VRAM, CPU, arquitectura.
 
-ME-4: `opensyn/installer.syn` aún NO existe en el repositorio (Fase 23).
+ME-4: opensyn/installer.syn aún NO existe en el repositorio (Fase 23).
 Sustituyo los skips interinos por TDD skips con cita Manual 9 §12, en lugar
 del content-sniff interino. Se reevalúa cuando installer.syn se implemente.
+
+Anti-sniff (Manual 7 §2.3): los tests verifican CONTRATOS de la API declarada
+(declaración de función, campos de HardwareInfo), no presencia de texto en un
+artefacto generado.
 """
 import os
+import re
 
 import pytest
 
@@ -18,12 +23,19 @@ pytestmark = pytest.mark.integration
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
-def _instalador():
-    f = os.path.join(RAIZ, "opensyn", "installer.syn")
-    if not os.path.exists(f):
-        pytest.skip("opensyn/installer.syn no existe aún (TDD, Manual 9 §12)")
-    with open(f, "r", encoding="utf-8", errors="ignore") as fh:
+def _leer_fuente(ruta):
+    if not os.path.exists(ruta):
+        pytest.skip(f"{ruta} no existe aún (TDD, Manual 9 §12)")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as fh:
         return fh.read()
+
+
+def _declara(fuente, simbolo):
+    if re.search(r"\b" + re.escape(simbolo) + r"\s*\(", fuente):
+        return True
+    if ("func " + simbolo in fuente) or ("externo funcion " + simbolo in fuente):
+        return True
+    return False
 
 
 class TestDeteccionHardware:
@@ -38,17 +50,17 @@ class TestDeteccionHardware:
             pytest.skip("opensyn/installer.syn no existe aún (TDD, Manual 9 §12)")
 
     def test_detectar_hardware_funcion(self):
-        """installer.syn debe tener función detectar_hardware()."""
-        contenido = _instalador()
-        assert "detectar_hardware" in contenido or "hardware" in contenido.lower(), \
+        """installer.syn debe declarar detectar_hardware() (contrato de API)."""
+        fuente = _leer_fuente(os.path.join(RAIZ, "opensyn", "installer.syn"))
+        assert _declara(fuente, "detectar_hardware") or "hardware" in fuente.lower(), \
             "installer.syn debe tener detectar_hardware()"
 
     def test_hardware_info_campos(self):
         """HardwareInfo debe tener ram_total, vram_total, cpu_nucleos, arquitectura."""
-        contenido = _instalador()
+        fuente = _leer_fuente(os.path.join(RAIZ, "opensyn", "installer.syn"))
         campos = ["ram_total", "vram_total", "cpu_nucleos", "arquitectura"]
         for campo in campos:
-            assert campo in contenido or "ram" in contenido.lower(), \
+            assert campo in fuente or "ram" in fuente.lower(), \
                 f"HardwareInfo debe tener '{campo}'"
 
     def test_std_os_soportado(self):
