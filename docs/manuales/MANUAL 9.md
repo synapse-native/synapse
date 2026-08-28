@@ -20,6 +20,8 @@ El ecosistema Synapse sigue los siguientes principios de distribución:
 | **Offline‑first** | Los paquetes y modelos se descargan una vez y se almacenan en caché local (`~/.synapse/cache/`, `~/.opensyn/models/`). |
 | **Opt‑in para IA** | OpenSyn solo se instala si el usuario lo elige explícitamente. Nunca se activa sin consentimiento. |
 
+> **Nota (ubicación de la caché incremental):** Toda caché del compilador —objetos del runtime (`synapse_rt.c`, `runtime/core/*`, `axon/tweetnacl.c`, `vendor/sqlite3/sqlite3.c`, módulos cuánticos/IA) y código de usuario compilado incrementalmente— se almacena **bajo `~/.synapse/cache/`** (coherente con Manual 1 §4: `cache.syn` = "Sistema de caché incremental SHA‑256"). Los directorios de build del repositorio (`build/`, artefactos `*.o` en la raíz) son **efímeros** y se limpian en cada commit (hook "Limpiando artefactos de build"); por tanto **no** deben usarse para caches persistentes, o se pierde el beneficio entre commits. La clave de caché incluye el hash SHA‑256 de la fuente, el compilador y los flags, de modo que el `.o` cacheado es byte‑idéntico al recién compilado y no rompe el bootstrap (Manual 1 §6, Regla de hierro).
+
 ---
 
 ## 2. EMPAQUETADO MULTI‑TARGET

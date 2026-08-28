@@ -131,18 +131,19 @@ def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
     """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
 
     cumple Manual 1 §4 (cache.syn: "Sistema de caché incremental SHA-256" / runtime
-    modularizado) y Manual 1 §6 (Regla de hierro: no romper el bootstrap — el .o
-    cacheado es idéntico al recién compilado porque la clave incluye fuente+flags).
+    modularizado) y Manual 9 §9 (caché local en `~/.synapse/cache/`, NO en directorios
+    de build del repositorio). Manual 1 §6 (Regla de hierro: no romper el bootstrap —
+    el .o cacheado es idéntico al recién compilado porque la clave incluye fuente+flags).
     ME-R2 evitó depender de .o precompilados inexistentes en instalación limpia;
     este helper CACHEA los .o generados (hash SHA-256 de la fuente + compilador +
-    flags) y los recompila únicamente cuando el hash cambia. El runtime es grande
-    (incluye sqlite3.c, tweetnacl.c, etc.) y recompilarlo en cada invocación
-    multiplicaba ~90s el coste de cada compilación de usuario (causa de los
-    timeouts en tests/unit).
+    flags) en `~/.synapse/cache/runtime_obj/` y los recompila únicamente cuando el
+    hash cambia. El runtime es grande (incluye sqlite3.c, tweetnacl.c, etc.) y
+    recompilarlo en cada invocación multiplicaba ~90s el coste de cada compilación
+    de usuario (causa de los timeouts en tests/unit).
     """
     src = os.path.join(SYNAPSE_BIN, src_rel)
     if dir_obj is None:
-        dir_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
+        dir_obj = os.path.join(_cache_dir(), "runtime_obj")
     os.makedirs(dir_obj, exist_ok=True)
     ruta_obj = os.path.join(dir_obj, nombre + ".o")
     sidecar = ruta_obj + ".sha"
