@@ -119,7 +119,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: No existe archivo de bucle de validación"
 
     def test_implementacion_funcion_validar_codigo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: Debe existir función para validar código con --check."""
         archivos_posibles = [
             "opensyn/validation_loop.syn",
@@ -141,7 +141,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: No existe función de validación de código"
 
     def test_implementacion_funcion_reconstruir_prompt(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: Debe existir función para reconstruir prompt con error."""
         archivos_posibles = [
             "opensyn/validation_loop.syn",
@@ -164,7 +164,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: No existe función de reconstrucción de prompt"
 
     def test_implementacion_contador_intentos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: Debe existir contador de intentos (máximo 3)."""
         archivos_posibles = [
             "opensyn/validation_loop.syn",
@@ -186,7 +186,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: No existe contador de intentos"
 
     def test_implementacion_guardar_feedback(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: Debe existir función para guardar feedback humano."""
         archivos_posibles = [
             "opensyn/validation_loop.syn",
@@ -208,7 +208,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: No existe función para guardar feedback"
 
     def test_implementacion_flag_check_cli(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: El CLI debe soportar flag --check."""
         ruta_principal = os.path.join(RAIZ, "nucleo", "principal.syn")
         if not os.path.exists(ruta_principal):
@@ -221,7 +221,7 @@ class TestImplementacion:
             "FALLA IMPLEMENTACIÓN: CLI no soporta flag --check"
 
     def test_implementacion_mensaje_fallo_definitivo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
+
         """VERIFICACIÓN: Debe existir mensaje de fallo definitivo."""
         archivos_posibles = [
             "opensyn/validation_loop.syn",
