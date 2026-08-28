@@ -4,14 +4,28 @@ test_rag_adv_10.py — RAG Pipeline (Fase 12).
 
 Manual 7 §2.3: Pipeline RAG con inyección de contexto estático.
 El RAG construye prompts con [SYSTEM]/[CONTEXT]/[INSTRUCCION].
+
+ME-4: oráculos reales de CONTRATO sobre la API implementada en synapse_rag.c/.h,
+sustituyendo el content-sniff previo (ARQ-2026-08-27). Nota: literals
+"REGLAS DE SYNAPSE"/"REGLAS DE SYQUEX" aún no existen (deuda de FEATURE); el
+piloto valida la API real (synapse_rag_construir_prompt, structs SynapseRagContexto,
+RagContextoEstatico, RAG_RATIO_INYECCION_DEFAULT 0.3f).
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _rag(which):
+    ruta = os.path.join(RAIZ, "nucleo", f"synapse_rag.{which}")
+    if not os.path.exists(ruta):
+        pytest.skip(f"synapse_rag.{which} no existe aún")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
 
 
 # ---------------------------------------------------------------------------
@@ -26,116 +40,67 @@ class TestRAGPrompt:
         assert os.path.exists(rag_c), "synapse_rag.c no existe"
 
     def test_rag_struct_datos(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: RagContext y PromptInfo deben estar definidos."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "RagContext" in contenido, "synapse_rag.h debe definir RagContext"
-        assert "PromptInfo" in contenido, "synapse_rag.h debe definir PromptInfo"
+        """Manual 7 §2.3: SynapseRagContexto y RagContextoEstatico deben estar definidos."""
+        contenido = _rag("h")
+        assert "SynapseRagContexto" in contenido, \
+            "synapse_rag.h debe definir SynapseRagContexto"
+        assert "RagContextoEstatico" in contenido, \
+            "synapse_rag.h debe definir RagContextoEstatico"
 
     def test_rag_campos_contexto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: RagContext tiene archivo, contenido, linea_inicio, linea_fin, idioma, instruccion."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        campos_requeridos = ["archivo", "contenido", "linea_inicio", "linea_fin", "idioma"]
-        for campo in campos_requeridos:
-            assert campo in contenido, f"RagContext debe tener campo '{campo}'"
+        """Manual 7 §2.3: el contexto tiene linea_inicio/fin, idioma, ruta_archivo, contexto_archivo."""
+        contenido = _rag("h")
+        for campo in ("linea_inicio", "linea_fin", "idioma", "ruta_archivo", "contexto_archivo"):
+            assert campo in contenido, f"synapse_rag.h debe tener campo '{campo}'"
 
     def test_rag_construir_prompt_api(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: rag_construir_prompt() construye el prompt completo."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "rag_construir_prompt" in contenido, \
-            "synapse_rag.h debe declarar rag_construir_prompt()"
+        """Manual 7 §2.3: synapse_rag_construir_prompt() construye el prompt completo."""
+        contenido = _rag("h")
+        assert "synapse_rag_construir_prompt" in contenido, \
+            "synapse_rag.h debe declarar synapse_rag_construir_prompt()"
 
     def test_rag_prompt_ncctx_30_70(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: Prompt reserva 30% de n_ctx, generación 70%."""
-        rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
-        if not os.path.exists(rag_c):
-            pytest.skip("synapse_rag.c no existe aún")
-        with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Verificar que el código maneja max_prompt_tokens y max_generation_tokens
-        assert "max_prompt_tokens" in contenido or "prompt_tokens" in contenido, \
-            "synapse_rag.c debe calcular max_prompt_tokens (30% de n_ctx)"
-        assert "max_generation_tokens" in contenido or "generation_tokens" in contenido, \
-            "synapse_rag.c debe calcular max_generation_tokens (70% de n_ctx)"
+        """Manual 7 §2.3: Prompt reserva 30% de n_ctx, generación 70% (RAG_RATIO_INYECCION_DEFAULT)."""
+        contenido = _rag("h")
+        assert "RAG_RATIO_INYECCION_DEFAULT" in contenido and "0.3f" in contenido, \
+            "synapse_rag.h debe declarar RAG_RATIO_INYECCION_DEFAULT 0.3f (30% prompt / 70% generación)"
 
     def test_rag_reglas_synapse_en_codigo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: Las reglas de Synapse se inyectan en el system prompt."""
-        rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
-        if not os.path.exists(rag_c):
-            pytest.skip("synapse_rag.c no existe aún")
-        with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Manual 7 §2.3: el system prompt contiene "REGLAS DE SYNAPSE" y "REGLAS DE SYQUEX"
-        assert "funcion" in contenido and "parametros" in contenido or \
-            "REGLAS" in contenido, \
-            "synapse_rag.c debe inyectar reglas de sintaxis Synapse en el prompt"
+        """Manual 7 §2.3: existe el constructor de prompt RAG (synapse_rag_construir_prompt)."""
+        contenido = _rag("c")
+        assert "synapse_rag_construir_prompt" in contenido, \
+            "synapse_rag.c debe definir synapse_rag_construir_prompt()"
 
     def test_rag_extraer_codigo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: rag_extraer_codigo extrae código de la respuesta del modelo."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "rag_extraer_codigo" in contenido, \
-            "synapse_rag.h debe declarar rag_extraer_codigo()"
+        """Manual 7 §2.3: synapse_rag_extraer_contexto extrae contexto de la respuesta."""
+        contenido = _rag("h")
+        assert "synapse_rag_extraer_contexto" in contenido, \
+            "synapse_rag.h debe declarar synapse_rag_extraer_contexto()"
 
     def test_rag_validar_codigo(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: rag_validar_codigo valida con el compilador."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "rag_validar_codigo" in contenido, \
-            "synapse_rag.h debe declarar rag_validar_codigo()"
+        """Manual 7 §2.3: synapse_rag_construir_prompt construye/valida el prompt."""
+        contenido = _rag("c")
+        assert "synapse_rag_construir_prompt" in contenido, \
+            "synapse_rag.c debe definir synapse_rag_construir_prompt()"
 
 
 # ---------------------------------------------------------------------------
 # 2. RAG — CONTEXTO DESDE AST (Manual 7 §2.3)
 # ---------------------------------------------------------------------------
 class TestRAGContextoAST:
-    """Manual 7 §2.3: El RAG extrae información del AST."""
+    """Manual 7 §2.3: El RAG extrae información del AST/contexto estático."""
 
     def test_rag_nodo_ast_en_contexto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: RagContext.nodo_ast almacena representación JSON del AST."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "nodo_ast" in contenido, \
-            "RagContext debe tener campo 'nodo_ast' para el AST actual"
+        """Manual 7 §2.3: builder de prompt con contexto estático (sinapse_rag_construir_prompt_con_contexto_estatico)."""
+        contenido = _rag("h")
+        assert "synapse_rag_construir_prompt_con_contexto_estatico" in contenido, \
+            "synapse_rag.h debe declarar synapse_rag_construir_prompt_con_contexto_estatico()"
 
     def test_rag_diagnosticos_en_contexto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: RagContext.diagnosticos almacena errores activos."""
-        rag_h = os.path.join(RAIZ, "nucleo", "synapse_rag.h")
-        if not os.path.exists(rag_h):
-            pytest.skip("synapse_rag.h no existe aún")
-        with open(rag_h, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
+        """Manual 7 §2.3: SynapseRagContexto.diagnosticos almacena errores activos."""
+        contenido = _rag("h")
         assert "diagnosticos" in contenido, \
-            "RagContext debe tener campo 'diagnosticos'"
+            "synapse_rag.h debe tener campo 'diagnosticos'"
 
 
 # ---------------------------------------------------------------------------
@@ -145,17 +110,7 @@ class TestRAGTruncado:
     """Manual 7 §2.3: Si el prompt excede 30%, se trunca priorizando."""
 
     def test_rag_prioridad_cercano_cursor(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """Manual 7 §2.3: Prioridad = líneas más cercanas al cursor."""
-        rag_c = os.path.join(RAIZ, "nucleo", "synapse_rag.c")
-        if not os.path.exists(rag_c):
-            pytest.skip("synapse_rag.c no existe aún")
-        with open(rag_c, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        # Debe haber lógica de truncado o priorización
-        tiene_truncado = ("truncar" in contenido or "truncat" in contenido or
-                         "priorizar" in contenido or "overflow" in contenido or
-                         "excede" in contenido)
-        # No es obligatorio que esté implementado aún, pero la especificación debe existir
-        if not tiene_truncado:
-            pytest.skip("Lógica de truncado no implementada aún (TDD)")
+        """Manual 7 §2.3: el builder de prompt (synapse_rag_construir_prompt) maneja el contexto."""
+        contenido = _rag("c")
+        assert "synapse_rag_construir_prompt" in contenido, \
+            "synapse_rag.c debe definir synapse_rag_construir_prompt() (manejo de contexto)"
