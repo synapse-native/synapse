@@ -4,14 +4,25 @@ test_cluster_remote.py — M5 §9: Canal remoto (cluster).
 
 Manual 5 §9: "Canal remoto (cluster) — Handshake exitoso, envío/recepción".
 Manual 5 §6.2: CanalRemoto<T> con handshake Ed25519.
+
+ME-4: oráculos reales de CONTRATO sobre símbolos reales de std/cluster.syn,
+sustituyendo el content-sniff previo (ARQ-2026-08-27).
 """
 import os
+
 import pytest
-from conftest import compilar_texto
 
 pytestmark = pytest.mark.integration
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _cluster():
+    ruta = os.path.join(RAIZ, "std", "cluster.syn")
+    if not os.path.exists(ruta):
+        pytest.skip("std/cluster.syn no existe")
+    with open(ruta, "r", encoding="utf-8", errors="ignore") as f:
+        return f.read()
 
 
 class TestClusterRemote:
@@ -23,38 +34,29 @@ class TestClusterRemote:
         assert os.path.exists(cluster), "std/cluster.syn no existe"
 
     def test_conectar_remoto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
-        """cluster.conectar() establece conexión remota."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "conectar" in contenido.lower() or "connect" in contenido.lower(), \
-            "std/cluster.syn debe tener conectar()"
+        """cluster.conectar() establece conexión remota (CanalRemoto Autenticado)."""
+        contenido = _cluster()
+        assert "funcion conectar(" in contenido, \
+            "std/cluster.syn debe definir conectar()"
 
     def test_handshake_ed25519(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Handshake usa Ed25519 zero-trust."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "handshake" in contenido.lower() or "hello" in contenido.lower() or \
-            "ed25519" in contenido.lower(), \
-            "std/cluster.syn debe implementar handshake Ed25519"
+        contenido = _cluster()
+        assert "handshake" in contenido.lower(), \
+            "std/cluster.syn debe implementar handshake"
+        assert "ed25519" in contenido.lower(), \
+            "std/cluster.syn debe usar Ed25519 en el handshake"
 
     def test_enviar_recibir_remoto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Canal remoto soporta enviar/recibir."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "enviar" in contenido.lower() and "recibir" in contenido.lower(), \
-            "std/cluster.syn debe tener enviar() y recibir()"
+        contenido = _cluster()
+        assert "funcion enviar(" in contenido, \
+            "std/cluster.syn debe definir enviar()"
+        assert "funcion recibir(" in contenido, \
+            "std/cluster.syn debe definir recibir()"
 
     def test_cerrar_remoto(self):
-        pytest.skip('ME-4: Refactor pendiente a validación funcional')
         """Canal remoto se puede cerrar."""
-        cluster = os.path.join(RAIZ, "std", "cluster.syn")
-        with open(cluster, 'r', encoding='utf-8', errors='ignore') as f:
-            contenido = f.read()
-        assert "cerrar" in contenido.lower() or "close" in contenido.lower(), \
-            "std/cluster.syn debe tener cerrar()"
+        contenido = _cluster()
+        assert "cerrar_remoto" in contenido, \
+            "std/cluster.syn debe definir cerrar_remoto()"
