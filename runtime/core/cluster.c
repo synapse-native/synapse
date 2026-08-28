@@ -412,7 +412,9 @@ int cluster_enviar_hello(const char* ip, int puerto,
 // --- Generate 32-byte random nonce as 64-char hex ---
 CadenaSegura cluster_generar_nonce(void) {
     unsigned char raw[32];
-    for (int i = 0; i < 32; i++) raw[i] = (unsigned char)(rand() % 256);
+    // cumple Manual 6 §5.3: el nonce del HELLO debe ser CSPRNG (32 bytes); rand()
+    // no es criptografico. Se usa randombytes (cripto.c: CryptGenRandom/getrandom/urandom).
+    randombytes(raw, 32);
     char hex[65];
     for (int i = 0; i < 32; i++) sprintf(hex + i * 2, "%02x", raw[i]);
     hex[64] = '\0';

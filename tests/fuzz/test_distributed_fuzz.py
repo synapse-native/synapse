@@ -199,6 +199,7 @@ def compiled_test():
     if not RT_OBJS:
         pytest.skip("objetos del runtime no disponibles (conftest.rt_objs)")
 
+    # cumple Manual 3 §12.1: sqlite3.o ya viene en rt_objs() via conftest
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
         TEST_C_SRC, *RT_OBJS,
@@ -231,6 +232,7 @@ class TestCompilacion:
         """C binary compiles without errors."""
         with open(TEST_C_SRC, 'w') as f:
             f.write(TEST_C_CODE)
+        # cumple Manual 3 §12.1: sqlite3.o ya viene en rt_objs() via conftest
         cmd = [
             TOOLCHAIN_GCC, "-O2", "-std=c99",
             TEST_C_SRC, *RT_OBJS,

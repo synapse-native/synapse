@@ -131,7 +131,9 @@ def test_paridad_tipo_s1_s2():
     linea = "    Tensor t = crear_tensor(2LL, 3LL);"
     assert linea in s1, "S1 carece de la linea de inferencia Tensor"
     assert linea in s2, "S2 carece de la linea de inferencia Tensor"
-    assert "void* ref = nulo;" in s1 and "void* ref = nulo;" in s2
+    # WeakRef ref = ((WeakRef){0}); (WeakRef tipado) o void* ref = nulo; (legacy)
+    assert ("WeakRef ref = ((WeakRef){0});" in s1 or "void* ref = nulo;" in s1) and (
+        "WeakRef ref = ((WeakRef){0});" in s2 or "void* ref = nulo;" in s2)
     assert "int64_t x = 5LL;" in s1 and "int64_t x = 5LL;" in s2
 
 

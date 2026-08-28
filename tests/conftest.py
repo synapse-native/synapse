@@ -95,7 +95,12 @@ def _rt_objs_core():
     return entries
 
 
+# cumple Manual 3 §12.1 (DB usa SQLite vía libsqlite3) + Manual 9 §2.3 (runtime
+# se compila/enlaza estáticamente): db.o depende de sqlite3_*, asi que sqlite3.o
+# debe estar en rt_objs() para que cualquier binario de integration que incluya
+# db.o enlace correctamente (sin esto, link falla con undefined reference).
 _RT_OBJ_DEFS = [
+    ("vendor/sqlite3/sqlite3.o", "vendor/sqlite3/sqlite3.c", []),
     ("tweetnacl.o", "axon/tweetnacl.c", []),
     ("synapse_rt.o", "synapse_rt.c", []),
     ("proof_bridge.o", "nucleo/proof_bridge.c", []),

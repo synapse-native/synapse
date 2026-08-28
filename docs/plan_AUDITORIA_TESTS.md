@@ -72,6 +72,14 @@ Regla de los `skip`: no se dejan `pytest.skip` que oculten trabajo de la **etapa
 ## Workstream E — Saneamiento de TDD-feature (H4)
 - **ME_X1** — 83 `pytest.skip('...no existe aún (TDD)')` → `pytest.mark.xfail(strict=True)`.
 
+## Workstream F — Auditoría de desviaciones código ↔ manuales (ME_AUDIT_DESV)
+- **ME_AUDIT_DESV** — `docs/plan_ME_audit_desv.md`. Barrido de `compilador/`, `pipeline.py`,
+  `runtime/`, `nucleo/`, `syquex/`, `tests/` contrastándolos con M1–M9. Hallazgos en
+  `docs/reportes/R_AUDIT_DESV.md`, corregidos hacia el manual e integrados en el ME de
+  feature correspondiente (S*/T*/X1/27_T*…30_T*) o en MEs hijos (`ME_AUDIT_DESV_n`).
+  La desviación de ubicación de caché (ya resuelta en ME_cache_rt / ME_cache_rt2) queda
+  como caso de referencia cerrado.
+
 ## Gates de calidad (CI)
 - `auditoria/auditar_calidad_tests.py` rc=0 (sin sniff nuevo, sin archivo sin cita).
 - `auditoria/verificar_alineacion.py` 0 brechas.
