@@ -418,3 +418,13 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
 - **Verificación:** `tests/stress/test_cluster_stress.py` PASSED (69.73s, ejecuta 10,000 fibras rc=0 vía test_fibras_estres); `tests/fuzz/test_distributed_fuzz.py` 15 passed. El WARNING [ME-R7] de sqlite3 desaparece.
 - **MTS:** `docs/plan_ME_conftest_sqlite.md` + `docs/verificacion_ME_conftest_sqlite.md`; gate `auditoria/contrastar.py --plan docs/plan_ME_conftest_sqlite.md` **PASÓ** (oráculos `tests/stress/test_cluster_stress.py` y `tests/fuzz/test_distributed_fuzz.py`; 0 brechas de alineación). Comentario grep-chequeable `cumple Manual 3 §12.1` en conftest.py.
 - **Lección:** cuando un fallo de enlazado es transversal a TODA una suite (no un test), la corrección correcta según el plan es en la raíz (conftest/rt_objs), no parchear comando por comando. Clasificar primero como desviación de manual antes de decidir el alcance.
+
+### 7.11 CORRECCIÓN DE TESTS: 3 bugs en tests tras auditoría (2026-08-28, commit `4927a72`)
+
+- **Hallazgo (sesión de ejecución de tests por etapas):** 3 tests tenían bugs de código que causaban fallos cuando los tests realmente ejecutan (no solo assertion):
+  1. `test_federated_adv_10.py`: usaba `e.mensaje` (attribute access) sobre dicts — `DiagnosticManager.errores` es `List[dict]`, no objetos. Fix: `e['mensaje']`. Verificado contra `compilador/diagnostics.py:300` (Manual 2 §10.1).
+  2. `test_syquex_s1_e2e.py`: verificaba `data.get("synapse") == "2.0"` (formato legacy) pero `compilador/canonical.py:ast_a_canonico()` produce formato nuevo `{"tipo": "Programa", ...}` (Manual 2 §13). Fix: `data.get("tipo") == "Programa"`.
+  3. `test_rag.py`: buscaba `synapse_fuente_rag_construir_prompt` (nombre inexistente) en vez de `synapse_rag_construir_prompt` (definida en `nucleo/synapse_rag.h:113` y `.c:130`). Fix: corregido typo. Todos los demás tests (test_rag_adv_10.py, test_ia_adv_10.py) ya usaban el nombre correcto.
+- **Proceso:** Se presentó reporte fundamentado al Arquitecto con citas a código fuente y manuales (M2 §10.1, M2 §13, M7 §7). Autorización recibida para aplicar los 3 fixes.
+- **Verificación:** tests: 3/3 pasan después del fix. Alineación: 0 brechas. Todos los gates del pre-commit pasaron.
+- **Lección:** los tests no son inmutables cuando tienen bugs de código (typos, attribute access vs dict, formato legacy vs actual). El proceso correcto es: detectar → verificar contra manual/código → reportar al Arquitecto con fundamentación → esperar autorización → aplicar fix.
