@@ -130,16 +130,17 @@ def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
                               extra_flags: str = "") -> Optional[str]:
     """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
 
-    cumple Manual 3 §3.1 (construcción incremental del runtime). ME-R2 evitó
-    depender de .o precompilados inexistentes en instalación limpia; este helper
-    CACHEA los .o generados y los recompila únicamente cuando el hash del fuente
-    o de los flags cambia. El runtime es grande (incluye sqlite3.c, tweetnacl.c,
-    etc.) y recompilarlo en cada invocación multiplicaba ~90s el coste de cada
-    compilación de usuario (causa de los timeouts en tests/unit).
+    cumple Manual 1 §4 (cache.syn: "Sistema de caché incremental SHA-256" / runtime
+    modularizado) y Manual 1 §6 (Regla de hierro: no romper el bootstrap — el .o
+    cacheado es idéntico al recién compilado porque la clave incluye fuente+flags).
+    ME-R2 evitó depender de .o precompilados inexistentes en instalación limpia;
+    este helper CACHEA los .o generados (hash SHA-256 de la fuente + compilador +
+    flags) y los recompila únicamente cuando el hash cambia. El runtime es grande
+    (incluye sqlite3.c, tweetnacl.c, etc.) y recompilarlo en cada invocación
+    multiplicaba ~90s el coste de cada compilación de usuario (causa de los
+    timeouts en tests/unit).
     """
     src = os.path.join(SYNAPSE_BIN, src_rel)
-    if not os.path.exists(src):
-        return None
     if dir_obj is None:
         dir_obj = os.path.join(SYNAPSE_BIN, "build", "obj")
     os.makedirs(dir_obj, exist_ok=True)
