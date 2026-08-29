@@ -21,29 +21,34 @@ DIR_INVALID = os.path.join(DIR_FIXTURES, 'invalid')
 
 
 def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, DiagnosticManager]:
-    # cumple Manual 3 §3: compilación con resolución de imports (pipeline completo)
-    # Usa pipeline.compilar_desde_texto para resolver importar std.* correctamente,
-    # y luego ejecuta el analizador semántico para detección de errores (use-after-move, etc.).
-    import tempfile
-    import os
-    from pipeline import compilar_desde_texto
-    from compilador.analizador_semantico import AnalizadorSemantico
-    tmpdir = tempfile.mkdtemp(prefix='synapse_test_')
-    ruta = os.path.join(tmpdir, '_test_input.syn')
-    with open(ruta, 'w', encoding='utf-8') as f:
-        f.write(fuente)
-    archivos_procesados = set()
+    lineas = fuente.split('\n')
+    diag = DiagnosticManager(fuente_lineas=lineas, ruta_archivo='<test>', idioma=idioma)
     try:
-        ast, diag = compilar_desde_texto(ruta, archivos_procesados)
-        if not diag.hay_errores():
-            analizador = AnalizadorSemantico(ast, diag)
-            analizador.analizar()
-    finally:
-        try:
-            os.unlink(ruta)
-            os.rmdir(tmpdir)
-        except OSError:
-            pass
+        lexer = Lexer(fuente)
+        tokens = lexer.tokenizar()
+    except SyntaxError as e:
+        mensaje = str(e)
+        token = Token(TokenID.EOF, linea=1, columna=0)
+        if 'indentaci' in mensaje:
+            if 'múltiplo' in mensaje:
+                diag.reportar(ErrorCodes.ERR_INDENT_INVALID, token)
+            else:
+                diag.reportar(ErrorCodes.ERR_INDENT_INCONSISTENT, token)
+        elif 'Cadena sin cerrar' in mensaje:
+            diag.reportar(ErrorCodes.ERR_STRING_UNCLOSED, token)
+        elif 'Carácter inesperado' in mensaje or 'caracter inesperado' in mensaje:
+            match = re.search(r"'([^']+)'", mensaje)
+            diag.reportar(ErrorCodes.ERR_LEX_CHAR_UNEXPECTED, token, char=match.group(1) if match else '?')
+        elif 'Idioma' in mensaje or 'idioma' in mensaje or '#lang' in mensaje:
+            diag.reportar(ErrorCodes.ERR_LANG_MISSING, token)
+        else:
+            diag.reportar(ErrorCodes.ERR_LEX_CHAR_UNEXPECTED, token, char='?')
+        return Programa(), diag
+    parser = Parser(tokens, diag)
+    ast = parser.parsear()
+    from compilador.analizador_semantico import AnalizadorSemantico
+    analizador = AnalizadorSemantico(ast, diag)
+    analizador.analizar()
     return ast, diag
 
 
