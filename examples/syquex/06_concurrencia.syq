@@ -1,0 +1,9 @@
+#lang: es
+// 06_concurrencia.syq — Canal básico
+// cumple Manual 5 §3: Canales
+// Nota: Canales tipados requiere implementación pendiente
+
+importar std.io
+
+funcion principal() -> nulo:
+    escribir_linea("Ejemplo de concurrencia (pendiente de implementación)")
