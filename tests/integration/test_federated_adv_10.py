@@ -45,10 +45,12 @@ funcion principal() -> nulo:
             pytest.skip("std.federated no disponible")
         fuente = '''#lang: es
 importar std.federated
+# cumple Manual 2 §4.1: puntero solo dentro de inseguro
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
-    perdida = fed_ronda_fedavg(sesion)
-    fed_cerrar(sesion)
+    inseguro:
+        sesion = fed_iniciar(nulo, 10, 0.001, 5)
+        perdida = fed_ronda_fedavg(sesion)
+        fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
         if diag.codigo_salida() != 0:
@@ -63,11 +65,13 @@ funcion principal() -> nulo:
             pytest.skip("std.federated no disponible")
         fuente = '''#lang: es
 importar std.federated
+# cumple Manual 2 §4.1: puntero solo dentro de inseguro
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
-    fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk_hex", 1.0)
-    perdida = fed_entrenar(sesion)
-    fed_cerrar(sesion)
+    inseguro:
+        sesion = fed_iniciar(nulo, 10, 0.001, 5)
+        fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk_hex", 1.0)
+        perdida = fed_entrenar(sesion)
+        fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
         if diag.codigo_salida() != 0:
@@ -89,16 +93,18 @@ class TestOrquestador:
             pytest.skip("std.federated no disponible")
         fuente = '''#lang: es
 importar std.federated
+# cumple Manual 2 §4.1: puntero solo dentro de inseguro
 funcion principal() -> nulo:
-    sesion = fed_iniciar(0, 10, 0.001, 5)
-    fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk1", 1.0)
-    fed_registrar_worker(sesion, "w2", "127.0.0.2", 9001, "pk2", 2.0)
-    i = 0
-    mientras i < 3:
-        fed_ronda_fedavg(sesion)
-        i = i + 1
-    fed_guardar(sesion, "/tmp/fed_state.bin")
-    fed_cerrar(sesion)
+    inseguro:
+        sesion = fed_iniciar(nulo, 10, 0.001, 5)
+        fed_registrar_worker(sesion, "w1", "127.0.0.1", 9000, "pk1", 1.0)
+        fed_registrar_worker(sesion, "w2", "127.0.0.2", 9001, "pk2", 2.0)
+        i = 0
+        mientras i < 3:
+            fed_ronda_fedavg(sesion)
+            i = i + 1
+        fed_guardar(sesion, "/tmp/fed_state.bin")
+        fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
         if diag.codigo_salida() != 0:
