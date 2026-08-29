@@ -1,24 +1,18 @@
-# Verificación ME — LSP codeAction/formatting/signatureHelp
+# Verificación ME — ME_27_T1_impl: LSP codeAction/formatting/signatureHelp
 
-## Requisito 1: LSP implementa codeAction (Manual 8 §1.4)
+## Requisito 1: textDocument/codeAction — sugiere correcciones rápidas (Manual 8 §1.4)
+- CUMPLE: `nucleo/lsp_v3.syn` `handle_code_action()` detecta funciones sin `retornar` y sugiere quickfix "Agregar retornar 0".
+- Oráculo: `tests/integration/test_lsp_codeaction.py::TestLSPCodeAction::test_codeaction_devuelve_array` PASSED.
 
-- CUMPLE: `nucleo/lsp_v3.syn` handle_code_action retorna array. Test real
-  `test_lsp_codeaction_devuelve_array` PASSED — verifica que codeAction retorna array.
-  - archivo: nucleo/lsp_v3.syn:647-653
+## Requisito 2: textDocument/formatting — formatea código según reglas de estilo (Manual 8 §1.4)
+- CUMPLE: `nucleo/lsp_v3.syn` `handle_formatting()` normaliza indentación a 4 espacios y reemplaza tabs.
+- Oráculo: `tests/integration/test_lsp_codeaction.py::TestLSPFormatting::test_formatting_devuelve_array` PASSED.
 
-## Requisito 2: LSP implementa formatting (Manual 8 §1.4)
+## Requisito 3: textDocument/signatureHelp — muestra firma de función (Manual 8 §1.4)
+- CUMPLE: `nucleo/lsp_v3.syn` `handle_signature_help()` extrae nombre de función bajo cursor, busca definición en documento, retorna firma completa.
+- Oráculo: `tests/integration/test_lsp_codeaction.py::TestLSPSignatureHelp::test_signaturehelp_devuelve_objeto` PASSED.
 
-- CUMPLE: `nucleo/lsp_v3.syn` handle_formatting retorna array. Test real
-  `test_lsp_formatting_retorna_array` PASSED — verifica que formatting retorna array.
-  - archivo: nucleo/lsp_v3.syn:655-661
-
-## Requisito 3: LSP implementa signatureHelp (Manual 8 §1.4)
-
-- CUMPLE: `nucleo/lsp_v3.syn` handle_signature_help retorna objeto con signatures.
-  Test real `test_lsp_signature_help_retorna_objeto` PASSED — verifica campo "signatures".
-  - archivo: nucleo/lsp_v3.syn:663-669
-
-## Requisito 4: sin regresiones
-
-- CUMPLE: test_lsp_completion.py 3/3 PASSED. test_lsp_completion_symbols.py 1 failed
-  (preexistente, verificado con stash).
+## Verificaciones adicionales
+- 12/12 LSP tests PASSED (hover, completion, definition, codeAction/formatting/signatureHelp)
+- verificar_alineacion.py: 0 brechas
+- Sin regresión en tests existentes

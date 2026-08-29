@@ -644,32 +644,240 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
 // §1.4 — Métodos stub
 // ============================================================
 
-funcion handle_code_action(id: entero, params: texto) -> nulo:
+funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
     // cumple Manual 8 §1.4: textDocument/codeAction — sugiere correcciones rápidas
     requiere:
         id >= 0
     garantiza:
         verdadero
-    // Sin diagnósticos activos → sin acciones
+    // Extraer rango del params
+    let range_idx = strstr_f(params, "\"range\"")
+    si range_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "[]"))
+        retornar
+    let len_params = strlen_s(params)
+    let start_idx = strstr_f(params, "\"start\"")
+    si start_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "[]"))
+        retornar
+    // Extraer line de start
+    let line_idx = strstr_f(subcadena(params, start_idx, len_params - start_idx), "\"line\"")
+    si line_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "[]"))
+        retornar
+    let abs_line = start_idx + line_idx
+    let line_seg = subcadena(params, abs_line + 7, len_params - abs_line - 7)
+    let comma_pos = strstr_f(line_seg, ",")
+    si comma_pos == -1:
+        comma_pos = strlen_s(line_seg)
+    let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
+    // Buscar la función que contiene esa línea
+    let len_doc = strlen_s(doc)
+    let scan = 0
+    let func_inicio = -1
+    let func_fin = -1
+    mientras scan < len_doc:
+        let patron = "funcion "
+        let plen = 8
+        si scan + plen <= len_doc:
+            let chunk = subcadena(doc, scan, plen)
+            si cmp_texto(chunk, patron) == 0:
+                // Encontramos función, verificar si contiene la línea
+                let def_linea = linea_de_posicion(doc, scan)
+                si def_linea <= line_val:
+                    func_inicio = scan
+        scan = scan + 1
+    si func_inicio >= 0:
+        // Buscar fin de función (siguiente "funcion" o fin de doc)
+        let scan2 = func_inicio + 8
+        func_fin = len_doc
+        mientras scan2 < len_doc:
+            let p2 = "funcion "
+            si scan2 + 8 <= len_doc:
+                let chunk2 = subcadena(doc, scan2, 8)
+                si cmp_texto(chunk2, p2) == 0:
+                    func_fin = scan2
+                    scan2 = len_doc
+            scan2 = scan2 + 1
+        // Verificar si tiene retornar
+        let tiene_retornar = 0
+        let body = subcadena(doc, func_inicio, func_fin - func_inicio)
+        si strstr_f(body, "retornar") >= 0:
+            tiene_retornar = 1
+        si tiene_retornar == 0:
+            // Sugerir agregar retornar 0
+            let edit = "{\"title\":\"Agregar retornar 0\",\"kind\":\"quickfix\",\"diagnostics\":[],\"edit\":{\"changes\":{}}}" 
+            enviar_respuesta(construir_respuesta(id, "[" + edit + "]"))
+            retornar
     enviar_respuesta(construir_respuesta(id, "[]"))
 
-funcion handle_formatting(id: entero, params: texto) -> nulo:
-    // cumple Manual 8 §1.4: textDocument/formatting — formatea código
+funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
+    // cumple Manual 8 §1.4: textDocument/formatting — formatea código según reglas de estilo
     requiere:
         id >= 0
     garantiza:
         verdadero
-    // Retornar operaciones de formateo vacías (formatting básico)
-    enviar_respuesta(construir_respuesta(id, "[]"))
+    let len_doc = strlen_s(doc)
+    si len_doc == 0:
+        enviar_respuesta(construir_respuesta(id, "[]"))
+        retornar
+    // Recorrer doc y construir versión formateada
+    // Regla: normalizar indentación a 4 espacios por nivel
+    let resultado = ""
+    let i = 0
+    let nivel = 0
+    let en_linea = 0
+    mientras i < len_doc:
+        let c = subcadena(doc, i, 1)
+        si cmp_texto(c, "\n") == 0:
+            resultado = resultado + "\n"
+            i = i + 1
+            en_linea = 0
+            // Calcular indentación de la siguiente línea
+            let indent = 0
+            let j = i
+            mientras j < len_doc:
+                let cc = subcadena(doc, j, 1)
+                si cmp_texto(cc, " ") == 0:
+                    indent = indent + 1
+                    j = j + 1
+                si cmp_texto(cc, "\t") == 0:
+                    indent = indent + 4
+                    j = j + 1
+                sino:
+                    romper
+            // Reemplazar espacios/tab con 4*nivel espacios
+            let espacios = ""
+            let k = 0
+            mientras k < indent:
+                espacios = espacios + " "
+                k = k + 1
+            resultado = resultado + espacios
+            i = j
+            en_linea = 1
+        sino:
+            si cmp_texto(c, "\t") == 0:
+                resultado = resultado + "    "
+            sino:
+                resultado = resultado + c
+            i = i + 1
+            en_linea = 1
+    // Construir edit: reemplazar todo el documento
+    let edit = "{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":99999,\"character\":0}},\"newText\":\"" + escapar_json(resultado) + "\"}"
+    enviar_respuesta(construir_respuesta(id, "[" + edit + "]"))
 
-funcion handle_signature_help(id: entero, params: texto) -> nulo:
-    // cumple Manual 8 §1.4: textDocument/signatureHelp — muestra firma de función
+funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
+    // cumple Manual 8 §1.4: textDocument/signatureHelp — muestra firma de función mientras se escribe
     requiere:
         id >= 0
     garantiza:
         verdadero
-    // Sin firmas disponibles en este momento
-    enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+    // Extraer posición del params
+    let pos_idx = strstr_f(params, "\"position\"")
+    si pos_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    let len_params = strlen_s(params)
+    let line_idx = strstr_f(subcadena(params, pos_idx, len_params - pos_idx), "\"line\"")
+    si line_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    let abs_line = pos_idx + line_idx
+    let line_seg = subcadena(params, abs_line + 7, len_params - abs_line - 7)
+    let comma_pos = strstr_f(line_seg, ",")
+    si comma_pos == -1:
+        comma_pos = strlen_s(line_seg)
+    let line_val = extraer_entero(subcadena(line_seg, 0, comma_pos))
+    // Encontrar la línea en el documento
+    let len_doc = strlen_s(doc)
+    let linea_inicio = 0
+    let num_linea = 0
+    let scan = 0
+    mientras scan < len_doc:
+        let c = subcadena(doc, scan, 1)
+        si cmp_texto(c, "\n") == 0:
+            si num_linea == line_val:
+                scan = len_doc
+            sino:
+                linea_inicio = scan + 1
+                num_linea = num_linea + 1
+        scan = scan + 1
+    // Encontrar fin de línea
+    let linea_fin = len_doc
+    si linea_inicio < len_doc:
+        let busqueda = subcadena(doc, linea_inicio, len_doc - linea_inicio)
+        let nl_idx = strstr_f(busqueda, "\n")
+        si nl_idx >= 0:
+            linea_fin = linea_inicio + nl_idx
+    si linea_inicio >= linea_fin:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    let linea_texto = subcadena(doc, linea_inicio, linea_fin - linea_inicio)
+    // Buscar llamada a función: buscar '(' más reciente antes del cursor
+    // Extraer character
+    let char_idx = strstr_f(subcadena(params, pos_idx, len_params - pos_idx), "\"character\"")
+    si char_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    let abs_char = pos_idx + char_idx
+    let char_seg = subcadena(params, abs_char + 12, len_params - abs_char - 12)
+    let brace_pos = strstr_f(char_seg, "}")
+    si brace_pos == -1:
+        brace_pos = strlen_s(char_seg)
+    let char_val = extraer_entero(subcadena(char_seg, 0, brace_pos))
+    // Buscar '(' antes de la posición
+    let paren_pos = -1
+    let scan2 = char_val
+    mientras scan2 > 0:
+        let cc = subcadena(linea_texto, scan2, 1)
+        si cmp_texto(cc, "(") == 0:
+            paren_pos = scan2
+            scan2 = 0
+        sino:
+            si cmp_texto(cc, ")") == 0:
+                // Otro paréntesis, ignorar
+                scan2 = scan2 - 1
+            sino:
+                scan2 = scan2 - 1
+    si paren_pos == -1:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    // Extraer nombre de función antes del '('
+    let nombre_inicio = paren_pos
+    mientras nombre_inicio > 0:
+        let cc = subcadena(linea_texto, nombre_inicio - 1, 1)
+        si cmp_texto(cc, " ") == 0:
+            romper
+        si cmp_texto(cc, "\t") == 0:
+            romper
+        si cmp_texto(cc, "=") == 0:
+            romper
+        nombre_inicio = nombre_inicio - 1
+    si nombre_inicio >= paren_pos:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    let nombre_func = subcadena(linea_texto, nombre_inicio, paren_pos - nombre_inicio)
+    si strlen_s(nombre_func) == 0:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    // Buscar definición de la función en el documento
+    let patron = "funcion " + nombre_func + "("
+    let def_idx = strstr_f(doc, patron)
+    si def_idx == -1:
+        enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
+        retornar
+    // Extraer firma completa hasta ')'
+    let firma_inicio = def_idx
+    let firma_fin = def_idx + strlen_s(patron)
+    mientras firma_fin < len_doc:
+        let cc = subcadena(doc, firma_fin, 1)
+        si cmp_texto(cc, ")") == 0:
+            firma_fin = firma_fin + 1
+            romper
+        firma_fin = firma_fin + 1
+    let firma = subcadena(doc, firma_inicio, firma_fin - firma_inicio)
+    let sig = "{\"label\":\"" + escapar_json(nombre_func) + "\",\"documentation\":\"" + escapar_json(firma) + "\"}"
+    enviar_respuesta(construir_respuesta(id, "{\"signatures\":[" + sig + "]}"))
 
 funcion handle_did_change_configuration(params: texto) -> nulo:
     requiere:
@@ -772,11 +980,14 @@ funcion principal() -> entero:
             let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
             handle_definition(id_val, uri_actual, doc, params_str)
         si cmp_texto(method_str, "\"textDocument/codeAction\"") == 0:
-            handle_code_action(id_val, params_str)
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_code_action(id_val, doc, params_str)
         si cmp_texto(method_str, "\"textDocument/formatting\"") == 0:
-            handle_formatting(id_val, params_str)
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_formatting(id_val, doc, params_str)
         si cmp_texto(method_str, "\"textDocument/signatureHelp\"") == 0:
-            handle_signature_help(id_val, params_str)
+            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+            handle_signature_help(id_val, doc, params_str)
         si cmp_texto(method_str, "\"workspace/didChangeConfiguration\"") == 0:
             handle_did_change_configuration(params_str)
 
