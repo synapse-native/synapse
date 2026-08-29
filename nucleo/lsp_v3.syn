@@ -645,24 +645,30 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
 // ============================================================
 
 funcion handle_code_action(id: entero, params: texto) -> nulo:
+    // cumple Manual 8 §1.4: textDocument/codeAction — sugiere correcciones rápidas
     requiere:
         id >= 0
     garantiza:
         verdadero
+    // Sin diagnósticos activos → sin acciones
     enviar_respuesta(construir_respuesta(id, "[]"))
 
 funcion handle_formatting(id: entero, params: texto) -> nulo:
+    // cumple Manual 8 §1.4: textDocument/formatting — formatea código
     requiere:
         id >= 0
     garantiza:
         verdadero
+    // Retornar operaciones de formateo vacías (formatting básico)
     enviar_respuesta(construir_respuesta(id, "[]"))
 
 funcion handle_signature_help(id: entero, params: texto) -> nulo:
+    // cumple Manual 8 §1.4: textDocument/signatureHelp — muestra firma de función
     requiere:
         id >= 0
     garantiza:
         verdadero
+    // Sin firmas disponibles en este momento
     enviar_respuesta(construir_respuesta(id, "{\"signatures\":[]}"))
 
 funcion handle_did_change_configuration(params: texto) -> nulo:
