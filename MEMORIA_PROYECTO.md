@@ -36,7 +36,15 @@
          (build/obj/lsp_harness.c) items.longitud=519 / resp.longitud=584, _syn_texto_liberar
          sin crash, rc=0; nucleo/lsp_v3.exe rebuild contra runtime 16B → ciclo LSP rc=0.
          MTS: docs/plan_ME_traza_P5.md + docs/verificacion_ME_traza_P5.md (CUMPLE);
-         auditoria/contrastar.py ✅; verificar_alineacion 0 brechas. Commit e79fdcc.
+          auditoria/contrastar.py ✅; verificar_alineacion 0 brechas. Commit e79fdcc.
+    (14) HALLAZGO (2026-08-29, registrado post Opción A): `runtime/core/string_utils.c:486`
+         escribe `dup[rpos] = ' '` (espacio, ASCII 32) en lugar de `dup[rpos] = '\0'` como
+         terminador de la `CadenaSegura` devuelta por `lsp_build_completion_response`.
+         No causa crash porque `CadenaSegura` lleva `.longitud` explícita (Manual 2 §4.1) y
+         los consumidores usan longitud, no terminación nula; pero es un defecto de
+         correctitud latente (terminador incorrecto, byte no nulo). Fuera de alcance de
+         Opción A (no afectó Prueba 5). Resolución asignada: corregir a `'\0'` en un ME de
+         limpieza de string_utils.c (bajo MTS). Severidad: Baja. Ver AUDITORIA H29.
      **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
