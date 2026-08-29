@@ -193,7 +193,10 @@ _RT_BINARIOS_EXTRA = [
     # FASE 24: Tiempo fecha/hora (Manual 3 §12.1)
     ("test_tiempo", "test_tiempo.c", [], []),
     # FASE 24: DB SQLite bundled (Manual 3 §12.1)
-    ("test_db", "test_db.c", ["vendor/sqlite3/sqlite3.o"], []),
+    # cumple Manual 3 §12.1: enlazar db.o (impl _syn_db_*) + todo el runtime.
+    # db.o depende de sqlite3.o y del resto del runtime; por eso objs=None
+    # (todos los .o) en vez de solo sqlite3.o, que dejaba undefined _syn_db_*.
+    ("test_db", "test_db.c", None, []),
     # FASE 24: Web HTTP server (Manual 3 §12.1)
     ("test_web", "test_web.c", [], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)
@@ -294,7 +297,9 @@ def _auto_compilar_objetos_runtime():
             deps = [src_path] + rt_objs
             if os.path.exists(exe_path) and os.path.getmtime(exe_path) >= _rt_mtime_max(deps):
                 continue
-            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32"] + extra_flags + ["-o", exe_path]
+            # cumple Manual 9 §5.7: detect_hardware.c (DXGI/COM) necesita estas libs al linkar (A2)
+            link_extras_win = ["-lole32", "-ldxgi", "-luuid"] if sys.platform == "win32" else []
+            cmd = [gcc, "-O2", "-I.", "-I" + root, src_path] + rt_objs + ["-lm", "-lpthread", "-lws2_32"] + link_extras_win + extra_flags + ["-o", exe_path]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if res.returncode != 0:
                 raise RuntimeError(f"no se pudo compilar {bin_name}.exe: {res.stderr[:400]}")

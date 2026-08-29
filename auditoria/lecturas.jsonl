@@ -208,3 +208,5 @@
 {"fecha": "2026-08-29", "archivos": ["docs/manuales/MANUAL 6.md"], "cita": "Manual 6 §5.3", "puntos": "Handshake Ed25519 Zero-Trust verifica en ambos sentidos; claves consistentes (pk derivable de sk)"}
 {"fecha": "2026-08-29", "archivos": ["docs/manuales/MANUAL 2.md"], "cita": "Manual 2 §4.1", "puntos": "CadenaSegura = 16 bytes (tabla Tamaño ABI); texto/cadena/string es longitud+buffer de 16 bytes"}
 {"fecha": "2026-08-29", "archivos": ["docs/manuales/MANUAL 2.md"], "cita": "Manual 2 §9.1", "puntos": "RAII estatico libera deterministicamente al salir de ambito; prohibe malloc/free manual, pool unico del runtime"}
+{"fecha": "2026-08-29", "archivos": ["runtime/core/memory.c"], "cita": "Manual 4 §6", "puntos": "ComponentArena (§6.2-6.6): struct + comp_arena_crear/comp_alloc/comp_destroy con liberacion en cascata de hijos"}
+{"fecha": "2026-08-29", "archivos": ["tests/conftest.py"], "cita": "Manual 3 §12.1", "puntos": "Modulo DB lib/db.syq: Conexion a SQLite (FFI libsqlite3). El binario test_db debe enlazar db.o (impl _syn_db_*) y sqlite3.o para resolverse."}
