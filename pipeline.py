@@ -114,6 +114,12 @@ _RT_QUANTUM_FUENTES = (
     "nucleo/surface_code.c",
 )
 
+# Módulos federated (Manual 5 §6.2): std.federated declara externs _syn_fed_*.
+# Sin enlazado, programas que usan importar std.federated fallan al link.
+_RT_FEDERATED_FUENTES = (
+    "nucleo/federated.c",
+)
+
 # ME-R8 (D5): modulos de IA nativa (M13.4/M13.5/M13.6) que std.modelo declara
 # como externs (_syn_ft_*, _syn_kd_*, _syn_qt_*). No se enlazaban -> programas
 # que importan std.modelo (v.g. opensyn/) fallaban al link. Opcionales.
@@ -805,6 +811,14 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 return 1
             for qo in _compilar_quantum_objetos(compiler, base_flags, gcc_opt):
                 rt_objs += f' "{qo}"'
+            # cumple Manual 5 §6.2: módulo federated para std.federated
+            for fed_src in _RT_FEDERATED_FUENTES:
+                fed_nombre = os.path.splitext(os.path.basename(fed_src))[0]
+                o = _compilar_objeto_cacheado(compiler, gcc_opt, base_flags, fed_src, fed_nombre)
+                if o is None:
+                    print(f"[ME-R8][!] Modulo federated {fed_src} no compilo; se omite", file=sys.stderr)
+                    continue
+                rt_objs += f' "{o}"'
             # ME-R8 (D5): modulos de IA nativa (fine_tuning/distillation/quantization)
             for ia_src in _RT_IA_FUENTES:
                 ia_nombre = os.path.splitext(os.path.basename(ia_src))[0]
