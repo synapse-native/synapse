@@ -1,5 +1,7 @@
 // runtime/core/string_utils.c — NEW string utilities for Synapse LSP
 // Manual 8 §1.7: leer_bytes, escapar_json, a_texto_entero, a_texto_decimal
+// Manual 2 §9.1: toda CadenaSegura devuelta usa pool_alloc (nunca malloc del SO)
+//   y el RAII de Synapse la libera con pool_free via _syn_texto_liberar.
 // Compilar: gcc -c runtime/core/string_utils.c -o string_utils.o
 
 #include <stdio.h>
@@ -13,14 +15,14 @@
 
 CadenaSegura _syn_leer_bytes(int64_t cantidad) {
     if (cantidad <= 0) return (CadenaSegura){0, ""};
-    char* buf = (char*)malloc((size_t)(cantidad + 1));
+    char* buf = (char*)pool_alloc((size_t)(cantidad + 1));
     if (!buf) return (CadenaSegura){0, ""};
 
     int64_t leidos = 0;
     while (leidos < cantidad) {
         size_t n = fread(buf + leidos, 1, (size_t)(cantidad - leidos), stdin);
         if (n == 0) {
-            free(buf);
+            pool_free(buf);
             return (CadenaSegura){0, ""};
         }
         leidos += (int64_t)n;
@@ -37,7 +39,7 @@ CadenaSegura _syn_escapar_json(CadenaSegura t) {
     if (t.datos == NULL || t.longitud == 0) return t;
 
     int max_len = t.longitud * 6 + 1;
-    char* buf = (char*)malloc(max_len);
+    char* buf = (char*)pool_alloc(max_len);
     if (!buf) return (CadenaSegura){0, ""};
 
     int pos = 0;
@@ -68,7 +70,7 @@ CadenaSegura _syn_escapar_json(CadenaSegura t) {
 CadenaSegura _syn_a_texto_entero(int64_t valor) {
     char buf[32];
     int len = snprintf(buf, sizeof(buf), "%lld", (long long)valor);
-    char* dup = (char*)malloc(len + 1);
+    char* dup = (char*)pool_alloc(len + 1);
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, buf, len + 1);
     return (CadenaSegura){.longitud = len, .datos = dup};
@@ -77,7 +79,7 @@ CadenaSegura _syn_a_texto_entero(int64_t valor) {
 CadenaSegura _syn_a_texto_decimal(double valor) {
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%g", valor);
-    char* dup = (char*)malloc(len + 1);
+    char* dup = (char*)pool_alloc(len + 1);
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, buf, len + 1);
     return (CadenaSegura){.longitud = len, .datos = dup};
@@ -135,7 +137,7 @@ int64_t _syn_atoi(CadenaSegura texto) {
 
 CadenaSegura _syn_strcpy(CadenaSegura texto) {
     if (texto.datos == NULL || texto.longitud == 0) return (CadenaSegura){0, ""};
-    char* dup = (char*)malloc(texto.longitud + 1);
+    char* dup = (char*)pool_alloc(texto.longitud + 1);
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, texto.datos, texto.longitud);
     dup[texto.longitud] = '\0';
@@ -145,7 +147,7 @@ CadenaSegura _syn_strcpy(CadenaSegura texto) {
 CadenaSegura _syn_strncpy(CadenaSegura texto, int64_t max_len) {
     if (texto.datos == NULL || texto.longitud == 0) return (CadenaSegura){0, ""};
     int len = texto.longitud < (int)max_len ? texto.longitud : (int)max_len;
-    char* dup = (char*)malloc(len + 1);
+    char* dup = (char*)pool_alloc(len + 1);
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, texto.datos, len);
     dup[len] = '\0';
@@ -170,14 +172,14 @@ void lsp_doc_store(CadenaSegura s) {
 }
 
 CadenaSegura lsp_doc_get(void) {
-    // Return a malloc'd copy so Synapse RAII can safely free it
-    // (previous: returned pointer to static buffer, RAII freed it -> heap corruption)
+    // cumple Manual 2 §9.1: devolver copia pool_alloc para que el RAII de Synapse
+    // la libere con pool_free (anteriormente malloc + es_externo=1 para evitar crash).
     if (_G_lsp_doc_len <= 0) return (CadenaSegura){0, ""};
-    char* dup = (char*)malloc((size_t)(_G_lsp_doc_len + 1));
+    char* dup = (char*)pool_alloc((size_t)(_G_lsp_doc_len + 1));
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _G_lsp_doc_buf, (size_t)_G_lsp_doc_len);
     dup[_G_lsp_doc_len] = '\0';
-    return (CadenaSegura){ .longitud = _G_lsp_doc_len, .datos = dup, .es_externo = 1 };
+    return (CadenaSegura){ .longitud = _G_lsp_doc_len, .datos = dup, };
 }
 
 void lsp_doc_clear(void) {
@@ -238,11 +240,11 @@ CadenaSegura lsp_extract_doc_functions(void) {
     }
     pos += snprintf(_result_buf_fn + pos, sizeof(_result_buf_fn) - pos, "]");
 
-    char* dup = (char*)malloc((size_t)(pos + 1));
+    char* dup = (char*)pool_alloc((size_t)(pos + 1));
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _result_buf_fn, (size_t)pos);
     dup[pos] = '\0';
-    return (CadenaSegura){ .longitud = pos, .datos = dup, .es_externo = 1 };
+    return (CadenaSegura){ .longitud = pos, .datos = dup, };
 }
 
 
@@ -352,11 +354,11 @@ CadenaSegura lsp_get_enclosing_return_type(CadenaSegura word) {
     }
 
     // Step 6: Return a malloc'd copy
-    char* result = (char*)malloc((size_t)(type_len + 1));
+    char* result = (char*)pool_alloc((size_t)(type_len + 1));
     if (!result) return (CadenaSegura){0, ""};
     memcpy(result, doc + type_start, (size_t)type_len);
     result[type_len] = '\0';
-    return (CadenaSegura){ .longitud = type_len, .datos = result, .es_externo = 1 };
+    return (CadenaSegura){ .longitud = type_len, .datos = result, };
 }
 
 
@@ -441,11 +443,11 @@ CadenaSegura lsp_build_completion_items(void) {
     pos += snprintf(_result_buf_ci + pos, sizeof(_result_buf_ci) - pos, "]");
 
     // Return malloc'd copy
-    char* dup = (char*)malloc((size_t)(pos + 1));
+    char* dup = (char*)pool_alloc((size_t)(pos + 1));
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, _result_buf_ci, (size_t)pos);
     dup[pos] = '\0';
-    return (CadenaSegura){ .longitud = pos, .datos = dup, .es_externo = 1 };
+    return (CadenaSegura){ .longitud = pos, .datos = dup, };
 }
 
 
@@ -478,9 +480,9 @@ CadenaSegura lsp_build_completion_response(int64_t id) {
     _syn_texto_liberar(items);
 
     // Return malloc'd copy
-    char* dup = (char*)malloc((size_t)(rpos + 1));
+    char* dup = (char*)pool_alloc((size_t)(rpos + 1));
     if (!dup) return (CadenaSegura){0, ""};
     memcpy(dup, resp_buf, (size_t)rpos);
     dup[rpos] = ' ';
-    return (CadenaSegura){ .longitud = rpos, .datos = dup, .es_externo = 1 };
+    return (CadenaSegura){ .longitud = rpos, .datos = dup, };
 }

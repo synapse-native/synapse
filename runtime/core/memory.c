@@ -454,7 +454,7 @@ CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
 }
 
 void _syn_texto_liberar(CadenaSegura s) {
-    if (s.datos && !s.es_externo) pool_free((void*)s.datos);
+    if (s.datos) pool_free((void*)s.datos);  // cumple Manual 2 §4.1 + §9.1: todo CadenaSegura es pool_alloc, RAII libera con pool_free
 }
 
 // ============================================================

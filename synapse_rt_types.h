@@ -11,7 +11,9 @@
 #include <pthread.h>
 
 // --- Core type definitions (deben coincidir exactamente con las emitidas por el generador) ---
-typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
+// cumple Manual 2 §4.1: CadenaSegura = 16 bytes exactos (int longitud + pad4 + const char* datos).
+// Sin campo es_externo: toda devolucion usa pool_alloc y el RAII libera con pool_free (Manual 2 §9.1).
+typedef struct { int longitud; const char* datos; } CadenaSegura;
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 typedef struct { FILE* stream; int es_valido; int es_virtual; const char* virtual_data; int virtual_len; } Canal;
 

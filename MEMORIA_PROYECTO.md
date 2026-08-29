@@ -20,7 +20,24 @@
     (12) lsp_build_completion_items() retorna CadenaSegura con es_externo=1; funciona desde
          dispatch Synapse (NO desde handler interno). Patron exitoso: C func retorna items,
          Synapse concat y enviar_respuesta.RAII no libera por es_externo.
-    **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
+        (13) RESUELTO (2026-08-29, Opción A del Arquitecto): el campo `es_externo` en CadenaSegura
+         era una DEVIACIÓN de Manual 2 §4.1 (CadenaSegura = 16 bytes). Causaba ABI mismatch
+         24B (runtime) vs 16B (test inmutable + generador C nucleo/generator.c) → Prueba 5
+         "B verifica A" fallaba por desborde de 8 bytes al devolver CadenaSegura por valor
+         (gdb watchpoint confirmó: pb contigua a pa en el frame, offset 16; el write de 24B
+         cero pa.longitud dentro de cluster.c:67 → extraer_parte copia 0 bytes → pub_a vacío
+         → va=-1). Fix Opción A (Manual 2 §4.1 + §9.1): eliminar es_externo de
+         synapse_rt_types.h (16B exactos); _syn_texto_liberar libera SIEMPRE con pool_free;
+         convertir TODAS las devoluciones CadenaSegura de string_utils.c de malloc→pool_alloc
+         (11 sitios) y free→pool_free, eliminando los 5 `.es_externo=1`. Alineados a 16B:
+         nucleo/*.c (6), compilador/generator/generator.py:653, tests/integration/
+         test_cluster_handshake.c y 770 tmp*.c de fuzz (bulk). NO se modificó el test inmutable.
+         Evidencia: test_cluster_handshake_e2e.py 6/6 ("Pasados: 21 Fallos: 0"); harness LSP
+         (build/obj/lsp_harness.c) items.longitud=519 / resp.longitud=584, _syn_texto_liberar
+         sin crash, rc=0; nucleo/lsp_v3.exe rebuild contra runtime 16B → ciclo LSP rc=0.
+         MTS: docs/plan_ME_traza_P5.md + docs/verificacion_ME_traza_P5.md (CUMPLE);
+         auditoria/contrastar.py ✅; verificar_alineacion 0 brechas. Commit 394e887.
+     **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
 

@@ -650,7 +650,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("#include <stddef.h>")
     ctx.write_line("")
     ctx.write_line(
-        "typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;"
+        "typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 §4.1"
     )
     ctx.write_line("")
     # A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): el runtime

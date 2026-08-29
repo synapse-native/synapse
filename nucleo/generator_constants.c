@@ -519,354 +519,78 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-struct ArgumentoTransferido;
-struct AsignacionCampo;
-struct AsignacionVariable;
-struct BloqueInseguro;
-struct ConstructorTipo;
-struct DeclaracionExport;
-struct DeclaracionExterna;
-struct DeclaracionTipo;
-struct DeclaracionVariable;
-struct DefinicionEstructura;
-struct DefinicionFuncion;
-struct ExprAccesoCampo;
-struct ExprCrearCanal;
-struct ExprDereferencia;
-struct ExprIndice;
-struct ExprObtenerDireccion;
-struct ExprPropagar;
-struct ExprRecibirCanal;
-struct ExprTensor;
-struct Identificador;
-struct ImportarC;
-struct ListaNodo;
-struct ListaParametro;
-struct LiteralCadena;
-struct LiteralDecimal;
-struct LiteralNulo;
-struct LiteralNumero;
-struct LlamadaFuncion;
-struct LogLlamada;
-struct Nodo;
-struct NodoCaso;
-struct NodoCoincidir;
-struct OpBinaria;
-struct OpUnaria;
-struct Parametro;
-struct Programa;
-struct SentenciaDelegar;
-struct SentenciaEnviarCanal;
-struct SentenciaEscuchar;
-struct SentenciaExpr;
-struct SentenciaImportar;
-struct SentenciaLanzar;
-struct SentenciaMientras;
-struct SentenciaPara;
-struct SentenciaRecuperar;
-struct SentenciaRetornar;
-struct SentenciaRomper;
-struct SentenciaSi;
-struct SentenciaSiguiente;
-struct Token;
-
-typedef struct ArgumentoTransferido {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} ArgumentoTransferido;
-
-typedef struct AsignacionCampo {
-    CadenaSegura tipo;
-    struct Nodo* objeto;
-    CadenaSegura nombre_campo;
-    struct Nodo* expresion;
-} AsignacionCampo;
-
-typedef struct AsignacionVariable {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct Nodo* expresion;
-    int es_constante;
-    int64_t linea;
-    int64_t columna;
-} AsignacionVariable;
-
-typedef struct BloqueInseguro {
-    CadenaSegura tipo;
-    struct ListaNodo* cuerpo;
-} BloqueInseguro;
-
-typedef struct ConstructorTipo {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaNodo* tipos;
-} ConstructorTipo;
-
-typedef struct DeclaracionExport {
-    CadenaSegura tipo;
-    CadenaSegura destino;
-    struct Nodo* funcion;
-} DeclaracionExport;
-
-typedef struct DeclaracionExterna {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* parametros;
-    CadenaSegura tipo_retorno;
-    int64_t linea;
-    int64_t columna;
-} DeclaracionExterna;
-
-typedef struct DeclaracionTipo {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaNodo* parametros_tipo;
-    CadenaSegura tipo_base;
-    struct ListaNodo* constructores;
-    int64_t linea;
-    int64_t columna;
-} DeclaracionTipo;
-
-typedef struct DeclaracionVariable {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    CadenaSegura tipo_param;
-    struct Nodo* expresion;
-    int64_t linea;
-    int64_t columna;
-} DeclaracionVariable;
-
-typedef struct DefinicionEstructura {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* campos;
-    int64_t linea;
-    int64_t columna;
-} DefinicionEstructura;
-
-typedef struct DefinicionFuncion {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaParametro* parametros;
-    CadenaSegura tipo_retorno;
-    struct ListaNodo* requiere;
-    struct ListaNodo* garantiza;
-    struct ListaNodo* cuerpo;
-    int64_t linea;
-    int64_t columna;
-} DefinicionFuncion;
-
-typedef struct ExprAccesoCampo {
-    CadenaSegura tipo;
-    struct Nodo* objeto;
-    CadenaSegura nombre_campo;
-} ExprAccesoCampo;
-
-typedef struct ExprCrearCanal {
-    CadenaSegura tipo;
-    CadenaSegura tipo_contenido;
-    struct Nodo* capacidad;
-} ExprCrearCanal;
-
-typedef struct ExprDereferencia {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} ExprDereferencia;
-
-typedef struct ExprIndice {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-    struct Nodo* indice;
-} ExprIndice;
-
-typedef struct ExprObtenerDireccion {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-    int es_mutable;
-    int64_t linea;
-    int64_t columna;
-} ExprObtenerDireccion;
-
-typedef struct ExprPropagar {
-    CadenaSegura tipo;
-    struct Nodo* expresion;
-} ExprPropagar;
-
-typedef struct ExprRecibirCanal {
-    CadenaSegura tipo;
-    struct Nodo* canal;
-} ExprRecibirCanal;
-
-typedef struct ExprTensor {
-    CadenaSegura tipo;
-    struct Nodo* filas;
-    struct Nodo* columnas;
-} ExprTensor;
-
-typedef struct Identificador {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    int64_t linea;
-    int64_t columna;
-} Identificador;
-
-typedef struct ImportarC {
-    CadenaSegura tipo;
-    CadenaSegura ruta;
-    int es_sistema;
-} ImportarC;
-
-typedef struct ListaParametro {
-    struct Parametro* cabeza;
-    struct ListaParametro* cola;
-} ListaParametro;
-
-typedef struct LiteralCadena {
-    CadenaSegura tipo;
-    CadenaSegura valor;
-} LiteralCadena;
-
-typedef struct LiteralDecimal {
-    CadenaSegura tipo;
-    double valor;
-} LiteralDecimal;
-
-typedef struct LiteralNulo {
-    CadenaSegura tipo;
-} LiteralNulo;
-
-typedef struct LiteralNumero {
-    CadenaSegura tipo;
-    int64_t valor;
-} LiteralNumero;
-
-typedef struct LlamadaFuncion {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    struct ListaNodo* argumentos;
-    int64_t linea;
-    int64_t columna;
-} LlamadaFuncion;
-
-typedef struct LogLlamada {
-    CadenaSegura tipo;
-    struct ListaNodo* argumentos;
-} LogLlamada;
-
-typedef struct NodoCaso {
-    CadenaSegura tipo;
-    CadenaSegura patron;
-    struct ListaNodo* cuerpo;
-} NodoCaso;
-
-typedef struct NodoCoincidir {
-    CadenaSegura tipo;
-    struct Nodo* expresion;
-    struct ListaNodo* casos;
-    int64_t linea;
-    int64_t columna;
-} NodoCoincidir;
-
-typedef struct OpBinaria {
-    CadenaSegura tipo;
-    struct Nodo* izquierdo;
-    struct Token* operador;
-    struct Nodo* derecho;
-} OpBinaria;
-
-typedef struct OpUnaria {
-    CadenaSegura tipo;
-    struct Token* operador;
-    struct Nodo* expr;
-} OpUnaria;
-
-typedef struct Parametro {
-    CadenaSegura tipo;
-    CadenaSegura nombre;
-    CadenaSegura tipo_param;
-    int es_transferencia;
-    int64_t linea;
-    int64_t columna;
-} Parametro;
-
-typedef struct SentenciaDelegar {
-    CadenaSegura tipo;
-    struct Nodo* expresion;
-} SentenciaDelegar;
-
-typedef struct SentenciaEnviarCanal {
-    CadenaSegura tipo;
-    struct Nodo* canal;
-    struct Nodo* valor;
-    int64_t linea;
-    int64_t columna;
-} SentenciaEnviarCanal;
-
-typedef struct SentenciaEscuchar {
-    CadenaSegura tipo;
-    struct Nodo* canal;
-    struct ListaNodo* cuerpo;
-} SentenciaEscuchar;
-
-typedef struct SentenciaExpr {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} SentenciaExpr;
-
-typedef struct SentenciaImportar {
-    CadenaSegura tipo;
-    CadenaSegura ruta;
-} SentenciaImportar;
-
-typedef struct SentenciaLanzar {
-    CadenaSegura tipo;
-    struct Nodo* llamada;
-} SentenciaLanzar;
-
-typedef struct SentenciaMientras {
-    CadenaSegura tipo;
-    struct Nodo* condicion;
-    struct ListaNodo* cuerpo;
-} SentenciaMientras;
-
-typedef struct SentenciaPara {
-    CadenaSegura tipo;
-    int64_t linea;
-    int64_t columna;
-    CadenaSegura nombre;
-    struct Nodo* inicializacion;
-    struct Nodo* condicion;
-    struct Nodo* incremento;
-    struct ListaNodo* cuerpo;
-} SentenciaPara;
-
-typedef struct SentenciaRecuperar {
-    CadenaSegura tipo;
-    struct Nodo* accion_critica;
-    struct Nodo* plan_b;
-} SentenciaRecuperar;
-
-typedef struct SentenciaRetornar {
-    CadenaSegura tipo;
-    struct Nodo* expr;
-} SentenciaRetornar;
-
-typedef struct SentenciaRomper {
-    CadenaSegura tipo;
-} SentenciaRomper;
-
-typedef struct SentenciaSi {
-    CadenaSegura tipo;
-    struct Nodo* condicion;
-    struct ListaNodo* cuerpo;
-    struct ListaNodo* cuerpo_sino;
-} SentenciaSi;
-
-typedef struct SentenciaSiguiente {
-    CadenaSegura tipo;
-} SentenciaSiguiente;
-
 static inline int risky_call(void) { return 0; }
+#define NODO_PROGRAMA (1LL)
+#define NODO_FUNCION (2LL)
+#define NODO_SI (3LL)
+#define NODO_MIENTRAS (4LL)
+#define NODO_RETORNAR (5LL)
+#define NODO_EXPR (6LL)
+#define NODO_ASIGNACION (7LL)
+#define NODO_IDENTIFICADOR (8LL)
+#define NODO_NUMERO (9LL)
+#define NODO_DECIMAL (10LL)
+#define NODO_CADENA_LIT (11LL)
+#define NODO_BINARIA (12LL)
+#define NODO_UNARIA (13LL)
+#define NODO_LLAMADA (14LL)
+#define NODO_PARAMETRO (15LL)
+#define NODO_ESTRUCTURA (16LL)
+#define NODO_IMPORTAR (17LL)
+#define NODO_LANZAR (18LL)
+#define NODO_ESCUCHAR (19LL)
+#define NODO_ROMPER (20LL)
+#define NODO_SIGUIENTE (21LL)
+#define NODO_BOOLEANO (22LL)
+#define NODO_CONSTANTE (23LL)
+#define NODO_INSEGURO (24LL)
+#define NODO_IMPORTAR_C (25LL)
+#define NODO_EXTERNO (26LL)
+#define NODO_RECUPERAR (27LL)
+#define NODO_TENSOR (28LL)
+#define NODO_INDICE (29LL)
+#define NODO_TRANSFERIDO (30LL)
+#define NODO_ACCESO_CAMPO (31LL)
+#define NODO_ASIGNACION_CAMPO (32LL)
+#define NODO_PARRAFO (33LL)
+#define NODO_DECLARACION (34LL)
+#define NODO_LOG (35LL)
+#define NODO_PUNTERO (36LL)
+#define NODO_DEREF (37LL)
+#define NODO_COINCIDIR (38LL)
+#define NODO_CASO (39LL)
+#define NODO_ASM (40LL)
+#define NODO_CANAL_CREAR (41LL)
+#define NODO_ENVIAR_CANAL (42LL)
+#define NODO_RECIBIR_CANAL (43LL)
+#define NODO_VACIO (44LL)
+#define NODO_PARA (45LL)
+#define NODO_CONTRATO (46LL)
+#define T_IDENTIFICADOR (19LL)
+#define T_NUMERO (20LL)
+#define T_CADENA (22LL)
+#define T_FLECHA_DER (37LL)
+#define T_PAREN_IZQ (38LL)
+#define T_PAREN_DER (39LL)
+#define T_DOSPUNTOS (40LL)
+#define T_COMA (41LL)
+#define T_NUEVALINEA (42LL)
+#define T_INDENTAR (43LL)
+#define T_DESINDENTAR (44LL)
+#define T_ASIGNAR (29LL)
+#define T_MAS (30LL)
+#define T_MENOS (31LL)
+#define T_POR (32LL)
+#define T_DIV (33LL)
+#define T_MOD (34LL)
+#define T_PUNTO (13LL)
+#define T_IGUAL (25LL)
+#define T_DISTINTO (26LL)
+#define T_MENOR (24LL)
+#define T_MAYOR (23LL)
+#define T_MENOR_IGUAL (27LL)
+#define T_MAYOR_IGUAL (28LL)
+#define T_Y (14LL)
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
