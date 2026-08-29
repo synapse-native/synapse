@@ -14,6 +14,30 @@
 #include <sys/sysinfo.h>
 #endif
 
+#ifdef _WIN32
+// cumple Manual 9 §5.7: VRAM total de la GPU en bytes (0 si no hay GPU).
+// DXGI DedicatedVideoMemory es la fuente correcta; WinSAT GraphicsScore y
+// GetDeviceCaps no reportan VRAM real (hallazgo A2 de R_AUDIT_DESV).
+static int64_t _hw_vram_bytes_dxgi(void) {
+    int64_t total = 0;
+    HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) return 0;
+    IDXGIFactory1* factory = NULL;
+    if (SUCCEEDED(CreateDXGIFactory1(&IID_IDXGIFactory1, (void**)&factory)) && factory) {
+        IDXGIAdapter* adapter = NULL;
+        for (UINT i = 0; factory->lpVtbl->EnumAdapters(factory, i, &adapter) == S_OK; i++) {
+            DXGI_ADAPTER_DESC desc;
+            if (adapter->lpVtbl->GetDesc(adapter, &desc) == S_OK)
+                total += (int64_t)desc.DedicatedVideoMemory;
+            adapter->lpVtbl->Release(adapter);
+        }
+        factory->lpVtbl->Release(factory);
+        CoUninitialize();
+    }
+    return total;
+}
+#endif
+
 int synapse_detectar_hardware(HwProfile* perfil) {
     if (!perfil) return -1;
     memset(perfil, 0, sizeof(HwProfile));
@@ -108,6 +132,26 @@ int synapse_detectar_hardware(HwProfile* perfil) {
 
     synapse_hw_sugerir_config(perfil);
     return 0;
+}
+
+int64_t detect_vram_total(void) {
+    // cumple Manual 9 §5.7 / ANEXO: VRAM total de la GPU en bytes (0 si no hay GPU).
+#ifdef _WIN32
+    return _hw_vram_bytes_dxgi();
+#else
+    FILE* nv = popen("nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null", "r");
+    if (nv) {
+        char buf[64];
+        if (fgets(buf, sizeof(buf), nv)) {
+            int mb = atoi(buf);
+            pclose(nv);
+            if (mb > 0) return (int64_t)mb * 1024 * 1024;
+        } else {
+            pclose(nv);
+        }
+    }
+    return 0;
+#endif
 }
 
 void synapse_hw_sugerir_config(HwProfile* perfil) {

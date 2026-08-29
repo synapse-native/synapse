@@ -24,7 +24,7 @@ extern char _G_fn_ret_tipo_c[64];  // F5-1
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; } CadenaSegura;
+typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 §4.1
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -139,9 +139,6 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #endif
 #ifndef ERR_MODULE_STD_NOT_FOUND
 #define ERR_MODULE_STD_NOT_FOUND (26LL)
-#endif
-#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
-#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
 #endif
 #ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
 #define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
@@ -389,6 +386,7 @@ typedef struct Resultado {
     } dato;
 } Resultado;
 
+static inline int risky_call(void) { return 0; }
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 int64_t ejecutar_comando(CadenaSegura cmd);
@@ -396,8 +394,8 @@ int64_t eliminar_archivo(CadenaSegura ruta);
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
 int existe_archivo(CadenaSegura ruta);
 CadenaSegura leer_archivo(CadenaSegura ruta);
+CadenaSegura leer_bytes(int64_t cantidad);
 CadenaSegura obtener_env(CadenaSegura nombre);
-int64_t principal(void);
 int64_t prueba_clave_incorrecta(void);
 int64_t prueba_enviar_datos_canal(void);
 int64_t prueba_enviar_hello(void);
@@ -426,6 +424,13 @@ extern CadenaSegura _syn_leer(Canal c);
 extern void _syn_escribir(CadenaSegura texto);
 extern void _syn_escribir_linea(CadenaSegura texto);
 extern CadenaSegura _syn_leer_linea(void);
+extern CadenaSegura _syn_leer_bytes(int64_t cantidad);
+extern int64_t _syn_fgetc_stdin(void);
+extern int64_t _syn_fprintf(int64_t canalm, CadenaSegura formato);
+extern int64_t _syn_fprintf_i(int64_t canalm, CadenaSegura formato, int64_t valor);
+extern int64_t _syn_fprintf_it(int64_t canalm, CadenaSegura formato, int64_t val1, CadenaSegura val2);
+extern void _syn_fflush(int64_t canalm);
+extern void _syn_setbuf_null(int64_t canalm);
 extern CadenaSegura cluster_generar_par_claves(void);
 extern CadenaSegura cluster_firmar_mensaje(CadenaSegura mensaje, CadenaSegura clave_privada_hex);
 extern int64_t cluster_verificar_firma(CadenaSegura mensaje, CadenaSegura firma_hex, CadenaSegura clave_publica_hex);

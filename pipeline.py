@@ -796,7 +796,8 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             else:
                 platform_flags += " -Wl,--stack,8388608"
 
-        linker_net = "-lws2_32" if sys.platform == "win32" else ""
+        # cumple Manual 9 §5.7: detect_hardware.c usa DXGI/COM para VRAM real (A2)
+        linker_net = "-lws2_32 -lole32 -ldxgi -luuid" if sys.platform == "win32" else ""
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
         no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
         base_flags = f'{platform_flags} {no_std_flags} {env_gcc_flags} -I"{SYNAPSE_BIN}"'.strip()

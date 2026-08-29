@@ -173,7 +173,7 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-int64_t principal(void) {
+int64_t _principal_impl(void) {
     int64_t total_fallos;
     _simd_detectar();
     total_fallos = 0LL;
@@ -583,7 +583,7 @@ int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    principal();
+    _principal_impl();
     synapse_esperar_hilos();
     synapse_esperar_fibras();
     pool_destroy();

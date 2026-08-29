@@ -18,9 +18,10 @@ implementacion:
   3. HELLO_RESP: también binario [32][32][64] con prefijo `HELLO_RESP:`.
   4. `cluster_enviar_hello` (no firmado, discovery): se mantiene textual
      (no especificado en manual como binario).
-oraculo: tests/test_cluster_handshake_e2e.c compila y ejecuta (rc=0);
-  tests/integration/test_cluster_adv_10.py verifica presencia de
-  cluster_enviar_hello_firmado.
+oraculo: tests/test_hello_wire.c (TDD runtime, compila con rt_objs y ejecuta
+  rc=0, "Fallos: 0"): verifica emisor empaqueta binario 134B [nonce32][pk32]
+  [firma64] y receptor parsea binario 139B HELLO_RESP con firma de servidor
+  valida. Wrapper: tests/integration/test_hello_wire.py.
 
 ## Requisito 2: HELLO_RESP también en formato binario
 
@@ -33,4 +34,6 @@ implementacion: el response se construye como buffer binario 128 bytes
   con prefijo `HELLO_RESP:` (11 bytes). El parser del cliente (si existe)
   debe adaptarse. Por ahora el parser del servidor es el único receiver
   documentado.
-oraculo: tests/test_cluster_handshake_e2e.c — test 7 (Envio HELLO) pasa.
+oraculo: tests/test_hello_wire.c valida HELLO_RESP binario 139B con firma de
+  servidor Ed25519 verificable (round-trip en el mismo proceso via
+  cluster_iniciar_nodo / cluster_recibir_paquete).

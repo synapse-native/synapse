@@ -1,5 +1,6 @@
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
+// cumple Manual 6 §5.3 (ejemplo hello-world del otro agente, paridad handshake)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
 
@@ -16,7 +17,7 @@
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; } CadenaSegura;
+typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -131,9 +132,6 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #endif
 #ifndef ERR_MODULE_STD_NOT_FOUND
 #define ERR_MODULE_STD_NOT_FOUND (26LL)
-#endif
-#ifndef ERR_SEM_ACCESO_MEMORIA_MOVIDA
-#define ERR_SEM_ACCESO_MEMORIA_MOVIDA (23LL)
 #endif
 #ifndef ERR_SEM_ARGUMENTOS_INVALIDOS
 #define ERR_SEM_ARGUMENTOS_INVALIDOS (19LL)
@@ -522,9 +520,9 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-void principal(void);
+static inline int risky_call(void) { return 0; }
 
-void principal(void) {
+void _principal_impl(void) {
     _simd_detectar();
     escribir_linea((CadenaSegura){ .longitud = (int)strlen("Hola desde Synapse!"), .datos = "Hola desde Synapse!" });
       /* [Lifetime Scope: exit depth=0] */
@@ -534,7 +532,7 @@ int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    principal();
+    _principal_impl();
     synapse_esperar_hilos();
     synapse_esperar_fibras();
     pool_destroy();

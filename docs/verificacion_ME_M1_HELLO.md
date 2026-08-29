@@ -10,7 +10,10 @@
   (6 prefix + 128 data) en vez de sscanf de campos hex. Los bytes se
   re-codifican a hex para verificación de firma Ed25519.
 - Oración de oracle: `runtime/core/cluster.c` compila con GCC (rc=0) y
-  `tests/unit/test_axon_crypto.py` ejecuta (fixture autouse recompila cluster.o).
+  `tests/test_hello_wire.c` (TDD runtime) compila y ejecuta rc=0 con "Fallos: 0"
+  (13/13): emisor empaqueta binario 134B [nonce32][pk32][firma64] y receptor
+  parsea binario 139B HELLO_RESP con firma de servidor Ed25519 verificable.
+  Wrapper pytest: `tests/integration/test_hello_wire.py` (rc=0, 1 passed).
 
 ## Requisito 2: HELLO_RESP también en formato binario
 
