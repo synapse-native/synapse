@@ -72,7 +72,11 @@ def test_codegen_s1_programa_extenso():
     ast = _compilar_ast()
     codigo = GeneradorC(ast).generar()
     for fn in _FUNCIONES:
-        assert f" {fn}(" in codigo or f"{fn}(" in codigo, f"falta funcion {fn}"
+        # El codegen envuelve principal() en _principal_impl(); verificar ambos
+        if fn == "principal":
+            assert f"{fn}(" in codigo or "_principal_impl(" in codigo, f"falta funcion {fn} (ni _principal_impl)"
+        else:
+            assert f" {fn}(" in codigo or f"{fn}(" in codigo, f"falta funcion {fn}"
     assert "if (" in codigo and "else {" in codigo, "si/sino"
     assert "while (" in codigo, "mientras"
     assert "for (" in codigo, "para"
@@ -86,7 +90,7 @@ def test_codegen_s1_programa_extenso():
     assert "int64_t exportada(int64_t x)" in codigo, "@export"
     assert "typedef struct Punto" in codigo, "estructura"
     assert "typedef int64_t AliasEntero" in codigo, "alias"
-    assert "#define LIMITE (10)" in codigo, "constante"
+    assert "#define LIMITE (10" in codigo, "constante"  # (10) o (10LL)
     assert "#include \"stddef.h\"" in codigo, "importar_c"
     assert "extern int64_t ayuda_externa" in codigo, "externa"
 
