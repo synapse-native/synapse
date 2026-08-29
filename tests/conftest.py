@@ -199,6 +199,9 @@ _RT_BINARIOS_EXTRA = [
     ("test_db", "test_db.c", None, []),
     # D-1 (Manual 4 §5.2): primitivas rc/arc del runtime (enlaza todo el runtime).
     ("test_rc_cleanup", "test_rc_cleanup.c", None, []),
+    # D-1.2 (Manual 4 §5.2/§3.2/§3.3): emisión nativa del decremento al cierre
+    # de scope (enlaza todo el runtime para resolver _syn_rc_*/_syn_arc_*).
+    ("test_rc_scope_cleanup", "test_rc_scope_cleanup.c", None, []),
     # FASE 24: Web HTTP server (Manual 3 §12.1)
     ("test_web", "test_web.c", [], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)

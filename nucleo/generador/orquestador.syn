@@ -119,6 +119,8 @@ funcion generar(programa: Programa, ruta: cadena) -> entero:
     gen_emitir_linea(est, "int _G_scope_vars_depth[256];")
     gen_emitir_linea(est, "char _G_scope_vars_names[256][64];")
     gen_emitir_linea(est, "int _G_scope_vars_total;")
+    gen_emitir_linea(est, "int _G_scope_vars_kind[256];  // D-1.2: 0=texto,1=rc,2=arc,3=debil")
+    // cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2 (definicion global de clase de var RAII)
     gen_emitir_linea(est, "int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
     gen_emitir_linea(est, "")
     // ME-B4: definiciones nativas (paridad _emit_cabecera_comun)

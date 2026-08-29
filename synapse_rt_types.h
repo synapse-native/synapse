@@ -190,6 +190,16 @@ void* arc_weak_upgrade(WeakRef* w);
 void rc_weak_release(WeakRef* w);     // libera débil (libera header si fuerte también 0)
 void arc_weak_release(WeakRef* w);
 
+// --- Primitivas rc/arc del compilador (D-1.1 / Fase 23, Manual 4 §3.2/§3.3) ---
+// El compilador mapea rc<T>/arc<T> a void* (puntero al header SynRc/SynArc) y
+// emite _syn_rc_decrement/_syn_arc_decrement al cierre de scope (Manual 4 §5.2).
+void* _syn_rc_crear(void* data, void (*dtor)(void*));
+void  _syn_rc_increment(void* p);
+void  _syn_rc_decrement(void* p);
+void* _syn_arc_crear(void* data, void (*dtor)(void*));
+void  _syn_arc_increment(void* p);
+void  _syn_arc_decrement(void* p);
+
 // --- SemNodo AST walker (analizador_alcance.syq, Manual 4 §5.2) ---
 // Forward declaration del NodoAST canónico (Manual 6 §1.2)
 typedef struct NodoAST_ {

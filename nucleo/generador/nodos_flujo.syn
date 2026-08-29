@@ -194,6 +194,8 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_visitar_declaracion
+// cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+// (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
     inseguro:
@@ -321,14 +323,11 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("strcat(_buf, _buf2);")
         asm("strcat(_buf, \";\");")
         asm("gen_emitir_str(est, _buf);")
-        // M22.2: Track string vars for RAII pool_free at scope exit
+        // M22.2 / D-1.2: Track vars para RAII (texto y rc/arc/débil) al cierre de scope
         asm("extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
-        // M22.3: RAII tracking - solo para expresiones GARANTIZADAS de retornar texto al heap
-        asm("extern int _G_scope_depth;")
-        asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
+        // M22.3: RAII tracking - texto: expresiones garantizadas de retornar texto al heap
         asm("int _es_texto = 0;")
         asm("if (_dv->expresion && _dv->expresion->tipo.datos) {")
         asm("    const char* _et = _dv->expresion->tipo.datos;")
@@ -367,7 +366,16 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
-        asm("if (_es_texto) {")
+        // D-1.2 (Fase 23, Manual 4 §5.2/§3.2/§3.3): rc/arc/débil por tipo declarado
+        asm("int _es_rc = 0; int _es_arc = 0; int _es_debil = 0;")
+        asm("if (_dv->tipo_param.datos && _dv->tipo_param.datos[0] != 0) {")
+        asm("    const char* _tpd = _dv->tipo_param.datos;")
+        asm("    if (strncmp(_tpd, \"rc<\", 3) == 0) _es_rc = 1;")
+        asm("    else if (strncmp(_tpd, \"arc<\", 4) == 0) _es_arc = 1;")
+        asm("    else if (strncmp(_tpd, \"weak<\", 5) == 0 || strncmp(_tpd, \"faible<\", 7) == 0 || strncmp(_tpd, \"fraco<\", 6) == 0 || strncmp(_tpd, \"débil<\", 6) == 0) _es_debil = 1;")
+        asm("}")
+        asm("int _kind = (_es_rc ? 1 : (_es_arc ? 2 : (_es_debil ? 3 : (_es_texto ? 0 : -1))));")
+        asm("if (_kind >= 0) {")
         asm("    // ME-B8: registro idempotente por nombre (paridad emit_declarations.py)")
         asm("    // evita double free: la variable se libera SOLO en el scope de su declaracion")
         asm("    int _dup = 0;")
@@ -377,6 +385,7 @@ funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        _G_scope_vars_depth[_idx] = _G_scope_depth;")
         asm("        strncpy(_G_scope_vars_names[_idx], _dv->nombre.datos, 63);")
         asm("        _G_scope_vars_names[_idx][63] = 0;")
+        asm("        _G_scope_vars_kind[_idx] = _kind;")
         asm("    }")
         asm("}")
 
@@ -401,6 +410,7 @@ funcion gen_visitar_delegar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("gen_emitir_str(est, \"}\");")
 
 funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
+    // cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
     inseguro:
         asm("struct AsignacionVariable* _a = (struct AsignacionVariable*)stmt;")
         asm("if (!_a) return;")
@@ -525,7 +535,7 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         // M22.3: RAII tracking - solo funciones y operadores garantizados de retornar texto
         asm("extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
         asm("int _es_texto2 = 0;")
         asm("if (_a->expresion && _a->expresion->tipo.datos) {")
         asm("    const char* _et = _a->expresion->tipo.datos;")
@@ -561,7 +571,16 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        }")
         asm("    }")
         asm("}")
-        asm("if (_es_texto2) {")
+        // D-1.2 (Fase 23, Manual 4 §5.2/§3.2/§3.3): rc/arc/débil por tipo de expresion
+        asm("int _es_rc2 = 0; int _es_arc2 = 0; int _es_debil2 = 0;")
+        asm("if (_a->expresion && _a->expresion->tipo.datos) {")
+        asm("    const char* _et2 = _a->expresion->tipo.datos;")
+        asm("    if (strncmp(_et2, \"rc<\", 3) == 0) _es_rc2 = 1;")
+        asm("    else if (strncmp(_et2, \"arc<\", 4) == 0) _es_arc2 = 1;")
+        asm("    else if (strncmp(_et2, \"weak<\", 5) == 0 || strncmp(_et2, \"faible<\", 7) == 0 || strncmp(_et2, \"fraco<\", 6) == 0 || strncmp(_et2, \"débil<\", 6) == 0) _es_debil2 = 1;")
+        asm("}")
+        asm("int _kind2 = (_es_rc2 ? 1 : (_es_arc2 ? 2 : (_es_debil2 ? 3 : (_es_texto2 ? 0 : -1))));")
+        asm("if (_kind2 >= 0) {")
         asm("    // ME-B8: registro idempotente por nombre (paridad emit_declarations.py)")
         asm("    // evita double free: la variable se libera SOLO en el scope de su declaracion")
         asm("    int _dup = 0;")
@@ -571,6 +590,7 @@ funcion gen_visitar_asignacion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        _G_scope_vars_depth[_idx] = _G_scope_depth;")
         asm("        strncpy(_G_scope_vars_names[_idx], _a->nombre.datos, 63);")
         asm("        _G_scope_vars_names[_idx][63] = 0;")
+        asm("        _G_scope_vars_kind[_idx] = _kind2;")
         asm("    }")
         asm("}")
 

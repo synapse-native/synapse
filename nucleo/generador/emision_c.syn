@@ -211,16 +211,16 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
-// Emite ")" + newline + pool_free para RAII en este ambito.
-// M22.2: Antes de cerrar, decrementa scope_depth y emite
-// pool_free para variables CadenaSegura rastreadas.
+// Emite ")" + newline + liberacion RAII en este ambito.
+// cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
+// (cleanup block: decremento rc/arc/débil o _syn_texto_liberar al cierre de scope)
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
 funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
     inseguro:
         asm("extern char _G_emit_buf[1048576]; extern int _G_emit_pos; extern int _G_scope_depth;")
         asm("extern int _G_scope_vars_depth[256]; extern char _G_scope_vars_names[256][64];")
-        asm("extern int _G_scope_vars_total;")
+        asm("extern int _G_scope_vars_total; extern int _G_scope_vars_kind[256];")
         asm("// M22.2: Emitir pool_free para vars RAII en este ambito")
         asm("int _sd = _G_scope_depth;")
         asm("// Manual 3 S3.3: orden lexicografico en iteracion de variables de scope")
@@ -244,7 +244,18 @@ funcion gen_cerrar_bloque_c(est: GeneradorCEst) -> nulo:
         asm("for (int _vi = 0; _vi < _scope_n; _vi++) {")
         asm("    int _v = _scope_idxs[_vi];")
         asm("    char _free_line[128];")
-        asm("    snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_v], _sd);")
+        // D-1.2 (Fase 23, Manual 4 §5.2): liberar al cierre de scope segun la clase.
+        // 0=texto -> _syn_texto_liberar; 1=rc -> _syn_rc_decrement; 2=arc ->
+        // _syn_arc_decrement; 3=debil -> rc_weak_release(&var).
+        asm("    if (_G_scope_vars_kind[_v] == 1) {")
+        asm("        snprintf(_free_line, 128, \"    _syn_rc_decrement(%s); /* RAII rc scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else if (_G_scope_vars_kind[_v] == 2) {")
+        asm("        snprintf(_free_line, 128, \"    _syn_arc_decrement(%s); /* RAII arc scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else if (_G_scope_vars_kind[_v] == 3) {")
+        asm("        snprintf(_free_line, 128, \"    rc_weak_release(&%s); /* RAII weak scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    } else {")
+        asm("        snprintf(_free_line, 128, \"    _syn_texto_liberar(%s); /* RAII scope %d */\", _G_scope_vars_names[_v], _sd);")
+        asm("    }")
         asm("    int _fl = (int)strlen(_free_line);")
         asm("    if (_G_emit_pos + _fl + 2 <= 1048576) {")
         asm("        memcpy(_G_emit_buf + _G_emit_pos, _free_line, _fl);")
