@@ -197,6 +197,8 @@ _RT_BINARIOS_EXTRA = [
     # db.o depende de sqlite3.o y del resto del runtime; por eso objs=None
     # (todos los .o) en vez de solo sqlite3.o, que dejaba undefined _syn_db_*.
     ("test_db", "test_db.c", None, []),
+    # D-1 (Manual 4 §5.2): primitivas rc/arc del runtime (enlaza todo el runtime).
+    ("test_rc_cleanup", "test_rc_cleanup.c", None, []),
     # FASE 24: Web HTTP server (Manual 3 §12.1)
     ("test_web", "test_web.c", [], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)

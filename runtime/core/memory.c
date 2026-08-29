@@ -5,6 +5,7 @@
 #include "synapse_rt_types.h"
 #include "librerias/embedded_libs.h"
 #include "axon/tweetnacl.h"
+#include <stdatomic.h>
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -975,3 +976,69 @@ int64_t tr_vi(int n) {
     if (!g_ast_base || n < 0 || n >= 65536) return 0;
     return (int64_t)g_ast_base[n].valor_int;
 }
+
+// cumple Manual 4 §5.2; Manual 2 §4.3; D-1 (Fase 23): primitivas rc/arc.
+// El compilador mapea rc<T>/arc<T> a void* = puntero al header SynRc/SynArc.
+typedef struct {
+    _Atomic long refcount;
+    void (*destructor)(void*);
+    void* data;
+} SynRc;
+
+typedef struct {
+    _Atomic long strong;
+    _Atomic long weak;
+    void (*destructor)(void*);
+    void* data;
+} SynArc;
+
+void* _syn_rc_crear(void* data, void (*dtor)(void*)) {
+    SynRc* r = (SynRc*)malloc(sizeof(SynRc));
+    if (!r) return NULL;
+    atomic_store(&r->refcount, 1);
+    r->destructor = dtor;
+    r->data = data;
+    return r;
+}
+
+void _syn_rc_increment(void* p) {
+    if (!p) return;
+    atomic_fetch_add(&((SynRc*)p)->refcount, 1);
+}
+
+void _syn_rc_decrement(void* p) {
+    if (!p) return;
+    SynRc* r = (SynRc*)p;
+    long c = atomic_fetch_sub(&r->refcount, 1) - 1;
+    if (c == 0) {
+        if (r->destructor) r->destructor(r->data);
+        free(r);
+    }
+}
+
+void* _syn_arc_crear(void* data, void (*dtor)(void*)) {
+    SynArc* a = (SynArc*)malloc(sizeof(SynArc));
+    if (!a) return NULL;
+    atomic_store(&a->strong, 1);
+    atomic_store(&a->weak, 1);
+    a->destructor = dtor;
+    a->data = data;
+    return a;
+}
+
+void _syn_arc_increment(void* p) {
+    if (!p) return;
+    atomic_fetch_add(&((SynArc*)p)->strong, 1);
+}
+
+void _syn_arc_decrement(void* p) {
+    if (!p) return;
+    SynArc* a = (SynArc*)p;
+    long s = atomic_fetch_sub(&a->strong, 1) - 1;
+    if (s == 0) {
+        if (a->destructor) a->destructor(a->data);
+        long w = atomic_fetch_sub(&a->weak, 1) - 1;
+        if (w == 0) free(a);
+    }
+}
+
