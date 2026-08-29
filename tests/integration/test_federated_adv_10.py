@@ -51,8 +51,11 @@ funcion principal() -> nulo:
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0, \
-            f"fed_ronda_fedavg debe compilar: {[e['mensaje'] for e in diag.errores]}"
+        if diag.codigo_salida() != 0:
+            pytest.fail(
+                "RED TDD (ME_29_T1): std.federated import system no exporta fed_ronda_fedavg. "
+                f"Errores: {[e['mensaje'] for e in diag.errores]}"
+            )
 
     def test_fed_entrenar_compila(self):
         """fed_entrenar compila y genera C válido."""
@@ -67,8 +70,11 @@ funcion principal() -> nulo:
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0, \
-            f"fed_entrenar debe compilar: {[e['mensaje'] for e in diag.errores]}"
+        if diag.codigo_salida() != 0:
+            pytest.fail(
+                "RED TDD (ME_29_T1): std.federated import system no exporta fed_entrenar. "
+                f"Errores: {[e['mensaje'] for e in diag.errores]}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +101,11 @@ funcion principal() -> nulo:
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0, \
-            f"Ciclo completo debe compilar: {[e['mensaje'] for e in diag.errores]}"
+        if diag.codigo_salida() != 0:
+            pytest.fail(
+                "RED TDD (ME_29_T1): std.federated import system no exporta fed_iniciar/fed_registrar_worker/fed_ronda_fedavg/fed_guardar/fed_cerrar. "
+                f"Errores: {[e['mensaje'] for e in diag.errores]}"
+            )
 
 
 # ---------------------------------------------------------------------------

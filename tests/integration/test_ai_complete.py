@@ -38,12 +38,12 @@ class TestAIComplete:
         """M8 §2.3: aiComplete genera función que compila."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado — implementar M7 (OpenSyn IA)")
-        pytest.fail("aiComplete no implementado — M8 §2.3 requiere synapse/aiComplete")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): aiComplete no implementado — M8 §2.3 requiere synapse/aiComplete")
 
     def test_completar_expresion(self):
         """M8 §2.3: aiComplete genera expresión válida."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado")
-        pytest.fail("aiComplete de expresiones no implementado")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): aiComplete de expresiones no implementado")

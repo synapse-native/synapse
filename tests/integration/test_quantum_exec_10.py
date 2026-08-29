@@ -51,19 +51,22 @@ class TestQuantumRuntimeC:
     """Verifica que el runtime cuántico C funciona."""
 
     def test_quantum_runtime_obj_existe(self):
-        """quantum_runtime.o debe existir."""
+        """quantum_runtime.o debe existir (Manual 1 §6)."""
         rt_o = os.path.join(RAIZ, "nucleo", "quantum_runtime.o")
-        assert os.path.exists(rt_o), "nucleo/quantum_runtime.o no existe"
+        if not os.path.exists(rt_o):
+            pytest.fail("RED TDD (ME_29_T1): nucleo/quantum_runtime.o no existe. Compilar quantum_runtime.c.")
 
     def test_quantum_memory_obj_existe(self):
-        """quantum_memory.o debe existir."""
+        """quantum_memory.o debe existir (Manual 1 §6)."""
         qm_o = os.path.join(RAIZ, "nucleo", "quantum_memory.o")
-        assert os.path.exists(qm_o), "nucleo/quantum_memory.o no existe"
+        if not os.path.exists(qm_o):
+            pytest.fail("RED TDD (ME_29_T1): nucleo/quantum_memory.o no existe. Compilar quantum_memory.c.")
 
     def test_quantum_err_corr_obj_existe(self):
-        """quantum_err_corr.o debe existir."""
+        """quantum_err_corr.o debe existir (Manual 1 §6)."""
         ec_o = os.path.join(RAIZ, "nucleo", "quantum_err_corr.o")
-        assert os.path.exists(ec_o), "nucleo/quantum_err_corr.o no existe"
+        if not os.path.exists(ec_o):
+            pytest.fail("RED TDD (ME_29_T1): nucleo/quantum_err_corr.o no existe. Compilar quantum_err_corr.c.")
 
     def test_quantum_runtime_api_funciones(self):
         """quantum_runtime.h debe tener funciones de compuertas y medición."""

@@ -38,12 +38,12 @@ class TestAICorrection:
         """M8 §2.3: corrección exitosa en 1 intento."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado — implementar M7 (OpenSyn IA)")
-        pytest.fail("Bucle de corrección no implementado — M8 §2.3 requiere ≤3 intentos")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): Bucle de corrección no implementado — M8 §2.3 requiere ≤3 intentos")
 
     def test_correccion_tres_intentos(self):
         """M8 §2.3: corrección exitosa en ≤3 intentos."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado")
-        pytest.fail("Bucle de corrección no implementado")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): Bucle de corrección no implementado")

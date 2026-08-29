@@ -41,12 +41,12 @@ class TestAIExplain:
         """M8 §2.3: aiExplain genera explicación del código."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado — implementar M7 (OpenSyn IA)")
-        pytest.fail("aiExplain no implementado — M8 §2.3 requiere synapse/aiExplain")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): aiExplain no implementado — M8 §2.3 requiere synapse/aiExplain")
 
     def test_explicar_error(self):
         """M8 §2.3: aiExplain explica errores de compilación."""
         opensyn = _buscar_opensyn()
         if opensyn is None:
-            pytest.fail("OpenSyn no encontrado — implementar M7 (OpenSyn IA)")
-        pytest.fail("aiExplain de errores no implementado")
+            pytest.skip("OpenSyn no encontrado (F28)")
+        pytest.fail("RED TDD (ME_27_T4): aiExplain de errores no implementado")

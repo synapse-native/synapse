@@ -129,8 +129,11 @@ funcion principal() -> nulo:
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0, \
-            f"Ciclo orquestador debe compilar: {[e.get('mensaje','') for e in diag.errores]}"
+        if diag.codigo_salida() != 0:
+            pytest.fail(
+                "RED TDD (ME_29_T1): std.federated import system no exporta fed_iniciar/fed_ronda_fedavg/fed_cerrar. "
+                f"Errores: {[e.get('mensaje','') for e in diag.errores]}"
+            )
 
     def test_fedavg_iniciar_cerrar(self):
         """Iniciar y cerrar sesión compila."""
@@ -143,5 +146,8 @@ funcion principal() -> nulo:
     fed_cerrar(sesion)
 '''
         ast, diag = compilar_texto(fuente)
-        assert diag.codigo_salida() == 0, \
-            f"Iniciar/cerrar debe compilar: {[e.get('mensaje','') for e in diag.errores]}"
+        if diag.codigo_salida() != 0:
+            pytest.fail(
+                "RED TDD (ME_29_T1): std.federated import system no exporta fed_iniciar/fed_cerrar. "
+                f"Errores: {[e.get('mensaje','') for e in diag.errores]}"
+            )
