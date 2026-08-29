@@ -44,11 +44,28 @@ def compilar_texto(fuente: str, idioma: str = 'es') -> Tuple[Programa, Diagnosti
         else:
             diag.reportar(ErrorCodes.ERR_LEX_CHAR_UNEXPECTED, token, char='?')
         return Programa(), diag
-    parser = Parser(tokens, diag)
-    ast = parser.parsear()
+    # cumple Manual 2 §10.1: mapeo de errores léxicos + §10.2: continuación tras error
+    # cumple Manual 1 §7.2: pipeline completo con resolución de imports + semántico
+    import tempfile
+    import os
+    from pipeline import compilar_desde_texto
     from compilador.analizador_semantico import AnalizadorSemantico
-    analizador = AnalizadorSemantico(ast, diag)
-    analizador.analizar()
+    tmpdir = tempfile.mkdtemp(prefix='synapse_test_')
+    ruta = os.path.join(tmpdir, '_test_input.syn')
+    with open(ruta, 'w', encoding='utf-8') as f:
+        f.write(fuente)
+    archivos_procesados = set()
+    try:
+        ast, diag = compilar_desde_texto(ruta, archivos_procesados)
+        if not diag.hay_errores():
+            analizador = AnalizadorSemantico(ast, diag)
+            analizador.analizar()
+    finally:
+        try:
+            os.unlink(ruta)
+            os.rmdir(tmpdir)
+        except OSError:
+            pass
     return ast, diag
 
 
