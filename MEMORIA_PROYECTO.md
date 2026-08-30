@@ -45,6 +45,15 @@
          código YA escribe el terminador nulo correcto; no hay bug que corregir. Lección
          MTS: ante un byte sospechoso, verificar con `repr`/bytes o warning del compilador,
          no fiarse del render. Ver AUDITORIA H29 (cerrado como falso positivo).
+    (15) BUG CRÍTICO: pool_alloc slab allocator retornaba la misma dirección para dos
+         arrays ParArr/ParJson vivos durante parseo JSON recursivo. Causa: el slab
+         de 256 bytes albergaba arrays de 192 bytes (8 ParJson). Cuando el root y un
+         objeto anidado ambos crecían su array vía pool_alloc(192), el slab retornaba
+         la misma dirección → el root sobreescribía sus claves con las del anidado.
+         Fix: cambiar par_arr_append/nodo_arr_append de pool_alloc a malloc (json.c).
+         Secundario: static input buffer _p_input_buf, _json_str_copy para strings,
+         parse stack global para preservar punteros ParArr, fix cmp_texto/contiene
+         use-after-free. Commit b6007dd. Tests: 2/2 completion PASS, 16/16 suite PASS.
      **Correcciones runtime:** `_setmode(stdout, O_BINARY)` en io.c; `lsp_doc_get()` retorna malloc copy en string_utils.c. **Bug fix:** `_scope_stack[-1]` sin guard en `emit_declarations.py` (causaba crash con variables de destructor a nivel módulo). **Contratos:** 19 funciones LSP con `requiere/garantiza` (Manual 2 §12). **ANEXO movido:** `docs/ANEXO_INVENTARIO_ARCHIVOS.md` → `docs/manuales/`. Fase 23 COMPLETADA:
 
 - **GATE DE LECTURA PREVIA (2026-08-23, commit `21ace30`):** la regla 1 ("leer el manual antes de codificar") es ahora mecÃ¡nica â€” `auditoria/registrar_lectura.py` + `docs/mapa_manuales.md`: todo agente DEBE ejecutar `--pendientes`, leer las secciones mapeadas para los archivos que tocarÃ¡ y registrar la lectura (--registrar valida contra encabezados reales de M1-9; secciones fabricadas se rechazan). El pre-commit BLOQUEA commits con producciÃ³n modificada sin lectura registrada del dÃ­a. ObligaciÃ³n adicional: archivo productivo nuevo sin mapeo tambiÃ©n bloquea â†’ aÃ±adir su entrada al mapa primero.
