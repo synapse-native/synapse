@@ -539,3 +539,13 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
 - **Deuda creada:** Ninguna (todos los cambios alineados con manual)
 - **Alineación:** 0 brechas verificadas
 - **Bootstrap:** S2==S3 byte-idéntico (MD5: `4aa2b25b`)
+
+### 8.8 FIN DE WIP DEL OTRO AGENTE (feature/fase2-nativa-hm)
+
+- Auditado commit `d8d0ef9` del otro agente (M1_HELLO, M4_TAR, detect_hardware, test_fixes).
+- **M1_HELLO** (Manual 6 §5.3): impl en `runtime/core/cluster.c` (`cluster_enviar_hello_firmado`, `_cluster_procesar_hello_entrante`, HELLO_RESP binario) + oráculo `tests/integration/test_hello_wire.py` → 1/1 PASS. COMPLETADO.
+- **M4_TAR** (Manual 6 §6.1): impl en `runtime/core/axon.c` (`_syn_tar_extraer` rechaza typeflags `L`/`K`/`1`/`2`) + oráculo `tests/security/test_path_traversal.py` → 3/3 PASS. COMPLETADO.
+- **detect_hardware** (Manual 9 §5.7): impl en `nucleo/detect_hardware.c` + oráculo `tests/test_detect_hardware.c` (43 asserts) estaba HUÉRFANO (solo manual) → cableado vía `tests/integration/test_detect_hardware.py`. 1/1 PASS. COMPLETADO bajo MTS (docs/plan_ME_detect_hardware.md + REPORTE).
+- **test_fixes**: PENDIENTE (0/24 conversiones a TDD RED; plan `docs/plan_ME_test_fixes.md` existe pero no ejecutado).
+- Gates: `verificar_alineacion` = SIN BRECHAS; `contrastar` (M1_HELLO/M4_TAR/detect_hardware) = PASS.
+- Deuda previa de esta línea de trabajo ya cerrada: test_db enlazado (c9bfac6), D-1.1 rc/arc (0134812), D-1.2 ya por otro agente (8c5847b).
