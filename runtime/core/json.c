@@ -6,7 +6,13 @@
 // Arquitectura simdjson-style: arena contigua + strings in-place.
 // Sin malloc por clave/nodo. Arena unica liberada al final.
 
-#include "runtime/core/json.h"
+#include "json.h"
+
+#ifndef JSON_MAX_NODES
+#define JSON_MAX_NODES 65536
+#endif
+extern void* pool_alloc(size_t size);
+extern void  pool_free(void* p);
 
 // SIMD intrinsics (only needed when __AVX2__ is active)
 #ifdef __AVX2__
@@ -30,11 +36,24 @@ static NodoJson* _json_arena_alloc(void) {
 
 // --- Parser state ---
 
+#define _JSON_INPUT_CAP (16 * 1024 * 1024)
+static char _p_input_buf[_JSON_INPUT_CAP];
 static CadenaSegura _p_input;
 static int _p_pos;
 
 void _json_init(CadenaSegura s) {
-    _p_input = s;
+    // cumple Manual 4 §2.1: el input se copia a un buffer estatico (_p_input_buf).
+    // El llamador (Synapse RAII) puede liberar el buffer original al pasarlo a
+    // desde_texto (move semantics), y el pool reusaria esa region durante el
+    // parseo (corrompiendo _p_input). Un buffer estatico nunca se libera ni se
+    // reusa, asi que el parseo es estable y single-threaded (LSP: 1 mensaje a la vez).
+    int n = s.longitud;
+    if (n < 0) n = 0;
+    if (n > _JSON_INPUT_CAP - 1) n = _JSON_INPUT_CAP - 1;
+    memcpy(_p_input_buf, s.datos, (size_t)n);
+    _p_input_buf[n] = '\0';
+    _p_input.datos = _p_input_buf;
+    _p_input.longitud = n;
     _p_pos = 0;
     if (!_json_arena) {
         _json_arena = (NodoJson*)pool_alloc(JSON_MAX_NODES * sizeof(NodoJson));
@@ -59,7 +78,7 @@ static void nodo_arr_init(NodoArr* a) { a->items = NULL; a->count = 0; a->cap = 
 static void nodo_arr_append(NodoArr* a, NodoJson item) {
     if (a->count >= a->cap) {
         a->cap = a->cap ? a->cap * 2 : 8;
-        NodoJson* new = (NodoJson*)pool_alloc((size_t)(a->cap * sizeof(NodoJson)));
+        NodoJson* new = (NodoJson*)malloc((size_t)(a->cap * sizeof(NodoJson)));
         if (a->items) { memcpy(new, a->items, (size_t)(a->count * sizeof(NodoJson))); }
         a->items = new;
     }
@@ -79,7 +98,7 @@ static void par_arr_init(ParArr* a) { a->items = NULL; a->count = 0; a->cap = 0;
 static void par_arr_append(ParArr* a, CadenaSegura clave, NodoJson* valor) {
     if (a->count >= a->cap) {
         a->cap = a->cap ? a->cap * 2 : 8;
-        ParJson* new = (ParJson*)pool_alloc((size_t)(a->cap * sizeof(ParJson)));
+        ParJson* new = (ParJson*)malloc((size_t)(a->cap * sizeof(ParJson)));
         if (a->items) { memcpy(new, a->items, (size_t)(a->count * sizeof(ParJson))); }
         a->items = new;
     }
@@ -144,6 +163,18 @@ static void _skip_ws() {
 }
 #endif
 
+// cumple Manual 4 §2.1: las cadenas del parse se COPIAN al pool, desacoplando
+// el arbol NodoJson del buffer de entrada (que Synapse RAII libera via pool_free).
+// Sin esto, msg.valor_str.datos queda colgado tras liberar `body` (use-after-free).
+static CadenaSegura _json_str_copy(const char* p, int len) {
+    if (len < 0) len = 0;
+    char* dup = (char*)pool_alloc((size_t)(len + 1));
+    if (!dup) return (CadenaSegura){0};
+    memcpy(dup, p, (size_t)len);
+    dup[len] = '\0';
+    return (CadenaSegura){ .longitud = len, .datos = dup };
+}
+
 // --- String parser ---
 
 #ifdef __AVX2__
@@ -165,10 +196,8 @@ static CadenaSegura _parse_string_value() {
                 _p_pos += 2;
             } else {
                 int len = _p_pos - start;
-                char* p = (char*)_p_input.datos + start;
-                p[len] = '\0';
                 _p_pos++;
-                return (CadenaSegura){ .longitud = len, .datos = p };
+                return _json_str_copy((char*)_p_input.datos + start, len);
             }
         } else {
             _p_pos += 32;
@@ -184,9 +213,7 @@ static CadenaSegura _parse_string_value() {
     int end = _p_pos;
     _p_pos++;
     int len = end - start;
-    char* p = (char*)_p_input.datos + start;
-    p[len] = '\0';
-    return (CadenaSegura){ .longitud = len, .datos = p };
+    return _json_str_copy((char*)_p_input.datos + start, len);
 }
 #else
 static CadenaSegura _parse_string_value() {
@@ -202,9 +229,7 @@ static CadenaSegura _parse_string_value() {
     int end = _p_pos;
     _p_pos++;
     int len = end - start;
-    char* p = (char*)_p_input.datos + start;
-    p[len] = '\0';
-    return (CadenaSegura){ .longitud = len, .datos = p };
+    return _json_str_copy((char*)_p_input.datos + start, len);
 }
 #endif
 
@@ -243,47 +268,66 @@ static float _parse_number_value() {
 // Forward declaration
 static NodoJson _parse_value();
 
+/* cumple Manual 4 §2.1: parse stack para preservar punteros ParArr en recursión. */
+/* FIX: parse-stack to preserve ParArr pointers across recursive _parse_value() calls.
+ * The local variable `pares` lives on the stack; the compiler may reuse the same
+ * stack slot when _parse_value() → _parse_object() recurses, clobbering the parent's
+ * pointer. Saving/restoring through this static array avoids the bug.
+ * LSP is single-threaded and JSON depth < 64, so this is safe. */
+static ParArr* _parse_par_stack[64];
+static int _parse_par_sp = 0;
+
 static NodoJson _parse_object() {
     NodoJson n = {0};
     n.tipo = 5;
     _advance();
     _skip_ws();
     if (_peek() == '}') { _advance(); return n; }
-    ParArr pares;
-    par_arr_init(&pares);
+    /* cumple Manual 4 §2.1: malloc evita bug de reuso de slabs en pool_alloc. */
+    /* FIX: use malloc for ParArr to avoid pool slab reuse bug returning same addr */
+    ParArr* pares = (ParArr*)malloc(sizeof(ParArr));
+    if (pares) { memset(pares, 0, sizeof(ParArr)); } else { static ParArr _fb; pares = &_fb; }
+    int _my_sp = _parse_par_sp;
+    _parse_par_stack[_parse_par_sp++] = pares;
     while (1) {
         _skip_ws();
         if (_peek() == '}') break;
-        if (pares.count > 0) {
+        pares = _parse_par_stack[_my_sp];  /* restore after potential recursion */
+        if (pares->count > 0) {
             if (_peek() != ',') break;
             _advance();
             _skip_ws();
         }
         CadenaSegura key = _parse_string_value();
         if (key.datos == NULL) {
+            _parse_par_sp = _my_sp;
             n.tipo = -1;
             n.valor_str = (CadenaSegura){ .longitud = 27, .datos = "fjson: clave de objeto invalida" };
             return n;
         }
         _skip_ws();
         if (_advance() != ':') {
+            _parse_par_sp = _my_sp;
             n.tipo = -1;
             n.valor_str = (CadenaSegura){ .longitud = 25, .datos = "fjson: se esperaba ':'" };
             return n;
         }
         NodoJson val = _parse_value();
         if (val.tipo < 0) {
+            _parse_par_sp = _my_sp;
             _json_nodo_liberar(val);
             return val;
         }
+        pares = _parse_par_stack[_my_sp];  /* restore after recursion */
         NodoJson* val_ptr = (NodoJson*)pool_alloc(sizeof(NodoJson));
         if (val_ptr) *val_ptr = val;
-        par_arr_append(&pares, key, val_ptr);
+        par_arr_append(pares, key, val_ptr);
     }
+    pares = _parse_par_stack[--_parse_par_sp];  /* restore and pop */
     _skip_ws();
     if (_peek() == '}') _advance();
-    n.longitud = pares.count;
-    n.objeto_pares = par_arr_detach(&pares);
+    n.longitud = pares->count;
+    n.objeto_pares = par_arr_detach(pares);
     return n;
 }
 
@@ -293,27 +337,35 @@ static NodoJson _parse_array() {
     _advance();
     _skip_ws();
     if (_peek() == ']') { _advance(); return n; }
-    NodoArr arr;
-    nodo_arr_init(&arr);
+    /* cumple Manual 4 §2.1: malloc evita stack slot reuse en recursión. */
+    /* FIX: allocate NodoArr on pool to avoid stack slot reuse during recursion */
+    NodoArr* arr = (NodoArr*)malloc(sizeof(NodoArr));
+    if (arr) { memset(arr, 0, sizeof(NodoArr)); } else { static NodoArr _fb; arr = &_fb; }
+    int _my_sp = _parse_par_sp;
+    _parse_par_stack[_parse_par_sp++] = (ParArr*)arr;  /* reuse the same safe stack */
     while (1) {
         _skip_ws();
         if (_peek() == ']') break;
-        if (arr.count > 0) {
+        arr = (NodoArr*)_parse_par_stack[_my_sp];  /* restore after recursion */
+        if (arr->count > 0) {
             if (_peek() != ',') break;
             _advance();
             _skip_ws();
         }
         NodoJson val = _parse_value();
         if (val.tipo < 0) {
+            _parse_par_sp = _my_sp;
             _json_nodo_liberar(val);
             return val;
         }
-        nodo_arr_append(&arr, val);
+        arr = (NodoArr*)_parse_par_stack[_my_sp];  /* restore after recursion */
+        nodo_arr_append(arr, val);
     }
+    arr = (NodoArr*)_parse_par_stack[--_parse_par_sp];  /* restore and pop */
     _skip_ws();
     if (_peek() == ']') _advance();
-    n.longitud = arr.count;
-    n.arreglo_hijos = nodo_arr_detach(&arr);
+    n.longitud = arr->count;
+    n.arreglo_hijos = nodo_arr_detach(arr);
     return n;
 }
 
@@ -346,7 +398,9 @@ static NodoJson _parse_value() {
 NodoJson _json_parse(CadenaSegura entrada) {
     _json_init(entrada);
     NodoJson resultado = _parse_value();
-    if (resultado.tipo < 0) { _json_nodo_liberar(resultado); return resultado; }
+    if (resultado.tipo < 0) {
+        _json_nodo_liberar(resultado); return resultado;
+    }
     _skip_ws();
     if (_peek() != -1) {
         _json_nodo_liberar(resultado);
@@ -510,6 +564,9 @@ static void _serializar_nodo(NodoJson nodo) {
     }
 }
 
+// cumple Manual 4 §2.1 + H-SEC-1/ME-SEC-1: no devolver el buffer estático
+// _ser_buf (compartido, no thread/fiber-safe, use-after-overwrite). Se copia
+// a pool_alloc para que el llamador (Synapse RAII) lo libere con pool_free.
 CadenaSegura _json_a_texto(NodoJson nodo) {
     _ser_pos = 0;
     _serializar_nodo(nodo);
@@ -517,5 +574,11 @@ CadenaSegura _json_a_texto(NodoJson nodo) {
     if (_ser_pos < _SER_BUF_SIZE) {
         _ser_buf[_ser_pos] = '\0';
     }
-    return (CadenaSegura){ .longitud = _ser_pos, .datos = _ser_buf };
+    int n = _ser_pos;
+    if (n > _SER_BUF_SIZE - 1) n = _SER_BUF_SIZE - 1;
+    char* dup = (char*)pool_alloc((size_t)(n + 1));
+    if (!dup) return (CadenaSegura){0, ""};
+    memcpy(dup, _ser_buf, (size_t)n);
+    dup[n] = '\0';
+    return (CadenaSegura){ .longitud = n, .datos = dup };
 }

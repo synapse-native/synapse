@@ -164,11 +164,28 @@ static int _G_lsp_doc_len = 0;
 
 void lsp_doc_store(CadenaSegura s) {
     int len = s.longitud;
+    int out = 0;
+    int i;
+    const char* in = s.datos;
     if (len > 1048575) len = 1048575;
     if (len < 0) len = 0;
-    memcpy(_G_lsp_doc_buf, s.datos, len);
-    _G_lsp_doc_buf[len] = '\0';
-    _G_lsp_doc_len = len;
+    for (i = 0; i < len && out < 1048575; i++) {
+        if (in[i] == '\\' && i + 1 < len) {
+            if (in[i + 1] == '"') {
+                _G_lsp_doc_buf[out++] = '"';
+                i++;
+            } else if (in[i + 1] == '\\') {
+                _G_lsp_doc_buf[out++] = '\\';
+                i++;
+            } else {
+                _G_lsp_doc_buf[out++] = in[i];
+            }
+        } else {
+            _G_lsp_doc_buf[out++] = in[i];
+        }
+    }
+    _G_lsp_doc_buf[out] = '\0';
+    _G_lsp_doc_len = out;
 }
 
 CadenaSegura lsp_doc_get(void) {
