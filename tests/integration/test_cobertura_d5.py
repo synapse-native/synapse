@@ -144,9 +144,14 @@ def test_codegen_s1_principal_retorno():
     )
     ast = _compilar_ast(prog)
     codigo = GeneradorC(ast).generar()
-    assert "int64_t _rc = principal();" in codigo, "main captura principal"
+    # P1 (test_fixes, Manual 2 §4.2): codegen de principal con retorno entero
+    # aun no captura _rc en main(); se documenta como RED TDD hasta implementarse.
+    if "int64_t _rc = principal();" not in codigo or "return _rc;" not in codigo:
+        pytest.fail(
+            "RED TDD (D-5/P1): codegen de principal con retorno entero aun no "
+            "captura _rc en main() ni retorna _rc (Manual 5: main espera hilos y retorna rc)"
+        )
     assert "synapse_esperar_hilos();" in codigo, "main espera hilos (Manual 5)"
-    assert "return _rc;" in codigo, "main retorna _rc"
 
 
 def test_codegen_s1_ejecutable_fuera_de_ambito():
