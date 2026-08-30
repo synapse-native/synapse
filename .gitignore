@@ -108,6 +108,9 @@ _test_migration_*/
 # CLASE P: Archivos varios residuales
 nul
 
+# CLASE S: Dependencias Node.js
+node_modules/
+
 # CLASE Q: Archivos binarios LSP
 test_lsp_bin.oculto
 test_lsp_bin
