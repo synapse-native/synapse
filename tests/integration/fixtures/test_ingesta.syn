@@ -1,0 +1,5 @@
+#lang: es
+
+funcion principal() -> nulo:
+    si (1 == 1 y no 0 == 1):
+        escribir_linea("logica ok")

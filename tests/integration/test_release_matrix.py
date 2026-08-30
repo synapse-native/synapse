@@ -1,5 +1,6 @@
 """
-test_release_matrix.py — Validación de artefactos M11.1 Multiplataforma
+test_release_matrix.py — Validación de artefactos M11.1 Multiplataforma.
+Manual 9 §4: distribución multiplataforma (Windows/Linux/macOS/WASM) y firma Ed25519.
 
 Verifica que la estructura de artefactos generados por release_matrix.yml
 sea correcta antes de proceder a la firma Ed25519 (M11.2).
@@ -16,6 +17,9 @@ import json
 import hashlib
 import struct
 import tempfile
+import pytest
+
+pytestmark = pytest.mark.integration
 
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -92,42 +96,47 @@ class TestReleaseMatrixYML:
         assert os.path.exists(ruta), f"release_matrix.yml no encontrado en {ruta}"
 
     def test_release_matrix_contiene_cuatro_targets(self):
+
         """El workflow debe definir 4 targets en la matrix."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+            fuente = f.read()
         
         # Verificar que cada plataforma está definida
         for plataforma in PLATAFORMAS_OBLIGATORIAS:
-            assert plataforma in contenido, f"Plataforma {plataforma} no encontrada en release_matrix.yml"
+            assert plataforma in fuente, f"Plataforma {plataforma} no encontrada en release_matrix.yml"
 
     def test_release_matrix_tiene_sha256_step(self):
+
         """El workflow debe generar SHA-256 checksums."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'sha256' in contenido.lower() or 'SHA256' in contenido
+            fuente = f.read()
+        assert 'sha256' in fuente.lower() or 'SHA256' in fuente
 
     def test_release_matrix_tiene_upload_artifact(self):
+
         """El workflow debe subir artefactos."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'upload-artifact' in contenido
+            fuente = f.read()
+        assert 'upload-artifact' in fuente
 
     def test_release_matrix_tiene_sbom_step(self):
+
         """El workflow debe generar SBOM SPDX."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'spdx' in contenido.lower()
+            fuente = f.read()
+        assert 'spdx' in fuente.lower()
 
     def test_release_matrix_tiene_validacion(self):
+
         """El workflow debe tener validación de artefactos."""
         ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
         with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
-        assert 'Validate artifacts' in contenido
+            fuente = f.read()
+        assert 'Validate artifacts' in fuente
 
 
 class TestArtefactos:
@@ -196,7 +205,7 @@ class TestBootstrap:
         """El entry point principal.syn debe existir."""
         rutas = [
             os.path.join(PROJECT_ROOT, 'nucleo', 'principal.syn'),
-            os.path.join(PROJECT_ROOT, 'src', 'main.syn'),
+            os.path.join(PROJECT_ROOT, 'docs', 'historicas', 'main.syn'),
             os.path.join(PROJECT_ROOT, 'opensyn', 'principal.syn'),
         ]
         alguna_existe = any(os.path.exists(r) for r in rutas)
@@ -250,7 +259,7 @@ class TestReleaseMatrixCI:
             candidatos = [
                 os.path.join(PROJECT_ROOT, 'tests', 'test_math.syn'),
                 os.path.join(PROJECT_ROOT, 'test_simple.syn'),
-                os.path.join(PROJECT_ROOT, 'hola.syn'),
+                os.path.join(PROJECT_ROOT, 'examples', 'synapse', '00_hola_mundo', 'hola.syn'),
             ]
             
             archivo_prueba = None
@@ -350,24 +359,26 @@ class TestCompatibilidadMultiplataforma:
 # ============================================================
 
 def test_workflow_tiene_disparadores_correctos():
+
     """El workflow debe dispararse en push a main/master/release y tags v*."""
     ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
     with open(ruta, 'r', encoding='utf-8') as f:
-        contenido = f.read()
+        fuente = f.read()
     
-    assert 'push:' in contenido
-    assert 'branches:' in contenido or 'main' in contenido
-    assert 'workflow_dispatch:' in contenido, "Debe permitir dispatch manual"
+    assert 'push:' in fuente
+    assert 'branches:' in fuente or 'main' in fuente
+    assert 'workflow_dispatch:' in fuente, "Debe permitir dispatch manual"
 
 
 def test_workflow_tiene_permisos_correctos():
-    """El workflow debe tener permisos para leer contenido y escribir paquetes."""
+
+    """El workflow debe tener permisos para leer fuente y escribir paquetes."""
     ruta = os.path.join(PROJECT_ROOT, '.github', 'workflows', 'release_matrix.yml')
     with open(ruta, 'r', encoding='utf-8') as f:
-        contenido = f.read()
+        fuente = f.read()
     
-    assert 'contents: read' in contenido
-    assert 'packages: write' in contenido
+    assert 'contents: read' in fuente
+    assert 'packages: write' in fuente
 
 
 def test_workflow_no_tiene_jobs_duplicados():

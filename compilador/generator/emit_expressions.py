@@ -20,6 +20,15 @@ from .context import GeneratorContext
 # Type inference
 # ================================================================
 
+def _elemento_canal(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
+    """F3-10: tipo del elemento de un canal. `Canal<T>` -> T (Manual 2 L144,
+    Manual 5 §3/§4.2). Si el canal no esta tipado, fallback void* (F3-6)."""
+    canal = getattr(nodo, 'canal', None)
+    tipo_canal = tipo_de_expr(ctx, canal) if canal else ''
+    if tipo_canal and tipo_canal.startswith('Canal<') and tipo_canal.endswith('>'):
+        return tipo_canal[6:-1]
+    return 'void*'
+
 def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     """Infiere el tipo C de una expresión Synapse."""
     if nodo is None:
@@ -53,12 +62,17 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
     if isinstance(nodo, ExprTensor):
         return 'Tensor'
     if isinstance(nodo, ExprCrearCanal):
+        if getattr(nodo, 'tipo_contenido', None):
+            return f'Canal<{nodo.tipo_contenido}>'
         return 'CanalConcurrencia*'
     if isinstance(nodo, ExprRecibirCanal):
-        return 'void*'
+        return _elemento_canal(ctx, nodo)
 
     if isinstance(nodo, ExprObtenerDireccion):
         base_tipo = tipo_de_expr(ctx, nodo.expr)
+        # FFI: &texto -> char* (zero-copy .datos, Manual 3 §9.3)
+        if base_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return 'puntero'
         return f"{base_tipo}*"
 
     if isinstance(nodo, ExprDereferencia):
@@ -114,13 +128,54 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, LlamadaFuncion):
         nombre = nodo.nombre
+        # Manual 4 §4.3: rc(T) → rc<T>, arc(T) → arc<T>, débil(T) → débil<T>
+        if nombre in ('rc', 'arc') and len(nodo.argumentos) >= 1:
+            inner_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            return f'{nombre} {inner_tipo}'
+        if nombre in ('débil', 'weak') and len(nodo.argumentos) >= 1:
+            arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            if arg_tipo == 'puntero' and isinstance(nodo.argumentos[0], LiteralNulo):
+                return 'débil entero'  # nil débil: inner irrelevante
+            inner = arg_tipo
+            if inner.startswith('rc ') or inner.startswith('arc '):
+                inner = inner.split(' ', 1)[1]
+            return f'débil {inner}'
         if nombre in ctx._BUILTINS:
             return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
+        # H-R90-11: resolver retorno de funciones definidas localmente
+        # (definición usuario, no builtin). Manual 3 §3: -> tipo_retorno.
+        if nombre in ctx._funciones_usuario:
+            return ctx._funciones_usuario[nombre].tipo_retorno
         # Struct constructor call
         if nombre in ctx._estructuras:
             return nombre
+        # R20: ctor ADT (ok/err/algun/ninguno) -> resolver la instanciación por
+        # el tipo del argumento (recursivo para ctors anidados ok(ok(42))).
+        # Paridad nativa _syn_expr_tipo_c. Antes caía al fallback 'int' y
+        # _resolver_instancia_adt elegía la instancia equivocada con 2 del base.
+        if nombre in ctx._constructores_adt:
+            adt, tag, _tipo_syn = ctx._constructores_adt[nombre]
+            if adt in ctx._adt_parametros:
+                arg_tipo = ''
+                if nodo.argumentos:
+                    arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+                for (base, args), inst in ctx._instancias_adt.items():
+                    if base == adt and tag < len(inst['campos']):
+                        tipo_concreto = inst['campos'][tag][1]
+                        if (arg_tipo and
+                                ctx.traducir_tipo_c(tipo_concreto) ==
+                                ctx.traducir_tipo_c(arg_tipo)):
+                            return f"{adt}<{', '.join(args)}>"
+                candidatas = [
+                    (a, i) for (b, a), i in ctx._instancias_adt.items()
+                    if b == adt
+                ]
+                if len(candidatas) == 1:
+                    return f"{adt}<{', '.join(candidatas[0][0])}>"
+                # genérico sin instancias resolubles -> comportamiento previo
+            return 'int'
         return 'int'
 
     if isinstance(nodo, ExprPropagar):
@@ -149,16 +204,6 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         if obj_tipo in ('texto', 'cadena', 'CadenaSegura'):
             return 'texto'
         return 'int'
-
-    if isinstance(nodo, ExprObtenerDireccion):
-        base_tipo = tipo_de_expr(ctx, nodo.expr)
-        return f"{base_tipo}*"
-
-    if isinstance(nodo, ExprDereferencia):
-        base_tipo = tipo_de_expr(ctx, nodo.expr)
-        if base_tipo.endswith('*'):
-            return base_tipo[:-1]
-        return base_tipo
 
     if isinstance(nodo, ArgumentoTransferido):
         return tipo_de_expr(ctx, nodo.expr)
@@ -296,6 +341,11 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         op_map = {'-': '-', 'no': '!', '!': '!'}
         op = getattr(nodo, 'operador', '-')
         c_op = op_map.get(op, op)
+        # D-T1: -INT64_MIN es UB. Si el hijo es LiteralNumero(INT64_MIN abs)
+        # y el operador es '-', emitir INT64_MIN directamente sin signo externo.
+        if (op == '-' and isinstance(nodo.expr, LiteralNumero)
+                and nodo.expr.valor == 9223372036854775808):
+            return '(-9223372036854775807LL - 1)'
         return f"({c_op}{expr})"
 
     if isinstance(nodo, LlamadaFuncion):
@@ -306,6 +356,52 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 args.append(arg_c)
         tipo = tipo_de_expr(ctx, nodo)
         nombre = nodo.nombre
+
+        # H-R90-15: flag para stub dividir (solo si se usa y es builtin)
+        if nombre == 'dividir' and nombre not in ctx._funciones_usuario:
+            ctx._usa_dividir = True
+
+        # H-R90-13: rellenar argumentos omitidos con valores por defecto.
+        # (Manual 3 §3: parametro ::= IDENTIFICADOR [":" tipo] ["=" expresion])
+        if nombre in ctx._funciones_usuario:
+            def_func = ctx._funciones_usuario[nombre]
+            n_args = len(args)
+            n_params = len(def_func.parametros)
+            if n_args < n_params:
+                for j in range(n_args, n_params):
+                    p = def_func.parametros[j]
+                    if p.valor_default is not None:
+                        args.append(expr_a_c(ctx, p.valor_default))
+                    else:
+                        args.append('0')
+        # H-R90-13b: rellenar args de builtins importados (abrir, etc.)
+        # ctx._builtin_defaults[nombre] = [default_value_str] para params que
+        # pueden omitirse (p.ej. abrir: modo="r" → ['"r"'] for param idx 1)
+        # Si n_args < n_total_params, usar defaults para los faltantes.
+        from compilador.semantic_scope import _FUNCIONES_BUILTIN, _BUILTIN_PARAMS_DEFAULT
+        if nombre in _FUNCIONES_BUILTIN and nombre not in ctx._funciones_usuario:
+            params = _FUNCIONES_BUILTIN[nombre][0]
+            n_total = len(params)
+            n_args = len(args)
+            if n_args < n_total:
+                defaults = ctx._builtin_defaults.get(nombre, [])
+                default_indices = _BUILTIN_PARAMS_DEFAULT.get(nombre, [])
+                for j in range(n_args, n_total):
+                    if j in default_indices:
+                        idx_in_defaults = default_indices.index(j)
+                        if idx_in_defaults < len(defaults):
+                            args.append(defaults[idx_in_defaults])
+                    else:
+                        args.append('0')
+
+        # F4: métodos pasan self por puntero — añadir & al primer argumento
+        # (Manual 3 §6.1: self es parametro implicito inyectado por el puente)
+        if nombre in ctx._metodos_self and args:
+            arg0_tipo = ''
+            if nodo.argumentos and nodo.argumentos:
+                arg0_tipo = tipo_de_expr(ctx, nodo.argumentos[0])
+            if not arg0_tipo.endswith('*'):
+                args[0] = f"&({args[0]})"
 
         # Añadir & para parámetros que deben pasarse por puntero (Manual 3 §3.3)
         # Solo si el argumento NO es ya un puntero (evita &est cuando est es AnalizadorSemanticoEst*)
@@ -321,6 +417,24 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                         args[i] = f"&({args[i]})"
 
         args_str = ", ".join(args)
+
+        # F3-7: desboxeo de mensajes de canal. Un valor recibido con
+        # `canal ->` es void* (el S1 boxea al enviar con _synapse_box_int,
+        # cast directo (void*)(intptr_t)v). Si un builtin de conversion espera
+        # un primitivo, desboxear (paridad con el cast implicito del nativo
+        # bajo tdm64; gcc12 exige el cast explicito).
+        if nombre in ('entero_a_texto', 'decimal_a_texto'):
+            _unbox = '_synapse_unbox_int' if nombre == 'entero_a_texto' else '_synapse_unbox_float'
+            _ajustados = []
+            for i, a in enumerate(args):
+                _t = ''
+                if nodo.argumentos and i < len(nodo.argumentos):
+                    _t = tipo_de_expr(ctx, nodo.argumentos[i])
+                if _t in ('void*', 'puntero', 'Puntero'):
+                    _ajustados.append(f"{_unbox}({a})")
+                else:
+                    _ajustados.append(a)
+            args_str = ", ".join(_ajustados)
 
         # D-6: constructores ADT (ok/err/algun/ninguno) — compound literal del
         # tagged-union (Manual 2 §2 L75; std/err.syn los documenta como
@@ -357,13 +471,37 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     # Caso 2: funcion es el destructor directo del tipo de la variable
                     else:
                         var_tipo = ctx._variables.get(var_name, '')
-                        dtor = ctx._destructor_map.get(var_tipo, '')
+                        dtor, _, _ = ctx._destructor_para_tipo(var_tipo, var_name) if var_tipo else ('', '', '')
                         if dtor and dtor == nombre:
                             ctx._consumed_vars.add(var_name)
+
+        # Manual 4 §3.3/§4.2: rc(T) / arc(T) constructores (alloc + copy)
+        if nombre in ('rc', 'arc') and len(nodo.argumentos) >= 1:
+            inner_arg = expr_a_c(ctx, nodo.argumentos[0])
+            inner_tipo_syn = tipo_de_expr(ctx, nodo.argumentos[0])
+            inner_tipo_c = ctx.traducir_tipo_c(inner_tipo_syn)
+            alloc_fn = 'rc_alloc' if nombre == 'rc' else 'arc_alloc'
+            # GCC statement expression: alloc, copy, return ptr
+            return (f"({{ {inner_tipo_c}* _p = "
+                    f"({inner_tipo_c}*)({alloc_fn})(sizeof({inner_tipo_c}), NULL); "
+                    f"*_p = ({inner_tipo_c}){{{inner_arg}}}; "
+                    f"(void*)_p; }})")
+
+        # Manual 4 §4.3: débil(nulo) → nil WeakRef, débil(ptr) → rc_weak_ref
+        if nombre in ('débil', 'weak') and len(nodo.argumentos) >= 1:
+            arg = nodo.argumentos[0]
+            if isinstance(arg, LiteralNulo):
+                return '((WeakRef){0})'
+            arg_c = expr_a_c(ctx, arg)
+            return f'rc_weak_ref({arg_c})'
 
         # len, subcadena, empieza_con builtins
         if nombre == 'len':
             if args:
+                arg_tipo = tipo_de_expr(ctx, nodo.argumentos[0]) if nodo.argumentos else None
+                # H-R90-15: len(Lista<T>) → stub 0 (runtime no implementado, Manual 3 §5.2)
+                if arg_tipo and (arg_tipo.startswith('Lista') or arg_tipo.startswith('Mapa')):
+                    return "0"
                 return f"({args[0]}).longitud"
             return "0"
         if nombre == 'subcadena':
@@ -394,12 +532,20 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             adjusted = []
             for i, a in enumerate(args):
                 if i < len(expected_types) and expected_types[i] == 'char*':
-                    adjusted.append(f"{a}.datos")
+                    # Skip .datos if arg is already char* (ExprObtenerDireccion
+                    # of texto produces .datos → tipo_de_expr returns 'puntero')
+                    arg_tipo = ''
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                    if arg_tipo == 'puntero':
+                        adjusted.append(a)
+                    else:
+                        adjusted.append(f"({a}).datos")
                 else:
                     adjusted.append(a)
             return f"{nombre}({', '.join(adjusted)})"
 
-        # Add .datos for string args passed to puntero (void*) params
+        # Add .datos for string args passed to puntero (void*) or &texto params (FFI)
         if nombre in ctx._func_param_types:
             param_types = ctx._func_param_types[nombre]
             adjusted = []
@@ -408,7 +554,16 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                     if nodo.argumentos and i < len(nodo.argumentos):
                         arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
                         if arg_tipo in ('texto', 'cadena', 'CadenaSegura'):
-                            adjusted.append(f"{a}.datos")
+                            adjusted.append(f"({a}).datos")
+                            continue
+                # FFI: &texto param expects char* — pass .datos if arg is texto
+                if (i < len(param_types)
+                        and param_types[i] in ('&texto', '&cadena', '&Texto')
+                        and param_types[i] not in ctx._POINTER_TYPES):
+                    if nodo.argumentos and i < len(nodo.argumentos):
+                        arg_tipo = tipo_de_expr(ctx, nodo.argumentos[i])
+                        if arg_tipo in ('texto', 'cadena', 'CadenaSegura'):
+                            adjusted.append(f"({a}).datos")
                             continue
                 adjusted.append(a)
             return f"{nombre}({', '.join(adjusted)})"
@@ -473,6 +628,10 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
 
     if isinstance(nodo, ExprObtenerDireccion):
         inner = expr_a_c(ctx, nodo.expr)
+        base_tipo = tipo_de_expr(ctx, nodo.expr)
+        # FFI: &texto -> char* (zero-copy .datos, Manual 3 §9.3)
+        if base_tipo in ('texto', 'cadena', 'CadenaSegura'):
+            return f"({inner}).datos"
         if ctx._safe_mode:
             # Use GCC statement expression ({...}) instead of comma operator
             # (GCC -O2 eliminates comma-operator assert in provably UB paths)
@@ -495,12 +654,39 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return nodo.instruccion
 
     if isinstance(nodo, ExprCrearCanal):
-        cap = expr_a_c(ctx, nodo.capacidad) if nodo.capacidad else "10"
+        if nodo.capacidad and isinstance(nodo.capacidad, LiteralNumero):
+            cap = str(nodo.capacidad.valor)
+        else:
+            cap = expr_a_c(ctx, nodo.capacidad) if nodo.capacidad else "10"
         return f"canal_crear({cap})"
 
     if isinstance(nodo, ExprRecibirCanal):
-        canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
-        return f"canal_recibir({canal})"
+        # F3-7: dentro del bloque de `escuchar canal:` el recibir se emite como
+        # canal_recibir(_canal) (la variable del listener, no la local del
+        # contenedor, que no es visible en la funcion listener).
+        # F4-6: firma del Manual 5 §3.4 `canal_recibir(canal, bool* cerrado)`.
+        # Dentro del escuchar, el receive emite un statement-expression que
+        # rompe el while del listener cuando *cerrado == true (Manual 5 §4.3),
+        # permitiendo distinguir el valor 0 del cierre del canal. Fuera del
+        # escuchar se pasa &(bool){0} (el idiom `== nulo` sigue siendo leniency).
+        if getattr(ctx, '_escuchar_modo', False):
+            _elem = _elemento_canal(ctx, nodo)
+            _unbox = {
+                'entero': "_synapse_unbox_int(_m)",
+                'decimal': "_synapse_unbox_float(_m)",
+            }.get(_elem, "_m")
+            return f"({{ void* _m = canal_recibir(_canal, &_cerrado); if (_cerrado) break; {_unbox}; }})"
+        else:
+            canal = expr_a_c(ctx, nodo.canal) if nodo.canal else "NULL"
+            _r = f"canal_recibir({canal}, &(bool){{0}})"
+        # F3-10: el receive hereda el tipo del elemento del canal (Manual 5 §4.2).
+        # Se desboxea el void* que devuelve canal_recibir (el S1 boxea al enviar).
+        _elem = _elemento_canal(ctx, nodo)
+        if _elem == 'entero':
+            return f"_synapse_unbox_int({_r})"
+        if _elem == 'decimal':
+            return f"_synapse_unbox_float({_r})"
+        return _r
 
     return "0"
 
@@ -655,7 +841,7 @@ def emitir_leer_linea(ctx: GeneratorContext, nodo: DefinicionFuncion):
     ctx.write_line("")
 
 def emitir_cerrar(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    ctx.write_line("void cerrar(Canal canal) {")
+    ctx.write_line("void cerrar_archivo(Canal canal) {")
     ctx.inc_indent()
     ctx.write_line("if (canal.es_virtual) return;")
     ctx.write_line("if (canal.stream) fclose(canal.stream);")

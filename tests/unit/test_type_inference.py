@@ -15,6 +15,9 @@ from compilador.lexer import Lexer
 from compilador.parser import Parser
 from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
+import pytest
+
+pytestmark = pytest.mark.unit
 from compilador.tipos import (
     ContadorTVar, Tipo, TipoKind, UnificadorHM,
     tipo_desde_cadena, tipo_a_cadena, es_tipo_conocido,
@@ -271,4 +274,48 @@ class TestChecadorHindleyMilner:
         ruta = Path(__file__).resolve().parent.parent / 'fixtures' \
             / 'test_d6_propagar.syn'
         diag = _analizar(ruta.read_text(encoding='utf-8'))
+        assert not diag.hay_errores(), [e for e in diag.errores]
+
+    # R23 (paridad nativo): la REDEFINICION del archivo del usuario debe ser
+    # observable en el S1 — el unity merge ya no deduplica los duplicados del
+    # propio archivo (hallazgo R21; Manual 3 §3.1, diagnóstico Manual 2 §10.1).
+    def test_redefinicion_adt_observable(self):
+        diag = _analizar(
+            "#lang: es\n"
+            "tipo Color = rojo | azul\n"
+            "tipo Color = verde | amarillo\n"
+            "funcion principal() -> nulo:\n"
+            "    retornar\n"
+        )
+        assert diag.hay_errores()
+        assert any(e['codigo'] == ErrorCodes.ERR_SEM_REDEFINICION
+                   for e in diag.errores)
+
+    def test_redefinicion_variable_local_observable(self):
+        diag = _analizar(
+            "#lang: es\n"
+            "funcion f() -> entero:\n"
+            "    let x = 1\n"
+            "    let x = 2\n"
+            "    retornar x\n"
+            "funcion principal() -> nulo:\n"
+            "    retornar\n"
+        )
+        assert diag.hay_errores()
+        assert any(e['codigo'] == ErrorCodes.ERR_SEM_REDEFINICION
+                   for e in diag.errores)
+
+    def test_shadowing_ambito_anidado_ok(self):
+        # El shadowing en un ambito anidado NO es REDEFINICION (declarar
+        # retorna True en el scope nuevo; solo el mismo ambito es error).
+        diag = _analizar(
+            "#lang: es\n"
+            "funcion f(x: entero) -> entero:\n"
+            "    si x > 0:\n"
+            "        let x = 99\n"
+            "        retornar x\n"
+            "    retornar x\n"
+            "funcion principal() -> nulo:\n"
+            "    retornar\n"
+        )
         assert not diag.hay_errores(), [e for e in diag.errores]

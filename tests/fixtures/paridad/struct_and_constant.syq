@@ -1,0 +1,10 @@
+#lang: es
+// Paridad: estructura + constante + funcion que usa ambos
+constante C = 5
+
+estructura Punto:
+    x: entero
+
+funcion area(p: Punto) -> entero:
+    let v = p.x
+    retornar v

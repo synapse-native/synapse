@@ -50,7 +50,7 @@ gcc -O2 -static -o synapse-windows-amd64.exe synapse_unity.c synapse_rt.c \
   - `release-binaries.yml` — compila `tweetnacl.o` pero **no lo pasa al link** y no enlaza
     `runtime/core/*.o` → FALLA en los 3 OS.
   - `release_matrix.yml` — compila `runtime/core/*.c` + `tweetnacl.o` y los enlaza → ✅ ÚNICO CORRECTO.
-  - `ci-tests.yml` (job `bootstrap`) — grepea `error:` en el log de `python main.py src/main.syn`;
+   - `ci-tests.yml` (job `bootstrap`) — grepea `error:` en el log de `python main.py nucleo/principal.syn`;
     el log contiene `gcc: error: synapse_rt.o...` y errores C → FALLA.
   - `build-installer.yml` / `cross-compile.yml` — esperan `dist\bin\synapse.exe` que nunca se
     genera → FALLA.

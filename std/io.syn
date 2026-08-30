@@ -19,8 +19,7 @@ funcion abrir(ruta: texto, modo: texto) -> Canal:
 funcion leer(c: Canal) -> texto:
     retornar _syn_leer(c)
 
-funcion cerrar(-> c: Canal) -> nulo:
-    retornar
+externo funcion cerrar_archivo(c: Canal) -> nulo
 
 funcion escribir(texto: texto) -> nulo:
     _syn_escribir(texto)
@@ -31,8 +30,41 @@ funcion escribir_linea(texto: texto) -> nulo:
 funcion leer_linea() -> texto:
     retornar _syn_leer_linea()
 
+// ============================================================
+// §1.7.1 — Leer bytes (lectura binaria de stdin)
+// ============================================================
+
+funcion leer_bytes(cantidad: entero) -> texto:
+    retornar _syn_leer_bytes(cantidad)
+
 externo funcion _syn_abrir(ruta: texto, modo: texto) -> Canal
 externo funcion _syn_leer(c: Canal) -> texto
 externo funcion _syn_escribir(texto: texto) -> nulo
 externo funcion _syn_escribir_linea(texto: texto) -> nulo
 externo funcion _syn_leer_linea() -> texto
+externo funcion _syn_leer_bytes(cantidad: entero) -> texto
+
+// ============================================================
+// §1.7 — I/O de bajo nivel para LSP (fgetc, fprintf, fflush)
+// ============================================================
+
+// Lee un byte de stdin (0-255), o -1 si EOF
+externo funcion _syn_fgetc_stdin() -> entero
+
+// Escribe texto formateado a un canal (0=stdout, 1=stderr)
+// Retorna el número de bytes escritos
+externo funcion _syn_fprintf(canalm: entero, formato: texto) -> entero
+
+// Escribe texto formateado con 1 argumento entero
+externo funcion _syn_fprintf_i(canalm: entero, formato: texto, valor: entero) -> entero
+
+// Escribe texto formateado con 2 argumentos (entero + texto)
+externo funcion _syn_fprintf_it(canalm: entero, formato: texto, val1: entero, val2: texto) -> entero
+
+// Flush de un canal (0=stdout, 1=stderr)
+externo funcion _syn_fflush(canalm: entero) -> nulo
+
+// Desactiva buffering en un canal
+externo funcion _syn_setbuf_null(canalm: entero) -> nulo
+
+// CACHE TEST: modification

@@ -197,12 +197,16 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("{ struct Identificador* _p = (struct Identificador*)calloc(1, sizeof(struct Identificador));")
             asm("  _p->tipo = puente_cs_str((void*)\"Identificador\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
+            asm("  // R14: linea/columna reales (diagnostico de use-after-move con paridad S1)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_NUMERO:
         inseguro:
             asm("{ struct LiteralNumero* _p = (struct LiteralNumero*)calloc(1, sizeof(struct LiteralNumero));")
             asm("  _p->tipo = puente_cs_str((void*)\"LiteralNumero\");")
-            asm("  _p->valor = atoll((const char*)puente_str(idx));")
+            asm("  { char* _ns = (char*)puente_str(idx);")
+            asm("    _p->valor = (strcmp(_ns, \"9223372036854775808\") == 0) ? (-9223372036854775807LL - 1) : atoll(_ns);")
+            asm("  }")
             asm("  r = (void*)_p; }")
     si t == NODO_DECIMAL:
         inseguro:
@@ -249,6 +253,7 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"ExprObtenerDireccion\");")
             asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->es_mutable = val;")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_DEREF:
         inseguro:
@@ -269,6 +274,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("    _p->tipo = puente_cs_str((void*)\"LlamadaFuncion\");")
             asm("    _p->nombre = puente_cs_str(_nm_ll);")
             asm("    _p->argumentos = (struct ListaNodo*)puente_lista(hd);")
+            asm("    // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE)")
+            asm("    _p->linea = linea_n; _p->columna = col_n;")
             asm("    r = (void*)_p;")
             asm("  } }")
     si t == NODO_ACCESO_CAMPO:
@@ -284,6 +291,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_CONSTANTE_INMUTABLE / REDEFINICION)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     // A4.5 fix (bootstrap S2/S3): `expr.campo = val` -> AsignacionCampo.
     // Paridad _P_sentencia del espejo (ExprAccesoCampo + T_ASSIGN ->
@@ -300,13 +309,40 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre_campo = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hd);")
             asm("  r = (void*)_p; }")
+    // R11 (deuda FASE_2_2.4_NATIVA.md): NODO_COINCIDIR/NODO_CASO -> structs
+    // NodoCoincidir{expresion, casos} / NodoCaso{patron, cuerpo} (paridad S1
+    // ast_nodes.py). El parser plano guarda: expr en hijo_izq del COINCIDIR,
+    // casos encadenados en hijo_der (cadena hermano); patron en payload
+    // primario del CASO y cuerpo en hijo_izq (cadena hermano). Sin estas ramas
+    // el nodo caia en el default (r=nulo) y la exhaustividad nativa quedaba
+    // inerte (hallazgo checklist 2.6 / deuda R11).
+    si t == NODO_COINCIDIR:
+        inseguro:
+            asm("{ struct NodoCoincidir* _p = (struct NodoCoincidir*)calloc(1, sizeof(struct NodoCoincidir));")
+            asm("  _p->tipo = puente_cs_str((void*)\"NodoCoincidir\");")
+            asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->casos = (struct ListaNodo*)puente_lista(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  r = (void*)_p; }")
+    si t == NODO_CASO:
+        inseguro:
+            asm("{ struct NodoCaso* _p = (struct NodoCaso*)calloc(1, sizeof(struct NodoCaso));")
+            asm("  _p->tipo = puente_cs_str((void*)\"NodoCaso\");")
+            asm("  _p->patron = puente_cs_str(puente_str(idx));")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hi);")
+            asm("  r = (void*)_p; }")
     si t == NODO_PARAMETRO:
         inseguro:
             asm("{ struct Parametro* _p = (struct Parametro*)calloc(1, sizeof(struct Parametro));")
             asm("  _p->tipo = puente_cs_str((void*)\"Parametro\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->tipo_param = puente_cs_str(puente_str2(idx));")
-            asm("  _p->es_transferencia = 0;")
+            asm("  // R26: flag de transferencia de ownership -> via valor_int del nodo")
+            asm("  // plano (parser.syn parsear_parametros; Manual 2 L59-60, paridad S1).")
+            asm("  _p->es_transferencia = val;")
+            asm("  // R21: linea/columna reales (validacion 2.4 aridad/base en parametros)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     // let IDENT [: tipo] [= expr] -> DeclaracionVariable (paridad _P_let):
     // nombre (s1), tipo_param (s2, span completo), expresion (hijo_izq), linea/col.
@@ -332,6 +368,11 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"AsignacionVariable\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->expresion = (struct Nodo*)puente_nodo(hi);")
+            asm("  _p->es_constante = 1;  // R9: marcador de constante para el analizador (flatten -> valor_int)")
+            asm("  // R23: linea/columna reales (REDEFINICION de constante GLOBAL —")
+            asm("  // paridad R21 en NODO_ASIGNACION; antes la redefinicion de una")
+            asm("  // constante global top-level salia con (linea 0, columna 0)).")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_FUNCION:
         inseguro:
@@ -348,6 +389,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("      _p->garantiza = (struct ListaNodo*)puente_lista(_ac_n[extra].hijo_der);")
             asm("    }")
             asm("  }")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_ESTRUCTURA:
         inseguro:
@@ -355,6 +398,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"DefinicionEstructura\");")
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->campos = (struct ListaParametro*)puente_lista_param(hi);")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_SI:
         inseguro:
@@ -376,10 +421,16 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("{ struct SentenciaPara* _p = (struct SentenciaPara*)calloc(1, sizeof(struct SentenciaPara));")
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaPara\");")
             asm("  _p->linea = linea_n; _p->columna = col_n;")
+            asm("  // R30: nombre de la variable de bucle (payload primario guardado por")
+            asm("  // parsear_para via nodo_guardar_token; Manual 2 §2.2 L108).")
+            asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->inicializacion = (struct Nodo*)puente_nodo(hi);")
             asm("  _p->condicion = (struct Nodo*)puente_nodo(hd);")
             asm("  _p->incremento = 0;")
-            asm("  _p->cuerpo = (struct Nodo*)puente_nodo(extra);")
+            asm("  // R30: cuerpo como ListaNodo (paridad SentenciaSi/Mientras) — antes")
+            asm("  // puente_nodo(extra) guardaba SOLO la primera sentencia y el resto")
+            asm("  // del bloque se perdia en el codegen.")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(extra);")
             asm("  r = (void*)_p; }")
     si t == NODO_RETORNAR:
         inseguro:
@@ -409,12 +460,23 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaLanzar\");")
             asm("  _p->llamada = (struct Nodo*)puente_nodo(hi);")
             asm("  r = (void*)_p; }")
+    // R15: argumento transferido ->expr (Manual 4 S3.3, paridad S1
+    // ast_nodes.ArgumentoTransferido). El puente convierte NODO_TRANSFERIDO
+    // del parser al nodo tipado que consume el flatten F8.
+    si t == NODO_TRANSFERIDO:
+        inseguro:
+            asm("{ struct ArgumentoTransferido* _p = (struct ArgumentoTransferido*)calloc(1, sizeof(struct ArgumentoTransferido));")
+            asm("  _p->tipo = puente_cs_str((void*)\"ArgumentoTransferido\");")
+            asm("  _p->expr = (struct Nodo*)puente_nodo(hi);")
+            asm("  r = (void*)_p; }")
     si t == NODO_ESCUCHAR:
         inseguro:
             asm("{ struct SentenciaEscuchar* _p = (struct SentenciaEscuchar*)calloc(1, sizeof(struct SentenciaEscuchar));")
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEscuchar\");")
+            asm("  // F3-7 (Manual 2 L113): canal en hijo_izq, bloque en hijo_der")
+            asm("  // como ListaNodo (paridad SentenciaSi/Mientras R30).")
             asm("  _p->canal = (struct Nodo*)puente_nodo(hi);")
-            asm("  _p->respuesta = (struct Nodo*)puente_nodo(hd);")
+            asm("  _p->cuerpo = (struct ListaNodo*)puente_lista(hd);")
             asm("  r = (void*)_p; }")
     si t == NODO_ENVIAR_CANAL:
         inseguro:
@@ -425,6 +487,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->tipo = puente_cs_str((void*)\"SentenciaEnviarCanal\");")
             asm("  _p->canal = (struct Nodo*)_cid;")
             asm("  _p->valor = (struct Nodo*)puente_nodo(hd);")
+            asm("  // R14: linea/columna reales (paridad S1 diagnostico 6:4, no 0:0)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_RECIBIR_CANAL:
         inseguro:
@@ -462,6 +526,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->nombre = puente_cs_str(puente_str(idx));")
             asm("  _p->parametros = (struct ListaParametro*)puente_lista_param(hd);")
             asm("  _p->tipo_retorno = puente_cs_str(puente_str2(idx));")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_EXPORT:
         inseguro:
@@ -512,6 +578,8 @@ funcion puente_nodo(idx: entero) -> puntero:
             asm("  _p->parametros_tipo = (struct ListaNodo*)puente_lista(hi);")
             asm("  _p->tipo_base = puente_cs_str(puente_str2(idx));")
             asm("  _p->constructores = (struct ListaNodo*)puente_lista(hd);")
+            asm("  // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT)")
+            asm("  _p->linea = linea_n; _p->columna = col_n;")
             asm("  r = (void*)_p; }")
     si t == NODO_CONSTRUCTOR:
         inseguro:

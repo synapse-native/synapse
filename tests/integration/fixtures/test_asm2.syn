@@ -1,0 +1,5 @@
+#lang: es
+funcion principal() -> entero:
+    inseguro:
+        asm("printf("hello");")
+    retornar 0

@@ -21,13 +21,30 @@ int _G_native_es_estructura(const char* n) {
     return 0;
 }
 
-char _G_native_func_returns[512][64];
+char _G_native_struct_campos[256][64][64];
+char _G_native_struct_campos_tipo[256][64][64];
+int _G_native_struct_campos_count[256];
+int _G_native_campo_tipo(const char* sn, const char* cn, char* out) {
+    if (!sn || !cn || !out) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], sn) == 0) {
+            for (int _j = 0; _j < _G_native_struct_campos_count[_i]; _j++) {
+                if (strcmp(_G_native_struct_campos[_i][_j], cn) == 0) {
+                    strcpy(out, _G_native_struct_campos_tipo[_i][_j]); return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+char _G_native_func_returns[2048][64];
 int _G_native_func_returns_count;
 int _G_native_tipo_retorno(const char* fn, char* out) {
     if (!fn || !out) return 0;
     for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
         if (strcmp(_G_native_func_returns[_i], fn) == 0) {
-            strcpy(out, _G_native_func_returns[_i + 256]); return 1;
+            strcpy(out, _G_native_func_returns[_i + 1024]); return 1;
         }
     }
     return 0;
@@ -116,9 +133,33 @@ int _G_fn_var_auto[2048];
 char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
 char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
 int _G_fn_ptr_vars_count;
+char _G_native_canal_names[512][64];
+char _G_native_canal_elem[512][64];
+int _G_native_canal_count;
+void _G_native_canal_elem_set(const char* _cname, const char* _celem) {
+    if (!_cname || !_celem) return;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_G_native_canal_elem[_ci], _celem, 63); _G_native_canal_elem[_ci][63] = 0; return; } }
+    if (_G_native_canal_count < 512) { strncpy(_G_native_canal_names[_G_native_canal_count], _cname, 63); _G_native_canal_names[_G_native_canal_count][63] = 0; strncpy(_G_native_canal_elem[_G_native_canal_count], _celem, 63); _G_native_canal_elem[_G_native_canal_count][63] = 0; _G_native_canal_count++; }
+}
+int _G_native_canal_elem_tipo(const char* _cname, char* _cout) {
+    if (!_cname || !_cout) return 0;
+    for (int _ci = 0; _ci < _G_native_canal_count; _ci++) { if (strcmp(_G_native_canal_names[_ci], _cname) == 0) { strncpy(_cout, _G_native_canal_elem[_ci], 63); _cout[63] = 0; return 1; } }
+    return 0;
+}
+char _G_listeners[8][16384];
+int _G_listeners_count;
+int _G_listener_modo;
+char _G_lanzar_wrappers[8][4096];
+int _G_lanzar_wrappers_count;
+int _G_lanzar_count;
+
+void* _G_fn_garantizas_actuales = 0;
+char _G_fn_ret_tipo_c[64];
+
 char _G_tipo_aliases[128][64];
 char _G_tipo_aliases_base[128][64];
 int _G_tipo_aliases_count;
+int _G_parse_error = 0;
 
 
 int _g_argc;
@@ -132,17 +173,7 @@ CadenaSegura _argv(int i) {
 
 void salir(int codigo) { exit(codigo); }
 
-CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
-    int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: malloc fallo en concat()\\n"); exit(1); }
-    memcpy(_buf, a.datos, a.longitud);
-    memcpy(_buf + a.longitud, b.datos, b.longitud);
-    _buf[_tl] = 0;
-    return (CadenaSegura){_tl, _buf};
-}
-
-int64_t principal(void) {
+int64_t _principal_impl(void) {
     int64_t total_fallos;
     _simd_detectar();
     total_fallos = 0LL;
@@ -202,6 +233,9 @@ int64_t prueba_clave_incorrecta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par_b);
+    _syn_texto_liberar(par_a);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -289,6 +323,7 @@ int64_t prueba_enviar_hello(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -315,6 +350,8 @@ int64_t prueba_firma_corrupta(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -350,6 +387,8 @@ int64_t prueba_firmar_verificar(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
+    _syn_texto_liberar(firma);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -371,6 +410,7 @@ int64_t prueba_generar_par(void) {
         escribir_linea((CadenaSegura){ .longitud = (int)strlen("[OK] generar_par() no retorna vacio"), .datos = "[OK] generar_par() no retorna vacio" });
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -443,6 +483,10 @@ int64_t prueba_handshake_bidireccional(void) {
         fallos = (fallos + 1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
+    _syn_texto_liberar(par_b);
+    _syn_texto_liberar(par_a);
+    _syn_texto_liberar(firma_b);
+    _syn_texto_liberar(firma_a);
     return fallos;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -539,8 +583,9 @@ int main(int argc, char** argv) {
     _g_argc = argc;
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
-    return principal();
+    _principal_impl();
     synapse_esperar_hilos();
+    synapse_esperar_fibras();
     pool_destroy();
     return 0;
 }

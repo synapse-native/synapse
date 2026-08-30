@@ -127,6 +127,7 @@ funcion pgo_emitir_contadores_funcion(est: GeneradorCEst, num_ctrs: entero) -> e
 //
 // EFECTO: Asigna ID via pgo_nuevo_contador() y emite:
 //   __pgo_counter_<ID>++;  /* [PGO] */
+// La DECLARACION global se emite una sola vez en pgo_finalizar().
 // ----------------------------------------------------------
 funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
     id_ctr = pgo_nuevo_contador()
@@ -134,6 +135,11 @@ funcion pgo_emitir_incremento_bb(est: GeneradorCEst) -> nulo:
         asm("// PGO: Emitir incremento en frontera de bloque basico")
         asm("int _id = id_ctr;")
         asm("char _tmp[128];")
+        // F17: declarar extern para uso dentro de funciones (definicion global en pgo_finalizar)
+        asm("snprintf(_tmp, 128, \"    extern uint64_t __pgo_counter_%d;  /* [PGO] */\", _id);")
+        asm("gen_emitir_str(est, _tmp);")
+        asm("snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);")
+        asm("gen_emitir_str(est, _tmp);")
         asm("snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);")
         asm("gen_emitir_str(est, _tmp);")
 
@@ -147,6 +153,8 @@ funcion pgo_emitir_incremento_id(est: GeneradorCEst, id: entero) -> nulo:
         asm("// PGO: Emitir incremento para contador especifico")
         asm("int _id = id;")
         asm("char _tmp[128];")
+        asm("snprintf(_tmp, 128, \"    extern uint64_t __pgo_counter_%d;  /* [PGO] */\", _id);")
+        asm("gen_emitir_str(est, _tmp);")
         asm("snprintf(_tmp, 128, \"    __pgo_counter_%d++;  /* [PGO] */\", _id);")
         asm("gen_emitir_str(est, _tmp);")
 
@@ -166,6 +174,12 @@ funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
         asm("int _total = num_ctrs;")
         asm("char _tmp[512];")
         asm("")
+        // F17: Declaraciones globales de contadores (unica definicion)
+        asm("gen_emitir_str(est, \"// PGO: Declaraciones globales de contadores\");")
+        asm("for (int _i = 0; _i < _total; _i++) {")
+        asm("    snprintf(_tmp, 512, \"uint64_t __pgo_counter_%d = 0;\", _i);")
+        asm("    gen_emitir_str(est, _tmp);")
+        asm("}")
         asm("gen_emitir_str(est, \"\");")
         asm("gen_emitir_str(est, \"// ================================================\");")
         asm("gen_emitir_str(est, \"// PGO: Volcado automatico de contadores\");")
@@ -180,11 +194,7 @@ funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
         asm("snprintf(_tmp, 512, \"    fprintf(_pf, \\\"synapse_pgo_v1 %%d\\\\\\\\n\\\", %d);\", _total);")
         asm("gen_emitir_str(est, _tmp);")
         asm("gen_emitir_str(est, \"    // Volcar cada contador\");")
-        asm("// Emitir declaraciones externas y fprintf para cada contador")
-        asm("for (int _i = 0; _i < _total; _i++) {")
-        asm("    snprintf(_tmp, 512, \"    extern uint64_t __pgo_counter_%d;\", _i);")
-        asm("    gen_emitir_str(est, _tmp);")
-        asm("}")
+        // F17: Las declaraciones globales ya emitidas arriba, solo referenciar
         asm("for (int _i = 0; _i < _total; _i++) {")
         asm("    snprintf(_tmp, 512, \"    fprintf(_pf, \\\"%%llu\\\\\\\\n\\\", __pgo_counter_%d);\", _i);")
         asm("    gen_emitir_str(est, _tmp);")
@@ -200,6 +210,7 @@ funcion pgo_emitir_volcado(est: GeneradorCEst, num_ctrs: entero) -> nulo:
 // ----------------------------------------------------------
 funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
     inseguro:
+        asm("gen_emitir_str(est, \"    extern void __pgo_dump(void);  /* [PGO] forward decl */\");")
         asm("gen_emitir_str(est, \"    atexit(__pgo_dump);  /* [PGO] Registro de volcado */\");")
 
 // ----------------------------------------------------------
@@ -210,9 +221,9 @@ funcion pgo_registrar_atexit(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 funcion pgo_finalizar(est: GeneradorCEst) -> nulo:
     total = pgo_total_contadores()
-    si total > 0:
-        pgo_emitir_volcado(est, total)
-        pgo_registrar_atexit(est)
+    // F17: Siempre emitir __pgo_dump (incluso con 0 contadores) porque
+    // pgo_registrar_atexit registra atexit(__pgo_dump) sin condicion.
+    pgo_emitir_volcado(est, total)
 
 // ============================================================
 // WRAPPERS DE VISITANTES INSTRUMENTADOS

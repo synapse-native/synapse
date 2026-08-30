@@ -37,6 +37,7 @@ extern int texto_a_entero(CadenaSegura str);
 extern float texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(float n);
 extern CadenaSegura entero_a_texto(int n);
+extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
 
@@ -50,17 +51,6 @@ CadenaSegura _argv(int i) {
 }
 
 void salir(int codigo) { exit(codigo); }
-
-CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
-    int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\n"); exit(1); }
-    memcpy(_buf, a.datos, a.longitud);
-    memcpy(_buf + a.longitud, b.datos, b.longitud);
-    _buf[_tl] = 0;
-    CadenaSegura _r = { .longitud = _tl, .datos = _buf };
-    return _r;
-}
 
 struct Token;
 struct Nodo;
@@ -1522,7 +1512,6 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     fprintf(_G_out,"static int _g_argc;\nstatic char** _g_argv;\nint _argc(){return _g_argc;}\n");
     fprintf(_G_out,"CadenaSegura _argv(int i){if(i<0||i>=_g_argc)return (CadenaSegura){0,(char*)\"\"};return (CadenaSegura){.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]};}\n");
     fprintf(_G_out,"void salir(int c){exit(c);}\n");
-    fprintf(_G_out,"CadenaSegura concat(CadenaSegura a,CadenaSegura b){int _tl=a.longitud+b.longitud;char* _buf=(char*)malloc(_tl+1);memcpy(_buf,a.datos,a.longitud);memcpy(_buf+a.longitud,b.datos,b.longitud);_buf[_tl]=0;CadenaSegura _r={.longitud=_tl,.datos=_buf};return _r;}\n");
     // Forward declarations
     struct ListaNodo* c=programa.sentencias;
     while(c){ if(c->cabeza&&strcmp(c->cabeza->tipo.datos,"DefinicionEstructura")==0){ struct DefinicionEstructura* d=(struct DefinicionEstructura*)c->cabeza; fprintf(_G_out,"struct %s;\n",d->nombre.datos); } c=c->cola; }

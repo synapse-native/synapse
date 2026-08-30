@@ -15,6 +15,8 @@ from compilador.lexer import Lexer
 from compilador.ast_nodes import TokenID
 from exceptions import SynapseError
 
+pytestmark = pytest.mark.unit
+
 
 def _tipos(fuente: str):
     return [t.tipo for t in Lexer(fuente).tokenizar()]
@@ -89,14 +91,14 @@ class TestLexerIdiomaYDirectivas:
         assert TokenID.ASSIGN in tipos
         assert TokenID.NUMBER in tipos
 
-    def test_lang_todos_idiomas(self):
-        """Manual 2 §3: tabla multi-idioma (es/en/fr/pt/de/it) — el keyword
-        'si' se tokeniza como T_SI en cada idioma."""
-        casos = {'es': 'si', 'en': 'if', 'fr': 'si', 'pt': 'se',
-                 'de': 'wenn', 'it': 'se'}
-        for idioma, kw in casos.items():
-            tipos = _tipos("#lang: " + idioma + "\n" + kw + " a == 1:\n    x = 1")
-            assert TokenID.SI in tipos, "idioma " + idioma + ": keyword '" + kw + "'"
+    @pytest.mark.parametrize("idioma,kw", [
+        ('es', 'si'), ('en', 'if'), ('fr', 'si'),
+        ('pt', 'se'), ('de', 'wenn'), ('it', 'se'),
+    ])
+    def test_lang_todos_idiomas(self, idioma, kw):
+        """Manual 2 §3: tabla multi-idioma — 'si' se tokeniza como T_SI en cada idioma."""
+        tipos = _tipos("#lang: " + idioma + "\n" + kw + " a == 1:\n    x = 1")
+        assert TokenID.SI in tipos, "idioma " + idioma + ": keyword '" + kw + "'"
 
     def test_lang_faltante_ubicacion(self):
         with pytest.raises(SynapseError) as exc:
@@ -161,35 +163,38 @@ class TestLexerIndentacion:
 
 
 class TestLexerLiterales:
-    def test_numero_entero_valor(self):
-        ts = _tokens("#lang: es\nx = 42")
+    @pytest.mark.parametrize("fuente,expected", [
+        ("#lang: es\nx = 42", 42),
+        ("#lang: es\nx = 0", 0),
+        ("#lang: es\nx = 999999", 999999),
+        ("#lang: es\nx = 255", 255),
+    ])
+    def test_numero_entero_valor(self, fuente, expected):
+        ts = _tokens(fuente)
         nums = [t for t in ts if t.tipo == TokenID.NUMBER]
-        assert nums and nums[0].valor == 42
+        assert nums and nums[0].valor == expected
 
-    def test_numero_flotante_valor(self):
-        ts = _tokens("#lang: es\nx = 3.14")
-        fl = [t for t in ts if t.tipo == TokenID.FLOAT]
-        assert fl and abs(fl[0].valor - 3.14) < 1e-9
+    @pytest.mark.parametrize("fuente,expected", [
+        ("#lang: es\nx = 3.14", 3.14),
+        ("#lang: es\nx = 0.0", 0.0),
+        ("#lang: es\nx = 1e3", 1000.0),
+        ("#lang: es\nx = 1.5E+2", 150.0),
+    ])
+    def test_numero_flotante_valor(self, fuente, expected):
+        ts = _tokens(fuente)
+        fl = [t for t in ts if t.tipo in (TokenID.FLOAT, TokenID.NUMBER)]
+        assert fl and abs(fl[0].valor - expected) < 1e-9
 
-    def test_cadena_escapes(self):
-        ts = _tokens('#lang: es\nx = "a\\nb\\tc"')
+    @pytest.mark.parametrize("fuente,expected", [
+        ('#lang: es\nx = "a\\nb\\tc"', "a\nb\tc"),
+        ("#lang: es\nx = 'hola'", "hola"),
+        ('#lang: es\nx = "dijo: \\"hola\\""', 'dijo: "hola"'),
+        ('#lang: es\nx = "a\\\\b"', "a\\b"),
+    ])
+    def test_cadena_escapes(self, fuente, expected):
+        ts = _tokens(fuente)
         cad = [t for t in ts if t.tipo == TokenID.STRING]
-        assert cad and cad[0].valor == "a\nb\tc"
-
-    def test_cadena_comillas_simples(self):
-        ts = _tokens("#lang: es\nx = 'hola'")
-        cad = [t for t in ts if t.tipo == TokenID.STRING]
-        assert cad and cad[0].valor == "hola"
-
-    def test_cadena_escape_comilla(self):
-        ts = _tokens('#lang: es\nx = "dijo: \\"hola\\""')
-        cad = [t for t in ts if t.tipo == TokenID.STRING]
-        assert cad and cad[0].valor == 'dijo: "hola"'
-
-    def test_cadena_escape_barra(self):
-        ts = _tokens('#lang: es\nx = "a\\\\b"')
-        cad = [t for t in ts if t.tipo == TokenID.STRING]
-        assert cad and cad[0].valor == "a\\b"
+        assert cad and cad[0].valor == expected
 
     def test_cadena_sin_cerrar_ubicacion(self):
         with pytest.raises(SynapseError) as exc:
@@ -203,24 +208,22 @@ class TestLexerLiterales:
 
 
 class TestLexerKeywordsYContextuales:
-    def test_keywords_multi_idioma(self):
+    @pytest.mark.parametrize("idioma,kw,ret,and_,verdad", [
+        ('es', 'funcion', 'retornar', 'y', 'verdadero'),
+        ('en', 'function', 'return', 'and', 'true'),
+        ('fr', 'fonction', 'retourner', 'et', 'vrai'),
+        ('pt', 'funcao', 'retornar', 'e', 'verdadeiro'),
+        ('de', 'funktion', 'rueckgabe', 'und', 'wahr'),
+        ('it', 'funzione', 'restituisci', 'e', 'vero'),
+    ])
+    def test_keywords_multi_idioma(self, idioma, kw, ret, and_, verdad):
         """Manual 2 §3: palabras reservadas de los 6 idiomas del lexer."""
-        casos = {
-            'es': ('funcion', 'retornar', 'y', 'verdadero'),
-            'en': ('function', 'return', 'and', 'true'),
-            'fr': ('fonction', 'retourner', 'et', 'vrai'),
-            'pt': ('funcao', 'retornar', 'e', 'verdadeiro'),
-            'de': ('funktion', 'rueckgabe', 'und', 'wahr'),
-            'it': ('funzione', 'restituisci', 'e', 'vero'),
-        }
-        for idioma, palabras in casos.items():
-            kw, ret, and_, verdad = palabras
-            tipos = _tipos("#lang: " + idioma + "\n" + kw +
-                           " f() -> nulo:\n    x = " + verdad + " " + and_ + " " + ret)
-            assert TokenID.FUNCION in tipos, idioma + ": " + kw
-            assert TokenID.RETORNAR in tipos, idioma + ": " + ret
-            assert TokenID.AND in tipos, idioma + ": " + and_
-            assert TokenID.VERDADERO in tipos, idioma + ": " + verdad
+        tipos = _tipos("#lang: " + idioma + "\n" + kw +
+                       " f() -> nulo:\n    x = " + verdad + " " + and_ + " " + ret)
+        assert TokenID.FUNCION in tipos, idioma + ": " + kw
+        assert TokenID.RETORNAR in tipos, idioma + ": " + ret
+        assert TokenID.AND in tipos, idioma + ": " + and_
+        assert TokenID.VERDADERO in tipos, idioma + ": " + verdad
 
     def test_contextuales_conservan_lexema(self):
         """F1.2/F1.4: los keywords contextuales (tipo/nulo/ok/err/rc/arc/débil/
@@ -335,3 +338,10 @@ class TestEjemplosManual2:
                 "#lang: es\n" + bloque)
             tokens = Lexer(fuente).tokenizar()  # no debe lanzar SynapseError
             assert tokens[-1].tipo == TokenID.EOF, "bloque " + str(i)
+
+
+
+
+
+
+

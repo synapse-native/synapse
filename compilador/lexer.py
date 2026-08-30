@@ -332,6 +332,9 @@ class Lexer:
                  idioma: Optional[str] = None):
         self.fuente = fuente
         self.lineas = fuente.split('\n')
+        # Limpiar BOM UTF-8 si está presente (Manual 1 §4)
+        if self.lineas and self.lineas[0].startswith('\ufeff'):
+            self.lineas[0] = self.lineas[0].lstrip('\ufeff')
         self.tokens: List[Token] = []
         self.linea_actual = 0
         self.pila_indent = [0]
@@ -346,10 +349,69 @@ class Lexer:
             self.pila_indent.pop()
             self.tokens.append(Token(TokenID.DEDENT, linea=self.linea_actual, columna=0))
         self.tokens.append(Token(TokenID.EOF, linea=self.linea_actual, columna=0))
+        self._validar_cuerpos()
         return self.tokens
 
+    def _validar_cuerpos(self):
+        """Valida que 'funcion' tenga un bloque indentado después del ':'
+        (Manual 2 §2.1). Solo valida 'funcion' porque si/mientras pueden
+        aparecer en contextos de tokenización parcial.
+        Excluye 'externo funcion' (declaraciones externas no tienen cuerpo)."""
+        for i, tok in enumerate(self.tokens):
+            if tok.tipo == TokenID.FUNCION:
+                # Verificar que no es 'externo funcion'
+                if i > 0 and self.tokens[i - 1].tipo == TokenID.EXTERNO:
+                    continue
+                # Buscar el ':' que está al FINAL de la línea (antes de NEWLINE)
+                # No confundir con ':' dentro de parámetros (x: tipo)
+                ultimo_colon_idx = None
+                for j in range(i + 1, min(i + 30, len(self.tokens))):
+                    if self.tokens[j].tipo == TokenID.NEWLINE:
+                        break
+                    if self.tokens[j].tipo == TokenID.COLON:
+                        # Verificar que este ':' es el último token antes de NEWLINE
+                        # (no uno dentro de parámetros)
+                        ultimo_colon_idx = j
+                if ultimo_colon_idx is not None:
+                    # Verificar que la firma es completa: debe tener LPAREN + RPAREN
+                    # antes del ':' (para no atrapar firmas incompletas como 'funcion f( -> nulo:')
+                    tiene_lparen = False
+                    tiene_rparen = False
+                    for k in range(i, ultimo_colon_idx):
+                        if self.tokens[k].tipo == TokenID.LPAREN:
+                            tiene_lparen = True
+                        if self.tokens[k].tipo == TokenID.RPAREN:
+                            tiene_rparen = True
+                    if not (tiene_lparen and tiene_rparen):
+                        continue  # Firma incompleta, dejar que el parser la maneje
+                    # Verificar que después del ':' solo queda NEWLINE/EOF/DEDENT
+                    tiene_token_despues = False
+                    for k in range(ultimo_colon_idx + 1, len(self.tokens)):
+                        if self.tokens[k].tipo == TokenID.NEWLINE:
+                            break
+                        if self.tokens[k].tipo in (TokenID.IDENTIFIER, TokenID.LPAREN,
+                                                   TokenID.RPAREN, TokenID.COLON,
+                                                   TokenID.NUMBER, TokenID.STRING):
+                            tiene_token_despues = True
+                            break
+                    if tiene_token_despues:
+                        continue  # ':' es de parámetros, no de cabecera
+                    # Verificar que hay INDENT después del ':'
+                    tiene_indent = False
+                    for k in range(ultimo_colon_idx + 1, min(ultimo_colon_idx + 5, len(self.tokens))):
+                        if self.tokens[k].tipo == TokenID.INDENT:
+                            tiene_indent = True
+                            break
+                        if self.tokens[k].tipo == TokenID.EOF:
+                            break
+                    if not tiene_indent:
+                        raise SynapseError(
+                            f"Error de sintaxis: 'funcion' sin cuerpo (falta bloque indentado)",
+                            tok.linea, tok.columna
+                        )
+
     def _detectar_idioma(self):
-        if not self.lineas:
+        if not self.fuente.strip():
             raise SynapseError("Error Crítico: Archivo vacío", 1, 0)
         primera = self.lineas[0].strip()
         if not primera.startswith('#lang:'):
@@ -432,6 +494,20 @@ class Lexer:
                             valor_chars.append('\\')
                         elif ch == comilla:
                             valor_chars.append(comilla)
+                        elif ch == 'u':
+                            # Escape Unicode: \uXXXX
+                            hex_str = ''
+                            for _ in range(4):
+                                i += 1
+                                if i < len(texto) and texto[i] in '0123456789abcdefABCDEF':
+                                    hex_str += texto[i]
+                                else:
+                                    raise SynapseError(
+                                        "Error Léxico: Escape Unicode incompleto, se esperan 4 dígitos hexadecimales",
+                                        self.linea_actual, inicio
+                                    )
+                            codepoint = int(hex_str, 16)
+                            valor_chars.append(chr(codepoint))
                         else:
                             valor_chars.append('\\' + ch)
                         escapando = False
@@ -501,6 +577,14 @@ class Lexer:
                     i += 1
                     while i < len(texto) and texto[i].isdigit():
                         i += 1
+                # Notación científica: 1e3, 1.2e-3, 1.5E+2
+                if i < len(texto) and texto[i] in ('e', 'E'):
+                    es_float = True
+                    i += 1
+                    if i < len(texto) and texto[i] in ('+', '-'):
+                        i += 1
+                    while i < len(texto) and texto[i].isdigit():
+                        i += 1
                 if es_float:
                     valor = float(texto[inicio:i])
                     self.tokens.append(
@@ -520,8 +604,8 @@ class Lexer:
                 palabra = texto[inicio:i]
                 if self.diccionario and palabra in self.diccionario:
                     tok_tipo = self.diccionario[palabra]
-                    # F1.2: los keywords contextuales conservan su lexema en valor
-                    valor = palabra if tok_tipo in TOKENS_CONTEXTUALES else None
+                    # F1.2: los keywords conservan su lexema en valor
+                    valor = palabra
                     self.tokens.append(
                         Token(tok_tipo, linea=self.linea_actual, columna=inicio, valor=valor)
                     )

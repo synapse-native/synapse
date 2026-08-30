@@ -22,7 +22,7 @@ from compilador.ast_nodes import (
     DeclaracionVariable, AsignacionCampo, BloqueInseguro,
     LlamadaFuncion, Identificador, StmtConstante,
     OpBinaria, OpUnaria, LiteralNumero, LiteralDecimal, LiteralBooleano,
-    DeclaracionExterna, SentenciaLanzar,
+    LiteralNulo, LiteralCadena, DeclaracionExterna, SentenciaLanzar,
 )
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
@@ -40,8 +40,7 @@ OPERADORES_COMPARACION = {'<', '>', '<=', '>=', '==', '!='}
 # Operadores booleanos válidos en contratos
 OPERADORES_BOOLEANOS = {'&&', '||', '==', '!=', '<', '>', '<=', '>='}
 
-# Nombres de constantes que indican límites conocidos
-NOMBRES_LIMITE = {'MAX', 'LIMITE', 'N', 'TAMANO', 'LIMIT', 'MAX_ITER', 'MAXIMO', 'MIN', 'MINIMO'}
+OPERADORES_LOGICOS = {'&&', '||'}
 
 # Tipos de nodo que tienen un campo 'cuerpo'
 NODOS_CON_CUERPO = {
@@ -75,32 +74,35 @@ def _obtener_cuerpo_sino(nodo: Nodo) -> Optional[List[Nodo]]:
     return None
 
 
-def _es_literal_o_constante(expr: Optional[Nodo]) -> bool:
-    """Determina si una expresión es un valor constante conocido."""
+def _contiene_comparacion(expr: Optional[Nodo]) -> bool:
+    """Verifica recursivamente si una expresión contiene un operador de
+    comparación en cualquier nivel (incluyendo dentro de operadores lógicos).
+
+    Un bucle 'mientras verdadero:' (sin comparación) se sigue rechazando,
+    pero 'mientras i < len_texto:' o 'mientras t != T_MAYOR o x > 0:' se
+    aceptan porque contienen al menos un operador de comparación.
+    """
     if expr is None:
         return False
-    if isinstance(expr, (LiteralNumero, LiteralDecimal)):
-        return True
-    if isinstance(expr, Identificador):
-        return expr.nombre in NOMBRES_LIMITE
+    if isinstance(expr, OpBinaria):
+        if expr.operador in OPERADORES_COMPARACION:
+            return True
+        if expr.operador in OPERADORES_LOGICOS:
+            return _contiene_comparacion(expr.izquierdo) or _contiene_comparacion(expr.derecho)
     return False
 
 
 def _tiene_cota_estatica(mientras_stmt: SentenciaMientras) -> bool:
     """Verifica si un bucle 'mientras' tiene una cota estática comprobable.
 
-    Criterio: la condición debe ser una OpBinaria con operador de comparación
-    donde al menos un lado sea un literal numérico o constante conocida.
+    Criterio: la condición contiene un operador de comparación (<, >, <=, >=,
+    ==, !=), posiblemente anidado dentro de operadores lógicos (&&, ||).
+    Un 'mientras verdadero:' (sin comparación) se sigue rechazando.
     """
     cond = mientras_stmt.condicion
     if cond is None:
         return False
-
-    if isinstance(cond, OpBinaria):
-        op = cond
-        if op.operador in OPERADORES_COMPARACION:
-            return _es_literal_o_constante(op.izquierdo) or _es_literal_o_constante(op.derecho)
-    return False
+    return _contiene_comparacion(cond)
 
 
 def _buscar_llamadas_recursivas(cuerpo: List[Nodo], nombre_func: str) -> bool:
@@ -151,7 +153,26 @@ def _tiene_convergencia_estructural(func: DefinicionFuncion) -> bool:
     Criterio: busca un patrón de if/else donde:
     - El caso base (if) retorna sin recursión
     - El caso recursivo (else) llama a la función con argumento decreciente
+
+    También se acepta un guard clause al inicio:
+    - si cond: retornar (caso base, sin recursión)
+    - y llamadas recursivas en el resto del cuerpo
+
+    Este patrón es el estándar para funciones recursivas sobre árboles (p.ej.
+    analizar_expr/analizar_sentencia que guardan 'si idx <= 0: retornar'
+    antes de recorrer los hijos).
     """
+    # Check for guard clause pattern: first statement is `si cond: retornar`
+    # with no recursive calls in its body (base case), and recursive calls
+    # exist in the rest of the function body.
+    if len(func.cuerpo) > 1:
+        first = func.cuerpo[0]
+        if isinstance(first, SentenciaSi):
+            if _tiene_caso_base(first.cuerpo, func.nombre):
+                if _buscar_llamadas_recursivas(func.cuerpo[1:], func.nombre):
+                    return True
+
+    # Original if/else pattern check
     for stmt in func.cuerpo:
         if isinstance(stmt, SentenciaSi):
             si_stmt = stmt
@@ -185,11 +206,13 @@ def _es_expresion_booleana_valida(expr: Optional[Nodo]) -> bool:
     """
     if expr is None:
         return False
-    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano)):
+    # Manual 2 §5.1: solo LiteralBooleano (verdadero/falso) es un literal
+    # booleano válido. Literales numéricos, decimales, cadena o nulo no.
+    if isinstance(expr, LiteralBooleano):
         return True
+    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralNulo, LiteralCadena)):
+        return False
     if isinstance(expr, Identificador):
-        if expr.nombre == 'nulo':
-            return True  # nulo es válido en comparaciones
         return True
     if isinstance(expr, OpBinaria):
         op = expr
@@ -210,7 +233,7 @@ def _es_expresion_booleana_valida(expr: Optional[Nodo]) -> bool:
     if isinstance(expr, LlamadaFuncion):
         # Llamadas de I/O o efectos no permitidas en contratos
         return expr.nombre not in {'escribir', 'escribir_linea', 'leer', 'leer_linea',
-                                    'abrir', 'cerrar', 'lanzar'}
+                                    'abrir', 'cerrar_archivo', 'lanzar'}
     return False
 
 
@@ -220,7 +243,7 @@ def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
     """
     if expr is None:
         return False
-    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, Identificador)):
+    if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, LiteralNulo, LiteralCadena, Identificador)):
         return True
     if isinstance(expr, OpBinaria):
         op = expr
@@ -232,7 +255,7 @@ def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
         return expr.operador in ('!', '-')
     if isinstance(expr, LlamadaFuncion):
         return expr.nombre not in {'escribir', 'escribir_linea', 'leer', 'leer_linea',
-                                    'abrir', 'cerrar', 'lanzar'}
+                                    'abrir', 'cerrar_archivo', 'lanzar'}
     return False
 
 

@@ -211,14 +211,16 @@ El repositorio está organizado de manera modular para desacoplar el compilador,
 │   └── ...
 │
 ├── syquex/                          # Frontend de Syquex (alto nivel)
-│   ├── lexer.syq                    # Tokenizador de Syquex
-│   ├── parser.syq                   # Parser de descenso recursivo
-│   ├── traductor.syq                # Mapeo a SemNodo[] de Synapse
-│   ├── analizador_alcance.syq       # CFG + Cleanup Blocks (NUEVO)
-│   ├── ffi_marshaling.syq           # Marshaling para C (NUEVO)
-│   ├── arena_componente.syq         # Arenas de componente (NUEVO)
-│   ├── builtins.syq                 # Funciones integradas de Syquex
-│   └── syquex.syn                   # Compilador de Syquex (escrito en Synapse)
+│   ├── lexer.syn                   # Tokenizador de Syquex (Synapse, D-F22-A)
+│   ├── parser.syn                   # Parser de descenso recursivo (Synapse, D-F22-A)
+│   ├── traductor.syn                # Mapeo a SemNodo[] de Synapse (D-F22-A)
+│   ├── syq_main.syn                 # Compilador de Syquex / entry CLI (antes syquex.syn)
+│   ├── analizador_alcance.syq       # CFG + Cleanup Blocks (Syquex)
+│   ├── ffi_marshaling.syq          # Marshaling para C (Syquex)
+│   ├── expr.syn                     # Expresiones Syquex (Synapse)
+│   └── syq_json.syn                 # Esquema JSON del SemNodo[] (Synapse)
+│   # Nota: arena_componente y builtins de Syquex NO son módulos standalone;
+│   # la API de arenas vive en lib/dom.syq y las builtins en el compiler/librerías.
 │
 ├── std/                             # Librería estándar de Synapse
 │   ├── io.syn                       # Entrada/salida básica

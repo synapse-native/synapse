@@ -1,0 +1,13 @@
+#lang: es
+// 07_memoria.syq — Gestión de memoria básica
+// cumple Manual 4 §2: Arena allocator
+
+importar std.io
+
+estructura Dato:
+    valor: entero
+
+funcion principal() -> nulo:
+    let d = Dato()
+    d.valor = 42
+    escribir_linea("Valor: " + entero_a_texto(d.valor))

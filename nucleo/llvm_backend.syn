@@ -1,0 +1,551 @@
+#lang: es
+
+# =============================================================================
+# nucleo/llvm_backend.syn — LLVM IR Code Generator (M12.1.1)
+#
+# Propósito: Traducir el AST canónico de Synapse a LLVM IR de texto (.ll),
+# mapeando operaciones aritméticas, declaraciones de funciones y llamadas
+# a instrucciones LLVM estándar.
+#
+# Arquitectura:
+#   - Sigue el mismo patrón que nucleo/wasm_backend.syn
+#   - Usa inline asm() para operaciones de bajo nivel (buffer de salida)
+#   - Genera texto LLVM IR plano (.ll) sin dependencias externas
+#
+# Formato LLVM IR emitido:
+#   define i32 @main() {
+#   entry:
+#     ret i32 <valor>
+#   }
+#
+# Tipos LLVM soportados: i32 (entero de 32 bits)
+# =============================================================================
+
+# -------------------------------------------------------------------
+# Constantes de tipos de nodo LLVM
+# -------------------------------------------------------------------
+constante LLVM_MODULE = 0
+constante LLVM_FUNCTION = 1
+constante LLVM_CONST_I32 = 2
+constante LLVM_ADD = 3
+constante LLVM_FADD = 4
+constante LLVM_SUB = 5
+constante LLVM_FSUB = 6
+constante LLVM_MUL = 7
+constante LLVM_FMUL = 8
+constante LLVM_UDIV = 9
+constante LLVM_SDIV = 10
+constante LLVM_FDIV = 11
+constante LLVM_UREM = 12
+constante LLVM_SREM = 13
+constante LLVM_CALL = 14
+constante LLVM_RET = 15
+constante LLVM_BR = 16
+constante LLVM_COND_BR = 17
+constante LLVM_ALLOCA = 18
+constante LLVM_STORE = 19
+constante LLVM_LOAD = 20
+constante LLVM_ICMP = 21
+constante LLVM_ZEXT = 22
+constante LLVM_TRUNC = 23
+constante LLVM_SITOFP = 24
+constante LLVM_FPTOSI = 25
+constante LLVM_FREE = 26
+
+# -------------------------------------------------------------------
+# Códigos de opcode ICMP
+# -------------------------------------------------------------------
+constante ICMP_EQ = 30
+constante ICMP_NE = 31
+constante ICMP_SLT = 32
+constante ICMP_SGT = 33
+constante ICMP_SLE = 34
+constante ICMP_SGE = 35
+constante ICMP_ULT = 36
+constante ICMP_UGT = 37
+constante ICMP_ULE = 38
+constante ICMP_UGE = 39
+
+# -------------------------------------------------------------------
+# Estado del generador LLVM
+# -------------------------------------------------------------------
+estructura EstadoLLVM:
+    nivel_indentacion: entero    # nivel de indentación actual
+    etiqueta_contador: entero    # contador para generar etiquetas únicas
+    buffer_salida: texto          # texto LLVM IR acumulado
+    nombre_funcion_actual: texto  # nombre de la función actual
+
+# -------------------------------------------------------------------
+# Inicializar estado del generador LLVM
+# -------------------------------------------------------------------
+funcion llvm_inicializar() -> EstadoLLVM:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    e = EstadoLLVM()
+    e.nivel_indentacion = 0
+    e.etiqueta_contador = 0
+    e.buffer_salida = ""
+    e.nombre_funcion_actual = ""
+    retornar e
+
+# -------------------------------------------------------------------
+# Emitir una línea de código LLVM IR con indentación
+# -------------------------------------------------------------------
+funcion llvm_emitir(est: EstadoLLVM, linea: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("")
+        asm("extern void _llvm_emit(EstadoLLVM* _e, const char* _linea) {")
+        asm("    char _buf[16384]; int _pos = 0;")
+        asm("    int _i; for (_i = 0; _i < _e->nivel_indentacion; _i++) { _buf[_pos++] = 32; _buf[_pos++] = 32; }")
+        asm("    int _j; for (_j = 0; _linea[_j] && _pos < 16360; _j++) _buf[_pos++] = _linea[_j];")
+        asm("    _buf[_pos++] = 10; _buf[_pos] = 0;")
+        asm("    printf(\"%s\", _buf);")
+        asm("    fflush(stdout);")
+        asm("}")
+        asm("_llvm_emit(&est, linea.datos);")
+
+# -------------------------------------------------------------------
+# Emitir una línea al buffer de salida (acumulado)
+# -------------------------------------------------------------------
+funcion llvm_emitir_buffer(est: EstadoLLVM, linea: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("")
+        asm("extern CadenaSegura _llvm_emit_buf(EstadoLLVM* _e, const char* _linea) {")
+        asm("    char _buf[16384]; int _pos = 0;")
+        asm("    int _i; for (_i = 0; _i < _e->nivel_indentacion; _i++) { _buf[_pos++] = 32; _buf[_pos++] = 32; }")
+        asm("    int _j; for (_j = 0; _linea[_j] && _pos < 16360; _j++) _buf[_pos++] = _linea[_j];")
+        asm("    _buf[_pos++] = 10; _buf[_pos] = 0;")
+        asm("    CadenaSegura _cs = {_pos, _buf}; return _cs;")
+        asm("}")
+        asm("CadenaSegura _cs_emit = _llvm_emit_buf(&est, linea.datos);")
+        asm("size_t _old_len = strlen(est.buffer_salida.datos);")
+        asm("size_t _new_cap = _old_len + _cs_emit.longitud + 2;")
+        asm("char* _new_buf = (char*)malloc(_new_cap);")
+        asm("if (_new_buf) {")
+        asm("    if (_old_len > 0) memcpy(_new_buf, est.buffer_salida.datos, _old_len);")
+        asm("    memcpy(_new_buf + _old_len, _cs_emit.datos, _cs_emit.longitud);")
+        asm("    _new_buf[_old_len + _cs_emit.longitud] = 0;")
+        asm("    free((void*)est.buffer_salida.datos);")
+        asm("    est.buffer_salida.datos = _new_buf;")
+        asm("    est.buffer_salida.longitud = (int)(_old_len + _cs_emit.longitud);")
+        asm("}")
+
+# -------------------------------------------------------------------
+# Obtener el buffer de salida como texto
+# -------------------------------------------------------------------
+funcion llvm_obtener_salida(est: EstadoLLVM) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    retornar est.buffer_salida
+
+# -------------------------------------------------------------------
+# Incrementar / decrementar indentación
+# -------------------------------------------------------------------
+funcion llvm_indentar(est: EstadoLLVM) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    est.nivel_indentacion = est.nivel_indentacion + 1
+
+funcion llvm_desindentar(est: EstadoLLVM) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    si est.nivel_indentacion > 0:
+        est.nivel_indentacion = est.nivel_indentacion - 1
+
+# -------------------------------------------------------------------
+# Emitir cabecera del módulo LLVM IR
+# -------------------------------------------------------------------
+funcion llvm_iniciar_modulo(est: EstadoLLVM, nombre_modulo: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "; ModuleID = '" + nombre_modulo + "'")
+    llvm_emitir_buffer(est, "source_filename = \"" + nombre_modulo + "\"")
+    llvm_emitir_buffer(est, "target datalayout = \"e-m:w-i666-32-n32\"")
+    llvm_emitir_buffer(est, "target triple = \"unknown-pc-win32\"")
+    llvm_emitir_buffer(est, "")
+
+# -------------------------------------------------------------------
+# Emitir declaración de función
+#   define i32 @nombre() {
+#   entry:
+# -------------------------------------------------------------------
+funcion llvm_declarar_funcion(est: EstadoLLVM, nombre: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    est.nombre_funcion_actual = nombre
+    llvm_emitir_buffer(est, "define i32 @" + nombre + "() {")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "entry:")
+    llvm_indentar(est)
+
+# -------------------------------------------------------------------
+# Finalizar función con retorno
+# -------------------------------------------------------------------
+funcion llvm_finalizar_funcion_con_ret(est: EstadoLLVM) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "}")
+
+# -------------------------------------------------------------------
+# Emitir instrucción ret i32 <valor>
+# -------------------------------------------------------------------
+funcion llvm_retorno_const(est: EstadoLLVM, valor: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "ret i32 " + texto(valor))
+
+# -------------------------------------------------------------------
+# Emitir ret void (para funciones void)
+# -------------------------------------------------------------------
+funcion llvm_retorno_void(est: EstadoLLVM) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "ret void")
+
+# -------------------------------------------------------------------
+# Emitir etiqueta (para bloques de salto)
+# -------------------------------------------------------------------
+funcion llvm_etiqueta(est: EstadoLLVM, nombre: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, nombre + ":")
+    llvm_indentar(est)
+
+# -------------------------------------------------------------------
+# Emitir instrucción de salto incondicional
+#   br label %etiqueta
+# -------------------------------------------------------------------
+funcion llvm_br(est: EstadoLLVM, etiqueta: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "br label %" + etiqueta)
+
+# -------------------------------------------------------------------
+# Emitir instrucción de salto condicional
+#   br i1 %cond, label %etiqueta_true, label %etiqueta_false
+# -------------------------------------------------------------------
+funcion llvm_cond_br(est: EstadoLLVM, cond: texto, etiqueta_true: texto, etiqueta_false: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "br i1 " + cond + ", label %" + etiqueta_true + ", label %" + etiqueta_false)
+
+# -------------------------------------------------------------------
+# Emitir operaciones aritméticas
+# -------------------------------------------------------------------
+funcion llvm_add(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = add i32 "+lhs+", "+rhs)
+
+funcion llvm_sub(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = sub i32 "+lhs+", "+rhs)
+
+funcion llvm_mul(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = mul i32 "+lhs+", "+rhs)
+
+funcion llvm_sdiv(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = sdiv i32 "+lhs+", "+rhs)
+
+funcion llvm_udiv(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = udiv i32 "+lhs+", "+rhs)
+
+funcion llvm_srem(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = srem i32 "+lhs+", "+rhs)
+
+funcion llvm_urem(est: EstadoLLVM, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = urem i32 "+lhs+", "+rhs)
+
+# -------------------------------------------------------------------
+# Emitir comparación ICMP
+#   %result = icmp opcode i32 lhs, rhs
+# -------------------------------------------------------------------
+funcion llvm_icmp(est: EstadoLLVM, opcode: entero, result: texto, lhs: texto, rhs: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    var op_str: texto
+    si opcode == ICMP_EQ:
+        op_str = "eq"
+    sino si opcode == ICMP_NE:
+        op_str = "ne"
+    sino si opcode == ICMP_SLT:
+        op_str = "slt"
+    sino si opcode == ICMP_SGT:
+        op_str = "sgt"
+    sino si opcode == ICMP_SLE:
+        op_str = "sle"
+    sino si opcode == ICMP_SGE:
+        op_str = "sge"
+    sino si opcode == ICMP_ULT:
+        op_str = "ult"
+    sino si opcode == ICMP_UGT:
+        op_str = "ugt"
+    sino si opcode == ICMP_ULE:
+        op_str = "ule"
+    sino si opcode == ICMP_UGE:
+        op_str = "uge"
+    sino:
+        op_str = "eq"
+    llvm_emitir_buffer(est, "%"+result+" = icmp "+op_str+" i32 "+lhs+", "+rhs)
+
+# -------------------------------------------------------------------
+# Emitir alloca (variable local)
+#   %result = alloca i32
+# -------------------------------------------------------------------
+funcion llvm_alloca(est: EstadoLLVM, result: texto, tam: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = alloca i32, i32 "+texto(tam))
+
+# -------------------------------------------------------------------
+# Emitir store
+#   store i32 valor, ptr destino
+# -------------------------------------------------------------------
+funcion llvm_store(est: EstadoLLVM, val: texto, destino: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "store i32 "+val+", ptr "+destino)
+
+# -------------------------------------------------------------------
+# Emitir load
+#   %result = load i32, ptr fuente
+# -------------------------------------------------------------------
+funcion llvm_load(est: EstadoLLVM, result: texto, fuente: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_emitir_buffer(est, "%"+result+" = load i32, ptr "+fuente)
+
+# -------------------------------------------------------------------
+# Emitir llamada a función
+#   %result = call i32 @nombre(param1, param2)
+# -------------------------------------------------------------------
+funcion llvm_call(est: EstadoLLVM, result: texto, nombre: texto, params: lista_texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    var linea = "%"+result+" = call i32 @"+nombre+"("
+    si params.longitud > 0:
+        i = 0
+        mientras i < params.longitud:
+            si i > 0:
+                linea = linea + ", "
+            linea = linea + params[i]
+            i = i + 1
+    linea = linea + ")"
+    llvm_emitir_buffer(est, linea)
+
+# -------------------------------------------------------------------
+# Generar etiqueta única
+# -------------------------------------------------------------------
+funcion llvm_nueva_etiqueta(est: EstadoLLVM) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    est.etiqueta_contador = est.etiqueta_contador + 1
+    retornar "label_" + texto(est.etiqueta_contador)
+
+# -------------------------------------------------------------------
+# Constructores de alto nivel
+# -------------------------------------------------------------------
+
+# Programa mínimo: define main que retorna una constante
+#   define i32 @main() {
+#   entry:
+#     ret i32 <valor>
+#   }
+funcion llvm_programa_minimo(est: EstadoLLVM, valor_retorno: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_iniciar_modulo(est, "main")
+    llvm_declarar_funcion(est, "main")
+    llvm_retorno_const(est, valor_retorno)
+    llvm_finalizar_funcion_con_ret(est)
+
+# Programa aritmético: main() { return lhs <op> rhs; }
+#   op: 0=suma, 1=resta, 2=multiplicacion, 3=division_signed, 4=division_unsigned, 5=modulo_signed
+funcion llvm_programa_aritmetico(est: EstadoLLVM, op: entero,
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    lhs: entero, rhs: entero) -> nulo:
+    llvm_iniciar_modulo(est, "main")
+    llvm_declarar_funcion(est, "main")
+    llvm_emitir_buffer(est, "%lhs = add i32 " + texto(lhs) + ", 0")
+    llvm_emitir_buffer(est, "%rhs = add i32 " + texto(rhs) + ", 0")
+    si op == 0:
+        llvm_add(est, "res", "%lhs", "%rhs")
+    sino si op == 1:
+        llvm_sub(est, "res", "%lhs", "%rhs")
+    sino si op == 2:
+        llvm_mul(est, "res", "%lhs", "%rhs")
+    sino si op == 3:
+        llvm_sdiv(est, "res", "%lhs", "%rhs")
+    sino si op == 4:
+        llvm_udiv(est, "res", "%lhs", "%rhs")
+    sino si op == 5:
+        llvm_srem(est, "res", "%lhs", "%rhs")
+    sino:
+        llvm_add(est, "res", "%lhs", "%rhs")
+    llvm_emitir_buffer(est, "ret i32 %res")
+    llvm_finalizar_funcion_con_ret(est)
+
+# Programa if-else: if (a < b) return 1; else return 0;
+funcion llvm_programa_if_else(est: EstadoLLVM, a: entero, b: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_iniciar_modulo(est, "main")
+    llvm_declarar_funcion(est, "main")
+    llvm_emitir_buffer(est, "%a = add i32 " + texto(a) + ", 0")
+    llvm_emitir_buffer(est, "%b = add i32 " + texto(b) + ", 0")
+    llvm_icmp(est, ICMP_SLT, "cond", "%a", "%b")
+    llvm_emitir_buffer(est, "br i1 %cond, label %then, label %else")
+    llvm_etiqueta(est, "then")
+    llvm_emitir_buffer(est, "ret i32 1")
+    llvm_etiqueta(est, "else")
+    llvm_emitir_buffer(est, "ret i32 0")
+    llvm_finalizar_funcion_con_ret(est)
+
+# Programa bucle: suma de 0 a n
+#   define i32 @main() {
+#   entry:
+#     br label %loop
+#   loop:
+#     %i = phi i32 [0, %entry], [%next_i, %loop]
+#     ...
+#   }
+funcion llvm_programa_bucle(est: EstadoLLVM, n: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_iniciar_modulo(est, "main")
+    llvm_declarar_funcion(est, "main")
+    llvm_emitir_buffer(est, "%n = add i32 " + texto(n) + ", 0")
+    llvm_emitir_buffer(est, "br label %loop")
+
+    # Decrementar indentación de 'entry', emitir etiqueta loop
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "loop:")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "%i = phi i32 [0, %entry], [%next_i, %loop]")
+    llvm_icmp(est, ICMP_EQ, "done", "%i", "%n")
+    llvm_emitir_buffer(est, "br i1 %done, label %end, label %body")
+
+    # Etiqueta body
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "body:")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "%acc_next = add i32 %i, %i")
+    llvm_emitir_buffer(est, "%next_i = add i32 %i, 1")
+    llvm_emitir_buffer(est, "br label %loop")
+
+    # Etiqueta end
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "end:")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "ret i32 %i")
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "}")
+
+# Programa con llamada a función
+#   define i32 @suma(i32 %a, i32 %b) { entry: %r = add i32 %a, %b; ret i32 %r }
+#   define i32 @main() { entry: %call = call i32 @suma(i32 10, i32 20); ret i32 %call }
+funcion llvm_programa_con_llamada(est: EstadoLLVM, val_a: entero, val_b: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    llvm_iniciar_modulo(est, "main")
+
+    # Función suma
+    llvm_emitir_buffer(est, "define i32 @suma(i32 %a, i32 %b) {")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "entry:")
+    llvm_indentar(est)
+    llvm_emitir_buffer(est, "%r = add i32 %a, %b")
+    llvm_emitir_buffer(est, "ret i32 %r")
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "}")
+    llvm_desindentar(est)
+    llvm_emitir_buffer(est, "")
+
+    # Función main
+    llvm_declarar_funcion(est, "main")
+    var params = ["i32 " + texto(val_a), "i32 " + texto(val_b)]
+    llvm_call(est, "call", "suma", params)
+    llvm_emitir_buffer(est, "ret i32 %call")
+    llvm_finalizar_funcion_con_ret(est)

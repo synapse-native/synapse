@@ -50,23 +50,47 @@ class ParserDeclarationsMixin(ParserBase):
         if self._esperar(TokenID.ARROW) is None:
             self._sincronizar(_SYNC_STMT)
             return None
+        # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+        prefijo_retorno = ''
+        if self._mirar().tipo == TokenID.AMPERSAND:
+            self._avanzar()
+            if (es_token_identificador(self._mirar())
+                    and (self._mirar().valor or '') == 'mut'):
+                self._avanzar()
+                prefijo_retorno = '&mut '
+            else:
+                prefijo_retorno = '&'
         tok_retorno = self._esperar_identificador()
         if tok_retorno is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        tipo_retorno = nombre_de_token(tok_retorno)
+        tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
         # F1.2d: tipos genéricos en el retorno (-> arc<NodoLista> / -> debil<T>,
         # Manual 2 §2 L151-153). Paridad con _parsear_tipo_parametro: se consumen
         # los tokens hasta '>' (identificadores con valor; '<' inicial literal).
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo_retorno, '<']
-            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF,
-                                             TokenID.NEWLINE, TokenID.RPAREN):
+            profundidad = 0
+            while True:
+                t_actual = self._mirar()
+                if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                    break
+                if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                    break
                 t = self._avanzar()
-                # D-2: el token COMMA no lleva valor -> conservar la coma para
-                # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
-                if t.tipo == TokenID.COMMA:
+                # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                # Manual 2 §8.2): consumir '<'/'<' con profundidad y solo cerrar
+                # en el '>' de nivel 0.
+                if t.tipo == TokenID.LESS:
+                    profundidad += 1
+                    partes.append('<')
+                elif t.tipo == TokenID.GREATER:
+                    profundidad -= 1
+                    partes.append('>')
+                elif t.tipo == TokenID.COMMA:
+                    # D-2: el token COMMA no lleva valor -> conservar la coma para
+                    # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
                     partes.append(',')
                 else:
                     partes.append(t.valor or '')
@@ -236,9 +260,20 @@ class ParserDeclarationsMixin(ParserBase):
     def _parsear_declaracion_externa(self) -> Optional[DeclaracionExterna]:
         if self._esperar(TokenID.EXTERNO) is None:
             return None
-        if self._esperar(TokenID.FUNCION) is None:
+        tok_kw = self._posible(TokenID.FUNCION, TokenID.ESTRUCTURA, TokenID.CONSTANTE)
+        if tok_kw is None:
             self._sincronizar(_SYNC_TOP)
             return None
+        if tok_kw.tipo == TokenID.FUNCION:
+            return self._parsear_externo_funcion(tok_kw)
+        if tok_kw.tipo == TokenID.ESTRUCTURA:
+            return self._parsear_externo_estructura(tok_kw)
+        if tok_kw.tipo == TokenID.CONSTANTE:
+            return self._parsear_externo_constante(tok_kw)
+        self._sincronizar(_SYNC_TOP)
+        return None
+
+    def _parsear_externo_funcion(self, tok_kw) -> Optional[DeclaracionExterna]:
         tok_nombre = self._esperar(TokenID.IDENTIFIER)
         if tok_nombre is None:
             self._sincronizar(_SYNC_TOP)
@@ -271,6 +306,16 @@ class ParserDeclarationsMixin(ParserBase):
         if self._esperar(TokenID.ARROW) is None:
             self._sincronizar(_SYNC_STMT)
             return None
+        # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+        prefijo_retorno = ''
+        if self._mirar().tipo == TokenID.AMPERSAND:
+            self._avanzar()
+            if (es_token_identificador(self._mirar())
+                    and (self._mirar().valor or '') == 'mut'):
+                self._avanzar()
+                prefijo_retorno = '&mut '
+            else:
+                prefijo_retorno = '&'
         tok_retorno = self._esperar_identificador()
         if tok_retorno is None:
             self._sincronizar(_SYNC_STMT)
@@ -278,7 +323,42 @@ class ParserDeclarationsMixin(ParserBase):
         return DeclaracionExterna(
             nombre=tok_nombre.valor,
             parametros=params,
-            tipo_retorno=nombre_de_token(tok_retorno),
+            tipo_retorno=prefijo_retorno + nombre_de_token(tok_retorno),
+            kind='funcion',
+            linea=tok_nombre.linea,
+            columna=tok_nombre.columna,
+        )
+
+    def _parsear_externo_estructura(self, tok_kw) -> Optional[DeclaracionExterna]:
+        # Manual 3 §3 L99: "externo" estructura IDENTIFICADOR
+        tok_nombre = self._esperar_identificador()
+        if tok_nombre is None:
+            self._sincronizar(_SYNC_TOP)
+            return None
+        return DeclaracionExterna(
+            nombre=nombre_de_token(tok_nombre),
+            kind='estructura',
+            linea=tok_kw.linea,
+            columna=tok_kw.columna,
+        )
+
+    def _parsear_externo_constante(self, tok_kw) -> Optional[DeclaracionExterna]:
+        # Manual 3 §3 L99: "externo" "constante" IDENTIFICADOR "=" STRING
+        tok_nombre = self._esperar(TokenID.IDENTIFIER)
+        if tok_nombre is None:
+            self._sincronizar(_SYNC_TOP)
+            return None
+        if self._esperar(TokenID.ASSIGN) is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        tok_valor = self._esperar(TokenID.STRING)
+        if tok_valor is None:
+            self._sincronizar(_SYNC_STMT)
+            return None
+        return DeclaracionExterna(
+            nombre=tok_nombre.valor,
+            kind='constante',
+            valor=tok_valor.valor,
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,
         )

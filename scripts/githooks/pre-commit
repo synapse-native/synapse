@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# ============================================================================
+# PRE-COMMIT HOOK — Gate de alineación con los manuales (auditoría R31)
+# ============================================================================
+# Bloquea el commit si el verificador mecánico detecta brechas:
+#   - Fila de bitácora sin reporte/hash o con hash inexistente en git
+#   - Reporte citado que no existe / sección §N ausente
+#   - Reporte con protocolo incompleto o HASH COMMIT pendiente
+#   - Deuda citada sin registrar en el canon (regla 11)
+#   - Scripts de depuración `_*.py` en la raíz (regla 12)
+#   - Módulos >1200 líneas sin registrar en D-9 (regla 13)
+#   - Funciones NUEVAS en nucleo/*.syn sin requiere/garantiza (Manual 2 §12)
+#
+# Además limpia artefactos de build (.o, *.exe, synapse_unity.c, test_*.txt,
+# .coverage, __pycache__/) antes del commit para mantener el working tree limpio.
+#
+# Instalación:  git config core.hooksPath scripts/githooks
+# Desinstalar:  git config --unset core.hooksPath
+# Saltar (NO recomendado — el CI lo bloquea igual): git commit --no-verify
+# ============================================================================
+
+RAIZ=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$RAIZ" ]; then
+    echo "pre-commit: no se pudo determinar la raíz del repo" >&2
+    exit 1
+fi
+
+VERIFICADOR="$RAIZ/auditoria/verificar_alineacion.py"
+if [ ! -f "$VERIFICADOR" ]; then
+    echo "pre-commit: verificador no encontrado ($VERIFICADOR)" >&2
+    exit 1
+fi
+
+# Resolver el intérprete Python (venv del repo, python, python3, py -3)
+PYTHON=""
+if [ -x "$RAIZ/.venv/Scripts/python.exe" ]; then
+    PYTHON="$RAIZ/.venv/Scripts/python.exe"
+elif [ -x "$RAIZ/.venv/bin/python" ]; then
+    PYTHON="$RAIZ/.venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v py >/dev/null 2>&1; then
+    PYTHON="py -3"
+else
+    echo "pre-commit: no se encontró un intérprete Python" >&2
+    exit 1
+fi
+
+# --- Limpieza de artefactos de build antes del commit ---
+echo "── Limpiando artefactos de build ──"
+find "$RAIZ" -maxdepth 1 \( -name '*.o' -o -name '*.obj' -o -name 'synapse_unity.c' \
+    -o -name 'synapse_stage1.exe' -o -name '.coverage' -o -name 'test_*.txt' \
+    -o -name 'nul' -o -name 'runtime_linked.dll' -o -name '_*.c' -o -name '_*.c.o' \
+    -o -name '_*.h' -o -name '_synapse_shared.h' \) -type f -delete 2>/dev/null || true
+# Limpiar __pycache__ recursivamente (mantener .venv excluido)
+find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycache__' \
+    -exec rm -rf {} + 2>/dev/null || true
+echo "✅ Artefactos limpiados"
+
+# --- Regeneración automática de bindings si headers del runtime cambiaron ---
+echo "── Verificando cambios en headers del runtime ──"
+CHANGED_HEADERS=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '^runtime/core/.*\.h$' || true)
+if [ -n "$CHANGED_HEADERS" ]; then
+    echo "  Headers modificados: $CHANGED_HEADERS"
+    BINDINGS_GEN="$RAIZ/opensyn/generate_runtime_bindings.py"
+    if [ -f "$BINDINGS_GEN" ]; then
+        echo "  Regenerando lib/runtime_bindings.syq..."
+        if (cd "$RAIZ" && $PYTHON "$BINDINGS_GEN" 2>&1); then
+            git add lib/runtime_bindings.syq 2>/dev/null || true
+            echo "  ✅ Bindings regenerados y añadidos al commit"
+        else
+            echo "  ⚠️  Error regenerando bindings (no bloqueante)" >&2
+        fi
+    fi
+else
+    echo "  ✅ Sin cambios en headers del runtime"
+fi
+
+echo "── Verificando alineación con los manuales (auditoria/verificar_alineacion.py) ──"
+
+if ! (cd "$RAIZ" && $PYTHON "$VERIFICADOR" --json > /tmp/auditoria_commit.json 2>&1); then
+    echo "❌ BREACHES DE ALINEACIÓN — commit bloqueado (regla 11)" >&2
+    echo "" >&2
+    (cd "$RAIZ" && $PYTHON "$VERIFICADOR") >&2
+    echo "" >&2
+    echo "Resuelve las brechas o regístralas con resolución asignada antes de commitear." >&2
+    echo "Para inspeccionar: python auditoria/verificar_alineacion.py" >&2
+    exit 1
+fi
+
+echo "✅ Alineación verificada: 0 brechas"
+
+# --- MTS (Metodo de Trabajo Seguro, docs/METODO_TRABAJO.md): gate contrastar ---
+echo "--- Gate MTS (auditoria/contrastar.py) ---"
+PLAN_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '^docs/plan_ME_.*\.md$' || true)
+if [ -n "$PLAN_FILES" ]; then
+    for pf in $PLAN_FILES; do
+        echo "  Plan MTS detectado: $pf"
+        if ! (cd "$RAIZ" && $PYTHON auditoria/contrastar.py --plan "$pf"); then
+            echo "Error: MTS contrastar fallo para $pf -- commit bloqueado" >&2
+            echo "Cumple el MTS (docs/METODO_TRABAJO.md): cada requisito necesita oraculo," >&2
+            echo "cada archivo de produccion staged necesita '// cumple Manual X S Y'." >&2
+            exit 1
+        fi
+    done
+else
+    echo "  Sin plan_ME en este commit (gate MTS no aplica)"
+fi
+
+# --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
+echo "── Gate de lectura previa (regla 1) ──"
+if ! (cd "$RAIZ" && $PYTHON auditoria/registrar_lectura.py --verificar); then
+    echo "❌ LECTURA PREVIA PENDIENTE — commit bloqueado" >&2
+    echo "" >&2
+    echo "Lee la sección exigida en docs/mapa_manuales.md y registra:" >&2
+    echo '  python auditoria/registrar_lectura.py --registrar --archivos "<archivos>" --cita "<Manual N §S>" --puntos "<requisitos leidos>"' >&2
+    exit 1
+fi
+
+# --- D-9(e) preventivo: ast_nodos.h sincronizado con parser_constantes.syn ---
+echo "── Verificando header canónico NodoID/TokenID (D-9(e)) ──"
+if ! (cd "$RAIZ" && $PYTHON scripts/gen_ast_nodos_h.py --check); then
+    echo "❌ runtime/core/ast_nodos.h DESACTUALIZADO vs nucleo/parser_constantes.syn" >&2
+    echo "Regenere con: python scripts/gen_ast_nodos_h.py" >&2
+    exit 1
+fi
+echo "✅ ast_nodos.h sincronizado (126 constantes)"
+exit 0

@@ -1,0 +1,166 @@
+#lang: es
+
+// ============================================================
+// syquex/syq_json.syn — Emisor JSON plano del SemNodo[] (R90)
+// Manual 1 §3.1: la salida del TRADUCTOR alimenta el backend
+// compartido. Este módulo serializa el arreglo plano producido
+// por traducir_programa() a un JSON de registros enteros para
+// que el puente Python (compilador/puente_canonico.py) lo
+// convierta al AST tipado que consume el pipeline S1
+// (pipeline.py compilar_desde_canonico, Manual 6 §1.2 ABI v1).
+//
+// Esquema emitido (solo ints — sin escaping), version "2":
+// {"syquex_flat":"2","total":N,"raiz":R,"nodos":[[t,l,c,vi,
+//   izq,der,herm,extra,txt1|null,txt2|null], ...]}
+// txt1 = span primario (nombre/literal); txt2 = span slot2
+// (tipo de retorno/parametro/campo, alias de tipo) — Manual 3 §11.2.
+//
+// La salida va a STDOUT (el invocador la captura); ante error
+// se imprime SYQ_JSON_ERROR=<n> y se retorna <n>.
+// ============================================================
+
+importar parser_constantes
+importar parser_base
+importar lexer
+importar traductor
+
+// Byte i-ésimo del payload prestado (sin copia).
+funcion sj_byte_en(s: texto, i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        _resultado_ >= -1
+    inseguro:
+        r = -1
+        asm("if (i < s.longitud && s.datos != 0) { r = (unsigned char)s.datos[i]; }")
+        retornar r
+    retornar -1
+
+// Longitud de un texto (campo .longitud solo se lee desde asm).
+funcion sj_long_texto(t: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        r = 0
+        asm("r = (t.datos != 0) ? t.longitud : 0;")
+        retornar r
+    retornar 0
+
+// valor_int del nodo de SALIDA (los accessors tr_* leen la ENTRADA).
+funcion sj_nodo_vi(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _o = (struct NodoAST*)trad_nodos(); if (_o && i < 65536) r = _o[i].valor_int;")
+        retornar r
+    retornar 0
+
+// Vista texto del span SLOT2 del nodo de salida (tipos; paridad
+// trad_copiar_payload que copia trad_s2p/s2h/s2l).
+funcion sj_texto2(i: entero) -> texto:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        let s: texto = ""
+        asm("int* _p2 = (int*)trad_s2p(); int* _h2 = (int*)trad_s2h(); int* _l2 = (int*)trad_s2l(); if (i < 65536 && _p2 && _h2 && _l2 && _l2[i] > 0) { uintptr_t _q = ((uintptr_t)(unsigned)_h2[i] << 32) | (unsigned)_p2[i]; CadenaSegura _c2; _c2.longitud = _l2[i]; _c2.datos = (char*)_q; s = _c2; }")
+        retornar s
+    retornar ""
+
+// Emite un entero seguido de separador "," (sin salto de línea).
+funcion sj_ent(p: entero) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    escribir(entero_a_texto(p))
+    escribir(",")
+
+// Emite el campo texto como [b0,b1,...] o null si len==0.
+funcion sj_txt(i: entero) -> nulo:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    t = trad_texto(i)
+    n = sj_long_texto(t)
+    si n <= 0:
+        escribir("null")
+        retornar
+    escribir("[")
+    j = 0
+    mientras j < n:
+        b = sj_byte_en(t, j)
+        si b < 0:
+            b = 0
+        escribir(entero_a_texto(b))
+        si j + 1 < n:
+            escribir(",")
+        j = j + 1
+    escribir("]")
+
+// Igual que sj_txt pero sobre el span SLOT2.
+funcion sj_txt2(i: entero) -> nulo:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    t = sj_texto2(i)
+    n = sj_long_texto(t)
+    si n <= 0:
+        escribir("null")
+        retornar
+    escribir("[")
+    j = 0
+    mientras j < n:
+        b = sj_byte_en(t, j)
+        si b < 0:
+            b = 0
+        escribir(entero_a_texto(b))
+        si j + 1 < n:
+            escribir(",")
+        j = j + 1
+    escribir("]")
+
+// Serializa TODO el SemNodo[] de salida como JSON plano a stdout.
+// Retorna 0 en éxito o negativo (código del traductor/desborde).
+funcion syq_json_emitir(raiz: entero) -> entero:
+    requiere:
+        raiz >= 0
+    garantiza:
+        _resultado_ >= -3
+    total = trad_obtener_total()
+    si total <= 0:
+        escribir_linea("SYQ_JSON_ERROR=-3")
+        retornar -3
+    escribir("{\"syquex_flat\":\"2\",\"total\":")
+    escribir(entero_a_texto(total))
+    escribir(",\"raiz\":")
+    escribir(entero_a_texto(raiz))
+    escribir(",\"nodos\":[")
+    i = 0
+    mientras i < total:
+        escribir("[")
+        sj_ent(trad_nodo_tipo(i))
+        sj_ent(trad_nodo_linea(i))
+        sj_ent(trad_nodo_columna(i))
+        sj_ent(sj_nodo_vi(i))
+        sj_ent(trad_hizq(i))
+        sj_ent(trad_hder(i))
+        sj_ent(trad_herm(i))
+        sj_ent(trad_nodo_extra(i))
+        sj_txt(i)
+        escribir(",")
+        sj_txt2(i)
+        escribir("]")
+        si i + 1 < total:
+            escribir(",")
+        i = i + 1
+    escribir("]}\n")
+    retornar 0

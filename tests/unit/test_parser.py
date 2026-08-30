@@ -8,6 +8,9 @@ Criterio 1.6: los errores de sintaxis reportan ubicación precisa
 """
 from compilador.lexer import Lexer
 from compilador.parser import Parser
+import pytest
+
+pytestmark = pytest.mark.unit
 from compilador.ast_nodes import (
     TokenID, Nodo, SentenciaSi, AsignacionVariable,
     OpBinaria, OpUnaria, DeclaracionVariable, DefinicionFuncion,
@@ -142,16 +145,18 @@ funcion usar_control(n: entero) -> entero:
             siguiente
         si x == 8:
             romper
-    para i = 0; i < n; i = i + 1:
+    para i = 0 mientras i < n:
         x = x + i
+        i = i + 1
     retornar x
 
 funcion usar_canales() -> nulo:
     ch = canal(entero, 4)
     ch <- x
     val = ch ->
-    z: entero = ch ->
-    escuchar ch -> procesar(x)
+    let z: entero = ch ->
+    escuchar ch:
+        procesar(x)
     retornar
 
 funcion usar_recuperar(v: texto) -> entero:
@@ -184,8 +189,8 @@ funcion usar_misc(v: entero) -> entero:
     log("evento", v)
     p = Punto()
     p.x = 9
-    q: entero = 7
-    ptr: entero* = nulo
+    let q: entero = 7
+    let ptr: entero* = nulo
     t = tensor(2, 3)
     r = t[0]
     retornar v
@@ -359,8 +364,16 @@ class TestParserCasosLimite:
         prog, diag = _parsear("#lang: es\nf() recuperar")
         assert diag.hay_errores()
 
-    def test_declaracion_tipada_puntero(self):
+    def test_declaracion_sin_let_rechazada(self):
+        """F3-8 (Manual 2 L134): `ptr: entero* = nulo` SIN `let` se rechaza."""
         prog, diag = _parsear("#lang: es\nptr: entero* = nulo")
+        assert diag.hay_errores()
+        assert any(e['codigo'] == ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN
+                   for e in diag.errores)
+
+    def test_declaracion_con_let_puntero(self):
+        """La forma VALIDA (Manual 2 L134): `let ptr: entero* = nulo`."""
+        prog, diag = _parsear("#lang: es\nlet ptr: entero* = nulo")
         assert not diag.hay_errores()
         decl = prog.sentencias[0]
         assert isinstance(decl, DeclaracionVariable)

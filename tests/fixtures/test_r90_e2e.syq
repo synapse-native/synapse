@@ -1,0 +1,47 @@
+#lang: es
+// R90 - fixture e2e del serializador/puente: ejercita los constructos
+// que el SemNodo[] canónico debe preservar hacia el pipeline S1
+// (Manual 1 §3.1): OOP con métodos, enumeración, coincidir con patrones
+// literal/wildcard/ctor, para..en, si, intentar/atrapar y @export.
+// Este archivo es input directo de syq_frontend.exe (scripts/
+// build_syquex_frontend.py) y de compilador/puente_canonico.py.
+
+estructura Punto:
+    x: entero
+    yy: entero
+    crear(px: entero):
+        self.x = px
+    metodo desplazar(d: entero):
+        self.x = self.x + d
+
+enumeracion Color:
+    rojo
+    verde
+
+@export(python) funcion visible(v: entero) -> entero:
+    retornar v * 2
+
+funcion clasifica(n: entero) -> entero:
+    coincidir n:
+        0 => retornar 0
+        _ => retornar 1
+
+funcion usa_color(c: Color) -> entero:
+    coincidir c:
+        rojo(v) => escribir_linea(v)
+        verde => escribir_linea("verde")
+        _ => escribir_linea("otro")
+
+funcion principal() -> entero:
+    let p = Punto(3)
+    p = p.desplazar(4)
+    let l = lista<entero>()
+    para v en l:
+        let z = v
+    si p.x > 0:
+        let w = p.yy
+    intentar:
+        let q = 7
+    atrapar e:
+        retornar 1
+    retornar 0

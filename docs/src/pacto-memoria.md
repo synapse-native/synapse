@@ -4,7 +4,7 @@ Synapse implementa un sistema de **ownership afín** (affine types) con **RAII d
 
 ## Ownership y Transferencia
 
-El analizador semántico [analizador_semantico.syn](/src/analizador_semantico.syn) implementa una máquina de estados sobre cada símbolo. Cada variable tiene una bandera `vivo: booleano` que el compilador muta durante el análisis:
+El analizador semántico [analizador_semantico.syn](/nucleo/analizador_semantico.syn) implementa una máquina de estados sobre cada símbolo. Cada variable tiene una bandera `vivo: booleano` que el compilador muta durante el análisis:
 
 ```synapse
 estructura Simbolo:

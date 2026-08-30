@@ -1,0 +1,88 @@
+#lang: es
+// lib/web.syq — Servidor HTTP básico de Syquex
+// Manual 3 §12.1: Módulo Web (servidor HTTP con winsock2)
+//
+// Uso desde Syquex:
+//   importar lib.web
+//   let s = web.crear(8080)
+//   web.registrar_ruta(s, "GET", "/", "Hola mundo")
+//   web.iniciar(s)
+//   // ... el servidor escucha ...
+//   web.detener(s)
+
+// --- Crear / Destruir ---
+
+funcion crear(puerto: entero) -> entero:
+    return _syn_web_crear(puerto)
+
+funcion destruir(servidor: entero) -> nulo:
+    _syn_web_destruir(servidor)
+
+// --- Registrar rutas ---
+
+funcion registrar_ruta(servidor: entero, metodo: texto, ruta: texto, contenido: texto) -> entero:
+    return _syn_web_registrar_ruta(servidor, metodo, ruta, contenido)
+
+funcion registrar_ruta_codigo(servidor: entero, metodo: texto, ruta: texto, codigo: entero, contenido: texto) -> entero:
+    return _syn_web_registrar_ruta_codigo(servidor, metodo, ruta, codigo, contenido)
+
+// --- Iniciar / Detener ---
+
+funcion iniciar(servidor: entero) -> entero:
+    return _syn_web_iniciar(servidor)
+
+funcion detener(servidor: entero) -> nulo:
+    _syn_web_detener(servidor)
+
+funcion esta_corriendo(servidor: entero) -> booleano:
+    return _syn_web_esta_corriendo(servidor)
+
+// --- Petición actual ---
+
+funcion peticion_ruta(peticion: entero) -> texto:
+    return _syn_web_peticion_ruta(peticion)
+
+funcion peticion_metodo(peticion: entero) -> texto:
+    return _syn_web_peticion_metodo(peticion)
+
+funcion peticion_body(peticion: entero) -> texto:
+    return _syn_web_peticion_body(peticion)
+
+funcion peticion_header(peticion: entero, nombre: texto) -> texto:
+    return _syn_web_peticion_header(peticion, nombre)
+
+// --- Respuesta ---
+
+funcion responder(peticion: entero, codigo: entero, contenido: texto) -> nulo:
+    _syn_web_responder(peticion, codigo, contenido)
+
+funcion responder_texto(peticion: entero, contenido: texto) -> nulo:
+    _syn_web_responder_texto(peticion, contenido)
+
+funcion responder_json(peticion: entero, contenido: texto) -> nulo:
+    _syn_web_responder_json(peticion, contenido)
+
+funcion responder_html(peticion: entero, contenido: texto) -> nulo:
+    _syn_web_responder_html(peticion, contenido)
+
+funcion responder_404(peticion: entero) -> nulo:
+    _syn_web_responder_404(peticion)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_web_crear(puerto: entero) -> entero
+externo funcion _syn_web_destruir(servidor: entero) -> nulo
+externo funcion _syn_web_registrar_ruta(servidor: entero, metodo: texto, ruta: texto, contenido: texto) -> entero
+externo funcion _syn_web_registrar_ruta_codigo(servidor: entero, metodo: texto, ruta: texto, codigo: entero, contenido: texto) -> entero
+externo funcion _syn_web_iniciar(servidor: entero) -> entero
+externo funcion _syn_web_detener(servidor: entero) -> nulo
+externo funcion _syn_web_esta_corriendo(servidor: entero) -> booleano
+externo funcion _syn_web_peticion_ruta(peticion: entero) -> texto
+externo funcion _syn_web_peticion_metodo(peticion: entero) -> texto
+externo funcion _syn_web_peticion_body(peticion: entero) -> texto
+externo funcion _syn_web_peticion_header(peticion: entero, nombre: texto) -> texto
+externo funcion _syn_web_responder(peticion: entero, codigo: entero, contenido: texto) -> nulo
+externo funcion _syn_web_responder_texto(peticion: entero, contenido: texto) -> nulo
+externo funcion _syn_web_responder_json(peticion: entero, contenido: texto) -> nulo
+externo funcion _syn_web_responder_html(peticion: entero, contenido: texto) -> nulo
+externo funcion _syn_web_responder_404(peticion: entero) -> nulo

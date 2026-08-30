@@ -1,0 +1,10 @@
+#lang: es
+// Paridad: llamadas a funcion + acceso a campo
+funcion maximo(a: entero, b: entero) -> entero:
+    si a > b:
+        retornar a
+    retornar b
+
+funcion principal() -> entero:
+    let m = maximo(10, 20)
+    retornar m

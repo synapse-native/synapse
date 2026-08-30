@@ -1,3 +1,4 @@
+# cumple Manual 8 §4
 """
 test_debug.py — Pruebas unitarias para std.debug (Time-Travel Debugging)
 Sección 18.2 del Manual de Ingeniería v5.0
@@ -9,6 +10,8 @@ import tempfile
 import glob
 import shutil
 import pytest
+
+pytestmark = pytest.mark.unit
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 

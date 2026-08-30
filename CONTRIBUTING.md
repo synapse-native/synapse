@@ -21,7 +21,7 @@ python main.py nucleo/principal.syn 2>&1 | grep "error:" && \
   echo "✅ Bootstrap OK (0 errores GCC)"
 
 # 4. Stage1 — compila
-python main.py src/main.syn -o dist/bin/synapse_stage1.exe
+python main.py nucleo/principal.syn -o dist/bin/synapse_stage1.exe
 ```
 
 ## 🔄 CI/CD Pipeline
@@ -46,7 +46,7 @@ El proyecto utiliza GitHub Actions para:
 2. **bootstrap**: Corre SECUENCIALMENTE después de `test`:
    - Genera `synapse_unity.c` desde `nucleo/principal.syn`
    - Verifica 0 errores GCC
-   - Compila Stage1 desde `src/main.syn`
+    - Compila Stage1 desde `nucleo/principal.syn`
    - Verifica que todos los tests pasan sin regresiones
 
 ## 📏 Estándares de código

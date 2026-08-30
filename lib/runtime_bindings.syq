@@ -1,0 +1,155 @@
+#lang: es
+
+// =====================================================================
+// lib/runtime_bindings.syq — Bindings automáticos del runtime C
+// Generado por opensyn/generate_runtime_bindings.py
+// Total: 91 funciones externas
+// =====================================================================
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.1 — Matemáticas (9 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/math.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _syn_potencia(base: decimal, exponente: decimal) -> decimal
+externo funcion _syn_sqrt(x: decimal) -> decimal
+externo funcion _syn_sen(x: decimal) -> decimal
+externo funcion _syn_cos(x: decimal) -> decimal
+externo funcion _syn_tan(x: decimal) -> decimal
+externo funcion _syn_round(x: decimal) -> entero
+externo funcion _syn_ceil(x: decimal) -> entero
+externo funcion _syn_floor(x: decimal) -> entero
+externo funcion _syn_log(x: decimal) -> decimal
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.2 — Manipulación de cadenas (17 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/texto.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _syn_texto_longitud(t: entero) -> entero
+externo funcion _syn_texto_subcadena(t: entero, inicio: entero, fin: entero) -> entero
+externo funcion _syn_texto_contiene(t: entero, patron: entero) -> entero
+externo funcion _syn_texto_reemplazar(t: entero, viejo: entero, nuevo: entero) -> entero
+externo funcion _syn_texto_dividir(t: entero, separador: entero) -> entero
+externo funcion _syn_texto_dividir_longitud(lista_id: entero) -> entero
+externo funcion _syn_texto_dividir_obtener(lista_id: entero, indice: entero) -> entero
+externo funcion _syn_texto_dividir_liberar(lista_id: entero)
+externo funcion _syn_texto_unir(lista_id: entero, separador: entero) -> entero
+externo funcion _syn_texto_recortar(t: entero) -> entero
+externo funcion _syn_texto_mayusculas(t: entero) -> entero
+externo funcion _syn_texto_minusculas(t: entero) -> entero
+externo funcion _syn_texto_comienza_con(t: entero, prefijo: entero) -> entero
+externo funcion _syn_texto_termina_con(t: entero, sufijo: entero) -> entero
+externo funcion _syn_texto_indice_de(t: entero, patron: entero) -> entero
+externo funcion _syn_texto_repetir(t: entero, veces: entero) -> entero
+externo funcion _syn_texto_invertir(t: entero) -> entero
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.3 — Fecha y hora (14 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/tiempo.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _syn_timestamp_unix() -> entero
+externo funcion _syn_timestamp_ms() -> entero
+externo funcion _syn_tiempo_anio() -> entero
+externo funcion _syn_tiempo_mes() -> entero
+externo funcion _syn_tiempo_dia() -> entero
+externo funcion _syn_tiempo_hora() -> entero
+externo funcion _syn_tiempo_minuto() -> entero
+externo funcion _syn_tiempo_segundo() -> entero
+externo funcion _syn_tiempo_dia_semana() -> entero
+externo funcion _syn_tiempo_dia_anio() -> entero
+externo funcion _syn_tiempo_fecha_actual() -> entero
+externo funcion _syn_tiempo_hora_actual() -> entero
+externo funcion _syn_tiempo_datetime_actual() -> entero
+externo funcion _syn_tiempo_diferencia_segundos(ts1: entero, ts2: entero) -> entero
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.4 — Base de datos SQLite (18 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/db.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _syn_db_abrir(ruta: entero) -> entero
+externo funcion _syn_db_cerrar(conn: entero)
+externo funcion _syn_db_ejecutar(conn: entero, sql: entero) -> entero
+externo funcion _syn_db_consultar(conn: entero, sql: entero) -> entero
+externo funcion _syn_db_cursor_siguiente(cursor: entero) -> entero
+externo funcion _syn_db_cursor_num_columnas(cursor: entero) -> entero
+externo funcion _syn_db_cursor_nombre_columna(cursor: entero, indice: entero) -> entero
+externo funcion _syn_db_cursor_texto(cursor: entero, indice: entero) -> entero
+externo funcion _syn_db_cursor_entero(cursor: entero, indice: entero) -> entero
+externo funcion _syn_db_cursor_decimal(cursor: entero, indice: entero) -> decimal
+externo funcion _syn_db_cursor_es_nulo(cursor: entero, indice: entero) -> entero
+externo funcion _syn_db_cursor_cerrar(cursor: entero)
+externo funcion _syn_db_transaccion_iniciar(conn: entero) -> entero
+externo funcion _syn_db_transaccion_confirmar(conn: entero) -> entero
+externo funcion _syn_db_transaccion_deshacer(conn: entero) -> entero
+externo funcion _syn_db_ultimo_error(conn: entero) -> entero
+externo funcion _syn_db_cambios_fila(conn: entero) -> entero
+externo funcion _syn_db_ultima_id(conn: entero) -> entero
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.5 — Servidor HTTP (16 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/web.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _syn_web_crear(puerto: entero) -> entero
+externo funcion _syn_web_destruir(servidor: entero)
+externo funcion _syn_web_registrar_ruta(servidor: entero, metodo: entero, ruta: entero, contenido: entero) -> entero
+externo funcion _syn_web_registrar_ruta_codigo(servidor: entero, metodo: entero, ruta: entero, codigo: entero, contenido: entero) -> entero
+externo funcion _syn_web_iniciar(servidor: entero) -> entero
+externo funcion _syn_web_detener(servidor: entero)
+externo funcion _syn_web_esta_corriendo(servidor: entero) -> entero
+externo funcion _syn_web_peticion_ruta(peticion: entero) -> entero
+externo funcion _syn_web_peticion_metodo(peticion: entero) -> entero
+externo funcion _syn_web_peticion_body(peticion: entero) -> entero
+externo funcion _syn_web_peticion_header(peticion: entero, nombre: entero) -> entero
+externo funcion _syn_web_responder(peticion: entero, codigo: entero, contenido: entero)
+externo funcion _syn_web_responder_texto(peticion: entero, contenido: entero)
+externo funcion _syn_web_responder_json(peticion: entero, contenido: entero)
+externo funcion _syn_web_responder_html(peticion: entero, contenido: entero)
+externo funcion _syn_web_responder_404(peticion: entero)
+
+// ---------------------------------------------------------------------
+// Manual 3 §12.6 — JSON parser (7 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/json.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion _json_nodo_new() -> entero
+externo funcion _json_nodo_liberar(n: entero)
+externo funcion _json_parse(entrada: entero) -> entero
+externo funcion _json_nodo_clonar(src: entero) -> entero
+externo funcion _json_array_get(nodo: entero, indice: entero) -> entero
+externo funcion _json_object_get(nodo: entero, clave: entero) -> entero
+externo funcion _json_a_texto(nodo: entero) -> entero
+
+// ---------------------------------------------------------------------
+// Manual 4 §7 — FFI marshaling (10 funciones)
+// ---------------------------------------------------------------------
+
+// Bindings generados automáticamente desde runtime/core/ffi_marshaling.h
+// Generado por opensyn/bindings_generator.py
+
+externo funcion ffi_texto_a_c_string(texto: &puntero, arena: &puntero) -> texto
+externo funcion ffi_entero_a_i64(valor: entero) -> entero
+externo funcion ffi_decimal_a_f64(valor: decimal) -> decimal
+externo funcion ffi_booleano_a_int(valor: entero) -> entero
+externo funcion ffi_lista_a_slice(ptr_lista: puntero, tipo_elem: entero) -> puntero
+externo funcion ffi_lista_longitud(ptr_lista: puntero) -> entero
+externo funcion ffi_mapa_a_handle(ptr_mapa: puntero) -> puntero
+externo funcion ffi_mapa_tamano(ptr_mapa: puntero) -> entero
+externo funcion ffi_desregistrar_callback(id: entero)
+externo funcion ffi_invocar_callback(id: entero)
+

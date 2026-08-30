@@ -20,6 +20,8 @@ El ecosistema Synapse sigue los siguientes principios de distribución:
 | **Offline‑first** | Los paquetes y modelos se descargan una vez y se almacenan en caché local (`~/.synapse/cache/`, `~/.opensyn/models/`). |
 | **Opt‑in para IA** | OpenSyn solo se instala si el usuario lo elige explícitamente. Nunca se activa sin consentimiento. |
 
+> **Nota (ubicación de la caché incremental):** Toda caché del compilador —objetos del runtime (`synapse_rt.c`, `runtime/core/*`, `axon/tweetnacl.c`, `vendor/sqlite3/sqlite3.c`, módulos cuánticos/IA) y código de usuario compilado incrementalmente— se almacena **bajo `~/.synapse/cache/`** (coherente con Manual 1 §4: `cache.syn` = "Sistema de caché incremental SHA‑256"). Los directorios de build del repositorio (`build/`, artefactos `*.o` en la raíz) son **efímeros** y se limpian en cada commit (hook "Limpiando artefactos de build"); por tanto **no** deben usarse para caches persistentes, o se pierde el beneficio entre commits. La clave de caché incluye el hash SHA‑256 de la fuente, el compilador y los flags, de modo que el `.o` cacheado es byte‑idéntico al recién compilado y no rompe el bootstrap (Manual 1 §6, Regla de hierro).
+
 ---
 
 ## 2. EMPAQUETADO MULTI‑TARGET
@@ -437,6 +439,52 @@ funcion prueba_inferencia():
         io.escribir_linea("✅ Prueba de OpenSyn exitosa.")
     sino:
         io.escribir_linea("⚠️  Prueba de OpenSyn fallida. Revisa la configuración.")
+```
+
+### 5.6. Archivo `modelos.toml`
+
+El instalador de OpenSyn lee el archivo `modelos.toml` para obtener las URLs, hashes SHA‑256 y tamaños de los modelos disponibles. Este archivo se distribuye junto con el instalador y se actualiza periódicamente. Permite al instalador seleccionar el modelo apropiado según el hardware detectado sin modificar el código del instalador.
+
+**Ejemplo de `modelos.toml`:**
+```toml
+[modelos]
+"deepseek-coder-1.3b-Q4_K_M" = { url = "https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-Chat-GGUF/resolve/main/deepseek-coder-1.3b-Q4_K_M.gguf", sha256 = "abc123...", tamano_gb = 1.1 }
+"codellama-7b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q4_K_M-gguf/resolve/main/codellama-7b-q4_K_M.gguf", sha256 = "def456...", tamano_gb = 4.0 }
+"codellama-7b-Q5_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q5_K_M-gguf/resolve/main/codellama-7b-q5_K_M.gguf", sha256 = "ghi789...", tamano_gb = 5.0 }
+"codellama-13b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-13b-code-Q4_K_M-gguf/resolve/main/codellama-13b-q4_K_M.gguf", sha256 = "jkl012...", tamano_gb = 7.0 }
+"codellama-34b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-34b-code-Q4_K_M-gguf/resolve/main/codellama-34b-q4_K_M.gguf", sha256 = "mno345...", tamano_gb = 18.0 }
+```
+
+### 5.7. API de `std/os.syn`
+
+El módulo `std/os.syn` proporciona funciones de detección de hardware y sistema utilitarias, utilizadas por el instalador de OpenSyn (ver §5.1). Estas funciones están implementadas mediante FFI a llamadas del sistema operativo.
+
+> **Nota de implementación (2026-08-27):** `std/os.syn` está especificado pero aún no implementado como módulo Synapse; su funcionalidad (detección de HW) vive hoy en `runtime/core/detect_hardware.c` vía FFI. Pendiente de la Fase 29. No debe crearse un archivo `std/os.syn` ficticio: la fuente de verdad es el runtime hasta esa fase.
+
+```syquex
+// std/os.syn
+// Funciones de sistema y detección de hardware.
+
+funcion memoria_total() -> entero:
+    // RAM total en bytes.
+    externo sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE)
+
+funcion memoria_libre() -> entero:
+    // RAM libre en bytes.
+    externo sysconf(_SC_AVPHYS_PAGES) * sysconf(_SC_PAGESIZE)
+
+funcion vram_total() -> entero:
+    // VRAM total de la GPU en bytes (0 si no hay GPU).
+    // Implementación en C en detect_hardware.c.
+    externo detect_vram_total() -> int64_t
+
+funcion cpu_nucleos() -> entero:
+    // Número de núcleos de CPU.
+    externo sysconf(_SC_NPROCESSORS_ONLN)
+
+funcion arquitectura() -> texto:
+    // "x86_64", "arm64", etc.
+    externo detect_arquitectura() -> const char*
 ```
 
 ---

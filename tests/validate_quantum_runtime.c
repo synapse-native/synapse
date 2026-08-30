@@ -47,7 +47,14 @@ static void test_lifecycle(void) {
     TEST("8 qubits: 256 amplitudes", s8->num_amplitudes == 256);
     qc_liberar_sistema(s8);
     TEST("qc_crear_sistema(0) es NULL", qc_crear_sistema(0) == NULL);
-    TEST("qc_crear_sistema(9) es NULL", qc_crear_sistema(9) == NULL);
+    /* R82 (F15-2): frontera actualizada a QC_MAX_QUBITS=9 (alineación R74 con
+       Shor 9-qubit QEC). Modificación aprobada por el Arquitecto (regla 5,
+       precedente R80): la aserción antigua codificaba el límite pre-R74. */
+    EstadoCuantico* s9 = qc_crear_sistema(9);
+    TEST("qc_crear_sistema(9) no es NULL", s9 != NULL);
+    TEST("9 qubits: 512 amplitudes", s9 != NULL && s9->num_amplitudes == 512);
+    qc_liberar_sistema(s9);
+    TEST("qc_crear_sistema(10) es NULL", qc_crear_sistema(10) == NULL);
 }
 
 // ============================================================

@@ -1,0 +1,32 @@
+#lang: es
+// Test E24: lista + mapa inline (sin importar — el compilador aún no soporta)
+// Verifica que el compilador Syquex maneja externos de lista y mapa
+
+externo funcion _syn_lista_crear() -> entero
+externo funcion _syn_lista_longitud(l: entero) -> entero
+externo funcion _syn_lista_agregar(l: entero, elemento: entero) -> nulo
+externo funcion _syn_lista_obtener(l: entero, indice: entero) -> entero
+
+externo funcion _syn_mapa_crear() -> entero
+externo funcion _syn_mapa_poner(m: entero, clave: texto, valor: entero) -> nulo
+externo funcion _syn_mapa_obtener(m: entero, clave: texto) -> entero
+externo funcion _syn_mapa_contiene(m: entero, clave: texto) -> entero
+
+funcion principal() -> entero:
+    // Test lista
+    let l = _syn_lista_crear()
+    _syn_lista_agregar(l, 10)
+    _syn_lista_agregar(l, 20)
+    _syn_lista_agregar(l, 30)
+    let n = _syn_lista_longitud(l)
+    let v = _syn_lista_obtener(l, 1)
+    escribir_linea("lista: n=" + entero_a_texto(n) + " v=" + entero_a_texto(v))
+
+    // Test mapa
+    let m = _syn_mapa_crear()
+    _syn_mapa_poner(m, "x", 42)
+    let val = _syn_mapa_obtener(m, "x")
+    let has = _syn_mapa_contiene(m, "x")
+    escribir_linea("mapa: val=" + entero_a_texto(val) + " has=" + entero_a_texto(has))
+
+    retornar 0

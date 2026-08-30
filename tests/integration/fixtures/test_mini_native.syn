@@ -1,0 +1,4 @@
+#lang: es
+// Test minimal file
+funcion principal() -> entero:
+    retornar 0

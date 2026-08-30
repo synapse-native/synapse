@@ -23,6 +23,14 @@ from .emit_selfhost import (
 )
 
 
+def _es_canal_concurrencia(tipo_syn: str) -> bool:
+    """F3-10: un canal de concurrencia puede aparecer como 'CanalConcurrencia*'
+    (sin elemento) o 'Canal<T>' (tipado, Manual 2 L144 / Manual 5 §3)."""
+    return tipo_syn == 'CanalConcurrencia*' or (
+        tipo_syn.startswith('Canal<') and tipo_syn.endswith('>')
+    )
+
+
 # FASE A (A4.5): retirada COMPLETA del espejo _P_* — el map ya NO enruta
 # tokenizar/parsear a los emisores del espejo (emitir_parsear, la última emisora
 # viva, se conserva solo como referencia del harness native_puente_paridad.py;
@@ -37,14 +45,35 @@ from .emit_selfhost import (
 #   - volcar_ast: utilidad de volcado (no es el espejo; se mantiene).
 # I/O y tensor functions están en synapse_rt.o y se linkean.
 # (No incluirlas aquí causa multiple-definition linker errors)
+def _visitar_stmt(ctx, nodo):
+    """Import tardío de _visitar para evitar ciclo."""
+    from . import visitar as _v
+    return _v(ctx, nodo)
+
+
 def _emitir_parsear_nativo(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo)."""
+    """A4.5: wrapper NATIVO de parsear (paridad gen_emitir_frontend_nativo).
+    R5 (F2-2.4c): si el parser nativo marca `_pe.hay_error`, imprime el
+    diagnostico (mensaje + linea/columna, derivados del token actual si el
+    error no trae posicion) y senaliza `_G_parse_error` para que el pipeline
+    de principal.syn aborte con rc=8 (antes: el error de sintaxis caia al
+    codegen y fallaba en el linker con rc=5)."""
     ctx.write_line("int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;")
     ctx.write_line("struct Programa parsear(CadenaSegura fuente) {")
     ctx.write_line("    int _nt = tokenizar(fuente);")
     ctx.write_line("    if (_nt < 0) { struct Programa _e = {0}; return _e; }")
     ctx.write_line("    struct ParserEst _pe = {0};")
     ctx.write_line("    parsear_nativo(&_pe);")
+    ctx.write_line("    if (_pe.hay_error) {")
+    ctx.write_line("        int64_t _ln = _pe.error_linea, _co = _pe.error_columna;")
+    ctx.write_line("        if (!_ln && _pe.posicion >= 0 && _pe.posicion < _pe.total_tokens) {")
+    ctx.write_line("            _ln = _pe.tokens[_pe.posicion].linea;")
+    ctx.write_line("            _co = _pe.tokens[_pe.posicion].columna;")
+    ctx.write_line("        }")
+    ctx.write_line('        const char* _msg = (_pe.error_mensaje.datos && _pe.error_mensaje.datos[0]) ? _pe.error_mensaje.datos : "Error de sintaxis";')
+    ctx.write_line('        fprintf(stderr, "[Synapse] Error de sintaxis (linea %lld, columna %lld): %s\\n", (long long)_ln, (long long)_co, _msg);')
+    ctx.write_line("        _G_parse_error = 1; struct Programa _e2 = {0}; return _e2;")
+    ctx.write_line("    }")
     ctx.write_line("    struct Programa* _pr = (struct Programa*)puente_construir_programa();")
     ctx.write_line("    if (!_pr) { struct Programa _e = {0}; return _e; }")
     ctx.write_line("    return *_pr;")
@@ -76,16 +105,22 @@ def visitar_declaracion(ctx: GeneratorContext, nodo: DeclaracionVariable):
     tipo_c = ctx.traducir_tipo_c(tipo_syn)
     if nodo.expresion:
         val = expr_a_c(ctx, nodo.expresion)
+        # nulo -> WeakRef: ((void*)0) no inicializa struct (Manual 4 §4.2)
+        if ctx._es_tipo_debil(tipo_syn) and val == 'nulo':
+            val = '((WeakRef){0})'
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {val};")
     else:
         ctx.write_line(f"{tipo_c} {nodo.nombre} = {{0}};")
     ctx._variables[nodo.nombre] = tipo_syn  # Store Synapse type (consistent)
-    if tipo_syn == 'CanalConcurrencia*':
+    if _es_canal_concurrencia(tipo_syn):
         ctx._canal_vars_concurrencia.add(nodo.nombre)
     elif tipo_syn == 'Canal':
         ctx._canal_vars.add(nodo.nombre)
     elif tipo_syn == 'Tensor':
         ctx._tensor_vars.add(nodo.nombre)
+    elif ctx._tipo_tiene_destructor(tipo_syn):
+        if ctx._scope_stack:
+            ctx._scope_stack[-1][nodo.nombre] = tipo_syn
 
 
 def visitar_delegar(ctx: GeneratorContext, nodo: SentenciaDelegar):
@@ -115,20 +150,27 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
             ctx._tensor_vars.add(nodo.nombre)
         elif tipo_syn == 'Canal':
             ctx._canal_vars.add(nodo.nombre)
-        elif tipo_syn == 'CanalConcurrencia*':
+        elif _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
         else:
             ctx.register_var(nodo.nombre, tipo_syn, desde_llamada)
     else:
         old_tipo = ctx._variables.get(nodo.nombre)
-        if old_tipo in ctx._destructor_map:
-            dtor = ctx._destructor_map[old_tipo]
-            ctx.write_line(f"{dtor}({nodo.nombre});")
+        if old_tipo and ctx._tipo_tiene_destructor(old_tipo):
+            dtor, arg, guard = ctx._destructor_para_tipo(old_tipo, nodo.nombre)
+            if dtor:
+                if guard:
+                    ctx.write_line(f"if ({guard}) {dtor}({arg});")
+                else:
+                    ctx.write_line(f"{dtor}({arg});")
             ctx.unregister_var(nodo.nombre)
         if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
             ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
-        if tipo_syn == 'CanalConcurrencia*':
+        if _es_canal_concurrencia(tipo_syn):
             ctx._canal_vars_concurrencia.add(nodo.nombre)
+        elif ctx._tipo_tiene_destructor(tipo_syn):
+            if ctx._scope_stack:
+                ctx._scope_stack[-1][nodo.nombre] = tipo_syn
         ctx.write_line(f"{nodo.nombre} = {val};")
 
 
@@ -199,6 +241,48 @@ def visitar_estructura(ctx: GeneratorContext, nodo: DefinicionEstructura):
 # Type declaration (Manual 2 §2 declaracion_tipo / §4.2)
 # ================================================================
 
+def _emitir_typedefs_instancias(ctx: GeneratorContext):
+    """R17 (D-2): emite los typedefs de TODAS las instanciaciones de ADT
+    genéricos en un pre-bloque ANTES de estructuras/funciones.
+
+    Antes se emitían dentro de visitar_declaracion_tipo (por base, en el
+    punto alfabético del ADT genérico) — un campo de estructura que
+    referencia una instancia emitida después rompía el C (`Resultado_T` /
+    unknown type). Al emitirlas primero, ordenadas por PROFUNDIDAD de
+    anidamiento (las internas `Resultado<entero,texto>` antes que el
+    contenedor anidado que las referencia como campo), cualquier
+    struct/función las ve ya resueltas. Paridad con el scan nativo
+    (orquestador.syn, registro post-orden + pre-bloque).
+    """
+    if not ctx._instancias_adt:
+        return
+
+    def _prof_inst(kv):
+        return (sum(a.count('<') for a in kv[0][1]), kv[0][0], kv[0][1])
+
+    for (base, args), inst in sorted(ctx._instancias_adt.items(),
+                                     key=_prof_inst):
+        partes_i = []
+        for ctor, t_syn in inst['campos']:
+            t_c = ctx.traducir_tipo_c(t_syn)
+            if t_c.startswith('struct '):
+                t_c += '*'
+            # H-R90-12: 'void' no es válido como miembro de union en C.
+            # para nulo/void (p.ej. Resultado<nulo, texto>.ok()), usar
+            # 'char' como placeholder (Manual 3 §5.1 L175: nulo es void/nulo).
+            if t_c in ('void', 'nulo'):
+                t_c = 'char'
+            partes_i.append(f"{t_c} {ctor};")
+        if not partes_i:
+            partes_i.append("int _unidad;")
+        td_i = (f"typedef struct {inst['nombre_c']} {{ int64_t tag; "
+                f"union {{ {' '.join(partes_i)} }} dato; }} {inst['nombre_c']};")
+        if td_i not in ctx._emitted_typedefs:
+            ctx._emitted_typedefs.add(td_i)
+            ctx.write_line(td_i)
+            ctx.write_line("")
+
+
 def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
     """F1.2: emite el typedef de una declaración de tipo.
     - Alias simple (`tipo X = entero`): `typedef <c> X;`
@@ -220,6 +304,9 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             tipo_c = ctx.traducir_tipo_c(tipo_campo)
             if tipo_c.startswith('struct '):
                 tipo_c += '*'
+            # H-R90-12: 'void' no es válido como miembro de union en C
+            if tipo_c in ('void', 'nulo'):
+                tipo_c = 'char'
             partes.append(f"{tipo_c} {c.nombre};")
         if not partes:
             partes.append("int _unidad;")
@@ -229,26 +316,10 @@ def visitar_declaracion_tipo(ctx: GeneratorContext, nodo: DeclaracionTipo):
             ctx._emitted_typedefs.add(td)
             ctx.write_line(td)
             ctx.write_line("")
-        # D-2 (monomorfización): emitir structs especializados por cada
-        # instanciación concreta de este ADT genérico (Manual 2 §4.2 L279-280).
-        # Campos T/E sustituidos por los tipos reales — cero void* (Opción A).
-        for (base, args), inst in sorted(ctx._instancias_adt.items()):
-            if base != nodo.nombre:
-                continue
-            partes_i = []
-            for ctor, t_syn in inst['campos']:
-                t_c = ctx.traducir_tipo_c(t_syn)
-                if t_c.startswith('struct '):
-                    t_c += '*'
-                partes_i.append(f"{t_c} {ctor};")
-            if not partes_i:
-                partes_i.append("int _unidad;")
-            td_i = (f"typedef struct {inst['nombre_c']} {{ int64_t tag; "
-                    f"union {{ {' '.join(partes_i)} }} dato; }} {inst['nombre_c']};")
-            if td_i not in ctx._emitted_typedefs:
-                ctx._emitted_typedefs.add(td_i)
-                ctx.write_line(td_i)
-                ctx.write_line("")
+        # R17 (D-2): los typedefs de instanciaciones `Base<A,B>` se emiten en
+        # un PRE-BLOQUE (ver _emitir_typedefs_instancias) ANTES de las
+        # estructuras: un campo de estructura que referencia una instancia
+        # emitida aquí (orden alfabético del ADT genérico) rompía el C.
     elif nodo.tipo_base:
         td = f"typedef {ctx.traducir_tipo_c(nodo.tipo_base)} {nodo.nombre};"
         if td not in ctx._emitted_typedefs:
@@ -275,6 +346,14 @@ def visitar_externa(ctx: GeneratorContext, nodo: DeclaracionExterna):
     """Genera código C para declaración externa de función."""
     ctx._externas[nodo.nombre] = [p.tipo for p in nodo.parametros]
     if not ctx._in_function_scope:
+        if nodo.tipo_retorno == "__extern_struct":
+            ctx.write_line(f"extern struct {nodo.nombre};")
+            return
+        # Skip extern declaration for C builtin functions already declared
+        # in C headers (e.g. strlen in string.h). The declaration is provided
+        # by the included header — emitting our own conflicts with libc types.
+        if nodo.nombre in ctx._C_FUNCTIONS_NEED_DATOS:
+            return
         tipo_ret_c = (
             ctx.traducir_tipo_c(nodo.tipo_retorno.replace('*', ''))
             + ('*' if '*' in nodo.tipo_retorno else '')
@@ -349,7 +428,7 @@ def visitar_enviar_canal(ctx: GeneratorContext, nodo: SentenciaEnviarCanal):
         ctx.write_line(f"canal_enviar({canal}, (void*)({valor}));")
     if (
         isinstance(nodo.valor, Identificador)
-        and tipo_valor in ctx._destructor_map
+        and ctx._tipo_tiene_destructor(tipo_valor)
     ):
         ctx.write_line(f"{valor} = ({{0}});")
         ctx.unregister_var(nodo.valor.nombre)
@@ -390,22 +469,38 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
             ctx._variables[p.nombre] = p.tipo + '*'
         else:
             ctx._variables[p.nombre] = p.tipo
+    # F4: self is passed by pointer for methods — store pointer type so
+    # tipo_de_expr returns 'Struct*' and ExprAccesoCampo uses '->'
+    if nodo.nombre in ctx._metodos_self:
+        ctx._variables[nodo.parametros[0].nombre] = nodo.parametros[0].tipo + '*'
 
     ctx._current_func_return_type = nodo.tipo_retorno
     tipo = ctx.traducir_tipo_c(nodo.tipo_retorno)
-    params = ", ".join(
-        f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
-        for p in nodo.parametros
-    ) if nodo.parametros else "void"
-    ctx.write_line(f"{tipo} {nodo.nombre}({params}) {{")
+    # F4: métodos pasan self por puntero (struct X* self) para mutaciones persistentes
+    if nodo.nombre in ctx._metodos_self:
+        param_list = list(nodo.parametros)
+        first_tipo = ctx.traducir_tipo_c(param_list[0].tipo)
+        first_param = f"{first_tipo}* {param_list[0].nombre}"
+        rest_params = ", ".join(
+            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+            for p in param_list[1:]
+        ) if len(param_list) > 1 else ""
+        params = (first_param + ", " + rest_params) if rest_params else first_param
+    else:
+        params = ", ".join(
+            f"{ctx.traducir_tipo_c(p.tipo)}{'*' if p.tipo in ctx._POINTER_TYPES else ''} {p.nombre}"
+            for p in nodo.parametros
+        ) if nodo.parametros else "void"
+    # Rename 'principal' to '_principal_impl' to avoid conflict with C main()
+    c_name = '_principal_impl' if nodo.nombre == 'principal' else nodo.nombre
+    ctx.write_line(f"{tipo} {c_name}({params}) {{")
     ctx.inc_indent()
     ctx.push_scope()
 
-    # Register transfer parameters
+    # Register parameters with destructors (transfer + rc/arc/débil)
     for p in nodo.parametros:
-        if p.es_transferencia:
-            if p.tipo in ctx._destructor_map:
-                ctx._scope_stack[-1][p.nombre] = p.tipo
+        if p.es_transferencia or ctx._tipo_tiene_destructor(p.tipo):
+            ctx._scope_stack[-1][p.nombre] = p.tipo
 
     # Contract requires → asserts
     for expr in nodo.requiere:
@@ -432,6 +527,16 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
                 # Hoist ALL auto-declared variables to function scope
                 _auto_vars.append((s.nombre, t_syn))
                 ctx._variables[s.nombre] = t_syn
+            # H-R90-14: recoger cuerpo_critico/cuerpo_atrapar de SentenciaRecuperar
+            if isinstance(s, SentenciaRecuperar):
+                if s.variable_excepcion and s.variable_excepcion not in _explicit_vars:
+                    if s.variable_excepcion not in ctx._variables:
+                        _auto_vars.append((s.variable_excepcion, 'texto'))
+                        ctx._variables[s.variable_excepcion] = 'texto'
+                if s.cuerpo_critico:
+                    _collect_vars(s.cuerpo_critico)
+                if s.cuerpo_atrapar:
+                    _collect_vars(s.cuerpo_atrapar)
             if isinstance(s, BloqueInseguro):
                 _collect_vars(s.cuerpo)
             elif hasattr(s, 'cuerpo') and isinstance(
@@ -444,9 +549,13 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     _collect_vars(nodo.cuerpo)
     for vn, vt_syn in _auto_vars:
         vt_c = ctx.traducir_tipo_c(vt_syn)  # C type for output
-        # Zero-initialize if type has destructor (evita _syn_texto_liberar() en garbage)
-        if vt_syn in ctx._destructor_map:
-            ctx.write_line(f"{vt_c} {vn} = {{0}};")
+        # Zero-initialize if type has destructor (evita liberar garbage)
+        if ctx._tipo_tiene_destructor(vt_syn):
+            if vt_c == 'void*':
+                ctx.write_line(f"{vt_c} {vn} = NULL;")
+            else:
+                ctx.write_line(f"{vt_c} {vn} = {{0}};")
+            ctx._scope_stack[-1][vn] = vt_syn
         else:
             ctx.write_line(f"{vt_c} {vn};")
 
@@ -510,13 +619,32 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         excl = nodo.expr.nombre
         ctx._tensor_vars_transferidas.add(excl)
 
-    # Garantiza assertions before every return
+    # Manual 2 §5.1: garantiza se evalúa inmediatamente antes de cada
+    # `retornar`, con `_resultado_` conteniendo el valor que se va a retornar.
+    if ctx._garantizas_actuales and nodo.expr:
+        ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
+        ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
+        ret_expr = expr_a_c(ctx, nodo.expr)
+        ctx.write_line(f"{ret_tipo_c} _resultado_ = {ret_expr};")
+        for expr in ctx._garantizas_actuales:
+            expr_c = expr_a_c(ctx, expr)
+            ctx.write_line("#ifndef SYNAPSE_RELEASE")
+            ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
+            ctx.write_line("#endif")
+        ctx.emit_all_destructors(exclude_var=excl)
+        if nodo.es_transferencia:
+            ctx.write_line("return ->_resultado_;")
+        else:
+            ctx.write_line("return _resultado_;")
+        return
+
+    # Garantiza assertions before every return (sin expr: `return;` en void)
     for expr in ctx._garantizas_actuales:
         expr_c = expr_a_c(ctx, expr)
         ctx.write_line("#ifndef SYNAPSE_RELEASE")
         ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
         ctx.write_line("#endif")
-    
+
     if nodo.expr:
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
@@ -535,11 +663,13 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
 
 
 def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
-    """Genera código C para spawn/lanzar (crear hilo) con ownership transfer.
+    """Genera código C para lanzar con FIBRAS M:N (Manual 5 §2.6) con ownership transfer.
 
-    C99 strict: usa wrapper static top-level + struct args con pool allocator (_syn_malloc/_syn_free)
-    para evitar desajustes de ciclo de vida heap entre hilo principal e hijo.
-    El wrapper se emite como funcion static al final del archivo via _deferred_wrappers.
+    F4.4: `lanzar` crea una fibra del scheduler (fibra_crear) en vez de un
+    pthread (synapse_lanzar_hilo, pre-F4.4). El trampolín de fibra firma
+    `void func(void*)`, así que el wrapper es static void (no void*).
+    El wrapper se emite como funcion static al final del archivo via
+    _deferred_wrappers (paridad con la estructura pre-F4.4).
     """
     ctx._contador_thread += 1
     tid = ctx._contador_thread
@@ -577,21 +707,21 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
                 ctx._emitted_typedefs.add(typedef_line)
 
             # Forward declaration del wrapper (evitar duplicados)
-            wrap_decl = f"static void* {wrapper_name}(void* arg);"
+            wrap_decl = f"static void {wrapper_name}(void* arg);"
             if wrap_decl not in ctx._emitted_wrap_decls:
                 ctx._deferred_wrap_decls.append(wrap_decl)
                 ctx._emitted_wrap_decls.add(wrap_decl)
 
             # Wrapper body: liberar ARGS inmediatamente despues de desempaquetar
             # y ANTES de ejecutar el bloque logico de usuario (propiedad estricta).
-            # Se usa pool_alloc/pool_free para mantener compatibilidad con el runtime
-            # (malloc/free directo causa segfault en hilos por desajuste de ciclo de vida).
-            wrap_lines = [f"static void* {wrapper_name}(void* _arg) {{"]
+            # Se usa pool_alloc/pool_free para mantener compatibilidad con el runtime.
+            # F4.4: wrapper void (firma del trampolin de fibra), sin return NULL —
+            # al retornar, la trampolina llama fibra_terminar.
+            wrap_lines = [f"static void {wrapper_name}(void* _arg) {{"]
             wrap_lines.append(f"    {args_type_name}* _a = ({args_type_name}*)_arg;")
             wrap_lines.append(f"    {ctx.syn_pool_free('_arg')};")
             unpacked = ", ".join(f"_a->v{i}" for i in range(len(args)))
             wrap_lines.append(f"    {fn_name}({unpacked});")
-            wrap_lines.append(f"    return NULL;")
             wrap_lines.append(f"}}")
             ctx._deferred_wrappers.append("\n".join(wrap_lines))
 
@@ -600,59 +730,131 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
             ctx.write_line(f"{args_type_name}* _args_{tid} = ({args_type_name}*){ctx.syn_pool_alloc(f'sizeof({args_type_name})')};")
             for i, expr_c in enumerate(arg_c_exprs):
                 ctx.write_line(f"_args_{tid}->v{i} = {expr_c};")
-            ctx.write_line(f"synapse_lanzar_hilo({wrapper_name}, _args_{tid});")
+            ctx.write_line(f"fibra_crear({wrapper_name}, _args_{tid}, 0);")
         else:
-            # Sin argumentos: pasar funcion directamente
+            # Sin argumentos: pasar funcion directamente (firma de fibra void(void*))
             ctx.write_line(
-                f"synapse_lanzar_hilo("
-                f"(void*(*)(void*)){fn_name}, NULL);"
+                f"fibra_crear("
+                f"(void(*)(void*)){fn_name}, NULL, 0);"
             )
     else:
         # No es LlamadaFuncion (expresion directa)
         fn = expr_a_c(ctx, nodo.llamada)
         ctx.write_line(
-            f"synapse_lanzar_hilo("
-            f"(void*(*)(void*)){fn}, NULL);"
+            f"fibra_crear("
+            f"(void(*)(void*)){fn}, NULL, 0);"
         )
 
 
 def visitar_recuperar(ctx: GeneratorContext, nodo: SentenciaRecuperar):
-    """Genera código C para try/recover."""
-    accion = expr_a_c(ctx, nodo.accion_critica)
-    plan_b = expr_a_c(ctx, nodo.plan_b)
-    ctx.write_line("{")
-    ctx.inc_indent()
-    ctx.write_line(f"if ({accion} != 0) {{ {plan_b}; }}")
-    ctx.dec_indent()
-    ctx.write_line("}")
+    """Genera código C para try/recover.
+    
+    Soporte para dos formas:
+    1. S1 expr recuperar expr2 (accion_critica/plan_b) → if (accion != 0) { plan_b; }
+    2. SyQuex intentar/atrapar e: (cuerpo_critico/cuerpo_atrapar) → bloques
+       anidados (Manual 3 §7.3 L347). El catch se ejecuta si el runtime
+       establece _synapse_ultimo_error (FFI panics).
+    """
+    if nodo.cuerpo_critico:
+        # SyQuex intentar/atrapar
+        # Emitir cuerpo_critico directamente (vars hoisteadas al scope función)
+        for s in nodo.cuerpo_critico:
+            _visitar_stmt(ctx, s)
+        if nodo.cuerpo_atrapar:
+            # Emitir atapar directamente (vars hoisteadas al scope función)
+            for s in nodo.cuerpo_atrapar:
+                _visitar_stmt(ctx, s)
+    else:
+        # S1 expr recuperar expr2
+        accion = expr_a_c(ctx, nodo.accion_critica)
+        plan_b = expr_a_c(ctx, nodo.plan_b)
+        ctx.write_line("{")
+        ctx.inc_indent()
+        ctx.write_line(f"if ({accion} != 0) {{ {plan_b}; }}")
+        ctx.dec_indent()
+        ctx.write_line("}")
 
 
 def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
-    """Genera código C para listen/escuchar (canal listener).
-    Crea una función listener en background y lanza un hilo.
+    """Genera C para `escuchar` (Manual 2 L113 / Manual 5 §4.2).
+
+    F3-7: gramatica alineada al manual — `escuchar canal:` + INDENT bloque
+    DEDENT. La forma antigua `escuchar canal -> callback` NO existe en el
+    manual y se elimina. Semantica (Manual 5 §4.1): "procesa mensajes de un
+    canal de forma continua, ejecutando un bloque por cada mensaje recibido
+    hasta que el canal se cierra". El bloque recibe con `canal ->` (que emite
+    canal_recibir(_canal)); el cierre lo detecta canal_recibir devolviendo
+    NULL y el bloque lo maneja (p. ej. `si v == nulo: romper`).
+    F4.4: el listener se lanza como FIBRA (fibra_crear, Manual 5 §2.6)
+    pasando el canal por arg — firma void (trampolin de fibra), no void*.
     """
-    canal = expr_a_c(ctx, nodo.canal)
-    respuesta = expr_a_c(ctx, nodo.respuesta)
     ctx._contador_listener += 1
     listener_name = f"_listener_{ctx._contador_listener}"
-    
-    # Build complete listener function as single string
+    canal = expr_a_c(ctx, nodo.canal)
+
+    # Generar el cuerpo del bloque en un buffer temporal con el modo escuchar
+    # activo: dentro del bloque, ExprRecibirCanal del canal escuchado emite
+    # `canal_recibir(_canal)` (no la variable local del contenedor).
+    prev_lineas = ctx.lineas
+    prev_modo = getattr(ctx, '_escuchar_modo', None)
+    ctx.lineas = []
+    ctx._escuchar_modo = True
+    try:
+        for s in nodo.cuerpo:
+            _visitar_stmt(ctx, s)
+    finally:
+        ctx._escuchar_modo = prev_modo
+    cuerpo_lines = ctx.lineas
+    ctx.lineas = prev_lineas
+
+    cuerpo_c = "\n".join(cuerpo_lines) if cuerpo_lines else "        (void)0;"
+
+    # F3-7: el listener es una funcion C separada — las variables asignadas en
+    # el bloque del `escuchar` no son visibles alli (el hoisting del S1 las
+    # declara en la funcion contenedora). Se declaran al inicio del listener
+    # con su tipo inferido (patron _col_vars_local de generator.py).
+    decls = []
+    def _scan_body(stmts):
+        for st in stmts:
+            if isinstance(st, DeclaracionVariable):
+                if st.expresion:
+                    t_syn = tipo_de_expr(ctx, st.expresion)
+                elif st.tipo:
+                    t_syn = st.tipo
+                else:
+                    continue
+                decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+            elif isinstance(st, AsignacionVariable):
+                if st.nombre and not any(st.nombre in d for d in decls):
+                    t_syn = tipo_de_expr(ctx, st.expresion)
+                    decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+            if hasattr(st, 'cuerpo') and isinstance(getattr(st, 'cuerpo'), list):
+                _scan_body(st.cuerpo)
+    _scan_body(nodo.cuerpo)
+    decl_c = "\n".join(decls)
+    if decl_c:
+        decl_c += "\n"
+
+    decl_c = decl_c.rstrip('\n')
+    body_parts = [f"    while (1) {{", cuerpo_c, f"    }}"]
+    if decl_c:
+        body_parts = [decl_c] + body_parts
+    # F4.4: listener void (firma del trampolin de fibra); al salir del while
+    # (canal cerrado -> romper) retorna y la trampolina llama fibra_terminar.
+    # F4-6: _cerrado recibe el out-param de canal_recibir (Manual 5 §3.4); el
+    # statement-expression del receive rompe el while cuando el canal se cierra
+    # (Manual 5 §4.3), distinguiendo el valor 0 del cierre.
     listener_lines = [
-        f"void* {listener_name}(void* arg) {{",
+        f"void {listener_name}(void* arg) {{",
         f"    (void)arg;",
-        f"    CanalConcurrencia* _canal = (CanalConcurrencia*){canal};",
-        f"    while (1) {{",
-        f"        void* _msg = canal_recibir(_canal);",
-        f"        if (!_msg) break;",
-        f"        {respuesta}(_msg);",
-        f"    }}",
-        f"    return NULL;",
+        f"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;",
+        f"    bool _cerrado;",
+    ] + body_parts + [
         f"}}",
     ]
     ctx._listener_funciones.append("\n".join(listener_lines))
-    
-    # Spawn listener thread inline
+
     ctx.write_line(
-        f"synapse_lanzar_hilo("
-        f"(void*(*)(void*)){listener_name}, NULL);"
+        f"fibra_crear("
+        f"(void(*)(void*)){listener_name}, (void*)({canal}), 0);"
     )

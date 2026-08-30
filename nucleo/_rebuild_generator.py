@@ -29,7 +29,16 @@ SUB_MODULOS = [
     "nodos_flujo.syn",
     "frontend_nativo.syn", # Wrapper del frontend nativo (A3.2/A4): gen_emitir_frontend_nativo.
                           # El espejo embebido frontend_p.syn (_P_*) se retiro en A4.
-    "orquestador.syn",     # Debe ir DESPUES de frontend_nativo.syn (hook ME-B7 lo invoca)
+    "escaneo.syn",         # Modularizacion (AUDITORIA): escaneo de estructuras/retornos/alias/constructores
+                          # (extraido de orquestador.syn; bloques ME-B4/ME-B6/ME-F1.2b/ME-D6)
+    "monomorfizacion.syn", # Modularizacion: registro de ADT genericos + scan D-2 de instanciaciones
+                          # (extraido de orquestador.syn; bloque ME-D2, R16/R17/R18)
+    "recorrido.syn",       # Modularizacion: walk top-level del AST en orden alfabetico
+                          # (extraido de orquestador.syn; bloque WALK)
+    "funciones.syn",       # Modularizacion (AUDITORIA 13): emision de funciones de usuario
+                          # (extraido de la rama DefinicionFuncion de gen_visitar_top_level)
+    "orquestador.syn",     # Debe ir DESPUES de frontend_nativo.syn (hook ME-B7 lo invoca) y de
+                          # los modulos extraidos en la modularizacion (los invoca en orden)
 ]
 
 DIR_GENERADOR = os.path.join(os.path.dirname(__file__), "generador")

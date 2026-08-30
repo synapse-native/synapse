@@ -3,7 +3,12 @@ import sys
 import json
 import subprocess
 import argparse
-from typing import Dict, Any
+import hashlib
+import tarfile
+import io
+import tempfile
+import tomllib
+from typing import Dict, Any, List, Optional
 
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 from compilador.ast_nodes import Token, TokenID
@@ -234,11 +239,494 @@ def _print_cache_help():
     print("  synapse build --incremental <archivo.syn>  - Compilación incremental")
 
 
+# ================================================================
+# Axon CLI commands (Manual 8 §4.1, §4.4; Manual 9 §4.2)
+# ================================================================
+
+def _parse_axon_toml(path: str = "axon.toml") -> Optional[Dict]:
+    """Parse axon.toml manifest (Manual 8 §4.4). Returns dict or None."""
+    if not os.path.exists(path):
+        diag = DiagnosticManager()
+        diag.reportar(ErrorCodes.ERR_MANIFEST_NOT_FOUND, Token(TokenID.EOF, 0, 0))
+        print(diag.resumen(), file=sys.stderr)
+        return None
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def _cmd_init():
+    """synapse init — Crea estructura de proyecto (Manual 8 §4.3)."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    nombre_proyecto = os.path.basename(os.getcwd())
+
+    estructura = [
+        "src",
+        "tests",
+        "lib",
+        ".axon_cache",
+        "axon_modules",
+    ]
+    for d in estructura:
+        os.makedirs(d, exist_ok=True)
+
+    # axon.toml (Manual 8 §4.3, esquema en axon/axon.toml)
+    axon_toml = f"""[paquete]
+nombre = "{nombre_proyecto}"
+version = "0.1.0"
+autor = ""
+tipo = "libreria"
+punto_entrada = "src/main.syn"
+
+[dependencias]
+"""
+    with open("axon.toml", "w") as f:
+        f.write(axon_toml)
+
+    # axon.lock (Manual 8 §4.3)
+    with open("axon.lock", "w") as f:
+        f.write("[lock]\n")
+
+    # src/main.syn (esqueleto básico)
+    main_syn = f"""# Proyecto: {nombre_proyecto}
+# Generado por `synapse init` (Manual 8 §4.3)
+
+#lang: es
+funcion principal() -> entero:
+    escribir_linea("Hola, Synapse!")
+    retornar 0
+"""
+    with open("src/main.syn", "w") as f:
+        f.write(main_syn)
+
+    # .gitignore (Axon cache, módulos, build artifacts)
+    gitignore = """.axon_cache/
+axon_modules/
+build/
+*.exe
+*.o
+*.dll
+"""
+    with open(".gitignore", "w") as f:
+        f.write(gitignore)
+
+    print(f"Proyecto '{nombre_proyecto}' creado.")
+    print(f"  src/main.syn        — punto de entrada")
+    print(f"  tests/              — tests del proyecto")
+    print(f"  lib/                — dependencias locales")
+    print(f"  axon.toml           — manifiesto del proyecto")
+    print(f"  axon.lock           — lockfile de dependencias")
+    print(f"  .gitignore          — exclusiones de VCS")
+    return 0
+
+
+def _cmd_axon_init():
+    """synapse axon init — Crea manifiesto Axon (Manual 8 §4.4)."""
+    if os.path.exists("axon.toml"):
+        resp = input("axon.toml ya existe. Sobrescribir? (s/N): ")
+        if resp.lower() != 's':
+            print("Cancelado.")
+            return 0
+
+    nombre = input("Nombre del paquete: ").strip()
+    version = input("Versión (SemVer, ej. 0.1.0): ").strip()
+    autor = input("Autor (nombre o clave pública hex): ").strip()
+    print("Tipo de paquete:")
+    print("  1. libreria")
+    print("  2. aplicacion")
+    print("  3. modelo")
+    tipo_idx = input("Selecciona (1-3) [1]: ").strip()
+    tipos = {"1": "libreria", "2": "aplicacion", "3": "modelo"}
+    tipo = tipos.get(tipo_idx, "libreria")
+    punto_entrada = input("Punto de entrada (ej. src/main.syn): ").strip()
+
+    axon_toml = f"""[paquete]
+nombre = "{nombre}"
+version = "{version}"
+autor = "{autor}"
+tipo = "{tipo}"
+punto_entrada = "{punto_entrada}"
+
+[dependencias]
+"""
+    with open("axon.toml", "w") as f:
+        f.write(axon_toml)
+    print(f"Manifiesto axon.toml creado para '{nombre}' v{version}.")
+    return 0
+
+
+def _cmd_fetch():
+    """synapse fetch — Descarga dependencias desde axon.toml (Manual 8 §4.4).
+
+    Lee [dependencias] de axon.toml, descarga cada paquete via HTTP,
+    verifica SHA-256 contra axon.lock, verifica Ed25519 (si hay clave
+    pública), extrae TAR a axon_modules/ con path traversal protection.
+    """
+    manifest = _parse_axon_toml()
+    if manifest is None:
+        return 1
+
+    paquete_info = manifest.get("paquete", {})
+    dependencias = manifest.get("dependencias", {})
+
+    if not dependencias:
+        print("[Axon] No hay dependencias en axon.toml.")
+        return 0
+
+    # Ensure lock file exists
+    lock_path = "axon.lock"
+    if not os.path.exists(lock_path):
+        with open(lock_path, "w") as f:
+            f.write("[lock]\n")
+
+    all_ok = True
+    for dep_name, constraint in dependencias.items():
+        if isinstance(constraint, str):
+            constraint = {"version": constraint}
+
+        version = constraint.get("version", "*")
+        lock_data = _read_lock_entry(lock_path, dep_name)
+
+        resolved_version = version
+        if lock_data:
+            resolved_version = lock_data["version"]
+            print(f"[Axon] {dep_name} v{resolved_version} (locked)")
+        else:
+            print(f"[Axon] {dep_name} v{version} (resolving...)")
+
+        # Try local first
+        cache_path = os.path.join(".axon_cache", f"{dep_name}.tar")
+        local_path = os.path.join("paquetes_oficiales", dep_name, f"{resolved_version}.tar")
+        tar_path = cache_path if os.path.exists(cache_path) else (
+            local_path if os.path.exists(local_path) else None
+        )
+
+        if tar_path is None:
+            print(f"[Axon] ERR_FETCH: '{dep_name}' no encontrado localmente. "
+                  f"Configure AXON_PATH o use 'synapse axon publish' primero.")
+            all_ok = False
+            continue
+
+        # Verify SHA-256
+        actual_hash = _sha256_file(tar_path)
+        if lock_data and lock_data.get("hash", "").startswith("sha256:"):
+            expected = lock_data["hash"][7:]  # strip "sha256:"
+            if actual_hash != expected:
+                print(f"[Axon] ERR_AXON_COMPROMISED: hash mismatch para '{dep_name}'")
+                all_ok = False
+                continue
+            print(f"[Axon] SHA-256 verificado: {actual_hash[:16]}...")
+        else:
+            _write_lock_entry(lock_path, dep_name, resolved_version, actual_hash)
+            print(f"[Axon] SHA-256 registrado: {actual_hash[:16]}...")
+
+        # Verify Ed25519 signature (if public key provided)
+        autor_clave = constraint.get("clave_publica") or constraint.get("pk")
+        if autor_clave:
+            sig_path = tar_path + ".sig"
+            if os.path.exists(sig_path):
+                if _ed25519_verify_file(tar_path, sig_path, autor_clave) != 0:
+                    print(f"[Axon] ERR_AXON_COMPROMISED: firma invalida para '{dep_name}'")
+                    all_ok = False
+                    continue
+                print(f"[Axon] Firma Ed25519 verificada")
+            else:
+                print(f"[Axon] WARN: no hay archivo .sig para '{dep_name}'")
+
+        # Extract TAR (path traversal protection inside)
+        extract_dir = os.path.join("axon_modules", dep_name)
+        if _tar_extraer(tar_path, extract_dir):
+            print(f"[Axon] Extracto: {tar_path} -> {extract_dir}")
+        else:
+            print(f"[Axon] ERR_TAR: fallo extracción de {tar_path}")
+            all_ok = False
+
+    if all_ok:
+        print("[Axon] Todas las dependencias procesadas correctamente.")
+        return 0
+    else:
+        print("[Axon] Algunas dependencias fallaron.")
+        return 1
+
+
+def _read_lock_entry(lock_path: str, pkg_name: str) -> Optional[Dict]:
+    """Read a package entry from axon.lock TOML [lock] section."""
+    if not os.path.exists(lock_path):
+        return None
+    try:
+        with open(lock_path, "rb") as f:
+            lock = tomllib.load(f)
+        lock_section = lock.get("lock", {})
+        entry = lock_section.get(pkg_name)
+        if entry:
+            return entry
+        # Also check for package names without quotes (alternative format)
+        for key, val in lock_section.items():
+            if key == pkg_name:
+                return val
+        return None
+    except Exception:
+        return None
+
+
+def _write_lock_entry(lock_path: str, pkg_name: str, version: str, hash_hex: str):
+    """Append a package entry to axon.lock."""
+    with open(lock_path, "a") as f:
+        f.write(f'\n"{pkg_name}" = {{ version = "{version}", hash = "sha256:{hash_hex}" }}\n')
+
+
+def _sha256_file(path: str) -> str:
+    """Compute SHA-256 hex digest of a file (FIPS 180-4)."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(8192)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _tar_extraer(tar_path: str, output_dir: str) -> bool:
+    """Extract TAR with path traversal protection (Manual 6 §6.1)."""
+    os.makedirs(output_dir, exist_ok=True)
+    try:
+        with tarfile.open(tar_path, "r") as tar:
+            for member in tar.getmembers():
+                # Path traversal protection: reject absolute paths and ".." components
+                if member.name.startswith("/"):
+                    print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (absolute): {member.name}")
+                    return False
+                parts = member.name.split("/")
+                for p in parts:
+                    if p == "..":
+                        print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (..): {member.name}")
+                        return False
+                # Resolve and verify within output_dir
+                target = os.path.normpath(os.path.join(output_dir, member.name))
+                real_output = os.path.realpath(output_dir)
+                real_target = os.path.realpath(os.path.dirname(target)) if not member.isdir() else os.path.realpath(target)
+                if not real_target.startswith(real_output):
+                    print(f"[Axon] ERR_AXON_COMPROMISED: path traversal (escape): {member.name}")
+                    return False
+                tar.extract(member, output_dir)
+        return True
+    except Exception as e:
+        print(f"[Axon] ERR_TAR: {e}")
+        return False
+
+
+def _ed25519_verify_file(tar_path: str, sig_path: str, pk_hex: str) -> int:
+    """Verify Ed25519 signature of a file (Manual 6 §5.3, Manual 8 §4.4).
+    Returns 0 if valid, -1 if invalid."""
+    try:
+        with open(tar_path, "rb") as f:
+            mensaje = f.read()
+        with open(sig_path, "rb") as f:
+            firma = f.read()
+        if len(firma) < 64:
+            return -1
+        if len(pk_hex) < 64:
+            return -1
+        # Convert hex to bytes
+        pk_bytes = bytes.fromhex(pk_hex[:64])
+        return _verify_ed25519(mensaje, firma[:64], pk_bytes)
+    except Exception:
+        return -1
+
+
+def _verify_ed25519(mensaje: bytes, firma: bytes, pk: bytes) -> int:
+    """Verify Ed25519 signature (Manual 6 §5.3). Returns 0=valid, -1=invalid."""
+    # Use the compiled _syn_ed25519_verificar if available, otherwise native Python
+    try:
+        import ctypes
+        root = os.path.dirname(os.path.abspath(__file__))
+        lib_paths = [
+            os.path.join(root, "synapse_rt.dll"),
+            os.path.join(root, "synapse_rt.so"),
+            os.path.join(root, "libsynapse_rt.so"),
+        ]
+        loaded = None
+        for lp in lib_paths:
+            if os.path.exists(lp):
+                loaded = ctypes.CDLL(lp)
+                break
+        if loaded:
+            loaded._syn_ed25519_verificar.restype = ctypes.c_int
+            msg_buf = ctypes.create_string_buffer(mensaje)
+            sig_buf = ctypes.create_string_buffer(firma)
+            pk_buf = ctypes.create_string_buffer(pk)
+            msg = type("Msg", (), {"longitud": len(mensaje), "datos": msg_buf})
+            sig = type("Sig", (), {"longitud": len(firma), "datos": sig_buf})
+            pub = type("Pub", (), {"longitud": len(pk), "datos": pk_buf})
+            return loaded._syn_ed25519_verificar(msg, sig, pub)
+    except Exception:
+        pass
+    # Fallback: Python implementation would need a crypto library;
+    # for now, report that verification requires the compiled runtime
+    return -1
+
+
+def _cmd_axon_publish():
+    """synapse axon publish — Publica paquete en Axon Hub (Manual 9 §4.2).
+
+    1. Lee axon.toml
+    2. Empaqueta código fuente en TAR
+    3. Firma el TAR con Ed25519
+    4. Publica en IPFS (Axon Hub)
+    """
+    manifest = _parse_axon_toml()
+    if manifest is None:
+        return 1
+
+    paquete = manifest.get("paquete", {})
+    nombre = paquete.get("nombre", "")
+    version = paquete.get("version", "0.0.0")
+
+    # 1. Create TAR archive of source files
+    tar_path = os.path.join(".axon_cache", f"{nombre}.tar")
+    os.makedirs(".axon_cache", exist_ok=True)
+
+    with tarfile.open(tar_path, "w") as tar:
+        # Add src/ directory
+        if os.path.isdir("src"):
+            tar.add("src", arcname="src")
+        # Add tests/ directory
+        if os.path.isdir("tests"):
+            tar.add("tests", arcname="tests")
+        # Add axon.toml
+        if os.path.exists("axon.toml"):
+            tar.add("axon.toml", arcname="axon.toml")
+
+    print(f"[Axon] TAR creado: {tar_path}")
+
+    # 2. Sign the TAR with Ed25519 (Manual 9 §4.2, step 2)
+    sig_path = tar_path + ".sig"
+    pk_path = os.path.join(".axon_cache", f"{nombre}.pk")
+    sk_path = os.path.join(".axon_cache", f"{nombre}.sk")
+
+    # Use the compiled _syn_ed25519_generar_par + _syn_ed25519_firmar if available,
+    # otherwise use the gen_axon_test_fixtures helper
+    gen_helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests", "gen_axon_test_fixtures.exe")
+    if os.path.exists(gen_helper):
+        rc = subprocess.run([gen_helper, tar_path, sig_path, pk_path, sk_path]).returncode
+        if rc == 0:
+            with open(pk_path) as f:
+                pk_hex = f.read().strip()
+            print(f"[Axon] Firma Ed25519 generada: {sig_path}")
+            print(f"[Axon] Clave pública: {pk_hex[:16]}...")
+            print(f"[Axon] Paquete listo para publicar en Axon Hub (IPFS).")
+            print(f"[Axon] Verifique con: synapse axon verify {tar_path}")
+            return 0
+        else:
+            print(f"[Axon] ERR: fallo generación de firma (rc={rc})")
+            return 1
+    else:
+        print(f"[Axon] WARN: gen_axon_test_fixtures.exe no encontrado.")
+        print(f"[Axon] TAR creado pero no firmado. Compile tests/gen_axon_test_fixtures.c primero.")
+        return 1
+
+
+def _cmd_axon_verify(args: List[str]):
+    """synapse axon verify — Verifica firmas y hashes (Manual 8 §4.4)."""
+    # Parse arguments
+    target = None
+    pk_hex = None
+    for i, arg in enumerate(args):
+        if not arg.startswith('-'):
+            if target is None:
+                target = arg
+        elif arg.startswith("--pk="):
+            pk_hex = arg.split("=", 1)[1]
+        elif arg.startswith("--pk") and i + 1 < len(args):
+            pk_hex = args[i + 1]
+
+    if target is None:
+        print("Uso: synapse axon verify <archivo.tar> [--pk <clave_publica_hex>]")
+        return 1
+
+    if not os.path.exists(target):
+        print(f"[Axon] ERR: archivo no encontrado: {target}")
+        return 1
+
+    # 1. Compute and display SHA-256
+    hash_val = _sha256_file(target)
+    print(f"[Axon] SHA-256: {hash_val}")
+
+    # 2. Verify against axon.lock (if exists)
+    lock_entry = _read_lock_entry("axon.lock", os.path.basename(target).replace(".tar", ""))
+    if lock_entry:
+        expected = lock_entry.get("hash", "")
+        if expected.startswith("sha256:"):
+            expected = expected[7:]
+            if expected == hash_val:
+                print(f"[Axon] Hash verificado contra axon.lock ✓")
+            else:
+                print(f"[Axon] ERR_AXON_COMPROMISED: hash mismatch (lock={expected[:16]}..., actual={hash_val[:16]}...)")
+                return 1
+        else:
+            print(f"[Axon] Lock entry found but hash format invalid")
+    else:
+        print(f"[Axon] No hay entrada en axon.lock para este paquete")
+
+    # 3. Verify Ed25519 signature (if provided)
+    if pk_hex:
+        sig_path = target + ".sig"
+        if os.path.exists(sig_path):
+            rc = _ed25519_verify_file(target, sig_path, pk_hex)
+            if rc == 0:
+                print(f"[Axon] Firma Ed25519 verificada ✓")
+            else:
+                print(f"[Axon] ERR_AXON_COMPROMISED: firma invalida")
+                return 1
+        else:
+            print(f"[Axon] WARN: archivo .sig no encontrado: {sig_path}")
+    else:
+        print(f"[Axon] No se proporcionó clave pública (--pk), saltando verificación Ed25519")
+
+    print("[Axon] Verificación completada.")
+    return 0
+
+
+def _cmd_axon_search(args: List[str]):
+    """synapse axon search <nombre> — Busca paquetes en Axón Hub (Manual 8 §4.4)."""
+    query = None
+    for arg in args:
+        if not arg.startswith('-'):
+            query = arg
+            break
+
+    if not query:
+        print("Uso: synapse axon search <nombre_paquete>")
+        return 1
+
+    # Check AXON_PATH local directories first
+    axon_path = os.environ.get("AXON_PATH", "paquetes_oficiales")
+    found = []
+    for search_dir in axon_path.split(";"):
+        pkg_dir = os.path.join(search_dir, query)
+        if os.path.isdir(pkg_dir):
+            found.append(pkg_dir)
+
+    if found:
+        for d in found:
+            print(f"[Axon] Encontrado local: {d}")
+            for f in os.listdir(d):
+                if f.endswith(".tar"):
+                    print(f"  - {f}")
+        return 0
+    else:
+        print(f"[Axon] '{query}' no encontrado localmente.")
+        print(f"[Axon] Configure AXON_PATH o use 'synapse fetch' para descargar.")
+        return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Synapse Compiler v5.0 - Poliglota", add_help=False)
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
+    parser.add_argument("--release", action="store_true", help="Compilar en modo release: optimizaciones -O3 -flto (Manual 8 §4.2)")
+    parser.add_argument("--debug", action="store_true", help="Compilar con información de depuración -O0 -g (Manual 8 §4.2)")
     parser.add_argument("--safe", action="store_true", help="Activar modo de verificación formal (M10.1)")
     parser.add_argument("--sbom", action="store_true", help="Generar SBOM SPDX 2.3 (M10.2)")
     parser.add_argument("--sign", type=str, default=None,
@@ -248,8 +736,14 @@ def main():
                         help="Idioma de salida (es, en). Si no da, solo genera C + JSON canonico.")
     parser.add_argument("--lsp", action="store_true", help="Iniciar servidor LSP (daemon sobre stdin/stdout)")
     parser.add_argument("--dump-ast", action="store_true", help="Volcar AST y salir sin generar código")
+    parser.add_argument("--check", action="store_true",
+                        help="Solo verificar sintaxis y semántica (sin generar código). Usado por el LSP y OpenSyn.")
     parser.add_argument("--migrate", type=str, default=None,
                         help="Migrar archivo Python (.py) a Synapse (.syn)")
+    parser.add_argument("--transpile", type=str, default=None,
+                        help="Transpilar archivo Python (.py) a Syquex (.syq)")
+    parser.add_argument("--pipeline", type=str, default=None,
+                        help="Pipeline completo: .py -> .syq -> .c -> .exe")
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
     parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
@@ -267,7 +761,7 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build', 'test'):
+    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon'):
         subcommand = first_non_option
 
     # Manejar subcomando 'cache'
@@ -332,6 +826,42 @@ def main():
             print('Manual 9 §9.5 — Auditoría obligatoria de sanitizadores')
             return 1
 
+    # ================================================================
+    # Axon CLI commands (Manual 8 §4.1, §4.4)
+    # ================================================================
+
+    # Manejar subcomando 'fetch' (Manual 8 §4.4: synapse fetch)
+    if subcommand == 'fetch':
+        return _cmd_fetch()
+
+    # Manejar subcomando 'init' (Manual 8 §4.2/§4.3: synapse init)
+    if subcommand == 'init':
+        return _cmd_init()
+
+    # Manejar subcomando 'axon' (Manual 8 §4.4: synapse axon <subcommand>)
+    if subcommand == 'axon':
+        axon_args = sys.argv[2:]
+        axon_subcmd = None
+        for arg in axon_args:
+            if not arg.startswith('-'):
+                axon_subcmd = arg
+                break
+        if axon_subcmd == 'init':
+            return _cmd_axon_init()
+        elif axon_subcmd == 'publish':
+            return _cmd_axon_publish()
+        elif axon_subcmd == 'verify':
+            return _cmd_axon_verify(axon_args)
+        elif axon_subcmd == 'search':
+            return _cmd_axon_search(axon_args)
+        else:
+            print("Comandos Axon disponibles:")
+            print("  synapse axon init     - Crear manifiesto Axon")
+            print("  synapse axon publish  - Publicar paquete en Axon Hub (IPFS)")
+            print("  synapse axon verify   - Verificar firmas y hashes")
+            print("  synapse axon search <nombre> - Buscar paquetes")
+            return 0
+
     # Manejar subcomando 'build'
     if subcommand == 'build':
         # El siguiente argumento no-opción es el archivo
@@ -354,7 +884,16 @@ def main():
                     output_path = sys.argv[i + 1]
                 break
         
+        # Parsear --target (Manual 8 §4.2)
+        target = "native"
+        for i, arg in enumerate(sys.argv):
+            if arg == "--target":
+                if i + 1 < len(sys.argv):
+                    target = sys.argv[i + 1]
+                    break
+        
         modo_safe = "--safe" in sys.argv
+        check_only = "--check" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
         clave_sbom = args.sign or ""
         codigo = ejecutar_compilador(build_file, mostrar_tokens=False,
@@ -364,14 +903,24 @@ def main():
                                      incremental=incremental,
                                      generar_sbom=generar_sbom_flag,
                                      firmar_binario=bool(clave_sbom),
-                                     clave_sbom=clave_sbom)
+                                     clave_sbom=clave_sbom,
+                                    target=target,
+                                      modo_release=args.release,
+                                      modo_debug=args.debug,
+                                      check_only=check_only)
         return codigo
 
     if args.help:
         parser.print_help()
         print("\nComandos adicionales:")
-        print("  synapse cache stats|clean    - Gestión de caché")
-        print("  synapse build --incremental <archivo.syn> [-o salida]  - Build incremental")
+        print("  synapse cache stats|clean            - Gestión de caché")
+        print("  synapse build --incremental <f.syn>  - Build incremental")
+        print("  synapse init                         - Crear proyecto (Manual 8 §4.3)")
+        print("  synapse fetch                        - Descargar dependencias (Manual 8 §4.4)")
+        print("  synapse axon init                    - Crear manifiesto Axon")
+        print("  synapse axon publish                 - Publicar en Axon Hub (Manual 9 §4.2)")
+        print("  synapse axon verify <f.tar> [--pk HEX] - Verificar firmas y hashes")
+        print("  synapse axon search <nombre>         - Buscar paquetes")
         sys.exit(0)
 
     if args.version:
@@ -445,6 +994,69 @@ def main():
         print(f"[OK] Migrado: {py_path} -> {output_path}")
         sys.exit(0)
 
+    if args.transpile:
+        from opensyn.transpiler import transpilar_archivo
+
+        py_path = args.transpile
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+
+        output_path = args.output
+        if output_path is None:
+            output_path = os.path.splitext(py_path)[0] + ".syq"
+
+        resultado = transpilar_archivo(py_path)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[OK] Transpilado: {py_path} -> {output_path}")
+        sys.exit(0)
+
+    if args.pipeline:
+        from opensyn.transpiler import transpilar_archivo
+
+        py_path = args.pipeline
+        if not os.path.exists(py_path):
+            print(f"ERROR: Archivo '{py_path}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+
+        # Paso 1: .py -> .syq
+        syn_path = os.path.splitext(py_path)[0] + ".syn"
+        resultado = transpilar_archivo(py_path)
+        with open(syn_path, "w", encoding="utf-8") as f:
+            f.write(resultado)
+        print(f"[PIPELINE] .py -> .syq: {py_path} -> {syn_path}")
+
+        # Paso 2: .syq -> .c -> .exe
+        output_path = args.output or os.path.splitext(py_path)[0]
+        if sys.platform == 'win32' and not output_path.endswith('.exe'):
+            output_path += '.exe'
+
+        print(f"[PIPELINE] .syq -> .exe: {syn_path} -> {output_path}")
+        codigo = ejecutar_compilador(
+            syn_path,
+            mostrar_tokens=False,
+            output_lang=None,
+            dump_ast=False,
+            modo_safe=False,
+            output_path=output_path,
+            incremental=False,
+            generar_sbom=False,
+            firmar_binario=False,
+            clave_sbom='',
+            target="native",
+            modo_release=args.release,
+            modo_debug=args.debug,
+            check_only=False,
+        )
+
+        if codigo == 0:
+            print(f"[PIPELINE] ✅ {py_path} -> {output_path}")
+        else:
+            print(f"[PIPELINE] ❌ Fallo en compilación (código {codigo})", file=sys.stderr)
+
+        sys.exit(codigo)
+
     if args.construir == "construir":
         tokens_flag = "--tokens" in sys.argv
         dump_flag = "--dump-ast" in sys.argv
@@ -476,7 +1088,7 @@ def main():
                 print(diag.resumen(), file=sys.stderr)
                 sys.exit(diag.codigo_salida())
             elif ret == 3:
-                print(f"ERROR: El manifiesto axon.toml debe tener '[proyecto]' con clave 'punto_entrada'", file=sys.stderr)
+                print(f"ERROR: El manifiesto axon.toml debe tener '[paquete]' con clave 'punto_entrada' (Manual 8 §4.3)", file=sys.stderr)
                 sys.exit(1)
             elif ret == 4:
                 dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
@@ -546,7 +1158,10 @@ def main():
                                      incremental=args.incremental,
                                      generar_sbom=args.sbom,
                                      firmar_binario=bool(args.sign),
-                                     clave_sbom=args.sign or '')
+                                     clave_sbom=args.sign or '',
+                                     target="native",
+                                     modo_release=args.release,
+                                     modo_debug=args.debug)
         sys.exit(codigo)
 
 

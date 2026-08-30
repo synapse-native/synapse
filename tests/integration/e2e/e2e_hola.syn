@@ -1,0 +1,6 @@
+#lang: es
+
+importar std.io
+
+funcion principal() -> nulo:
+    escribir_linea("Hola Mundo")

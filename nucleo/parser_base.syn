@@ -293,6 +293,8 @@ funcion token_es_nombre(t: entero) -> entero:
         retornar 1
     si t == T_MODULO:
         retornar 1
+    si t == T_CANAL:
+        retornar 1
     retornar 0
 
 // ---- Expression parsing ----

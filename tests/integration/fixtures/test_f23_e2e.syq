@@ -1,0 +1,33 @@
+#lang: es
+// ME-F23-7: end-to-end .syq -> S1 -> C codegen -> runtime.
+// Fixture ejercita el modelo de memoria (Manual 4 §3.2 §3.3 §4.2 §5.2-5.3):
+//   rc entero   — cleanup con rc_decrementar al salir del scope
+//   arc entero  — cleanup con arc_decrementar al salir del scope
+//   débil entero — cleanup con rc_weak_release al salir del scope
+//
+// Variables inicializadas a nulo (Manual 4 §4.1: nulo valor valido).
+// Los destructores del runtime (memory.c) manejan NULL de forma segura.
+//
+// Salida esperada:
+//   42
+//   100
+//   rc_clean
+//   arc_clean
+//   debil_clean
+
+funcion principal() -> entero:
+    // --- rc entero: cleanup automatico en exit ---
+    let r: rc entero = nulo
+    escribir_linea(entero_a_texto(42))
+
+    // --- arc entero: cleanup automatico ---
+    let a: arc entero = nulo
+    escribir_linea(entero_a_texto(100))
+
+    // --- débil entero: weak reference ---
+    let w: débil entero = nulo
+
+    escribir_linea("rc_clean")
+    escribir_linea("arc_clean")
+    escribir_linea("debil_clean")
+    retornar 0

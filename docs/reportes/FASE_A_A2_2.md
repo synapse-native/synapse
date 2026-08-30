@@ -17,8 +17,7 @@ TAREA: FASE A - Etapa A2.2 — Port del parser tipado del frontend embebido _P_*
 FASE: FASE A (migración frontend embebido -> frontend nativo) - Etapa A2.2.
 MANUAL REFERENCIADO: Manual 2 §2 (EBNF), §3 (keywords), §4.1 (nulo), §4.2 (ADT);
        Manual 9 §9.7 (determinismo bootstrap diff 0).
-HASH COMMIT: pendiente (bitácora se actualiza al commitear; convención
-       'auditoria(FASE_A-A2.2): port parser tipado constructos P0').
+HASH COMMIT: **198707d** (tramo F1.3 — Etapa A2: lexer+parser+tokenizar+parsear; resuelto por el verificador de alineación).
 COMPILACION: nucleo/lexer.syn, nucleo/parser*.syn (ver MODIFICACIONES).
 TESTS: 65 tests pasan (5 lexer paridad + 46 parser Python + 14 codegen e2e
        S1/S2/S3). Bootstrap diff 0 bytes.

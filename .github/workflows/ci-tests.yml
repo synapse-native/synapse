@@ -102,6 +102,16 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
 
+      - name: Ejecutar oráculos en modo release
+        run: |
+          # NDEBUG se activa en release para comprobar que los oráculos (tests)
+          # verifican el comportamiento de producción, evitando olvidos de validación real.
+          export SYNAPSE_BUILD_MODE=release
+          export CFLAGS="-DNDEBUG -O3"
+          python -m pytest tests/ -v --tb=short
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
       - name: Compilar runtime (C) - Unix
         if: matrix.os != 'windows-latest'
         run: |
@@ -327,3 +337,31 @@ jobs:
         if: always()
         run: |
           echo "## ✅ Benchmark M19.1 completado" >> $GITHUB_STEP_SUMMARY
+
+  auditoria:
+    # Gate de alineación con los manuales (R31): ningún push/PR puede introducir
+    # brechas de trazabilidad (bitácora/reportes/hashes), deuda sin registrar,
+    # código muerto en la raíz, módulos >1200 líneas sin registrar, ni funciones
+    # nuevas sin requiere/garantiza (Manual 2 §12).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
+        run: |
+          python auditoria/verificar_alineacion.py 2>&1 | tee auditoria.log
+          echo ""
+          if grep -q "BRECHAS (errores de trazabilidad):" auditoria.log && \
+             grep -qE "^  \[!\]" auditoria.log; then
+            echo "❌ Brechas de alineación detectadas — resolver antes de mergear (regla 11)"
+            exit 1
+          fi
+          echo "✅ Alineación verificada: 0 brechas"

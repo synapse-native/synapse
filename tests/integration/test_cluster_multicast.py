@@ -1,5 +1,6 @@
 """
-test_cluster_multicast.py — Pruebas de integración para M8.6 (UDP Multicast Real)
+test_cluster_multicast.py — Pruebas de integración para M8.6 (UDP Multicast Real).
+Manual 5 §6.4: multicast para descubrimiento y envío a múltiples nodos.
 
 Valida:
 - Inicialización de socket multicast con IP_ADD_MEMBERSHIP
@@ -14,15 +15,20 @@ import subprocess
 import sys
 import time
 
+from conftest import rt_objs
+import pytest
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 # --- Configuración ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 BIN_NAME = "test_cluster_multicast.exe" if sys.platform == "win32" else "test_cluster_multicast"
 BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+
+
 
 # Toolchain
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -32,8 +38,8 @@ if not os.path.exists(TOOLCHAIN_GCC):
 
 def _compilar():
     """Compila el binario de prueba multicast."""
-    if not os.path.exists(SYNAPSE_RT_O):
-        print(f"[SKIP] synapse_rt.o no encontrado")
+    if not any(os.path.exists(o) for o in RT_OBJS):
+        print(f"[SKIP] objetos del runtime no encontrados")
         return False
     src = os.path.join(TESTS_DIR, "test_cluster_multicast.c")
     if not os.path.exists(src):
@@ -41,8 +47,7 @@ def _compilar():
         return False
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O,
-        TWEETNACL_O if os.path.exists(TWEETNACL_O) else "",
+        src, *RT_OBJS,
         "-o", BIN_PATH,
         "-lm", "-lpthread", "-lws2_32"
     ]

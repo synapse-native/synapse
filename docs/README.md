@@ -1,6 +1,6 @@
 # Documentación de Synapse v5.0
 
-Bienvenido a la documentación oficial del lenguaje de programación **Synapse** v5.0.
+Bienvenido a la documentación oficial del lenguaje de programación **Synapse** v5.0.1
 
 ## Documentos de Liberación (Fase 11)
 

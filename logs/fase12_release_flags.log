@@ -1,0 +1,20 @@
+Fase 12/F17 — Optimización Runtime + Flags Release/Debug — 2026-08-20
+
+Manual 1 §165 (GCC flags), Manual 8 §4.2 (--release/--debug), Manual 9 §4 (release).
+
+Cambios:
+  pipeline.py: 
+    - ejecutar_compilador() + gcc_opt dinámico (-O3 -flto -DNDEBUG / -O0 -g -fsanitize / -O2)
+    - _compilar_runtime_objetos() + _compilar_quantum_objetos() + _link_object() aceptan opt_flags
+    - Todos los gcc -c/-O2 hardcoded reemplazados por {gcc_opt}
+  cli.py:
+    - argparse --release + --debug flags (Manual 8 §4.2)
+    - Propagados a ejecutar_compilador(modo_release/modo_debug)
+  tests/integration/test_release_flags.py (NUEVO):
+    - 9 tests: flags CLI, parametros, cache key diferenciación, flags GCC
+  
+Validación:
+  test_release_matrix.py: 23/23 PASS
+  test_release_flags.py: 9/9 PASS
+  test_slsa_sbom.py: 37/37 PASS
+  verificar_alineacion.py: 0 brechas

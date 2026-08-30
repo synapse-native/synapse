@@ -1,0 +1,24 @@
+#lang: es
+// 04_resultado.syq — Manejo de errores con condicionales
+// cumple Manual 2 §8.3: Tipos Algebraicos de Datos
+// Nota: Resultado<T,E> con coincidir requiere codegen ADT pendiente (D-2)
+
+importar std.io
+
+funcion dividir(a: entero, b: entero) -> entero:
+    si b == 0:
+        retornar -1
+    retornar a / b
+
+funcion principal() -> nulo:
+    let r1 = dividir(10, 3)
+    si r1 >= 0:
+        escribir_linea("10/3 = " + entero_a_texto(r1))
+    sino:
+        escribir_linea("Error en división")
+
+    let r2 = dividir(10, 0)
+    si r2 >= 0:
+        escribir_linea("10/0 = " + entero_a_texto(r2))
+    sino:
+        escribir_linea("Error: división por cero")

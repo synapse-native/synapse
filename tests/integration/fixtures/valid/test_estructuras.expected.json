@@ -1,0 +1,76 @@
+{
+  "_tipo": "Programa",
+  "sentencias": [
+    {
+      "_tipo": "DefinicionEstructura",
+      "nombre": "Nodo",
+      "campos": [
+        {
+          "nombre": "valor",
+          "tipo": "entero"
+        },
+        {
+          "nombre": "sig",
+          "tipo": "entero"
+        }
+      ]
+    },
+    {
+      "_tipo": "DefinicionFuncion",
+      "nombre": "principal",
+      "parametros": [],
+      "tipo_retorno": "nulo",
+      "requiere": [],
+      "garantiza": [],
+      "cuerpo": [
+        {
+          "_tipo": "AsignacionVariable",
+          "nombre": "n",
+          "expresion": {
+            "_tipo": "LlamadaFuncion",
+            "nombre": "Nodo",
+            "argumentos": []
+          }
+        },
+        {
+          "_tipo": "AsignacionCampo",
+          "objeto": {
+            "_tipo": "Identificador",
+            "nombre": "n"
+          },
+          "nombre_campo": "valor",
+          "expresion": {
+            "_tipo": "LiteralNumero",
+            "valor": 5
+          }
+        },
+        {
+          "_tipo": "AsignacionCampo",
+          "objeto": {
+            "_tipo": "Identificador",
+            "nombre": "n"
+          },
+          "nombre_campo": "sig",
+          "expresion": {
+            "_tipo": "LiteralNumero",
+            "valor": 10
+          }
+        },
+        {
+          "_tipo": "LogLlamada",
+          "argumentos": [
+            {
+              "_tipo": "ExprAccesoCampo",
+              "objeto": {
+                "_tipo": "Identificador",
+                "nombre": "n"
+              },
+              "nombre_campo": "valor"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "is_no_std": false
+}

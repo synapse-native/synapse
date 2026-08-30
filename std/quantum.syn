@@ -10,7 +10,7 @@
 
 constante QC_EXITO = 0
 constante QC_ERROR = -1
-constante QC_MAX_QUBITS = 8
+constante QC_MAX_QUBITS = 9
 
 // ============================================================
 // Declaraciones externas (bindings C)

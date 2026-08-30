@@ -108,7 +108,7 @@ El traductor (`syquex/traductor.syq`) convierte el AST de Syquex en `SemNodo[]`.
 | `MetodoDef` | `NODO_FUNCION` con `self` como primer parámetro | El nombre se decora como `struct_metodo`. |
 | `EnumeracionDef` | `NODO_TIPO_ALGEBRAICO` | Los casos se traducen a constructores. |
 | `Coincidir` | `NODO_COINCIDIR` | Se genera un switch sobre el discriminante. |
-| `Intento` | `NODO_INTENTO` | Se traduce a un bloque `try` en C (via FFI). |
+| `Intento` | `NODO_INTENTO` | Se traduce al modelo de `Resultado` y `?` (Manual 3 §7). La construcción `intentar`/`atrapar` está reservada exclusivamente para envolver llamadas FFI a bibliotecas C que puedan lanzar excepciones o señales (ej. `setjmp`/`longjmp`). En código nativo Syquex, se prefiere siempre `Resultado`. |
 | `Lanzar` | `NODO_LANZAR` | Se convierte en `pthread_create`. |
 | `Escuchar` | `NODO_ESCUCHAR` | Se convierte en un bucle con `canal_recibir()`. |
 | `Canal<T>` | `NODO_CANAL` | Se traduce a `SynapseCanal*`. |
@@ -402,7 +402,7 @@ def calcular_iva_python(monto, porcentaje):
 
 ### 5.1. Formato de Serialización Binario
 
-El formato de serialización para canales remotos es un subconjunto de MessagePack, optimizado para velocidad.
+El formato de serialización para canales remotos es un subconjunto de MessagePack, optimizado para velocidad. **Especificación normativa:** el formato definitivo está en el Manual 5, §6.3. Esta sección (Manual 6, §5.1) se considera un borrador anterior y debe ignorarse o eliminarse en futuras revisiones.
 
 | Tipo | Identificador | Datos | Tamaño total |
 |------|---------------|-------|--------------|

@@ -154,12 +154,27 @@ class ParserBase:
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo, '<']
-            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+            profundidad = 0
+            while True:
+                t_actual = self._mirar()
+                if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                    break
+                if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                    break
                 t_parte = self._avanzar()
-                # D-2: el token COMMA no lleva valor -> conservar la coma para
-                # que `Resultado<entero,texto>` (paridad con el span nativo S2/S3)
-                # sea parseable por el recolector de instanciaciones de ADT.
-                if t_parte.tipo == TokenID.COMMA:
+                # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                # Manual 2 §8.2 ALGEBRAICO con argumentos): consumir '<'/'<' con
+                # profundidad y solo cerrar en el '>' de nivel 0.
+                if t_parte.tipo == TokenID.LESS:
+                    profundidad += 1
+                    partes.append('<')
+                elif t_parte.tipo == TokenID.GREATER:
+                    profundidad -= 1
+                    partes.append('>')
+                elif t_parte.tipo == TokenID.COMMA:
+                    # D-2: el token COMMA no lleva valor -> conservar la coma para
+                    # que `Resultado<entero,texto>` (paridad con el span nativo S2/S3)
+                    # sea parseable por el recolector de instanciaciones de ADT.
                     partes.append(',')
                 else:
                     partes.append(str(t_parte.valor or ''))

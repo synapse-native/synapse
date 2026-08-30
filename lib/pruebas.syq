@@ -1,0 +1,59 @@
+#lang: es
+// lib/pruebas.syq — Framework de testing de Syquex
+// Manual 3 §12.1: Módulo Pruebas (similar a unittest)
+//
+// Uso desde Syquex:
+//   importar lib.pruebas
+//
+//   funcion test_suma():
+//       pruebas.afirmar(2 + 2 == 4, "2 + 2 debe ser 4")
+//
+//   pruebas.ejecutar()
+
+// --- Estado global ---
+
+constante PASSED = 0
+constante FAILED = 1
+
+variable _total = 0
+variable _fallidos = 0
+
+// --- Afirmaciones ---
+
+funcion afirmar(condicion: booleano, mensaje: texto) -> nulo:
+    _total = _total + 1
+    si condicion:
+        io.escribir_linea("  ✓ " + mensaje)
+    sino:
+        _fallidos = _fallidos + 1
+        io.escribir_linea("  ✗ " + mensaje)
+
+funcion afirmar_igual(obtenido: entero, esperado: entero, mensaje: texto) -> nulo:
+    _total = _total + 1
+    si obtenido == esperado:
+        io.escribir_linea("  ✓ " + mensaje)
+    sino:
+        _fallidos = _fallidos + 1
+        io.escribir_linea("  ✗ " + mensaje + " (esperado=" + entero_a_texto(esperado) + ", obtenido=" + entero_a_texto(obtenido) + ")")
+
+funcion afirmar_texto(obtenido: texto, esperado: texto, mensaje: texto) -> nulo:
+    _total = _total + 1
+    si obtenido == esperado:
+        io.escribir_linea("  ✓ " + mensaje)
+    sino:
+        _fallidos = _fallidos + 1
+        io.escribir_linea("  ✗ " + mensaje + " (esperado=\"" + esperado + "\", obtenido=\"" + obtenido + "\")")
+
+// --- Ejecución ---
+
+funcion ejecutar() -> nulo:
+    io.escribir_linea("")
+    io.escribir_linea("=== Resultados: " + entero_a_texto(_total) + " tests, " + entero_a_texto(_fallidos) + " fallidos ===")
+    si _fallidos > 0:
+        io.escribir_linea("FALLÓ")
+    sino:
+        io.escribir_linea("TODOS PASARON")
+
+// --- Externs ---
+
+externo funcion entero_a_texto(n: entero) -> texto

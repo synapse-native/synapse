@@ -1,0 +1,16 @@
+#lang: es
+
+tipo Resultado<T, E> = ok(T) | err(E)
+
+externo funcion ayuda_externa(r: Resultado<entero, texto>) -> entero
+
+funcion extraer(r: Resultado<entero, texto>) -> entero:
+    coincidir r:
+        ok(valor) =>
+            retornar valor
+        err(msg) =>
+            retornar 0
+
+funcion principal() -> nulo:
+    escribir_linea(entero_a_texto(extraer(ok(7))))
+    retornar

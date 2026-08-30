@@ -110,33 +110,41 @@ KDSession* kd_iniciar(const KDConfig* config) {
     return sesion;
 }
 
-int kd_agregar_par(KDSession* sesion, const float* logits_t,
-                    const float* logits_s, int target_id, float peso) {
+int kd_agregar_par_n(KDSession* sesion, const float* logits_t,
+                      const float* logits_s, int n, int target_id, float peso) {
     if (!sesion || !logits_t || !logits_s) return -1;
     if (sesion->dataset.num_pares >= KD_MAX_DATASET) return -1;
     if (target_id < 0) return -1;
-
-    int vs = sesion->config.vocab_size;
-    if (vs <= 0) return -1;
+    if (n <= 0) return -1;
 
     KDLogitPair* par = &sesion->dataset.pares[sesion->dataset.num_pares];
 
-    par->logits_teacher = (float*)malloc((size_t)vs * sizeof(float));
-    par->logits_student = (float*)malloc((size_t)vs * sizeof(float));
+    par->logits_teacher = (float*)malloc((size_t)n * sizeof(float));
+    par->logits_student = (float*)malloc((size_t)n * sizeof(float));
     if (!par->logits_teacher || !par->logits_student) {
         free(par->logits_teacher);
         free(par->logits_student);
         return -1;
     }
 
-    memcpy(par->logits_teacher, logits_t, (size_t)vs * sizeof(float));
-    memcpy(par->logits_student, logits_s, (size_t)vs * sizeof(float));
+    memcpy(par->logits_teacher, logits_t, (size_t)n * sizeof(float));
+    memcpy(par->logits_student, logits_s, (size_t)n * sizeof(float));
     par->target_id = target_id;
     par->peso = (peso > 0.0f) ? peso : 1.0f;
+    par->num_logits = n;
 
-    sesion->dataset.vocab_size = vs;
+    sesion->dataset.vocab_size = n; // R80: el dataset refleja la longitud de sus pares
     sesion->dataset.num_pares++;
     return sesion->dataset.num_pares - 1;
+}
+
+int kd_agregar_par(KDSession* sesion, const float* logits_t,
+                    const float* logits_s, int target_id, float peso) {
+    if (!sesion) return -1;
+    int vs = sesion->config.vocab_size;
+    if (vs <= 0) return -1;
+    // Contrato legacy: los arrays tienen config.vocab_size elementos
+    return kd_agregar_par_n(sesion, logits_t, logits_s, vs, target_id, peso);
 }
 
 // ============================================================
@@ -217,16 +225,18 @@ float kd_paso_destilacion(KDSession* sesion) {
 
     for (int i = 0; i < sesion->dataset.num_pares; i++) {
         KDLogitPair* par = &sesion->dataset.pares[i];
+        // R80: longitud por-par (fallback legacy = config.vocab_size)
+        int n = (par->num_logits > 0) ? par->num_logits : vs;
 
         // Calcular pérdida soft (KL divergence escalada por T^2)
         float kl = kd_divergencia_kl(par->logits_teacher, par->logits_student,
-                                      vs, T);
+                                      n, T);
         if (kl < 0.0f) continue;
         float soft_loss = T * T * kl;
         float soft_weighted = soft_loss * par->peso;
 
         // Calcular pérdida hard (cross-entropy contra target)
-        float hard_loss = _cross_entropy(par->logits_student, vs, par->target_id);
+        float hard_loss = _cross_entropy(par->logits_student, n, par->target_id);
         float hard_weighted = hard_loss * par->peso;
 
         // Pérdida combinada
@@ -241,7 +251,7 @@ float kd_paso_destilacion(KDSession* sesion) {
         // En implementación real, esto haría backpropagation hacia el student
         float lr = sesion->config.learning_rate;
         float wd = sesion->config.weight_decay;
-        for (int j = 0; j < vs; j++) {
+        for (int j = 0; j < n; j++) {
             // Gradient: dL/d(logits_s) ≈ alpha * T^2 * (softmax_q - softmax_p) + (1-alpha) * (softmax_q - target)
             // Simplificado: mover logits_s hacia teacher
             float diff = (par->logits_teacher[j] - par->logits_student[j]) * par->peso;
@@ -354,10 +364,12 @@ int kd_guardar(const KDSession* sesion, const char* ruta) {
         const KDLogitPair* par = &sesion->dataset.pares[i];
         int32_t tid = par->target_id;
         float peso = par->peso;
+        int32_t nlog = (par->num_logits > 0) ? par->num_logits : (int32_t)vs;
         fwrite(&tid, sizeof(tid), 1, f);
         fwrite(&peso, sizeof(peso), 1, f);
-        fwrite(par->logits_teacher, sizeof(float), vs, f);
-        fwrite(par->logits_student, sizeof(float), vs, f);
+        fwrite(&nlog, sizeof(nlog), 1, f);
+        fwrite(par->logits_teacher, sizeof(float), (size_t)nlog, f);
+        fwrite(par->logits_student, sizeof(float), (size_t)nlog, f);
     }
 
     // Estadísticas
@@ -413,22 +425,26 @@ int kd_cargar(KDSession* sesion, const char* ruta) {
     for (uint32_t i = 0; i < num_pares; i++) {
         int target_id;
         float peso;
+        int32_t nlog = 0;
 
         if (fread(&target_id, sizeof(target_id), 1, f) != 1) { fclose(f); return -1; }
         if (fread(&peso, sizeof(peso), 1, f) != 1) { fclose(f); return -1; }
+        // R80 v2: longitud por-par
+        if (fread(&nlog, sizeof(nlog), 1, f) != 1 || nlog <= 0) { fclose(f); return -1; }
 
-        float* lt = (float*)malloc((size_t)vs * sizeof(float));
-        float* ls = (float*)malloc((size_t)vs * sizeof(float));
+        float* lt = (float*)malloc((size_t)nlog * sizeof(float));
+        float* ls = (float*)malloc((size_t)nlog * sizeof(float));
         if (!lt || !ls) { free(lt); free(ls); fclose(f); return -1; }
 
-        if (fread(lt, sizeof(float), vs, f) != vs) { free(lt); free(ls); fclose(f); return -1; }
-        if (fread(ls, sizeof(float), vs, f) != vs) { free(lt); free(ls); fclose(f); return -1; }
+        if (fread(lt, sizeof(float), (size_t)nlog, f) != (size_t)nlog) { free(lt); free(ls); fclose(f); return -1; }
+        if (fread(ls, sizeof(float), (size_t)nlog, f) != (size_t)nlog) { free(lt); free(ls); fclose(f); return -1; }
 
         KDLogitPair* par = &sesion->dataset.pares[sesion->dataset.num_pares];
         par->logits_teacher = lt;
         par->logits_student = ls;
         par->target_id = target_id;
         par->peso = peso;
+        par->num_logits = nlog;
 
         sesion->dataset.num_pares++;
     }

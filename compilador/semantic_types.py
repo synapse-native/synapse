@@ -9,7 +9,7 @@ from compilador.ast_nodes import (
     ExprPropagar, DefinicionFuncion, Parametro,
 )
 from compilador.diagnostics import ErrorCodes
-from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, AnalizadorSemanticoScope
+from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN, _BUILTIN_PARAMS_DEFAULT, AnalizadorSemanticoScope
 # 2.4: Hindley-Milner (Manual 2 §8.2) — representación estructurada de tipos
 # (TipoKind) y unificación con occurs check para validar argumentos de tipo.
 from compilador.tipos import (
@@ -71,8 +71,9 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 )
                 return None
             if self.tabla.esta_movido(nodo.nombre):
+                # cumple Manual 2 §9: uso de variable invalidada por move previo -> ERR_MEM_USE_AFTER_MOVE
                 self.diag.reportar(
-                    ErrorCodes.ERR_SEM_VAR_MOVIDA,
+                    ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre
                 )
@@ -104,6 +105,13 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                             tipo1=tipo_der, tipo2='int/float', operacion=nodo.operador
                         )
                         return None
+                    return 'int'
+
+                # F3-10: centinela de cierre de canal (Manual 5 §4.2): comparar el
+                # valor recibido (`ch ->`, tipo del elemento) con nulo.
+                if nodo.operador in ('==', '!=') and (
+                    isinstance(nodo.izquierdo, LiteralNulo) or isinstance(nodo.derecho, LiteralNulo)
+                ):
                     return 'int'
 
                 if (tipo_izq == 'booleano' and tipo_der != 'booleano') or (tipo_izq != 'booleano' and tipo_der == 'booleano'):
@@ -232,9 +240,17 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         elif isinstance(nodo, ExprCrearCanal):
             if nodo.capacidad:
                 self._inferir_tipo(nodo.capacidad)
+            # F3-10: el canal se tipa por su elemento (Manual 2 L144 Canal<T>,
+            # Manual 5 §3 canales tipados). El elemento lo usa el receive `ch ->`.
+            if getattr(nodo, 'tipo_contenido', None):
+                return f'Canal<{nodo.tipo_contenido}>'
             return 'CanalConcurrencia*'
         elif isinstance(nodo, ExprRecibirCanal):
-            self._inferir_tipo(nodo.canal)
+            # F3-10: el receive hereda el tipo del elemento del canal (Manual 5
+            # §4.2 `valor = canal ->`). Fallback void* si el canal no esta tipado.
+            tipo_canal = self._inferir_tipo(nodo.canal)
+            if tipo_canal and tipo_canal.startswith('Canal<') and tipo_canal.endswith('>'):
+                return tipo_canal[6:-1]
             return 'void*'
         elif isinstance(nodo, ExprIndice):
             tipo_base = self._inferir_tipo(nodo.expr)
@@ -314,12 +330,16 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             # unificación de TVar y occurs check.
             if self._firma_generica(def_func):
                 return self._inferir_llamada_hm(nodo, def_func)
-            if len(nodo.argumentos) != len(def_func.parametros):
+            # H-R90-13: permitir omitir params con valor por defecto
+            n_params = len(def_func.parametros)
+            n_args = len(nodo.argumentos)
+            n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
+            if n_args < n_params - n_default or n_args > n_params:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre,
-                    esperados=len(def_func.parametros)
+                    esperados=n_params
                 )
                 return def_func.tipo_retorno
             for i, (arg, param) in enumerate(zip(nodo.argumentos, def_func.parametros)):
@@ -332,17 +352,33 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                         self._token(getattr(arg, 'linea', 0), getattr(arg, 'columna', 0)),
                         tipo1=tipo_arg, tipo2=param.tipo, operacion=nodo.nombre
                     )
+            # Manual 2 L60: parámetros con -> transfieren ownership (move)
+            for arg, param in zip(nodo.argumentos, def_func.parametros):
+                if param.es_transferencia and isinstance(arg, Identificador):
+                    if self.tabla.esta_movido(arg.nombre):
+                        # cumple Manual 2 §9: uso de variable ya movida (doble move / use-after-move) -> ERR_MEM_USE_AFTER_MOVE
+                        self.diag.reportar(
+                            ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
+                            self._token(arg.linea, arg.columna),
+                            nombre=arg.nombre
+                        )
+                    self.tabla.marcar_movido(arg.nombre)
             return def_func.tipo_retorno
 
         if nodo.nombre in _FUNCIONES_BUILTIN:
             sig = _FUNCIONES_BUILTIN[nodo.nombre]
             tipos_esperados, tipo_retorno = sig
-            if len(nodo.argumentos) != len(tipos_esperados):
+            # H-R90-13: permitir omitir params con valor por defecto
+            n_args = len(nodo.argumentos)
+            n_params = len(tipos_esperados)
+            idx_defaults = _BUILTIN_PARAMS_DEFAULT.get(nodo.nombre, [])
+            n_min = n_params - len(idx_defaults)
+            if n_args < n_min or n_args > n_params:
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
                     nombre=nodo.nombre,
-                    esperados=len(tipos_esperados)
+                    esperados=n_params
                 )
                 return tipo_retorno
             for i, (arg, esperado) in enumerate(zip(nodo.argumentos, tipos_esperados)):
@@ -351,8 +387,20 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                     # Allow int/decimal -> texto only for concat (string interpolation)
                     if esperado == 'texto' and tipo_arg in ('int', 'decimal') and nodo.nombre == 'concat':
                         continue
+                    # H-R90-15: len() acepta Lista<T> (Manual 3 §5.2)
+                    if nodo.nombre == 'len' and tipo_arg and tipo_arg.startswith('Lista'):
+                        continue
+                    # H-R90-15b: [] lista literal (inferido como void*/nulo)
+                    # compatible con Lista<T> en assignación de param
+                    if tipo_arg in ('void*', 'nulo', 'puntero') and esperado.startswith('Lista'):
+                        continue
                     # Allow void* to accept numeric types (pointer arithmetic)
                     if esperado == 'void*' and tipo_arg in ('int', 'float', 'decimal'):
+                        continue
+                    # F3-7 (paridad nativo): `canal ->` devuelve void*; el canal
+                    # es tipado en el Manual (Canal<int>, Manual 5 §3.2), así que
+                    # el valor recibido se usa como su tipo base (cast implícito).
+                    if tipo_arg == 'void*' and esperado in ('int', 'float', 'decimal'):
                         continue
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -486,6 +534,29 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         for c in cadenas:
             self._validar_aridad_instanciaciones(c, def_func.linea, tvars)
 
+    def _validar_contratos_tipos(self, def_func: DefinicionFuncion) -> None:
+        """Manual 2 §5.1: valida que las expresiones de requiere/garantiza
+        sean booleanas. Se ejecuta en modo normal (no solo --safe)."""
+        from compilador.verificador_formal import _es_expresion_booleana_valida
+        for expr in def_func.requiere:
+            if not _es_expresion_booleana_valida(expr):
+                self.diag.reportar(
+                    ErrorCodes.ERR_VER_CONTRATO_INVALIDO,
+                    self._token(getattr(expr, 'linea', def_func.linea),
+                                getattr(expr, 'columna', def_func.columna)),
+                    nombre=def_func.nombre,
+                    detalle="Expresión inválida en cláusula 'requiere': debe ser una condición lógica",
+                )
+        for expr in def_func.garantiza:
+            if not _es_expresion_booleana_valida(expr):
+                self.diag.reportar(
+                    ErrorCodes.ERR_VER_CONTRATO_INVALIDO,
+                    self._token(getattr(expr, 'linea', def_func.linea),
+                                getattr(expr, 'columna', def_func.columna)),
+                    nombre=def_func.nombre,
+                    detalle="Expresión inválida en cláusula 'garantiza': debe ser una condición lógica",
+                )
+
     def _inferir_llamada_hm(self, nodo: LlamadaFuncion,
                             def_func: DefinicionFuncion) -> Optional[str]:
         """2.4: llamada a función con parámetros de tipo (T/E) o ADT
@@ -500,11 +571,15 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
         # La firma ya se validó en pasada 2 (_analizar_funcion ->
         # _validar_firma_funcion); no repetir aquí para evitar duplicados.
         conocidos = set(self._estructuras) | set(self._adt_parametros)
-        if len(nodo.argumentos) != len(def_func.parametros):
+        # H-R90-13: permitir omitir params con valor por defecto
+        n_params = len(def_func.parametros)
+        n_args = len(nodo.argumentos)
+        n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
+        if n_args < n_params - n_default or n_args > n_params:
             self.diag.reportar(
                 ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                 self._token(nodo.linea, nodo.columna),
-                nombre=nodo.nombre, esperados=len(def_func.parametros)
+                nombre=nodo.nombre, esperados=n_params
             )
             return self._instanciar_retorno(def_func, uf, contador, tvars,
                                             tvar_cache, conocidos,

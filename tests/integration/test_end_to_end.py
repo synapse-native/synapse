@@ -8,6 +8,8 @@ from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
 
+pytestmark = pytest.mark.integration
+
 
 class TestIntegrationEndToEnd:
     """Tests de integraci??n end-to-end del pipeline de compilaci??n"""
@@ -399,8 +401,9 @@ class TestIntegrationFixtures:
         return codigo_c, diag
     
     def test_fixture_basico(self):
-        """Test usando fixture b??sico existente"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\01_basico.syn"
+        """Test usando fixture basico existente"""
+        fixture_path = os.path.join(os.path.dirname(__file__), "..", "..",
+                                     "examples", "synapse", "00_hola_mundo", "main.syn")
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")
@@ -415,7 +418,8 @@ class TestIntegrationFixtures:
     
     def test_fixture_estructuras(self):
         """Test usando fixture de estructuras"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\02_estructuras.syn"
+        fixture_path = os.path.join(os.path.dirname(__file__), "..", "..",
+                                     "examples", "synapse", "02_estructuras", "main.syn")
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")

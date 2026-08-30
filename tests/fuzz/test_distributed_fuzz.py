@@ -1,3 +1,4 @@
+# cumple Manual 5 §6
 """
 test_distributed_fuzz.py — M10.4 Fuzzing Distribuido Multi-Nodo
 Coordinator/Slave model: send fuzz cases via UDP, collect results,
@@ -13,12 +14,19 @@ import tempfile
 import time
 import pytest
 
+pytestmark = pytest.mark.fuzz
+
 PROJECT_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+# F3-15 + D-9(d) corte 8 (sin hardcoding, regla 13): los .o del runtime se
+# derivan de runtime/core/*.c via conftest.rt_objs() — cualquier corte nuevo
+# (cripto.c, json.c, ...) se enlaza automaticamente.
+try:
+    sys.path.insert(0, os.path.join(PROJECT_ROOT, "tests"))
+    from conftest import rt_objs
+    RT_OBJS = [o for o in rt_objs() if o and os.path.exists(o)]
+except Exception:
+    RT_OBJS = []
 TEST_C_SRC = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "fuzz", "test_distributed_fuzz.exe")
 MAIN_PY = os.path.join(PROJECT_ROOT, "main.py")
@@ -188,14 +196,13 @@ def compiled_test():
     # Compile
     if not os.path.exists(TOOLCHAIN_GCC):
         pytest.skip(f"Toolchain not found: {TOOLCHAIN_GCC}")
-    if not os.path.exists(SYNAPSE_RT_O):
-        pytest.skip(f"synapse_rt.o not found")
-    if not os.path.exists(TWEETNACL_O):
-        pytest.skip(f"tweetnacl.o not found")
+    if not RT_OBJS:
+        pytest.skip("objetos del runtime no disponibles (conftest.rt_objs)")
 
+    # cumple Manual 3 §12.1: sqlite3.o ya viene en rt_objs() via conftest
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+        TEST_C_SRC, *RT_OBJS,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -225,9 +232,10 @@ class TestCompilacion:
         """C binary compiles without errors."""
         with open(TEST_C_SRC, 'w') as f:
             f.write(TEST_C_CODE)
+        # cumple Manual 3 §12.1: sqlite3.o ya viene en rt_objs() via conftest
         cmd = [
             TOOLCHAIN_GCC, "-O2", "-std=c99",
-            TEST_C_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+            TEST_C_SRC, *RT_OBJS,
             "-o", TEST_BIN,
             "-lm", "-lpthread", "-lws2_32"
         ]
@@ -303,7 +311,7 @@ class TestEstructuraCodigo:
         """Verify fz_* externo functions are declared in cluster.syn."""
         cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            bin_content = f.read()
 
         required = [
             "externo funcion fz_iniciar_coordinador",
@@ -319,16 +327,16 @@ class TestEstructuraCodigo:
             "externo funcion fz_info",
         ]
         for ext in required:
-            assert ext in content, f"Missing: {ext}"
+            assert ext in bin_content, f"Missing: {ext}"
 
-    def test_fz_en_synapse_rt(self):
-        """Verify fz_* functions are in synapse_rt.c."""
-        rt_path = os.path.join(PROJECT_ROOT, "synapse_rt.c")
+    def test_fz_en_fuzz_c(self):
+        """Verify fz_* functions are in runtime/core/fuzz.c (D-9(d) corte 6)."""
+        rt_path = os.path.join(PROJECT_ROOT, "runtime", "core", "fuzz.c")
         with open(rt_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            bin_content = f.read()
 
-        assert "FZ_PROTO_MAGIC" in content
-        assert "SYNFUZZ" in content
+        assert "FZ_PROTO_MAGIC" in bin_content
+        assert "SYNFUZZ" in bin_content
         required = [
             "int fz_iniciar_coordinador(",
             "int fz_enviar_caso(",
@@ -338,21 +346,21 @@ class TestEstructuraCodigo:
             "CadenaSegura fz_info(",
         ]
         for func in required:
-            assert func in content, f"Missing C implementation: {func}"
+            assert func in bin_content, f"Missing C implementation: {func}"
 
     def test_no_colision_lexica(self):
         """Verify no keyword collisions in fz_* parameter names."""
         cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+            bin_content = f.read()
 
         keywords = ['funcion', 'function', 'constante', 'entero', 'texto',
                     'si', 'sino', 'retornar', 'mientras', 'importar',
                     'estructura', 'verdadero', 'falso', 'externo', 'tipo']
 
-        fz_section_start = content.find("M10.4")
+        fz_section_start = bin_content.find("M10.4")
         if fz_section_start >= 0:
-            fz_section = content[fz_section_start:]
+            fz_section = bin_content[fz_section_start:]
             for line in fz_section.split('\n'):
                 if 'externo funcion fz_' in line:
                     params_str = line[line.find('(')+1:line.find(')')]

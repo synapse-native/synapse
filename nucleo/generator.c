@@ -141,7 +141,7 @@ extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
+extern void cerrar_archivo(Canal canal);
 extern Tensor crear_tensor(int filas, int columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
@@ -165,7 +165,7 @@ extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
-extern void cerrar_canal(CanalConcurrencia* canal);
+extern void cerrar(CanalConcurrencia* canal);
 int _g_argc;
 char** _g_argv;
 int _argc() { return _g_argc; }
@@ -1370,7 +1370,7 @@ void gen_tipo_de_expr(struct GeneradorCEst est, int nodos, int total_nodos, int 
             if (strcmp(_str, "_argc")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "_argv")==0||strcmp(_str,"leer")==0||strcmp(_str,"leer_linea")==0||strcmp(_str,"concat")==0||strcmp(_str,"decimal_a_texto")==0||strcmp(_str,"entero_a_texto")==0) { strcpy(_gen_tmp_buf, "CadenaSegura"); return; }
             if (strcmp(_str, "abrir")==0) { strcpy(_gen_tmp_buf, "Canal"); return; }
-            if (strcmp(_str, "cerrar")==0||strcmp(_str,"salir")==0||strcmp(_str,"escribir")==0||strcmp(_str,"escribir_linea")==0||strcmp(_str,"libera")==0||strcmp(_str,"volcar_ast")==0||strcmp(_str,"canal_enviar")==0||strcmp(_str,"cerrar_canal")==0) { strcpy(_gen_tmp_buf, "void"); return; }
+            if (strcmp(_str, "cerrar_archivo")==0||strcmp(_str,"salir")==0||strcmp(_str,"escribir")==0||strcmp(_str,"escribir_linea")==0||strcmp(_str,"libera")==0||strcmp(_str,"volcar_ast")==0||strcmp(_str,"canal_enviar")==0||strcmp(_str,"cerrar")==0) { strcpy(_gen_tmp_buf, "void"); return; }
             if (strcmp(_str, "tokenizar")==0||strcmp(_str,"texto_a_entero")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "generar")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "texto_a_decimal")==0) { strcpy(_gen_tmp_buf, "float"); return; }
@@ -2274,7 +2274,7 @@ const char* _G_tex(struct Nodo* n) {
         if(strcmp(m,"_argc")==0) return "int";
         if(strcmp(m,"_argv")==0||strcmp(m,"leer")==0||strcmp(m,"leer_linea")==0||strcmp(m,"concat")==0) return "CadenaSegura";
         if(strcmp(m,"abrir")==0) return "Canal";
-        if(strcmp(m,"cerrar")==0||strcmp(m,"salir")==0||strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0) return "void";
+        if(strcmp(m,"cerrar_archivo")==0||strcmp(m,"salir")==0||strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0) return "void";
         if(strcmp(m,"reserva")==0||strcmp(m,"suma")==0||strcmp(m,"producto")==0||strcmp(m,"relu")==0
    ||strcmp(m,"crear_tensor")==0||strcmp(m,"suma_tensor")==0||strcmp(m,"producto_punto")==0) return "Tensor";
         if(strcmp(m,"tokenizar")==0) return "int";
@@ -2508,7 +2508,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     fprintf(_G_out,"extern CadenaSegura leer_linea(void);\n");
     fprintf(_G_out,"extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);\n");
     fprintf(_G_out,"extern CadenaSegura leer(Canal canal);\n");
-    fprintf(_G_out,"extern void cerrar(Canal canal);\n");
+    fprintf(_G_out,"extern void cerrar_archivo(Canal canal);\n");
     fprintf(_G_out,"extern Tensor crear_tensor(int filas, int columnas);\n");
     fprintf(_G_out,"extern Tensor suma_tensor(Tensor a, Tensor b);\n");
     fprintf(_G_out,"extern Tensor producto_punto(Tensor a, Tensor b);\n");

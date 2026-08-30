@@ -69,11 +69,38 @@ externo funcion cluster_detener_nodo() -> entero
 // enviar_hello — Envía mensaje HELLO handshake
 externo funcion cluster_enviar_hello(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto) -> entero
 
+// generar_nonce — Genera nonce aleatorio de 32 bytes (64 hex chars)
+externo funcion cluster_generar_nonce() -> texto
+
+// enviar_hello_firmado — Envía HELLO con nonce y firma Ed25519
+// Formato: HELLO:id:nonce_hex:pubkey_hex:firma_hex
+externo funcion cluster_enviar_hello_firmado(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto, nonce_hex: texto, firma_hex: texto) -> entero
+
 // canal_remoto_enviar — Envía datos por canal remoto
 externo funcion cluster_canal_remoto_enviar(ip: texto, puerto: entero, datos: texto, lon: entero, chan_id: entero) -> entero
 
 // recibir_paquete — Recibe datagrama (no bloqueante). Retorna texto vacío si no hay datos.
 externo funcion cluster_recibir_paquete(timeout_ms: entero) -> texto
+
+// establecer_clave_sesion — Deriva y activa la clave de sesión tras handshake exitoso
+externo funcion cluster_establecer_clave_sesion(pubkey_local: texto, pubkey_remota: texto) -> nulo
+
+// limpiar_clave_sesion — Desactiva la clave de sesión (al cerrar el canal)
+externo funcion cluster_limpiar_clave_sesion() -> nulo
+
+// kx_generar_par — Genera el par efímero X25519 del nodo (R78, Manual 5 §6.2 paso 3)
+// Retorna la clave pública en hex (64 chars); el secreto queda en el runtime
+externo funcion cluster_kx_generar_par() -> texto
+
+// kx_derivar — Deriva y activa la clave de sesión (ECDH X25519 + SHA-512)
+// kx_pub_remota_hex: clave pública X25519 del peer; rol_cliente: 1 si este nodo envió el HELLO
+externo funcion cluster_kx_derivar(kx_pub_remota_hex: texto, rol_cliente: entero) -> entero
+
+// enviar_kx_init — Envía KX_INIT:<kxpub>:<firma> al servidor
+externo funcion cluster_enviar_kx_init(ip: texto, puerto: entero, kx_pk_hex: texto, firma_hex: texto) -> entero
+
+// clave_sesion_hex — Hex de la clave de sesión activa (texto vacío si no hay sesión)
+externo funcion cluster_clave_sesion_hex() -> texto
 
 // ============================================================
 // Funciones de alto nivel — CanalRemoto<T> + Handshake Ed25519
@@ -151,38 +178,47 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         ch.estado = 1  // CERRADO
         retornar ch
 
-    // Enviar HELLO con identidad y clave pública
-    rc = cluster_enviar_hello(ip, puerto, "synapse-node", ch.clave_publica_local)
+    // Enviar HELLO firmado (Manual 6 §5.3: nonce + pubkey + firma)
+    nonce = cluster_generar_nonce()
+    si len(nonce) != 64:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    mensaje_nonce = nonce
+    firma = cluster_firmar_mensaje(mensaje_nonce, ch.clave_privada_local)
+    si len(firma) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rc = cluster_enviar_hello_firmado(ip, puerto, "synapse-node", ch.clave_publica_local, nonce, firma)
     si rc < 0:
         cluster_detener_nodo()
         ch.estado = 1
         retornar ch
 
-    // Esperar HELLO_ACK (timeout 5000ms)
+    // Esperar HELLO_RESP (timeout 5000ms)
     paquete = cluster_recibir_paquete(5000)
     si paquete == "":
         cluster_detener_nodo()
         ch.estado = 1
         retornar ch
 
-    // Parsear HELLO_ACK: "HELLO_ACK:id_remoto:pubkey_remota:firma_hex"
-    // Verificar prefijo
-    prefijo_ack = "HELLO_ACK:"
+    // Parsear HELLO_RESP: "HELLO_RESP:id_servidor:nonce_hex:pubkey_hex:firma_hex"
+    prefijo_ack = "HELLO_RESP:"
     si len(paquete) < len(prefijo_ack):
         cluster_detener_nodo()
         ch.estado = 1
         retornar ch
 
     coincide_prefijo = empieza_con(paquete, prefijo_ack) == 1
-
     si no coincide_prefijo:
         cluster_detener_nodo()
         ch.estado = 1
         retornar ch
 
-    // Extraer campos del HELLO_ACK
     resto = _extraer_parte(paquete, len(prefijo_ack), len(paquete))
-    // Formato: "id:pubkey:firma" → extraer primer segmento
     p1 = _buscar_dos_puntos(resto)
     si p1 < 0:
         cluster_detener_nodo()
@@ -197,24 +233,89 @@ funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
         ch.estado = 1
         retornar ch
 
-    ch.clave_publica_remota = _extraer_parte(resto2, 0, p2)
-    firma_hex = _extraer_parte(resto2, p2 + 1, len(resto2))
-
-    // Verificar firma Ed25519 del nodo remoto
-    // El mensaje firmado es "synapse-handshake:<pubkey_local>"
-    mensaje_verificacion = "synapse-handshake:" + ch.clave_publica_local
-    resultado_firma = cluster_verificar_firma(mensaje_verificacion, firma_hex, ch.clave_publica_remota)
-
-    si resultado_firma != 0:
-        // Firma inválida — Zero-Trust: NO fluyen datos
+    nonce_serv = _extraer_parte(resto2, 0, p2)
+    resto3 = _extraer_parte(resto2, p2 + 1, len(resto2))
+    p3 = _buscar_dos_puntos(resto3)
+    si p3 < 0:
         cluster_detener_nodo()
-        ch.estado = 1  // CERRADO
+        ch.estado = 1
         retornar ch
 
-    // Handshake completado exitosamente
+    pubkey_serv = _extraer_parte(resto3, 0, p3)
+    firma_serv = _extraer_parte(resto3, p3 + 1, len(resto3))
+
+    si len(nonce_serv) != 64 o len(pubkey_serv) != 64 o len(firma_serv) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Verificar firma del servidor sobre su nonce
+    resultado_firma = cluster_verificar_firma(nonce_serv, firma_serv, pubkey_serv)
+    si resultado_firma != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
     ch.direccion = ip
     ch.puerto = puerto
     ch.estado = 2  // AUTENTICADO
+    ch.clave_publica_remota = pubkey_serv
+
+    // Derivación de clave de sesión v2 (R78, Manual 5 §6.2 paso 3 / Manual 6 §5.3):
+    // intercambio efímero X25519 firmado (KX_INIT/KX_RESP) + ECDH + SHA-512.
+    kx_local = cluster_kx_generar_par()
+    si len(kx_local) != 64:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    mensaje_kx = concat(concat(kx_local, ":"), nonce)
+    firma_kx = cluster_firmar_mensaje(mensaje_kx, ch.clave_privada_local)
+    si len(firma_kx) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rc_kx = cluster_enviar_kx_init(ip, puerto, kx_local, firma_kx)
+    si rc_kx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    paquete_kx = cluster_recibir_paquete(5000)
+    prefijo_kx = "KX_RESP:"
+    si len(paquete_kx) < len(prefijo_kx) o empieza_con(paquete_kx, prefijo_kx) != 1:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rkx = _extraer_parte(paquete_kx, len(prefijo_kx), len(paquete_kx))
+    qkx = _buscar_dos_puntos(rkx)
+    si qkx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    kx_remota = _extraer_parte(rkx, 0, qkx)
+    firma_kxs = _extraer_parte(rkx, qkx + 1, len(rkx))
+    si len(kx_remota) != 64 o len(firma_kxs) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Verificar firma del servidor sobre su kxpub + el nonce que envió en HELLO_RESP
+    mensaje_kxs = concat(concat(kx_remota, ":"), nonce_serv)
+    resultado_kxs = cluster_verificar_firma(mensaje_kxs, firma_kxs, pubkey_serv)
+    si resultado_kxs != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Derivar la clave de sesión con rol cliente (1)
+    si cluster_kx_derivar(kx_remota, 1) != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
 
     retornar ch
 
@@ -230,45 +331,20 @@ funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
 // recibir — Recibe datos de un CanalRemoto con timeout
 // ch: canal origen
 // timeout_ms: tiempo máximo de espera en milisegundos
-// Retorna Resultado con: ok(texto) o err("timeout" / "cerrado" / "no_autenticado")
-funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> Resultado:
-    r = Resultado()
-
+// Retorna texto con el payload, o texto vacío si timeout/error
+// Nota: cluster_recibir_paquete ya deserializa el payload binario (Manual 5 §6.3).
+funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
     si ch.estado != 2:
-        r.tag = 1
-        r.valor_str = "canal no autenticado"
-        retornar r
+        retornar ""
 
     paquete = cluster_recibir_paquete(timeout_ms)
-    si paquete == "":
-        r.tag = 1
-        r.valor_str = "timeout"
-        retornar r
+    retornar paquete
 
-    // Parsear prefijo DATA:chan_id:seq:payload
-    prefijo_data = "DATA:"
-    si len(paquete) >= len(prefijo_data) y empieza_con(paquete, prefijo_data) == 1:
-        // Saltar header "DATA:chan_id:seq:" y retornar payload
-        resto = _extraer_parte(paquete, len(prefijo_data), len(paquete))
-        p1 = _buscar_dos_puntos(resto)
-        si p1 >= 0:
-            resto2 = _extraer_parte(resto, p1 + 1, len(resto))
-            p2 = _buscar_dos_puntos(resto2)
-            si p2 >= 0:
-                payload = _extraer_parte(resto2, p2 + 1, len(resto2))
-                r.tag = 0
-                r.valor_str = payload
-                retornar r
-
-    // Si no es DATA o formato inválido, retornar el paquete crudo
-    r.tag = 0
-    r.valor_str = paquete
-    retornar r
-
-// cerrar — Cierra un CanalRemoto y libera sus recursos
+// cerrar_remoto — Cierra un CanalRemoto y libera sus recursos
 // -> ch: canal a cerrar
-funcion cerrar(-> ch: CanalRemoto) -> nulo:
+funcion cerrar_remoto(-> ch: CanalRemoto) -> nulo:
     ch.estado = 1  // CERRADO
+    cluster_limpiar_clave_sesion()
     retornar
 
 // ============================================================
@@ -314,7 +390,8 @@ externo funcion ws_ultima_robada() -> texto
 externo funcion ws_reenviar_respuesta(ip: texto, puerto: entero, respuesta: texto) -> entero
 
 // ============================================================
-// Funciones Externas — M8.3 (Raft Consensus)
+// Funciones Externas — M8.3 (Raft Consensus, tolerante a fallos)
+// Manual 5 §6.5: sistemas distribuidos tolerantes a fallos
 // ============================================================
 
 // raft_inicializar — Inicializa estado Raft para un nodo
@@ -372,6 +449,33 @@ externo funcion raft_reiniciar_nodo(node_id: entero) -> entero
 
 // raft_info — Retorna string diagnóstico "term,state,leader,log,commit"
 externo funcion raft_info(node_id: entero) -> texto
+
+// ============================================================
+// Funciones Externas — Work-Stealing Scheduler (Manual 5 §6.5)
+// ============================================================
+
+// Worker — Worker del scheduler de fibras con work-stealing.
+// Manual 5 §6.5: cola_local es un deque (double-ended queue) por hilo OS.
+// Worker con cola_local para balanceo de carga entre hilos.
+estructura Worker:
+    hilo_os: entero        // pthread_t del hilo OS (identificador)
+    cola_local: entero    // índice base de la cola local de fibras (deque)
+    cola_primero: entero  // índice del primer elemento (pop local)
+    cola_ultimo: entero   // índice del último elemento (push local / pop remoto)
+    num_workers: entero   // número total de workers
+
+// worker_ejecutar — Ejecuta el bucle principal del worker:
+//   procesa fibras de su cola_local; si está vacía, roba (worker_robar).
+//   balanceo correcto entre hilos (Manual 5 §6.5).
+externo funcion worker_ejecutar(worker_id: entero) -> entero
+
+// worker_robar — Roba una fibra de la cola_local de otro worker.
+//   Retorna el ID de la fibra robada, o -1 si no hay nada que robar.
+//   Work-stealing: balanceo de carga entre hilos del sistema.
+externo funcion worker_robar(worker_id: entero) -> entero
+
+// worker_cola_vacia — Retorna 1 si la cola_local del worker está vacía.
+externo funcion worker_cola_vacia(worker_id: entero) -> entero
 
 // ============================================================
 // Funciones Externas — M8.4 (Checkpoint/Restore — Migración Live)

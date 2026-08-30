@@ -24,6 +24,7 @@ externo funcion _json_nodo_new() -> NodoJson
 externo funcion _json_nodo_liberar(n: NodoJson) -> nulo
 externo funcion _json_array_get(nodo: NodoJson, indice: entero) -> NodoJson
 externo funcion _json_object_get(nodo: NodoJson, clave: texto) -> NodoJson
+externo funcion _json_a_texto(nodo: NodoJson) -> texto
 
 funcion desde_texto(entrada: cadena) -> NodoJson:
     retornar _json_parse(entrada)
@@ -37,3 +38,6 @@ funcion obtener_elemento(nodo: NodoJson, indice: entero) -> NodoJson:
 
 funcion obtener_campo(nodo: NodoJson, clave: cadena) -> NodoJson:
     retornar _json_object_get(nodo, clave)
+
+funcion a_texto(nodo: NodoJson) -> cadena:
+    retornar _json_a_texto(nodo)

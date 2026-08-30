@@ -1,3 +1,4 @@
+# cumple Manual 9 §4
 """
 tests/security/test_verificacion_formal.py — Pruebas de Verificación Formal (M10.1)
 

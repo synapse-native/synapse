@@ -1,7 +1,7 @@
 # MANUAL 8: HERRAMIENTAS DE DESARROLLO
 
 **Archivo:** `08_HERRAMIENTAS_DESARROLLO.md`  
-**Versión:** 8.1.0-industrial  
+**Versión:** 8.2.0-industrial  
 **Propósito:** Especificar el conjunto de herramientas de desarrollo del ecosistema Synapse/Syquex: el servidor LSP nativo (`synapse_lsp`), la extensión para VS Code, el debugger (time‑travel y reversible), el CLI unificado (`synapse`), y la integración con OpenSyn para asistencia de IA en el editor. Este manual cubre la experiencia de desarrollo completa, desde la edición de código hasta la depuración y despliegue, incluyendo el bucle de validación y corrección automática de código generado por IA.
 
 ---
@@ -106,6 +106,99 @@ Cada diagnostic incluye:
 1. Captura el error y lo convierte en un diagnostic.
 2. No interrumpe el análisis; intenta sincronizar y continuar.
 3. Envía todos los diagnostics acumulados al editor.
+
+### 1.7. Funciones de utilidad para el LSP
+
+El LSP requiere manipulación de cadenas (parsing de JSON, construcción de respuestas) y lectura binaria de stdin. Para ello, se especifican las siguientes funciones:
+
+#### 1.7.1. Lectura binaria de stdin
+
+El protocolo LSP exige leer **exactamente N bytes** del cuerpo del mensaje, independientemente de que contenga `\n`. La función `leer_linea()` (que lee hasta `\n`) es insuficiente y rompe el parsing de JSON.
+
+```synapse
+// nucleo/lsp.syn
+funcion leer_bytes(cantidad: entero) -> Resultado<texto, texto>:
+    // Lee exactamente 'cantidad' bytes desde stdin.
+    // Retorna ok(texto) con los bytes leídos, o err("EOF") si no hay suficientes datos.
+    let buffer = reserva(cantidad + 1)
+    let leidos = 0
+    mientras leidos < cantidad:
+        let leido = externo fread(buffer + leidos, 1, cantidad - leidos, stdin)
+        si leido <= 0:
+            liberar(buffer)
+            retornar err("EOF")
+        leidos = leidos + leido
+    buffer[cantidad] = '\0'
+    retornar ok(texto_desde_c(buffer))
+```
+
+**Flujo de lectura de un mensaje LSP (actualizado):**
+
+```synapse
+// nucleo/lsp.syn
+funcion leer_mensaje_lsp() -> Resultado<texto, texto>:
+    let content_length = -1
+    mientras verdadero:
+        let linea = leer_linea_stdin()
+        si linea == "":
+            romper
+        si linea.comienza_con("Content-Length:"):
+            content_length = entero(linea.despues_de(":"))
+    si content_length <= 0:
+        retornar err("Content-Length inválido")
+    let cuerpo = leer_bytes(content_length)?
+    retornar ok(cuerpo)
+```
+
+#### 1.7.2. Construcción de JSON sin `snprintf`
+
+Synapse no tiene `snprintf` nativo. Para construir respuestas JSON dinámicas, se usa un **String Builder** basado en el tipo `texto` y el operador de concatenación `+`, junto con `a_texto()` para convertir números.
+
+```synapse
+// nucleo/lsp.syn
+funcion construir_respuesta_json(id: entero, resultado: texto) -> texto:
+    let json = "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"result\":" + resultado + "}"
+    retornar json
+
+funcion construir_error_json(id: entero, codigo: entero, mensaje: texto) -> texto:
+    let json = "{\"jsonrpc\":\"2.0\",\"id\":" + a_texto(id) + ",\"error\":{\"code\":" + a_texto(codigo) + ",\"message\":\"" + mensaje + "\"}}"
+    retornar json
+```
+
+**Nota de seguridad:** Los strings JSON deben escaparse para evitar inyección. Se añade `escapar_json(texto) -> texto` que reemplaza `"` por `\"` y `\` por `\\`.
+
+#### 1.7.3. Funciones de string (contiene, índice, reemplazar)
+
+Las funciones `contiene`, `indice_de` y `reemplazar` se implementan como builtins en C y se exponen en Synapse:
+
+**Runtime C (`runtime/core/string_utils.c`):**
+
+| Función | Propósito |
+|---------|-----------|
+| `string_contiene(texto, subcadena) -> entero` | Verifica si una cadena contiene otra |
+| `string_indice_de(texto, subcadena) -> entero` | Retorna la posición de la primera ocurrencia, o -1 |
+| `string_reemplazar(texto, buscar, reemplazar) -> texto` | Reemplaza todas las ocurrencias |
+
+**Bindings en Synapse:**
+
+```synapse
+// std/texto.syn
+externo funcion contiene(texto: texto, subcadena: texto) -> entero
+externo funcion indice_de(texto: texto, subcadena: texto) -> entero
+externo funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
+```
+
+#### 1.7.4. Resumen de funciones añadidas
+
+| Función | Tipo | Archivo | Propósito |
+|---------|------|---------|-----------|
+| `leer_bytes(cantidad)` | Nueva | `nucleo/lsp.syn` | Lectura binaria exacta de stdin |
+| `construir_respuesta_json(id, resultado)` | Nueva | `nucleo/lsp.syn` | Construcción de respuestas JSON-RPC |
+| `construir_error_json(id, codigo, mensaje)` | Nueva | `nucleo/lsp.syn` | Construcción de errores JSON-RPC |
+| `escapar_json(texto)` | Nueva | `nucleo/lsp.syn` | Escapado de strings JSON |
+| `contiene(texto, subcadena)` | Builtin | `runtime/core/string_utils.c` | Verificación de subcadena |
+| `indice_de(texto, subcadena)` | Builtin | `runtime/core/string_utils.c` | Búsqueda de primera ocurrencia |
+| `reemplazar(texto, buscar, reemplazar)` | Builtin | `runtime/core/string_utils.c` | Reemplazo de todas las ocurrencias |
 
 ---
 

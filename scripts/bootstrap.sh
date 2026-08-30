@@ -19,7 +19,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STAGE1="$ROOT_DIR/synapse_stage1.exe"
 STAGE2="$ROOT_DIR/synapse_stage2.exe"
 STAGE3="$ROOT_DIR/synapse_stage3.exe"
-ENTRY_POINT="$ROOT_DIR/src/main.syn"
+ENTRY_POINT="$ROOT_DIR/nucleo/principal.syn"
 COMPILER_SRC="$ROOT_DIR/nucleo/principal.syn"
 
 # Lanzador portable: python3 (Unix/macOS) o python (Windows/git-bash).

@@ -1,0 +1,105 @@
+#lang: es
+// lib/texto.syq — Manipulación avanzada de cadenas de Syquex
+// Manual 3 §12.1: Módulo Texto (split, join, replace, trim, etc.)
+//
+// Uso desde Syquex:
+//   importar lib.texto
+//   let n = texto.longitud("hola")
+//   let sub = texto.subcadena("hola mundo", 0, 4)
+
+// --- Longitud ---
+
+funcion longitud(t: texto) -> entero:
+    return _syn_texto_longitud(t)
+
+// --- Subcadena ---
+
+funcion subcadena(t: texto, inicio: entero, fin: entero) -> texto:
+    return _syn_texto_subcadena(t, inicio, fin)
+
+// --- Contiene ---
+
+funcion contiene(t: texto, patron: texto) -> booleano:
+    return _syn_texto_contiene(t, patron)
+
+// --- Reemplazar ---
+
+funcion reemplazar(t: texto, viejo: texto, nuevo: texto) -> texto:
+    return _syn_texto_reemplazar(t, viejo, nuevo)
+
+// --- Dividir (split) ---
+// Retorna un puntero a una lista de textos (gestionada por el runtime)
+// El caller debe liberar con texto_lista_liberar
+
+funcion dividir(t: texto, separador: texto) -> entero:
+    return _syn_texto_dividir(t, separador)
+
+funcion dividir_longitud(lista_id: entero) -> entero:
+    return _syn_texto_dividir_longitud(lista_id)
+
+funcion dividir_obtener(lista_id: entero, indice: entero) -> texto:
+    return _syn_texto_dividir_obtener(lista_id, indice)
+
+funcion dividir_liberar(lista_id: entero) -> nulo:
+    _syn_texto_dividir_liberar(lista_id)
+
+// --- Unir (join) ---
+
+funcion unir(lista_id: entero, separador: texto) -> texto:
+    return _syn_texto_unir(lista_id, separador)
+
+// --- Recortar (trim) ---
+
+funcion recortar(t: texto) -> texto:
+    return _syn_texto_recortar(t)
+
+// --- Mayúsculas / Minúsculas ---
+
+funcion mayusculas(t: texto) -> texto:
+    return _syn_texto_mayusculas(t)
+
+funcion minusculas(t: texto) -> texto:
+    return _syn_texto_minusculas(t)
+
+// --- Comienza con / Termina con ---
+
+funcion comienza_con(t: texto, prefijo: texto) -> booleano:
+    return _syn_texto_comienza_con(t, prefijo)
+
+funcion termina_con(t: texto, sufijo: texto) -> booleano:
+    return _syn_texto_termina_con(t, sufijo)
+
+// --- Índice de ---
+
+funcion indice_de(t: texto, patron: texto) -> entero:
+    return _syn_texto_indice_de(t, patron)
+
+// --- Repetir ---
+
+funcion repetir(t: texto, veces: entero) -> texto:
+    return _syn_texto_repetir(t, veces)
+
+// --- Invertir ---
+
+funcion invertir(t: texto) -> texto:
+    return _syn_texto_invertir(t)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_texto_longitud(t: texto) -> entero
+externo funcion _syn_texto_subcadena(t: texto, inicio: entero, fin: entero) -> texto
+externo funcion _syn_texto_contiene(t: texto, patron: texto) -> booleano
+externo funcion _syn_texto_reemplazar(t: texto, viejo: texto, nuevo: texto) -> texto
+externo funcion _syn_texto_dividir(t: texto, separador: texto) -> entero
+externo funcion _syn_texto_dividir_longitud(lista_id: entero) -> entero
+externo funcion _syn_texto_dividir_obtener(lista_id: entero, indice: entero) -> texto
+externo funcion _syn_texto_dividir_liberar(lista_id: entero) -> nulo
+externo funcion _syn_texto_unir(lista_id: entero, separador: texto) -> texto
+externo funcion _syn_texto_recortar(t: texto) -> texto
+externo funcion _syn_texto_mayusculas(t: texto) -> texto
+externo funcion _syn_texto_minusculas(t: texto) -> texto
+externo funcion _syn_texto_comienza_con(t: texto, prefijo: texto) -> booleano
+externo funcion _syn_texto_termina_con(t: texto, sufijo: texto) -> booleano
+externo funcion _syn_texto_indice_de(t: texto, patron: texto) -> entero
+externo funcion _syn_texto_repetir(t: texto, veces: entero) -> texto
+externo funcion _syn_texto_invertir(t: texto) -> texto

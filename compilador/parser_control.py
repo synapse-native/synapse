@@ -84,13 +84,23 @@ class ParserControlMixin(ParserBase):
         if tok_listen is None:
             return None
         canal = self._parsear_expresion()
-        if self._esperar(TokenID.ARROW) is None:
+        # F3-7: gramatica del Manual 2 L113 — escuchar_canal ::= "escuchar" expresion
+        # ":" NEWLINE INDENT bloque DEDENT. La forma antigua `escuchar canal ->
+        # callback` NO esta en el manual (se corrige). El bloque recibe con
+        # `canal ->` dentro (Manual 5 §4.2: mensaje = mi_canal ->).
+        if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        respuesta = self._parsear_llamada()
+        if self._mirar().tipo == TokenID.NEWLINE:
+            cuerpo = self._parsear_bloque() or []
+        else:
+            cuerpo = []
+            stmt = self._parsear_sentencia()
+            if stmt is not None:
+                cuerpo.append(stmt)
         return SentenciaEscuchar(
             canal=canal,
-            respuesta=respuesta,
+            cuerpo=cuerpo,
             linea=tok_listen.linea,
             columna=tok_listen.columna,
         )
@@ -118,18 +128,20 @@ class ParserControlMixin(ParserBase):
         )
 
     def _parsear_para(self) -> Optional[SentenciaPara]:
+        # R30 (Manual 2 §2.2 L108): bucle_para ::= "para" IDENTIFICADOR "="
+        # expresion "mientras" expresion ":" NEWLINE INDENT bloque DEDENT.
+        # La actualizacion del contador es responsabilidad del CUERPO
+        # (ej: `para i = 0 mientras i < 10: ... i = i + 1`). Antes se parseaba
+        # el dialecto C-style `para i = 0; i < n; i = i + 1:` que NO existe en
+        # el Manual (desvio H-R29-2 corregido en la auditoria).
         tok_para = self._esperar(TokenID.PARA)
         if tok_para is None:
             return None
         inicializacion = self._parsear_asignacion()
-        if self._esperar(TokenID.SEMICOLON) is None:
+        if self._esperar(TokenID.MIENTRAS) is None:
             self._sincronizar(_SYNC_STMT)
             return None
         condicion = self._parsear_expresion()
-        if self._esperar(TokenID.SEMICOLON) is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        incremento = self._parsear_asignacion()
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -143,7 +155,7 @@ class ParserControlMixin(ParserBase):
         return SentenciaPara(
             inicializacion=inicializacion,
             condicion=condicion,
-            incremento=incremento,
+            incremento=None,
             cuerpo=cuerpo,
             linea=tok_para.linea,
             columna=tok_para.columna,
@@ -232,12 +244,31 @@ class ParserControlMixin(ParserBase):
                 break
 
             cuerpo_caso: List[Nodo] = []
-            while self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF):
-                stmt = self._parsear_sentencia()
-                if stmt is not None:
-                    cuerpo_caso.append(stmt)
-                else:
-                    self._avanzar()
+            if self._mirar().tipo == TokenID.NEWLINE:
+                # R22 (Manual 2 §2.4 L124 / Manual 3 L140): caso_coincidir ::=
+                # patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT ) — el
+                # cuerpo del caso puede ser un bloque indentado en la línea
+                # siguiente (ej. MANUAL 5 §7). Antes solo se aceptaba la forma
+                # de una línea y un coincidir anidado daba error de sintaxis
+                # (rc=8 nativo / ARROW_RIGHT tras expresión en S1).
+                cuerpo_caso = self._parsear_bloque() or []
+            else:
+                # R22: la forma de una línea termina en NEWLINE/DEDENT/EOF o en
+                # el borde del siguiente caso (columna del patrón) — sin el
+                # guard, un coincidir anidado de una línea se tragaba el caso
+                # siguiente (Token inesperado 'ARROW_RIGHT' tras expresión).
+                # NOTA (revisión code-reviewer): el guard de columna es una
+                # HEURÍSTICA de indentación (los bloques anidados consumen su
+                # propio DEDENT; el borde del caso siguiente se detecta por
+                # columna) — asume columnas consistentes (espacios). Paridad
+                # con el nativo (nucleo/parser.syn, guard token_columna <= col_c).
+                while (self._mirar().tipo not in (TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF)
+                       and self._mirar().columna > tok_patron.columna):
+                    stmt = self._parsear_sentencia()
+                    if stmt is not None:
+                        cuerpo_caso.append(stmt)
+                    else:
+                        self._avanzar()
 
             caso = NodoCaso(
                 patron=patron_completo,

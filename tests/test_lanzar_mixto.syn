@@ -1,0 +1,20 @@
+#lang: es
+
+// F4.4 - probe MIXTO: lanzar con argumentos y sin argumentos en el mismo
+// programa, en ambos ordenes, para validar la alineacion del contador del
+// pre-scan (_wrap_N) con la emision.
+
+funcion saludar(nombre: texto) -> nulo:
+    si nombre == "fibra":
+        log("SALUDO_OK")
+    retornar
+
+funcion pitido() -> nulo:
+    log("PITIDO_OK")
+    retornar
+
+funcion principal() -> nulo:
+    lanzar pitido()
+    lanzar saludar("fibra")
+    lanzar pitido()
+    retornar

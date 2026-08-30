@@ -22,7 +22,7 @@ del compilador (parser, codegen, puente).
 """
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ _TIPOS_PRIMITIVOS = frozenset({
 })
 _TIPOS_RC = frozenset({'rc', 'arc', 'debil', 'débil', 'weak', 'faible', 'fraco'})
 _TENSOR = frozenset({'tensor'})
-_CANAL = frozenset({'CanalConcurrencia'})
+_CANAL = frozenset({'CanalConcurrencia', 'Canal'})  # F3-7: base generica Canal<T> (Manual 2 L144)
 
 
 def _normalizar_primitivo(nombre: str) -> str:
@@ -241,7 +241,7 @@ def tipo_a_cadena(tipo: Optional['Tipo']) -> str:
 
 
 def es_tipo_conocido(cadena: str, estructuras: Optional[Set[str]] = None,
-                     adt_parametros: Optional[Dict[str, int]] = None) -> bool:
+                     adt_parametros: Optional[Dict[str, Union[int, List[str]]]] = None) -> bool:
     """Valida que una cadena de tipo sea un tipo CONOCIDO: primitivo lógico,
     struct registrado, ADT registrado, rc/arc/débil, tensor, canal, puntero o
     referencia de un tipo conocido. Manual 2 §8.2 (argumentos de tipo válidos)."""
@@ -261,12 +261,28 @@ def es_tipo_conocido(cadena: str, estructuras: Optional[Set[str]] = None,
         args = _dividir_argumentos(cuerpo)
         # Aridad: el ADT debe estar registrado y coincidir el número de parámetros
         if adt_parametros is not None and nombre in adt_parametros:
-            if len(args) != adt_parametros[nombre]:
+            # `adt_parametros[nombre]` es la LISTA de nombres de parámetros de
+            # tipo del ADT (p. ej. ['T','E'] para Resultado) en el flujo real,
+            # o un CONTEo entero en los tests unitarios ({'Resultado': 2}).
+            # R13: comparar contra el número esperado; antes se comparaba int
+            # contra lista y TODO ADT registrado devolvía False (falsos
+            # positivos en argumentos ADT anidados, p. ej.
+            # `Resultado<Resultado<entero,texto>,texto>`).
+            np = adt_parametros[nombre]
+            esperados = np if isinstance(np, int) else len(np)
+            if len(args) != esperados:
                 return False
         elif nombre in _TIPOS_RC:
             # rc/arc/débil<T> son tipos de conteo de referencias válidos
             # (Manual 2 §4.3; ABI placeholder void* hasta Fase 23)
             return all(es_tipo_conocido(a, estructuras, adt_parametros) for a in args)
+        elif nombre in _CANAL:
+            # Canal<T> (Manual 2 L144 / Manual 5 §3.2): base genérica con
+            # exactamente 1 argumento de tipo; F3-6 añadió 'Canal' al analizador
+            # nativo — paridad aquí (antes `Canal<entero>` como parámetro se
+            # rechazaba con 'tipo conocido').
+            return len(args) == 1 and all(
+                es_tipo_conocido(a, estructuras, adt_parametros) for a in args)
         else:
             # Instanciación de un ADT no registrado: la base debe existir como struct
             if estructuras is not None and nombre not in estructuras:

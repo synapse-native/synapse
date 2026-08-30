@@ -29,6 +29,16 @@ synapse_llvm.c
 _*.c
 _*.c.o
 _*.h
+*.syn.json
+# C generado por el compilador Synapse a partir de .syn fuente (ej: lsp_v3.syn -> lsp_v3.c)
+nucleo/lsp_v3.c
+# Scratch/drivers temporales de verificacion (no fuente definitiva)
+nucleo/_tmp_*.syn
+tests/fixtures/tmp_*.syn
+# CLASE D1: C generado al lado de .syn fuente (ej: hola.syn → hola.c)
+examples/**/*.c
+tests/fixtures/*.c
+std/**/*.c
 
 # CLASE D2: Artefactos de prueba en raíz (auditoría Fase 0)
 prueba_*.c
@@ -85,6 +95,9 @@ tests/dummy_main.c
 tests/validate_borrow_abort.c
 tests/validate_borrow_abort.syn.json
 
+# CLASE M2: Artefactos de ejecución de tests en raíz
+test_*.txt
+
 # CLASE N: Paquetes locales Axon
 paquetes_oficiales/
 
@@ -104,7 +117,20 @@ test_lsp_bin
 *.pub
 *.attestation.json
 
+# CLASE R2: Artefactos públicos de release (checksums y changelog — NO son secretos)
+!CHANGELOG_v*.md
+!*.sha256
+
+# CLASE R3: Artefactos de perfilamiento PGO
+*.profdata
+*.profraw
+
 # Estándar Python
 *.egg-info/
 .venv/
 venv/
+tests/probe_f46.c
+tests/probe_f46.syn.json
+
+# Estado local de agentes de edicion (kilo)
+.kilo/

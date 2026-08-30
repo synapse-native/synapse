@@ -1,0 +1,14 @@
+#lang: es
+// R92 - cierre H-R87-1 (Opción B del Arquitecto): `variable` es la forma
+// canónica de declaracion a nivel de módulo (M3 §3 L74); `let` queda
+// restringido a ámbito local (M3 §3 L122). Salida esperada:
+//   7
+//   17
+
+variable INICIO = 7
+
+funcion principal() -> entero:
+    escribir_linea(entero_a_texto(INICIO))
+    let extra = 10
+    escribir_linea(entero_a_texto(INICIO + extra))
+    retornar 0

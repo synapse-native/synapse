@@ -1,10 +1,14 @@
 """
-test_cluster_nodes.py — Pruebas de integración para M8.1 (Red de Nodos Synapse)
+test_cluster_nodes.py — Pruebas de integración para M8.1 (Red de Nodos Synapse).
+Manual 5 §6 / Manual 6 §5.3: red de nodos, handshake Ed25519 zero-trust.
 Valida handshake criptográfico Ed25519, intercambio por canales remotos y rechazo de firmas inválidas.
 """
 
 import os
 import sys
+import pytest
+
+pytestmark = pytest.mark.integration
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 

@@ -96,6 +96,13 @@ class Parser(
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ARROW_LEFT):
                 return self._parsear_enviar_canal()
+            # Manual 5 §4.2: `ch ->` como expression statement (receive)
+            if (es_token_identificador(t)
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+                expr = self._parsear_recibir_canal()
+                if expr is not None:
+                    return SentenciaExpr(expr=expr, linea=t.linea, columna=t.columna)
             if (es_token_identificador(t)
                     and self.pos + 1 < len(self.tokens)
                     and self.tokens[self.pos + 1].tipo == TokenID.ASSIGN):
@@ -135,20 +142,19 @@ class Parser(
         )
 
     def _parsear_declaracion_tipada(self) -> DeclaracionVariable:
+        """F3-8 (Manual 2 L134): la forma `x: tipo = expr` SIN `let` NO existe en el
+        manual — declaracion_variable ::= "let" IDENTIFICADOR [ ":" tipo ]
+        [ "=" expresion ] NEWLINE. El S1 la aceptaba lenient (emitía
+        `int64_t x = ...`); el nativo emitía `x;` (C inválido). Ahora se
+        rechaza con error limpio en ambos compiladores (paridad)."""
         tok_id = self._avanzar()
-        self._esperar(TokenID.COLON)
-        tipo = self._parsear_tipo_parametro()
-        self._esperar(TokenID.ASSIGN)
-        if (es_token_identificador(self._mirar())
-                and self.pos + 1 < len(self.tokens)
-                and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
-            expr = self._parsear_recibir_canal()
-        else:
-            expr = self._parsear_expresion()
+        self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, tok_id,
+                           esperado="let", encontrado=nombre_de_token(tok_id))
+        self._sincronizar(_SYNC_EXPR)
         return DeclaracionVariable(
-            nombre=nombre_de_token(tok_id),
-            tipo=tipo,
-            expresion=expr,
+            nombre='',
+            tipo='',
+            expresion=None,
             linea=tok_id.linea,
             columna=tok_id.columna,
         )
@@ -173,7 +179,14 @@ class Parser(
         expr = None
         if self._mirar().tipo == TokenID.ASSIGN:
             self._avanzar()
-            expr = self._parsear_expresion()
+            if (es_token_identificador(self._mirar())
+                    and self.pos + 1 < len(self.tokens)
+                    and self.tokens[self.pos + 1].tipo == TokenID.ARROW):
+                # F3-8: `let z: entero = ch ->` — receive (Manual 5 §4.2),
+                # paridad con _parsear_asignacion/_parsear_declaracion_tipada.
+                expr = self._parsear_recibir_canal()
+            else:
+                expr = self._parsear_expresion()
         return DeclaracionVariable(
             nombre=nombre_de_token(tok_id),
             tipo=tipo,
@@ -192,19 +205,27 @@ class Parser(
             columna=tok_delegar.columna,
         )
 
-    def _parsear_export(self) -> DeclaracionExport:
+    def _parsear_export(self) -> Optional[Nodo]:
         """F1.2d: `@export ( IDENTIFICADOR ) funcion` (Manual 2 §2 L81)."""
         tok_export = self._esperar(TokenID.EXPORT)
         self._esperar(TokenID.LPAREN)
         tok_destino = self._esperar_identificador()
         self._esperar(TokenID.RPAREN)
-        funcion = self._parsear_def_funcion()
-        return DeclaracionExport(
-            destino=nombre_de_token(tok_destino) if tok_destino is not None else '',
-            funcion=funcion,
-            linea=tok_export.linea if tok_export is not None else 0,
-            columna=tok_export.columna if tok_export is not None else 0,
-        )
+        # Manual 6 §4.1: NEWLINE permitted between @export(...) and declaration
+        self._saltar_nueva_linea()
+        # Manual 6 §4.1: @export can precede funcion or estructura
+        if self._mirar().tipo == TokenID.FUNCION:
+            funcion = self._parsear_def_funcion()
+            return DeclaracionExport(
+                destino=nombre_de_token(tok_destino) if tok_destino is not None else '',
+                funcion=funcion,
+                linea=tok_export.linea if tok_export is not None else 0,
+                columna=tok_export.columna if tok_export is not None else 0,
+            )
+        elif self._mirar().tipo == TokenID.ESTRUCTURA:
+            # @export before estructura: parse structure directly (Manual 6 §4.1)
+            return self._parsear_def_estructura()
+        return None
 
     def _parsear_declaracion_tipo(self) -> Optional[DeclaracionTipo]:
         """F1.2: `tipo <Nombre> [<T, E>] = <tipo> | ctor(...) [| ctor(...)]`

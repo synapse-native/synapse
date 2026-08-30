@@ -132,344 +132,9 @@ funcion str_len_ptr(ptr: puntero) -> entero:
         retornar r
 
 // --- Keyword dictionary lookup (multi-idioma, Manual 2 S2.3) ---
-// AUDITORIA FASE A (A2.1): activados let/delegar/rc/arc/débil/modulo
-// (Manual 2 §3: T_LET, T_DELEGAR, T_RC, T_ARC, T_DEBIL, T_MODULO), keywords
-// contextuales que conservan el lexema para el parser (paridad con _P_*).
-funcion keyword_token_es(palabra: cadena) -> entero:
-    si str_eq(palabra, "si") == 1:
-        retornar T_SI
-    si str_eq(palabra, "sino") == 1:
-        retornar T_SINO
-    si str_eq(palabra, "funcion") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retornar") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lanzar") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperar") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "escuchar") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "mientras") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "importar") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "romper") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "siguiente") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "estructura") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "y") == 1:
-        retornar T_Y
-    si str_eq(palabra, "o") == 1:
-        retornar T_O
-    si str_eq(palabra, "no") == 1:
-        retornar T_NO
-    si str_eq(palabra, "verdadero") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "falso") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "inseguro") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importar_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externo") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "coincidir") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requiere") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garantiza") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "canal") == 1:
-        retornar T_CANAL
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "para") == 1:
-        retornar T_PARA
-    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
-    si str_eq(palabra, "tipo") == 1:
-        retornar T_TIPO
-    si str_eq(palabra, "tensor") == 1:
-        retornar T_TENSOR
-    si str_eq(palabra, "nulo") == 1:
-        retornar T_NULO
-    si str_eq(palabra, "ok") == 1:
-        retornar T_OK
-    si str_eq(palabra, "err") == 1:
-        retornar T_ERR
-    si str_eq(palabra, "algun") == 1:
-        retornar T_ALGUN
-    si str_eq(palabra, "ninguno") == 1:
-        retornar T_NINGUNO
-    // AUDITORIA FASE A (A2.1): Manual 2 §3 — let/delegar/rc/arc/débil/modulo
-    si str_eq(palabra, "let") == 1:
-        retornar T_LET
-    si str_eq(palabra, "delegar") == 1:
-        retornar T_DELEGAR
-    si str_eq(palabra, "rc") == 1:
-        retornar T_RC
-    si str_eq(palabra, "arc") == 1:
-        retornar T_ARC
-    si str_eq(palabra, "débil") == 1:
-        retornar T_DEBIL
-    si str_eq(palabra, "modulo") == 1:
-        retornar T_MODULO
-    retornar 0
-
-funcion keyword_token_en(palabra: cadena) -> entero:
-    si str_eq(palabra, "if") == 1:
-        retornar T_SI
-    si str_eq(palabra, "else") == 1:
-        retornar T_SINO
-    si str_eq(palabra, "function") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "return") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "spawn") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recover") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "listen") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "while") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "break") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continue") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "import") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "struct") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "and") == 1:
-        retornar T_Y
-    si str_eq(palabra, "or") == 1:
-        retornar T_O
-    si str_eq(palabra, "not") == 1:
-        retornar T_NO
-    si str_eq(palabra, "true") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "false") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "unsafe") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "import_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "extern") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "match") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requires") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "ensures") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constant") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "const") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "for") == 1:
-        retornar T_PARA
-    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
-    si str_eq(palabra, "type") == 1:
-        retornar T_TIPO
-    si str_eq(palabra, "tensor") == 1:
-        retornar T_TENSOR
-    si str_eq(palabra, "null") == 1:
-        retornar T_NULO
-    si str_eq(palabra, "ok") == 1:
-        retornar T_OK
-    si str_eq(palabra, "err") == 1:
-        retornar T_ERR
-    si str_eq(palabra, "some") == 1:
-        retornar T_ALGUN
-    si str_eq(palabra, "none") == 1:
-        retornar T_NINGUNO
-    // AUDITORIA FASE A (A2.1): Manual 2 §3
-    si str_eq(palabra, "let") == 1:
-        retornar T_LET
-    si str_eq(palabra, "delegate") == 1:
-        retornar T_DELEGAR
-    si str_eq(palabra, "rc") == 1:
-        retornar T_RC
-    si str_eq(palabra, "arc") == 1:
-        retornar T_ARC
-    si str_eq(palabra, "weak") == 1:
-        retornar T_DEBIL
-    si str_eq(palabra, "module") == 1:
-        retornar T_MODULO
-    retornar 0
-
-funcion keyword_token_fr(palabra: cadena) -> entero:
-    si str_eq(palabra, "si") == 1:
-        retornar T_SI
-    si str_eq(palabra, "sinon") == 1:
-        retornar T_SINO
-    si str_eq(palabra, "fonction") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retourner") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lancer") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperer") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "ecouter") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "tantque") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "rompre") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continuer") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "importer") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "structure") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "et") == 1:
-        retornar T_Y
-    si str_eq(palabra, "ou") == 1:
-        retornar T_O
-    si str_eq(palabra, "non") == 1:
-        retornar T_NO
-    si str_eq(palabra, "vrai") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "faux") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "dangereux") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importer_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externe") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "correspondre") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "exige") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garantit") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "pour") == 1:
-        retornar T_PARA
-    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
-    si str_eq(palabra, "type") == 1:
-        retornar T_TIPO
-    si str_eq(palabra, "tenseur") == 1:
-        retornar T_TENSOR
-    si str_eq(palabra, "nul") == 1:
-        retornar T_NULO
-    si str_eq(palabra, "ok") == 1:
-        retornar T_OK
-    si str_eq(palabra, "err") == 1:
-        retornar T_ERR
-    si str_eq(palabra, "some") == 1:
-        retornar T_ALGUN
-    si str_eq(palabra, "aucun") == 1:
-        retornar T_NINGUNO
-    // AUDITORIA FASE A (A2.1): Manual 2 §3
-    si str_eq(palabra, "let") == 1:
-        retornar T_LET
-    si str_eq(palabra, "déléguer") == 1:
-        retornar T_DELEGAR
-    si str_eq(palabra, "rc") == 1:
-        retornar T_RC
-    si str_eq(palabra, "arc") == 1:
-        retornar T_ARC
-    si str_eq(palabra, "faible") == 1:
-        retornar T_DEBIL
-    si str_eq(palabra, "module") == 1:
-        retornar T_MODULO
-    retornar 0
-
-funcion keyword_token_pt(palabra: cadena) -> entero:
-    si str_eq(palabra, "se") == 1:
-        retornar T_SI
-    si str_eq(palabra, "senao") == 1:
-        retornar T_SINO
-    si str_eq(palabra, "funcao") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retornar") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lancar") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperar") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "escutar") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "enquanto") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "parar") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continuar") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "importar") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "estrutura") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "e") == 1:
-        retornar T_Y
-    si str_eq(palabra, "ou") == 1:
-        retornar T_O
-    si str_eq(palabra, "nao") == 1:
-        retornar T_NO
-    si str_eq(palabra, "verdadeiro") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "falso") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "inseguro") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importar_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externo") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "coincidir") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requer") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garante") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "para") == 1:
-        retornar T_PARA
-    // AUDITORIA F1 (D-F1): Manual 2 §3 — keywords contextuales activados
-    si str_eq(palabra, "tipo") == 1:
-        retornar T_TIPO
-    si str_eq(palabra, "tensor") == 1:
-        retornar T_TENSOR
-    si str_eq(palabra, "nulo") == 1:
-        retornar T_NULO
-    si str_eq(palabra, "ok") == 1:
-        retornar T_OK
-    si str_eq(palabra, "err") == 1:
-        retornar T_ERR
-    si str_eq(palabra, "algum") == 1:
-        retornar T_ALGUN
-    si str_eq(palabra, "nenhum") == 1:
-        retornar T_NINGUNO
-    // AUDITORIA FASE A (A2.1): Manual 2 §3
-    si str_eq(palabra, "let") == 1:
-        retornar T_LET
-    si str_eq(palabra, "delegar") == 1:
-        retornar T_DELEGAR
-    si str_eq(palabra, "rc") == 1:
-        retornar T_RC
-    si str_eq(palabra, "arc") == 1:
-        retornar T_ARC
-    si str_eq(palabra, "fraco") == 1:
-        retornar T_DEBIL
-    si str_eq(palabra, "modulo") == 1:
-        retornar T_MODULO
-    retornar 0
+// R32 (D-9(b), regla 13): las 4 tablas es/en/fr/pt se modularizaron a
+// nucleo/lexer_keywords.syn (texto identico); el orquestador keyword_token
+// delega en las funciones keyword_token_es/en/fr/pt de ese modulo.
 
 funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
     si idioma == IDIOMA_EN:
@@ -568,7 +233,7 @@ funcion lexer_obtener_total() -> entero:
 // El lexer produce LexerBuffers.tokens (struct TokenLex) con CadenaSegura.valor (ptr 64b);
 // el parser nativo consume TokenExt{int ptr_valor, int len_valor}. Se realiza la
 // conversion aqui (low ptr en ptr_valor, hi bits en _P_tk_ptr_hi) para evitar
-// truncamiento (paridad _probe_a21b.py). Pendiente fase 2: divulgar _P_tk_ptr_hi.
+// truncamiento. Pendiente fase 2: divulgar _P_tk_ptr_hi.
 funcion lexer_obtener_tokens() -> puntero:
     inseguro:
         asm("static struct TokenExt _P_tk_ext[65536];")
@@ -863,10 +528,6 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         lexer_push_token(T_FLECHA, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                    si c == 60:
-                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), i + 1)
-                        asm("i = i + 2")
-                        siguiente
                 lexer_push_token(T_MENOS, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
@@ -900,6 +561,14 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                         lexer_push_token(T_MENOR_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
+                    // R14: '<-' es el envio de canal (paridad S1 lexer.py:326
+                    // '<-': ARROW_LEFT). Antes el lexer nativo solo producia
+                    // '-<' (orden invertido) -> 'ch <- dato' se parseaba como
+                    // 'ch < -dato' (OpBinaria) y el nodo 42 nunca nacía.
+                    si c == 45:
+                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
                 lexer_push_token_punt(T_MENOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
@@ -926,11 +595,16 @@ funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
                 asm("i = i + 1")
                 siguiente
             si c == 40:
-                lexer_push_token(T_PAREN_IZQ, lexer_linea_actual(), i + 1)
+                // R11: lexema real (patron A3.1) — necesario para que
+                // nodo_guardar_span reconstruya spans multi-token como
+                // 'ok(valor)': con datos="" la aritmetica de punteros
+                // (t1.datos - t0.datos) mezclaba buffer de fuente y literal
+                // "" -> len_str basura (0x6B2D736D) -> segfault en puente_str.
+                lexer_push_token_punt(T_PAREN_IZQ, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 41:
-                lexer_push_token(T_PAREN_DER, lexer_linea_actual(), i + 1)
+                lexer_push_token_punt(T_PAREN_DER, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 58:

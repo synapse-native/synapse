@@ -25,8 +25,7 @@ MANUAL REFERENCIADO: Manual 9, Seccion 9.7 (determinismo: bootstrap de 3 etapas 
        diff 0 bytes entre Stage 2 y Stage 3 — evidencia L123/L450/L475); Manual 2,
        Seccion 2 (gramatica EBNF completa L36-200: declaracion_tipo L74, delegar L132,
        declaracion_variable L134 — objetivo del port A2.1-A2.4).
-HASH COMMIT: pendiente (sin commit en esta etapa: es validación de baseline; los cambios
-       A5.1 del D-7 permanecen en el working tree sin commitear por decisión del Arquitecto).
+HASH COMMIT: **198707d** (tramo F1.3 — la etapa de validación de baseline se cerró al commitear el tramo; resuelto por el verificador de alineación).
 COMPILACION: build.sh bootstrap-full S1->S2->S3:
        - Etapa 1: python main.py nucleo/principal.syn -> synapse_stage1.exe OK
        - Etapa 2: synapse_stage1.exe -> synapse_stage2.exe OK (1262664 bytes)

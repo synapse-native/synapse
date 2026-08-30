@@ -1,0 +1,8 @@
+#lang: es
+
+importar mathlib
+
+funcion principal() -> nulo:
+    saludar()
+    r = sumar(10, 5)
+    log(r)

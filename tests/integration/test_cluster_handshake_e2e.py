@@ -1,5 +1,6 @@
 """
-test_cluster_handshake_e2e.py — M18.3+M18.4: Arnes de prueba Handshake Ed25519
+test_cluster_handshake_e2e.py — M18.3+M18.4: Arnes de prueba Handshake Ed25519.
+Manual 6 §5.3: Handshake Ed25519 zero-trust (TweetNaCl).
 
 Cubre:
   1. Compilacion del binario C de handshake E2E
@@ -15,16 +16,20 @@ import sys
 import time
 import pytest
 
+from conftest import rt_objs
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 # --- Configuracion ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 BIN_NAME = "test_cluster_handshake_e2e.exe" if sys.platform == "win32" else "test_cluster_handshake_e2e"
 BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
 SYN_PATH = os.path.join(PROJECT_ROOT, "tests", "integration", "test_cluster_handshake.syn")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+
+
 
 
 def _find_gcc() -> str:
@@ -51,7 +56,7 @@ def _compilar() -> bool:
         print(f"[SKIP] {src} no encontrado")
         return False
 
-    objs = [o for o in [SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O] if o and os.path.exists(o)]
+    objs = [o for o in RT_OBJS if o and os.path.exists(o)]
 
     if not objs:
         print("[SKIP] No se encontraron objetos runtime")
@@ -144,12 +149,12 @@ class TestM184_Unitarios:
                 raise RuntimeError("No se pudo compilar el binario")
 
     def test_unitarios_pasan(self):
-        """21 tests unitarios: Ed25519 keygen, firma, verificacion, rechazos, raw UDP."""
-        rc, out, err = _run_bin("", timeout=15)
-        assert rc == 0, f"Binario debe retornar 0 (rc={rc}): {err[:200]}"
-        assert "21" in out, f"Deben pasar 21 tests: {out}"
-        assert "Fallos: 0" in out, f"No debe haber fallos: {out}"
-        print(f"\n[OK] Tests unitarios C pasan:\n{out[-200:]}")
+        """21 tests unitarios: Ed25519 keygen, firma, verificacion, rechazos, raw UDP (Manual 6 §5.3)."""
+        rc, stdout_bin, stderr_bin = _run_bin("", timeout=15)
+        assert rc == 0, f"Binario debe retornar 0 (rc={rc}): {stderr_bin[:200]}"
+        assert "21" in stdout_bin, f"Deben pasar 21 tests: {stdout_bin}"
+        assert "Fallos: 0" in stdout_bin, f"No debe haber fallos: {stdout_bin}"
+        print(f"\n[OK] Tests unitarios C pasan:\n{stdout_bin[-200:]}")
 
 
 class TestM184_HandshakeCompleto:

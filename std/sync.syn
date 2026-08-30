@@ -1,0 +1,37 @@
+#lang: es
+// std.sync — Primitivas de sincronización de bajo nivel (Manual 5 §5)
+// Integrante de la Biblioteca Estandar de Synapse.
+//
+// Uso desde Synapse (dentro de bloques `inseguro`, Manual 5 §5):
+//   importar std.sync
+//   m = mutex_crear()
+//   mutex_bloquear(m)
+//   // Sección crítica
+//   mutex_desbloquear(m)
+//   mutex_destruir(m)
+//
+//   s = semaforo_crear(3)   // Capacidad 3
+//   semaforo_esperar(s)
+//   semaforo_señalar(s)
+//
+//   b = barrera_crear(5)    // 5 participantes
+//   barrera_esperar(b)
+//
+// Las primitivas son fiber-aware (Manual 5 §2.6 + F4.5): una fibra bloqueada
+// se parquea en el scheduler en vez de bloquear a su worker M:N. El tipo de
+// manija es `puntero` (opaco) — el runtime define las estructuras reales en
+// synapse_rt_types.h (Manual 5 §5.4).
+
+externo funcion mutex_crear() -> puntero
+externo funcion mutex_bloquear(m: puntero) -> nulo
+externo funcion mutex_desbloquear(m: puntero) -> nulo
+externo funcion mutex_destruir(m: puntero) -> nulo
+
+externo funcion semaforo_crear(valor: entero) -> puntero
+externo funcion semaforo_esperar(s: puntero) -> nulo
+externo funcion semaforo_señalar(s: puntero) -> nulo
+externo funcion semaforo_destruir(s: puntero) -> nulo
+
+externo funcion barrera_crear(total: entero) -> puntero
+externo funcion barrera_esperar(b: puntero) -> nulo
+externo funcion barrera_destruir(b: puntero) -> nulo

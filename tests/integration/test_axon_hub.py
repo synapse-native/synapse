@@ -6,6 +6,8 @@ import pytest
 import os
 import json
 
+pytestmark = pytest.mark.integration
+
 RAIZ = os.path.join(os.path.dirname(__file__), "..", "..")
 
 
