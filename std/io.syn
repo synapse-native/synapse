@@ -1,6 +1,7 @@
 #lang: es
 // std.io — Entrada/Salida estándar (consola y archivos)
 // Integrante de la Biblioteca Estandar de Synapse.
+// Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
 //
 // Uso desde Synapse:
 //   importar std.io
@@ -10,31 +11,51 @@
 
 importar std.sistema
 
-funcion abrir(ruta: texto, modo: texto) -> Canal:
+funcion abrir(ruta: texto, modo: texto) -> Canal
+    requiere:
+        longitud(ruta) > 0
+    requiere:
+        longitud(modo) > 0
+    garantiza:
+        resultado >= 0
     ruta_segura = _validar_ruta_segura(ruta)
     si ruta_segura == "":
         retornar 0
     retornar _syn_abrir(ruta_segura, modo)
 
-funcion leer(c: Canal) -> texto:
+funcion leer(c: Canal) -> texto
+    requiere:
+        c >= 0
+    garantiza:
+        longitud(resultado) >= 0
     retornar _syn_leer(c)
 
 externo funcion cerrar_archivo(c: Canal) -> nulo
 
-funcion escribir(texto: texto) -> nulo:
+funcion escribir(texto: texto) -> nulo
+    requiere:
+        longitud(texto) >= 0
     _syn_escribir(texto)
 
-funcion escribir_linea(texto: texto) -> nulo:
+funcion escribir_linea(texto: texto) -> nulo
+    requiere:
+        longitud(texto) >= 0
     _syn_escribir_linea(texto)
 
-funcion leer_linea() -> texto:
+funcion leer_linea() -> texto
+    garantiza:
+        longitud(resultado) >= 0
     retornar _syn_leer_linea()
 
 // ============================================================
 // §1.7.1 — Leer bytes (lectura binaria de stdin)
 // ============================================================
 
-funcion leer_bytes(cantidad: entero) -> texto:
+funcion leer_bytes(cantidad: entero) -> texto
+    requiere:
+        cantidad >= 0
+    garantiza:
+        longitud(resultado) >= 0
     retornar _syn_leer_bytes(cantidad)
 
 externo funcion _syn_abrir(ruta: texto, modo: texto) -> Canal
@@ -66,5 +87,3 @@ externo funcion _syn_fflush(canalm: entero) -> nulo
 
 // Desactiva buffering en un canal
 externo funcion _syn_setbuf_null(canalm: entero) -> nulo
-
-// CACHE TEST: modification
