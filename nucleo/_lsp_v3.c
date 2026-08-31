@@ -1,5 +1,8 @@
 #include "_synapse_shared.h"
 
+// cumple Manual 8 §1.2: tope maximo de mensaje LSP (1MB) para prevenir DoS
+#define MAX_LSP_MSG_SIZE (1024 * 1024)
+
 char _gen_tmp_buf[4096];
 
 char _G_emit_buf[1048576];
@@ -246,7 +249,17 @@ CadenaSegura construir_error(int64_t id, int64_t codigo, CadenaSegura mensaje) {
     #ifndef SYNAPSE_RELEASE
     assert(((id >= 0LL)) && "Fallo en contrato: requiere");
     #endif
-    CadenaSegura _resultado_ = concat(concat(concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id)), (CadenaSegura){ .longitud = (int)strlen(",\"error\":{\"code\":"), .datos = ",\"error\":{\"code\":" }), a_texto(codigo)), (CadenaSegura){ .longitud = (int)strlen(",\"message\":\""), .datos = ",\"message\":\"" }), mensaje), (CadenaSegura){ .longitud = (int)strlen("\"}}"), .datos = "\"}}" });
+    // cumple Manual 8 §1.2: snprintf para evitar null bytes en a_texto
+    char buf[1024];
+    int n = snprintf(buf, sizeof(buf),
+        "{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":%lld,\"message\":\"%.*s\"}}",
+        (long long)id, (long long)codigo, mensaje.longitud, mensaje.datos ? mensaje.datos : "");
+    char* _dst = (char*)pool_alloc((size_t)(n + 1));
+    CadenaSegura _resultado_ = { .longitud = n, .datos = _dst };
+    if (_dst) {
+        memcpy(_dst, buf, (size_t)n);
+        _dst[n] = '\0';
+    }
     #ifndef SYNAPSE_RELEASE
     assert(((strlen_s(_resultado_) > 0LL)) && "Fallo en contrato: garantiza");
     #endif
@@ -1642,7 +1655,14 @@ int64_t _principal_impl(void) {
     CadenaSegura uri_actual = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
     while ((ejecutando == 1LL)) {
         int64_t content_length = leer_cabecera();
-        if ((content_length <= 0LL)) {
+        // cumple Manual 8 §1.2: validacion explicita de Content-Length (todos los builds)
+        if ((content_length < 0LL)) {
+            enviar_respuesta(construir_error(0LL, (-32600LL), (CadenaSegura){ .longitud = (int)strlen("Invalid Request: Content-Length missing or negative"), .datos = "Invalid Request: Content-Length missing or negative" }));
+            break;
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        if ((content_length > MAX_LSP_MSG_SIZE)) {
+            enviar_respuesta(construir_error(0LL, (-32600LL), (CadenaSegura){ .longitud = (int)strlen("Invalid Request: Content-Length exceeds maximum"), .datos = "Invalid Request: Content-Length exceeds maximum" }));
             break;
               /* [Lifetime Scope: exit depth=2] */
         }
@@ -1712,6 +1732,12 @@ int64_t _principal_impl(void) {
               /* [Lifetime Scope: exit depth=2] */
         }
         struct NodoJson msg = desde_texto(body);
+        // cumple Manual 8 §1.2: validar que el cuerpo sea JSON parseable
+        if ((msg.tipo < 0LL)) {
+            enviar_respuesta(construir_error(0LL, (-32700LL), (CadenaSegura){ .longitud = (int)strlen("Parse error: invalid JSON"), .datos = "Parse error: invalid JSON" }));
+            continue;
+              /* [Lifetime Scope: exit depth=2] */
+        }
         struct NodoJson method_nodo = obtener_campo(msg, (CadenaSegura){ .longitud = (int)strlen("method"), .datos = "method" });
         CadenaSegura method_str = strcpy_f(_json_a_texto(method_nodo));
         struct NodoJson params_nodo = obtener_campo(msg, (CadenaSegura){ .longitud = (int)strlen("params"), .datos = "params" });
