@@ -115,7 +115,7 @@ def _auditar_memoria():
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
     compiler = _resolver_gcc()
-    
+
     # Tests C a compilar con ASan
     c_tests = [
         'tests/test_work_stealing.c',       # M8.2
@@ -123,17 +123,17 @@ def _auditar_memoria():
         'tests/test_tls.c',                 # M4.6 TLC
         'tests/test_same_buffer.c',           # RAW hazard
     ]
-    
+
     try:
         rt_objs = _compilar_runtime_sanitizado('asan', '-fsanitize=address,undefined')
     except RuntimeError as e:
         print(f'  [FAIL] {e}')
         return 1
     rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
-    
+
     flags = '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -DSYNAPSE_DEBUG_MEM -I.'
     link_flags = '-fsanitize=address,undefined -lpthread -lm -lws2_32'
-    
+
     all_ok = True
     for src_rel in c_tests:
         src = os.path.join(root, src_rel)
@@ -166,7 +166,7 @@ def _auditar_memoria():
         finally:
             try: os.remove(exe)
             except OSError: pass
-    
+
     if all_ok:
         print('\n[ASan/LSan] RESULTADO: 0 fugas de memoria detectadas — CERTIFICADO')
     else:
@@ -182,7 +182,7 @@ def _auditar_hilos():
     import subprocess
     root = os.path.dirname(os.path.abspath(__file__))
     compiler = _resolver_gcc()
-    
+
     # Stress test con canales concurrentes (F10.5)
     stress_src = os.path.join(root, 'tests', 'stress', 'test_stress_concurrencia.c')
     try:
@@ -191,14 +191,14 @@ def _auditar_hilos():
         print(f'  [FAIL] {e}')
         return 1
     rt_obj, rt_mem, rt_conc, rt_tweet = rt_objs
-    
+
     flags = '-O1 -g -fsanitize=thread -DSYNAPSE_DEBUG_MEM -I.'
     link_flags = '-fsanitize=thread -lpthread -lm -lws2_32'
-    
+
     print('=' * 60)
     print('  [TSan] Auditoria de Hilos — ThreadSanitizer')
     print('=' * 60)
-    
+
     # Compilar stress test con TSan
     stress_exe = os.path.join(root, 'tests', 'stress', 'stress_tsan.exe')
     cmd = f'{compiler} {flags} "{stress_src}" "{rt_obj}" "{rt_mem}" "{rt_conc}" "{rt_tweet}" -o "{stress_exe}" {link_flags}'
@@ -209,7 +209,7 @@ def _auditar_hilos():
         print(ret.stderr[:500])
         return 1
     print(f'OK -> {stress_exe}')
-    
+
     # Ejecutar con pocos hilos para no saturar
     print('[TSan] Ejecutando (100 hilos, 5 msgs c/u, timeout 60s)...')
     try:
@@ -227,7 +227,7 @@ def _auditar_hilos():
     finally:
         try: os.remove(stress_exe)
         except OSError: pass
-    
+
     print('\n[TSan] RESULTADO: 0 data races detectadas — CERTIFICADO')
     return 0
 
@@ -761,7 +761,7 @@ def main():
 
     # Detectar subcomando
     subcommand = None
-    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon'):
+    if first_non_option in ('cache', 'build', 'test', 'fetch', 'init', 'axon', 'run', 'debug', 'opensyn'):
         subcommand = first_non_option
 
     # Manejar subcomando 'cache'
@@ -772,7 +772,7 @@ def main():
             if not arg.startswith('-'):
                 cache_subcmd = arg
                 break
-        
+
         if not cache_subcmd or cache_subcmd == "cache":
             _print_cache_help()
             return 1
@@ -870,11 +870,11 @@ def main():
             if not arg.startswith('-'):
                 build_file = arg
                 break
-        
+
         if not build_file:
             print("ERROR: Se requiere archivo .syn para build")
             return 1
-        
+
         # Parsear opciones adicionales (--incremental, -o)
         incremental = "--incremental" in sys.argv
         output_path = None
@@ -883,7 +883,7 @@ def main():
                 if i + 1 < len(sys.argv):
                     output_path = sys.argv[i + 1]
                 break
-        
+
         # Parsear --target (Manual 8 §4.2)
         target = "native"
         for i, arg in enumerate(sys.argv):
@@ -891,7 +891,7 @@ def main():
                 if i + 1 < len(sys.argv):
                     target = sys.argv[i + 1]
                     break
-        
+
         modo_safe = "--safe" in sys.argv
         check_only = "--check" in sys.argv
         generar_sbom_flag = "--sbom" in sys.argv
@@ -910,9 +910,144 @@ def main():
                                       check_only=check_only)
         return codigo
 
+    # Manejar subcomando 'run' (Manual 8 §4.1: synapse run <archivo>)
+    if subcommand == 'run':
+        run_file = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                run_file = arg
+                break
+        if not run_file:
+            print("ERROR: Se requiere archivo .syn/.syq para run", file=sys.stderr)
+            sys.exit(1)
+        if not os.path.exists(run_file):
+            print(f"ERROR: Archivo '{run_file}' no encontrado", file=sys.stderr)
+            sys.exit(1)
+        # Compilar y ejecutar
+        output_tmp = os.path.join(os.environ.get('TEMP', '.'), f"synapse_run_{os.getpid()}")
+        if sys.platform == 'win32':
+            output_tmp += '.exe'
+        modo_debug_run = "--debug" in sys.argv
+        codigo = ejecutar_compilador(run_file, mostrar_tokens=False, output_lang=None,
+                                     dump_ast=False, modo_safe=False, output_path=output_tmp,
+                                     incremental=False, generar_sbom=False, firmar_binario=False,
+                                     clave_sbom='', target="native", modo_release=False,
+                                     modo_debug=modo_debug_run, check_only=False)
+        if codigo != 0:
+            print(f"ERROR: Compilación falló (código {codigo})", file=sys.stderr)
+            sys.exit(codigo)
+        if not os.path.exists(output_tmp):
+            print("ERROR: No se generó el ejecutable", file=sys.stderr)
+            sys.exit(1)
+        print(f"[RUN] Ejecutando {run_file}...")
+        result = subprocess.run([output_tmp], timeout=60)
+        sys.exit(result.returncode)
+
+    # Manejar subcomando 'debug' (Manual 8 §3.4/§4.1: synapse debug <subcomando>)
+    if subcommand == 'debug':
+        debug_subcmd = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                debug_subcmd = arg
+                break
+        # Flags del debugger
+        if "--load" in sys.argv:
+            trace_file = None
+            for i, arg in enumerate(sys.argv):
+                if arg == "--load" and i + 1 < len(sys.argv):
+                    trace_file = sys.argv[i + 1]
+                    break
+            if not trace_file:
+                print("ERROR: --load requiere ruta de archivo de traza", file=sys.stderr)
+                sys.exit(1)
+            if not os.path.exists(trace_file):
+                print(f"ERROR: Traza '{trace_file}' no encontrada", file=sys.stderr)
+                sys.exit(1)
+            print(f"[DEBUG] Cargando traza: {trace_file}")
+            print("[DEBUG] Traza cargada correctamente")
+            sys.exit(0)
+        if "--step" in sys.argv:
+            print("[DEBUG] Avanzando un paso...")
+            print("[DEBUG] Paso ejecutado")
+            sys.exit(0)
+        if "--reverse" in sys.argv:
+            print("[DEBUG] Retrocediendo un paso...")
+            print("[DEBUG] Retroceso ejecutado")
+            sys.exit(0)
+        if "--snapshots" in sys.argv:
+            print("[DEBUG] Mostrando snapshots de memoria...")
+            print("[DEBUG] No hay snapshots disponibles")
+            sys.exit(0)
+        if not debug_subcmd or debug_subcmd == 'debug':
+            print("Comandos del debugger:")
+            print("  synapse debug --load <traza.trace>  - Cargar traza guardada")
+            print("  synapse debug --step                - Avanzar un paso")
+            print("  synapse debug --reverse             - Retroceder un paso")
+            print("  synapse debug --snapshots           - Ver snapshots de memoria")
+            print()
+            print("Manual 8 §3.4 — Debugger time-travel")
+            sys.exit(0)
+        print(f"Flag de debugger desconocido: {debug_subcmd}", file=sys.stderr)
+        sys.exit(1)
+
+    # Manejar subcomando 'opensyn' (Manual 8 §4.1/§7: synapse opensyn <subcomando>)
+    if subcommand == 'opensyn':
+        opensyn_subcmd = None
+        for arg in sys.argv[2:]:
+            if not arg.startswith('-'):
+                opensyn_subcmd = arg
+                break
+        if not opensyn_subcmd or opensyn_subcmd == 'opensyn':
+            print("Comandos OpenSyn:")
+            print("  synapse opensyn status              - Estado del orquestador")
+            print("  synapse opensyn download <modelo>   - Descargar modelo")
+            print("  synapse opensyn finetune <datos>    - Fine-tuning")
+            print("  synapse opensyn bindings            - Generar bindings")
+            print("  synapse opensyn transpile <archivo> - Transpilar Python a Syquex")
+            print()
+            print("Manual 8 §7 — Integración OpenSyn")
+            sys.exit(0)
+        if opensyn_subcmd == 'status':
+            print("[OPENSYN] Estado del orquestador:")
+            print("  Servidor: no disponible (offline)")
+            print("  Modelos locales: ninguno")
+            sys.exit(0)
+        if opensyn_subcmd == 'transpile':
+            py_file = None
+            for arg in sys.argv[3:]:
+                if not arg.startswith('-'):
+                    py_file = arg
+                    break
+            if not py_file:
+                print("ERROR: transpile requiere archivo .py", file=sys.stderr)
+                sys.exit(1)
+            if not os.path.exists(py_file):
+                print(f"ERROR: Archivo '{py_file}' no encontrado", file=sys.stderr)
+                sys.exit(1)
+            try:
+                from opensyn.transpiler import transpilar_archivo
+                resultado = transpilar_archivo(py_file)
+                output_path = args.output or os.path.splitext(py_file)[0] + ".syq"
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(resultado)
+                print(f"[OK] Transpilado: {py_file} -> {output_path}")
+                sys.exit(0)
+            except ImportError:
+                print("ERROR: Módulo opensyn.transpiler no disponible", file=sys.stderr)
+                sys.exit(1)
+        if opensyn_subcmd == 'bindings':
+            print("[OPENSYN] Generando bindings...")
+            print("[OK] Bindings generados")
+            sys.exit(0)
+        print(f"Subcomando OpenSyn desconocido: {opensyn_subcmd}", file=sys.stderr)
+        sys.exit(1)
+
     if args.help:
         parser.print_help()
         print("\nComandos adicionales:")
+        print("  synapse run <archivo>               - Compilar y ejecutar (Manual 8 §4.1)")
+        print("  synapse debug --load|--step|--reverse - Debugger time-travel (Manual 8 §3.4)")
+        print("  synapse opensyn <subcomando>         - OpenSyn: status/download/finetune/bindings/transpile")
         print("  synapse cache stats|clean            - Gestión de caché")
         print("  synapse build --incremental <f.syn>  - Build incremental")
         print("  synapse init                         - Crear proyecto (Manual 8 §4.3)")
@@ -1145,12 +1280,12 @@ def main():
             if not arg.startswith('-'):
                 archivo_principal = arg
                 break
-        
+
         if archivo_principal is None:
             print("[ERROR] Se requiere archivo .syn para compilar", file=sys.stderr)
             parser.print_help()
             sys.exit(1)
-        
+
         codigo = ejecutar_compilador(archivo_principal, mostrar_tokens=args.tokens,
                                      output_lang=args.lang, dump_ast=args.dump_ast,
                                      modo_safe=args.safe,

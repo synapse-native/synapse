@@ -14,28 +14,27 @@
 ## 🚦 1. DASHBOARD ACTUAL
 
 ```yaml
-Fase roadmap:      FASE 27 — Herramientas de Desarrollo (LSP, VS Code, Debugger)
-                   Fase 26 COMPLETADA
-Estado:            ME-F27-L2.2 ✅ (8/9 tests LSP)
-Commit fase:       553fde1
-Próximo ME:        Completion symbols (FFI crash pendiente)
-Próximo paso:      Fix CadenaSegura ABI mismatch (Opción A del Arquitecto)
-Últimos commits:    553fde1 (fix encoding UTF-8 subprocess.run)
-                   32268af (fix SNIFF regex audit)
-                   e314d8b (lsp_build_completion_items)
-                   703b711 (cleanup estable 8/9)
+Fase roadmap:      FASE 28 — Certificación Syquex (Hito 7)
+                   Fase 27 COMPLETADA
+Estado:            F28 EN PROGRESO — ME_28_T1..T4 GREEN (28 cert + 16 fuzz = 44 new tests)
+Commit fase:       pendiente
+Próximo ME:        Actualizar MEMORIA + commit
+Próximo paso:      Commit FASE 28 + transición a FASE 29
+Últimos commits:    1aa62ba (fix borrowing integration)
+                   d56c088 (optimize MEMORIA_PROYECTO)
+                   553fde1 (fix encoding UTF-8 subprocess.run)
 ```
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
-| `553fde1` | Fix encoding UTF-8 en `verificar_alineacion.py` | Evita `UnicodeDecodeError` en `subprocess.run` |
-| `32268af` | Fix SNIFF regex (`c` alias) en `auditar_calidad_tests.py` | Elimina falsos positivos en tests con "canon"/"citas" |
-| `21945361` | Branch protection aplicado (ruleset GitHub) | Bloquea push directo a `main` + 6 checks CI |
+| `pendiente` | FASE 28: ME_28_T4 fuzzing Syquex (16/16 PASS) | OBL-M3-05 → GREEN |
+| `553fde1` | Fix encoding UTF-8 en `verificar_alineacion.py` | Evita `UnicodeDecodeError` |
+| `32268af` | Fix SNIFF regex (`c` alias) en `auditar_calidad_tests.py` | Elimina falsos positivos |
 
 ### Deudas / Hallazgos críticos activos
-- **FFI crash (LSP completion):** Synapse RAII frees `CadenaSegura.datos` via shared pointer cuando C functions retornan malloc'd ptr → heap corruption. Solución: `es_externo` → `pool_alloc` (Opción A). Ver docs/bitacoras/HISTORICO_F17_F27.md §(13).
-- **CadenaSegura ABI mismatch (24B vs 16B):** `es_externo` deviaba 8 bytes → desborde en cluster.c:67. Fix: eliminar `es_externo` de `synapse_rt_types.h` + malloc→pool_alloc en 11 sitios (commit e79fdcc).
+- **F27 COMPLETADA:** ME_27_T1-T5 todos GREEN. 79/79 tests LSP+Debugger+CLI.
+- **F28 EN PROGRESO:** ME_28_T1..T3 GREEN — 26 cert tests passed, 2 skipped (known H-R90-1, H-R92 backend limits).
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
@@ -145,7 +144,7 @@ Próximo paso:      Fix CadenaSegura ABI mismatch (Opción A del Arquitecto)
 | F22 | ✅ | — | — | D-F22-A aplicado |
 | F23 | ✅ | — | — | Syquex auto-alojado |
 | F26 | ✅ | — | — | Toolchain S1 |
-| F27 | ✅ (8/9) | 553fde1 | 8/9 | — |
+| F27 | ✅ (52/52) | 1aa62ba | 52/52 | — |
 
 ### Decisiones clave históricas
 - **D-F22-A (2026-08-10):** Frontends Syquex → Synapse (no .syq hasta completar fase). Justificado por Manual 1 §4 (auto-alojado) + paradoja de bootstrap.

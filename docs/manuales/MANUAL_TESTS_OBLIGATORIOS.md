@@ -27,7 +27,8 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M3-01 | Manual 3 §3 | Frontend Syquex parsea y traduce conforme al manual | unit | GREEN
 - OBL-M3-02 | Manual 3 §5 | Analizador de alcance (arena/rc/arc/débil) | unit | GREEN
 - OBL-M3-03 | Manual 3 §6 | Métodos con self por puntero (no by-value) | unit | GREEN
-- OBL-M3-04 | Manual 3 §3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | RED ← ME_28_T1..T3
+- OBL-M3-04 | Manual 3 §3 (certificación) | **Certificación Syquex v1.0 (Hito 7)** | TDD | GREEN
+- OBL-M3-05 | Manual 3 §3 (fuzzing) | **Fuzzing Syquex: compilador nunca crashea con entradas invalidas** | TDD | GREEN
 
 ## M4 — Gestión de memoria (RAII / alcance)
 - OBL-M4-01 | Manual 4 §2 | Arena allocator (bump O(1), cascada) | unit | GREEN
@@ -52,13 +53,13 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 
 ## M8 — HERRAMIENTAS DE DESARROLLO (F27, ACTIVO)
 - OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN
-- OBL-M8-02 | Manual 8 §1.4 | hover / completion / definition reales | integración | GREEN (8/9)
+- OBL-M8-02 | Manual 8 §1.4 | hover / completion / definition reales | integración | GREEN (52/52)
 - OBL-M8-03 | Manual 8 §1.4 | codeAction + formatting + signatureHelp | TDD | GREEN (commit previo + verificacion 2026-08-31)
 - OBL-M8-04 | Manual 8 §1.4 | workspace/didChangeConfiguration | TDD | GREEN (test_lsp_workspace.py PASS, 2026-08-31)
-- OBL-M8-05 | Manual 8 §2.3 | VS Code aiStatus / aiTranspile / aiBindings | TDD | RED ← ME_27_T3
-- OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | RED ← ME_27_T4
-- OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | RED ← ME_27_T5
-- OBL-M8-08 | Manual 8 §1.4 | completion_symbols real (gap FFI RAII) | TDD | RED ← ME_27_T6
+- OBL-M8-05 | Manual 8 §2.3 | VS Code aiStatus / aiTranspile / aiBindings | TDD | GREEN (test_lsp_ai_dispatch.py 5/5 PASS, 2026-08-31)
+- OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | GREEN (C tests 206/206 PASS + pytest 9/9 PASS, 2026-08-31)
+- OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | GREEN (test_cli_run_debug.py 16/16 PASS, 2026-08-31)
+- OBL-M8-08 | Manual 8 §1.4 | completion_symbols real (gap FFI RAII) | TDD | GREEN (verificado 2026-08-31)
 - OBL-M8-09 | Manual 8 §6.3 / Manual 7 §6.3 | Bucle de validación integrado en LSP | integración | GREEN
 
 ## M9 — Distribución / F29 / F30

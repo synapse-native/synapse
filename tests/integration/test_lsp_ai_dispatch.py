@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 tests/integration/test_lsp_ai_dispatch.py — LSP dispatch comandos IA.
-Manual 8 §1.4. ME-2: synapse/aiComplete, aiFix, aiTranspile retornan respuesta.
+Manual 8 §1.4, §2.3. ME-27_T3: synapse/aiStatus, aiTranspile, aiBindings.
 """
 import os
 import subprocess
 import json
+import time
 
 import pytest
 
@@ -55,8 +56,6 @@ def _parsear_respuesta(raw: bytes) -> list:
     return resultados
 
 
-import time
-
 def _iniciar_lsp() -> subprocess.Popen:
     if BINARIO_LSP is None:
         pytest.skip("Binario LSP no encontrado")
@@ -72,18 +71,18 @@ def _iniciar_lsp() -> subprocess.Popen:
         "method": "initialize",
         "params": {"processId": None, "capabilities": {}},
     })
-    time.sleep(1)
+    time.sleep(0.5)
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "initialized",
         "params": {},
     })
-    time.sleep(1)
+    time.sleep(0.3)
     return proc
 
 
 def _cerrar_lsp(proc: subprocess.Popen) -> list:
-    time.sleep(1)  # Dar tiempo al LSP para procesar el ultimo mensaje
+    time.sleep(0.5)
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "shutdown",
@@ -95,7 +94,21 @@ def _cerrar_lsp(proc: subprocess.Popen) -> list:
 
 
 class TestLSPAIDispatch:
-    """M8 §1.4: synapse/aiComplete, aiFix, aiTranspile retornan respuesta."""
+    """M8 §1.4, §2.3: synapse/aiStatus, aiTranspile, aiBindings, aiComplete, aiFix."""
+
+    def test_ai_status_responde(self):
+        """M8 §2.3: synapse/aiStatus retorna result con ai_available."""
+        proc = _iniciar_lsp()
+        _enviar_mensaje(proc.stdin, {
+            "jsonrpc": "2.0",
+            "id": 50,
+            "method": "synapse/aiStatus",
+            "params": {},
+        })
+        mensajes = _cerrar_lsp(proc)
+        resp = [m for m in mensajes if m.get("id") == 50]
+        assert len(resp) >= 1, f"No hay respuesta a aiStatus: {mensajes}"
+        assert "result" in resp[0], f"aiStatus debe tener result, obtuvo: {resp[0]}"
 
     def test_ai_complete_responde(self):
         """M8 §1.4: synapse/aiComplete retorna result (puede ser null)."""
@@ -126,7 +139,7 @@ class TestLSPAIDispatch:
         assert "result" in resp[0], f"aiFix debe tener result, obtuvo: {resp[0]}"
 
     def test_ai_transpile_responde(self):
-        """M8 §1.4: synapse/aiTranspile retorna result (puede ser null)."""
+        """M8 §2.3: synapse/aiTranspile retorna result (puede ser null)."""
         proc = _iniciar_lsp()
         _enviar_mensaje(proc.stdin, {
             "jsonrpc": "2.0",
@@ -138,3 +151,17 @@ class TestLSPAIDispatch:
         resp = [m for m in mensajes if m.get("id") == 300]
         assert len(resp) >= 1, f"No hay respuesta a aiTranspile: {mensajes}"
         assert "result" in resp[0], f"aiTranspile debe tener result, obtuvo: {resp[0]}"
+
+    def test_ai_bindings_responde(self):
+        """M8 §2.3: synapse/aiBindings retorna result (puede ser null)."""
+        proc = _iniciar_lsp()
+        _enviar_mensaje(proc.stdin, {
+            "jsonrpc": "2.0",
+            "id": 400,
+            "method": "synapse/aiBindings",
+            "params": {"header": "int add(int a, int b);"},
+        })
+        mensajes = _cerrar_lsp(proc)
+        resp = [m for m in mensajes if m.get("id") == 400]
+        assert len(resp) >= 1, f"No hay respuesta a aiBindings: {mensajes}"
+        assert "result" in resp[0], f"aiBindings debe tener result, obtuvo: {resp[0]}"

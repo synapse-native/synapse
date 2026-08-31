@@ -206,6 +206,12 @@ _RT_BINARIOS_EXTRA = [
     ("test_web", "test_web.c", [], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)
     ("test_ffi_marshaling_auto", "test_ffi_marshaling_auto.c", ["ffi_marshaling.o", "synapse_rt_memory.o"], []),
+    # ME_27_T4: Debugger time-travel (grabación) — M8 §5.2 / Manual 8 §3
+    ("test_time_travel", "test_time_travel.c", None, []),
+    # ME_27_T4: Debugger reversión + breakpoints reversibles — M8 §5.3 / §5.4
+    ("test_reversible_debug", "test_reversible_debug.c", None, []),
+    # ME_27_T4: Memory snapshots + diff histórico — M8 §5.4
+    ("test_memory_snapshots", "test_memory_snapshots.c", None, []),
 ]
 
 

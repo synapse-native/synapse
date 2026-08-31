@@ -65,6 +65,14 @@
             {
                 "command": "synapse.aiComplete",
                 "title": "Synapse: Generar código con IA local"
+            },
+            {
+                "command": "synapse.aiTranspile",
+                "title": "Synapse: Transpilar Python a Synapse con IA"
+            },
+            {
+                "command": "synapse.aiBindings",
+                "title": "Synapse: Generar bindings desde cabecera C con IA"
             }
         ],
         "configuration": {
