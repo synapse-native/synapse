@@ -1,10 +1,11 @@
 """Tests de integracion para el LSP Nativo (nucleo/lsp.syn).
 
 Manual 8 §1.2 (initialize/shutdown y capacidades) y Manual 8 §1.4
-(publishDiagnostics). Envia mensajes JSON-RPC al binario synapse_lsp_test.exe
+(publishDiagnostics). Envía mensajes JSON-RPC al binario lsp_test.exe
 y verifica las respuestas del protocolo (oráculo conductual, no sniff).
 Usa envio batch + wait() para evitar bloqueos de pipe en Windows.
 """
+# cumple Manual 8 §1.2, §1.4: tests de protocolo LSP
 
 import subprocess
 import json
@@ -59,7 +60,10 @@ def _parsear_respuesta(raw: bytes) -> list:
         try:
             resultados.append(json.loads(body.decode("utf-8")))
         except json.JSONDecodeError:
-            logging.warning("[test_lsp_native] JSON decode error:\n%s", traceback.format_exc())
+            logging.warning(
+                "[test_lsp_native] JSON decode error:\n%s",
+                traceback.format_exc()
+            )
         pos = body_start + cl
     return resultados
 
@@ -72,7 +76,7 @@ def _parsear_respuesta(raw: bytes) -> list:
 def test_lsp_initialize():
     """Debe responder a initialize con capacidades."""
     if not os.path.exists(BINARIO_LSP):
-        pytest.skip(f"Binario LSP no encontrado: {BINARIO_LSP}")
+        pytest.fail(f"Binario LSP no encontrado: {BINARIO_LSP}")
 
     proc = subprocess.Popen(
         [BINARIO_LSP],
@@ -89,6 +93,7 @@ def test_lsp_initialize():
     })
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
+        "id": 2,
         "method": "shutdown",
         "params": {},
     })
@@ -111,7 +116,7 @@ def test_lsp_initialize():
 def test_lsp_diagnostics_syntax_error():
     """Debe reportar error sintactico para codigo invalido."""
     if not os.path.exists(BINARIO_LSP):
-        pytest.skip("Binario LSP no encontrado")
+        pytest.fail(f"Binario LSP no encontrado: {BINARIO_LSP}")
 
     proc = subprocess.Popen(
         [BINARIO_LSP],
@@ -131,21 +136,22 @@ def test_lsp_diagnostics_syntax_error():
         "method": "initialized",
         "params": {},
     })
+    # cumple Manual 8 §1.4: didOpen con codigo sin #lang -> ERR_LANG_MISSING
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
-        "method": "textDocument/didChange",
+        "method": "textDocument/didOpen",
         "params": {
             "textDocument": {
                 "uri": "file:///test_error.syn",
+                "languageId": "synapse",
                 "version": 1,
+                "text": "esto es codigo invalido sin lang",
             },
-            "contentChanges": [
-                {"text": "esto es codigo invalido sin lang"}
-            ],
         },
     })
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
+        "id": 2,
         "method": "shutdown",
         "params": {},
     })
@@ -154,13 +160,13 @@ def test_lsp_diagnostics_syntax_error():
     stdout, _ = proc.communicate(timeout=5)
     mensajes = _parsear_respuesta(stdout)
 
-    # Verificar si el LSP server procesa mensajes después de initialize
-    if len(mensajes) <= 1:
-        pytest.skip(
-            "LSP server v0.3.0 solo procesa initialize — "
-            "publishDiagnostics no implementado aún (conocido)"
-        )
+    # Debe haber al menos 2 respuestas (initialize + shutdown)
+    respuestas = [m for m in mensajes if m.get("id") is not None]
+    assert len(respuestas) >= 2, (
+        f"Se esperaban >=2 respuestas (init+shutdown), obtuvo {len(respuestas)}: {mensajes}"
+    )
 
+    # Buscar publishDiagnostics entre las notificaciones
     diag_notifs = [
         n for n in mensajes
         if n.get("method") == "textDocument/publishDiagnostics"
@@ -178,9 +184,9 @@ def test_lsp_diagnostics_syntax_error():
 
 
 def test_lsp_diagnostics_clean():
-    """Codigo valido debe producir 0 diagnosticos."""
+    """Codigo valido debe producir 0 diagnosticos de error."""
     if not os.path.exists(BINARIO_LSP):
-        pytest.skip("Binario LSP no encontrado")
+        pytest.fail(f"Binario LSP no encontrado: {BINARIO_LSP}")
 
     proc = subprocess.Popen(
         [BINARIO_LSP],
@@ -201,6 +207,7 @@ def test_lsp_diagnostics_clean():
         "params": {},
     })
 
+    # cumple Manual 8 §1.4: didOpen con codigo valido -> 0 diagnosticos
     codigo_valido = (
         '#lang: es\n'
         'funcion principal() -> entero:\n'
@@ -208,17 +215,19 @@ def test_lsp_diagnostics_clean():
     )
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
-        "method": "textDocument/didChange",
+        "method": "textDocument/didOpen",
         "params": {
             "textDocument": {
                 "uri": "file:///test_valido.syn",
+                "languageId": "synapse",
                 "version": 1,
+                "text": codigo_valido,
             },
-            "contentChanges": [{"text": codigo_valido}],
         },
     })
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
+        "id": 2,
         "method": "shutdown",
         "params": {},
     })
@@ -227,6 +236,13 @@ def test_lsp_diagnostics_clean():
     stdout, _ = proc.communicate(timeout=5)
     mensajes = _parsear_respuesta(stdout)
 
+    # Debe haber al menos 2 respuestas (initialize + shutdown)
+    respuestas = [m for m in mensajes if m.get("id") is not None]
+    assert len(respuestas) >= 2, (
+        f"Se esperaban >=2 respuestas (init+shutdown), obtuvo {len(respuestas)}: {mensajes}"
+    )
+
+    # Si hay publishDiagnostics, debe tener 0 errores
     diag_notifs = [
         n for n in mensajes
         if n.get("method") == "textDocument/publishDiagnostics"
@@ -242,7 +258,7 @@ def test_lsp_diagnostics_clean():
 def test_lsp_unknown_method():
     """Metodo desconocido debe responder con error code -32601."""
     if not os.path.exists(BINARIO_LSP):
-        pytest.skip("Binario LSP no encontrado")
+        pytest.fail(f"Binario LSP no encontrado: {BINARIO_LSP}")
 
     proc = subprocess.Popen(
         [BINARIO_LSP],
@@ -265,6 +281,7 @@ def test_lsp_unknown_method():
     })
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
+        "id": 2,
         "method": "shutdown",
         "params": {},
     })
@@ -273,14 +290,13 @@ def test_lsp_unknown_method():
     stdout, _ = proc.communicate(timeout=5)
     mensajes = _parsear_respuesta(stdout)
 
-    # Verificar si el LSP server procesa mensajes después de initialize
-    if len(mensajes) <= 1:
-        pytest.skip(
-            "LSP server v0.3.0 solo procesa initialize — "
-            "method not found response no implementado aún (conocido)"
-        )
+    # Debe haber al menos 3 respuestas (initialize + unknown error + shutdown)
+    respuestas = [m for m in mensajes if m.get("id") is not None]
+    assert len(respuestas) >= 3, (
+        f"Se esperaban >=3 respuestas (init+error+shutdown), obtuvo {len(respuestas)}: {mensajes}"
+    )
 
-    # El LSP nativo hardcodea id=null en respuestas de error
+    # Buscar la respuesta de error para metodoInexistente
     errores = [m for m in mensajes if m.get("error") is not None]
     assert len(errores) > 0, f"No se recibio respuesta de error: {mensajes}"
 
@@ -291,9 +307,9 @@ def test_lsp_unknown_method():
 
 
 def test_lsp_shutdown():
-    """Shutdown debe finalizar el proceso ordenadamente."""
+    """Shutdown debe responder con result:null y finalizar ordenadamente."""
     if not os.path.exists(BINARIO_LSP):
-        pytest.skip("Binario LSP no encontrado")
+        pytest.fail(f"Binario LSP no encontrado: {BINARIO_LSP}")
 
     proc = subprocess.Popen(
         [BINARIO_LSP],
@@ -310,6 +326,7 @@ def test_lsp_shutdown():
     })
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
+        "id": 2,
         "method": "shutdown",
         "params": {},
     })
@@ -318,13 +335,17 @@ def test_lsp_shutdown():
     stdout, _ = proc.communicate(timeout=5)
     mensajes = _parsear_respuesta(stdout)
 
-    # Verificar si el LSP server procesa mensajes después de initialize
-    if len(mensajes) <= 1:
-        pytest.skip(
-            "LSP server v0.3.0 solo procesa initialize — "
-            "shutdown response no implementado aún (conocido)"
-        )
+    # Debe haber 2 respuestas (initialize + shutdown)
+    respuestas = [m for m in mensajes if m.get("id") is not None]
+    assert len(respuestas) >= 2, (
+        f"Se esperaban >=2 respuestas (init+shutdown), obtuvo {len(respuestas)}: {mensajes}"
+    )
 
-    # El LSP nativo hardcodea id=null en shutdown
-    shutdown_resp = [m for m in mensajes if "result" in m and m["result"] is None]
-    assert len(shutdown_resp) > 0, f"No se recibio respuesta de shutdown: {mensajes}"
+    # Buscar la respuesta de shutdown (result: null)
+    shutdown_resp = [
+        m for m in mensajes
+        if m.get("id") == 2 and m.get("result") is None
+    ]
+    assert len(shutdown_resp) > 0, (
+        f"No se recibio respuesta de shutdown con result:null: {mensajes}"
+    )

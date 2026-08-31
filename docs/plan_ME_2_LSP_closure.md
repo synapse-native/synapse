@@ -98,5 +98,12 @@ Crear `tests/integration/test_lsp_ai_dispatch.py` que envía cada mensaje IA y v
 
 **Commit:** pendiente
 **Fecha cierre:** 2026-08-30
-**Resultado:** 23/23 tests LSP PASS, 0 fallos, 3 skipped pre-existentes
+**Resultado:** 26/26 tests LSP PASS, 0 fallos, 0 skipped
 **Estado:** CERRADO ✅
+
+### Sesion adicional (post-cierre previo)
+- Tests skipped convertidos a PASS: test_lsp_diagnostics_syntax_error, test_lsp_diagnostics_clean, test_lsp_unknown_method, test_lsp_shutdown
+- Fix: shutdown enviado con id (request) en vez de sin id (notification)
+- Fix: dispatch con method_handled fallback → error -32601 para metodo desconocido
+- Fix: didOpen handler emite publishDiagnostics con check #lang (ERR_LANG_MISSING)
+- Fix: tests usan didOpen en vez de didChange para enviar documento

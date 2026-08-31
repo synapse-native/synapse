@@ -1204,10 +1204,9 @@ void handle_initialize(int64_t id) {
 }
 
 void handle_shutdown(int64_t id) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
-    enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id)), (CadenaSegura){ .longitud = (int)strlen(",\"result\":null}"), .datos = ",\"result\":null}" }));
+    // cumple Manual 8 §1.4: shutdown acepta id (request) o sin id (notification)
+    int64_t rid = (id >= 0LL) ? id : 0LL;
+    enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(rid)), (CadenaSegura){ .longitud = (int)strlen(",\"result\":null}"), .datos = ",\"result\":null}" }));
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1653,6 +1652,7 @@ int64_t _principal_impl(void) {
               /* [Lifetime Scope: exit depth=2] */
         }
         int64_t id_val = (-1LL);
+        int64_t method_handled = 0LL;
         CadenaSegura patron_id = (CadenaSegura){ .longitud = (int)strlen("\"id\":"), .datos = "\"id\":" };
         int64_t patron_len_id = 5LL;
         int64_t body_len = strlen_s(body);
@@ -1718,10 +1718,12 @@ int64_t _principal_impl(void) {
         CadenaSegura params_str = strcpy_f(_json_a_texto(params_nodo));
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"initialize\""), .datos = "\"initialize\"" }) == 0LL)) {
             handle_initialize(id_val);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"shutdown\""), .datos = "\"shutdown\"" }) == 0LL)) {
             handle_shutdown(id_val);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"exit\""), .datos = "\"exit\"" }) == 0LL)) {
@@ -1734,16 +1736,80 @@ int64_t _principal_impl(void) {
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didOpen\""), .datos = "\"textDocument/didOpen\"" }) == 0LL)) {
             _syn_texto_liberar(uri_actual);
             uri_actual = strcpy_f(extraer_uri(params_str));
-            lsp_doc_store(extraer_texto_doc(params_str));
-            CadenaSegura diag = concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"uri\":"), .datos = "{\"uri\":" }, json_string(uri_actual)), (CadenaSegura){ .longitud = (int)strlen(",\"diagnostics\":[]}"), .datos = ",\"diagnostics\":[]}" });
-            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag));
+            CadenaSegura doc_abierto = extraer_texto_doc(params_str);
+            lsp_doc_store(doc_abierto);
+            // cumple Manual 8 §1.4: publishDiagnostics con check #lang
+            int _tiene_lang_o = 0;
+            if (doc_abierto.datos && doc_abierto.longitud >= 5) {
+                for (int _lio = 0; _lio < doc_abierto.longitud && _lio < 200; _lio++) {
+                    if (doc_abierto.datos[_lio] == '#') {
+                        if (_lio + 5 <= doc_abierto.longitud &&
+                            doc_abierto.datos[_lio+1] == 'l' && doc_abierto.datos[_lio+2] == 'a' &&
+                            doc_abierto.datos[_lio+3] == 'n' && doc_abierto.datos[_lio+4] == 'g') {
+                            _tiene_lang_o = 1;
+                            break;
+                        }
+                    }
+                    if (doc_abierto.datos[_lio] == '\n') break;
+                }
+            }
+            char _diag_buf_o[1024];
+            if (!_tiene_lang_o && doc_abierto.datos && doc_abierto.longitud > 0) {
+                CadenaSegura uri_esc_o = json_string(uri_actual);
+                char _err_msg_o[] = "Falta declaracion de idioma '#lang: <codigo>' en la linea 1";
+                snprintf(_diag_buf_o, sizeof(_diag_buf_o),
+                    "{\"uri\":%.*s,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":0}},\"severity\":1,\"code\":\"ERR_LANG_MISSING\",\"message\":\"%s\"}]}",
+                    uri_esc_o.longitud, uri_esc_o.datos ? uri_esc_o.datos : "\"\"",
+                    _err_msg_o);
+            } else {
+                CadenaSegura uri_esc_o = json_string(uri_actual);
+                snprintf(_diag_buf_o, sizeof(_diag_buf_o),
+                    "{\"uri\":%.*s,\"diagnostics\":[]}",
+                    uri_esc_o.longitud, uri_esc_o.datos ? uri_esc_o.datos : "\"\"");
+            }
+            CadenaSegura diag_o = { .longitud = (int)strlen(_diag_buf_o), .datos = _diag_buf_o };
+            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag_o));
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(uri_actual);
-            _syn_texto_liberar(diag);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didChange\""), .datos = "\"textDocument/didChange\"" }) == 0LL)) {
-            lsp_doc_store(extraer_texto_doc(params_str));
+        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didChange\""), .datos = "\"textDocument/didChange\"" }) == 0LL)) {            _syn_texto_liberar(uri_actual);
+            uri_actual = strcpy_f(extraer_uri(params_str));
+            CadenaSegura nuevo_doc = extraer_texto_doc(params_str);
+            lsp_doc_store(nuevo_doc);
+            // cumple Manual 8 §1.4: publishDiagnostics tras didChange
+            int tiene_lang = 0;
+            if (nuevo_doc.datos && nuevo_doc.longitud >= 5) {
+                for (int _li = 0; _li < nuevo_doc.longitud && _li < 200; _li++) {
+                    if (nuevo_doc.datos[_li] == '#') {
+                        if (_li + 5 <= nuevo_doc.longitud &&
+                            nuevo_doc.datos[_li+1] == 'l' && nuevo_doc.datos[_li+2] == 'a' &&
+                            nuevo_doc.datos[_li+3] == 'n' && nuevo_doc.datos[_li+4] == 'g') {
+                            tiene_lang = 1;
+                            break;
+                        }
+                    }
+                    if (nuevo_doc.datos[_li] == '\n') break;
+                }
+            }
+            // cumple Manual 8 §1.4: publishDiagnostics con ERR_LANG_MISSING
+            char _diag_buf[1024];
+            if (!tiene_lang && nuevo_doc.datos && nuevo_doc.longitud > 0) {
+                CadenaSegura uri_esc = json_string(uri_actual);
+                char _err_msg[] = "Falta declaracion de idioma '#lang: <codigo>' en la linea 1";
+                snprintf(_diag_buf, sizeof(_diag_buf),
+                    "{\"uri\":%.*s,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":0}},\"severity\":1,\"code\":\"ERR_LANG_MISSING\",\"message\":\"%s\"}]}",
+                    uri_esc.longitud, uri_esc.datos ? uri_esc.datos : "\"\"",
+                    _err_msg);
+            } else {
+                CadenaSegura uri_esc = json_string(uri_actual);
+                snprintf(_diag_buf, sizeof(_diag_buf),
+                    "{\"uri\":%.*s,\"diagnostics\":[]}",
+                    uri_esc.longitud, uri_esc.datos ? uri_esc.datos : "\"\"");
+            }
+            CadenaSegura diag_payload = { .longitud = (int)strlen(_diag_buf), .datos = _diag_buf };
+            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag_payload));
               /* [Lifetime Scope: exit depth=2] */
+            _syn_texto_liberar(uri_actual);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didClose\""), .datos = "\"textDocument/didClose\"" }) == 0LL)) {
             lsp_doc_clear();
@@ -1758,55 +1824,69 @@ int64_t _principal_impl(void) {
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/hover\""), .datos = "\"textDocument/hover\"" }) == 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_hover(id_val, doc, params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/completion\""), .datos = "\"textDocument/completion\"" }) == 0LL)) {
             CadenaSegura items = lsp_build_completion_items();
             enviar_respuesta(construir_respuesta(id_val, concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"isIncomplete\":false,\"items\":"), .datos = "{\"isIncomplete\":false,\"items\":" }, items), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" })));
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(items);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/definition\""), .datos = "\"textDocument/definition\"" }) == 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_definition(id_val, uri_actual, doc, params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/codeAction\""), .datos = "\"textDocument/codeAction\"" }) == 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_code_action(id_val, doc, params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/formatting\""), .datos = "\"textDocument/formatting\"" }) == 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_formatting(id_val, doc, params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/signatureHelp\""), .datos = "\"textDocument/signatureHelp\"" }) == 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_signature_help(id_val, doc, params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"workspace/didChangeConfiguration\""), .datos = "\"workspace/didChangeConfiguration\"" }) == 0LL)) {
             handle_did_change_configuration(params_str);
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
         // cumple Manual 8 §1.4: stubs para comandos IA
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiComplete\""), .datos = "\"synapse/aiComplete\"" }) == 0LL)) {
             enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiFix\""), .datos = "\"synapse/aiFix\"" }) == 0LL)) {
             enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
         if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiTranspile\""), .datos = "\"synapse/aiTranspile\"" }) == 0LL)) {
             enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
+            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
+        }
+        // cumple Manual 8 §1.2: error -32601 para metodo desconocido
+        if ((method_handled == 0LL) && (id_val >= 0LL)) {
+            enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id_val)), (CadenaSegura){ .longitud = (int)strlen(",\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}"), .datos = ",\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}" }));
         }
         liberar_nodo(msg);
           /* [Lifetime Scope: exit depth=1] */
