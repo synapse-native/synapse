@@ -375,7 +375,7 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
   - **ME-SEC-2 — Validacion protocolo LSP (Manual 8 §1.2): ✅ CERRADO. Content-Length bounds + JSON parse validation + construir_error snprintf fix. Tests TDD 5/5, LSP suite 31/31. Commit pendiente.
   - **ME-SEC-3 — strtol+endptr en modelo.c (Manual 7 §3): atoi/atof reemplazados por strtol/strtod+endptr en 6 llamadas. Header modelo.h expone InternalData. Test 8/8 PASS. Estado: CERRADO..
   - **ME-SEC-4 — Estado estatico fiber-safe (Manual 5): io.c y texto.c protegidos con pthread_once/pthread_mutex. Tests 3/3 PASS. Estado: CERRADO.
-  - **ME-SEC-5 — Escape completo de string en codegen (Manual 2 §literal/§determinismo):** en `emit_expressions.py` escapar todo `<0x20` como `\uXXXX` y tratar NUL explícitamente; conservar `"`/`\`. Aceptación: compilar fuente con NUL/control/comillas/backslash → exe válido y salida correcta. Estado: PENDIENTE.
+  - **ME-SEC-5 — Escape completo de string en codegen (Manual 2 §2): emit_expressions.py escapa <0x20 y NUL como xHH. Estado: CERRADO (2026-08-31).
   - **ME-SEC-6 (BAJO) — null-term en parsing de red (Manual 8 §1.2):** asegurar `\0` antes de `sscanf` en `web.c`/`http.c`. Aceptación: revisión + test. Estado: PENDIENTE.
   - **ME-SEC-7 (BAJO) — null-term `strncpy` (axon.c:427):** añadir `path_copy[sizeof-1]=0`. Estado: PENDIENTE.
   - **Orden sugerido:** ME-SEC-1 → ME-SEC-2 → ME-SEC-5 → ME-SEC-3 → ME-SEC-4 → ME-SEC-6/7.

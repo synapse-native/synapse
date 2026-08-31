@@ -282,13 +282,25 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return "nulo"
 
     if isinstance(nodo, LiteralCadena):
-        # Escapar la cadena para C: \n, \r, \t, \\, \"
+        # cumple Manual 2 §2: escape completo de cadena_literal
+        # 1. Backslash primero (evita doble-escape)
+        # 2. Comillas dobles
+        # 3. \n, \r, \t (escapes cortos)
+        # 4. Todo char < 0x20 restante como \xHH (incluye NUL)
         val = nodo.valor
         val = val.replace('\\', '\\\\')  # backslash first!
         val = val.replace('\"', '\\"')
         val = val.replace('\n', '\\n')
         val = val.replace('\r', '\\r')
         val = val.replace('\t', '\\t')
+        # Escape remaining control characters < 0x20 (NUL, BEL, ESC, etc.)
+        result_chars = []
+        for ch in val:
+            if ord(ch) < 0x20:
+                result_chars.append(f'\\x{ord(ch):02x}')
+            else:
+                result_chars.append(ch)
+        val = ''.join(result_chars)
         return (
             f"(CadenaSegura){{ .longitud = (int)strlen(\"{val}\"),"
             f" .datos = \"{val}\" }}"
