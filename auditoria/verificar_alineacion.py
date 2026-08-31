@@ -63,7 +63,7 @@ def sin_acentos(s: str) -> str:
 def git_hashes() -> set:
     out = subprocess.run(
         ["git", "-C", str(RAIZ), "log", "--format=%h %H"],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
     ).stdout
     hashes = set()
     for linea in out.splitlines():
@@ -79,7 +79,7 @@ def git_paths_historicos() -> set:
     """Todos los paths que git ha rastreado alguna vez (para refs históricas)."""
     out = subprocess.run(
         ["git", "-C", str(RAIZ), "log", "--all", "--pretty=format:", "--name-only"],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
     ).stdout
     paths = set()
     for linea in out.splitlines():
@@ -94,7 +94,7 @@ def hash_existe(h: str, hashes: set) -> bool:
         return True
     out = subprocess.run(
         ["git", "-C", str(RAIZ), "cat-file", "-e", f"{h}^{{commit}}"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return out.returncode == 0
 
@@ -409,11 +409,11 @@ def verificar_contratos_nuevos():
     306 existentes sin contrato hasta Fase 5 — el gate solo cubre código NUEVO)."""
     out = subprocess.run(
         ["git", "-C", str(RAIZ), "diff", "--unified=40", "HEAD", "--", "*.syn"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     if out.returncode != 0:
         return ["No se pudo calcular el diff de *.syn vs HEAD"], []
-    diff = out.stdout
+    diff = out.stdout or ""  # None → "" si git diff no devuelve salida
     brechas, info = [], []
     # Funciones definidas en HEAD (para distinguir MOVIMIENTO de código — p.ej.
     # modularización mecánica tipo R29/R32 — de función realmente NUEVA: un split
@@ -494,7 +494,7 @@ def _funciones_en_head() -> set:
             # listar nucleo/ completo y filtrar .syn en Python (más robusto).
             ["git", "-C", str(RAIZ), "ls-tree", "-r", "--name-only", "HEAD", "--",
              "nucleo/", "syquex/", "std/", "lib/", "opensyn/"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if ls.returncode != 0:
             return nombres
