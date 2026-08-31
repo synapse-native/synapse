@@ -377,7 +377,7 @@ untime/core/modelo.c: guardia s <= 0 en _filtro_top_p para eliminar warning -Wa
   - **ME-SEC-4 — Estado estatico fiber-safe (Manual 5): io.c y texto.c protegidos con pthread_once/pthread_mutex. Tests 3/3 PASS. Estado: CERRADO.
   - **ME-SEC-5 — Escape completo de string en codegen (Manual 2 §2): emit_expressions.py escapa <0x20 y NUL como xHH. Estado: CERRADO (2026-08-31).
   - **ME-SEC-6 — null-term en parsing de red (Manual 8 §1.2): web.c ya tiene null-terminacion correcta. http.c no usa sscanf. Estado: CERRADO (2026-08-31, verificacion).
-  - **ME-SEC-7 (BAJO) — null-term `strncpy` (axon.c:427):** añadir `path_copy[sizeof-1]=0`. Estado: PENDIENTE.
+  - **ME-SEC-7 — null-term strncpy axon.c: path_copy[sizeof-1]=ME-SEC-7 (BAJO) — null-term `strncpy` (axon.c:427):** añadir `path_copy[sizeof-1]=0`. Estado: PENDIENTE ya presente. Estado: CERRADO (2026-08-31, verificacion).
   - **Orden sugerido:** ME-SEC-1 → ME-SEC-2 → ME-SEC-5 → ME-SEC-3 → ME-SEC-4 → ME-SEC-6/7.
 
 ---
