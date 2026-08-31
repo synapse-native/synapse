@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include "runtime/core/modelo.h"  // ME-SEC-3: tipos públicos para testing
 #ifdef _WIN32
   #include <windows.h>
   #include <direct.h>
@@ -25,8 +26,7 @@
 
 // --- std.ai (GGUF Reader / Memory Mapping) ---
 #define MEM_ALIGN 32
-#define HASH_TAM 256
-#define MAX_METADATOS 128
+// HASH_TAM y MAX_METADATOS ahora en runtime/core/modelo.h
 
 // GGML tensor types
 #define GGML_TYPE_F32  0
@@ -37,46 +37,8 @@
 #define GGML_TYPE_Q5_1 7
 #define GGML_TYPE_Q8_0 8
 
-typedef struct TensorInfo {
-    char* nombre;
-    int n_dimensiones;
-    uint64_t dimensiones[4];
-    int tipo;
-    uint64_t offset;
-} TensorInfo;
-
-typedef struct EntradaHash {
-    uint32_t indice_tensor;
-    struct EntradaHash* siguiente;
-} EntradaHash;
-
-typedef struct {
-    char* clave;
-    char* valor;
-} ParMetadato;
-
-#define MAX_ARRAY_METADATOS 32
-
-typedef struct {
-    char* clave;
-    int tipo_elemento;
-    int cantidad;
-    uint64_t data_pos;    // offset in mmap where element storage starts
-} ArrayMetaEntry;
-
-typedef struct InternalData {
-    void* mmap_ptr;
-    int64_t tamano_mmap;
-    uint64_t tensor_data_base_offset;
-    int cantidad_tensores;
-    TensorInfo* tensores;
-    EntradaHash* tabla_hash[HASH_TAM];
-    int cantidad_metadatos;
-    ParMetadato metadatos[MAX_METADATOS];
-    char* architecture;
-    ArrayMetaEntry arrays[MAX_ARRAY_METADATOS];
-    int cantidad_arrays;
-} InternalData;
+// TensorInfo, EntradaHash, ParMetadato, ArrayMetaEntry, InternalData
+// are defined in runtime/core/modelo.h (ME-SEC-3: testable interface)
 
 typedef struct GGUF_Contexto {
     int es_valido;
@@ -733,7 +695,10 @@ int _syn_vocab_tamano(void* datos_internos) {
     InternalData* idata = (InternalData*)datos_internos;
     for (int i = 0; i < idata->cantidad_metadatos; i++) {
         if (strcmp(idata->metadatos[i].clave, "vocab_size") == 0 && idata->metadatos[i].valor) {
-            return atoi(idata->metadatos[i].valor);
+            char* end = NULL;
+            long v = strtol(idata->metadatos[i].valor, &end, 10);
+            return (end && *end == '\0') ? (int)v : 0;
+            // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
         }
     }
     return 0;
@@ -812,7 +777,10 @@ static int _meta_entero(void* datos_internos, const char* clave) {
     for (int i = 0; i < idata->cantidad_metadatos; i++) {
         if (idata->metadatos[i].clave && idata->metadatos[i].valor &&
             strcmp(idata->metadatos[i].clave, clave) == 0) {
-            return atoi(idata->metadatos[i].valor);
+            char* end = NULL;
+            long v = strtol(idata->metadatos[i].valor, &end, 10);
+            return (end && *end == '\0') ? (int)v : 0;
+            // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
         }
     }
     return 0;
@@ -824,7 +792,10 @@ static float _meta_decimal(void* datos_internos, const char* clave, float por_de
     for (int i = 0; i < idata->cantidad_metadatos; i++) {
         if (idata->metadatos[i].clave && idata->metadatos[i].valor &&
             strcmp(idata->metadatos[i].clave, clave) == 0) {
-            return (float)atof(idata->metadatos[i].valor);
+            char* end = NULL;
+            double v = strtod(idata->metadatos[i].valor, &end);
+            return (end && *end == '\0') ? (float)v : por_defecto;
+            // cumple Manual 7 §3: metadatos GGUF parseados con strtod+endptr
         }
     }
     return por_defecto;
@@ -969,9 +940,11 @@ static BpeContext* _bpe_crear_desde_gguf(void* datos_internos) {
     for (int i = 0; i < id->cantidad_metadatos; i++) {
         if (id->metadatos[i].clave && id->metadatos[i].valor) {
             if (strcmp(id->metadatos[i].clave, "tokenizer.ggml.bos_id") == 0)
-                bpe->bos_id = atoi(id->metadatos[i].valor);
+                { char* _e = NULL; long _v = strtol(id->metadatos[i].valor, &_e, 10); bpe->bos_id = (_e && *_e == '\0') ? (int)_v : 1; }
+                // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
             else if (strcmp(id->metadatos[i].clave, "tokenizer.ggml.eos_id") == 0)
-                bpe->eos_id = atoi(id->metadatos[i].valor);
+                { char* _e = NULL; long _v = strtol(id->metadatos[i].valor, &_e, 10); bpe->eos_id = (_e && *_e == '\0') ? (int)_v : 2; }
+                // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
         }
     }
 
@@ -1846,7 +1819,10 @@ static int _json_extract_int(const char* json, const char* key) {
     start++;
     while (*start == ' ') start++;
     if (*start < '0' || *start > '9') return 0;
-    return atoi(start);
+    char* end = NULL;
+    long v = strtol(start, &end, 10);
+    return (end && *end == '\0') ? (int)v : 0;
+    // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
 }
 
 // Compile Synapse source code and store result in cached state.
