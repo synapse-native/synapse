@@ -242,3 +242,4 @@
 {"fecha": "2026-08-31", "archivos": ["compilador/generator/emit_expressions.py"], "cita": "Manual 1 §4", "puntos": "Estructura del repositorio: compilador/generator/ contiene la generacion de codigo C para expresiones y tipos"}
 {"fecha": "2026-08-31", "archivos": ["runtime/core/web.c runtime/core/http.c"], "cita": "Manual 8 §1.2", "puntos": "Parsing de red: sscanf requiere buffer null-terminado. web.c ya tiene memset+buf[total]='\\0' antes de sscanf. http.c no usa sscanf. H-SEC-6 resuelto."}
 {"fecha": "2026-08-31", "archivos": ["runtime/core/axon.c"], "cita": "Manual 6 §5.1", "puntos": "Axon: serializacion etiquetada. strncpy debe null-terminar explicitamente para evitar strings sin terminador."}
+{"fecha": "2026-08-31", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 8 §2.3", "puntos": "Comandos IA: aiStatus (estado modelo), aiTranspile (Python->Syquex), aiBindings (C header->Syquex). LSP dispatch a OpenSyn."}

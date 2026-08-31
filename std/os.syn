@@ -20,14 +20,14 @@ externo funcion _syn_arquitectura() -> texto
 
 // --- Funciones públicas con contratos ---
 
-funcion memoria_total() -> entero
+funcion memoria_total() -> entero:
     requiere:
         verdadero
     garantiza:
         resultado >= 0
     retornar _syn_memoria_total()
 
-funcion memoria_libre() -> entero
+funcion memoria_libre() -> entero:
     requiere:
         verdadero
     garantiza:
@@ -36,21 +36,21 @@ funcion memoria_libre() -> entero
         resultado <= memoria_total()
     retornar _syn_memoria_libre()
 
-funcion vram_total() -> entero
+funcion vram_total() -> entero:
     requiere:
         verdadero
     garantiza:
         resultado >= 0
     retornar _syn_vram_total()
 
-funcion cpu_nucleos() -> entero
+funcion cpu_nucleos() -> entero:
     requiere:
         verdadero
     garantiza:
         resultado > 0
     retornar _syn_cpu_nucleos()
 
-funcion arquitectura() -> texto
+funcion arquitectura() -> texto:
     requiere:
         verdadero
     garantiza:

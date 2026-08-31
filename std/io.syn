@@ -11,7 +11,7 @@
 
 importar std.sistema
 
-funcion abrir(ruta: texto, modo: texto) -> Canal
+funcion abrir(ruta: texto, modo: texto) -> Canal:
     requiere:
         longitud(ruta) > 0
     requiere:
@@ -23,7 +23,7 @@ funcion abrir(ruta: texto, modo: texto) -> Canal
         retornar 0
     retornar _syn_abrir(ruta_segura, modo)
 
-funcion leer(c: Canal) -> texto
+funcion leer(c: Canal) -> texto:
     requiere:
         c >= 0
     garantiza:
@@ -32,17 +32,17 @@ funcion leer(c: Canal) -> texto
 
 externo funcion cerrar_archivo(c: Canal) -> nulo
 
-funcion escribir(texto: texto) -> nulo
+funcion escribir(texto: texto) -> nulo:
     requiere:
         longitud(texto) >= 0
     _syn_escribir(texto)
 
-funcion escribir_linea(texto: texto) -> nulo
+funcion escribir_linea(texto: texto) -> nulo:
     requiere:
         longitud(texto) >= 0
     _syn_escribir_linea(texto)
 
-funcion leer_linea() -> texto
+funcion leer_linea() -> texto:
     garantiza:
         longitud(resultado) >= 0
     retornar _syn_leer_linea()
@@ -51,7 +51,7 @@ funcion leer_linea() -> texto
 // §1.7.1 — Leer bytes (lectura binaria de stdin)
 // ============================================================
 
-funcion leer_bytes(cantidad: entero) -> texto
+funcion leer_bytes(cantidad: entero) -> texto:
     requiere:
         cantidad >= 0
     garantiza:

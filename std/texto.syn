@@ -10,7 +10,7 @@ importar std.sistema
 // §1.7.3 — Contiene (builtin existente en texto.c)
 // ============================================================
 
-funcion contiene(texto: texto, subcadena: texto) -> entero
+funcion contiene(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
@@ -21,7 +21,7 @@ funcion contiene(texto: texto, subcadena: texto) -> entero
 // §1.7.3 — Índice de (builtin existente en texto.c)
 // ============================================================
 
-funcion indice_de(texto: texto, subcadena: texto) -> entero
+funcion indice_de(texto: texto, subcadena: texto) -> entero:
     requiere:
         longitud(subcadena) > 0
     garantiza:
@@ -32,7 +32,7 @@ funcion indice_de(texto: texto, subcadena: texto) -> entero
 // §1.7.3 — Reemplazar (builtin existente en texto.c)
 // ============================================================
 
-funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
+funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
     requiere:
         longitud(buscar) > 0
     garantiza:
@@ -43,7 +43,7 @@ funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto
 // §1.7.3 — Termina con (builtin existente en texto.c)
 // ============================================================
 
-funcion termina_con(texto: texto, sufijo: texto) -> entero
+funcion termina_con(texto: texto, sufijo: texto) -> entero:
     requiere:
         longitud(sufijo) > 0
     garantiza:
@@ -54,7 +54,7 @@ funcion termina_con(texto: texto, sufijo: texto) -> entero
 // §1.7.3 — Recortar (builtin existente en texto.c)
 // ============================================================
 
-funcion recortar(texto: texto) -> texto
+funcion recortar(texto: texto) -> texto:
     garantiza:
         longitud(resultado) <= longitud(texto)
     retornar _syn_texto_recortar(texto)
@@ -63,12 +63,12 @@ funcion recortar(texto: texto) -> texto
 // §1.7.3 — Mayúsculas / Minúsculas (builtin existente en texto.c)
 // ============================================================
 
-funcion mayusculas(texto: texto) -> texto
+funcion mayusculas(texto: texto) -> texto:
     garantiza:
         longitud(resultado) == longitud(texto)
     retornar _syn_texto_mayusculas(texto)
 
-funcion minusculas(texto: texto) -> texto
+funcion minusculas(texto: texto) -> texto:
     garantiza:
         longitud(resultado) == longitud(texto)
     retornar _syn_texto_minusculas(texto)
@@ -77,7 +77,7 @@ funcion minusculas(texto: texto) -> texto
 // §1.7.2 — Escapar JSON (nuevo en string_utils.c)
 // ============================================================
 
-funcion escapar_json(texto: texto) -> texto
+funcion escapar_json(texto: texto) -> texto:
     garantiza:
         longitud(resultado) >= longitud(texto)
     retornar _syn_escapar_json(texto)
@@ -86,12 +86,12 @@ funcion escapar_json(texto: texto) -> texto
 // §1.7.2 — A texto (entero / decimal) (nuevo en string_utils.c)
 // ============================================================
 
-funcion a_texto(valor: entero) -> texto
+funcion a_texto(valor: entero) -> texto:
     garantiza:
         longitud(resultado) > 0
     retornar _syn_a_texto_entero(valor)
 
-funcion a_texto_decimal(valor: decimal) -> texto
+funcion a_texto_decimal(valor: decimal) -> texto:
     garantiza:
         longitud(resultado) > 0
     retornar _syn_a_texto_decimal(valor)
@@ -121,19 +121,19 @@ externo funcion _syn_a_texto_decimal(valor: decimal) -> texto
 // ============================================================
 
 // Compara dos strings: 0 si son iguales, <0 si a<b, >0 si a>b
-funcion cmp_texto(a: texto, b: texto) -> entero
+funcion cmp_texto(a: texto, b: texto) -> entero:
     garantiza:
         resultado == 0 o resultado < 0 o resultado > 0
     retornar _syn_strcmp(a, b)
 
 // Longitud de un string en bytes
-funcion strlen_s(a: texto) -> entero
+funcion strlen_s(a: texto) -> entero:
     garantiza:
         resultado >= 0
     retornar _syn_strlen(a)
 
 // Busca subcadena dentro de string, retorna posición o -1
-funcion strstr_f(texto: texto, patron: texto) -> entero
+funcion strstr_f(texto: texto, patron: texto) -> entero:
     requiere:
         longitud(patron) > 0
     garantiza:
@@ -141,7 +141,7 @@ funcion strstr_f(texto: texto, patron: texto) -> entero
     retornar _syn_strstr(texto, patron)
 
 // Busca carácter dentro de string, retorna posición o -1
-funcion strchr_f(texto: texto, caracter: entero) -> entero
+funcion strchr_f(texto: texto, caracter: entero) -> entero:
     requiere:
         caracter >= 0
     garantiza:
@@ -149,19 +149,19 @@ funcion strchr_f(texto: texto, caracter: entero) -> entero
     retornar _syn_strchr(texto, caracter)
 
 // Convierte string a entero
-funcion atoi_f(texto: texto) -> entero
+funcion atoi_f(texto: texto) -> entero:
     requiere:
         longitud(texto) > 0
     retornar _syn_atoi(texto)
 
 // Copia string (retorna nuevo string con memoria asignada)
-funcion strcpy_f(texto: texto) -> texto
+funcion strcpy_f(texto: texto) -> texto:
     garantiza:
         longitud(resultado) == longitud(texto)
     retornar _syn_strcpy(texto)
 
 // Copia a buffer con límite máximo
-funcion strncpy_f(texto: texto, max_len: entero) -> texto
+funcion strncpy_f(texto: texto, max_len: entero) -> texto:
     requiere:
         max_len > 0
     garantiza:
