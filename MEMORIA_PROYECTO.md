@@ -14,31 +14,25 @@
 ## 🚦 1. DASHBOARD ACTUAL
 
 ```yaml
-Fase roadmap:      FASE 28 — Certificación Syquex (Hito 7)
+Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F28 COMPLETADA — 7 MEs GREEN (62 tests: 28 cert + 16 fuzz + 8 bench + 5 coverage + 5 examples)
-Commit fase:       c1125e5 (documentación ME_28_T7)
-Próximo ME:        FASE 29 (o siguiente hito del roadmap)
-Próximo paso:      Transición a FASE 29
-Últimos commits:    c1125e5 (doc ME_28_T7)
-                   880a7e9 (ME_28_T7 ejemplos)
-                   931d3b9 (ME_28_T6 cobertura)
-                   827ca23 (planes MTS)
-                   9cd7dc6 (ME_28_T5 benchmarks)
-                   0c369b7 (ME_28_T1..T4 cert+fuzz)
+Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 TDD RED (3 tests fallan por ausencia de código)
+Commit fase:       9b0f491 (ME_29_T1/T2/T3 planes + verificaciones)
+Próximo ME:        ME_29_T4 (implementar std/os.syn u otro de implementación)
+Próximo paso:      Implementar código para hacer TDD GREEN
+Últimos commits:    9b0f491 (FASE 29: planes TDD + verificaciones)
+                   b273058 (FASE 28 COMPLETADA)
 ```
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
-| `880a7e9` | FASE 28: ME_28_T7 ejemplos Syquex (5/5 PASS) | Todos los .syq compilan correctamente |
-| `931d3b9` | FASE 28: ME_28_T6 cobertura Syquex (5/5 PASS, 50.96%) | Cobertura frontend Syquex verificada |
-| `827ca23` | FASE 28: planes MTS + verificaciones ME_28_T1/T4/T5 | Gate MTS pasa para todos los planes |
-| `0c369b7` | FASE 28: ME_28_T1..T4 cert+fuzz (44 tests) | OBL-M3-04/M3-05/M3-06 → GREEN |
+| `9b0f491` | FASE 29: ME_29_T1/T2/T3 planes TDD + verificaciones | 3 tests TDD RED creados |
+| `b273058` | FASE 28 COMPLETADA — Certificación Syquex | 62 tests GREEN, 0 skipped |
 
 ### Deudas / Hallazgos críticos activos
-- **F27 COMPLETADA:** ME_27_T1-T5 todos GREEN. 79/79 tests LSP+Debugger+CLI.
-- **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex (cert+fuzz+bench+coverage+examples). 0 skipped. Cobertura 50.96%.
+- **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex. 0 skipped.
+- **F29 EN PROGRESO:** ME_29_T1/T2/T3 TDD RED — tests creados, código pendiente.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
