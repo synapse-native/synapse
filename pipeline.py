@@ -283,7 +283,7 @@ def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
             meta = json.load(f)
     except Exception:
         return None
-    
+
     # Validar: archivo fuente no cambió, flags iguales, versión igual
     if meta.get('archivo') != archivo:
         return None
@@ -293,11 +293,11 @@ def _cache_lookup(clave: str, archivo: str, flags: str) -> Optional[str]:
         return None
     if meta.get('hash_fuente') != _cache_file_hash(archivo):
         return None
-    
+
     obj_path = _cache_obj_path(clave)
     if not os.path.exists(obj_path):
         return None
-    
+
     return obj_path
 
 def _cache_store(clave: str, archivo: str, flags: str, obj_path: str) -> None:
@@ -614,7 +614,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
     # Flags de compilación para la clave de caché (Manual 1 §165:PGO+LTO, Manual 8 §4.2 --release/--debug)
     gcc_opt = "-O3 -flto -DNDEBUG" if modo_release else ("-O0 -g -fsanitize=address,undefined -fno-omit-frame-pointer" if modo_debug else "-O2")
     flags_compilacion = os.environ.get('SYNAPSE_GCC_FLAGS', '') + f" {gcc_opt} -Wl,--stack,8388608 -Wl,--gc-sections"
-    
+
     try:
         if ruta_archivo.endswith('.json'):
             try:
@@ -685,17 +685,17 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             _cache_ensure_dirs()
             deps_hash = _deps_hash(ruta_archivo, archivos_procesados)
             cache_key = _cache_key(ruta_archivo, deps_hash, flags_compilacion)
-            
+
             cached_obj = _cache_lookup(cache_key, ruta_archivo, flags_compilacion)
             if cached_obj:
                 print(f"[CACHE HIT] {ruta_archivo} -> usando objeto cacheado: {cached_obj}")
                 stats = _cache_load_stats()
                 stats['hits'] = stats.get('hits', 0) + 1
                 _cache_save_stats(stats)
-                
+
                 # Linkear directamente el objeto cacheado
                 return _link_object(cached_obj, output_path or (ruta_archivo.rsplit('.', 1)[0] + ".exe"))
-            
+
             print(f"[CACHE MISS] {ruta_archivo} -> compilando...")
 
         # === GENERACIÓN DE CÓDIGO C ===
@@ -757,7 +757,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             return 0
 
         linker_extra = generador.linker_flags
-        
+
 
         if sys.platform == "darwin":
             # ME-R2 (Causa C): el C generado usa extensiones GCC que clang rechaza;
@@ -865,6 +865,16 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 f.write(codigo_mod)
             print(f"[MODULAR] Módulo C: {ruta_mod_c}")
             modulos_c.append(ruta_mod_c)
+
+        # Paso 2b: fix_borrowing — elimina _syn_texto_liberar de funciones de solo lectura
+        # Manual 2 §11: borrowing — funciones de solo lectura no destruyen sus argumentos.
+        try:
+            from compilador.fix_borrowing import fix_nucleo_files
+            fixed = fix_nucleo_files()
+            if fixed > 0:
+                print(f"[MODULAR] fix_borrowing: {fixed} archivos corregidos")
+        except Exception as e:
+            print(f"[MODULAR] fix_borrowing: skip ({e})", file=sys.stderr)
 
         # Paso 3: Compilar cada .c → .o con gcc -c -O2 (paralelo si hay múltiples)
         objs_existentes = []
