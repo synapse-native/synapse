@@ -54,7 +54,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN
 - OBL-M8-02 | Manual 8 §1.4 | hover / completion / definition reales | integración | GREEN (8/9)
 - OBL-M8-03 | Manual 8 §1.4 | codeAction + formatting + signatureHelp | TDD | GREEN (commit previo + verificacion 2026-08-31)
-- OBL-M8-04 | Manual 8 §1.4 | workspace/didChangeConfiguration | TDD | RED ← ME_27_T2
+- OBL-M8-04 | Manual 8 §1.4 | workspace/didChangeConfiguration | TDD | GREEN (test_lsp_workspace.py PASS, 2026-08-31)
 - OBL-M8-05 | Manual 8 §2.3 | VS Code aiStatus / aiTranspile / aiBindings | TDD | RED ← ME_27_T3
 - OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | RED ← ME_27_T4
 - OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | RED ← ME_27_T5
