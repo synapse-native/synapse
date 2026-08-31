@@ -16,25 +16,27 @@
 ```yaml
 Fase roadmap:      FASE 28 — Certificación Syquex (Hito 7)
                    Fase 27 COMPLETADA
-Estado:            F28 EN PROGRESO — ME_28_T1..T4 GREEN (28 cert + 16 fuzz = 44 new tests)
-Commit fase:       pendiente
-Próximo ME:        Actualizar MEMORIA + commit
-Próximo paso:      Commit FASE 28 + transición a FASE 29
-Últimos commits:    1aa62ba (fix borrowing integration)
-                   d56c088 (optimize MEMORIA_PROYECTO)
-                   553fde1 (fix encoding UTF-8 subprocess.run)
+Estado:            F28 EN PROGRESO — ME_28_T1..T6 GREEN (57 tests: 28 cert + 16 fuzz + 8 bench + 5 coverage)
+Commit fase:       931d3b9 (ME_28_T6 coverage)
+Próximo ME:        ME_28_T7 (documentación final)
+Próximo paso:      Continuar FASE 28 con documentación o cierre
+Últimos commits:    931d3b9 (ME_28_T6 cobertura Syquex)
+                   827ca23 (FASE 28: planes MTS + verificaciones)
+                   9cd7dc6 (ME_28_T5 benchmarks)
+                   0c369b7 (ME_28_T1..T4 cert+fuzz)
 ```
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
-| `pendiente` | FASE 28: ME_28_T4 fuzzing Syquex (16/16 PASS) | OBL-M3-05 → GREEN |
-| `553fde1` | Fix encoding UTF-8 en `verificar_alineacion.py` | Evita `UnicodeDecodeError` |
-| `32268af` | Fix SNIFF regex (`c` alias) en `auditar_calidad_tests.py` | Elimina falsos positivos |
+| `931d3b9` | FASE 28: ME_28_T6 cobertura Syquex (5/5 PASS, 50.96%) | Cobertura frontend Syquex verificada |
+| `827ca23` | FASE 28: planes MTS + verificaciones ME_28_T1/T4/T5 | Gate MTS pasa para todos los planes |
+| `9cd7dc6` | FASE 28: ME_28_T5 benchmarks Syquex vs Python | 8/8 PASS, benchmarks de rendimiento |
+| `0c369b7` | FASE 28: ME_28_T1..T4 cert+fuzz (44 tests) | OBL-M3-04/M3-05/M3-06 → GREEN |
 
 ### Deudas / Hallazgos críticos activos
 - **F27 COMPLETADA:** ME_27_T1-T5 todos GREEN. 79/79 tests LSP+Debugger+CLI.
-- **F28 EN PROGRESO:** ME_28_T1..T3 GREEN — 26 cert tests passed, 2 skipped (known H-R90-1, H-R92 backend limits).
+- **F28 EN PROGRESO:** ME_28_T1..T6 GREEN — 57 tests (28 cert + 16 fuzz + 8 bench + 5 coverage). 0 skipped. Cobertura 50.96%.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
