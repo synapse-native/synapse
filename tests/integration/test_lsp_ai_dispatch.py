@@ -55,6 +55,8 @@ def _parsear_respuesta(raw: bytes) -> list:
     return resultados
 
 
+import time
+
 def _iniciar_lsp() -> subprocess.Popen:
     if BINARIO_LSP is None:
         pytest.skip("Binario LSP no encontrado")
@@ -70,15 +72,18 @@ def _iniciar_lsp() -> subprocess.Popen:
         "method": "initialize",
         "params": {"processId": None, "capabilities": {}},
     })
+    time.sleep(1)
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "initialized",
         "params": {},
     })
+    time.sleep(1)
     return proc
 
 
 def _cerrar_lsp(proc: subprocess.Popen) -> list:
+    time.sleep(1)  # Dar tiempo al LSP para procesar el ultimo mensaje
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "shutdown",

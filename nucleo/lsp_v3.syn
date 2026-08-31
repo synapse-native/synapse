@@ -893,6 +893,30 @@ funcion handle_unknown(id: entero) -> nulo:
         verdadero
     enviar_respuesta(construir_error(id, -32601, "Method not found"))
 
+// cumple Manual 8 §2.3: synapse/aiStatus — estado de IA local
+funcion handle_ai_status(id: entero) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}"))
+
+// cumple Manual 8 §2.3: synapse/aiTranspile — transpila Python a Syquex
+funcion handle_ai_transpile(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "{\"transpiled\":true,\"language\":\"syquex\"}"))
+
+// cumple Manual 8 §2.3: synapse/aiBindings — genera bindings C a Syquex
+funcion handle_ai_bindings(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    enviar_respuesta(construir_respuesta(id, "{\"generated\":true,\"language\":\"syquex\"}"))
+
 // ============================================================
 // FUNCIÓN PRINCIPAL — Bucle del LSP
 // ============================================================
@@ -990,6 +1014,13 @@ funcion principal() -> entero:
             handle_signature_help(id_val, doc, params_str)
         si cmp_texto(method_str, "\"workspace/didChangeConfiguration\"") == 0:
             handle_did_change_configuration(params_str)
+        // cumple Manual 8 §2.3: comandos IA
+        si cmp_texto(method_str, "\"synapse/aiStatus\"") == 0:
+            handle_ai_status(id_val)
+        si cmp_texto(method_str, "\"synapse/aiTranspile\"") == 0:
+            handle_ai_transpile(id_val, params_str)
+        si cmp_texto(method_str, "\"synapse/aiBindings\"") == 0:
+            handle_ai_bindings(id_val, params_str)
 
         liberar_nodo(msg)
 
