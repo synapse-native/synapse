@@ -53,7 +53,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 ## M8 — HERRAMIENTAS DE DESARROLLO (F27, ACTIVO)
 - OBL-M8-01 | Manual 8 §1.2 | LSP initialize/initialized/shutdown | integración | GREEN
 - OBL-M8-02 | Manual 8 §1.4 | hover / completion / definition reales | integración | GREEN (8/9)
-- OBL-M8-03 | Manual 8 §1.4 | codeAction + formatting + signatureHelp | TDD | RED ← ME_27_T1
+- OBL-M8-03 | Manual 8 §1.4 | codeAction + formatting + signatureHelp | TDD | GREEN (commit previo + verificacion 2026-08-31)
 - OBL-M8-04 | Manual 8 §1.4 | workspace/didChangeConfiguration | TDD | RED ← ME_27_T2
 - OBL-M8-05 | Manual 8 §2.3 | VS Code aiStatus / aiTranspile / aiBindings | TDD | RED ← ME_27_T3
 - OBL-M8-06 | Manual 8 §5.2/§5.3/§5.4 | Debugger time-travel + breakpoints reversibles | TDD | RED ← ME_27_T4
@@ -62,7 +62,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M8-09 | Manual 8 §6.3 / Manual 7 §6.3 | Bucle de validación integrado en LSP | integración | GREEN
 
 ## M9 — Distribución / F29 / F30
-- OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | RED ← ME_29_T1
+- OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | GREEN (ME-1 commit acd7bf8, 5/5 PASS)
 - OBL-M9-02 | Manual 9 §9 / F29 | Installer OpenSyn (`opensyn/installer.syn`) | TDD | RED ← ME_29_T2
 - OBL-M9-03 | Manual 9 §9 / F29 | Gestión de modelos OpenSyn | TDD | RED ← ME_29_T3
 - OBL-M9-04 | Manual 9 §9 / F30 | Instaladores .iss/.sh/.dmg unificados | TDD | RED ← ME_30_T1
