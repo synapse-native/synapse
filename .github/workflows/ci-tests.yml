@@ -338,6 +338,89 @@ jobs:
         run: |
           echo "## ✅ Benchmark M19.1 completado" >> $GITHUB_STEP_SUMMARY
 
+  calidad-tests:
+    # Gate de calidad de tests (Manual 7 §2.3): ningún test nuevo puede ser SNIFF
+    # (assert substring en artefacto sin ejecutar/compilar) ni SIN_CITA (sin cita de
+    # Manual). Modo incremental: solo evalúa los test_*.py modificados en este cambio,
+    # para no bloquear la deuda SNIFF preexistente (se aborda aparte, sin romper la CI).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Auditar calidad de tests (incremental)
+        run: |
+          CHANGED=$(git diff --name-only "${{ steps.base.outputs.ref }}" HEAD -- tests || true)
+          if [ -z "$CHANGED" ]; then
+            echo "✅ Sin tests modificados en este cambio — gate de calidad omitido"
+            exit 0
+          fi
+          echo "Tests modificados a auditar:"
+          echo "$CHANGED"
+          python auditoria/auditar_calidad_tests.py --files "$CHANGED"
+
+  trazabilidad-codigo:
+    # Cierre del bucle codigo<->manual para trabajo rutinario (no solo MTS):
+    # exige que TODO archivo de produccion NUEVO (A) lleve un comentario de
+    # trazabilidad (cumple Manual X §Y | requiere:/garantiza:). Así el repo no
+    # acepta código de producción sin anclar a un manual, aunque no haya plan_ME.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar trazabilidad de produccion nueva
+        run: |
+          FAIL=0
+          while IFS=$'\t' read -r st f; do
+            case "$st" in
+              A*) ;;
+              *) continue ;;
+            esac
+            case "$f" in
+              *.c|*.h|*.py|*.syn) ;;
+              *) continue ;;
+            esac
+            if ! grep -Eq 'cumple[[:space:]]+Manual[[:space:]]+[0-9]+[[:space:]]*§|requiere:|garantiza:' "$f"; then
+              echo "  ❌ Archivo de produccion nuevo sin trazabilidad: $f" >&2
+              echo "    Agrega '// cumple Manual X §Y' (o '# cumple...' en Python) o requiere:/garantiza:." >&2
+              FAIL=1
+            fi
+          done < <(git diff --name-status "${{ steps.base.outputs.ref }}" HEAD -- '*.c' '*.h' '*.py' '*.syn')
+          if [ "$FAIL" -ne 0 ]; then
+            echo "❌ TRAZABILIDAD DE CÓDIGO — commit bloqueado" >&2
+            exit 1
+          fi
+          echo "✅ Trazabilidad de código verificada (archivos nuevos de producción)"
+
   auditoria:
     # Gate de alineación con los manuales (R31): ningún push/PR puede introducir
     # brechas de trazabilidad (bitácora/reportes/hashes), deuda sin registrar,

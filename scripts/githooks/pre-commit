@@ -59,6 +59,78 @@ find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycac
     -exec rm -rf {} + 2>/dev/null || true
 echo "✅ Artefactos limpiados"
 
+# --- Higiene de código (migrado desde .pre-commit-config.yaml; solo archivos staged) ---
+# El marco 'pre-commit' NO está instalado (core.hooksPath apunta a este hook), así que
+# sus checks quedaban sin aplicar y daban una falsa sensación de cobertura. Se migran
+# aquí los que aportan valor real, restringidos a lo que se va a commitear, para no
+# bloquear el contenido preexistente del repo.
+echo "── Higiene de código (staged) ──"
+STAGED=$(git diff --cached --name-only 2>/dev/null || true)
+FALLO_HIGIENE=0
+
+check_pattern() {
+  # $1 patrón (ERE), $2 mensaje, $3 extensiones permitidas (separadas por espacio)
+  local patron="$1" mensaje="$2" exts="$3" f ok fallo=0
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    ok=0
+    for e in $exts; do
+      case "$f" in *."$e") ok=1; break ;; esac
+    done
+    [ "$ok" -eq 0 ] && continue
+    if grep -Eq "$patron" <(sed 's/\r$//' "$f") 2>/dev/null; then
+      echo "  ❌ $mensaje en $f" >&2
+      grep -En "$patron" "$f" 2>/dev/null | head -3 >&2
+      fallo=1
+    fi
+  done <<< "$STAGED"
+  return $fallo
+}
+
+# 1) Scripts de parche temporales (_fix_*.py) — regla 12
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    _fix_*.py) echo "  ❌ Script de parche prohibido (regla 12): $f" >&2; FALLO_HIGIENE=1 ;;
+  esac
+done <<< "$STAGED"
+
+# 2) Artefactos .exe.c
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    *.exe.c) echo "  ❌ Artefacto .exe.c prohibido: $f" >&2; FALLO_HIGIENE=1 ;;
+  esac
+done <<< "$STAGED"
+
+# 3) Binarios .exe en source tree (salvo build/bin y dist)
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    *.exe)
+      case "$f" in
+        build/bin/*|dist/*) ;;
+        *) echo "  ❌ Binario .exe prohibido en source tree: $f" >&2; FALLO_HIGIENE=1 ;;
+      esac ;;
+  esac
+done <<< "$STAGED"
+
+# 4) except: pass silencioso (bloqueado: oculta errores)
+check_pattern 'except[[:space:]]*:[[:space:]]*pass' 'except: pass silencioso prohibido' 'py' || FALLO_HIGIENE=1
+
+# 5) Trailing whitespace en archivos de código (se excluye .md: dos espacios = salto de línea markdown)
+check_pattern '[[:space:]]+$' 'trailing whitespace prohibido' 'py c h syn syq yml yaml toml json txt' || FALLO_HIGIENE=1
+
+# 6) Marcadores de conflicto de merge
+check_pattern '^(<<<<<<<|>>>>>>>|=======)' 'marcador de conflicto de merge presente' 'py c h syn syq md yml yaml toml json txt' || FALLO_HIGIENE=1
+
+if [ "$FALLO_HIGIENE" -ne 0 ]; then
+  echo "❌ HIGIENE DE CÓDIGO — commit bloqueado" >&2
+  echo "Corrige los archivos staged antes de commitear (los checks vienen de .pre-commit-config.yaml, ahora activos aquí)." >&2
+  exit 1
+fi
+echo "✅ Higiene de código verificada"
+
 # --- Regeneración automática de bindings si headers del runtime cambiaron ---
 echo "── Verificando cambios en headers del runtime ──"
 CHANGED_HEADERS=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep '^runtime/core/.*\.h$' || true)

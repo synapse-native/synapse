@@ -164,6 +164,44 @@ def validar_cita(cita):
     return errores
 
 
+_STOP = set(
+    "el la los las un una unos unas de y a en para con por que se su sus al lo le les "
+    "como pero entre sobre bajo tras ante sin del mi tu te me si no ala ese esa esto "
+    "cual ser son mas muy puede poder debe deber alos".split()
+)
+
+
+def vocab_comun(puntos, cita):
+    """True si --puntos comparte al menos un token significativo (>=4 letras, sin
+    stopwords) con el texto de la sección citada del manual. Anti-fabricación de
+    lecturas: el resumen debe usar vocabulario real de la sección, no texto genérico.
+    Si la sección no se resuelve, no bloquea (falla abierto)."""
+    try:
+        secciones = parsear_cita(cita)
+    except ValueError:
+        return True
+    texto_sec = ""
+    for num, secs in secciones:
+        path = MANUALES_DIR / f"MANUAL {num}.md"
+        if not path.exists():
+            continue
+        lineas = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for i, linea in enumerate(lineas):
+            mh = re.match(r"^#{2,4}\s*(\d+(?:\.\d+)?)[\.\:\s]", linea)
+            if mh and mh.group(1) in secs:
+                texto_sec += " ".join(lineas[i:i + 6]) + " "
+    if not texto_sec.strip():
+        return True
+    pal_p = set(re.findall(r"[a-záéíóúñ]{4,}", sin_acentos(puntos).lower()))
+    pal_s = set(re.findall(r"[a-záéíóúñ]{4,}", sin_acentos(texto_sec).lower()))
+    if len((pal_p & pal_s) - _STOP) >= 1:
+        return True
+    # Fallback: un resumen detallado (>=60 chars y >=5 tokens significativos)
+    # se acepta aunque no solape vocabulario literal con la seccion (sinonimos).
+    tokens_p = [w for w in pal_p if w not in _STOP]
+    return len(puntos.strip()) >= 60 and len(set(tokens_p)) >= 5
+
+
 def entradas_hoy():
     if not LECTURAS_JSONL.exists():
         return []
@@ -182,6 +220,32 @@ def entradas_hoy():
         if e.get("fecha") == hoy:
             entradas.append(e)
     return entradas
+
+
+def cubre(num_req, sec_req, leidas):
+    """True si la lectura de (num_req, sec_req) está cubierta por `leidas`.
+
+    Regla de cobertura (regla 1 de gobernanza):
+      - Requisito con sección explícita (sec_req != ""): cubierto si hay una
+        lectura del mismo manual cuya sección == sec_req o es subsección
+        (p.ej. leer §11.2 cubre el requisito §11).
+      - Requisito de MANUAL ENTERO (sec_req == ""): NO se satisface registrando
+        el manual sin sección. Exige al menos UNA lectura del manual con sección
+        explícita. Esto cierra el no-op de los catch-all del mapa (p.ej.
+        "*.py" -> "Manual 1") que antes devolvían True siempre, sin importar si
+        se leyó algo. Así el gate obliga a leer una sección real del manual.
+    """
+    for num_l, sec_l in leidas:
+        if num_l != num_req:
+            continue
+        if sec_req == "":
+            # Manual entero: exige al menos una lectura con sección concreta.
+            if sec_l != "":
+                return True
+            continue
+        if sec_l == sec_req or sec_l.startswith(sec_req + "."):
+            return True
+    return False
 
 
 def cobertura(reqs, entradas):
@@ -203,23 +267,13 @@ def cobertura(reqs, entradas):
         except ValueError:
             continue
 
-    def cubre(num_req, sec_req):
-        for num_l, sec_l in leidas:
-            if num_l != num_req:
-                continue
-            if sec_req == "":
-                return True
-            if sec_l == sec_req or sec_l.startswith(sec_req + "."):
-                return True
-        return False
-
     for ruta, citas in sorted(reqs.items()):
         for cita in citas:
             for num, secs in parsear_cita(cita):
                 if secs:
-                    ok = all(cubre(num, s) for s in secs)
+                    ok = all(cubre(num, s, leidas) for s in secs)
                 else:
-                    ok = cubre(num, "")
+                    ok = cubre(num, "", leidas)
                 if not ok:
                     return False, ruta, cita
     return True, None, None
@@ -236,6 +290,11 @@ def cmd_registrar(args):
     if not args.puntos or len(args.puntos.strip()) < 20:
         print("[FALTA] --puntos debe resumir >=20 caracteres de requisitos "
               "extraidos de la seccion (evidencia de lectura real).")
+        return 1
+    if not vocab_comun(args.puntos, args.cita):
+        print("[PUNTOS-INVALIDOS] --puntos no comparte vocabulario con la sección "
+              "citada del manual. Escribe un resumen REAL de los requisitos leídos "
+              "(no texto genérico): usa términos de la sección del manual.")
         return 1
     archivos = [a.strip().replace("\\", "/")
                 for a in args.archivos.split(",") if a.strip()]

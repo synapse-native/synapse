@@ -234,20 +234,35 @@ RE_REF_ARCHIVO = re.compile(r"`((?:nucleo|compilador|tests|examples|logs)/[^`]+)
 # resolución asignada (estado PENDIENTE requiere fase/plan) y mencionada en el
 # doc de auditoría. Cualquier deuda nueva no registrada aquí es una brecha.
 # ---------------------------------------------------------------------------
-DEUDAS_CANONICAS = {
-    "D-F1": {"estado": "CERRADA", "resolucion": "F1.2c+F1.2d+F1.4 (keywords del Manual 2 §3)"},
-    "D-1":  {"estado": "PENDIENTE", "resolucion": "Fase 23 (modelo de memoria Syquex: arenas/RC/alcance)"},
-    "D-2":  {"estado": "CERRADA", "resolucion": "A5 monomorfización (Opción A del Arquitecto)"},
-    "D-3":  {"estado": "CERRADA", "resolucion": "A5 hoisting FIFO + = {0};"},
-    "D-4":  {"estado": "CERRADA", "resolucion": "R60 verificador_formal.syn + verificador_formal.py (19 tests security); AST leak F5-1 cerrado; 34 tests D5+security pass"},
-    "D-5":  {"estado": "CERRADA", "resolucion": "A5 cobertura generator.py 58%→95%"},
-    "D-6":  {"estado": "CERRADA", "resolucion": "A5 operador ? postfijo"},
-    "D-7":  {"estado": "CERRADA", "resolucion": "A5 ABI entero→int64_t / decimal→double"},
-    "D-8":  {"estado": "CERRADA", "resolucion": "sin acción (por diseño, Manual 2 §2: cadenas multi-línea)"},
-    "D-9":  {"estado": "CERRADA", "resolucion": "R42: D-9(d) corte 6 CERRADA COMPLETA; (a) parser.syn CERRADA en R29; (b) lexer_keywords.syn CERRADA en R32; (c) emit_selfhost.py CERRADA en R33 (podado emitir_generar); (d) synapse_rt.c 7.882->1.769 L, runtime/core/ 20+ modulos; (e) NodoID/TokenID: tabla canonica unica runtime/core/ast_nodos.h (gen desde nucleo/parser_constantes.syn; generator.py emite #include; 9 archivos C/H migrados; tests cross-language 1:1; gen_ast_nodos_h.py --check en CI"},
-    "H12":  {"estado": "CERRADA", "resolucion": "std/oraculo.syn sin duplicar generar_texto (2026-08-26, commit 1a4b4e1)"},
-    "R3":   {"estado": "CERRADA", "resolucion": "tests/unit/test_r3_param_adt.py + fixtures: S1/S2 compilan y ejecutan parámetros ADT instanciados (Resultado<entero,texto> -> Resultado_entero_texto)"},
-}
+# ---------------------------------------------------------------------------
+# REGLA 11 — Canon de deudas y módulos D-9
+# Ya NO se hard-codean aquí: viven en docs/ para no acoplar la política de
+# gobernanza al código del verificador. Se cargan desde:
+#   - docs/canon_deudas.md   (formato: "- D-XX | CERRADA|PENDIENTE | resolucion")
+#   - docs/modulos_d9.md     (formato: "- ruta/al/modulo.syn")
+# ---------------------------------------------------------------------------
+def cargar_canon_deudas():
+    path = RAIZ / "docs" / "canon_deudas.md"
+    deudas = {}
+    if not path.exists():
+        return deudas
+    for linea in path.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\s*-\s*(D-[\w]+)\s*\|\s*(CERRADA|PENDIENTE)\s*\|\s*(.*)$", linea)
+        if m:
+            deudas[m.group(1)] = {"estado": m.group(2), "resolucion": m.group(3).strip()}
+    return deudas
+
+
+def cargar_modulos_d9():
+    path = RAIZ / "docs" / "modulos_d9.md"
+    mods = []
+    if not path.exists():
+        return mods
+    for linea in path.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"^\s*-\s*(\S+\.(?:syn|py))\s*$", linea)
+        if m:
+            mods.append(m.group(1))
+    return mods
 
 # ---------------------------------------------------------------------------
 # REGLA 13 — Convención ~1000 líneas/módulo. Los .syn del compilador (no
@@ -255,12 +270,7 @@ DEUDAS_CANONICAS = {
 # registrados en D-9 son brechas (deuda sin registrar).
 # ---------------------------------------------------------------------------
 LIMITE_MODULO = 1200
-MODULOS_D9 = [
-    "nucleo/lexer.syn",            # D-9(b): keywords extraidos en R32 (módulo 769 líneas, <límite)
-    "nucleo/analizador_semantico.syn",  # D-9(e): cohesivo, vigilado
-    "compilador/generator/generator.py",     # D-9(e): cohesivo, vigilado; NodoID/TokenID canonico resuelto (R76)
-    "synapse_rt.c",                # D-9(d): monolito en proceso (corte 2 tensor.c en R35; queda std.ai/cluster/debug)
-]
+# MODULOS_D9 se carga desde docs/modulos_d9.md (ver cargar_modulos_d9).
 
 
 def limpiar_ref(ruta: str) -> str:
@@ -329,6 +339,7 @@ def verificar_deudas(texto_bitacora, texto_auditoria):
     tener resolución asignada. Las deudas nuevas (en bitácora) sin registrar
     en el canon son brechas (regla 11: nada queda sin seguimiento)."""
     brechas, info = [], []
+    DEUDAS_CANONICAS = cargar_canon_deudas()
     for deuda, datos in DEUDAS_CANONICAS.items():
         if deuda not in texto_auditoria and deuda not in texto_bitacora:
             brechas.append(f"D[{deuda}] deuda registrada en el canon pero ausente del doc de auditoría")
@@ -365,6 +376,7 @@ def verificar_modularizacion():
     (o archivos .py del generador >1200) = deuda sin registrar (regla 13).
     generator.syn es unity ensamblado (exceptuado)."""
     brechas, info = [], []
+    MODULOS_D9 = cargar_modulos_d9()
     candidatos = sorted(RAIZ.glob("nucleo/*.syn")) + sorted(RAIZ.glob("compilador/generator/*.py"))
     for p in candidatos:
         if p.name == "generator.syn":
@@ -396,11 +408,11 @@ def verificar_contratos_nuevos():
     deben tener bloques requiere/garantiza (Manual 2 §12; D-4 registra las
     306 existentes sin contrato hasta Fase 5 — el gate solo cubre código NUEVO)."""
     out = subprocess.run(
-        ["git", "-C", str(RAIZ), "diff", "--unified=40", "HEAD", "--", "nucleo/*.syn"],
+        ["git", "-C", str(RAIZ), "diff", "--unified=40", "HEAD", "--", "*.syn"],
         capture_output=True, text=True,
     )
     if out.returncode != 0:
-        return ["No se pudo calcular el diff de nucleo/*.syn vs HEAD"], []
+        return ["No se pudo calcular el diff de *.syn vs HEAD"], []
     diff = out.stdout
     brechas, info = [], []
     # Funciones definidas en HEAD (para distinguir MOVIMIENTO de código — p.ej.
@@ -423,6 +435,8 @@ def verificar_contratos_nuevos():
     # Para cada función nueva (definida en líneas +), buscar requiere/garantiza
     # en las siguientes líneas + (hasta 25 líneas, dentro de su cuerpo)
     for archivo, lineas in lineas_por_archivo.items():
+        if "tests/" in archivo or archivo.startswith("tests/"):
+            continue
         for k, linea in enumerate(lineas):
             m = re.match(r"^funcion\s+([A-Za-z_][A-Za-z0-9_]*)", linea)
             if not m:
@@ -478,7 +492,8 @@ def _funciones_en_head() -> set:
         ls = subprocess.run(
             # El pathspec glob no expande en todas las plataformas (Windows);
             # listar nucleo/ completo y filtrar .syn en Python (más robusto).
-            ["git", "-C", str(RAIZ), "ls-tree", "-r", "--name-only", "HEAD", "--", "nucleo/"],
+            ["git", "-C", str(RAIZ), "ls-tree", "-r", "--name-only", "HEAD", "--",
+             "nucleo/", "syquex/", "std/", "lib/", "opensyn/"],
             capture_output=True, text=True,
         )
         if ls.returncode != 0:

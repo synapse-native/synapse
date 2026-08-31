@@ -19,7 +19,9 @@ Esto lo hace apto como gate en CI: la suite no debe introducir sniff ni tests si
 import argparse
 import os
 import re
+import subprocess
 import sys
+from pathlib import Path
 
 MAN_PAT = re.compile(r"Manual\s+\d+")
 # assert ... in <artefacto generado>  (presencia de texto, no comportamiento)
@@ -66,17 +68,61 @@ def check_mto(mto_path):
     return True, f"{len(obl)} entradas OBL validadas"
 
 
+RAIZ = Path(__file__).resolve().parent.parent
+
+
+def determinar_archivos(args):
+    """Resuelve la lista de test_*.py a escanear.
+
+    - --files: lista explícita (separada por coma/espacio/newline); ignora --root.
+    - --base <ref>: solo los test_*.py modificados en <ref>...HEAD (modo incremental CI).
+    - sino: recorre --root (comportamiento original de auditoría completa).
+    """
+    if args.files:
+        out = []
+        for a in re.split(r"[,\s]+", args.files.strip()):
+            a = a.strip()
+            if a and os.path.basename(a).startswith("test_") and a.endswith(".py"):
+                out.append(a)
+        return out
+    if args.base:
+        try:
+            res = subprocess.run(
+                ["git", "-C", str(RAIZ), "diff", "--name-only",
+                 f"{args.base}...HEAD"],
+                capture_output=True, text=True,
+            )
+        except Exception:
+            return []
+        out = []
+        for line in res.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("tests/") and os.path.basename(line).startswith("test_") \
+                    and line.endswith(".py"):
+                out.append(line)
+        return out
+    out = []
+    for dp, _, fns in os.walk(args.root):
+        for f in fns:
+            if f.startswith("test_") and f.endswith(".py"):
+                out.append(os.path.join(dp, f))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="Auditor de calidad de tests")
     ap.add_argument("--root", default="tests")
     ap.add_argument("--mto", default="docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md")
+    ap.add_argument("--files", default="",
+                    help="lista de archivos a escanear (separados por coma/espacio/newline); ignora --root")
+    ap.add_argument("--base", default="",
+                    help="ref git: solo escanea test_*.py modificados en <base>...HEAD (modo incremental CI)")
     args = ap.parse_args()
 
     problems = []
-    for dp, _, fns in os.walk(args.root):
-        for f in fns:
-            if f.startswith("test_") and f.endswith(".py"):
-                problems += scan_file(os.path.join(dp, f))
+    for path in determinar_archivos(args):
+        if os.path.isfile(path):
+            problems += scan_file(path)
 
     mto_ok, mto_msg = check_mto(args.mto)
 
