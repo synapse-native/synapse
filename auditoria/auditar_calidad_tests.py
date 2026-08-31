@@ -25,9 +25,11 @@ from pathlib import Path
 
 MAN_PAT = re.compile(r"Manual\s+\d+")
 # assert ... in <artefacto generado>  (presencia de texto, no comportamiento)
+# Cada alternativa usa límites de palabra \b para evitar falsos positivos:
+#   - "c" como alias no debe capturar "canon" o "citas".
 SUBSTR_PAT = re.compile(
-    r"assert\s+[^=]*\s+in\s+(syq|rag_c|src|codigo|salida|out|texto_generado|"
-    r"c|content|contenido|contenido_archivo)",
+    r"assert\s+[^=]*\s+in\s+(?:syq|rag_c|src|codigo|salida|out|texto_generado|"
+    r"\bcontent\b|\bcontenido\b|\bcontenido_archivo\b|\bc\b)",
     re.IGNORECASE,
 )
 # el test SÍ ejecuta/compila el artefacto -> no es sniff

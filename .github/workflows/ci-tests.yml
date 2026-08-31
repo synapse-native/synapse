@@ -409,6 +409,13 @@ jobs:
               *.c|*.h|*.py|*.syn) ;;
               *) continue ;;
             esac
+            # Excluir paths no productivos (mirrors auditoria/registrar_lectura.py:es_produccion)
+            case "$f" in
+              tests/*|auditoria/*|docs/*|scripts/*|examples/*|.github/*|benchmarks/*|vscode-synapse/*|vendor/*) continue ;;
+            esac
+            case "$f" in
+              _*) continue ;;   # regla 12: artefacto/instrumentacion temporal
+            esac
             if ! grep -Eq 'cumple[[:space:]]+Manual[[:space:]]+[0-9]+[[:space:]]*§|requiere:|garantiza:' "$f"; then
               echo "  ❌ Archivo de produccion nuevo sin trazabilidad: $f" >&2
               echo "    Agrega '// cumple Manual X §Y' (o '# cumple...' en Python) o requiere:/garantiza:." >&2
@@ -420,6 +427,32 @@ jobs:
             exit 1
           fi
           echo "✅ Trazabilidad de código verificada (archivos nuevos de producción)"
+
+  lectura-previa:
+    # Gate de lectura previa (regla 1) en CI: exige que auditoria/lecturas.jsonl
+    # (commiteado en el PR) cubra los archivos de produccion modificados. Asi no se
+    # puede saltar con --no-verify: el servidor lo bloquea antes del merge.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar lectura previa (CI)
+        run: python auditoria/registrar_lectura.py --verificar-ci --base "${{ steps.base.outputs.ref }}"
 
   auditoria:
     # Gate de alineación con los manuales (R31): ningún push/PR puede introducir
