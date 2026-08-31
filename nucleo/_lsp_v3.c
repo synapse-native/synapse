@@ -1,8 +1,5 @@
 #include "_synapse_shared.h"
 
-// cumple Manual 8 §1.2: tope maximo de mensaje LSP (1MB) para prevenir DoS
-#define MAX_LSP_MSG_SIZE (1024 * 1024)
-
 char _gen_tmp_buf[4096];
 
 char _G_emit_buf[1048576];
@@ -178,14 +175,8 @@ CadenaSegura _argv(int i) {
 void salir(int codigo) { exit(codigo); }
 
 int64_t buscar_def_funcion(CadenaSegura doc, CadenaSegura nombre) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura patron = concat(concat((CadenaSegura){ .longitud = (int)strlen("funcion "), .datos = "funcion " }, nombre), (CadenaSegura){ .longitud = (int)strlen("("), .datos = "(" });
     int64_t _resultado_ = strstr_f(doc, patron);
-    #ifndef SYNAPSE_RELEASE
-    assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(patron);
     _syn_texto_liberar(nombre);
     _syn_texto_liberar(doc);
@@ -194,9 +185,6 @@ int64_t buscar_def_funcion(CadenaSegura doc, CadenaSegura nombre) {
 }
 
 int64_t buscar_def_variable(CadenaSegura doc, CadenaSegura nombre) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura patron1 = concat(nombre, (CadenaSegura){ .longitud = (int)strlen(" = "), .datos = " = " });
     CadenaSegura patron2 = concat(concat((CadenaSegura){ .longitud = (int)strlen("let "), .datos = "let " }, nombre), (CadenaSegura){ .longitud = (int)strlen(" = "), .datos = " = " });
     int64_t idx1 = strstr_f(doc, patron1);
@@ -205,9 +193,6 @@ int64_t buscar_def_variable(CadenaSegura doc, CadenaSegura nombre) {
         if ((idx2 >= 0LL)) {
             if ((idx1 < idx2)) {
                 int64_t _resultado_ = idx1;
-                #ifndef SYNAPSE_RELEASE
-                assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-                #endif
                 _syn_texto_liberar(patron2);
                 _syn_texto_liberar(patron1);
                 _syn_texto_liberar(nombre);
@@ -215,67 +200,29 @@ int64_t buscar_def_variable(CadenaSegura doc, CadenaSegura nombre) {
                 return _resultado_;
                   /* [Lifetime Scope: exit depth=3] */
             }
-            int64_t _resultado_ = idx2;
-            #ifndef SYNAPSE_RELEASE
-            assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-            #endif
-            return _resultado_;
+            return idx2;
               /* [Lifetime Scope: exit depth=2] */
         }
-        int64_t _resultado_ = idx1;
-        #ifndef SYNAPSE_RELEASE
-        assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return idx1;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((idx2 >= 0LL)) {
-        int64_t _resultado_ = idx2;
-        #ifndef SYNAPSE_RELEASE
-        assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return idx2;
           /* [Lifetime Scope: exit depth=1] */
     }
-    int64_t _resultado_ = (-1LL);
-    #ifndef SYNAPSE_RELEASE
-    assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-    #endif
-    return _resultado_;
+    return (-1LL);
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura construir_error(int64_t id, int64_t codigo, CadenaSegura mensaje) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
-    // cumple Manual 8 §1.2: snprintf para evitar null bytes en a_texto
-    char buf[1024];
-    int n = snprintf(buf, sizeof(buf),
-        "{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":%lld,\"message\":\"%.*s\"}}",
-        (long long)id, (long long)codigo, mensaje.longitud, mensaje.datos ? mensaje.datos : "");
-    char* _dst = (char*)pool_alloc((size_t)(n + 1));
-    CadenaSegura _resultado_ = { .longitud = n, .datos = _dst };
-    if (_dst) {
-        memcpy(_dst, buf, (size_t)n);
-        _dst[n] = '\0';
-    }
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(_resultado_) > 0LL)) && "Fallo en contrato: garantiza");
-    #endif
+    CadenaSegura _resultado_ = concat(concat(concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id)), (CadenaSegura){ .longitud = (int)strlen(",\"error\":{\"code\":"), .datos = ",\"error\":{\"code\":" }), a_texto(codigo)), (CadenaSegura){ .longitud = (int)strlen(",\"message\":\""), .datos = ",\"message\":\"" }), mensaje), (CadenaSegura){ .longitud = (int)strlen("\"}}"), .datos = "\"}}" });
     _syn_texto_liberar(mensaje);
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura construir_notificacion(CadenaSegura metodo, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(metodo) > 0LL)) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura _resultado_ = concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"method\":\""), .datos = "{\"jsonrpc\":\"2.0\",\"method\":\"" }, metodo), (CadenaSegura){ .longitud = (int)strlen("\",\"params\":"), .datos = "\",\"params\":" }), params), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" });
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(_resultado_) > 0LL)) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(params);
     _syn_texto_liberar(metodo);
     return _resultado_;
@@ -283,22 +230,13 @@ CadenaSegura construir_notificacion(CadenaSegura metodo, CadenaSegura params) {
 }
 
 CadenaSegura construir_respuesta(int64_t id, CadenaSegura resultado) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura _resultado_ = concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id)), (CadenaSegura){ .longitud = (int)strlen(",\"result\":"), .datos = ",\"result\":" }), resultado), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" });
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(_resultado_) > 0LL)) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(resultado);
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 void enviar_respuesta(CadenaSegura respuesta) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(respuesta) > 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t len = strlen_s(respuesta);
     CadenaSegura header = concat(concat((CadenaSegura){ .longitud = (int)strlen("Content-Length: "), .datos = "Content-Length: " }, a_texto(len)), (CadenaSegura){ .longitud = (int)strlen("\r\n\r\n"), .datos = "\r\n\r\n" });
     escribir(header);
@@ -309,9 +247,6 @@ void enviar_respuesta(CadenaSegura respuesta) {
 }
 
 int64_t extraer_entero(CadenaSegura texto) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     int64_t len = strlen_s(texto);
     int64_t resultado = 0LL;
     int64_t negativo = 0LL;
@@ -400,25 +335,16 @@ int64_t extraer_entero(CadenaSegura texto) {
           /* [Lifetime Scope: exit depth=1] */
     }
     int64_t _resultado_ = resultado;
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(texto);
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t extraer_id_body(CadenaSegura body) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura patron = (CadenaSegura){ .longitud = (int)strlen("\"id\":"), .datos = "\"id\":" };
     int64_t idx = strstr_f(body, patron);
     if ((idx == (-1LL))) {
         int64_t _resultado_ = (-1LL);
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(patron);
         _syn_texto_liberar(body);
         return _resultado_;
@@ -427,11 +353,7 @@ int64_t extraer_id_body(CadenaSegura body) {
     int64_t inicio_num = (idx + 5LL);
     int64_t len_body = strlen_s(body);
     if ((inicio_num >= len_body)) {
-        int64_t _resultado_ = (-1LL);
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return (-1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
     int64_t pos = inicio_num;
@@ -481,35 +403,21 @@ int64_t extraer_id_body(CadenaSegura body) {
         _syn_texto_liberar(c);
     }
     if ((fin <= pos)) {
-        int64_t _resultado_ = (-1LL);
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return (-1LL);
           /* [Lifetime Scope: exit depth=1] */
     }
     CadenaSegura num_str = ((CadenaSegura){.longitud=(fin - pos), .datos=((char*)memcpy(malloc((fin - pos)+1),(body).datos+pos,(fin - pos)))});
-    int64_t _resultado_ = extraer_entero(num_str);
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(num_str);
-    return _resultado_;
+    return extraer_entero(num_str);
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura extraer_texto_doc(CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     int64_t len_params = strlen_s(params);
     CadenaSegura patron = (CadenaSegura){ .longitud = (int)strlen(",\"text\":\""), .datos = ",\"text\":\"" };
     int64_t patron_len = 9LL;
     if ((len_params < patron_len)) {
         CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(patron);
         _syn_texto_liberar(params);
         return _resultado_;
@@ -532,59 +440,25 @@ CadenaSegura extraer_texto_doc(CadenaSegura params) {
         _syn_texto_liberar(chunk);
     }
     if ((mejor_idx == (-1LL))) {
-        CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
           /* [Lifetime Scope: exit depth=1] */
     }
     int64_t valor_inicio = (mejor_idx + patron_len);
     CadenaSegura valor_resto = ((CadenaSegura){.longitud=(len_params - valor_inicio), .datos=((char*)memcpy(malloc((len_params - valor_inicio)+1),(params).datos+valor_inicio,(len_params - valor_inicio)))});
-    // cumple Manual 8 1.2: find closing quote, skip escaped quotes (\")
-    int64_t cierre = (-1LL);
-    {
-        const char* vd = valor_resto.datos;
-        int64_t vl = valor_resto.longitud;
-        int64_t ci = 0;
-        while (ci < vl) {
-            if (vd[ci] == '\\') {
-                ci += 2; // skip escaped char
-            } else if (vd[ci] == '"') {
-                cierre = ci;
-                break;
-            } else {
-                ci++;
-            }
-        }
-    }
+    int64_t cierre = strstr_f(valor_resto, (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" });
     if ((cierre == (-1LL))) {
-        CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(valor_resto);
-        return _resultado_;
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _resultado_ = ((CadenaSegura){.longitud=cierre, .datos=((char*)memcpy(malloc(cierre+1),(valor_resto).datos+0LL,cierre))});
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
-    return _resultado_;
+    return ((CadenaSegura){.longitud=cierre, .datos=((char*)memcpy(malloc(cierre+1),(valor_resto).datos+0LL,cierre))});
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura extraer_uri(CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     int64_t uri_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"uri\""), .datos = "\"uri\"" });
     if ((uri_idx == (-1LL))) {
         CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(params);
         return _resultado_;
           /* [Lifetime Scope: exit depth=1] */
@@ -593,43 +467,54 @@ CadenaSegura extraer_uri(CadenaSegura params) {
     CadenaSegura resto = ((CadenaSegura){.longitud=(strlen_s(params) - despues), .datos=((char*)memcpy(malloc((strlen_s(params) - despues)+1),(params).datos+despues,(strlen_s(params) - despues)))});
     int64_t comilla1 = strstr_f(resto, (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" });
     if ((comilla1 == (-1LL))) {
-        CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(resto);
-        return _resultado_;
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
           /* [Lifetime Scope: exit depth=1] */
     }
     CadenaSegura dentro = ((CadenaSegura){.longitud=((strlen_s(resto) - comilla1) - 1LL), .datos=((char*)memcpy(malloc(((strlen_s(resto) - comilla1) - 1LL)+1),(resto).datos+(comilla1 + 1LL),((strlen_s(resto) - comilla1) - 1LL)))});
     int64_t comilla2 = strstr_f(dentro, (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" });
     if ((comilla2 == (-1LL))) {
-        CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(dentro);
-        return _resultado_;
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _resultado_ = ((CadenaSegura){.longitud=comilla2, .datos=((char*)memcpy(malloc(comilla2+1),(dentro).datos+0LL,comilla2))});
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
-    return _resultado_;
+    return ((CadenaSegura){.longitud=comilla2, .datos=((char*)memcpy(malloc(comilla2+1),(dentro).datos+0LL,comilla2))});
       /* [Lifetime Scope: exit depth=0] */
 }
 
+void handle_ai_bindings(int64_t id, CadenaSegura params) {
+    enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"generated\":true,\"language\":\"syquex\"}"), .datos = "{\"generated\":true,\"language\":\"syquex\"}" }));
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(params);
+}
+
+void handle_ai_complete(int64_t id, CadenaSegura params) {
+    enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"completions\":[]}"), .datos = "{\"completions\":[]}" }));
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(params);
+}
+
+void handle_ai_fix(int64_t id, CadenaSegura params) {
+    enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"fixes\":[]}"), .datos = "{\"fixes\":[]}" }));
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(params);
+}
+
+void handle_ai_status(int64_t id) {
+    enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}"), .datos = "{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}" }));
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void handle_ai_transpile(int64_t id, CadenaSegura params) {
+    enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"transpiled\":true,\"language\":\"syquex\"}"), .datos = "{\"transpiled\":true,\"language\":\"syquex\"}" }));
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(params);
+}
+
 void handle_code_action(int64_t id, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t range_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"range\""), .datos = "\"range\"" });
     if ((range_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("[]"), .datos = "[]" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(params);
         _syn_texto_liberar(doc);
         return;
@@ -639,18 +524,12 @@ void handle_code_action(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t start_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"start\""), .datos = "\"start\"" });
     if ((start_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("[]"), .datos = "[]" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
     int64_t line_idx = strstr_f(((CadenaSegura){.longitud=(len_params - start_idx), .datos=((char*)memcpy(malloc((len_params - start_idx)+1),(params).datos+start_idx,(len_params - start_idx)))}), (CadenaSegura){ .longitud = (int)strlen("\"line\""), .datos = "\"line\"" });
     if ((line_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("[]"), .datos = "[]" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
@@ -714,9 +593,6 @@ void handle_code_action(int64_t id, CadenaSegura doc, CadenaSegura params) {
         if ((tiene_retornar == 0LL)) {
             CadenaSegura edit = (CadenaSegura){ .longitud = (int)strlen("{\"title\":\"Agregar retornar 0\",\"kind\":\"quickfix\",\"diagnostics\":[],\"edit\":{\"changes\":{}}}"), .datos = "{\"title\":\"Agregar retornar 0\",\"kind\":\"quickfix\",\"diagnostics\":[],\"edit\":{\"changes\":{}}}" };
             enviar_respuesta(construir_respuesta(id, concat(concat((CadenaSegura){ .longitud = (int)strlen("["), .datos = "[" }, edit), (CadenaSegura){ .longitud = (int)strlen("]"), .datos = "]" })));
-            #ifndef SYNAPSE_RELEASE
-            assert((1) && "Fallo en contrato: garantiza");
-            #endif
             _syn_texto_liberar(edit);
             _syn_texto_liberar(body);
             _syn_texto_liberar(line_seg);
@@ -730,9 +606,6 @@ void handle_code_action(int64_t id, CadenaSegura doc, CadenaSegura params) {
 }
 
 void handle_completion(int64_t id, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura items = (CadenaSegura){ .longitud = (int)strlen("[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"sino\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14},{\"label\":\"para\",\"kind\":14},{\"label\":\"verdadero\",\"kind\":14},{\"label\":\"falso\",\"kind\":14},{\"label\":\"nulo\",\"kind\":14},{\"label\":\"entero\",\"kind\":14},{\"label\":\"decimal\",\"kind\":14},{\"label\":\"texto\",\"kind\":14},{\"label\":\"booleano\",\"kind\":14},{\"label\":\"estructura\",\"kind\":14},{\"label\":\"importar\",\"kind\":14},{\"label\":\"externo\",\"kind\":14}]"), .datos = "[{\"label\":\"funcion\",\"kind\":14},{\"label\":\"retorno\",\"kind\":14},{\"label\":\"si\",\"kind\":14},{\"label\":\"sino\",\"kind\":14},{\"label\":\"mientras\",\"kind\":14},{\"label\":\"para\",\"kind\":14},{\"label\":\"verdadero\",\"kind\":14},{\"label\":\"falso\",\"kind\":14},{\"label\":\"nulo\",\"kind\":14},{\"label\":\"entero\",\"kind\":14},{\"label\":\"decimal\",\"kind\":14},{\"label\":\"texto\",\"kind\":14},{\"label\":\"booleano\",\"kind\":14},{\"label\":\"estructura\",\"kind\":14},{\"label\":\"importar\",\"kind\":14},{\"label\":\"externo\",\"kind\":14}]" };
     enviar_respuesta(construir_respuesta(id, concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"isIncomplete\":false,\"items\":"), .datos = "{\"isIncomplete\":false,\"items\":" }, items), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" })));
       /* [Lifetime Scope: exit depth=0] */
@@ -742,15 +615,9 @@ void handle_completion(int64_t id, CadenaSegura doc, CadenaSegura params) {
 }
 
 void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t line_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"line\""), .datos = "\"line\"" });
     if ((line_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(uri);
         _syn_texto_liberar(params);
         _syn_texto_liberar(doc);
@@ -763,9 +630,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
     int64_t char_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"character\""), .datos = "\"character\"" });
     if ((char_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(line_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -776,9 +640,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
     int64_t len_doc = strlen_s(doc);
     if ((len_doc == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(char_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -817,9 +678,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
     }
     if ((linea_inicio >= linea_fin)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
@@ -827,9 +685,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
     int64_t len_lin = strlen_s(linea_texto);
     if ((char_val >= len_lin)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(linea_texto);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -837,9 +692,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
     CadenaSegura palabra = palabra_en_posicion(linea_texto, char_val);
     if ((strlen_s(palabra) == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(palabra);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -850,9 +702,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
         int64_t def_linea = linea_de_posicion(doc, func_idx);
         CadenaSegura result = concat(concat(concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"uri\":"), .datos = "{\"uri\":" }, json_string(uri)), (CadenaSegura){ .longitud = (int)strlen(",\"range\":{\"start\":{\"line\":"), .datos = ",\"range\":{\"start\":{\"line\":" }), a_texto(def_linea)), (CadenaSegura){ .longitud = (int)strlen(",\"character\":9},\"end\":{\"line\":"), .datos = ",\"character\":9},\"end\":{\"line\":" }), a_texto(def_linea)), (CadenaSegura){ .longitud = (int)strlen(",\"character\":9}}}"), .datos = ",\"character\":9}}}" });
         enviar_respuesta(construir_respuesta(id, result));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(result);
         _syn_texto_liberar(patron_func);
         return;
@@ -897,9 +746,6 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
         int64_t char_offset = (var_idx - scan_l);
         CadenaSegura result = concat(concat(concat(concat(concat(concat(concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"uri\":"), .datos = "{\"uri\":" }, json_string(uri)), (CadenaSegura){ .longitud = (int)strlen(",\"range\":{\"start\":{\"line\":"), .datos = ",\"range\":{\"start\":{\"line\":" }), a_texto(def_linea)), (CadenaSegura){ .longitud = (int)strlen(",\"character\":"), .datos = ",\"character\":" }), a_texto(char_offset)), (CadenaSegura){ .longitud = (int)strlen("},\"end\":{\"line\":"), .datos = "},\"end\":{\"line\":" }), a_texto(def_linea)), (CadenaSegura){ .longitud = (int)strlen(",\"character\":"), .datos = ",\"character\":" }), a_texto(char_offset)), (CadenaSegura){ .longitud = (int)strlen("}}}"), .datos = "}}}" });
         enviar_respuesta(construir_respuesta(id, result));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(result);
         _syn_texto_liberar(patron_var2);
         _syn_texto_liberar(patron_var1);
@@ -911,27 +757,15 @@ void handle_definition(int64_t id, CadenaSegura uri, CadenaSegura doc, CadenaSeg
 }
 
 void handle_did_change_configuration(CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(params);
     return;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 void handle_formatting(int64_t id, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t len_doc = strlen_s(doc);
     if ((len_doc == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("[]"), .datos = "[]" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(params);
         _syn_texto_liberar(doc);
         return;
@@ -1012,15 +846,9 @@ void handle_formatting(int64_t id, CadenaSegura doc, CadenaSegura params) {
 }
 
 void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t line_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"line\""), .datos = "\"line\"" });
     if ((line_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(params);
         _syn_texto_liberar(doc);
         return;
@@ -1032,9 +860,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t char_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"character\""), .datos = "\"character\"" });
     if ((char_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(line_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1045,9 +870,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t len_doc = strlen_s(doc);
     if ((len_doc == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(char_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1086,9 +908,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
     }
     if ((linea_inicio >= linea_fin)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
@@ -1096,9 +915,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t len_lin = strlen_s(linea_texto);
     if ((char_val >= len_lin)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(linea_texto);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1106,9 +922,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
     CadenaSegura palabra = palabra_en_posicion(linea_texto, char_val);
     if ((strlen_s(palabra) == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(palabra);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1142,9 +955,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
         CadenaSegura firma = ((CadenaSegura){.longitud=(def_lin_fin - def_lin_inicio), .datos=((char*)memcpy(malloc((def_lin_fin - def_lin_inicio)+1),(doc).datos+def_lin_inicio,(def_lin_fin - def_lin_inicio)))});
         CadenaSegura result = concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"contents\":{\"kind\":\"markdown\",\"value\":\"**funcion** `"), .datos = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**funcion** `" }, escapar_json(firma)), (CadenaSegura){ .longitud = (int)strlen("\"}}"), .datos = "\"}}" });
         enviar_respuesta(construir_respuesta(id, result));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(result);
         _syn_texto_liberar(firma);
         _syn_texto_liberar(patron_func);
@@ -1179,9 +989,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
         if ((strlen_s(tipo) > 0LL)) {
             CadenaSegura result = concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `"), .datos = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" }, palabra), (CadenaSegura){ .longitud = (int)strlen("` : `"), .datos = "` : `" }), tipo), (CadenaSegura){ .longitud = (int)strlen("`\"}}"), .datos = "`\"}}" });
             enviar_respuesta(construir_respuesta(id, result));
-            #ifndef SYNAPSE_RELEASE
-            assert((1) && "Fallo en contrato: garantiza");
-            #endif
             _syn_texto_liberar(result);
             _syn_texto_liberar(tipo);
             _syn_texto_liberar(patron_var2);
@@ -1191,9 +998,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
         }
         CadenaSegura result = concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `"), .datos = "{\"contents\":{\"kind\":\"markdown\",\"value\":\"**variable** `" }, palabra), (CadenaSegura){ .longitud = (int)strlen("\"}}"), .datos = "\"}}" });
         enviar_respuesta(construir_respuesta(id, result));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(result);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1203,9 +1007,6 @@ void handle_hover(int64_t id, CadenaSegura doc, CadenaSegura params) {
 }
 
 void handle_initialize(int64_t id) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura caps = (CadenaSegura){ .longitud = (int)strlen("{\"textDocumentSync\":{\"openClose\":true,\"change\":1,\"save\":{\"includeText\":true}},\"hoverProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"(\"]},\"definitionProvider\":true,\"codeActionProvider\":true,\"documentFormattingProvider\":true,\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"],\"workspace\":{\"didChangeConfiguration\":{\"supported\":true}}}}"), .datos = "{\"textDocumentSync\":{\"openClose\":true,\"change\":1,\"save\":{\"includeText\":true}},\"hoverProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"(\"]},\"definitionProvider\":true,\"codeActionProvider\":true,\"documentFormattingProvider\":true,\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"],\"workspace\":{\"didChangeConfiguration\":{\"supported\":true}}}}" };
     CadenaSegura server_info = (CadenaSegura){ .longitud = (int)strlen("{\"name\":\"synapse-lsp-native\",\"version\":\"0.3.0\"}"), .datos = "{\"name\":\"synapse-lsp-native\",\"version\":\"0.3.0\"}" };
     CadenaSegura result = concat(concat(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"capabilities\":"), .datos = "{\"capabilities\":" }, caps), (CadenaSegura){ .longitud = (int)strlen(",\"serverInfo\":"), .datos = ",\"serverInfo\":" }), server_info), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" });
@@ -1217,22 +1018,14 @@ void handle_initialize(int64_t id) {
 }
 
 void handle_shutdown(int64_t id) {
-    // cumple Manual 8 §1.4: shutdown acepta id (request) o sin id (notification)
-    int64_t rid = (id >= 0LL) ? id : 0LL;
-    enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(rid)), (CadenaSegura){ .longitud = (int)strlen(",\"result\":null}"), .datos = ",\"result\":null}" }));
+    enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id)), (CadenaSegura){ .longitud = (int)strlen(",\"result\":null}"), .datos = ",\"result\":null}" }));
       /* [Lifetime Scope: exit depth=0] */
 }
 
 void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t pos_idx = strstr_f(params, (CadenaSegura){ .longitud = (int)strlen("\"position\""), .datos = "\"position\"" });
     if ((pos_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(params);
         _syn_texto_liberar(doc);
         return;
@@ -1242,9 +1035,6 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t line_idx = strstr_f(((CadenaSegura){.longitud=(len_params - pos_idx), .datos=((char*)memcpy(malloc((len_params - pos_idx)+1),(params).datos+pos_idx,(len_params - pos_idx)))}), (CadenaSegura){ .longitud = (int)strlen("\"line\""), .datos = "\"line\"" });
     if ((line_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
@@ -1291,9 +1081,6 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     }
     if ((linea_inicio >= linea_fin)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(line_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1302,9 +1089,6 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t char_idx = strstr_f(((CadenaSegura){.longitud=(len_params - pos_idx), .datos=((char*)memcpy(malloc((len_params - pos_idx)+1),(params).datos+pos_idx,(len_params - pos_idx)))}), (CadenaSegura){ .longitud = (int)strlen("\"character\""), .datos = "\"character\"" });
     if ((char_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(linea_texto);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1342,9 +1126,6 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     }
     if ((paren_pos == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(char_seg);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1370,18 +1151,12 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     }
     if ((nombre_inicio >= paren_pos)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return;
           /* [Lifetime Scope: exit depth=1] */
     }
     CadenaSegura nombre_func = ((CadenaSegura){.longitud=(paren_pos - nombre_inicio), .datos=((char*)memcpy(malloc((paren_pos - nombre_inicio)+1),(linea_texto).datos+nombre_inicio,(paren_pos - nombre_inicio)))});
     if ((strlen_s(nombre_func) == 0LL)) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(nombre_func);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1390,9 +1165,6 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
     int64_t def_idx = strstr_f(doc, patron);
     if ((def_idx == (-1LL))) {
         enviar_respuesta(construir_respuesta(id, (CadenaSegura){ .longitud = (int)strlen("{\"signatures\":[]}"), .datos = "{\"signatures\":[]}" }));
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(patron);
         return;
           /* [Lifetime Scope: exit depth=1] */
@@ -1419,22 +1191,13 @@ void handle_signature_help(int64_t id, CadenaSegura doc, CadenaSegura params) {
 }
 
 void handle_unknown(int64_t id) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((id >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     enviar_respuesta(construir_error(id, (-32601LL), (CadenaSegura){ .longitud = (int)strlen("Method not found"), .datos = "Method not found" }));
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura json_string(CadenaSegura valor) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     CadenaSegura escaped = escapar_json(valor);
     CadenaSegura _resultado_ = concat(concat((CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" }, escaped), (CadenaSegura){ .longitud = (int)strlen("\""), .datos = "\"" });
-    #ifndef SYNAPSE_RELEASE
-    assert(((strlen_s(_resultado_) >= 2LL)) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(valor);
     _syn_texto_liberar(escaped);
     return _resultado_;
@@ -1442,9 +1205,6 @@ CadenaSegura json_string(CadenaSegura valor) {
 }
 
 int64_t leer_cabecera(void) {
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: requiere");
-    #endif
     int64_t content_length = (-1LL);
     while (1) {
         CadenaSegura linea = leer_linea();
@@ -1496,37 +1256,21 @@ int64_t leer_cabecera(void) {
         _syn_texto_liberar(linea);
     }
     int64_t _resultado_ = content_length;
-    #ifndef SYNAPSE_RELEASE
-    assert(((_resultado_ >= (-1LL))) && "Fallo en contrato: garantiza");
-    #endif
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura leer_mensaje(int64_t cantidad) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((cantidad >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     if ((cantidad <= 0LL)) {
         CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         return _resultado_;
           /* [Lifetime Scope: exit depth=1] */
     }
-    CadenaSegura _resultado_ = leer_bytes(cantidad);
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
-    return _resultado_;
+    return leer_bytes(cantidad);
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int64_t linea_de_posicion(CadenaSegura doc, int64_t pos) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((pos >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t num = 0LL;
     int64_t i = 0LL;
     while ((i < pos)) {
@@ -1540,24 +1284,15 @@ int64_t linea_de_posicion(CadenaSegura doc, int64_t pos) {
         _syn_texto_liberar(c);
     }
     int64_t _resultado_ = num;
-    #ifndef SYNAPSE_RELEASE
-    assert(((_resultado_ >= 0LL)) && "Fallo en contrato: garantiza");
-    #endif
     _syn_texto_liberar(doc);
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 CadenaSegura palabra_en_posicion(CadenaSegura linea, int64_t pos) {
-    #ifndef SYNAPSE_RELEASE
-    assert(((pos >= 0LL)) && "Fallo en contrato: requiere");
-    #endif
     int64_t len_lin = strlen_s(linea);
     if ((pos >= len_lin)) {
         CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
         _syn_texto_liberar(linea);
         return _resultado_;
           /* [Lifetime Scope: exit depth=1] */
@@ -1633,19 +1368,11 @@ CadenaSegura palabra_en_posicion(CadenaSegura linea, int64_t pos) {
         _syn_texto_liberar(c);
     }
     if ((word_end <= word_start)) {
-        CadenaSegura _resultado_ = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        #ifndef SYNAPSE_RELEASE
-        assert((1) && "Fallo en contrato: garantiza");
-        #endif
-        return _resultado_;
+        return (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
           /* [Lifetime Scope: exit depth=1] */
     }
     int64_t word_len = (word_end - word_start);
-    CadenaSegura _resultado_ = ((CadenaSegura){.longitud=word_len, .datos=((char*)memcpy(malloc(word_len+1),(linea).datos+word_start,word_len))});
-    #ifndef SYNAPSE_RELEASE
-    assert((1) && "Fallo en contrato: garantiza");
-    #endif
-    return _resultado_;
+    return ((CadenaSegura){.longitud=word_len, .datos=((char*)memcpy(malloc(word_len+1),(linea).datos+word_start,word_len))});
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -1655,14 +1382,7 @@ int64_t _principal_impl(void) {
     CadenaSegura uri_actual = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
     while ((ejecutando == 1LL)) {
         int64_t content_length = leer_cabecera();
-        // cumple Manual 8 §1.2: validacion explicita de Content-Length (todos los builds)
-        if ((content_length < 0LL)) {
-            enviar_respuesta(construir_error(0LL, (-32600LL), (CadenaSegura){ .longitud = (int)strlen("Invalid Request: Content-Length missing or negative"), .datos = "Invalid Request: Content-Length missing or negative" }));
-            break;
-              /* [Lifetime Scope: exit depth=2] */
-        }
-        if ((content_length > MAX_LSP_MSG_SIZE)) {
-            enviar_respuesta(construir_error(0LL, (-32600LL), (CadenaSegura){ .longitud = (int)strlen("Invalid Request: Content-Length exceeds maximum"), .datos = "Invalid Request: Content-Length exceeds maximum" }));
+        if ((content_length <= 0LL)) {
             break;
               /* [Lifetime Scope: exit depth=2] */
         }
@@ -1672,7 +1392,6 @@ int64_t _principal_impl(void) {
               /* [Lifetime Scope: exit depth=2] */
         }
         int64_t id_val = (-1LL);
-        int64_t method_handled = 0LL;
         CadenaSegura patron_id = (CadenaSegura){ .longitud = (int)strlen("\"id\":"), .datos = "\"id\":" };
         int64_t patron_len_id = 5LL;
         int64_t body_len = strlen_s(body);
@@ -1732,112 +1451,38 @@ int64_t _principal_impl(void) {
               /* [Lifetime Scope: exit depth=2] */
         }
         struct NodoJson msg = desde_texto(body);
-        // cumple Manual 8 §1.2: validar que el cuerpo sea JSON parseable
-        if ((msg.tipo < 0LL)) {
-            enviar_respuesta(construir_error(0LL, (-32700LL), (CadenaSegura){ .longitud = (int)strlen("Parse error: invalid JSON"), .datos = "Parse error: invalid JSON" }));
-            continue;
-              /* [Lifetime Scope: exit depth=2] */
-        }
-        struct NodoJson method_nodo = obtener_campo(msg, (CadenaSegura){ .longitud = (int)strlen("method"), .datos = "method" });
-        CadenaSegura method_str = strcpy_f(_json_a_texto(method_nodo));
         struct NodoJson params_nodo = obtener_campo(msg, (CadenaSegura){ .longitud = (int)strlen("params"), .datos = "params" });
         CadenaSegura params_str = strcpy_f(_json_a_texto(params_nodo));
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"initialize\""), .datos = "\"initialize\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"initialize\""), .datos = "\"initialize\"" }) >= 0LL)) {
             handle_initialize(id_val);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"shutdown\""), .datos = "\"shutdown\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"shutdown\""), .datos = "\"shutdown\"" }) >= 0LL)) {
             handle_shutdown(id_val);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"exit\""), .datos = "\"exit\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"exit\""), .datos = "\"exit\"" }) >= 0LL)) {
             if ((id_val >= 0LL)) {
                 handle_unknown(id_val);
                   /* [Lifetime Scope: exit depth=3] */
             }
               /* [Lifetime Scope: exit depth=2] */
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didOpen\""), .datos = "\"textDocument/didOpen\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didOpen\""), .datos = "\"textDocument/didOpen\"" }) >= 0LL)) {
             _syn_texto_liberar(uri_actual);
             uri_actual = strcpy_f(extraer_uri(params_str));
-            CadenaSegura doc_abierto = extraer_texto_doc(params_str);
-            lsp_doc_store(doc_abierto);
-            // cumple Manual 8 §1.4: publishDiagnostics con check #lang
-            int _tiene_lang_o = 0;
-            if (doc_abierto.datos && doc_abierto.longitud >= 5) {
-                for (int _lio = 0; _lio < doc_abierto.longitud && _lio < 200; _lio++) {
-                    if (doc_abierto.datos[_lio] == '#') {
-                        if (_lio + 5 <= doc_abierto.longitud &&
-                            doc_abierto.datos[_lio+1] == 'l' && doc_abierto.datos[_lio+2] == 'a' &&
-                            doc_abierto.datos[_lio+3] == 'n' && doc_abierto.datos[_lio+4] == 'g') {
-                            _tiene_lang_o = 1;
-                            break;
-                        }
-                    }
-                    if (doc_abierto.datos[_lio] == '\n') break;
-                }
-            }
-            char _diag_buf_o[1024];
-            if (!_tiene_lang_o && doc_abierto.datos && doc_abierto.longitud > 0) {
-                CadenaSegura uri_esc_o = json_string(uri_actual);
-                char _err_msg_o[] = "Falta declaracion de idioma '#lang: <codigo>' en la linea 1";
-                snprintf(_diag_buf_o, sizeof(_diag_buf_o),
-                    "{\"uri\":%.*s,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":0}},\"severity\":1,\"code\":\"ERR_LANG_MISSING\",\"message\":\"%s\"}]}",
-                    uri_esc_o.longitud, uri_esc_o.datos ? uri_esc_o.datos : "\"\"",
-                    _err_msg_o);
-            } else {
-                CadenaSegura uri_esc_o = json_string(uri_actual);
-                snprintf(_diag_buf_o, sizeof(_diag_buf_o),
-                    "{\"uri\":%.*s,\"diagnostics\":[]}",
-                    uri_esc_o.longitud, uri_esc_o.datos ? uri_esc_o.datos : "\"\"");
-            }
-            CadenaSegura diag_o = { .longitud = (int)strlen(_diag_buf_o), .datos = _diag_buf_o };
-            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag_o));
+            lsp_doc_store(extraer_texto_doc(params_str));
+            CadenaSegura diag = concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"uri\":"), .datos = "{\"uri\":" }, json_string(uri_actual)), (CadenaSegura){ .longitud = (int)strlen(",\"diagnostics\":[]}"), .datos = ",\"diagnostics\":[]}" });
+            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag));
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(uri_actual);
+            _syn_texto_liberar(diag);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didChange\""), .datos = "\"textDocument/didChange\"" }) == 0LL)) {            _syn_texto_liberar(uri_actual);
-            uri_actual = strcpy_f(extraer_uri(params_str));
-            CadenaSegura nuevo_doc = extraer_texto_doc(params_str);
-            lsp_doc_store(nuevo_doc);
-            // cumple Manual 8 §1.4: publishDiagnostics tras didChange
-            int tiene_lang = 0;
-            if (nuevo_doc.datos && nuevo_doc.longitud >= 5) {
-                for (int _li = 0; _li < nuevo_doc.longitud && _li < 200; _li++) {
-                    if (nuevo_doc.datos[_li] == '#') {
-                        if (_li + 5 <= nuevo_doc.longitud &&
-                            nuevo_doc.datos[_li+1] == 'l' && nuevo_doc.datos[_li+2] == 'a' &&
-                            nuevo_doc.datos[_li+3] == 'n' && nuevo_doc.datos[_li+4] == 'g') {
-                            tiene_lang = 1;
-                            break;
-                        }
-                    }
-                    if (nuevo_doc.datos[_li] == '\n') break;
-                }
-            }
-            // cumple Manual 8 §1.4: publishDiagnostics con ERR_LANG_MISSING
-            char _diag_buf[1024];
-            if (!tiene_lang && nuevo_doc.datos && nuevo_doc.longitud > 0) {
-                CadenaSegura uri_esc = json_string(uri_actual);
-                char _err_msg[] = "Falta declaracion de idioma '#lang: <codigo>' en la linea 1";
-                snprintf(_diag_buf, sizeof(_diag_buf),
-                    "{\"uri\":%.*s,\"diagnostics\":[{\"range\":{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":0,\"character\":0}},\"severity\":1,\"code\":\"ERR_LANG_MISSING\",\"message\":\"%s\"}]}",
-                    uri_esc.longitud, uri_esc.datos ? uri_esc.datos : "\"\"",
-                    _err_msg);
-            } else {
-                CadenaSegura uri_esc = json_string(uri_actual);
-                snprintf(_diag_buf, sizeof(_diag_buf),
-                    "{\"uri\":%.*s,\"diagnostics\":[]}",
-                    uri_esc.longitud, uri_esc.datos ? uri_esc.datos : "\"\"");
-            }
-            CadenaSegura diag_payload = { .longitud = (int)strlen(_diag_buf), .datos = _diag_buf };
-            enviar_respuesta(construir_notificacion((CadenaSegura){ .longitud = (int)strlen("textDocument/publishDiagnostics"), .datos = "textDocument/publishDiagnostics" }, diag_payload));
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didChange\""), .datos = "\"textDocument/didChange\"" }) >= 0LL)) {
+            lsp_doc_store(extraer_texto_doc(params_str));
               /* [Lifetime Scope: exit depth=2] */
-            _syn_texto_liberar(uri_actual);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didClose\""), .datos = "\"textDocument/didClose\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/didClose\""), .datos = "\"textDocument/didClose\"" }) >= 0LL)) {
             lsp_doc_clear();
             _syn_texto_liberar(uri_actual);
             uri_actual = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
@@ -1847,72 +1492,65 @@ int64_t _principal_impl(void) {
             _syn_texto_liberar(uri_actual);
             _syn_texto_liberar(diag);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/hover\""), .datos = "\"textDocument/hover\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/hover\""), .datos = "\"textDocument/hover\"" }) >= 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_hover(id_val, doc, params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/completion\""), .datos = "\"textDocument/completion\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/completion\""), .datos = "\"textDocument/completion\"" }) >= 0LL)) {
             CadenaSegura items = lsp_build_completion_items();
             enviar_respuesta(construir_respuesta(id_val, concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"isIncomplete\":false,\"items\":"), .datos = "{\"isIncomplete\":false,\"items\":" }, items), (CadenaSegura){ .longitud = (int)strlen("}"), .datos = "}" })));
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(items);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/definition\""), .datos = "\"textDocument/definition\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/definition\""), .datos = "\"textDocument/definition\"" }) >= 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_definition(id_val, uri_actual, doc, params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/codeAction\""), .datos = "\"textDocument/codeAction\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/codeAction\""), .datos = "\"textDocument/codeAction\"" }) >= 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_code_action(id_val, doc, params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/formatting\""), .datos = "\"textDocument/formatting\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/formatting\""), .datos = "\"textDocument/formatting\"" }) >= 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_formatting(id_val, doc, params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/signatureHelp\""), .datos = "\"textDocument/signatureHelp\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"textDocument/signatureHelp\""), .datos = "\"textDocument/signatureHelp\"" }) >= 0LL)) {
             CadenaSegura doc = reemplazar(lsp_doc_get(), (CadenaSegura){ .longitud = (int)strlen("\\n"), .datos = "\\n" }, (CadenaSegura){ .longitud = (int)strlen("\n"), .datos = "\n" });
             handle_signature_help(id_val, doc, params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
             _syn_texto_liberar(doc);
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"workspace/didChangeConfiguration\""), .datos = "\"workspace/didChangeConfiguration\"" }) == 0LL)) {
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"workspace/didChangeConfiguration\""), .datos = "\"workspace/didChangeConfiguration\"" }) >= 0LL)) {
             handle_did_change_configuration(params_str);
-            method_handled = 1LL;
               /* [Lifetime Scope: exit depth=2] */
         }
-        // cumple Manual 8 §1.4: stubs para comandos IA
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiComplete\""), .datos = "\"synapse/aiComplete\"" }) == 0LL)) {
-            enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-            method_handled = 1LL;
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiStatus\""), .datos = "\"synapse/aiStatus\"" }) >= 0LL)) {
+            handle_ai_status(id_val);
               /* [Lifetime Scope: exit depth=2] */
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiFix\""), .datos = "\"synapse/aiFix\"" }) == 0LL)) {
-            enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-            method_handled = 1LL;
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiTranspile\""), .datos = "\"synapse/aiTranspile\"" }) >= 0LL)) {
+            handle_ai_transpile(id_val, params_str);
               /* [Lifetime Scope: exit depth=2] */
         }
-        if ((cmp_texto(method_str, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiTranspile\""), .datos = "\"synapse/aiTranspile\"" }) == 0LL)) {
-            enviar_respuesta(construir_respuesta(id_val, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }));
-            method_handled = 1LL;
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiBindings\""), .datos = "\"synapse/aiBindings\"" }) >= 0LL)) {
+            handle_ai_bindings(id_val, params_str);
               /* [Lifetime Scope: exit depth=2] */
         }
-        // cumple Manual 8 §1.2: error -32601 para metodo desconocido
-        if ((method_handled == 0LL) && (id_val >= 0LL)) {
-            enviar_respuesta(concat(concat((CadenaSegura){ .longitud = (int)strlen("{\"jsonrpc\":\"2.0\",\"id\":"), .datos = "{\"jsonrpc\":\"2.0\",\"id\":" }, a_texto(id_val)), (CadenaSegura){ .longitud = (int)strlen(",\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}"), .datos = ",\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}" }));
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiComplete\""), .datos = "\"synapse/aiComplete\"" }) >= 0LL)) {
+            handle_ai_complete(id_val, params_str);
+              /* [Lifetime Scope: exit depth=2] */
+        }
+        if ((strstr_f(body, (CadenaSegura){ .longitud = (int)strlen("\"synapse/aiFix\""), .datos = "\"synapse/aiFix\"" }) >= 0LL)) {
+            handle_ai_fix(id_val, params_str);
+              /* [Lifetime Scope: exit depth=2] */
         }
         liberar_nodo(msg);
           /* [Lifetime Scope: exit depth=1] */
@@ -1920,8 +1558,6 @@ int64_t _principal_impl(void) {
         _syn_texto_liberar(params_str);
         _json_nodo_liberar(params_nodo);
         _json_nodo_liberar(msg);
-        _syn_texto_liberar(method_str);
-        _json_nodo_liberar(method_nodo);
         _syn_texto_liberar(body);
     }
     return 0LL;
