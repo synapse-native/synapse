@@ -19,6 +19,7 @@
 
 // cumple Manual 5 §3: pthread_once para inicialización thread-safe
 static pthread_once_t _syn_stdout_binary_once = PTHREAD_ONCE_INIT;
+static pthread_once_t _syn_stdin_binary_once = PTHREAD_ONCE_INIT;
 
 static void _syn_ensure_stdout_binary_init(void) {
 #ifdef _WIN32
@@ -26,8 +27,19 @@ static void _syn_ensure_stdout_binary_init(void) {
 #endif
 }
 
+// cumple Manual 8 §1.2: stdin en modo binario para LSP (evita traducción \r\n)
+static void _syn_ensure_stdin_binary_init(void) {
+#ifdef _WIN32
+    _setmode(_fileno(stdin), _O_BINARY);
+#endif
+}
+
 static void _syn_ensure_stdout_binary(void) {
     pthread_once(&_syn_stdout_binary_once, _syn_ensure_stdout_binary_init);
+}
+
+static void _syn_ensure_stdin_binary(void) {
+    pthread_once(&_syn_stdin_binary_once, _syn_ensure_stdin_binary_init);
 }
 
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -53,6 +65,7 @@ static pthread_mutex_t _leer_linea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 CadenaSegura leer_linea(void) {
     static char _buf[4096];
+    _syn_ensure_stdin_binary();
     pthread_mutex_lock(&_leer_linea_mutex);
     if (fgets(_buf, 4096, stdin)) {
         int _len = (int)strlen(_buf);

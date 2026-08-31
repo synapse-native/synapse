@@ -284,26 +284,26 @@ struct ParJson {
 };
 
 struct NodoJson {
-    int tipo;                // -1=Error, 0=Nulo, 1=Booleano, 2=Numero, 3=Cadena, 4=Arreglo, 5=Objeto
-    int valor_bool;
-    float valor_num;
+    int64_t tipo;           // cumple Manual 2 §4.1: entero = int64_t
+    int64_t valor_bool;     // cumple Manual 2 §4.1: entero = int64_t
+    double valor_num;       // cumple Manual 2 §4.1: decimal = double
     CadenaSegura valor_str;
     NodoJson* arreglo_hijos;
     ParJson* objeto_pares;
-    int longitud;
+    int64_t longitud;       // cumple Manual 2 §4.1: entero = int64_t
 };
 
 // --- Dynamic array helpers for JSON ---
 typedef struct {
     NodoJson* items;
-    int count;
-    int cap;
+    int64_t count;          // cumple Manual 2 §4.1: entero = int64_t
+    int64_t cap;            // cumple Manual 2 §4.1: entero = int64_t
 } NodoArr;
 
 typedef struct {
     ParJson* items;
-    int count;
-    int cap;
+    int64_t count;          // cumple Manual 2 §4.1: entero = int64_t
+    int64_t cap;            // cumple Manual 2 §4.1: entero = int64_t
 } ParArr;
 
 // --- Watchdog types (debug mode) ---
