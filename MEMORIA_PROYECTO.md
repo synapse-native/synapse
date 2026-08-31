@@ -15,15 +15,17 @@
 
 ```yaml
 Fase roadmap:      FASE 28 — Certificación Syquex (Hito 7)
-                   Fase 27 COMPLETADA
-Estado:            F28 EN PROGRESO — ME_28_T1..T7 GREEN (62 tests: 28 cert + 16 fuzz + 8 bench + 5 coverage + 5 examples)
-Commit fase:       880a7e9 (ME_28_T7 ejemplos)
-Próximo ME:        Cierre FASE 28
-Próximo paso:      Verificar si hay más entregables o cerrar FASE 28
-Últimos commits:    880a7e9 (ME_28_T7 ejemplos Syquex)
-                   931d3b9 (ME_28_T6 cobertura Syquex)
-                   827ca23 (FASE 28: planes MTS + verificaciones)
+                   Fase 28 COMPLETADA
+Estado:            F28 COMPLETADA — 7 MEs GREEN (62 tests: 28 cert + 16 fuzz + 8 bench + 5 coverage + 5 examples)
+Commit fase:       c1125e5 (documentación ME_28_T7)
+Próximo ME:        FASE 29 (o siguiente hito del roadmap)
+Próximo paso:      Transición a FASE 29
+Últimos commits:    c1125e5 (doc ME_28_T7)
+                   880a7e9 (ME_28_T7 ejemplos)
+                   931d3b9 (ME_28_T6 cobertura)
+                   827ca23 (planes MTS)
                    9cd7dc6 (ME_28_T5 benchmarks)
+                   0c369b7 (ME_28_T1..T4 cert+fuzz)
 ```
 
 ### Cambios recientes esta sesión
@@ -36,7 +38,7 @@ Próximo paso:      Verificar si hay más entregables o cerrar FASE 28
 
 ### Deudas / Hallazgos críticos activos
 - **F27 COMPLETADA:** ME_27_T1-T5 todos GREEN. 79/79 tests LSP+Debugger+CLI.
-- **F28 EN PROGRESO:** ME_28_T1..T7 GREEN — 62 tests (28 cert + 16 fuzz + 8 bench + 5 coverage + 5 examples). 0 skipped.
+- **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex (cert+fuzz+bench+coverage+examples). 0 skipped. Cobertura 50.96%.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)

@@ -176,7 +176,7 @@ Leyenda: Ã¢Â¬Â PENDIENTE ÃÂ· Ã°ÂÂÂ EN PROGRESO ÃÂ· �
 | 25 | Backend WASM + frontend DOM para Syquex | Manual 3 | Ã¢Â¬Â pendiente (Fase 22-25) |
 | 26 | OpenSyn para Syquex (router, transpiler, contexto estÃÂ¡tico, bindings) | Manual 7 | Ã¢Â¬Â pendiente (Fase 22-26) |
 | 27 | Herramientas: LSP, VS Code, `--check` | Manual 8 | Ã¢Â¬Â pendiente (Fase 22-27) |
-| 28 | Certificación de Syquex | Manual 9 | EN PROGRESO (ME_28_T1..T6 GREEN; commit 931d3b9) |
+| 28 | Certificación de Syquex | Manual 9 | ✅ COMPLETADA (ME_28_T1..T7 GREEN, 62 tests, commit c1125e5) |
 | 29 | DetecciÃÂ³n HW y gestiÃÂ³n de modelos (`std/os.syn`, `opensyn/installer.syn`) | Manual 7 | Ã¢Â¬Â pendiente (Fase 22-29) |
 | 30 | InstalaciÃÂ³n unificada (Inno Setup, .deb, .dmg, firmas, update) | Manual 9 ÃÂ§9.9 | Ã¢Â¬Â pendiente (Fase 22-30) |
 
