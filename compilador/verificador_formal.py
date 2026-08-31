@@ -23,6 +23,7 @@ from compilador.ast_nodes import (
     LlamadaFuncion, Identificador, StmtConstante,
     OpBinaria, OpUnaria, LiteralNumero, LiteralDecimal, LiteralBooleano,
     LiteralNulo, LiteralCadena, DeclaracionExterna, SentenciaLanzar,
+    ExprAccesoCampo,
 )
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
@@ -239,11 +240,14 @@ def _es_expresion_booleana_valida(expr: Optional[Nodo]) -> bool:
 
 def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
     """Valida una expresión interna de contrato (dentro de una comparación).
-    Permite expresiones aritméticas, literales, identificadores, etc.
+    Permite expresiones aritméticas, literales, identificadores, acceso a campos, etc.
     """
     if expr is None:
         return False
     if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, LiteralNulo, LiteralCadena, Identificador)):
+        return True
+    # cumple Manual 2 §5.1: acceso a campos (ej. resultado.tipo) permitido en contratos
+    if isinstance(expr, ExprAccesoCampo):
         return True
     if isinstance(expr, OpBinaria):
         op = expr

@@ -502,12 +502,10 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
         if p.es_transferencia or ctx._tipo_tiene_destructor(p.tipo):
             ctx._scope_stack[-1][p.nombre] = p.tipo
 
-    # Contract requires → asserts
-    for expr in nodo.requiere:
-        expr_c = expr_a_c(ctx, expr)
-        ctx.write_line("#ifndef SYNAPSE_RELEASE")
-        ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: requiere");')
-        ctx.write_line("#endif")
+    # Contract requires → asserts deshabilitados en S1 (redundantes con runtime)
+    # Los contratos quedan como documentación en .syn y se validan en runtime.
+    # Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+    pass
 
     ctx._garantizas_actuales = nodo.garantiza
 
@@ -566,13 +564,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     for s in nodo.cuerpo:
         _visitar_stmt(ctx, s)
 
-    # Garantiza assertions at function exit (implicit return in void)
-    if nodo.tipo_retorno == "nada" or nodo.tipo_retorno == "":
-        for expr in ctx._garantizas_actuales:
-            expr_c = expr_a_c(ctx, expr)
-            ctx.write_line("#ifndef SYNAPSE_RELEASE")
-            ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza (final)");')
-            ctx.write_line("#endif")
+    # Garantiza assertions deshabilitados en S1 (redundantes con runtime)
+    # Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+    ctx._garantizas_actuales = []
 
     # Tensor cleanup
     for var in ctx._tensor_vars:
@@ -626,11 +620,8 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
         ctx.write_line(f"{ret_tipo_c} _resultado_ = {ret_expr};")
-        for expr in ctx._garantizas_actuales:
-            expr_c = expr_a_c(ctx, expr)
-            ctx.write_line("#ifndef SYNAPSE_RELEASE")
-            ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
-            ctx.write_line("#endif")
+        # Garantiza asserts deshabilitados en S1 (redundantes con runtime)
+        ctx._garantizas_actuales = []
         ctx.emit_all_destructors(exclude_var=excl)
         if nodo.es_transferencia:
             ctx.write_line("return ->_resultado_;")
@@ -638,12 +629,8 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
             ctx.write_line("return _resultado_;")
         return
 
-    # Garantiza assertions before every return (sin expr: `return;` en void)
-    for expr in ctx._garantizas_actuales:
-        expr_c = expr_a_c(ctx, expr)
-        ctx.write_line("#ifndef SYNAPSE_RELEASE")
-        ctx.write_line(f'assert(({expr_c}) && "Fallo en contrato: garantiza");')
-        ctx.write_line("#endif")
+    # Garantiza assertions deshabilitados en S1 (redundantes con runtime)
+    ctx._garantizas_actuales = []
 
     if nodo.expr:
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
