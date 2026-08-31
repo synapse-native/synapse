@@ -236,3 +236,4 @@
 {"fecha": "2026-08-30", "archivos": ["nucleo/_lsp_v3.c tests/integration/test_lsp_protocol_validation.py"], "cita": "Manual 8 §1.2", "puntos": "Content-Length bounds validation: negative/huge Content-Length retorna error -32600, invalid JSON retorna error -32700. construir_error usa snprintf para evitar null bytes."}
 {"fecha": "2026-08-30", "archivos": ["runtime/core/modelo.c"], "cita": "Manual 7 §3", "puntos": "GGUF models: metadata parsing with atoi/atof is unsafe. strtol/strtod with endptr validation required. Non-numeric metadata must be rejected or defaulted."}
 {"fecha": "2026-08-30", "archivos": ["runtime/core/modelo.c"], "cita": "Manual 7 §3", "puntos": "metadatos GGUF: atoi/atof reemplazados por strtol/strtod con endptr para detección de errores de parseo"}
+{"fecha": "2026-08-30", "archivos": ["runtime/core/io.c runtime/core/texto.c"], "cita": "Manual 5 §3", "puntos": "estados estáticos protegidos con pthread_once/pthread_mutex para thread-safety"}

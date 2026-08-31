@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <pthread.h>
 #include "synapse_rt_types.h"
 #include "texto.h"
 
@@ -16,22 +17,29 @@
 #define SPLIT_MAX 256
 #define SPLIT_STR_MAX 4096
 
+// cumple Manual 5 §3: mutex protege estado estático split contra data races
+static pthread_mutex_t _split_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static char* _split_store[SPLIT_MAX][SPLIT_STR_MAX];
 static int _split_count[SPLIT_MAX];
 static int _split_used = 0;
 
 static int64_t _split_alloc(void) {
+    pthread_mutex_lock(&_split_mutex);
     for (int i = 0; i < SPLIT_MAX; i++) {
         if (_split_count[i] == 0 && _split_store[i][0] == NULL) {
             _split_used++;
+            pthread_mutex_unlock(&_split_mutex);
             return i;
         }
     }
+    pthread_mutex_unlock(&_split_mutex);
     return -1;
 }
 
 static void _split_free(int64_t id) {
     if (id < 0 || id >= SPLIT_MAX) return;
+    pthread_mutex_lock(&_split_mutex);
     for (int i = 0; i < _split_count[id]; i++) {
         if (_split_store[id][i]) {
             free(_split_store[id][i]);
@@ -39,6 +47,7 @@ static void _split_free(int64_t id) {
         }
     }
     _split_count[id] = 0;
+    pthread_mutex_unlock(&_split_mutex);
 }
 
 // ============================================================

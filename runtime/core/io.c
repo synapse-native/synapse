@@ -17,15 +17,17 @@
 // Thread-safe console I/O
 // ============================================================
 
-static int _syn_stdout_binary_init = 0;
+// cumple Manual 5 §3: pthread_once para inicialización thread-safe
+static pthread_once_t _syn_stdout_binary_once = PTHREAD_ONCE_INIT;
+
+static void _syn_ensure_stdout_binary_init(void) {
+#ifdef _WIN32
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
+}
 
 static void _syn_ensure_stdout_binary(void) {
-    if (!_syn_stdout_binary_init) {
-        _syn_stdout_binary_init = 1;
-#ifdef _WIN32
-        _setmode(_fileno(stdout), _O_BINARY);
-#endif
-    }
+    pthread_once(&_syn_stdout_binary_once, _syn_ensure_stdout_binary_init);
 }
 
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -46,16 +48,22 @@ void escribir_linea(CadenaSegura contenido) {
     pthread_mutex_unlock(&io_mutex);
 }
 
+// cumple Manual 5 §3: mutex protege _buf estático contra data races
+static pthread_mutex_t _leer_linea_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 CadenaSegura leer_linea(void) {
     static char _buf[4096];
+    pthread_mutex_lock(&_leer_linea_mutex);
     if (fgets(_buf, 4096, stdin)) {
         int _len = (int)strlen(_buf);
         if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
         char* _dup = (char*)malloc(_len + 1);
-        if (!_dup) { return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+        if (!_dup) { pthread_mutex_unlock(&_leer_linea_mutex); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
         memcpy(_dup, _buf, _len + 1);
+        pthread_mutex_unlock(&_leer_linea_mutex);
         return (CadenaSegura){ .longitud = _len, .datos = _dup };
     }
+    pthread_mutex_unlock(&_leer_linea_mutex);
     return (CadenaSegura){ .longitud = 0, .datos = "" };
 }
 
