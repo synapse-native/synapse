@@ -16,12 +16,12 @@
 ```yaml
 Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 TDD RED (3 tests fallan por ausencia de código)
-Commit fase:       9b0f491 (ME_29_T1/T2/T3 planes + verificaciones)
-Próximo ME:        ME_29_T4 (implementar std/os.syn u otro de implementación)
-Próximo paso:      Implementar código para hacer TDD GREEN
-Últimos commits:    9b0f491 (FASE 29: planes TDD + verificaciones)
-                   b273058 (FASE 28 COMPLETADA)
+Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 RED, ME_29_T4 GREEN (3+3=6 tests)
+Commit fase:       f55d6a9 (ME_29_T4 implementación)
+Próximo ME:        ME_29_T5 (installer OpenSyn) u otro
+Próximo paso:      Continuar FASE 29 con installer o gestión de modelos
+Últimos commits:    f55d6a9 (ME_29_T4 std/os.syn)
+                   9b0f491 (ME_29_T1/T2/T3 planes TDD)
 ```
 
 ### Cambios recientes esta sesión
@@ -31,8 +31,8 @@ Próximo paso:      Implementar código para hacer TDD GREEN
 | `b273058` | FASE 28 COMPLETADA — Certificación Syquex | 62 tests GREEN, 0 skipped |
 
 ### Deudas / Hallazgos críticos activos
-- **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex. 0 skipped.
-- **F29 EN PROGRESO:** ME_29_T1/T2/T3 TDD RED — tests creados, código pendiente.
+- **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex.
+- **F29 EN PROGRESO:** ME_29_T1/T2/T3 RED (tests creados), ME_29_T4 GREEN (std/os.syn compilable).
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
