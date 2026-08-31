@@ -570,14 +570,15 @@ static void _serializar_nodo(NodoJson nodo) {
 CadenaSegura _json_a_texto(NodoJson nodo) {
     _ser_pos = 0;
     _serializar_nodo(nodo);
-    // Null-terminate
-    if (_ser_pos < _SER_BUF_SIZE) {
-        _ser_buf[_ser_pos] = '\0';
+    // cumple Manual 4 §2.1: retornar error si excede 64KB, no truncar
+    if (_ser_pos >= _SER_BUF_SIZE - 1) {
+        return (CadenaSegura){ .longitud = 0, .datos = "" };
     }
+    // Null-terminate
+    _ser_buf[_ser_pos] = '\0';
     int n = _ser_pos;
-    if (n > _SER_BUF_SIZE - 1) n = _SER_BUF_SIZE - 1;
     char* dup = (char*)pool_alloc((size_t)(n + 1));
-    if (!dup) return (CadenaSegura){0, ""};
+    if (!dup) return (CadenaSegura){ .longitud = 0, .datos = "" };
     memcpy(dup, _ser_buf, (size_t)n);
     dup[n] = '\0';
     return (CadenaSegura){ .longitud = n, .datos = dup };
