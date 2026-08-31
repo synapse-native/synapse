@@ -107,7 +107,7 @@ Próximo paso:      Continuar FASE 29 con installer o gestión de modelos
 - **Sin `pytest.skip`** → el test debe FALLAR si código no implementado
 - **`pytest --collect-only -q` = 0 errores** ANTES de cada commit
 - **Baseline `git stash`** antes de modificar (confirmar fallas preexistentes)
-- **Lecer manual antes de tocar tests** → registrar lectura en `auditoria/registrar_lectura.py`
+- **Leer manual antes de tocar tests** → registrar lectura en `auditoria/registrar_lectura.py`
 
 ### Seguridad (FFI / RAI)
 - **RAII sobre literales estáticos → 0xC0000374 (heap corruption)** → fix `pool_free` registry

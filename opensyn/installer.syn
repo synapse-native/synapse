@@ -1,0 +1,122 @@
+#lang: es
+# opensyn/installer.syn - Instalador OpenSyn
+# Manual 7 §2.3, Manual 9 §5.2-5.4
+# cumple Manual 7 §2.3
+# cumple Manual 9 §5.2
+# cumple Manual 9 §5.3
+# cumple Manual 9 §5.4
+# cumple Manual 2 §12 (contratos requiere/garantiza)
+
+estructura HardwareInfo:
+    ram_total: entero
+    vram_total: entero
+    cpu_nucleos: entero
+    arquitectura: texto
+
+estructura ModeloInfo:
+    nombre: texto
+    url: texto
+    sha256: texto
+    tamano_aprox: entero
+
+externo funcion _syn_memoria_total() -> entero
+externo funcion _syn_vram_total() -> entero
+externo funcion _syn_cpu_nucleos() -> entero
+externo funcion _syn_arquitectura() -> texto
+
+funcion memoria_total() -> entero:
+    retornar _syn_memoria_total()
+
+funcion vram_total() -> entero:
+    retornar _syn_vram_total()
+
+funcion cpu_nucleos() -> entero:
+    retornar _syn_cpu_nucleos()
+
+funcion arquitectura() -> texto:
+    retornar _syn_arquitectura()
+
+funcion detectar_hardware() -> HardwareInfo:
+    requiere:
+        verdadero
+    garantiza:
+        resultado.ram_total >= 0
+        resultado.cpu_nucleos > 0
+    let hw: HardwareInfo
+    hw.ram_total = memoria_total()
+    hw.vram_total = vram_total()
+    hw.cpu_nucleos = cpu_nucleos()
+    hw.arquitectura = arquitectura()
+    retornar hw
+
+funcion seleccionar_modelo(vram: entero) -> ModeloInfo:
+    requiere:
+        vram >= 0
+    garantiza:
+        longitud(resultado.nombre) > 0
+        longitud(resultado.url) > 0
+        resultado.tamano_aprox > 0
+    let m: ModeloInfo
+    si vram < 4096:
+        m.nombre = "deepseek-coder-1.3b-q4_k_m"
+        m.url = "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
+        m.sha256 = ""
+        m.tamano_aprox = 1073741824
+    sino:
+        si vram < 8192:
+            m.nombre = "codellama-7b-q4_k_m"
+            m.url = "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
+            m.sha256 = ""
+            m.tamano_aprox = 4294967296
+        sino:
+            si vram < 12288:
+                m.nombre = "codellama-13b-q4_k_m"
+                m.url = "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
+                m.sha256 = ""
+                m.tamano_aprox = 7516192768
+            sino:
+                m.nombre = "codellama-34b-q4_k_m"
+                m.url = "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
+                m.sha256 = ""
+                m.tamano_aprox = 19327352832
+    retornar m
+
+funcion seleccionar_hilos(nucleos: entero) -> entero:
+    requiere:
+        nucleos > 0
+    garantiza:
+        resultado >= 2
+        resultado <= nucleos
+    si nucleos <= 4:
+        retornar 2
+    sino:
+        si nucleos <= 8:
+            retornar 4
+        sino:
+            retornar 8
+
+funcion seleccionar_capas_gpu(vram: entero) -> entero:
+    requiere:
+        vram >= 0
+    garantiza:
+        resultado >= 0
+    si vram < 4096:
+        retornar 0
+    sino:
+        si vram < 8192:
+            retornar 12
+        sino:
+            retornar 35
+
+funcion principal() -> nulo:
+    let hw: HardwareInfo = detectar_hardware()
+    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
+    let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
+    let capas: entero = seleccionar_capas_gpu(hw.vram_total)
+    escribir_linea("Hardware:")
+    escribir_linea("Modelo:")
+    escribir_linea("Hilos:")
+    escribir_linea("Capas GPU:")
+    escribir_linea(modelo.nombre)
+    escribir_linea(entero_a_texto(hilos))
+    escribir_linea(entero_a_texto(capas))

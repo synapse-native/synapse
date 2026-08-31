@@ -2,6 +2,7 @@
 Generación de código C para expresiones y tipos.
 Contiene expr_a_c, tipo_de_expr, I/O builtins, log, formato.
 Los emisores de tensores están en emit_tensors.py.
+// cumple Manual 2 §3 (tipos primitivos y struct por nombre)
 """
 
 from typing import Optional
@@ -90,7 +91,10 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             # especializado tienen los tipos concretos sustituidos.
             nombre_struct = obj_tipo.split('<')[0]
         else:
-            return 'int'
+            # H-F29-T5: tipo Synapse puro (sin prefijo "struct ") guardado por
+            # ctx._variables. Manual 2 §3: tipos primitivos y struct por
+            # nombre. Aceptar tanto "X" como "struct X".
+            nombre_struct = obj_tipo
         info = ctx._estructuras.get(nombre_struct)
         if info:
             # D-2: para una instanciación registrada usar sus campos tipados.

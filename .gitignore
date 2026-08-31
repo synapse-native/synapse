@@ -39,6 +39,7 @@ tests/fixtures/tmp_*.syn
 examples/**/*.c
 tests/fixtures/*.c
 std/**/*.c
+opensyn/*.c
 
 # CLASE D2: Artefactos de prueba en raíz (auditoría Fase 0)
 prueba_*.c
@@ -56,6 +57,8 @@ __pycache__/
 stage2_*.txt
 stdout.log
 stderr.log
+pipeline.err
+pipeline.out
 --output
 --output.exe
 -o
