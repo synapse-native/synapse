@@ -3,7 +3,7 @@
 MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
 
 ## Requisito
-requisito: F29 (installer.syn)
+requisito: Manual 7 §2.3 / F29
 texto: "opensyn/installer.syn debe implementar instalación conforme a F29."
 implementacion: Crear tests/opensyn/test_installer.py con oráculo de instalación. RED hasta F29.
 oraculo: tests/opensyn/test_installer.py

@@ -3,7 +3,7 @@
 MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
 
 ## Requisito
-requisito: F29 (gestión de modelos)
+requisito: Manual 7 §2.3 / F29
 texto: "OpenSyn debe gestionar modelos (descargar/cachear) según F29."
 implementacion: Crear tests/opensyn/test_model_mgmt.py con oráculos de gestión. RED hasta F29.
 oraculo: tests/opensyn/test_model_mgmt.py
