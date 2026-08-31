@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-08-31T14:35Z** (commit `553fde1`)
+> Última actualización: **2026-08-31T23:35Z** (commit `183f97a`)
 
 ---
 
@@ -16,23 +16,27 @@
 ```yaml
 Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 RED, ME_29_T4 GREEN (3+3=6 tests)
-Commit fase:       f55d6a9 (ME_29_T4 implementación)
-Próximo ME:        ME_29_T5 (installer OpenSyn) u otro
-Próximo paso:      Continuar FASE 29 con installer o gestión de modelos
-Últimos commits:    f55d6a9 (ME_29_T4 std/os.syn)
-                   9b0f491 (ME_29_T1/T2/T3 planes TDD)
+Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 RED, ME_29_T4 GREEN, ME_29_T5 GREEN (6+1=7 tests)
+Commit fase:       183f97a (ME_29_T5 installer + fix tipo_de_expr)
+Próximo ME:        ME_29_T5u (instalar modelo + config.toml) u otro
+Próximo paso:      Continuar FASE 29 con instalación unificada (Fase 30) o gestión de modelos
+Últimos commits:    183f97a (ME_29_T5 installer + fix tipo_de_expr)
+                    04936d3 (reporte R134 + bitácora + MEMORIA)
+                    f55d6a9 (ME_29_T4 std/os.syn)
 ```
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `04936d3` | FASE 29: reporte R134 + bitácora + MEMORIA (ME_29_T4 GREEN) | Cierre ME_29_T4, documentación |
+| `183f97a` | FASE 29: ME_29_T5 installer OpenSyn + fix tipo_de_expr (1 test GREEN) | Cierre ME_29_T5, documentación |
 | `9b0f491` | FASE 29: ME_29_T1/T2/T3 planes TDD + verificaciones | 3 tests TDD RED creados |
 | `b273058` | FASE 28 COMPLETADA — Certificación Syquex | 62 tests GREEN, 0 skipped |
 
 ### Deudas / Hallazgos críticos activos
 - **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex.
-- **F29 EN PROGRESO:** ME_29_T1/T2/T3 RED (tests creados), ME_29_T4 GREEN (std/os.syn compilable).
+- **F29 EN PROGRESO:** ME_29_T1/T2/T3 RED (tests creados), ME_29_T4 GREEN (std/os.syn), ME_29_T5 GREEN (installer + fix tipo_de_expr).
+- **H-F29-T5b (REGISTRADO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI → "malloc fallo". Workaround en installer: literales separados. Resolución asignada a futuro ME.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
