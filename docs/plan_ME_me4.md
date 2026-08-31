@@ -47,3 +47,11 @@ oraculo: tests/opensyn/test_rag.py
 - Los tests modificados son de la carpeta `tests/` (excluidos de producción por el gate
   MTS); la exención ARQ-2026-08-27 autoriza tocarlos para ENDURECERLOS (no para
   debilitarlos), según regla 5 de gobernanza.
+
+---
+
+## CIERRE
+
+**Fecha:** 2026-08-28 (previo)
+**Resultado:** 165/165 tests convertidos de content-sniff a oráculos reales (LOTES 1-12)
+**Estado:** ✅ CERRADO ( commits 2fb58bd, 5fb413f, 6ceb4c0)

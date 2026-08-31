@@ -229,3 +229,5 @@
 {"fecha": "2026-08-30", "archivos": ["std/io.syn std/json.syn std/math.syn std/texto.syn tests/unit/test_std_contracts.py"], "cita": "Manual 2 §12", "puntos": "Contratos requiere/garantiza en 4 std modules: io(6 funcs), json(5), math(4), texto(16). Tests TDD 20/20 PASS."}
 {"fecha": "2026-08-30", "archivos": ["runtime/core/json.c"], "cita": "Manual 4 §2.1", "puntos": "_json_a_texto usa buffer estatico _ser_buf que se sobreescribe en cada llamada. Fix: retornar buffer propio (pool_alloc) que el llamador libera."}
 {"fecha": "2026-08-30", "archivos": ["runtime/core/json.c tests/unit/test_json_serialization.py"], "cita": "Manual 4 §2.1", "puntos": "_json_a_texto retorna pool_alloc copy, >64KB retorna vacio, 3 tests TDD PASS"}
+{"fecha": "2026-08-30", "archivos": ["tests/"], "cita": "Manual 7 §2.3", "puntos": "oraculos de test: asserts de salida real, no content-sniff ni smoke. Cada test debe verificar comportamiento observable, no solo que el programa no crashea."}
+{"fecha": "2026-08-30", "archivos": ["tests/"], "cita": "Manual 3 §12.1", "puntos": "tests de integracion: oraculo conductual, no sniff de contenido. Verificar salida real del binario."}
