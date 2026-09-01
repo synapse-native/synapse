@@ -1,18 +1,34 @@
-# plan_ME_30_T3 — TDD F27-F30: Distribución final
+# Plan ME_30_T3 — Instalador Linux (Bash)
 
-MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
+## Bloque MTS (método de trabajo seguro)
 
-## Requisito
-requisito: Manual 9 §9 / F30
-texto: "Distribución final empaquetada y firmada (F30)."
-implementacion: Crear tests/integration/test_distribucion.py con oráculo de empaquetado/firma. RED hasta F30.
-oraculo: tests/integration/test_distribucion.py
+### requisito:
+Manual 9 §4.1: "Los artefactos se publican en la sección Releases del repositorio de GitHub. Cada release incluye: archivos de instalación para Windows, Linux, macOS y WASM."
 
-**TDD:** Test TDD: el oráculo debe FALLAR (RED, @pytest.mark.tdd) hasta que el código implemente lo que dice el manual; no usa pytest.skip.
+### texto:
+Implementar script de instalación Bash para Linux que:
+1. Detecte distribución (Debian/Ubuntu, Fedora/RHEL, etc.)
+2. Instale Synapse y componentes seleccionados
+3. Opciones: "Solo Synapse" vs "Ecosistema completo"
+4. Cree enlaces simbólicos en /usr/local/bin
+5. Soporte para .deb, .rpm
 
-## Alcance (sin desviación)
-Crea ÚNICAMENTE el test TDD indicado; no implementa el código de producción (otro ME lo hace).
+### implementacion:
+1. Completar `instaladores/linux/install.sh` con:
+   - Detección de distribución
+   - Instalación de dependencias
+   - Copia de archivos
+   - Creación de enlaces simbólicos
+   - Opciones de componentes
 
-## Criterio de aceptación
-- El test existe y es RED (falla) por ausencia de código.
-- Marcado @pytest.mark.tdd y registrado en tests/tdd/REGISTRO_TDD.md.
+### oraculo:
+- Archivo install.sh existe y es ejecutable → PASS
+- Detecta distribución Linux → PASS
+- Instala componentes → PASS
+- Crea enlaces simbólicos → PASS
+
+## Archivos a modificar
+- `instaladores/linux/install.sh`
+
+## Citas de manuales
+- Manual 9 §4.1 (GitHub Releases)
