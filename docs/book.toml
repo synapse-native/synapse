@@ -1,12 +1,30 @@
 [book]
-title = "El Lenguaje de Programación Synapse v2.2.0"
+title = "Synapse Ecosystem v8.1.0"
 authors = ["Synapse Native Team"]
 language = "es"
+description = "Documentación oficial del ecosistema Synapse + Syquex + OpenSyn"
+src = "."
+
+[build]
+build-dir = "book"
 
 [output.html]
 site-url = "https://synapse-native.github.io/synapse/"
 edit-url-template = "https://github.com/synapse-native/synapse/edit/main/docs/{path}"
+additional-css = ["custom.css"]
+additional-js = ["custom.js"]
+no-section-label = false
 
 [output.html.fold]
 enable = true
 level = 1
+
+[output.html.search]
+enable = true
+limit-results = 30
+use-hierarchical-headings = true
+
+[output.html.watch]
+watch = ["theme", "book.toml"]
+
+[preprocessor]

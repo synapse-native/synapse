@@ -1,64 +1,91 @@
-# Documentación de Synapse v5.0
+# Documentación de Synapse v8.1.0
 
-Bienvenido a la documentación oficial del lenguaje de programación **Synapse** v5.0.1
+Bienvenido a la documentación oficial del ecosistema **Synapse + Syquex + OpenSyn** v8.1.0
 
-## Documentos de Liberación (Fase 11)
+## Estado del Proyecto
 
-| Documento | Descripción |
-|-----------|-------------|
-| [**Especificación OpenSyn**](especificacion_opensyn.md) | Arquitectura completa de OpenSyn: router RAG determinista, pipeline de migración Python→Synapse, LSP, detección de hardware, seguridad zero-cloud. |
-| [**Guía de Migración Python → Synapse**](migracion_python_synapse.md) | Referencia exhaustiva para migrar código Python 3.10+ a Synapse. Cubre sintaxis, tipos, ownership, concurrencia, E/S y errores comunes. |
-| [**API del AST Canónico**](api_ast_canonico.md) | Referencia completa del formato `.syn.json`: 30+ tipos de nodo, tokens, expresiones, contratos y ejemplo completo. |
+**FASE 30 COMPLETADA** — Instalación Unificada y Distribución Final
 
-## Documentos Técnicos Principales
-
-| Documento | Descripción |
-|-----------|-------------|
-| `ROADMAP.md` | Roadmap completo del proyecto v5.0 con estado de todos los hitos |
-| `MANUAL_DE_INGENIERÍA_Y_DESARROLLO.md` | Manual técnico de ingeniería y especificación del compilador |
-| `MANUAL_LENGUAJE.md` | Manual completo del lenguaje Synapse |
-| `ARCH_ESPECIFICACION.md` | Especificación arquitectónica detallada |
-| `AXON_SPEC.md` | Especificación del gestor de paquetes Axon |
-| `LSP_NATIVO.md` | Especificación del servidor LSP nativo |
-| `REFERENCIA_API_STD.md` | Referencia de la biblioteca estándar |
-| `GUIA_MEMORIA_Y_TIPOS.md` | Guía de ownership, borrowing y sistema de tipos |
-| `GUIA_ESTILO_IDIOMATICA.md` | Guía de estilo y buenas prácticas |
-| `INTERFAZ_C_FFI.md` | Especificación de la FFI con C |
-| `SEGURIDAD_Y_RESPUESTA.md` | Política de seguridad y respuesta a incidentes |
-| `DISEÑO_LSP.md` | Diseño detallado del LSP |
-| `DISEÑO_MEMORIA.md` | Diseño del modelo de memoria |
-
-## Documentos de la Biblioteca Estándar
-
-La biblioteca estándar de Synapse se encuentra en `std/` e incluye:
-
-| Módulo | Descripción |
-|--------|-------------|
-| `std.io` | Entrada/salida estándar y archivos |
-| `std.math` | Funciones matemáticas (seno, coseno, raíz cuadrada, etc.) |
-| `std.json` | Parseo y serialización JSON |
-| `std.toml` | Parseo de archivos TOML |
-| `std.net` | Networking: HTTP y TCP nativo |
-| `std.http` | Cliente HTTP de alto nivel |
-| `std.concurrencia` | Canales tipados (`Canal<T>`) y concurrencia |
-| `std.cluster` | Canales remotos distribuidos (M8) |
-| `std.debug` | Depuración time-travel (M9) |
-| `std.cripto` | Criptografía: SHA-256 + Ed25519 |
-| `std.tensor` | Operaciones con tensores y SIMD |
-| `std.simd` | Aceleración SIMD (AVX2/SSE4/NEON) |
-| `std.ai` | Inferencia de IA local |
-| `std.modelo` | Carga y ejecución de modelos GGUF |
-| `std.oraculo` | Pipeline RAG quirúrgico |
-| `std.testing` | Utilidades de testing |
-| `std.err` | Definiciones de error estándar |
-| `std.sistema` | Llamadas al sistema operativo |
-| `std.tiempo` | Funciones de tiempo y temporización |
-| `std.mem` | Gestión de memoria manual |
-
-## Nota sobre Ejemplos de Código
-
-Los ejemplos de código en la documentación representan la **sintaxis objetivo** del lenguaje Synapse v5.0. Algunos constructos pueden corresponder a la especificación completa y estar pendientes de implementación en el compilador. Consulte `ROADMAP.md` para conocer el estado actual de implementación de cada característica.
+- ✅ 667 tests Python PASS
+- ✅ Bootstrap determinista (diff=0 bytes)
+- ✅ SBOM SPDX 2.3
+- ✅ Firma Ed25519
+- ✅ Instaladores multiplataforma
 
 ---
 
-*Documentación v5.0 — 26 Julio 2026*
+## Manuales de Ingeniería
+
+| Manual | Descripción |
+|--------|-------------|
+| [**Manual 1** — Arquitectura del Lenguaje](manuales/MANUAL%201.md) | Filosofía de diseño, arquitectura general |
+| [**Manual 2** — Especificación Sintáctica](manuales/MANUAL%202.md) | Gramática EBNF, tipos, operadores |
+| [**Manual 3** — Arquitectura del Compilador](manuales/MANUAL%203.md) | Pipeline 5 etapas, AST, tabla de símbolos |
+| [**Manual 4** — Gestión de Memoria](manuales/MANUAL%204.md) | Ownership, borrowing, lifetimes |
+| [**Manual 5** — Concurrencia](manuales/MANUAL%205.md) | Canales, hilos, sincronización |
+| [**Manual 6** — Gestor de Paquetes Axon](manuales/MANUAL%206.md) | Axon, Ed25519, axon.lock |
+| [**Manual 7** — Herramientas de Desarrollo](manuales/MANUAL%207.md) | LSP nativo, VS Code extension |
+| [**Manual 8** — Backend y Generación de Código](manuales/MANUAL%208.md) | Generación C/LLVM/WASM |
+| [**Manual 9** — Bootstrap, Pruebas y QA](manuales/MANUAL%209.md) | Bootstrap 3 etapas, CI/CD |
+
+---
+
+## Guías
+
+| Guía | Descripción |
+|------|-------------|
+| [Guía de Instaladores](guia_usuario_instaladores.md) | Instrucciones de instalación para Windows, Linux y macOS |
+| [Guía de Gobernanza](GUIA_DE_GOBERNANZA.md) | Reglas del proyecto y protocolos |
+| [Método de Trabajo Seguro](METODO_TRABAJO.md) | Protocolo TDD MTO |
+
+---
+
+## Especificaciones
+
+| Especificación | Descripción |
+|----------------|-------------|
+| [Especificación OpenSyn](especificacion_opensyn.md) | Arquitectura completa de OpenSyn |
+| [Mapa de Manuales](mapa_manuales.md) | Mapa de secciones por archivo |
+| [Auditoría de Alineación](AUDITORIA_ALINEACION_MANUALES.md) | Estado de alineación con manuales |
+
+---
+
+## Roadmap
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Roadmap del Proyecto](../ROADMAP.md) | Roadmap completo F0–F30 |
+| [Changelog v8.1.0](../CHANGELOG_v8.1.0.md) | Historial de cambios |
+
+---
+
+## Instalación
+
+### Windows
+```cmd
+synapse-setup.exe
+```
+
+### Linux
+```bash
+curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh | bash
+```
+
+### macOS
+```bash
+./instaladores/macos/create_dmg.sh
+```
+
+**[Guía completa de instalación](guia_usuario_instaladores.md)**
+
+---
+
+## Recursos Externos
+
+- [GitHub Repository](https://github.com/anomalyco/opencode)
+- [Releases](https://github.com/anomalyco/opencode/releases)
+- [Issues](https://github.com/anomalyco/opencode/issues)
+
+---
+
+*Documentación v8.1.0 — Septiembre 2026*

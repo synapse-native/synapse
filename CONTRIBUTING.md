@@ -1,10 +1,10 @@
-# Protocolo QA-Driven — Synapse
+# Contribuir a Synapse
 
-## 🧪 Tests obligatorios
+## Tests obligatorios
 
-Todo Pull Request DEBE incluir uno o más tests en `tests/e2e/` que cubran el cambio propuesto.
+Todo Pull Request DEBE incluir uno o más tests que cubran el cambio propuesto.
 
-## ✅ Validación local
+## Validación local
 
 Antes de abrir el PR, el código debe pasar:
 
@@ -17,23 +17,26 @@ python -m flake8 . --count --statistics
 
 # 3. Bootstrap — 0 errores GCC
 python main.py nucleo/principal.syn 2>&1 | grep "error:" && \
-  { echo "❌ ERROR: Errores GCC en bootstrap"; exit 1; } || \
-  echo "✅ Bootstrap OK (0 errores GCC)"
+  { echo "ERROR: Errores GCC en bootstrap"; exit 1; } || \
+  echo "Bootstrap OK (0 errores GCC)"
 
 # 4. Stage1 — compila
 python main.py nucleo/principal.syn -o dist/bin/synapse_stage1.exe
+
+# 5. Tests de instaladores
+python -m pytest tests/installers/ -v
 ```
 
-## 🔄 CI/CD Pipeline
+## CI/CD Pipeline
 
 El proyecto utiliza GitHub Actions para:
 
 | Workflow | Trigger | Propósito |
 |----------|---------|-----------|
-| `ci-tests.yml` | Push/PR a `main` | Tests (3 OS × 3 Python), linting, bootstrap verification |
-| `release-binaries.yml` | Tag `v*` | Build binarios multiplataforma y subir a Release |
-| `windows_release.yml` | Tag `v*` o manual | Build Windows estático |
-| `deploy-docs.yml` | Push a `main` (docs/) | Despliegue de documentación mdBook a GitHub Pages |
+| `ci-tests.yml` | Push/PR a `main` | Tests multiplataforma, linting, bootstrap |
+| `release-installers.yml` | Tag `v*` | Build instaladores y publicar en Releases |
+| `release_matrix.yml` | Tag `v*` | Build binarios multiplataforma |
+| `deploy-docs.yml` | Push a `main` | Despliegue mdBook a GitHub Pages |
 
 ### Jobs del CI (`ci-tests.yml`)
 
@@ -46,15 +49,46 @@ El proyecto utiliza GitHub Actions para:
 2. **bootstrap**: Corre SECUENCIALMENTE después de `test`:
    - Genera `synapse_unity.c` desde `nucleo/principal.syn`
    - Verifica 0 errores GCC
-    - Compila Stage1 desde `nucleo/principal.syn`
+   - Compila Stage1 desde `nucleo/principal.syn`
    - Verifica que todos los tests pasan sin regresiones
 
-## 📏 Estándares de código
+### Instaladores (`release-installers.yml`)
+
+Los instaladores se construyen automáticamente cuando se crea un tag `v*`:
+
+- **Windows**: Inno Setup (`instaladores/windows/synapse.iss`)
+- **Linux**: Script Bash (`instaladores/linux/install.sh`)
+- **macOS**: DMG (`instaladores/macos/create_dmg.sh`)
+
+Todos los instaladores incluyen:
+- Verificación de integridad Ed25519
+- Opciones de componentes
+- Logging detallado
+- Soporte para auto-actualización
+
+## Estándares de código
 
 - **Python**: Seguir PEP 8 con las excepciones definidas en `.flake8` (longitud máxima 100 chars)
 - **Synapse**: Seguir `GUIA_ESTILO_IDIOMATICA.md`
 - **C**: Seguir `INTERNOS_COMPILADOR.md` y convenciones del runtime
+- **Instaladores**: Seguir Manual 9 §4.1
 
-## 🚫 Sin excepciones
+## Estructura de directorios
+
+```
+instaladores/
+├── common/              # Componentes compartidos
+│   ├── verificar_firma.py    # Verificación Ed25519
+│   └── auto_actualizar.py    # Sistema de auto-actualización
+├── linux/
+│   ├── install.sh       # Instalador Bash
+│   └── uninstall.sh     # Desinstalador
+├── macos/
+│   └── create_dmg.sh    # Creador de DMG
+└── windows/
+    └── synapse.iss      # Script Inno Setup
+```
+
+## Sin excepciones
 
 Cualquier contribución que no cumpla estos puntos será rechazada sin revisión de contenido.
