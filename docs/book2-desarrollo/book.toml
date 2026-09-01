@@ -1,15 +1,15 @@
 [book]
-title = "Documentación Synapse v8.1.0"
+title = "Desarrollo del Ecosistema Synapse"
 authors = ["Synapse Native Team"]
 language = "es"
-description = "Documentación oficial del ecosistema Synapse + Syquex + OpenSyn"
+description = "Guía técnica para desarrolladores y contribuidores del ecosistema Synapse"
 
 [build]
 build-dir = "book"
 
 [output.html]
-site-url = "https://synapse-native.github.io/synapse/"
-edit-url-template = "https://github.com/synapse-native/synapse/edit/main/docs/{path}"
+site-url = "https://synapse-native.github.io/synapse/desarrollo/"
+edit-url-template = "https://github.com/synapse-native/synapse/edit/main/docs/book2-desarrollo/{path}"
 additional-css = ["custom.css"]
 additional-js = ["custom.js"]
 no-section-label = false

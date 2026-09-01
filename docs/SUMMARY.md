@@ -1,41 +1,44 @@
-# Resumen
+# Documentación Synapse v8.1.0
 
-[Introducción](./README.md)
-
----
-
-# Manuales
-
-- [Manual 1 - Arquitectura del Lenguaje](./manuales/MANUAL%201.md)
-- [Manual 2 - Especificación Sintáctica](./manuales/MANUAL%202.md)
-- [Manual 3 - Arquitectura del Compilador](./manuales/MANUAL%203.md)
-- [Manual 4 - Gestión de Memoria y Ownership](./manuales/MANUAL%204.md)
-- [Manual 5 - Concurrencia y Comunicación](./manuales/MANUAL%205.md)
-- [Manual 6 - Gestor de Paquetes Axon](./manuales/MANUAL%206.md)
-- [Manual 7 - Herramientas de Desarrollo](./manuales/MANUAL%207.md)
-- [Manual 8 - Backend y Generación de Código](./manuales/MANUAL%208.md)
-- [Manual 9 - Bootstrap, Pruebas y QA](./manuales/MANUAL%209.md)
+[Presentación](./README.md)
 
 ---
 
-# Guías
+# Libros Disponibles
 
-- [Guía de Usuario - Instaladores](./guia_usuario_instaladores.md)
-- [Guía de Gobernanza](./GUIA_DE_GOBERNANZA.md)
-- [Método de Trabajo Seguro](./METODO_TRABAJO.md)
-- [Contribuir](../CONTRIBUTING.md)
+## [📘 Manual de Aprendizaje (0→100)](./book1-aprendizaje/SUMMARY.md)
+Aprende Synapse, Syquex y OpenSyn desde cero hasta nivel avanzado.
+- Para principiantes y usuarios intermedios
+- Tutoriales paso a paso
+- Ejemplos completos
+
+## [📗 Guía para Desarrolladores](./book2-desarrollo/SUMMARY.md)
+Guía técnica para contribuidores y estudiantes avanzados.
+- Manuales de ingeniería
+- Especificaciones técnicas
+- Guías de contribución
 
 ---
 
-# Especificaciones
+# Referencia Rápida
 
-- [Especificación OpenSyn](./especificacion_opensyn.md)
-- [Mapa de Manuales](./mapa_manuales.md)
-- [Auditoría de Alineación](./AUDITORIA_ALINEACION_MANUALES.md)
+## Enlaces Importantes
 
----
-
-# Roadmap
-
+- [Guía de Instaladores](./guia_usuario_instaladores.md)
 - [Roadmap del Proyecto](../ROADMAP.md)
-- [Changelog v8.1.0](../CHANGELOG_v8.1.0.md)
+- [Contribuir](../CONTRIBUTING.md)
+- [GitHub Repository](https://github.com/anomalyco/opencode)
+
+## Documentos Populares
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Introducción a Synapse](./book1-aprendizaje/01-introduccion/que-es-synapse.md) | ¿Qué es Synapse? |
+| [Instalación](./book1-aprendizaje/02-synapse/instalacion.md) | Cómo instalar Synapse |
+| [Primer Programa](./book1-aprendizaje/02-synapse/primer-programa.md) | Tu primer "Hola Mundo" |
+| [OpenSyn](./book1-aprendizaje/04-opensyn/que-es-opensyn.md) | El asistente IA |
+| [Manuales](./book2-desarrollo/02-manuales/manual-1-vision-general.md) | Especificaciones técnicas |
+
+---
+
+*Documentación v8.1.0 — Septiembre 2026*
