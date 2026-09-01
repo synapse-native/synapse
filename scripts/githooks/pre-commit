@@ -122,7 +122,7 @@ check_pattern 'except[[:space:]]*:[[:space:]]*pass' 'except: pass silencioso pro
 check_pattern '[[:space:]]+$' 'trailing whitespace prohibido' 'py c h syn syq yml yaml toml json txt' || FALLO_HIGIENE=1
 
 # 6) Marcadores de conflicto de merge
-check_pattern '^(<<<<<<<|>>>>>>>|=======)' 'marcador de conflicto de merge presente' 'py c h syn syq md yml yaml toml json txt' || FALLO_HIGIENE=1
+check_pattern '^(<<<<<<<|>>>>>>>|={7}$)' 'marcador de conflicto de merge presente' 'py c h syn syq md yml yaml toml json txt' || FALLO_HIGIENE=1
 
 if [ "$FALLO_HIGIENE" -ne 0 ]; then
   echo "❌ HIGIENE DE CÓDIGO — commit bloqueado" >&2

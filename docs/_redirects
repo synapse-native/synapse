@@ -1,0 +1,42 @@
+# Redirects para GitHub Pages
+# Mantener compatibilidad con URLs existentes
+
+# Página principal de documentación
+/                       /aprendizaje/              301
+
+# Manuales originales → Libro 2
+/manuales/*             /desarrollo/02-manuales/:splat  301
+/manual-1/*             /desarrollo/02-manuales/manual-1-vision-general.md  301
+/manual-2/*             /desarrollo/02-manuales/manual-2-gramatica.md  301
+/manual-3/*             /desarrollo/02-manuales/manual-3-pipeline.md  301
+/manual-4/*             /desarrollo/02-manuales/manual-4-ownership.md  301
+/manual-5/*             /desarrollo/02-manuales/manual-5-canales.md  301
+/manual-6/*             /desarrollo/02-manuales/manual-6-arquitectura.md  301
+/manual-7/*             /desarrollo/02-manuales/manual-7-lsp.md  301
+/manual-8/*             /desarrollo/02-manuales/manual-8-generacion-c.md  301
+/manual-9/*             /desarrollo/02-manuales/manual-9-bootstrap.md  301
+
+# Contenido de aprendizaje
+/introduccion           /aprendizaje/01-introduccion/que-es-synapse.md  301
+/empezando              /aprendizaje/02-synapse/instalacion.md  301
+/conceptos-basicos      /aprendizaje/02-synapse/tipos-datos.md  301
+/pacto-memoria          /aprendizaje/02-synapse/pacto-memoria.md  301
+/concurrencia           /aprendizaje/02-synapse/canales.md  301
+/axon                   /aprendizaje/02-synapse/axon.md  301
+/libreria-estandar      /aprendizaje/02-synapse/libreria-estandar.md  301
+/opensyn                /aprendizaje/04-opensyn/que-es-opensyn.md  301
+
+# Especificaciones
+/especificacion-opensyn /desarrollo/04-especificaciones/especificacion-opensyn.md  301
+/migracion-python       /desarrollo/04-especificaciones/migracion-python.md  301
+/api-ast                /desarrollo/03-anexos/api-ast.md  301
+
+# Anexos
+/anexo-manuales         /desarrollo/03-anexos/anexo-manuales.md  301
+/inventario-archivos    /desarrollo/03-anexos/inventario-archivos.md  301
+/tests-obligatorios     /desarrollo/03-anexos/tests-obligatorios.md  301
+
+# Guías
+/guia-usuario-instaladores  /aprendizaje/06-apendices/recursos.md  301
+/guia-estilo            /desarrollo/04-especificaciones/guia-estilo.md  301
+/indice-errores         /desarrollo/04-especificaciones/indice-errores.md  301
