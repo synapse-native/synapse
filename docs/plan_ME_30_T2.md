@@ -1,18 +1,34 @@
-# plan_ME_30_T2 — TDD F27-F30: Makefile / build.py
+# Plan ME_30_T2 — Instalador Windows (Inno Setup)
 
-MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
+## Bloque MTS (método de trabajo seguro)
 
-## Requisito
-requisito: Manual 9 §9 / F30
-texto: "Build unificado vía Makefile/build.py (F30)."
-implementacion: Crear tests/integration/test_build_py.py con oráculo de build reproducible. RED hasta F30.
-oraculo: tests/integration/test_build_py.py
+### requisito:
+Manual 9 §4.1: "Los artefactos se publican en la sección Releases del repositorio de GitHub. Cada release incluye: archivos de instalación para Windows, Linux, macOS y WASM."
+Manual 9 §5.1: "El instalador de OpenSyn detecta hardware mediante std.os"
 
-**TDD:** Test TDD: el oráculo debe FALLAR (RED, @pytest.mark.tdd) hasta que el código implemente lo que dice el manual; no usa pytest.skip.
+### texto:
+Implementar script Inno Setup completo para Windows que:
+1. Instale Synapse y componentes seleccionados
+2. Opciones: "Solo Synapse" vs "Ecosistema completo"
+3. Cree accesos directos
+4. Incluya desinstalador
 
-## Alcance (sin desviación)
-Crea ÚNICAMENTE el test TDD indicado; no implementa el código de producción (otro ME lo hace).
+### implementacion:
+1. Completar `instaladores/windows/synapse.iss` con:
+   - Selección de componentes (Synapse, Syquex, OpenSyn)
+   - Accesos directos de escritorio y menú inicio
+   - Desinstalador
+   - Configuración PATH
 
-## Criterio de aceptación
-- El test existe y es RED (falla) por ausencia de código.
-- Marcado @pytest.mark.tdd y registrado en tests/tdd/REGISTRO_TDD.md.
+### oraculo:
+- Archivo .iss existe y tiene sintaxis válida → PASS
+- Incluye opciones de componentes → PASS
+- Incluye accesos directos → PASS
+- Incluye desinstalador → PASS
+
+## Archivos a modificar
+- `instaladores/windows/synapse.iss`
+
+## Citas de manuales
+- Manual 9 §4.1 (GitHub Releases)
+- Manual 9 §5.1 (Detección de hardware)
