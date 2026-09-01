@@ -27,6 +27,42 @@ def generar_claves():
     return priv_bytes, pub_bytes
 
 
+def guardar_claves(clave_privada_bytes, clave_publica_bytes, directorio):
+    """Guarda claves en archivos PEM."""
+    os.makedirs(directorio, exist_ok=True)
+    clave_privada = Ed25519PrivateKey.from_private_bytes(clave_privada_bytes)
+    clave_publica = Ed25519PublicKey.from_public_bytes(clave_publica_bytes)
+    with open(os.path.join(directorio, 'private.pem'), 'wb') as f:
+        f.write(clave_privada.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+    with open(os.path.join(directorio, 'public.pem'), 'wb') as f:
+        f.write(clave_publica.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ))
+
+
+def cargar_claves(directorio):
+    """Carga claves desde archivos PEM."""
+    with open(os.path.join(directorio, 'private.pem'), 'rb') as f:
+        clave_privada = serialization.load_pem_private_key(f.read(), password=None)
+    with open(os.path.join(directorio, 'public.pem'), 'rb') as f:
+        clave_publica = serialization.load_pem_public_key(f.read())
+    priv_bytes = clave_privada.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    pub_bytes = clave_publica.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw
+    )
+    return priv_bytes, pub_bytes
+
+
 def firmar_archivo(ruta_archivo, clave_privada_bytes):
     """Firma un archivo usando Ed25519."""
     with open(ruta_archivo, 'rb') as f:
