@@ -1,18 +1,28 @@
-# plan_ME_29_T3 — TDD F27-F30: Gestión de modelos OpenSyn
+# Plan ME_29_T3 — Modificación test_latencia_meta
 
-MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
+## Bloque MTS (método de trabajo seguro)
 
-## Requisito
-requisito: Manual 7 §2.3 / F29
-texto: "OpenSyn debe gestionar modelos (descargar/cachear) según F29."
-implementacion: Crear tests/opensyn/test_model_mgmt.py con oráculos de gestión. RED hasta F29.
-oraculo: tests/opensyn/test_model_mgmt.py
+### requisito:
+Manual 7 §7.2: "Latencia de inferencia: < 1s para prompts cortos (modelo 7B en GPU)."
 
-**TDD:** Test TDD: el oráculo debe FALLAR (RED, @pytest.mark.tdd) hasta que el código implemente lo que dice el manual; no usa pytest.skip.
+### texto:
+"Latencia de inferencia: < 1s para prompts cortos (modelo 7B en GPU)."
 
-## Alcance (sin desviación)
-Crea ÚNICAMENTE el test TDD indicado; no implementa el código de producción (otro ME lo hace).
+### implementacion:
+Reemplazar `pytest.fail()` en `test_latencia_meta` (tests/opensyn/test_inference.py:92-98) por un benchmark que:
+1. Envíe un prompt corto al cliente llama_client (llama_client_completion)
+2. Mezcle un benchmark usando `time.perf_counter()` para medir la duración
+3. Verifique que la latencia < 1.0 segundo
+4. Si llama_client no está conectado (no hay llama-server corriendo), usar un mock o skip con mensaje de que el benchmark requiere inferencia real
 
-## Criterio de aceptación
-- El test existe y es RED (falla) por ausencia de código.
-- Marcado @pytest.mark.tdd y registrado en tests/tdd/REGISTRO_TDD.md.
+### oraculo:
+- `latencia < 1.0` → PASS (Manual 7 §7.2)
+- Si no puede conectar al servidor: FAIL con mensaje claro (no skip)
+- El benchmark usa `time.perf_counter()` para precisión de alta resolución
+
+## Archivos a modificar
+- `tests/opensyn/test_inference.py` (líneas 92-98)
+
+## Citas de manuales
+- Manual 7 §7.2 (latencia < 1s)
+- Manual 7 §2.2 (llama_client_completion — flujo de invocación del modelo)

@@ -23,6 +23,11 @@ externo funcion _syn_memoria_total() -> entero
 externo funcion _syn_vram_total() -> entero
 externo funcion _syn_cpu_nucleos() -> entero
 externo funcion _syn_arquitectura() -> texto
+externo funcion _syn_existe_archivo(ruta: texto) -> logico
+externo funcion _syn_eliminar_archivo(ruta: texto) -> logico
+externo funcion _syn_sha256_archivo(ruta: texto) -> texto
+externo funcion _syn_descargar(url: texto, destino: texto) -> logico
+externo funcion _syn_home() -> texto
 
 funcion memoria_total() -> entero:
     retornar _syn_memoria_total()
@@ -107,6 +112,31 @@ funcion seleccionar_capas_gpu(vram: entero) -> entero:
             retornar 12
         sino:
             retornar 35
+
+# cumple Manual 9 §5.3
+funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
+    requiere:
+        longitud(info.nombre) > 0
+        longitud(info.url) > 0
+    garantiza:
+        verdadero
+    let ruta: texto = _syn_home() + "/.opensyn/models/" + info.nombre + ".gguf"
+    si _syn_existe_archivo(ruta):
+        let hash: texto = _syn_sha256_archivo(ruta)
+        si hash == info.sha256:
+            escribir_linea("Modelo ya descargado y verificado")
+            retornar ok(ruta)
+        sino:
+            escribir_linea("Hash incorrecto, eliminando archivo corrupto")
+            _syn_eliminar_archivo(ruta)
+    escribir_linea("Descargando modelo (" + entero_a_texto(info.tamano_aprox / 1073741824) + " GB)...")
+    si no _syn_descargar(info.url, ruta):
+        retornar err("Error al descargar el modelo")
+    let hash: texto = _syn_sha256_archivo(ruta)
+    si hash != info.sha256:
+        _syn_eliminar_archivo(ruta)
+        retornar err("Checksum incorrecto")
+    retornar ok(ruta)
 
 funcion principal() -> nulo:
     let hw: HardwareInfo = detectar_hardware()

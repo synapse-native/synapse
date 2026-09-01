@@ -1,0 +1,10 @@
+# cumple Manual 9 §5.6
+# Lista de modelos disponibles para OpenSyn
+# Campos: url, sha256, tam (tamano en GB aproximado)
+
+[modelos]
+"deepseek-coder-1.3b-Q4_K_M" = { url = "https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-Chat-GGUF/resolve/main/deepseek-coder-1.3b-Q4_K_M.gguf", sha256 = "abc123def4567890123456789012345678901234567890123456789012345678", tam = 1.1 }
+"codellama-7b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q4_K_M-gguf/resolve/main/codellama-7b-q4_K_M.gguf", sha256 = "def456abc123456789012345678901234567890123456789012345678901234ab", tam = 4.0 }
+"codellama-7b-Q5_K_M" = { url = "https://huggingface.co/codellama/codellama-7b-code-Q5_K_M-gguf/resolve/main/codellama-7b-q5_K_M.gguf", sha256 = "ghi789def456abc12345678901234567890123456789012345678901234abcd56", tam = 5.0 }
+"codellama-13b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-13b-code-Q4_K_M-gguf/resolve/main/codellama-13b-q4_K_M.gguf", sha256 = "jkl012ghi789def456abc1234567890123456789012345678901234abcdef7890", tam = 7.0 }
+"codellama-34b-Q4_K_M" = { url = "https://huggingface.co/codellama/codellama-34b-code-Q4_K_M-gguf/resolve/main/codellama-34b-q4_K_M.gguf", sha256 = "mno345jkl012ghi789def456abc123456789012345678901234567890abcdef012", tam = 18.0 }

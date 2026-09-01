@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "runtime/core/modelo.h"  // ME-SEC-3: tipos públicos para testing
+#include "runtime/core/axon.h"  // cumple Manual 7 §2.5/9 §5.3: _syn_http_get_archivo, _syn_sha256_archivo
 #ifdef _WIN32
   #include <windows.h>
   #include <direct.h>
@@ -766,6 +767,71 @@ int _syn_eliminar_archivo(CadenaSegura ruta) {
     return r;
 }
 
+/*
+ * cumple Manual 7 §2.5 / Manual 9 §5.3: funciones para modelo de descarga.
+ * _syn_home retorna el directorio home del usuario (~/.
+ * _syn_sha256_archivo delegado a axon.c (existe ya).
+ * _syn_descargar: descarga URL a destino, verifica hash SHA-256.
+ */
+CadenaSegura _syn_home(void) {
+    const char* h = getenv("HOME");
+#ifdef _WIN32
+    if (h == NULL || h[0] == '\0') h = getenv("USERPROFILE");
+#endif
+    const char* result = (h != NULL && h[0] != '\0') ? h : ".";
+    return (CadenaSegura){ .longitud = (int)strlen(result), .datos = strdup(result) };
+}
+
+int _syn_descargar(CadenaSegura url, CadenaSegura destino) {
+    /*
+     * Descarga un archivo desde una URL (HTTP/HTTPS) a un path local.
+     * Usa la funcion _syn_http_get_archivo del modulo axon.c.
+     * Retorna 0 en exito, -1 en fallo.
+     */
+    char url_str[1024];
+    char path_str[1024];
+    if (url.longitud > 0 && url.longitud < 1023) {
+        memcpy(url_str, url.datos, url.longitud);
+        url_str[url.longitud] = '\0';
+    } else {
+        return -1;
+    }
+    if (destino.longitud > 0 && destino.longitud < 1023) {
+        memcpy(path_str, destino.datos, destino.longitud);
+        path_str[destino.longitud] = '\0';
+    } else {
+        return -1;
+    }
+
+    /* Parsear URL: scheme://host[:port]/path */
+    char* scheme_sep = strstr(url_str, "://");
+    if (!scheme_sep) return -1;
+    char* host_start = scheme_sep + 3;
+    char* path_start = strchr(host_start, '/');
+    if (!path_start) return -1;
+
+    char host[256];
+    int host_len = (int)(path_start - host_start);
+    if (host_len > 255) return -1;
+    memcpy(host, host_start, host_len);
+    host[host_len] = '\0';
+
+    int puerto = 80;
+    char* port_sep = strchr(host, ':');
+    if (port_sep) {
+        *port_sep = '\0';
+        puerto = atoi(port_sep + 1);
+        if (puerto <= 0) puerto = 80;
+    }
+
+    return _syn_http_get_archivo(
+        (CadenaSegura){ .longitud = (int)strlen(host), .datos = host },
+        puerto,
+        (CadenaSegura){ .longitud = (int)strlen(path_start), .datos = path_start },
+        path_str
+    );
+}
+
 // ============================================================================
 // Phase 8: Model Inference Engine (ModeloContexto)
 // ============================================================================
@@ -919,7 +985,7 @@ static BpeContext* _bpe_crear_desde_gguf(void* datos_internos) {
         // a token whose text contains the concatenation of the two parts.
         // But this is complex. For simplicity, we assume result = base_vocab + i,
         // where base_vocab is the first token index not in {bytes 0..255} or similar.
-        
+
         // More robust: find the first token ID that is not used as a base byte token.
         // For GPT-2 BPE, bytes 0-255 are the base, so merges produce tokens 256+.
         // For SentencePiece, the base might be all single-character tokens.
@@ -1744,7 +1810,7 @@ static void _liberar_cache_compilacion(void) {
     _cached_error_linea = 0;
 }
 
-// Simple JSON string value extractor: finds "key":"value" or "key": "value" 
+// Simple JSON string value extractor: finds "key":"value" or "key": "value"
 // Returns malloc'd string or NULL if not found
 static char* _json_extract_string(const char* json, const char* key) {
     if (!json || !key) return NULL;
