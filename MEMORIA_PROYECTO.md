@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-09-01T02:12Z** (commit `478f047`)
+> Última actualización: **2026-09-01T12:00Z** (ME_29_T2: bindings TypeScript)
 
 ---
 
@@ -16,11 +16,12 @@
 ```yaml
 Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F29 EN PROGRESO — ME_29_T3 benchmark modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN, ME_29_T5u GREEN, H-F29-T5b RESUELTO
-Commit fase:       9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
-Próximo ME:        ME_29_T5u (instalar modelo + config.toml) u otro
+Estado:            F29 EN PROGRESO — ME_29_T2 GREEN (bindings TypeScript), ME_29_T3 benchmark modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN, ME_29_T5u GREEN, H-F29-T5b RESUELTO
+Commit fase:       pendiente (ME_29_T2: bindings TypeScript)
+Próximo ME:        ME_29_T3 (gestión modelos) u otro
 Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn o integración editor F27
-Últimos commits:    9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
+Últimos commits:    pendiente (ME_29_T2: bindings TypeScript)
+                    9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
                     478f047 (H-F29-T5b fix: malloc→pool_alloc en concat/sha256/home)
                     6063e39 (docs: R137 bitácora MEMORIA + auditoría para H-F29-T5b)
                     2fee5b0 (ME_29_T6b fix test_installer_opensyn — usa main.py)
@@ -34,6 +35,7 @@ Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn o integrac
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| pendiente | ME_29_T2: bindings TypeScript implementados | 1 test RED → GREEN (test_binding_typescript), funciones generar_typescript_completo y generar_javascript_wrapper agregadas |
 | `478f047` | H-F29-T5b fix memory management mismatch | Fix crítico: malloc→pool_alloc en concat(), _syn_sha256(), _syn_sha256_archivo(), _syn_home() |
 | `9fd745e` | ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config + _syn_escribir_archivo | 4 tests nuevos GREEN, installer_opensyn GREEN, 33/36 GREEN total |
 | `6063e39` | docs: R137 bitácora + auditoría para H-F29-T5b | Documentación |
@@ -42,7 +44,7 @@ Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn o integrac
 
 ### Deudas / Hallazgos críticos activos
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
-- **test_binding_typescript:** RED TDD ME_29_T2 (inmutable, requiere Arquitecto).
+- **test_binding_typescript:** GREEN (ME_29_T2 completado) — bindings TypeScript implementados en opensyn/bindings_generator.py.
 - **test_gestion_modelos:** RED TDD ME_29_T3 (inmutable, requiere Arquitecto).
 - **test_latencia_meta:** RED esperado — requiere llama-server activo en :8088 (benchmark real).
 

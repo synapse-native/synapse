@@ -1,17 +1,20 @@
 """
 opensyn/bindings_generator.py — Generador de bindings Syquex desde cabeceras C
-================================================================================
+
 Propósito: Parsear headers C (.h) y generar wrappers automáticos en Syquex
-con las declaraciones `externo` correspondientes.
+con las declaraciones `externo` correspondientes. También genera bindings
+TypeScript (.d.ts + .js) según Manual 6 §4.
 
 Comando:
     python opensyn/bindings_generator.py header.h > bindings.syq
     python opensyn/bindings_generator.py --header header.h --output bindings.syq
+    python opensyn/bindings_generator.py --header header.h --lang typescript --output bindings.d.ts
 
 Manual 3 §9: FFI e Integración con C (`externo`)
 Manual 3 §9.1: Declaración de función C
 Manual 3 §9.2: Uso en código seguro (FFI Automático)
 Manual 3 §9.3: Marshaling Automático (Estrategia Zero-Copy)
+Manual 6 §4: Generación de bindings para otros lenguajes (@export)
 """
 import re
 import sys
@@ -332,30 +335,221 @@ def generar_bindings_completos(ruta_header: str) -> str:
 
 
 # =====================================================================
+# Generador de bindings TypeScript (Manual 6 §4)
+# =====================================================================
+
+def mapear_tipo_a_typescript(tipo_c: str) -> str:
+    """Convierte un tipo C a su equivalente TypeScript."""
+    tipo_limpio = tipo_c.strip()
+
+    MAPA_TS = {
+        'int': 'number',
+        'long': 'number',
+        'long long': 'number',
+        'int8_t': 'number',
+        'int16_t': 'number',
+        'int32_t': 'number',
+        'int64_t': 'number',
+        'uint8_t': 'number',
+        'uint16_t': 'number',
+        'uint32_t': 'number',
+        'uint64_t': 'number',
+        'size_t': 'number',
+        'ssize_t': 'number',
+        'unsigned': 'number',
+        'unsigned int': 'number',
+        'unsigned long': 'number',
+        'float': 'number',
+        'double': 'number',
+        'bool': 'boolean',
+        '_Bool': 'boolean',
+        'char': 'string',
+        'char*': 'string',
+        'const char*': 'string',
+        'const char *': 'string',
+        'char *': 'string',
+        'void*': 'any',
+        'void *': 'any',
+        'const void*': 'any',
+        'void': 'void',
+    }
+
+    if tipo_limpio in MAPA_TS:
+        return MAPA_TS[tipo_limpio]
+
+    if tipo_limpio.endswith('*'):
+        return 'any'
+
+    if '[' in tipo_limpio:
+        return 'any[]'
+
+    if '(' in tipo_limpio and '*' in tipo_limpio:
+        return '(...args: any[]) => any'
+
+    return 'number'
+
+
+def generar_typescript_desde_funciones(funciones: List[FuncionC], nombre_archivo: str) -> str:
+    """Genera declaraciones TypeScript desde funciones C (Manual 6 §4)."""
+    lineas = []
+    lineas.append(f"// Bindings TypeScript generados automáticamente desde {nombre_archivo}")
+    lineas.append(f"// Generado por opensyn/bindings_generator.py")
+    lineas.append(f"// Manual 6 §4: Generación de bindings para otros lenguajes")
+    lineas.append("")
+
+    for fn in funciones:
+        if fn.es_estatica:
+            continue
+
+        ret_ts = mapear_tipo_a_typescript(fn.retorno)
+
+        params_ts = []
+        for tipo_c, nombre_param in fn.parametros:
+            tipo_ts = mapear_tipo_a_typescript(tipo_c)
+            params_ts.append(f"{nombre_param}: {tipo_ts}")
+
+        params_str = ', '.join(params_ts)
+
+        if ret_ts == 'void':
+            lineas.append(f"export function {fn.nombre}({params_str}): void;")
+        else:
+            lineas.append(f"export function {fn.nombre}({params_str}): {ret_ts};")
+
+    return '\n'.join(lineas) + '\n'
+
+
+def generar_typescript_desde_structs(structs: List[StructC]) -> str:
+    """Genera interfaces TypeScript desde structs C."""
+    lineas = []
+    lineas.append("// Interfaces TypeScript generadas automáticamente")
+    lineas.append("")
+
+    for st in structs:
+        if st.nombre.startswith('_'):
+            continue
+
+        lineas.append(f"export interface {st.nombre} {{")
+        for tipo_c, nombre in st.campos:
+            tipo_ts = mapear_tipo_a_typescript(tipo_c)
+            lineas.append(f"  {nombre}: {tipo_ts};")
+        lineas.append("}")
+        lineas.append("")
+
+    return '\n'.join(lineas) + '\n'
+
+
+def generar_typescript_completo(ruta_header: str) -> str:
+    """Genera bindings TypeScript completos desde un header C (Manual 6 §4)."""
+    funciones, structs, typedefs = parsear_header(ruta_header)
+    nombre_archivo = os.path.basename(ruta_header)
+
+    resultado = f"// =====================================================================\n"
+    resultado += f"// Bindings TypeScript generados desde {nombre_archivo}\n"
+    resultado += f"// Funciones: {len(funciones)}\n"
+    resultado += f"// Structs: {len(structs)}\n"
+    resultado += f"// Manual 6 §4: Generación de bindings para otros lenguajes\n"
+    resultado += f"// =====================================================================\n\n"
+
+    if structs:
+        resultado += generar_typescript_desde_structs(structs)
+
+    if funciones:
+        resultado += generar_typescript_desde_funciones(funciones, nombre_archivo)
+
+    return resultado
+
+
+def generar_javascript_wrapper(ruta_header: str) -> str:
+    """Genera wrapper JavaScript para usar los bindings TypeScript."""
+    funciones, structs, typedefs = parsear_header(ruta_header)
+    nombre_archivo = os.path.basename(ruta_header)
+
+    lineas = []
+    lineas.append(f"// =====================================================================")
+    lineas.append(f"// JavaScript wrapper generado desde {nombre_archivo}")
+    lineas.append(f"// Manual 6 §4: Generación de bindings para otros lenguajes")
+    lineas.append(f"// =====================================================================")
+    lineas.append("")
+    lineas.append("// Este archivo requiere las declaraciones .d.ts generadas")
+    lineas.append("// Uso: const bindings = require('./bindings.js');")
+    lineas.append("")
+
+    for fn in funciones:
+        if fn.es_estatica:
+            continue
+
+        params = [n for _, n in fn.parametros]
+        params_str = ', '.join(params)
+
+        if fn.retorno == 'void':
+            lineas.append(f"function {fn.nombre}({params_str}) {{")
+            lineas.append(f"  // Wrapper para función C")
+            lineas.append(f"  return Module._{fn.nombre}({params_str});")
+            lineas.append(f"}}")
+        else:
+            lineas.append(f"function {fn.nombre}({params_str}) {{")
+            lineas.append(f"  // Wrapper para función C")
+            lineas.append(f"  return Module._{fn.nombre}({params_str});")
+            lineas.append(f"}}")
+        lineas.append("")
+
+    if funciones:
+        lineas.append("module.exports = {")
+        exported = [fn.nombre for fn in funciones if not fn.es_estatica]
+        lineas.append("  " + ", ".join(exported))
+        lineas.append("};")
+
+    return '\n'.join(lineas) + '\n'
+
+
+# =====================================================================
 # CLI
 # =====================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Genera bindings Syquex desde headers C"
+        description="Genera bindings Syquex/TypeScript desde headers C"
     )
-    parser.add_argument("header", help="Archivo .h a procesar")
-    parser.add_argument("--output", "-o", help="Archivo de salida (.syq)")
+    parser.add_argument("header", nargs="?", help="Archivo .h a procesar")
+    parser.add_argument("--header", "-H", help="Archivo .h a procesar (alternativo)")
+    parser.add_argument("--output", "-o", help="Archivo de salida")
+    parser.add_argument("--lang", "-l", choices=["syquex", "typescript", "javascript"],
+                        default="syquex", help="Lenguaje de salida (default: syquex)")
 
     args = parser.parse_args()
 
-    if not os.path.exists(args.header):
-        print(f"Error: archivo no encontrado: {args.header}", file=sys.stderr)
+    header = args.header or args.header
+    if not header:
+        parser.error("Se requiere un archivo header")
+
+    if not os.path.exists(header):
+        print(f"Error: archivo no encontrado: {header}", file=sys.stderr)
         sys.exit(1)
 
-    resultado = generar_bindings_completos(args.header)
-
-    if args.output:
-        with open(args.output, 'w', encoding='utf-8') as f:
-            f.write(resultado)
-        print(f"Bindings generados: {args.output}")
+    if args.lang == "typescript":
+        resultado = generar_typescript_completo(header)
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(resultado)
+            print(f"Bindings TypeScript generados: {args.output}")
+        else:
+            print(resultado)
+    elif args.lang == "javascript":
+        resultado = generar_javascript_wrapper(header)
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(resultado)
+            print(f"Wrapper JavaScript generado: {args.output}")
+        else:
+            print(resultado)
     else:
-        print(resultado)
+        resultado = generar_bindings_completos(header)
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                f.write(resultado)
+            print(f"Bindings Syquex generados: {args.output}")
+        else:
+            print(resultado)
 
 
 if __name__ == '__main__':
