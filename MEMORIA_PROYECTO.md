@@ -30,7 +30,9 @@ Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `2fee5b0` | FASE 29: ME_29_T6b fix test_installer_opensyn — usa main.py (Manual 8 §1.2) | 1 test pre-existente FAIL → GREEN |
 | `27bd3bb` | FASE 29: ME_29_T3 benchmark latencia + infraestructura OpenSyn | 7 archivos nuevos/modificados, test_latencia_meta modificado (autorización Arquitecto) |
+| `438d80a` | docs: R136 bitácora MEMORIA + auditoría alineación para ME_29_T3 | Documentación |
 | `37a0867` | FASE 29: reporte R135 + bitácora + MEMORIA (ME_29_T5 GREEN) | Cierre ME_29_T5, documentación |
 | `183f97a` | FASE 29: ME_29_T5 installer OpenSyn + fix tipo_de_expr (1 test GREEN) | Cierre ME_29_T5, documentación |
 | `9b0f491` | FASE 29: ME_29_T1/T2/T3 planes TDD + verificaciones | 3 tests TDD RED creados |
@@ -38,9 +40,9 @@ Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn
 
 ### Deudas / Hallazgos críticos activos
 - **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex.
-- **F29 EN PROGRESO:** ME_29_T3 benchmark latencia modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN (std/os.syn), ME_29_T5 GREEN (installer + fix tipo_de_expr). Infraestructura OpenSyn creada: modelos.toml, llama_client.h/.c, orchestrator.h, descargar_modelo() en installer.syn.
+- **F29 EN PROGRESO:** ME_29_T3 benchmark latencia modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN (test_installer_opensyn). Infraestructura OpenSyn creada: modelos.toml, llama_client.h/.c, orchestrator.h, descargar_modelo() en installer.syn.
 - **H-F29-T5b (REGISTRADO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI → "malloc fallo". Workaround en installer: literales separados. Resolución asignada a futuro ME.
-- **H-F29-T3 (REGISTRADO):** test_installer_opensyn pre-existente FAIL — usa `pipeline.py` sin `__main__` (debe usar `main.py`). Issue de infraestructura, no causado por F29. Pending ticket.
+- **H-F29-T6b (RESUELTO):** test_installer_opensyn fallaba porque usaba `pipeline.py` como entry point, pero `pipeline.py` no tiene `__main__` (es un módulo). FIX: usar `main.py` (entry point CLI per Manual 8 §1.2). Commit `2fee5b0`.
 - **test_binding_typescript:** RED TDD ME_29_T2 (inmutable, requiere Arquitecto).
 - **test_gestion_modelos:** RED TDD ME_29_T3 (inmutable, requiere Arquitecto).
 
