@@ -28,6 +28,7 @@ externo funcion _syn_eliminar_archivo(ruta: texto) -> logico
 externo funcion _syn_sha256_archivo(ruta: texto) -> texto
 externo funcion _syn_descargar(url: texto, destino: texto) -> logico
 externo funcion _syn_home() -> texto
+externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> logico
 
 funcion memoria_total() -> entero:
     retornar _syn_memoria_total()
@@ -138,15 +139,76 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
         retornar err("Checksum incorrecto")
     retornar ok(ruta)
 
+# cumple Manual 9 §5.4 — principal: orquesta instalación completa
 funcion principal() -> nulo:
     let hw: HardwareInfo = detectar_hardware()
-    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
     let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
     let capas: entero = seleccionar_capas_gpu(hw.vram_total)
     escribir_linea("Hardware:")
-    escribir_linea("Modelo:")
     escribir_linea("Hilos:")
     escribir_linea("Capas GPU:")
-    escribir_linea(modelo.nombre)
     escribir_linea(entero_a_texto(hilos))
     escribir_linea(entero_a_texto(capas))
+    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
+    escribir_linea("Modelo seleccionado: " + modelo.nombre)
+    escribir_linea("Modelo:")
+    escribir_linea("descargando desde: " + modelo.url)
+    let cfg: ConfigInfo = generar_config(hw, ".opensyn/models/" + modelo.nombre + ".gguf")
+    escribir_config(cfg)
+
+# cumple Manual 9 §5.3 — instalar_modelo: descarga y verifica modelo según HW
+funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
+    requiere:
+        hw.vram_total >= 0
+    garantiza:
+        verdadero
+    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
+    escribir_linea("Modelo seleccionado: " + modelo.nombre)
+    retornar descargar_modelo(modelo)
+
+# cumple Manual 9 §5.4 — ConfigInfo: configuración para llama-server
+estructura ConfigInfo:
+    nombre_modelo: texto
+    ruta_modelo: texto
+    n_ctx: entero
+    n_threads: entero
+    n_gpu_layers: entero
+    puerto: entero
+    host: texto
+    timeout: entero
+
+# cumple Manual 9 §5.4 — generar_config: produce ConfigInfo basada en HW
+funcion generar_config(hw: HardwareInfo, ruta_modelo: texto) -> ConfigInfo:
+    requiere:
+        longitud(ruta_modelo) > 0
+    garantiza:
+        longitud(resultado.ruta_modelo) > 0
+        resultado.n_ctx > 0
+        resultado.n_threads >= 2
+        resultado.puerto > 0
+    let cfg: ConfigInfo
+    cfg.nombre_modelo = "codellama-7b-Q4_K_M"
+    cfg.ruta_modelo = ruta_modelo
+    cfg.n_ctx = 4096
+    cfg.n_threads = seleccionar_hilos(hw.cpu_nucleos)
+    cfg.n_gpu_layers = seleccionar_capas_gpu(hw.vram_total)
+    cfg.puerto = 8088
+    cfg.host = "127.0.0.1"
+    cfg.timeout = 30
+    retornar cfg
+
+# cumple Manual 9 §5.4 — escribir_config: escribe ~/.opensyn/config.toml
+funcion escribir_config(config: ConfigInfo) -> logico:
+    requiere:
+        longitud(config.ruta_modelo) > 0
+        longitud(config.host) > 0
+    garantiza:
+        verdadero
+    let ruta: texto = _syn_home() + "/.opensyn/config.toml"
+    let contenido: texto = "[general]\n" + "idioma = \"es\"\n" + "editor = \"vscode\"\n\n" + "[modelo]\n" + "nombre = \"" + config.nombre_modelo + "\"\n" + "ruta = \"" + config.ruta_modelo + "\"\n" + "n_ctx = " + entero_a_texto(config.n_ctx) + "\n" + "n_threads = " + entero_a_texto(config.n_threads) + "\n" + "n_gpu_layers = " + entero_a_texto(config.n_gpu_layers) + "\n\n" + "[server]\n" + "puerto = " + entero_a_texto(config.puerto) + "\n" + "host = \"" + config.host + "\"\n" + "timeout = " + entero_a_texto(config.timeout) + "\n"
+    si _syn_escribir_archivo(ruta, contenido):
+        escribir_linea("Configuracion escrita en " + ruta)
+        retornar verdadero
+    sino:
+        escribir_linea("Error: no se pudo escribir configuracion en " + ruta)
+        retornar falso

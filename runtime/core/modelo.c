@@ -767,6 +767,27 @@ int _syn_eliminar_archivo(CadenaSegura ruta) {
     return r;
 }
 
+/* cumple Manual 9 §5.4: escribe contenido a un archivo (config.toml) */
+int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
+    if (ruta.datos == NULL || ruta.longitud <= 0) return -1;
+    char* path = (char*)malloc((size_t)(ruta.longitud + 1));
+    if (!path) return -1;
+    memcpy(path, ruta.datos, (size_t)ruta.longitud);
+    path[ruta.longitud] = '\0';
+    FILE* f = fopen(path, "wb");
+    free(path);
+    if (!f) return -1;
+    if (contenido.longitud > 0 && contenido.datos) {
+        size_t written = fwrite(contenido.datos, 1, (size_t)contenido.longitud, f);
+        if (written != (size_t)contenido.longitud) {
+            fclose(f);
+            return -1;
+        }
+    }
+    fclose(f);
+    return 0;
+}
+
 /*
  * cumple Manual 7 §2.5 / Manual 9 §5.3: funciones para modelo de descarga.
  * _syn_home retorna el directorio home del usuario (~/.

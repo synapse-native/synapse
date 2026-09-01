@@ -105,3 +105,40 @@ class TestDescargaModelos:
         for umbral in ("4", "6", "8"):
             assert umbral in fuente, \
                 f"Seleccion por VRAM debe contemplar umbral {umbral}GB"
+
+    def test_instalar_modelo_funcion(self):
+        """installer.syn debe declarar instalar_modelo() (Manual 9 §5.3)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "installer.syn"), "Manual 9 §5.3"
+        )
+        assert _declara(fuente, "instalar_modelo"), \
+            "installer.syn debe declarar instalar_modelo()"
+
+    def test_config_info_estructura(self):
+        """installer.syn debe declarar ConfigInfo con campos de config.toml (Manual 9 §5.4)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "installer.syn"), "Manual 9 §5.4"
+        )
+        assert "ConfigInfo" in fuente, "installer.syn debe declarar ConfigInfo"
+        for campo in ("nombre", "ruta", "n_ctx", "n_threads", "n_gpu_layers",
+                      "puerto", "host", "timeout"):
+            assert campo in fuente, \
+                f"ConfigInfo debe incluir campo '{campo}' (Manual 9 §5.4)"
+
+    def test_escribir_config_funcion(self):
+        """installer.syn debe declarar escribir_config() (Manual 9 §5.4)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "installer.syn"), "Manual 9 §5.4"
+        )
+        assert _declara(fuente, "escribir_config"), \
+            "installer.syn debe declarar escribir_config()"
+
+    def test_config_toml_generado(self):
+        """escribir_config debe generar formato TOML con [general], [modelo], [server] (Manual 9 §5.4)."""
+        fuente = _leer_fuente(
+            os.path.join(RAIZ, "opensyn", "installer.syn"), "Manual 9 §5.4"
+        )
+        assert "[general]" in fuente, "config.toml debe incluir [general]"
+        assert "[modelo]" in fuente, "config.toml debe incluir [modelo]"
+        assert "[server]" in fuente, "config.toml debe incluir [server]"
+
