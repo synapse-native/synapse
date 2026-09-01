@@ -11,7 +11,26 @@ SYNAPSE_VERSION="8.1.0"
 APP_NAME="Synapse"
 DMG_NAME="synapse-${SYNAPSE_VERSION}-macos.dmg"
 
+# ============================================================================
+# Opciones de componentes (Manual 9 §4.1)
+# ============================================================================
+COMPONENTE="opensyn"  # Valor por defecto: solo OpenSyn
+
+for arg in "$@"; do
+  case $arg in
+    --ecosistema) COMPONENTE="ecosistema" ;;
+    --opensyn)    COMPONENTE="opensyn" ;;
+    --help|-h)
+      echo "Uso: $0 [--opensyn|--ecosistema]"
+      echo "  --opensyn: Solo instalar OpenSyn (valor por defecto)"
+      echo "  --ecosistema: Instalar ecosistema completo (OpenSyn + Syquex)"
+      exit 0 ;;
+    *) echo "Opción desconocida: $arg"; exit 1 ;;
+  esac
+done
+
 echo "=== Creando instalador macOS para Synapse v${SYNAPSE_VERSION} ==="
+echo "Componente: ${COMPONENTE}"
 
 # Crear estructura .app
 echo "Creando estructura .app..."
