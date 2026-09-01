@@ -34,7 +34,7 @@ CadenaSegura _syn_sha256_hex(CadenaSegura datos) {
         snprintf(hex + i * 2, 3, "%02x", digest[i]);
     }
     hex[64] = 0;
-    char* data = (char*)malloc(65);
+    char* data = (char*)pool_alloc(65);
     if (!data) return (CadenaSegura){0, ""};
     memcpy(data, hex, 65);
     return (CadenaSegura){ .longitud = 64, .datos = data };
@@ -60,7 +60,7 @@ CadenaSegura _syn_sha256_archivo(const char* ruta) {
         snprintf(hex + i * 2, 3, "%02x", digest[i]);
     }
     hex[64] = 0;
-    char* data = (char*)malloc(65);
+    char* data = (char*)pool_alloc(65);
     if (!data) return (CadenaSegura){0, ""};
     memcpy(data, hex, 65);
     return (CadenaSegura){ .longitud = 64, .datos = data };

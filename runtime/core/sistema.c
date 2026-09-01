@@ -21,10 +21,11 @@ int str_eq(CadenaSegura a, CadenaSegura b) {
     return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
 }
 
+// cumple Manual 2 §9.1: concat usa pool_alloc (no malloc), RAII libera con pool_free
 CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc((size_t)(_tl + 1));
-    if (!_buf) { fprintf(stderr, "Error: malloc fallo en concat()\n"); exit(1); }
+    char* _buf = (char*)pool_alloc((size_t)(_tl + 1));
+    if (!_buf) { fprintf(stderr, "Error: pool_alloc fallo en concat()\n"); exit(1); }
     memcpy(_buf, a.datos, (size_t)a.longitud);
     memcpy(_buf + a.longitud, b.datos, (size_t)b.longitud);
     _buf[_tl] = '\0';

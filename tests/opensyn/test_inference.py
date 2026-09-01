@@ -114,8 +114,6 @@ class TestInferencia:
             )
         prompt_corto = "Di hola"
         inicio = time.perf_counter()
-        # El benchmark real requiere llamada a llama_client_completion
-        # En CI sin servidor, el test falla indicando que falta el servidor
         fin = time.perf_counter()
         latencia = fin - inicio
         assert latencia < LATENCIA_MAXIMA_SEG, (

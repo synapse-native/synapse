@@ -779,7 +779,12 @@ CadenaSegura _syn_home(void) {
     if (h == NULL || h[0] == '\0') h = getenv("USERPROFILE");
 #endif
     const char* result = (h != NULL && h[0] != '\0') ? h : ".";
-    return (CadenaSegura){ .longitud = (int)strlen(result), .datos = strdup(result) };
+    int len = (int)strlen(result);
+    char* buf = (char*)pool_alloc((size_t)(len + 1));
+    if (!buf) return (CadenaSegura){ .longitud = 0, .datos = "" };
+    memcpy(buf, result, (size_t)len);
+    buf[len] = '\0';
+    return (CadenaSegura){ .longitud = len, .datos = buf };
 }
 
 int _syn_descargar(CadenaSegura url, CadenaSegura destino) {
