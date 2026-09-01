@@ -1,6 +1,6 @@
 # Documentación de Synapse v8.1.0
 
-Bienvenido a la documentación oficial del ecosistema **Synapse + Syquex + OpenSyn** v8.1.0
+Bienvenido a la documentación oficial del ecosistema **Synapse + Syquex + OpenSyn** v8.1.0.
 
 ## Estado del Proyecto
 
@@ -14,52 +14,109 @@ Bienvenido a la documentación oficial del ecosistema **Synapse + Syquex + OpenS
 
 ---
 
-## Manuales de Ingeniería
+## Manuales de Ingeniería (Fuentes de Verdad)
 
-| Manual | Descripción |
-|--------|-------------|
-| [**Manual 1** — Arquitectura del Lenguaje](manuales/MANUAL%201.md) | Filosofía de diseño, arquitectura general |
-| [**Manual 2** — Especificación Sintáctica](manuales/MANUAL%202.md) | Gramática EBNF, tipos, operadores |
-| [**Manual 3** — Arquitectura del Compilador](manuales/MANUAL%203.md) | Pipeline 5 etapas, AST, tabla de símbolos |
-| [**Manual 4** — Gestión de Memoria](manuales/MANUAL%204.md) | Ownership, borrowing, lifetimes |
-| [**Manual 5** — Concurrencia](manuales/MANUAL%205.md) | Canales, hilos, sincronización |
-| [**Manual 6** — Gestor de Paquetes Axon](manuales/MANUAL%206.md) | Axon, Ed25519, axon.lock |
-| [**Manual 7** — Herramientas de Desarrollo](manuales/MANUAL%207.md) | LSP nativo, VS Code extension |
-| [**Manual 8** — Backend y Generación de Código](manuales/MANUAL%208.md) | Generación C/LLVM/WASM |
-| [**Manual 9** — Bootstrap, Pruebas y QA](manuales/MANUAL%209.md) | Bootstrap 3 etapas, CI/CD |
+| # | Manual | Versión | Descripción |
+|---|--------|---------|-------------|
+| 1 | [Visión General, Filosofía y Arquitectura del Ecosistema](manuales/MANUAL%201.md) | 8.0.0-industrial | Visión, los tres componentes (Synapse/Syquex/OpenSyn), hoja de ruta |
+| 2 | [Sintaxis y Semántica de Synapse](manuales/MANUAL%202.md) | 8.0.0-industrial | Gramática EBNF, tipos, operadores, ownership/borrowing, AST, contratos `requiere`/`garantiza` |
+| 3 | [Sintaxis y Semántica de Syquex](manuales/MANUAL%203.md) | 8.0.0-industrial | Gramática EBNF, OOP nativo, manejo de errores con `Resultado` y operador `?`, biblioteca estándar |
+| 4 | [Modelo de Memoria de Syquex](manuales/MANUAL%204.md) | 8.0.0-industrial | Arenas por ámbito, conteo de referencias (RC/ARC), referencias débiles, análisis de alcance, FFI Marshaling |
+| 5 | [Concurrencia y Comunicación](manuales/MANUAL%205.md) | 8.0.0-industrial | Fibras ligeras, canales tipados, `lanzar`/`escuchar`, sincronización, `std.cluster` distribuido |
+| 6 | [Integración del Ecosistema](manuales/MANUAL%206.md) | 8.0.0-industrial | AST canónico unificado, FFI, serialización, bindings a otros lenguajes, runtime compartido |
+| 7 | [OpenSyn — Asistente de IA Local](manuales/MANUAL%207.md) | 8.1.0-industrial | Asistente IA local, RAG quirúrgico, bucle de corrección, transpilación, bindings C→Syquex |
+| 8 | [Herramientas de Desarrollo](manuales/MANUAL%208.md) | 8.2.0-industrial | LSP nativo, extensión VS Code, debugger (time-travel), CLI unificado, integración con OpenSyn |
+| 9 | [Instalación, Empaquetado y Distribución](manuales/MANUAL%209.md) | 8.0.0-industrial | Instalación de un solo clic, instaladores multiplataforma, GitHub Releases, Axon Hub, Ed25519 |
 
----
-
-## Guías
-
-| Guía | Descripción |
-|------|-------------|
-| [Guía de Instaladores](guia_usuario_instaladores.md) | Instrucciones de instalación para Windows, Linux y macOS |
-| [Guía de Gobernanza](GUIA_DE_GOBERNANZA.md) | Reglas del proyecto y protocolos |
-| [Método de Trabajo Seguro](METODO_TRABAJO.md) | Protocolo TDD MTO |
+Documentación adicional en [`manuales/ANEXO-MANUALES.md`](manuales/ANEXO-MANUALES.md) y [`manuales/ANEXO_INVENTARIO_ARCHIVOS.md`](manuales/ANEXO_INVENTARIO_ARCHIVOS.md).
 
 ---
 
-## Especificaciones
+## Libros (Documentación Generada con mdBook)
 
-| Especificación | Descripción |
-|----------------|-------------|
-| [Especificación OpenSyn](especificacion_opensyn.md) | Arquitectura completa de OpenSyn |
-| [Mapa de Manuales](mapa_manuales.md) | Mapa de secciones por archivo |
-| [Auditoría de Alineación](AUDITORIA_ALINEACION_MANUALES.md) | Estado de alineación con manuales |
+| Libro | Audiencia | Ubicación |
+|-------|-----------|-----------|
+| 📘 **Libro 1: Aprende Synapse, Syquex y OpenSyn** | Principiantes e intermedios | [`book1-aprendizaje/SUMMARY.md`](book1-aprendizaje/SUMMARY.md) |
+| 📗 **Libro 2: Guía para Desarrolladores** | Avanzados y contribuidores | [`book2-desarrollo/SUMMARY.md`](book2-desarrollo/SUMMARY.md) |
+
+Para construir el sitio localmente:
+```bash
+mdbook serve docs/book1-aprendizaje
+mdbook serve docs/book2-desarrollo
+```
 
 ---
 
-## Roadmap
+## Estructura de la Documentación
+
+```
+docs/
+├── README.md                    # Este archivo
+├── SUMMARY.md                   # Índice principal
+├── book.toml                    # Configuración mdBook
+├── _redirects                   # Redirecciones GitHub Pages
+│
+├── manuales/                    # Manuales oficiales (fuentes de verdad)
+│   ├── MANUAL 1.md a MANUAL 9.md
+│   ├── ANEXO-MANUALES.md
+│   ├── ANEXO_INVENTARIO_ARCHIVOS.md
+│   └── MANUAL_TESTS_OBLIGATORIOS.md
+│
+├── book1-aprendizaje/          # Libro 1 (mdBook): Aprende Synapse, Syquex, OpenSyn
+├── book2-desarrollo/           # Libro 2 (mdBook): Guía para Desarrolladores
+│
+├── gobernancia/                 # Reglas y protocolos
+│   ├── GUIA_DE_GOBERNANZA.md
+│   ├── METODO_TRABAJO.md
+│   ├── mapa_manuales.md
+│   └── ...
+│
+├── decisiones/                  # Decisiones arquitectónicas (D-*, R*)
+├── auditorias/                  # Informes de auditoría de alineación
+├── reportes/                    # Reportes de micro-entregables (R1-R138)
+│
+├── plans/                       # Planes de micro-entregables
+│   ├── ME/                      # Planes plan_ME_*.md
+│   ├── verifications/            # Verificaciones verificacion_ME_*.md
+│   └── fases/                    # Planes de fase (PLAN_FASE_*.md)
+│
+├── repair-plans/               # Planes de reparación
+├── bitacoras/                    # Bitácoras de desarrollo
+├── arquitectura/                 # Especificaciones de arquitectura
+│
+├── historicas/                  # Documentación obsoleta (v2.x, v5.0, borradores)
+│
+├── guia_usuario_instaladores.md # Guía de usuario de los instaladores
+└── release_notes_v8.1.0.md     # Notas de release v8.1.0
+```
+
+---
+
+## Guías y Protocolos
 
 | Documento | Descripción |
 |-----------|-------------|
-| [Roadmap del Proyecto](../ROADMAP.md) | Roadmap completo F0–F30 |
-| [Changelog v8.1.0](../CHANGELOG_v8.1.0.md) | Historial de cambios |
+| [Guía de Gobernanza](gobernancia/GUIA_DE_GOBERNANZA.md) | Reglas del proyecto y protocolos |
+| [Método de Trabajo Seguro (MTS)](gobernancia/METODO_TRABAJO.md) | Protocolo TDD con `requisito:`/`texto:`/`implementacion:`/`oraculo:` |
+| [Mapa de Manuales](gobernancia/mapa_manuales.md) | Mapeo de archivos productivos a secciones obligatorias de los manuales |
+| [Guía de Usuario - Instaladores](guia_usuario_instaladores.md) | Instalación multiplataforma (Windows/Linux/macOS) |
 
 ---
 
-## Instalación
+## Decisiones, Auditorías y Reportes
+
+| Carpeta | Contenido |
+|---------|-----------|
+| [`decisiones/`](decisiones/) | Decisiones arquitectónicas (D-*, R*) |
+| [`auditorias/`](auditorias/) | Informes de auditoría de alineación con manuales |
+| [`reportes/`](reportes/) | Reportes de micro-entregables (ME-*) y reportes de fase |
+| [`plans/`](plans/) | Planes de micro-entregables (plan_ME_*.md) y planes de fase |
+| [`repair-plans/`](repair-plans/) | Planes de reparación de bugs e incidencias |
+| [`bitacoras/`](bitacoras/) | Bitácoras de desarrollo del proyecto |
+
+---
+
+## Instalación Rápida
 
 ### Windows
 ```cmd
@@ -76,7 +133,7 @@ curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladore
 ./instaladores/macos/create_dmg.sh
 ```
 
-**[Guía completa de instalación](guia_usuario_instaladores.md)**
+Para más detalles, consultar la [Guía de Usuario de Instaladores](guia_usuario_instaladores.md) o el [Manual 9 § Instalación](manuales/MANUAL%209.md).
 
 ---
 
@@ -88,4 +145,4 @@ curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladore
 
 ---
 
-*Documentación v8.1.0 — Septiembre 2026*
+*Documentación Synapse v8.1.0-industrial — Septiembre 2026*

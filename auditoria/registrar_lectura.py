@@ -26,7 +26,7 @@ from datetime import date
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-MAPA_MD = RAIZ / "docs" / "mapa_manuales.md"
+MAPA_MD = RAIZ / "docs" / "gobernancia" / "mapa_manuales.md"
 MANUALES_DIR = RAIZ / "docs" / "manuales"
 LECTURAS_JSONL = RAIZ / "auditoria" / "lecturas.jsonl"
 

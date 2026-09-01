@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-BITACORA = RAIZ / "docs" / "AUDITORIA_ALINEACION_MANUALES.md"
+BITACORA = RAIZ / "docs" / "auditorias" / "AUDITORIA_ALINEACION_MANUALES.md"
 REPORTES_DIR = RAIZ / "docs" / "reportes"
 MANUALES_DIR = RAIZ / "docs" / "manuales"
 
@@ -238,11 +238,11 @@ RE_REF_ARCHIVO = re.compile(r"`((?:nucleo|compilador|tests|examples|logs)/[^`]+)
 # REGLA 11 — Canon de deudas y módulos D-9
 # Ya NO se hard-codean aquí: viven en docs/ para no acoplar la política de
 # gobernanza al código del verificador. Se cargan desde:
-#   - docs/canon_deudas.md   (formato: "- D-XX | CERRADA|PENDIENTE | resolucion")
-#   - docs/modulos_d9.md     (formato: "- ruta/al/modulo.syn")
+#   - docs/decisiones/CANON_DEUDAS.md   (formato: "- D-XX | CERRADA|PENDIENTE | resolucion")
+#   - docs/decisiones/MODULOS_D9.md     (formato: "- ruta/al/modulo.syn")
 # ---------------------------------------------------------------------------
 def cargar_canon_deudas():
-    path = RAIZ / "docs" / "canon_deudas.md"
+    path = RAIZ / "docs" / "decisiones" / "CANON_DEUDAS.md"
     deudas = {}
     if not path.exists():
         return deudas
@@ -254,7 +254,7 @@ def cargar_canon_deudas():
 
 
 def cargar_modulos_d9():
-    path = RAIZ / "docs" / "modulos_d9.md"
+    path = RAIZ / "docs" / "decisiones" / "MODULOS_D9.md"
     mods = []
     if not path.exists():
         return mods
