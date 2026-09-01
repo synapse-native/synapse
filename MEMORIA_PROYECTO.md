@@ -7,34 +7,40 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-09-01T13:30Z** (FASE 30 INICIADA - ME_30_T1 GREEN)
+> Última actualización: **2026-09-01T14:00Z** (FASE 30 COMPLETADA)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL
 
 ```yaml
-Fase roadmap:      FASE 30 EN PROGRESO — Instalación Unificada y Distribución Final
+Fase roadmap:      FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            F30 EN PROGRESO — ME_30_T1 GREEN (estructura instaladores), ME_29_T1 RED (requiere servidor)
-Commit fase:       pendiente (ME_30_T1: estructura instaladores)
-Próximo ME:        ME_30_T2 (instalador Windows)
-Próximo paso:      Implementar instalador Windows (Inno Setup)
-Últimos commits:    458d7b0 (FASE 29 COMPLETADA)
-                    786cb3e (ME_29_T3_mod: test_gestion_modelos)
-                    dceca88 (ME_29_T2: bindings TypeScript)
-                    9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
+Estado:            F30 COMPLETADA — Todos los MEs GREEN
+Commit fase:       de901bb (ME_30_T8: Docs/Packaging)
+Próximo ME:        FASE 31 (próxima fase del roadmap)
+Próximo paso:      Verificar FASE 31 en ROADMAP.md
+Últimos commits:    de901bb (ME_30_T8: Docs/Packaging)
+                    f3e5ad3 (ME_30_T7: Auto-actualización)
+                    5c22529 (ME_30_T6: Tests de smoke)
+                    b1390ba (ME_30_T5: Verificación Ed25519)
+                    72f60bd (ME_30_T4: Instalador macOS)
+                    e5e9b58 (ME_30_T3: Instalador Linux)
+                    5775c5a (ME_30_T2: Instalador Windows)
+                    b9aa55f (ME_30_T1: Estructura instaladores)
 ```
 
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
-| pendiente | ME_29_T2: bindings TypeScript implementados | 1 test RED → GREEN (test_binding_typescript), funciones generar_typescript_completo y generar_javascript_wrapper agregadas |
-| `478f047` | H-F29-T5b fix memory management mismatch | Fix crítico: malloc→pool_alloc en concat(), _syn_sha256(), _syn_sha256_archivo(), _syn_home() |
-| `9fd745e` | ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config + _syn_escribir_archivo | 4 tests nuevos GREEN, installer_opensyn GREEN, 33/36 GREEN total |
-| `6063e39` | docs: R137 bitácora + auditoría para H-F29-T5b | Documentación |
-| `2fee5b0` | FASE 29: ME_29_T6b fix test_installer_opensyn — usa main.py (Manual 8 §1.2) | 1 test pre-existente FAIL → GREEN |
-| `27bd3bb` | FASE 29: ME_29_T3 benchmark latencia + infraestructura OpenSyn | 7 archivos nuevos/modificados, test_latencia_meta modificado (autorización Arquitecto) |
+| `de901bb` | ME_30_T8: Docs/Packaging | README.md con instrucciones completas, 5 tests GREEN |
+| `f3e5ad3` | ME_30_T7: Auto-actualización | auto_actualizar.py con verificar_version, 5 tests GREEN |
+| `5c22529` | ME_30_T6: Tests de smoke | test_smoke.py con verificación de sintaxis, 5 tests GREEN |
+| `b1390ba` | ME_30_T5: Verificación Ed25519 | verificar_firma.py con Ed25519, 5 tests GREEN |
+| `72f60bd` | ME_30_T4: Instalador macOS | create_dmg.sh con opciones de componentes, 6 tests GREEN |
+| `e5e9b58` | ME_30_T3: Instalador Linux | install.sh con detección de distribución, 6 tests GREEN |
+| `5775c5a` | ME_30_T2: Instalador Windows | synapse.iss con componentes, 6 tests GREEN |
+| `b9aa55f` | ME_30_T1: Estructura instaladores | Directorios instaladores/{windows,linux,macos,common}, 5 tests GREEN |
 
 ### Deudas / Hallazgos críticos activos
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
