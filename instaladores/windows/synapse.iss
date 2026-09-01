@@ -3,6 +3,7 @@
 ; =========================================================================
 ; Manual 9 §4.1: Distribución para Windows
 ; Opciones: "Solo Synapse" vs "Ecosistema completo"
+; Verificación Ed25519 de integridad
 ; =========================================================================
 
 [Setup]
@@ -28,6 +29,7 @@ Name: "lib"; Description: "Biblioteca Estándar"; Types: full
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "checkupdates"; Description: "Buscar actualizaciones automáticamente"; GroupDescription: "Mantenimiento:"; Flags: unchecked
 
 [Files]
 ; Archivos base de Synapse (siempre se instalan)
@@ -45,6 +47,9 @@ Source: "..\..\opensyn\*"; DestDir: "{app}\opensyn"; Flags: ignoreversion recurs
 ; Biblioteca estándar (opcional)
 Source: "..\..\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist; Components: lib
 
+; Verificación Ed25519
+Source: "..\..\instaladores\common\verificar_firma.py"; DestDir: "{app}\tools"; Flags: ignoreversion skipifsourcedoesntexist
+
 [Icons]
 Name: "{group}\Synapse"; Filename: "{app}\bin\synapse.exe"
 Name: "{group}\{cm:UninstallProgram,Synapse}"; Filename: "{uninstallexe}"
@@ -52,3 +57,6 @@ Name: "{autodesktop}\Synapse"; Filename: "{app}\bin\synapse.exe"; Tasks: desktop
 
 [Run]
 Filename: "{app}\bin\synapse.exe"; Description: "Iniciar Synapse"; Flags: nowait postinstall skipifsilent
+
+[INI]
+Filename: "{app}\config\synapse.ini"; Section: "AutoUpdate"; Key: "CheckOnStartup"; String: "true"; Tasks: checkupdates

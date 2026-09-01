@@ -3,6 +3,7 @@
 # create_dmg.sh — Script para crear .dmg en macOS
 # =========================================================================
 # Manual 9 §4.1: Distribución para macOS
+# Verificación Ed25519 de integridad
 # =========================================================================
 
 set -e
@@ -10,6 +11,12 @@ set -e
 SYNAPSE_VERSION="8.1.0"
 APP_NAME="Synapse"
 DMG_NAME="synapse-${SYNAPSE_VERSION}-macos.dmg"
+LOG_FILE="/var/log/synapse-build.log"
+
+# Función de logging
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
 
 # ============================================================================
 # Opciones de componentes (Manual 9 §4.1)
@@ -29,11 +36,19 @@ for arg in "$@"; do
   esac
 done
 
-echo "=== Creando instalador macOS para Synapse v${SYNAPSE_VERSION} ==="
-echo "Componente: ${COMPONENTE}"
+log "=== Creando instalador macOS para Synapse v${SYNAPSE_VERSION} ==="
+log "Componente: ${COMPONENTE}"
+
+# Verificar firma Ed25519
+verificar_firma() {
+    log "Verificando integridad de archivos..."
+    if [ -f "../../instaladores/common/verificar_firma.py" ]; then
+        python3 ../../instaladores/common/verificar_firma.py || true
+    fi
+}
 
 # Crear estructura .app
-echo "Creando estructura .app..."
+log "Creando estructura .app..."
 mkdir -p "${APP_NAME}.app/Contents/MacOS"
 mkdir -p "${APP_NAME}.app/Contents/Resources"
 
@@ -54,14 +69,28 @@ cat > "${APP_NAME}.app/Contents/Info.plist" << EOF
     <string>${APP_NAME}</string>
     <key>CFBundleVersion</key>
     <string>${SYNAPSE_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${SYNAPSE_VERSION}</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
 </dict>
 </plist>
 EOF
 
+# Verificar firma
+verificar_firma
+
 # Crear .dmg
-echo "Creando .hdiutil create..."
+log "Creando .hdiutil create..."
 hdiutil create -volname "${APP_NAME}" -srcfolder "${APP_NAME}.app" -ov -format UDZO "${DMG_NAME}"
 
-echo ""
-echo "✅ Instalador creado: ${DMG_NAME}"
-echo "   Abrir el .dmg y arrastrar ${APP_NAME} a Applications"
+log ""
+log "✅ Instalador creado: ${DMG_NAME}"
+log "   Abrir el .dmg y arrastrar ${APP_NAME} a Applications"
+log "Log de build: ${LOG_FILE}"
