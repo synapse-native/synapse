@@ -1,18 +1,35 @@
-# plan_ME_30_T1 — TDD F27-F30: Instalador unificado .iss/.sh/.dmg
+# Plan ME_30_T1 — Estructura base del instalador
 
-MTS (docs/METODO_TRABAJO.md). Oráculo ejecutable; el código lleva cita grep-chequeable.
+## Bloque MTS (método de trabajo seguro)
 
-## Requisito
-requisito: Manual 9 §9 / F30
-texto: "Scripts de instalación .iss/.sh/.dmg unificados (F30, lanzamiento)."
-implementacion: Crear tests/integration/test_installer_iss_sh_dmg.py con oráculo de generación de instaladores. RED hasta F30.
-oraculo: tests/integration/test_installer_iss_sh_dmg.py
+### requisito:
+Manual 9 §4.1: "Los artefactos se publican en la sección Releases del repositorio de GitHub. Cada release incluye: archivos de instalación para Windows, Linux, macOS y WASM."
+Manual 9 §4.2: "Los paquetes se publican en el Axon Hub (descentralizado en IPFS)."
 
-**TDD:** Test TDD: el oráculo debe FALLAR (RED, @pytest.mark.tdd) hasta que el código implemente lo que dice el manual; no usa pytest.skip.
+### texto:
+Crear la estructura de directorios y archivos base para los instaladores multiplataforma. El instalador debe soportar:
+- Windows (Inno Setup)
+- Linux (Bash + .deb/.rpm/AppImage)
+- macOS (.dmg/.pkg)
+- Opciones: "Solo Synapse" vs "Ecosistema completo"
 
-## Alcance (sin desviación)
-Crea ÚNICAMENTE el test TDD indicado; no implementa el código de producción (otro ME lo hace).
+### implementacion:
+1. Crear directorio `instaladores/` con subdirectorios para cada plataforma
+2. Crear scripts básicos para cada plataforma
+3. Crear tests TDD que verifiquen la estructura
 
-## Criterio de aceptación
-- El test existe y es RED (falla) por ausencia de código.
-- Marcado @pytest.mark.tdd y registrado en tests/tdd/REGISTRO_TDD.md.
+### oraculo:
+- Directorios creados → PASS
+- Scripts básicos existen → PASS
+- Tests verifican estructura → PASS
+
+## Archivos a crear
+- `instaladores/windows/`
+- `instaladores/linux/`
+- `instaladores/macos/`
+- `instaladores/common/`
+- `tests/installers/test_estructura.py`
+
+## Citas de manuales
+- Manual 9 §4.1 (GitHub Releases)
+- Manual 9 §4.2 (Axon Hub)

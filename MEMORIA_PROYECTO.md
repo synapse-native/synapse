@@ -7,24 +7,23 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-09-01T13:00Z** (FASE 29 COMPLETADA)
+> Última actualización: **2026-09-01T13:30Z** (FASE 30 INICIADA - ME_30_T1 GREEN)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL
 
 ```yaml
-Fase roadmap:      FASE 29 COMPLETADA — Detección de Hardware y Gestión de Modelos (Hito 8)
-                   Fase 30 PENDIENTE
-Estado:            F29 COMPLETADA — ME_29_T1 RED (requiere servidor), ME_29_T2 GREEN, ME_29_T3 GREEN (benchmark), ME_29_T3_mod GREEN, ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN, ME_29_T5u GREEN, H-F29-T5b RESUELTO
-Commit fase:       786cb3e (ME_29_T3_mod: test_gestion_modelos)
-Próximo ME:        F30_T1 (instalador unificado)
-Próximo paso:      Iniciar FASE 30 — Instalación Unificada y Distribución Final
-Últimos commits:    786cb3e (ME_29_T3_mod: test_gestion_modelos)
+Fase roadmap:      FASE 30 EN PROGRESO — Instalación Unificada y Distribución Final
+                   Fase 29 COMPLETADA
+Estado:            F30 EN PROGRESO — ME_30_T1 GREEN (estructura instaladores), ME_29_T1 RED (requiere servidor)
+Commit fase:       pendiente (ME_30_T1: estructura instaladores)
+Próximo ME:        ME_30_T2 (instalador Windows)
+Próximo paso:      Implementar instalador Windows (Inno Setup)
+Últimos commits:    458d7b0 (FASE 29 COMPLETADA)
+                    786cb3e (ME_29_T3_mod: test_gestion_modelos)
                     dceca88 (ME_29_T2: bindings TypeScript)
                     9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
-                    478f047 (H-F29-T5b fix: malloc→pool_alloc en concat/sha256/home)
-                    6063e39 (docs: R137 bitácora MEMORIA + auditoría para H-F29-T5b)
 ```
 
 ### Cambios recientes esta sesión
