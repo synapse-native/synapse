@@ -287,3 +287,4 @@
 {"fecha": "2026-09-01", "archivos": ["instaladores/common/verificar_firma.py"], "cita": "Manual 1 §8", "puntos": "Manual 1 §8: Funciones públicas requieren contratos requiere/garantiza. verificar_firma.py implementa funciones genererar_claves, firmar_archivo, verificar_firma."}
 {"fecha": "2026-09-01", "archivos": ["tests/installers/test_smoke.py"], "cita": "Manual 9 §4.1", "puntos": "Manual 9 §4.1: Tests de smoke para verificar ejecución de instaladores."}
 {"fecha": "2026-09-01", "archivos": ["instaladores/common/auto_actualizar.py", "tests/installers/test_auto_actualizar.py"], "cita": "Manual 9 §4.1", "puntos": "Manual 9 §4.1: Sistema de auto-actualización para instaladores."}
+{"fecha": "2026-09-01", "archivos": ["instaladores/README.md", "tests/installers/test_docs.py"], "cita": "Manual 9 §4.1", "puntos": "GitHub Releases incluye archivos de instalación para Windows, Linux, macOS. Instalador verifica integridad con Ed25519."}
