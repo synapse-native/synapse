@@ -16,11 +16,12 @@
 ```yaml
 Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F29 EN PROGRESO — ME_29_T3 benchmark modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN, H-F29-T5b RESUELTO
-Commit fase:       478f047 (H-F29-T5b fix memory management mismatch)
+Estado:            F29 EN PROGRESO — ME_29_T3 benchmark modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, ME_29_T6b GREEN, ME_29_T5u GREEN, H-F29-T5b RESUELTO
+Commit fase:       9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
 Próximo ME:        ME_29_T5u (instalar modelo + config.toml) u otro
 Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn o integración editor F27
-Últimos commits:    478f047 (H-F29-T5b fix: malloc→pool_alloc en concat/sha256/home)
+Últimos commits:    9fd745e (ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config)
+                    478f047 (H-F29-T5b fix: malloc→pool_alloc en concat/sha256/home)
                     6063e39 (docs: R137 bitácora MEMORIA + auditoría para H-F29-T5b)
                     2fee5b0 (ME_29_T6b fix test_installer_opensyn — usa main.py)
                     27bd3bb (ME_29_T3 benchmark latencia + infraestructura OpenSyn)
@@ -34,6 +35,7 @@ Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn o integrac
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
 | `478f047` | H-F29-T5b fix memory management mismatch | Fix crítico: malloc→pool_alloc en concat(), _syn_sha256(), _syn_sha256_archivo(), _syn_home() |
+| `9fd745e` | ME_29_T5u: instalar_modelo + ConfigInfo + escribir_config + _syn_escribir_archivo | 4 tests nuevos GREEN, installer_opensyn GREEN, 33/36 GREEN total |
 | `6063e39` | docs: R137 bitácora + auditoría para H-F29-T5b | Documentación |
 | `2fee5b0` | FASE 29: ME_29_T6b fix test_installer_opensyn — usa main.py (Manual 8 §1.2) | 1 test pre-existente FAIL → GREEN |
 | `27bd3bb` | FASE 29: ME_29_T3 benchmark latencia + infraestructura OpenSyn | 7 archivos nuevos/modificados, test_latencia_meta modificado (autorización Arquitecto) |
