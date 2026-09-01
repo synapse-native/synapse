@@ -334,7 +334,9 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             n_params = len(def_func.parametros)
             n_args = len(nodo.argumentos)
             n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
-            if n_args < n_params - n_default or n_args > n_params:
+            # cumple Manual 2 §12: concat es variadic (>=2 args)
+            es_variadic = (nodo.nombre == 'concat' and n_args >= 2)
+            if not es_variadic and (n_args < n_params - n_default or n_args > n_params):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),
@@ -373,7 +375,9 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             n_params = len(tipos_esperados)
             idx_defaults = _BUILTIN_PARAMS_DEFAULT.get(nodo.nombre, [])
             n_min = n_params - len(idx_defaults)
-            if n_args < n_min or n_args > n_params:
+            # cumple Manual 2 §12: concat es variadic (>=2 args)
+            es_variadic = (nodo.nombre == 'concat' and n_args >= 2)
+            if not es_variadic and (n_args < n_min or n_args > n_params):
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_ARGUMENTOS_INVALIDOS,
                     self._token(nodo.linea, nodo.columna),

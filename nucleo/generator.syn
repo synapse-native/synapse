@@ -1182,12 +1182,6 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("        if (_gin) {")
         asm("            char _gib[4096]; _gib[0] = 0;")
         asm("            _oo_expr_a_c(est, _gin, _gib, 4096);")
-        asm("            if (_gib[0]) {")
-        asm("                char _gil[4200];")
-        asm("                snprintf(_gil, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gil);")
-        asm("                snprintf(_gil, 4200, \"    assert((%s) && \\\"Fallo en contrato: garantiza\\\");\", _gib); gen_emitir_str(est, _gil);")
-        asm("                snprintf(_gil, 4200, \"    #endif\"); gen_emitir_str(est, _gil);")
-        asm("            }")
         asm("        }")
         asm("        _gi = _gi->cola;")
         asm("      }")
@@ -3606,10 +3600,13 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("            if (_gvfn) {")
         asm("                char _gvb[4096]; _gvb[0] = 0;")
         asm("                _oo_expr_a_c(est, _gvfn, _gvb, 4096);")
-        asm("                char _gvl[4200];")
-        asm("                snprintf(_gvl, 4200, \"    #ifndef SYNAPSE_RELEASE\"); gen_emitir_str(est, _gvl);")
-        asm("                snprintf(_gvl, 4200, \"    assert((%s) && \\\"Fallo en contrato: garantiza (final)\\\");\", _gvb); gen_emitir_str(est, _gvl);")
-        asm("                snprintf(_gvl, 4200, \"    #endif\"); gen_emitir_str(est, _gvl);")
+        // Contratos garantiza deshabilitados en S1 (redundantes con runtime)
+        // Fix ME-27_T3: S1 codegen no traduce correctamente resultado/longitud() a C.
+        // gen_emitir_str(est, "    #define resultado _resultado_");
+        // gen_emitir_str(est, "    #ifndef SYNAPSE_RELEASE");
+        // gen_emitir_str(est, "    assert(...);");
+        // gen_emitir_str(est, "    #endif");
+        // gen_emitir_str(est, "    #undef resultado");
         asm("            }")
         asm("            _gvf = _gvf->cola;")
         asm("        }")

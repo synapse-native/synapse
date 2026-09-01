@@ -56,7 +56,7 @@ El proyecto utiliza GitHub Actions para:
 
 Los instaladores se construyen automáticamente cuando se crea un tag `v*`:
 
-- **Windows**: Inno Setup (`instaladores/windows/synapse.iss`)
+- **Windows**: Inno Setup (`instalador_synapse.iss`)
 - **Linux**: Script Bash (`instaladores/linux/install.sh`)
 - **macOS**: DMG (`instaladores/macos/create_dmg.sh`)
 

@@ -13,11 +13,11 @@ def verificar_binario(ruta: str, nombre: str) -> tuple[bool, str]:
     """Verifica que un archivo existe y tiene tamaño > 0 bytes."""
     if not os.path.exists(ruta):
         return False, f"❌ {nombre}: NO ENCONTRADO en {ruta}"
-    
+
     size = os.path.getsize(ruta)
     if size == 0:
         return False, f"❌ {nombre}: ENCONTRADO pero VACÍO (0 bytes) en {ruta}"
-    
+
     return True, f"✅ {nombre}: OK ({size:,} bytes) - {ruta}"
 
 def main():
@@ -25,19 +25,19 @@ def main():
     print("VERIFICACIÓN E2E - INSTALACIÓN AUTOMÁTICA SYNAPSE")
     print("=" * 60)
     print()
-    
+
     checks = [
         (r"C:\Synapse\bin\synapse_lsp.exe", "Servidor LSP (synapse_lsp.exe)"),
         (r"C:\Synapse\toolchain\bin\gcc.exe", "Toolchain GCC (gcc.exe)"),
     ]
-    
+
     all_ok = True
     for ruta, nombre in checks:
         ok, msg = verificar_binario(ruta, nombre)
         print(msg)
         if not ok:
             all_ok = False
-    
+
     print()
     print("=" * 60)
     if all_ok:

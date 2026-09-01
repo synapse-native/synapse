@@ -140,3 +140,10 @@ tests/probe_f46.syn.json
 
 # Estado local de agentes de edicion (kilo)
 .kilo/
+
+# VS Code Synapse extension dependencies
+vscode-synapse/node_modules/
+
+# Logs
+logs/
+pipeline.log

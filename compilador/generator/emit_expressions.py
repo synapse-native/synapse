@@ -531,6 +531,13 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 return f"((({s}).longitud>=({pref}).longitud&&strncmp(({s}).datos,({pref}).datos,({pref}).longitud)==0)?1:0)"
             return "0"
 
+        # cumple Manual 2 §12: concat variadic → anidar llamadas binarias
+        if nombre == 'concat' and len(args) >= 3:
+            result = args[-1]
+            for i in range(len(args) - 2, -1, -1):
+                result = f"concat({args[i]}, {result})"
+            return result
+
         # Struct constructor: use C compound literal instead of function call
         if nombre in ctx._estructuras:
             if not args:

@@ -428,7 +428,7 @@ class Lexer:
                     f"Error Crítico: Idioma '{codigo}' no soportado. Soporte: {', '.join(DICCIONARIOS)}", 1, 0
                 )
             self.diccionario = DICCIONARIOS[codigo]
-        
+
         if len(self.lineas) >= 2:
             segunda = self.lineas[1].strip()
             if segunda == '#pragma: no_std':
@@ -467,6 +467,7 @@ class Lexer:
 
     def _tokenizar_linea(self, texto: str):
         i = 0
+        despues_de_punto = False
         while i < len(texto):
             if texto[i] == ' ':
                 i += 1
@@ -561,9 +562,12 @@ class Lexer:
                 )
 
             if texto[i] in TOKEN_UNICARACTER:
-                self.tokens.append(
-                    Token(TOKEN_UNICARACTER[texto[i]], linea=self.linea_actual, columna=i)
-                )
+                tok = Token(TOKEN_UNICARACTER[texto[i]], linea=self.linea_actual, columna=i)
+                self.tokens.append(tok)
+                if tok.tipo == TokenID.DOT:
+                    despues_de_punto = True
+                else:
+                    despues_de_punto = False
                 i += 1
                 continue
 
@@ -602,17 +606,38 @@ class Lexer:
                 while i < len(texto) and (texto[i].isalnum() or texto[i] == '_'):
                     i += 1
                 palabra = texto[inicio:i]
-                if self.diccionario and palabra in self.diccionario:
+                # cumple Manual 2 §2: después de DOT, tratar como identificador
+                # (no keyword) para soportar acceso a campos como p.y, p.x, etc.
+                # Si la palabra es un keyword seguida de '=' (asignación, no '=='),
+                # también tratarla como identificador (e.g. 'y = 5' donde 'y' es
+                # el keyword AND en español).
+                es_contexto_id = despues_de_punto
+                if not es_contexto_id and self.diccionario and palabra in self.diccionario:
+                    _peek = i
+                    while _peek < len(texto) and texto[_peek] == ' ':
+                        _peek += 1
+                    if _peek < len(texto) and texto[_peek] == '=':
+                        if _peek + 1 < len(texto) and texto[_peek + 1] == '=':
+                            pass  # es comparación ==, mantener keyword
+                        else:
+                            es_contexto_id = True  # asignación: 'y = ...' → identifier
+                if es_contexto_id and self.diccionario and palabra in self.diccionario:
+                    self.tokens.append(
+                        Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
+                    )
+                    despues_de_punto = False
+                elif self.diccionario and palabra in self.diccionario:
                     tok_tipo = self.diccionario[palabra]
-                    # F1.2: los keywords conservan su lexema en valor
                     valor = palabra
                     self.tokens.append(
                         Token(tok_tipo, linea=self.linea_actual, columna=inicio, valor=valor)
                     )
+                    despues_de_punto = False
                 else:
                     self.tokens.append(
                         Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
                     )
+                    despues_de_punto = False
                 continue
 
             raise SynapseError(

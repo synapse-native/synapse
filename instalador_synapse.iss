@@ -37,6 +37,9 @@ VersionInfoCompany={#MyAppPublisher}
 Name: "core_only"; Description: "Synapse Core (Ligero - Solo Lenguaje, MinGW y VSIX)"; Flags: iscustom
 Name: "opensyn_full"; Description: "OpenSyn (Completo - Lenguaje + IA Local Autónoma)"; Flags: iscustom
 
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
 [Components]
 ; Componente base obligatorio
 Name: "core"; Description: "Compilador Synapse, MinGW Toolchain, Extensión VS Code"; Types: core_only opensyn_full; Flags: fixed
@@ -87,6 +90,7 @@ Source: "nucleo\llama_client.c"; DestDir: "{app}\src"; Components: ai_engine; Fl
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\synapse.exe"; WorkingDir: "{app}"; Components: core
 Name: "{group}\Desinstalar Synapse"; Filename: "{uninstallexe}"; Components: core
+Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\synapse.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Components: core
 
 [Run]
 ; Paso final: ejecutar install.ps1 para aprovisionar MinGW (Fase 1)

@@ -1,3 +1,4 @@
 #lang: es
+
 funcion principal() -> nulo:
-    log("hola mundo")
+    escribir_linea("Hola, Silicio. El mundo exterior te saluda.")

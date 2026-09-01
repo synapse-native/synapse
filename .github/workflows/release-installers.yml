@@ -50,12 +50,12 @@ jobs:
         shell: bash
         run: |
           python main.py nucleo/principal.syn
-          gcc -O3 -fno-ident synapse_unity.c synapse_rt.o tweetnacl.o runtime_*.o -o synapse.exe -lws2_32 -lm
+          gcc -O3 -fno-ident synapse_unity.c synapse_rt.c runtime/core/*.c axon/tweetnacl.c -o synapse.exe -lws2_32 -lm
 
       - name: Create Inno Setup installer
         uses: jurplel/innosetup-action@v3
         with:
-          script: instaladores/windows/synapse.iss
+          script: instalador_synapse.iss
 
       - name: Generate SHA-256 checksum
         shell: bash

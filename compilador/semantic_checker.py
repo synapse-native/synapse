@@ -124,7 +124,7 @@ class UnionFind:
 
 class RegionGraph:
     """Grafo de restricciones de regiones (Manual 4.3).
-    
+
     Almacena todas las restricciones entre lifetimes para su
     posterior resolucion mediante el algoritmo de unificacion.
     """
@@ -137,7 +137,7 @@ class RegionGraph:
     @staticmethod
     def _check_outlives(origen: Lifetime, destino: Lifetime) -> bool:
         """M21.4: Verificar que el lifetime origen >= destino (Manual 4.3).
-        
+
         Static outlives todo, parametric outlives local,
         local: ambito menor = exterior = vive mas.
         """
@@ -161,11 +161,11 @@ class RegionGraph:
         destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
         origen_root = uf.find(origen_idx)
         destino_root = uf.find(destino_idx)
-        
+
         # Misma raiz en union-find = mismo lifetime unificado = OK
         if origen_root == destino_root:
             return True
-        
+
         # Verificar compatibilidad de metadatos de lifetime
         if not hasattr(c.origen, 'kind') or not hasattr(c.destino, 'kind'):
             return True  # No se puede determinar, asumir OK
@@ -173,11 +173,11 @@ class RegionGraph:
 
     def resolver(self, uf: UnionFind, report_error=None) -> bool:
         """M21.4: Resolver grafo de restricciones con validacion completa.
-        
+
         1. Unificar EQUALS mediante union-find
         2. Detectar ciclos en OUTLIVES mediante DFS (ERR_MEM_LIFETIME_CYCLE)
         3. Verificar OUTLIVES contra violaciones (ERR_MEM_LIFETIME_MISMATCH)
-        
+
         Returns: True si hay ciclo o violacion, False si OK
         """
         # Paso 1: Unificar EQUALS
@@ -186,7 +186,7 @@ class RegionGraph:
                 origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
                 destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
                 uf.union(origen_idx, destino_idx)
-        
+
         # Paso 2: Detectar ciclos
         has_cycle, ciclo_idx = self._dfs_cycle_detection(uf)
         if has_cycle and report_error:
@@ -197,7 +197,7 @@ class RegionGraph:
                 f"Ciclo de dependencia de lifetimes detectado"
             )
             return True
-        
+
         # Paso 3: Verificar OUTLIVES (M21.4 - Manual 4.3)
         for c in self.constraints:
             if c.tipo != REGION_OUTLIVES:
@@ -211,14 +211,14 @@ class RegionGraph:
                         f"no vive lo suficiente para el prestamo '{repr(c.destino)}'"
                     )
                 return True
-        
+
         return False
 
     def _dfs_cycle_detection(self, uf: UnionFind) -> tuple[bool, int]:
         """DFS 3-state para detectar ciclos en OUTLIVES (M21.2)."""
         n = uf.n
         estado = [0] * n  # 0=white, 1=grey, 2=black
-        
+
         def _dfs(v: int) -> tuple[bool, int]:
             estado[v] = 1  # grey
             for ci, c in enumerate(self.constraints):
@@ -237,7 +237,7 @@ class RegionGraph:
                         return True, ci_cycle
             estado[v] = 2  # black
             return False, -1
-        
+
         for v in range(n):
             if estado[v] == 0:
                 has_cycle, ci = _dfs(v)
@@ -381,7 +381,7 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         for p in self._func_params if hasattr(self, '_func_params') else []:
             lt = Lifetime(LT_PARAMETRICO, self.tabla.scope_nivel, self._proximo_lifetime, -1)
             self._proximo_lifetime += 1
-    
+
     # M21.3: Resolve lifetime constraints after function body analysis
     def _resolver_lifetimes_funcion(self):
         if self._region_graph.constraints and self._uf.n > 0:
@@ -400,20 +400,20 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre
         self._asignaciones_campos: Dict[str, Dict[str, str]] = {}
-        
+
         # M21.3: Initialize lifetime tracking for this function
         self._func_params = nodo.parametros
         self._inicializar_lifetimes_funcion()
         self._prestamos_registrados = set()  # Manual 4 S4.2: prestamos verificados por funcion
-        
+
         for p in nodo.parametros:
             self.tabla.declarar(p.nombre, p.tipo, nodo)
         for s in nodo.cuerpo:
             self._analizar_sentencia(s)
-        
+
         # M21.3: Resolve lifetime constraints
         self._resolver_lifetimes_funcion()
-        
+
         self.tabla.salir_scope()
         self._func_retorno = None
         self._func_actual = None
@@ -590,10 +590,9 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             tipo_cond = self._inferir_tipo(nodo.condicion)
             if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
                 # H-R90-15c: range-for lowering usa iterable como condición
-                # (Lista<T>/texto → iterable válido como bool en C)
+                # (Solo colecciones — texto/cadena NO son válidos como condición booleana)
                 if not (tipo_cond and (tipo_cond.startswith('Lista')
-                                       or tipo_cond.startswith('Mapa')
-                                       or tipo_cond in ('texto', 'cadena', 'puntero', 'void*'))):
+                                       or tipo_cond.startswith('Mapa'))):
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(nodo.linea, nodo.columna),
