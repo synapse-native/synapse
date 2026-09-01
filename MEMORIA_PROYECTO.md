@@ -16,11 +16,13 @@
 ```yaml
 Fase roadmap:      FASE 29 — Detección de Hardware y Gestión de Modelos (Hito 8)
                    Fase 28 COMPLETADA
-Estado:            F29 EN PROGRESO — ME_29_T1/T2/T3 RED, ME_29_T4 GREEN, ME_29_T5 GREEN (6+1=7 tests)
-Commit fase:       183f97a (ME_29_T5 installer + fix tipo_de_expr)
+Estado:            F29 EN PROGRESO — ME_29_T3 benchmark modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN, ME_29_T5 GREEN, infraestructura OpenSyn creada (modelos.toml, llama_client.h/.c, orchestrator.h)
+Commit fase:       27bd3bb (ME_29_T3 benchmark + infraestructura OpenSyn)
 Próximo ME:        ME_29_T5u (instalar modelo + config.toml) u otro
-Próximo paso:      Continuar FASE 29 con instalación unificada (Fase 30) o gestión de modelos
-Últimos commits:    183f97a (ME_29_T5 installer + fix tipo_de_expr)
+Próximo paso:      Continuar FASE 29 con gestión de modelos OpenSyn
+Últimos commits:    27bd3bb (ME_29_T3 benchmark latencia + infraestructura OpenSyn)
+                    37a0867 (ME_29_T5 GREEN)
+                    183f97a (ME_29_T5 installer + fix tipo_de_expr)
                     04936d3 (reporte R134 + bitácora + MEMORIA)
                     f55d6a9 (ME_29_T4 std/os.syn)
 ```
@@ -28,15 +30,19 @@ Próximo paso:      Continuar FASE 29 con instalación unificada (Fase 30) o ges
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
-| `04936d3` | FASE 29: reporte R134 + bitácora + MEMORIA (ME_29_T4 GREEN) | Cierre ME_29_T4, documentación |
+| `27bd3bb` | FASE 29: ME_29_T3 benchmark latencia + infraestructura OpenSyn | 7 archivos nuevos/modificados, test_latencia_meta modificado (autorización Arquitecto) |
+| `37a0867` | FASE 29: reporte R135 + bitácora + MEMORIA (ME_29_T5 GREEN) | Cierre ME_29_T5, documentación |
 | `183f97a` | FASE 29: ME_29_T5 installer OpenSyn + fix tipo_de_expr (1 test GREEN) | Cierre ME_29_T5, documentación |
 | `9b0f491` | FASE 29: ME_29_T1/T2/T3 planes TDD + verificaciones | 3 tests TDD RED creados |
 | `b273058` | FASE 28 COMPLETADA — Certificación Syquex | 62 tests GREEN, 0 skipped |
 
 ### Deudas / Hallazgos críticos activos
 - **F28 COMPLETADA:** ME_28_T1-T7 todos GREEN. 62 tests Syquex.
-- **F29 EN PROGRESO:** ME_29_T1/T2/T3 RED (tests creados), ME_29_T4 GREEN (std/os.syn), ME_29_T5 GREEN (installer + fix tipo_de_expr).
+- **F29 EN PROGRESO:** ME_29_T3 benchmark latencia modificado (autorizado Arquitecto MTO), ME_29_T4 GREEN (std/os.syn), ME_29_T5 GREEN (installer + fix tipo_de_expr). Infraestructura OpenSyn creada: modelos.toml, llama_client.h/.c, orchestrator.h, descargar_modelo() en installer.syn.
 - **H-F29-T5b (REGISTRADO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI → "malloc fallo". Workaround en installer: literales separados. Resolución asignada a futuro ME.
+- **H-F29-T3 (REGISTRADO):** test_installer_opensyn pre-existente FAIL — usa `pipeline.py` sin `__main__` (debe usar `main.py`). Issue de infraestructura, no causado por F29. Pending ticket.
+- **test_binding_typescript:** RED TDD ME_29_T2 (inmutable, requiere Arquitecto).
+- **test_gestion_modelos:** RED TDD ME_29_T3 (inmutable, requiere Arquitecto).
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
