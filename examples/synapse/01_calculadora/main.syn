@@ -1,0 +1,13 @@
+#lang: es
+
+funcion principal() -> nulo:
+    let a: entero = 10
+    let b: entero = 3
+    let suma: entero = a + b
+    let resta: entero = a - b
+    let producto: entero = a * b
+    let cociente: entero = a / b
+    escribir_linea("Suma: " + entero_a_texto(suma))
+    escribir_linea("Resta: " + entero_a_texto(resta))
+    escribir_linea("Producto: " + entero_a_texto(producto))
+    escribir_linea("Cociente: " + entero_a_texto(cociente))

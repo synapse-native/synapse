@@ -1,5 +1,6 @@
 """
-test_cluster_discovery.py — Pruebas de integración para M8.5 (Auto-Descubrimiento y Membresía)
+test_cluster_discovery.py — Pruebas de integración para M8.5 (Auto-Descubrimiento y Membresía).
+Manual 5 §6.4: auto-descubrimiento y membresía (multicast UDP/mDNS).
 
 Valida:
 - Inicialización del subsistema de descubrimiento
@@ -15,14 +16,18 @@ import subprocess
 import sys
 import time
 
+from conftest import rt_objs
+import pytest
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 # --- Configuración ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TESTS_DIR = os.path.join(PROJECT_ROOT, "tests")
 BIN_NAME = "test_cluster_discovery.exe" if sys.platform == "win32" else "test_cluster_discovery"
 BIN_PATH = os.path.join(TESTS_DIR, BIN_NAME)
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 
 # Toolchain GCC
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
@@ -32,8 +37,8 @@ if not os.path.exists(TOOLCHAIN_GCC):
 
 def _compilar():
     """Compila el binario de prueba de descubrimiento."""
-    if not os.path.exists(SYNAPSE_RT_O):
-        print(f"[SKIP] synapse_rt.o no encontrado. Compilar con: gcc -c synapse_rt.c -o synapse_rt.o -lpthread")
+    if not any(os.path.exists(o) for o in RT_OBJS):
+        print(f"[SKIP] objetos del runtime no encontrados (compilar con: python -m pytest tests/)")
         return False
 
     src = os.path.join(TESTS_DIR, "test_cluster_discovery.c")
@@ -43,8 +48,7 @@ def _compilar():
 
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O,
-        os.path.join(PROJECT_ROOT, "tweetnacl.o"),
+        src, *RT_OBJS,
         "-o", BIN_PATH,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -177,11 +181,11 @@ class TestCompilacionConFlags:
     """Prueba que el binario compile con diferentes flags de optimización."""
 
     def _compilar_con_flags(self, flags):
-        if not os.path.exists(SYNAPSE_RT_O):
+        if not any(os.path.exists(o) for o in RT_OBJS):
             return False
         src = os.path.join(TESTS_DIR, "test_cluster_discovery.c")
         out = BIN_PATH + ".tmp"
-        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, os.path.join(PROJECT_ROOT, "tweetnacl.o"), "-o", out, "-lm", "-lpthread", "-lws2_32"]
+        cmd = [TOOLCHAIN_GCC] + flags.split() + [src, *RT_OBJS, "-o", out, "-lm", "-lpthread", "-lws2_32"]
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         # Limpiar
         if os.path.exists(out):

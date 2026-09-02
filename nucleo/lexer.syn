@@ -1,8 +1,14 @@
+// cumple Manual 1 1: infraestructura del compilador Synapse
+// cumple Manual 8 4: toolchain de construcción
 #lang: es
 
 // --- Token ID constants ---
-constante T_IF = 1
-constante T_ELSE = 2
+// AUDITORIA F1 (H23): nombres alineados al Manual 2 §3 (T_SI/T_SINO).
+// AUDITORIA FASE A (A2.1): numeración CANÓNICA de nucleo/tokens.syn. El
+// frontend embebido _P_* usa su propia numeración divergente (brecha P1 #5 de
+// docs/reportes/FASE_A_A1.md); al unificar, la canónica manda.
+constante T_SI = 1
+constante T_SINO = 2
 constante T_FUNCION = 3
 constante T_RETORNAR = 4
 constante T_LANZAR = 5
@@ -59,6 +65,29 @@ constante T_PUNTOCOMA = 55
 constante T_PARA = 56
 constante T_FIN = 57
 constante T_ERROR = 58
+// AUDITORIA F1 (D-F1 RESUELTA): los 7 keywords contextuales (tipo, tensor, nulo,
+// ok, err, algun, ninguno) quedan ACTIVADOS en este lexer (Manual 2 §3, tabla
+// es/en/fr/pt) con soporte contextual del parser (ver token_es_nombre en
+// parser_base.syn).
+constante T_LET = 59
+constante T_TIPO = 60
+constante T_TENSOR = 61
+constante T_NULO = 62
+constante T_OK = 63
+constante T_ERR = 64
+constante T_ALGUN = 65
+constante T_NINGUNO = 66
+constante T_MODULO = 67
+constante T_DELEGAR = 68
+constante T_EXPORT = 69
+constante T_RC = 70
+constante T_ARC = 71
+constante T_DEBIL = 72
+// AUDITORIA F1 (D-F1): '|' (T_PIPE) para declaraciones ADT `tipo X = A | B` (Manual 2 §3).
+constante T_PIPE = 73
+// AUDITORIA FASE A (A5/D-6): '?' (T_INTERROGACION) — operador postfijo de
+// propagacion de Resultado (Manual 3 §7 L331-342).
+constante T_INTERROGACION = 74
 
 // --- Language IDs (Manual 2 S2.3) ---
 constante IDIOMA_ES = 0
@@ -86,7 +115,7 @@ funcion str_char(s: cadena, i: entero) -> entero:
         asm("r = (i >= 0 && i < s.longitud) ? (unsigned char)s.datos[i] : 0")
         retornar r
 
-funcion str_char_at(ptr: entero, i: entero) -> entero:
+funcion str_char_at(ptr: puntero, i: entero) -> entero:
     inseguro:
         r = 0
         asm("r = (unsigned char)((const char*)ptr)[i]")
@@ -98,236 +127,16 @@ funcion str_eq(a: cadena, b: cadena) -> entero:
         asm("if (a.longitud != b.longitud) { r = 0; } else { r = 1; for (int _si = 0; _si < a.longitud; _si++) { if (a.datos[_si] != b.datos[_si]) { r = 0; break; } } }")
         retornar r
 
-funcion str_len_ptr(ptr: entero) -> entero:
+funcion str_len_ptr(ptr: puntero) -> entero:
     inseguro:
         r = 0
         asm("r = (int)strlen((const char*)ptr)")
         retornar r
 
 // --- Keyword dictionary lookup (multi-idioma, Manual 2 S2.3) ---
-funcion keyword_token_es(palabra: cadena) -> entero:
-    si str_eq(palabra, "si") == 1:
-        retornar T_IF
-    si str_eq(palabra, "sino") == 1:
-        retornar T_ELSE
-    si str_eq(palabra, "funcion") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retornar") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lanzar") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperar") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "escuchar") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "mientras") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "importar") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "romper") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "siguiente") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "estructura") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "y") == 1:
-        retornar T_Y
-    si str_eq(palabra, "o") == 1:
-        retornar T_O
-    si str_eq(palabra, "no") == 1:
-        retornar T_NO
-    si str_eq(palabra, "verdadero") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "falso") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "inseguro") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importar_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externo") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "coincidir") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requiere") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garantiza") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "canal") == 1:
-        retornar T_CANAL
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "para") == 1:
-        retornar T_PARA
-    retornar 0
-
-funcion keyword_token_en(palabra: cadena) -> entero:
-    si str_eq(palabra, "if") == 1:
-        retornar T_IF
-    si str_eq(palabra, "else") == 1:
-        retornar T_ELSE
-    si str_eq(palabra, "function") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "return") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "spawn") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recover") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "listen") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "while") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "break") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continue") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "import") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "struct") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "and") == 1:
-        retornar T_Y
-    si str_eq(palabra, "or") == 1:
-        retornar T_O
-    si str_eq(palabra, "not") == 1:
-        retornar T_NO
-    si str_eq(palabra, "true") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "false") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "unsafe") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "import_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "extern") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "match") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requires") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "ensures") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constant") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "const") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "for") == 1:
-        retornar T_PARA
-    retornar 0
-
-funcion keyword_token_fr(palabra: cadena) -> entero:
-    si str_eq(palabra, "si") == 1:
-        retornar T_IF
-    si str_eq(palabra, "sinon") == 1:
-        retornar T_ELSE
-    si str_eq(palabra, "fonction") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retourner") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lancer") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperer") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "ecouter") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "tantque") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "rompre") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continuer") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "importer") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "structure") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "et") == 1:
-        retornar T_Y
-    si str_eq(palabra, "ou") == 1:
-        retornar T_O
-    si str_eq(palabra, "non") == 1:
-        retornar T_NO
-    si str_eq(palabra, "vrai") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "faux") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "dangereux") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importer_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externe") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "correspondre") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "exige") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garantit") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "pour") == 1:
-        retornar T_PARA
-    retornar 0
-
-funcion keyword_token_pt(palabra: cadena) -> entero:
-    si str_eq(palabra, "se") == 1:
-        retornar T_IF
-    si str_eq(palabra, "senao") == 1:
-        retornar T_ELSE
-    si str_eq(palabra, "funcao") == 1:
-        retornar T_FUNCION
-    si str_eq(palabra, "retornar") == 1:
-        retornar T_RETORNAR
-    si str_eq(palabra, "lancar") == 1:
-        retornar T_LANZAR
-    si str_eq(palabra, "recuperar") == 1:
-        retornar T_RECUPERAR
-    si str_eq(palabra, "escutar") == 1:
-        retornar T_ESCUCHAR
-    si str_eq(palabra, "enquanto") == 1:
-        retornar T_MIENTRAS
-    si str_eq(palabra, "parar") == 1:
-        retornar T_ROMPER
-    si str_eq(palabra, "continuar") == 1:
-        retornar T_SIGUIENTE
-    si str_eq(palabra, "importar") == 1:
-        retornar T_IMPORTAR
-    si str_eq(palabra, "estrutura") == 1:
-        retornar T_ESTRUCTURA
-    si str_eq(palabra, "e") == 1:
-        retornar T_Y
-    si str_eq(palabra, "ou") == 1:
-        retornar T_O
-    si str_eq(palabra, "nao") == 1:
-        retornar T_NO
-    si str_eq(palabra, "verdadeiro") == 1:
-        retornar T_VERDADERO
-    si str_eq(palabra, "falso") == 1:
-        retornar T_FALSO
-    si str_eq(palabra, "inseguro") == 1:
-        retornar T_INSEGURO
-    si str_eq(palabra, "importar_c") == 1:
-        retornar T_IMPORTAR_C
-    si str_eq(palabra, "externo") == 1:
-        retornar T_EXTERNO
-    si str_eq(palabra, "coincidir") == 1:
-        retornar T_COINCIDIR
-    si str_eq(palabra, "requer") == 1:
-        retornar T_REQUIERE
-    si str_eq(palabra, "garante") == 1:
-        retornar T_GARANTIZA
-    si str_eq(palabra, "asm") == 1:
-        retornar T_ASM
-    si str_eq(palabra, "constante") == 1:
-        retornar T_CONSTANTE
-    si str_eq(palabra, "para") == 1:
-        retornar T_PARA
-    retornar 0
+// R32 (D-9(b), regla 13): las 4 tablas es/en/fr/pt se modularizaron a
+// nucleo/lexer_keywords.syn (texto identico); el orquestador keyword_token
+// delega en las funciones keyword_token_es/en/fr/pt de ese modulo.
 
 funcion keyword_token(palabra: cadena, idioma: entero) -> entero:
     si idioma == IDIOMA_EN:
@@ -346,6 +155,11 @@ funcion es_digito(c: entero) -> entero:
     retornar 0
 
 funcion es_letra(c: entero) -> entero:
+    // AUDITORIA FASE A (A2.1): bytes >= 0x80 (UTF-8) como letras — paridad con
+    // el frontend embebido (H26, emit_selfhost.py): keywords acentuadas del
+    // Manual 2 §3 (débil, déléguer).
+    si c >= 128:
+        retornar 1
     si c >= 65:
         si c <= 90:
             retornar 1
@@ -363,105 +177,231 @@ funcion es_alnum(c: entero) -> entero:
         retornar 1
     retornar 0
 
-// --- Lexer state struct ---
+// --- Buffers compartidos del frontend nativo (FASE A, A2.1) ---
+// Patron _P_* (paridad): TODO el estado mutable del tokenizador vive en un
+// buffer global accesible por nombre. Motivo: S1 pasa los structs POR VALOR,
+// asi que mutar un campo de 'LexerEstado' dentro de una funcion no se propaga
+// (bug descubierto por el harness de paridad A2.1: total_tokens/hay_error se
+// perdian y todos los tokens caian en el indice 0).
 constante MAX_TOKENS = 16384
 constante MAX_INDENT = 64
 
-estructura LexerEstado:
-    ptr_fuente: entero
-    len_fuente: entero
-    posicion: entero
-    linea_actual: entero
-    columna_actual: entero
-    tokens: TokenLex
+estructura LexerBuffers:
+    tokens: puntero      // struct TokenLex[65536]
+    sbuf: puntero        // char[1048576] (pool de cadenas; 1MB — ver SBUF_TAM en lexer_buffers)
+    indent_stack: puntero // int[64] — NOTA: el nombre evita el hack 'pila_indent'
+                          // de _ARRAY_OVERRIDE_FIELDS (context.py) que fuerza int[64]
+                          // (FASE A, A2.1)
+    str_pos: entero
+    ntks: entero
     total_tokens: entero
-    pila_indent: entero
-    nivel_pila: entero
+    hay_error: entero
     idioma: entero
-    hay_error: booleano
-    error_mensaje: cadena
-    error_linea: entero
-    error_columna: entero
+    linea_actual: entero
+    nivel_pila: entero
 
-// --- Add token to list ---
-funcion lexer_push_token_valor(lex: LexerEstado, tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
+funcion lexer_buffers() -> puntero:
     inseguro:
-        asm("if (lex.total_tokens >= 16384) return")
-        asm("lex.tokens[lex.total_tokens].tipo = tipo")
-        asm("lex.tokens[lex.total_tokens].linea = linea")
-        asm("lex.tokens[lex.total_tokens].columna = columna")
-        asm("lex.tokens[lex.total_tokens].valor = valor")
-        asm("lex.total_tokens = lex.total_tokens + 1")
+        // FASE A (A2.1): `nulo` (no el literal 0) es el valor valido para
+        // inicializar un puntero — el checker S1 rechaza `puntero = 0`
+        // (0 es int; semantic_types trata 'nulo' como 'puntero').
+        let r: puntero = nulo
+        asm("static struct LexerBuffers _N_bufs = {0,0,0,0,0,0,0,0,0,0};")
+        asm("static struct TokenLex _N_tks[65536];")
+        // FASE A (A4.5): pool de cadenas 1MB. El pool es ACUMULATIVO por archivo
+        // (lexer_reset_buffers resetea str_pos por modulo) y generator.syn acumula
+        // ~86KB de literales en una sola tokenizacion (medido con _medir_sbuf.py);
+        // con 64KB el guard de lexer_decodificar_cadena truncaba las cadenas
+        // posteriores -> bootstrap S3 roto (cadenas asm vacias, stubs). 1MB = BSS
+        // estatico (no infla el exe) con margen 12x sobre el peor caso actual.
+        asm("static char _N_sbuf[1048576];")
+        asm("static int _N_indents[64];")
+        asm("if (_N_bufs.tokens == 0) { _N_bufs.tokens = (void*)_N_tks; _N_bufs.sbuf = (void*)_N_sbuf; _N_bufs.indent_stack = (void*)_N_indents; }")
+        asm("r = (void*)&_N_bufs;")
+        retornar r
 
-funcion lexer_push_token(lex: LexerEstado, tipo: entero, linea: entero, columna: entero) -> nulo:
-    lexer_push_token_valor(lex, tipo, linea, columna, "")
+funcion lexer_reset_buffers() -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
+        asm("_b->ntks = 0; _b->str_pos = 0; _b->hay_error = 0; _b->total_tokens = 0; _b->nivel_pila = 0;")
 
-// --- Report lexer error ---
-funcion lexer_error(lex: LexerEstado, mensaje: cadena, linea: entero, columna: entero) -> nulo:
-    lex.hay_error = verdadero
-    lex.error_mensaje = mensaje
-    lex.error_linea = linea
-    lex.error_columna = columna
-
-// --- Detect language from first line (Manual 2 S2.3: es|en|fr|pt) ---
-funcion lexer_detectar_idioma(lex: LexerEstado) -> entero:
-    // Read first line characters to detect #lang: prefix
+funcion lexer_obtener_total() -> entero:
     inseguro:
         r = 0
-        asm("r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0")
+        asm("r = ((struct LexerBuffers*)lexer_buffers())->ntks;")
+        retornar r
+
+// A3.1b: acceso 64-bit-safe al array de tokens del lexer (TokenLex[] -> TokenExt[]).
+// El lexer produce LexerBuffers.tokens (struct TokenLex) con CadenaSegura.valor (ptr 64b);
+// el parser nativo consume TokenExt{int ptr_valor, int len_valor}. Se realiza la
+// conversion aqui (low ptr en ptr_valor, hi bits en _P_tk_ptr_hi) para evitar
+// truncamiento. Pendiente fase 2: divulgar _P_tk_ptr_hi.
+funcion lexer_obtener_tokens() -> puntero:
+    inseguro:
+        asm("static struct TokenExt _P_tk_ext[65536];")
+        asm("static int _P_tk_ptr_hi[65536];")
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
+        asm("int _n = (_b ? (_b->ntks < 65536 ? _b->ntks : 65536) : 0);")
+        asm("for (int _i = 0; _i < _n; _i++) { struct TokenLex* _tl = (struct TokenLex*)_b->tokens + _i; _P_tk_ext[_i].tipo = _tl->tipo; _P_tk_ext[_i].linea = _tl->linea; _P_tk_ext[_i].columna = _tl->columna; _P_tk_ext[_i].ptr_valor = (int)(uintptr_t)_tl->valor.datos; _P_tk_ext[_i].len_valor = _tl->valor.longitud; _P_tk_ptr_hi[_i] = (int)((uintptr_t)_tl->valor.datos >> 32); }")
+        asm("return (void*)_P_tk_ext;")
+        retornar nulo
+
+funcion lexer_hay_error() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct LexerBuffers*)lexer_buffers())->hay_error;")
+        retornar r
+
+funcion lexer_fijar_linea(n: entero) -> nulo:
+    inseguro:
+        asm("((struct LexerBuffers*)lexer_buffers())->linea_actual = n;")
+
+funcion lexer_linea_actual() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct LexerBuffers*)lexer_buffers())->linea_actual;")
+        retornar r
+
+funcion lexer_idioma_actual() -> entero:
+    inseguro:
+        r = 0
+        asm("r = ((struct LexerBuffers*)lexer_buffers())->idioma;")
+        retornar r
+
+// --- Decodifica una cadena literal al pool compartido (Manual 2 §2 escapes) ---
+// Paridad exacta con _P_tokenizar (emit_selfhost.py gen_tok_c): \" \' \\ \n \t \r \0.
+// A4.5 fix RAII: SIN variable cadena intermedia (r). El pool sbuf es BSS estatico;
+// un destructor RAII (_syn_texto_liberar) llamaria pool_free sobre un puntero al
+// pool estatico -> 0xC0000374 heap corruption (mismo patron que lexer_push_token_punt).
+funcion lexer_decodificar_cadena(ptr: puntero, ini: entero, len: entero) -> cadena:
+    inseguro:
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
+        asm("const char* _p = (const char*)ptr + ini;")
+        asm("char* _out = (char*)_b->sbuf + _b->str_pos; int _n = 0;")
+        asm("for (int _k = 0; _k < len && _n < 1048575 - _b->str_pos; _k++) {")
+        asm("    if (_p[_k] == 92 && _k + 1 < len) {")
+        asm("        switch (_p[_k + 1]) {")
+        asm("            case 34: _out[_n++] = 34; _k++; break;")   // \" -> comilla doble
+        asm("            case 39: _out[_n++] = 39; _k++; break;")   // \' -> comilla simple
+        asm("            case 92: _out[_n++] = 92; _k++; break;")   // \\ -> barra
+        asm("            case 110: _out[_n++] = 10; _k++; break;")  // \n
+        asm("            case 116: _out[_n++] = 9; _k++; break;")   // \t
+        asm("            case 114: _out[_n++] = 13; _k++; break;")  // \r
+        asm("            case 48: _out[_n++] = 0; _k++; break;")    // \0
+        asm("            default: _out[_n++] = _p[_k]; break;")
+        asm("        }")
+        asm("    } else { _out[_n++] = _p[_k]; }")
+        asm("}")
+        asm("CadenaSegura _rv = (CadenaSegura){_n, _out};")
+        asm("_b->str_pos += _n;")
+        asm("return _rv;")
+    retornar ""
+
+// --- Add token to list (buffer global; S1 pasa structs por valor) ---
+funcion lexer_push_token_valor(tipo: entero, linea: entero, columna: entero, valor: cadena) -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
+        asm("if (_b->ntks >= 65536) return;")
+        asm("struct TokenLex* _t = (struct TokenLex*)_b->tokens;")
+        asm("_t[_b->ntks].tipo = tipo;")
+        asm("_t[_b->ntks].linea = linea;")
+        asm("_t[_b->ntks].columna = columna;")
+        asm("_t[_b->ntks].valor = valor;")
+        asm("_b->ntks = _b->ntks + 1;")
+        asm("_b->total_tokens = _b->ntks;")
+
+funcion lexer_push_token(tipo: entero, linea: entero, columna: entero) -> nulo:
+    lexer_push_token_valor(tipo, linea, columna, "")
+
+// FASE A (A3.1): tokens de puntuacion de TIPOS (<, >, ,, &, *) con su lexema
+// real de la fuente (slice [ini, fin) de ptr_texto) — paridad _P_* (todo token
+// conserva el lexema; _parser.c corta la fuente para CADA token). Necesario
+// para los SPANS de tipos (nodo_guardar_span): con valor vacio, la aritmetica
+// de punteros del span no podia reconstruir 'arc<NodoLista>' ni '&mut entero'
+// (los tokens <, >, &, *, , iban con datos="" -> diferencia de punteros basura).
+// El resto de la puntuacion sigue con valor vacio: el harness no compara valores
+// de puntuacion y el puente mapea los operadores de OpBinaria por CODIGO.
+funcion lexer_push_token_punt(tipo: entero, linea: entero, columna: entero, ini: entero, fin: entero, ptr: puntero) -> nulo:
+    // A3.2 fix RAII: SIN variable cadena intermedia. Una var local cadena dispara
+    // el destructor RAII (_syn_texto_liberar al cierre de scope) que liberaria el
+    // puntero al buffer de la FUENTE (slice prestado) -> pool_free -> free() sobre
+    // puntero interior -> 0xC0000374 heap corruption. El slice se pasa directo al
+    // buffer de tokens via asm (paridad: el embebido _P_* strncpy del slice; el
+    // lexema conserva el puntero al buffer, que vive mas que la tokenizacion).
+    inseguro:
+        asm("lexer_push_token_valor(tipo, linea, columna, (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini});")
+
+// --- Report lexer error ---
+funcion lexer_error(mensaje: cadena, linea: entero, columna: entero) -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
+        asm("_b->hay_error = 1;")
+
+// --- Detect language from first line (Manual 2 S2.3: es|en|fr|pt) ---
+funcion lexer_detectar_idioma(ptr: puntero, len: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("r = (len >= 7 && ((const char*)ptr)[0] == '#' && ((const char*)ptr)[1] == 'l' && ((const char*)ptr)[2] == 'a' && ((const char*)ptr)[3] == 'n' && ((const char*)ptr)[4] == 'g' && ((const char*)ptr)[5] == ':') ? 1 : 0")
         si r == 0:
             retornar -1
-        // Extract the 2-letter language code after '#lang:'
         ini = 6
         fin = 6
-        asm("while (ini < lex.len_fuente && ((const char*)lex.ptr_fuente)[ini] == ' ') { ini = ini + 1; }")
+        asm("while (ini < len && ((const char*)ptr)[ini] == ' ') { ini = ini + 1; }")
         fin = ini
-        asm("while (fin < lex.len_fuente && ((const char*)lex.ptr_fuente)[fin] != ' ' && ((const char*)lex.ptr_fuente)[fin] != 10 && ((const char*)lex.ptr_fuente)[fin] != 13) { fin = fin + 1; }")
-        lang = ""
-        asm("lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)lex.ptr_fuente + ini}")
-        si str_eq(lang, "es") == 1:
-            retornar IDIOMA_ES
-        si str_eq(lang, "en") == 1:
-            retornar IDIOMA_EN
-        si str_eq(lang, "fr") == 1:
-            retornar IDIOMA_FR
-        si str_eq(lang, "pt") == 1:
-            retornar IDIOMA_PT
-        retornar -2
+        asm("while (fin < len && ((const char*)ptr)[fin] != ' ' && ((const char*)ptr)[fin] != 10 && ((const char*)ptr)[fin] != 13) { fin = fin + 1; }")
+        // A4.5 fix RAII: sin variable cadena lang (slice de ptr) — el destructor RAII
+        // liberaria el slice prestado del buffer de la fuente (patron lexer_push_token_punt).
+        id_detectado = -2
+        asm("if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"es\"}) == 1) { id_detectado = IDIOMA_ES; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"en\"}) == 1) { id_detectado = IDIOMA_EN; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"fr\"}) == 1) { id_detectado = IDIOMA_FR; }")
+        asm("else if (str_eq((CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini}, (CadenaSegura){.longitud = 2, .datos = \"pt\"}) == 1) { id_detectado = IDIOMA_PT; }")
+        retornar id_detectado
 
 // --- Process indentation for a line ---
-funcion lexer_procesar_indentacion(lex: LexerEstado, ptr_linea: entero, len_linea: entero) -> nulo:
+funcion lexer_procesar_indentacion(ptr_linea: puntero, len_linea: entero) -> nulo:
     inseguro:
+        asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
         espacios = 0
         asm("while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; }")
         si espacios < len_linea:
             r = 0
             asm("r = (((const char*)ptr_linea)[espacios] == '\t') ? 1 : 0")
             si r == 1:
-                lexer_error(lex, "Tabulador prohibido E-101", lex.linea_actual, espacios + 1)
+                lexer_error("Tabulador prohibido E-101", lexer_linea_actual(), espacios + 1)
                 retornar
         si espacios % 4 != 0:
-            lexer_error(lex, "Indentacion debe ser multiplo de 4 espacios", lex.linea_actual, 0)
+            lexer_error("Indentacion debe ser multiplo de 4 espacios", lexer_linea_actual(), 0)
             retornar
         nivel = espacios / 4
         tope = 0
-        asm("tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0")
+        asm("tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0")
         si nivel > tope:
-            asm("lex.pila_indent[lex.nivel_pila] = nivel")
-            asm("lex.nivel_pila = lex.nivel_pila + 1")
-            lexer_push_token(lex, T_INDENTAR, lex.linea_actual, 0)
+            asm("((int*)_b->indent_stack)[_b->nivel_pila] = nivel;")
+            asm("_b->nivel_pila = _b->nivel_pila + 1;")
+            asm("tope = nivel;")
+            lexer_push_token(T_INDENTAR, lexer_linea_actual(), 0)
         si nivel < tope:
             mientras nivel < tope:
-                asm("lex.nivel_pila = lex.nivel_pila - 1")
-                asm("tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0")
-                lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0)
+                asm("_b->nivel_pila = _b->nivel_pila - 1;")
+                asm("tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0;")
+                lexer_push_token(T_DESINDENTAR, lexer_linea_actual(), 0)
 
 // --- Tokenize a single line of text ---
-funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: entero) -> nulo:
+// AUDITORIA FASE A (A2.1): port fiel de _P_tokenizar (gen_tok_c, emit_selfhost.py)
+// con TokenID canonicos:
+//   - literales: numero ::= DIGITO+ [ "." DIGITO+ ] (Manual 2 §2; exponente 'e' = P3),
+//     cadena con escapes (incl. comillas simples, paridad con _P_*);
+//   - UTF-8 en identificadores (H26);
+//   - '@export' -> T_EXPORT (handler '@' -> '@export' de gen_tok_c);
+//   - keywords contextuales con lexema preservado (let, delegar, rc, arc, débil,
+//     modulo, tipo, tensor, nulo, ok, err, algun, ninguno).
+funcion lexer_tokenizar_linea(ptr_texto: puntero, len_texto: entero) -> nulo:
     i = 0
     r = 1
     mientras r == 1:
         inseguro:
+            asm("struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();")
             asm("r = (i < len_texto) ? 1 : 0")
             si r == 0:
                 romper
@@ -472,35 +412,34 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                 siguiente
             si c == 47:
                 si i + 1 < len_texto:
-                    asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
-                    si c == 47:
+                    c2 = 0
+                    asm("c2 = (unsigned char)((const char*)ptr_texto)[i + 1]")
+                    si c2 == 47:
                         retornar
-            si c == 34:
+            si c == 35:
+                retornar
+            si c == 34 o c == 39:
+                q = c
+                inicio_str = i
+                cerrada = 0
                 asm("i = i + 1")
                 mientras i < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i]")
                     si c == 92:
                         asm("i = i + 1")
                     sino:
-                        si c == 34:
+                        si c == q:
+                            cerrada = 1
                             romper
                     asm("i = i + 1")
-                asm("i = i + 1")
-                siguiente
-            si c == 39:
-                asm("i = i + 1")
-                mientras i < len_texto:
-                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
-                    si c == 92:
-                        asm("i = i + 1")
-                    sino:
-                        si c == 39:
-                            romper
-                    asm("i = i + 1")
+                si cerrada == 1:
+                    inseguro:
+                        asm("lexer_push_token_valor(T_CADENA, lexer_linea_actual(), (inicio_str + 1), lexer_decodificar_cadena(ptr_texto, inicio_str + 1, (i - inicio_str - 1)));")
                 asm("i = i + 1")
                 siguiente
             si c >= 48:
                 si c <= 57:
+                    inicio_num = i
                     mientras i < len_texto:
                         asm("c = (unsigned char)((const char*)ptr_texto)[i]")
                         si c < 48:
@@ -508,7 +447,47 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                         si c > 57:
                             romper
                         asm("i = i + 1")
+                    es_float = 0
+                    si i < len_texto:
+                        asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                        si c == 46:
+                            es_float = 1
+                            asm("i = i + 1")
+                            mientras i < len_texto:
+                                asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                                si c < 48:
+                                    romper
+                                si c > 57:
+                                    romper
+                                asm("i = i + 1")
+                    // A4.5 fix RAII: sin variable cadena lexema_num (slice de ptr_texto).
+                    si es_float == 1:
+                        inseguro:
+                            asm("lexer_push_token_valor(T_FLOTANTE, lexer_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
+                    sino:
+                        inseguro:
+                            asm("lexer_push_token_valor(T_NUMERO, lexer_linea_actual(), (inicio_num + 1), (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num});")
                     siguiente
+            si c == 64:
+                // FASE A (A2.1): '@export' -> T_EXPORT (Manual 2 §3 T_EXPORT)
+                inicio_ar = i
+                asm("i = i + 1")
+                mientras i < len_texto:
+                    asm("c = (unsigned char)((const char*)ptr_texto)[i]")
+                    si es_alnum(c) == 0:
+                        si c != 95:
+                            romper
+                    asm("i = i + 1")
+                // A4.5 fix RAII: sin variable cadena arroba (slice de ptr_texto).
+                es_export = 0
+                inseguro:
+                    asm("es_export = str_eq((CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar}, (CadenaSegura){.longitud = 7, .datos = \"@export\"});")
+                si es_export == 1:
+                    inseguro:
+                        asm("lexer_push_token_valor(T_EXPORT, lexer_linea_actual(), (inicio_ar + 1), (CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar});")
+                sino:
+                    lexer_error("Caracter inesperado '@'", lexer_linea_actual(), inicio_ar + 1)
+                siguiente
             si es_letra(c) == 1:
                 inicio = i
                 mientras i < len_texto:
@@ -517,54 +496,62 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                         si c != 95:
                             romper
                     asm("i = i + 1")
-                palabra = ""
+                // A4.5 fix RAII: sin variable cadena palabra (slice de ptr_texto) — el
+                // destructor RAII (_syn_texto_liberar en reasignacion, pipeline S1) liberaba
+                // el slice prestado -> pool_free sobre puntero interior -> 0xC0000374.
+                tok = 0
                 inseguro:
-                    asm("palabra = (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}")
-                tok = keyword_token(palabra, lex.idioma)
+                    asm("tok = keyword_token((CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio}, lexer_idioma_actual());")
                 si tok == 0:
                     tok = T_IDENTIFICADOR
                 si tok == T_IDENTIFICADOR:
-                    lexer_push_token_valor(lex, tok, lex.linea_actual, inicio + 1, palabra)
+                    inseguro:
+                        asm("lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio});")
                 sino:
-                    lexer_push_token(lex, tok, lex.linea_actual, inicio + 1)
+                    // FASE A (A3.0): TODOS los keywords conservan el lexema — paridad
+                    // con el embebido _P_* (tests/native_lexer_paridad.py _mapear:
+                    // "los keywords conservan su lexema"; _P_* strncpy del slice en
+                    // _parser.c L344/L354). Antes solo los contextuales lo conservaban;
+                    // los estructurales (si/y/funcion/...) iban con valor vacio. El
+                    // parser nativo necesita el lexema para nombres de campo que
+                    // coinciden con keywords (ej: estructura Punto: y: entero —
+                    // campo 'y' = T_Y con lexema "y") — payload del puente A3.
+                    inseguro:
+                        asm("lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio});")
                 siguiente
             si c == 43:
-                lexer_push_token(lex, T_MAS, lex.linea_actual, i + 1)
+                lexer_push_token(T_MAS, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 45:
                 si i + 1 < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 62:
-                        lexer_push_token(lex, T_FLECHA, lex.linea_actual, i + 1)
+                        lexer_push_token(T_FLECHA, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                    si c == 60:
-                        lexer_push_token(lex, T_FLECHA_IZQ, lex.linea_actual, i + 1)
-                        asm("i = i + 2")
-                        siguiente
-                lexer_push_token(lex, T_MENOS, lex.linea_actual, i + 1)
+                lexer_push_token(T_MENOS, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 61:
                 si i + 1 < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 62:
-                        lexer_push_token(lex, T_FLECHA_DER, lex.linea_actual, i + 1)
+                        lexer_push_token(T_FLECHA_DER, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
                     si c == 61:
-                        lexer_push_token(lex, T_IGUAL, lex.linea_actual, i + 1)
+                        lexer_push_token(T_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                lexer_push_token(lex, T_ASIGNAR, lex.linea_actual, i + 1)
+                lexer_push_token(T_ASIGNAR, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 33:
                 si i + 1 < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 61:
-                        lexer_push_token(lex, T_DISTINTO, lex.linea_actual, i + 1)
+                        lexer_push_token(T_DISTINTO, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
                 asm("i = i + 1")
@@ -573,88 +560,113 @@ funcion lexer_tokenizar_linea(lex: LexerEstado, ptr_texto: entero, len_texto: en
                 si i + 1 < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 61:
-                        lexer_push_token(lex, T_MENOR_IGUAL, lex.linea_actual, i + 1)
+                        lexer_push_token(T_MENOR_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                lexer_push_token(lex, T_MENOR, lex.linea_actual, i + 1)
+                    // R14: '<-' es el envio de canal (paridad S1 lexer.py:326
+                    // '<-': ARROW_LEFT). Antes el lexer nativo solo producia
+                    // '-<' (orden invertido) -> 'ch <- dato' se parseaba como
+                    // 'ch < -dato' (OpBinaria) y el nodo 42 nunca nacía.
+                    si c == 45:
+                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), i + 1)
+                        asm("i = i + 2")
+                        siguiente
+                lexer_push_token_punt(T_MENOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 62:
                 si i + 1 < len_texto:
                     asm("c = (unsigned char)((const char*)ptr_texto)[i + 1]")
                     si c == 61:
-                        lexer_push_token(lex, T_MAYOR_IGUAL, lex.linea_actual, i + 1)
+                        lexer_push_token(T_MAYOR_IGUAL, lexer_linea_actual(), i + 1)
                         asm("i = i + 2")
                         siguiente
-                lexer_push_token(lex, T_MAYOR, lex.linea_actual, i + 1)
+                lexer_push_token_punt(T_MAYOR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 42:
-                lexer_push_token(lex, T_POR, lex.linea_actual, i + 1)
+                lexer_push_token_punt(T_POR, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 47:
-                lexer_push_token(lex, T_DIV, lex.linea_actual, i + 1)
+                lexer_push_token(T_DIV, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 37:
-                lexer_push_token(lex, T_MOD, lex.linea_actual, i + 1)
+                lexer_push_token(T_MOD, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 40:
-                lexer_push_token(lex, T_PAREN_IZQ, lex.linea_actual, i + 1)
+                // R11: lexema real (patron A3.1) — necesario para que
+                // nodo_guardar_span reconstruya spans multi-token como
+                // 'ok(valor)': con datos="" la aritmetica de punteros
+                // (t1.datos - t0.datos) mezclaba buffer de fuente y literal
+                // "" -> len_str basura (0x6B2D736D) -> segfault en puente_str.
+                lexer_push_token_punt(T_PAREN_IZQ, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 41:
-                lexer_push_token(lex, T_PAREN_DER, lex.linea_actual, i + 1)
+                lexer_push_token_punt(T_PAREN_DER, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 58:
-                lexer_push_token(lex, T_DOSPUNTOS, lex.linea_actual, i + 1)
+                lexer_push_token(T_DOSPUNTOS, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 44:
-                lexer_push_token(lex, T_COMA, lex.linea_actual, i + 1)
+                lexer_push_token_punt(T_COMA, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 46:
-                lexer_push_token(lex, T_PUNTO, lex.linea_actual, i + 1)
+                lexer_push_token(T_PUNTO, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
             si c == 38:
-                lexer_push_token(lex, T_AMPERSAND, lex.linea_actual, i + 1)
+                lexer_push_token_punt(T_AMPERSAND, lexer_linea_actual(), i + 1, i, i + 1, ptr_texto)
                 asm("i = i + 1")
                 siguiente
             si c == 59:
-                lexer_push_token(lex, T_PUNTOCOMA, lex.linea_actual, i + 1)
+                lexer_push_token(T_PUNTOCOMA, lexer_linea_actual(), i + 1)
                 asm("i = i + 1")
                 siguiente
-            lexer_error(lex, "Caracter inesperado", lex.linea_actual, i + 1)
+            si c == 124:
+                // AUDITORIA F1 (D-F1): '|' para declaraciones ADT (Manual 2 §3)
+                lexer_push_token(T_PIPE, lexer_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            si c == 63:
+                // AUDITORIA FASE A (A5/D-6): '?' operador postfijo (Manual 3 §7)
+                lexer_push_token(T_INTERROGACION, lexer_linea_actual(), i + 1)
+                asm("i = i + 1")
+                siguiente
+            lexer_error("Caracter inesperado", lexer_linea_actual(), i + 1)
             asm("i = i + 1")
         siguiente
 
 // --- Main tokenizer function ---
 funcion tokenizar(fuente: cadena) -> entero:
-    lex = LexerEstado()
+    // FASE A (A2.1): los `let` viven fuera del bloque inseguro (el generador S1
+    // declara las variables `let` con ambito del bloque; fuera del bloque no se
+    // verian ptr_fuente/len_fuente en el C generado).
+    let ptr_fuente: puntero = nulo
+    let len_fuente: entero = 0
     inseguro:
-        asm("lex.ptr_fuente = (intptr_t)fuente.datos;")
-        asm("lex.len_fuente = fuente.longitud;")
-    lex.posicion = 0
-    lex.linea_actual = 1
-    lex.columna_actual = 1
-    lex.total_tokens = 0
-    lex.nivel_pila = 0
-    lex.hay_error = falso
-    lex.error_mensaje = ""
-    lex.idioma = -1
-
-    lex.idioma = lexer_detectar_idioma(lex)
-    si lex.idioma == -1:
-        lexer_error(lex, "Falta declaracion de idioma #lang: en la linea 1", 1, 0)
+        asm("ptr_fuente = (void*)fuente.datos;")
+        asm("len_fuente = fuente.longitud;")
+    lexer_reset_buffers()
+    lexer_fijar_linea(1)
+    inseguro:
+        asm("struct LexerBuffers* _b0 = (struct LexerBuffers*)lexer_buffers();")
+        asm("_b0->idioma = -1;")
+    idioma = lexer_detectar_idioma(ptr_fuente, len_fuente)
+    si idioma == -1:
+        lexer_error("Falta declaracion de idioma #lang: en la linea 1", 1, 0)
         retornar -1
-    si lex.idioma == -2:
-        lexer_error(lex, "Idioma no soportado: use es, en, fr, pt", 1, 0)
+    si idioma == -2:
+        lexer_error("Idioma no soportado: use es, en, fr, pt", 1, 0)
         retornar -1
+    inseguro:
+        asm("((struct LexerBuffers*)lexer_buffers())->idioma = idioma;")
 
     i = 0
     linea_num = 1
@@ -678,37 +690,50 @@ funcion tokenizar(fuente: cadena) -> entero:
                     romper
                 asm("i = i + 1")
         len_linea = i - inicio_linea
-        ptr_linea = 0
+        let ptr_linea: puntero = nulo
         inseguro:
-            asm("ptr_linea = (int)((const char*)ptr_fuente + inicio_linea)")
+            asm("ptr_linea = (void*)((const char*)ptr_fuente + inicio_linea)")
         si len_linea > 0:
+            c0 = 0
+            es_comentario = 0
+            // FASE A (A4.5): paridad con _P_tokenizar y compilador/lexer.py —
+            // el comentario se detecta tras saltar espacios/tabs iniciales
+            // (lineas "   // ..." o "   # ..." con alineacion en col > 0).
+            // Antes solo se miraba la columna 0: el auto-compilado del propio
+            // lexer.syn fallaba (E-102) en sus lineas de comentario alineadas.
+            j = 0
             inseguro:
-                c = 0
-                asm("c = (unsigned char)((const char*)ptr_linea)[0]")
-                si c == 35:
-                    nada = 1
-                sino:
-                    si len_linea >= 2:
-                        asm("c = (unsigned char)((const char*)ptr_linea)[0]")
-                        si c == 47:
-                            asm("c = (unsigned char)((const char*)ptr_linea)[1]")
-                            si c == 47:
-                                nada = 1
-                            sino:
-                                lex.linea_actual = linea_num
-                                lexer_procesar_indentacion(lex, ptr_linea, len_linea)
-                                lexer_tokenizar_linea(lex, ptr_linea, len_linea)
-                                lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
-                        sino:
-                            lex.linea_actual = linea_num
-                            lexer_procesar_indentacion(lex, ptr_linea, len_linea)
-                            lexer_tokenizar_linea(lex, ptr_linea, len_linea)
-                            lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
-                    sino:
-                        lex.linea_actual = linea_num
-                        lexer_procesar_indentacion(lex, ptr_linea, len_linea)
-                        lexer_tokenizar_linea(lex, ptr_linea, len_linea)
-                        lexer_push_token(lex, T_NUEVALINEA, linea_num, 0)
+                asm("while (j < len_linea && (((const char*)ptr_linea)[j] == ' ' || ((const char*)ptr_linea)[j] == 9)) { j = j + 1; }")
+                si j < len_linea:
+                    asm("c0 = (unsigned char)((const char*)ptr_linea)[j]")
+                    si c0 == 35:
+                        es_comentario = 1
+                    si c0 == 47:
+                        si j + 1 < len_linea:
+                            asm("c0 = (unsigned char)((const char*)ptr_linea)[j + 1]")
+                            si c0 == 47:
+                                es_comentario = 1
+            si es_comentario == 0:
+                // linea solo-espacios: se trata como vacia (paridad _P_*: no
+                // modifica la indentacion)
+                solo_espacios = 1
+                j = 0
+                mientras j < len_linea:
+                    inseguro:
+                        asm("c0 = (unsigned char)((const char*)ptr_linea)[j]")
+                        si c0 != 32:
+                            solo_espacios = 0
+                            romper
+                    j = j + 1
+                si solo_espacios == 0:
+                    lexer_fijar_linea(linea_num)
+                    lexer_procesar_indentacion(ptr_linea, len_linea)
+                    lexer_tokenizar_linea(ptr_linea, len_linea)
+        // FASE A (A2.1): paridad con _P_tokenizar — NL tras CADA linea
+        // (incluidas vacias, #lang y comentarios; el salto tras la ultima
+        // linea se emite solo si existe el \n final)
+        lexer_fijar_linea(linea_num)
+        lexer_push_token(T_NUEVALINEA, linea_num, 0)
         si i < len_fuente:
             inseguro:
                 c = 0
@@ -722,13 +747,25 @@ funcion tokenizar(fuente: cadena) -> entero:
         linea_num = linea_num + 1
         r = 1
 
-    mientras lex.nivel_pila > 0:
-        lex.nivel_pila = lex.nivel_pila - 1
-        lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0)
+    // Cerrar bloques abiertos.
+    // FASE A (A2.1): paridad con _P_tokenizar — al terminar, `li` quedo
+    // incrementado (linea tras el ultimo \n) y los DEDENT/EOF de cierre se
+    // emiten con esa linea. Aqui linea_num ya vale "ultima linea + 1", asi
+    // que se usa en lugar de lexer_linea_actual() (que quedaria en la ultima
+    // linea procesada).
+    tope_fin = 1
+    mientras tope_fin == 1:
+        inseguro:
+            r = 0
+            asm("r = (((struct LexerBuffers*)lexer_buffers())->nivel_pila > 0) ? 1 : 0")
+            si r == 0:
+                romper
+            asm("((struct LexerBuffers*)lexer_buffers())->nivel_pila = ((struct LexerBuffers*)lexer_buffers())->nivel_pila - 1;")
+            lexer_push_token(T_DESINDENTAR, linea_num, 0)
 
-    lexer_push_token(lex, T_FIN, lex.linea_actual, 0)
+    lexer_push_token(T_FIN, linea_num, 0)
 
-    si lex.hay_error == verdadero:
+    si lexer_hay_error() == 1:
         retornar -1
 
-    retornar lex.total_tokens
+    retornar lexer_obtener_total()

@@ -1,0 +1,10 @@
+#lang: es
+// Prueba: importar std.mem y usar reserva/libera
+
+importar std.mem
+
+funcion principal() -> nulo:
+    bloque = reserva(64)
+    log("memoria reservada")
+    libera(-> bloque)
+    log("memoria liberada")

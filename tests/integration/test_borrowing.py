@@ -6,6 +6,8 @@ import pytest
 from conftest import compilar_texto
 from compilador.diagnostics import ErrorCodes
 
+pytestmark = pytest.mark.integration
+
 
 def _hay_error(diag, codigo):
     return any(e.get('codigo') == codigo for e in diag.errores)

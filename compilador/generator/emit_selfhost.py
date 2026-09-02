@@ -1,3 +1,5 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 """
 Generacion de codigo C auto-hospedado (tokenizer, parser, code generator).
 Funciones migradas del original generator.py con adaptacion al patron
@@ -60,6 +62,14 @@ def emitir_token_defs(ctx: GeneratorContext, _unused=None):
             "#define T_IMPORTAR_C 47",
             "#define T_AMPERSAND 45",
             "#define T_EXTERNO 48",
+            "#define T_PIPE 58",
+            "#define T_LET 59",
+            "#define T_DELEGAR 60",
+            "#define T_EXPORT 61",
+            "#define T_ARC 62",
+            "#define T_DEBIL 63",
+            "#define T_RC 64",
+            "#define T_MODULO 65",
             "",
             "#define MAX_TOKS 65536",
             "typedef struct { int tipo; int linea; int col; char val[1024]; } _P_Token;",
@@ -148,7 +158,9 @@ def gen_tok_c(ctx: GeneratorContext):
             "        }",
 "        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_') {",
 "            int st = i; int scol = co;",
-"            while (i < len && ((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_')) i++;",
+"            // F1.2d: identificadores con bytes >= 0x80 (UTF-8) para keywords",
+"            // acentuadas del Manual 2 S3 (p.ej. 'debil'); el resto ASCII puro.",
+"            while (i < len && (((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_') || (unsigned char)s[i] >= 0x80)) i++;",
             "            int vl = (i - st) < 1023 ? (i - st) : 1023;",
             "            strncpy(" + P + "tks[" + P + "ntks].val, s + st, vl); " + P + "tks[" + P + "ntks].val[vl] = 0;",
             "            " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = scol;",
@@ -174,6 +186,15 @@ def gen_tok_c(ctx: GeneratorContext):
             '                {"inseguro",T_INSEGURO},{"unsafe",T_INSEGURO},',
             '                {"importar_c",T_IMPORTAR_C},{"import_c",T_IMPORTAR_C},{"importer_c",T_IMPORTAR_C},{"importa_c",T_IMPORTAR_C},',
             '                {"externo",T_EXTERNO},{"extern",T_EXTERNO},{"externe",T_EXTERNO},{"esterno",T_EXTERNO},',
+            '                {"let",T_LET},{"let",T_LET},{"let",T_LET},{"let",T_LET},',
+            '                {"delegar",T_DELEGAR},{"delegate",T_DELEGAR},{"déléguer",T_DELEGAR},{"delegar",T_DELEGAR},',
+            '                {"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},{"arc",T_ARC},',
+            '                {"débil",T_DEBIL},{"weak",T_DEBIL},{"faible",T_DEBIL},{"fraco",T_DEBIL},',
+            '                // F1.4: rc/modulo (Manual 2 S3 L249/L255). Keywords contextuales:',
+            '                // el parser los acepta tambien donde un identificador vale',
+            '                // (variable rc, parametro modulo) — paridad con S1.',
+            '                {"rc",T_RC},{"rc",T_RC},{"rc",T_RC},{"rc",T_RC},',
+            '                {"modulo",T_MODULO},{"module",T_MODULO},{"module",T_MODULO},{"modulo",T_MODULO},',
             '                {NULL,0}',
             '            };',
             '            int _kt = T_IDENT;',
@@ -181,6 +202,22 @@ def gen_tok_c(ctx: GeneratorContext):
             '                if (strcmp(' + P + 'tks[' + P + 'ntks].val, _ks[_ki].p) == 0) { _kt = _ks[_ki].t; break; }',
             '            }',
             '            ' + P + 'tks[' + P + 'ntks].tipo = _kt;',
+            "            " + P + "ntks++; co += (i - st); continue;",
+            "        }",
+            "        if (c == '@') {",
+            "            int st = i; int scol = co;",
+            "            i++;",
+            "            // F1.2d: identificadores con bytes >= 0x80 (UTF-8) para keywords",
+"            // acentuadas del Manual 2 S3 (p.ej. 'debil'); el resto ASCII puro.",
+"            while (i < len && (((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_') || (unsigned char)s[i] >= 0x80)) i++;",
+            "            int vl = (i - st) < 1023 ? (i - st) : 1023;",
+            "            strncpy(" + P + "tks[" + P + "ntks].val, s + st, vl); " + P + "tks[" + P + "ntks].val[vl] = 0;",
+            "            " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = scol;",
+            "            if (strcmp(" + P + "tks[" + P + "ntks].val, \"@export\") == 0) {",
+            "                " + P + "tks[" + P + "ntks].tipo = T_EXPORT;",
+            "            } else {",
+            '                fprintf(stderr,"Error Lexico: caracter inesperado \'%s\' en linea %d\\n",' + P + 'tks[' + P + 'ntks].val, li); exit(1);',
+            "            }",
             "            " + P + "ntks++; co += (i - st); continue;",
             "        }",
             "        if ((unsigned char)c >= 0x80) { i++; continue; }",
@@ -222,6 +259,7 @@ def gen_tok_c(ctx: GeneratorContext):
             "            else if (c == '>') tt = T_GT;",
             "            else if (c == '<') tt = T_LT;",
             "            else if (c == '&') tt = T_AMPERSAND;",
+            "            else if (c == '|') tt = T_PIPE;",
             "            if (tt == T_EOF) { fprintf(stderr,\"Error Lexico: caracter inesperado '%%c'(%%d) en linea %%d\\n\",c,c,li); exit(1); }",
             "            " + P + "tks[" + P + "ntks].tipo = tt; " + P + "tks[" + P + "ntks].linea = li; " + P + "tks[" + P + "ntks].col = co;",
             "            " + P + "ntks++; i++; co++;",
@@ -290,6 +328,8 @@ def gen_parse(ctx: GeneratorContext):
             "struct Nodo* " + _P + "term();",
             "struct Nodo* " + _P + "una();",
             "struct Nodo* " + _P + "prim();",
+            "void " + _P + "leer_constructores(struct ListaNodo** ccur);",
+            "struct Nodo* " + _P + "decl_tipo();",
             "struct Programa " + _P + "programa();",
         ])
         # Now emit the function bodies using a clean string template
@@ -308,6 +348,104 @@ struct ListaNodo* """ + _P + """bloque() {
     """ + _P + """esperar(T_DEDENT);
     return lst;
 }
+void """ + _P + """leer_constructores(struct ListaNodo** ccur) {
+    while (1) {            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
+        char _cn[256]; strncpy(_cn, """ + _P + """mirar()->val, sizeof(_cn)-1); _cn[sizeof(_cn)-1] = '\\0';
+        """ + _P + """avanzar();
+        struct ConstructorTipo* c = (struct ConstructorTipo*)calloc(1,sizeof(struct ConstructorTipo));
+        c->tipo = """ + _P + """cs("ConstructorTipo"); c->nombre = """ + _P + """cs(_cn);
+        c->tipos = NULL;
+        if (""" + _P + """mirar()->tipo == T_LPAREN) {
+            """ + _P + """avanzar();
+            struct ListaNodo** tccur = &(c->tipos);
+            while (""" + _P + """mirar()->tipo != T_RPAREN && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+                char _tpb[256]; _tpb[0] = '\\0';
+                if (""" + _P + """mirar()->tipo == T_AMPERSAND) {
+                    """ + _P + """avanzar();
+                    strncat(_tpb, "&", sizeof(_tpb)-1-(int)strlen(_tpb));
+                    if (""" + _P + """mirar()->tipo == T_IDENT && strcmp(""" + _P + """mirar()->val, "mut") == 0) {
+                        strncat(_tpb, "mut ", sizeof(_tpb)-1-(int)strlen(_tpb));
+                        """ + _P + """avanzar();
+                    }
+                }
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
+                strncat(_tpb, """ + _P + """mirar()->val, sizeof(_tpb)-1-(int)strlen(_tpb));
+                """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tpb, "*", sizeof(_tpb)-1-(int)strlen(_tpb)); """ + _P + """avanzar(); }
+                struct Identificador* tip = (struct Identificador*)calloc(1,sizeof(struct Identificador));
+                tip->tipo = """ + _P + """cs("Identificador"); tip->nombre = """ + _P + """cs(_tpb);
+                *tccur = """ + _P + """mk_list((struct Nodo*)tip, NULL); tccur = &(*tccur)->cola;
+                if (""" + _P + """mirar()->tipo == T_COMMA) { """ + _P + """avanzar(); }
+                else break;
+            }
+            """ + _P + """esperar(T_RPAREN);
+        }
+        *ccur = """ + _P + """mk_list((struct Nodo*)c, NULL); ccur = &(*ccur)->cola;
+        if (""" + _P + """mirar()->tipo == T_PIPE) { """ + _P + """avanzar(); continue; }
+        break;
+    }
+}
+struct Nodo* """ + _P + """decl_tipo() {
+    """ + _P + """avanzar(); /* consume 'tipo' */
+    if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+    char _tdn[256]; strncpy(_tdn, """ + _P + """mirar()->val, sizeof(_tdn)-1); _tdn[sizeof(_tdn)-1] = '\\0';
+    """ + _P + """avanzar();
+    struct ListaNodo* tparams = NULL;
+    struct ListaNodo** tpcur = &tparams;
+    if (""" + _P + """mirar()->tipo == T_LT) {
+        """ + _P + """avanzar();
+        while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
+            struct Identificador* tp = (struct Identificador*)calloc(1,sizeof(struct Identificador));
+            tp->tipo = """ + _P + """cs("Identificador"); tp->nombre = """ + _P + """cs(""" + _P + """mirar()->val);
+            *tpcur = """ + _P + """mk_list((struct Nodo*)tp, NULL); tpcur = &(*tpcur)->cola;
+            """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_COMMA) { """ + _P + """avanzar(); }
+            else break;
+        }
+        """ + _P + """esperar(T_GT);
+    }
+    """ + _P + """esperar(T_ASSIGN);
+    char _tbase[1024]; _tbase[0] = '\\0';
+    struct ListaNodo* ctors = NULL;
+    struct ListaNodo** ccur = &ctors;
+    if (""" + _P + """mirar()->tipo == T_LPAREN) {
+        """ + _P + """avanzar();
+        """ + _P + """leer_constructores(ccur);
+        """ + _P + """esperar(T_RPAREN);
+    } else if (""" + _P + """mirar()->tipo == T_PIPE) {
+        """ + _P + """leer_constructores(ccur);
+    } else if (""" + _P + """mirar()->tipo == T_IDENT || """ + _P + """mirar()->tipo == T_RC || """ + _P + """mirar()->tipo == T_MODULO) {
+        int _sig = (""" + _P + """tpos + 1 < """ + _P + """ntks) ? """ + _P + """tks[""" + _P + """tpos + 1].tipo : T_EOF;
+        if (_sig == T_PIPE || _sig == T_LPAREN) {
+            """ + _P + """leer_constructores(ccur);
+        } else {
+            if (""" + _P + """mirar()->tipo == T_AMPERSAND) {
+                """ + _P + """avanzar();
+                strncat(_tbase, "&", sizeof(_tbase)-1-(int)strlen(_tbase));
+                if (""" + _P + """mirar()->tipo == T_IDENT && strcmp(""" + _P + """mirar()->val, "mut") == 0) {
+                    strncat(_tbase, "mut ", sizeof(_tbase)-1-(int)strlen(_tbase));
+                    """ + _P + """avanzar();
+                }
+            }
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+            strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase));
+            """ + _P + """avanzar();
+            while (""" + _P + """mirar()->tipo == T_MUL) { strncat(_tbase, "*", sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
+            if (""" + _P + """mirar()->tipo == T_LT) {
+                """ + _P + """avanzar();
+                strncat(_tbase, "<", sizeof(_tbase)-1-(int)strlen(_tbase));
+                if (""" + _P + """mirar()->tipo == T_IDENT || """ + _P + """mirar()->tipo == T_RC || """ + _P + """mirar()->tipo == T_MODULO) { strncat(_tbase, """ + _P + """mirar()->val, sizeof(_tbase)-1-(int)strlen(_tbase)); """ + _P + """avanzar(); }
+                """ + _P + """esperar(T_GT);
+                strncat(_tbase, ">", sizeof(_tbase)-1-(int)strlen(_tbase));
+            }
+        }
+    }
+    struct DeclaracionTipo* n = (struct DeclaracionTipo*)calloc(1,sizeof(struct DeclaracionTipo));
+    n->tipo = """ + _P + """cs("DeclaracionTipo"); n->nombre = """ + _P + """cs(_tdn);
+    n->parametros_tipo = tparams; n->tipo_base = """ + _P + """cs(_tbase); n->constructores = ctors;
+    return (struct Nodo*)n;
+}
 struct Nodo* """ + _P + """sentencia() {
 #ifdef SYN_DEBUG_PARSE
     fprintf(stderr, "PARSE S tok=%d pos=%d/%d\\n", """ + _P + """mirar()->tipo, """ + _P + """tpos, """ + _P + """ntks);
@@ -318,8 +456,8 @@ _P_retry:;
     """ + _P + """Token* t = """ + _P + """mirar();
     if (t->tipo == T_FUNC) {
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
-        char _nm[256]; strncpy(_nm, """ + _P + """mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\0';
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+        char _nm[256]; strncpy(_nm, """ + _P + """mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\\0';
         """ + _P + """avanzar();
         """ + _P + """esperar(T_LPAREN);
         struct ListaNodo* params = NULL;
@@ -328,14 +466,22 @@ _P_retry:;
             while (1) {
                 int is_transfer = 0;
                 if (""" + _P + """mirar()->tipo == T_ARROW) { is_transfer=1; """ + _P + """avanzar(); }
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
-                char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\0';
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
+                char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
                 """ + _P + """avanzar();
                 """ + _P + """esperar(T_COLON);
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
-                char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\0';
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
+                char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
                 """ + _P + """avanzar();
-                while (""" + _P + """mirar()->tipo == T_MUL) { { int _pl = (int)strlen(_pt); if (_pl < 255) { _pt[_pl] = '*'; _pt[_pl+1] = '\0'; } } """ + _P + """avanzar(); }
+                if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                    while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_RPAREN && """ + _P + """mirar()->tipo != T_COMMA) {
+                        int _gl=(int)strlen(_pt);
+                        if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                        """ + _P + """avanzar();
+                    }
+                    if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+                }
+                while (""" + _P + """mirar()->tipo == T_MUL) { { int _pl = (int)strlen(_pt); if (_pl < 255) { _pt[_pl] = '*'; _pt[_pl+1] = '\\0'; } } """ + _P + """avanzar(); }
                 struct Parametro* pp = (struct Parametro*)calloc(1,sizeof(struct Parametro));
                 pp->tipo=""" + _P + """cs("Parametro");
                 pp->nombre=""" + _P + """cs(_pn); pp->tipo_param=""" + _P + """cs(_pt);
@@ -346,9 +492,17 @@ _P_retry:;
             }
         }
         """ + _P + """esperar(T_RPAREN); """ + _P + """esperar(T_ARROW);
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _rt[256]; strcpy(_rt, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
+        if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_rt); if(_gtl<255){ _rt[_gtl]='<'; _rt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+            while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_COLON) {
+                int _gl=(int)strlen(_rt);
+                if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _rt[_gl++]=""" + _P + """mirar()->val[_k++]; } _rt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _rt[_gl]='<'; _rt[_gl+1]='\\0'; } }
+                """ + _P + """avanzar();
+            }
+            if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_rt); if(_gl<255){ _rt[_gl]='>'; _rt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+        }
         """ + _P + """esperar(T_COLON);
         struct ListaNodo* body=""" + _P + """bloque();
         struct DefinicionFuncion* n = (struct DefinicionFuncion*)calloc(1,sizeof(struct DefinicionFuncion));
@@ -359,7 +513,7 @@ _P_retry:;
     }
     if (t->tipo == T_STRUCT) {
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _snm[256]; strcpy(_snm, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         """ + _P + """esperar(T_COLON);
@@ -370,13 +524,21 @@ _P_retry:;
         struct ListaParametro** ccur = &campos;
         while (""" + _P + """mirar()->tipo != T_DEDENT && """ + _P + """mirar()->tipo != T_EOF) {
             if (""" + _P + """mirar()->tipo == T_NL) { """ + _P + """avanzar(); continue; }
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); break; }
-            char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\0';
+            if (""" + _P + """mirar()->tipo == T_DEDENT || """ + _P + """mirar()->tipo == T_EOF || """ + _P + """mirar()->tipo == T_COLON) break;
+            char _pn[256]; strncpy(_pn, """ + _P + """mirar()->val, sizeof(_pn)-1); _pn[sizeof(_pn)-1] = '\\0';
             """ + _P + """avanzar();
             """ + _P + """esperar(T_COLON);
-            if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); break; }
-            char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\0';
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); break; }
+            char _pt[256]; strncpy(_pt, """ + _P + """mirar()->val, sizeof(_pt)-1); _pt[sizeof(_pt)-1] = '\\0';
             """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_pt); if(_gtl<255){ _pt[_gtl]='<'; _pt[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL && """ + _P + """mirar()->tipo != T_DEDENT) {
+                    int _gl=(int)strlen(_pt);
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _pt[_gl++]=""" + _P + """mirar()->val[_k++]; } _pt[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _pt[_gl]='<'; _pt[_gl+1]='\\0'; } }
+                    """ + _P + """avanzar();
+                }
+                if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_pt); if(_gl<255){ _pt[_gl]='>'; _pt[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+            }
             struct Parametro* pp=(struct Parametro*)calloc(1,sizeof(struct Parametro));
             pp->tipo=""" + _P + """cs("Parametro"); pp->nombre=""" + _P + """cs(_pn); pp->tipo_param=""" + _P + """cs(_pt); pp->es_transferencia=0;
             *ccur=(struct ListaParametro*)""" + _P + """mk_list((struct Nodo*)pp,NULL); ccur=&(*ccur)->cola;
@@ -449,10 +611,16 @@ _P_retry:;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_LISTEN) { """ + _P + """avanzar();
-        struct Nodo* cn=""" + _P + """expr(); """ + _P + """esperar(T_ARROW);
-        struct Nodo* rp=""" + _P + """expr();
+        struct Nodo* cn=""" + _P + """expr(); """ + _P + """esperar(T_COLON);
+        struct ListaNodo* cpo=NULL;
+        if (""" + _P + """mirar()->tipo == T_NL) {
+            cpo=""" + _P + """bloque();
+        } else {
+            struct Nodo* _st=""" + _P + """sentencia();
+            if (_st) { cpo=""" + _P + """mk_list(_st,NULL); }
+        }
         struct SentenciaEscuchar* n = (struct SentenciaEscuchar*)calloc(1,sizeof(struct SentenciaEscuchar));
-        n->tipo=""" + _P + """cs("SentenciaEscuchar"); n->canal=cn; n->respuesta=rp;
+        n->tipo=""" + _P + """cs("SentenciaEscuchar"); n->canal=cn; n->cuerpo=cpo;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_BREAK) { """ + _P + """avanzar();
@@ -466,10 +634,10 @@ _P_retry:;
         return (struct Nodo*)n;
     }
     if (t->tipo == T_IMPORT) { """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
-        char _imp[256]; strncpy(_imp, """ + _P + """mirar()->val, sizeof(_imp)-1); _imp[sizeof(_imp)-1] = '\0'; int _iml = (int)strlen(_imp);
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+        char _imp[256]; strncpy(_imp, """ + _P + """mirar()->val, sizeof(_imp)-1); _imp[sizeof(_imp)-1] = '\\0'; int _iml = (int)strlen(_imp);
         """ + _P + """avanzar();
-        while (""" + _P + """mirar()->tipo == T_DOT) { """ + _P + """avanzar(); if (""" + _P + """mirar()->tipo != T_IDENT) break; { int _il = (int)strlen(_imp); if (_il < 254) { _imp[_il] = '.'; _imp[_il+1] = '\0'; } if ((int)strlen(_imp) + (int)strlen(""" + _P + """mirar()->val) < 255) { strncat(_imp, """ + _P + """mirar()->val, 255 - (int)strlen(_imp) - 1); } } """ + _P + """avanzar(); }
+        while (""" + _P + """mirar()->tipo == T_DOT) { """ + _P + """avanzar(); if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break; { int _il = (int)strlen(_imp); if (_il < 254) { _imp[_il] = '.'; _imp[_il+1] = '\\0'; } if ((int)strlen(_imp) + (int)strlen(""" + _P + """mirar()->val) < 255) { strncat(_imp, """ + _P + """mirar()->val, 255 - (int)strlen(_imp) - 1); } } """ + _P + """avanzar(); }
         struct SentenciaImportar* n = (struct SentenciaImportar*)calloc(1,sizeof(struct SentenciaImportar));
         n->tipo=""" + _P + """cs("SentenciaImportar"); n->ruta=""" + _P + """cs(_imp);
         return (struct Nodo*)n;
@@ -487,7 +655,7 @@ _P_retry:;
     if (t->tipo == T_EXTERNO) { """ + _P + """avanzar();
         if (""" + _P + """mirar()->tipo != T_FUNC) { """ + _P + """sinc_skip(); return NULL; }
         """ + _P + """avanzar();
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _enm[256]; strcpy(_enm, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         """ + _P + """esperar(T_LPAREN);
@@ -495,11 +663,11 @@ _P_retry:;
         struct ListaParametro** epcur = &eparams;
         if (""" + _P + """mirar()->tipo != T_RPAREN) {
             while (1) {
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _epn[256]; strcpy(_epn, """ + _P + """mirar()->val);
                 """ + _P + """avanzar();
                 """ + _P + """esperar(T_COLON);
-                if (""" + _P + """mirar()->tipo != T_IDENT) break;
+                if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) break;
                 char _ept[256]; strcpy(_ept, """ + _P + """mirar()->val);
                 """ + _P + """avanzar();
                 while (""" + _P + """mirar()->tipo == T_MUL) { strcat(_ept,"*"); """ + _P + """avanzar(); }
@@ -511,7 +679,7 @@ _P_retry:;
             }
         }
         """ + _P + """esperar(T_RPAREN); """ + _P + """esperar(T_ARROW);
-        if (""" + _P + """mirar()->tipo != T_IDENT) { """ + _P + """sinc_skip(); return NULL; }
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
         char _ert[256]; strcpy(_ert, """ + _P + """mirar()->val);
         """ + _P + """avanzar();
         struct DeclaracionExterna* n = (struct DeclaracionExterna*)calloc(1,sizeof(struct DeclaracionExterna));
@@ -532,7 +700,59 @@ _P_retry:;
         n->tipo=""" + _P + """cs("BloqueInseguro"); n->cuerpo=cpo;
         return (struct Nodo*)n;
     }
-    if (t->tipo == T_IDENT && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
+    if (t->tipo == T_LET) {  // F1.2c: let IDENT [':' tipo] ['=' expresion] (Manual 2 §2 L134)
+        """ + _P + """avanzar();
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+        char _lvn[256]; strcpy(_lvn, """ + _P + """mirar()->val);
+        """ + _P + """avanzar();
+        char _ltp[256]; _ltp[0] = 0;
+        if (""" + _P + """mirar()->tipo == T_COLON) {
+            """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_ARC && """ + _P + """mirar()->tipo != T_DEBIL && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+            strcpy(_ltp, """ + _P + """mirar()->val);
+            """ + _P + """avanzar();
+            if (""" + _P + """mirar()->tipo == T_LT) { int _gtl=(int)strlen(_ltp); if(_gtl<255){ _ltp[_gtl]='<'; _ltp[_gtl+1]='\\0'; } """ + _P + """avanzar();
+                while (""" + _P + """mirar()->tipo != T_GT && """ + _P + """mirar()->tipo != T_EOF && """ + _P + """mirar()->tipo != T_NL) {
+                    int _gl=(int)strlen(_ltp);
+                    if(_gl<255){ if(""" + _P + """mirar()->tipo==T_IDENT||""" + _P + """mirar()->tipo==T_ARC||""" + _P + """mirar()->tipo==T_DEBIL||""" + _P + """mirar()->tipo==T_RC||""" + _P + """mirar()->tipo==T_MODULO){ int _k=0; while(""" + _P + """mirar()->val[_k]&&_gl<255){ _ltp[_gl++]=""" + _P + """mirar()->val[_k++]; } _ltp[_gl]='\\0'; } else if(""" + _P + """mirar()->tipo==T_LT){ _ltp[_gl]='<'; _ltp[_gl+1]='\\0'; } }
+                    """ + _P + """avanzar();
+                }
+                if (""" + _P + """mirar()->tipo == T_GT) { int _gl=(int)strlen(_ltp); if(_gl<255){ _ltp[_gl]='>'; _ltp[_gl+1]='\\0'; } """ + _P + """avanzar(); }
+            }
+            while (""" + _P + """mirar()->tipo == T_MUL) { strcat(_ltp,"*"); """ + _P + """avanzar(); }
+        }
+        struct Nodo* _lexpr = NULL;
+        if (""" + _P + """mirar()->tipo == T_ASSIGN) {
+            """ + _P + """avanzar();
+            _lexpr = """ + _P + """expr();
+        }
+        struct DeclaracionVariable* _ldv = (struct DeclaracionVariable*)calloc(1,sizeof(struct DeclaracionVariable));
+        _ldv->tipo=""" + _P + """cs("DeclaracionVariable");
+        _ldv->nombre=""" + _P + """cs(_lvn); _ldv->tipo_param=""" + _P + """cs(_ltp); _ldv->expresion=_lexpr;
+        return (struct Nodo*)_ldv;
+    }
+    if (t->tipo == T_DELEGAR) {  // F1.2c: delegar expresion -> retornar err(...) (Manual 2 §2 L132)
+        """ + _P + """avanzar();
+        struct Nodo* _dexpr = """ + _P + """expr();
+        struct SentenciaDelegar* _ndl = (struct SentenciaDelegar*)calloc(1,sizeof(struct SentenciaDelegar));
+        _ndl->tipo=""" + _P + """cs("SentenciaDelegar"); _ndl->expresion=_dexpr;
+        return (struct Nodo*)_ndl;
+    }
+    if (t->tipo == T_EXPORT) {  // F1.2d: @export ( IDENT ) funcion (Manual 2 §2 L81)
+        """ + _P + """avanzar();
+        """ + _P + """esperar(T_LPAREN);
+        if (""" + _P + """mirar()->tipo != T_IDENT && """ + _P + """mirar()->tipo != T_RC && """ + _P + """mirar()->tipo != T_MODULO) { """ + _P + """sinc_skip(); return NULL; }
+        char _xdn[256]; strncpy(_xdn, """ + _P + """mirar()->val, sizeof(_xdn)-1); _xdn[sizeof(_xdn)-1] = '\\0';
+        """ + _P + """avanzar();
+        """ + _P + """esperar(T_RPAREN);
+        struct Nodo* _xfn = """ + _P + """sentencia();
+        struct DeclaracionExport* _xne = (struct DeclaracionExport*)calloc(1,sizeof(struct DeclaracionExport));
+        _xne->tipo=""" + _P + """cs("DeclaracionExport"); _xne->destino=""" + _P + """cs(_xdn); _xne->funcion=_xfn;
+        return (struct Nodo*)_xne;
+    }
+    // F1.4: la variable rc (y modulo) son keywords CONTEXTUALES — asignacion
+    // rc = ... valida (paridad S1, Manual 2 S3 L249/L255).
+    if ((t->tipo == T_IDENT || t->tipo == T_RC || t->tipo == T_MODULO) && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_ASSIGN) {
         char _vn[256]; strcpy(_vn, t->val);
         """ + _P + """avanzar(); """ + _P + """avanzar();
         struct Nodo* val=""" + _P + """expr();
@@ -540,6 +760,11 @@ _P_retry:;
         n->tipo=""" + _P + """cs("AsignacionVariable");
         n->nombre=""" + _P + """cs(_vn); n->expresion=val;
         return (struct Nodo*)n;
+    }
+    // D-F1: declaracion_tipo (Manual 2 §2). El guard replica el del parser Python:
+    // 'tipo' + IDENTIFICADOR + ('=' | '<' | '|' | '(')
+    if (t->tipo == T_IDENT && strcmp(t->val, "tipo") == 0 && """ + _P + """tpos + 2 < """ + _P + """ntks && (""" + _P + """tks[""" + _P + """tpos + 1].tipo == T_IDENT || """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_RC || """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_MODULO) && (""" + _P + """tks[""" + _P + """tpos + 2].tipo == T_ASSIGN || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LT || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_PIPE || """ + _P + """tks[""" + _P + """tpos + 2].tipo == T_LPAREN)) {
+        return """ + _P + """decl_tipo();
     }
     // Guard: skip stray INDENT/DEDENT/NL and retry keyword matching
     if (""" + _P + """mirar()->tipo == T_INDENT || """ + _P + """mirar()->tipo == T_DEDENT || """ + _P + """mirar()->tipo == T_NL) {
@@ -672,6 +897,11 @@ struct Nodo* """ + _P + """una() {
 struct Nodo* """ + _P + """prim() {
     """ + _P + """Token* t=""" + _P + """mirar();
     if (t->tipo==T_NUM) {
+        if (strchr(t->val, '.') != NULL) {
+            struct LiteralDecimal* n=(struct LiteralDecimal*)calloc(1,sizeof(struct LiteralDecimal));
+            n->tipo=""" + _P + """cs("LiteralDecimal"); n->valor=atof(t->val);
+            """ + _P + """avanzar(); return (struct Nodo*)n;
+        }
         struct LiteralNumero* n=(struct LiteralNumero*)calloc(1,sizeof(struct LiteralNumero));
         n->tipo=""" + _P + """cs("LiteralNumero"); n->valor=atoi(t->val);
         """ + _P + """avanzar(); return (struct Nodo*)n;
@@ -693,8 +923,26 @@ struct Nodo* """ + _P + """prim() {
         n->tipo=""" + _P + """cs("LiteralNumero"); n->valor=0;
         return (struct Nodo*)n;
     }
-    if (t->tipo==T_IDENT) {
-        char _nm[256]; strncpy(_nm, t->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\0';
+    // F1.4: rc/modulo son keywords contextuales — tambien expresiones primarias.
+    if (t->tipo==T_IDENT || t->tipo==T_RC || t->tipo==T_MODULO) {
+        // D-F1: 'nulo' -> LiteralNulo y 'tensor(filas, columnas)' -> ExprTensor (Manual 2 §4.1/§4.3)
+        if (strcmp(t->val, "nulo") == 0) {
+            """ + _P + """avanzar();
+            struct LiteralNulo* _ln=(struct LiteralNulo*)calloc(1,sizeof(struct LiteralNulo));
+            _ln->tipo=""" + _P + """cs("LiteralNulo");
+            return (struct Nodo*)_ln;
+        }
+        if (strcmp(t->val, "tensor") == 0 && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo == T_LPAREN) {
+            """ + _P + """avanzar(); """ + _P + """avanzar();
+            struct Nodo* _fl=""" + _P + """expr();
+            """ + _P + """esperar(T_COMMA);
+            struct Nodo* _cl=""" + _P + """expr();
+            """ + _P + """esperar(T_RPAREN);
+            struct ExprTensor* _tn=(struct ExprTensor*)calloc(1,sizeof(struct ExprTensor));
+            _tn->tipo=""" + _P + """cs("ExprTensor"); _tn->filas=_fl; _tn->columnas=_cl;
+            return (struct Nodo*)_tn;
+        }
+        char _nm[256]; strncpy(_nm, t->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\\0';
         """ + _P + """avanzar();
         if (""" + _P + """mirar()->tipo==T_LPAREN) {
             """ + _P + """avanzar();
@@ -728,13 +976,13 @@ struct Nodo* """ + _P + """prim() {
             struct Nodo* prev=(struct Nodo*)NULL;
             while (""" + _P + """mirar()->tipo==T_DOT) {
                 """ + _P + """avanzar();
-                if (""" + _P + """mirar()->tipo!=T_IDENT) break;
+                if (""" + _P + """mirar()->tipo!=T_IDENT && """ + _P + """mirar()->tipo!=T_RC && """ + _P + """mirar()->tipo!=T_MODULO) break;
                 if (!prev) {
                     struct Identificador* obj=(struct Identificador*)calloc(1,sizeof(struct Identificador));
                     obj->tipo=""" + _P + """cs("Identificador"); obj->nombre=""" + _P + """cs(_nm);
                     prev=(struct Nodo*)obj;
                 }
-                strncpy(_nm, """ + _P + """mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\0'; """ + _P + """avanzar();
+                strncpy(_nm, """ + _P + """mirar()->val, sizeof(_nm)-1); _nm[sizeof(_nm)-1] = '\\0'; """ + _P + """avanzar();
                 if (""" + _P + """mirar()->tipo==T_LPAREN && """ + _P + """tpos + 1 < """ + _P + """ntks && """ + _P + """tks[""" + _P + """tpos + 1].tipo!=T_DOT) {
                     /* method call on last segment */
                     if(prev) free(prev);
@@ -862,380 +1110,4 @@ def emitir_volcar_ast(ctx, nodo):
         ctx._externas['volcar_ast'] = ['struct Nodo*', 'int']
         ctx.write_line("void volcar_ast(struct Nodo* nodo, int nivel) { _volcar_nodo(nodo, nivel); }")
         ctx.write_line("")
-
-def emitir_generar(ctx, nodo):
-        ctx.lineas.extend(["// --- Generador de C ---"])
-        emitir_token_defs(ctx)
-        gen_tok_c(ctx)
-        gen_parse(ctx)
-        # Use a placeholder that won't collide with C braces
-        _PH = '@@P@@'
-        H = f"""
-// --- AST Walker ---
-int {_PH}indent = 0;
-FILE* {_PH}out = NULL;
-char {_PH}vn[1024][64];
-char {_PH}vt[1024][64];
-int {_PH}nv = 0;
-char {_PH}ret_type[64];
-char {_PH}extern_names[64][64];
-char {_PH}extern_params[64][256];
-int {_PH}nextern = 0;
-char {_PH}snames[64][64];
-int {_PH}nsnames = 0;
-
-void {_PH}reset() {{ {_PH}nv = 0; }}
-int {_PH}find(const char* n) {{ if(!n) return -1; for(int i=0;i<{_PH}nv;i++) if(strcmp({_PH}vn[i],n)==0) return i; return -1; }}
-const char* {_PH}decl(const char* n, const char* t) {{
-    if(!n||!t) return t?t:"int";
-    int i={_PH}find(n); if(i>=0) return {_PH}vt[i];
-    if({_PH}nv<1024){{ strncpy({_PH}vn[{_PH}nv],n,63); {_PH}vn[{_PH}nv][63]=0; strncpy({_PH}vt[{_PH}nv],t,63); {_PH}vt[{_PH}nv][63]=0; {_PH}nv++; }}
-    return t;
-}}
-
-void {_PH}emit(const char* s) {{
-    for(int i=0;i<{_PH}indent;i++) fprintf({_PH}out,"    ");
-    fprintf({_PH}out,"%s\\n",s);
-}}
-
-void {_PH}cp(char* d, CadenaSegura cs) {{ if(!cs.datos||cs.longitud<=0){{ d[0]=0; return; }} int _len=cs.longitud<4095?cs.longitud:4095; memcpy(d,cs.datos,_len); d[_len]=0; }}
-
-const char* {_PH}tex(struct Nodo* n) {{
-    if(!n) return "int";
-    const char* t=n->tipo.datos;
-    if(strcmp(t,"LiteralNumero")==0) return "int";
-    if(strcmp(t,"LiteralCadena")==0) return "CadenaSegura";
-    if(strcmp(t,"Identificador")==0) {{ struct Identificador* i=(struct Identificador*)n; char m[256]; {_PH}cp(m,i->nombre); int j={_PH}find(m); return j>=0?{_PH}vt[j]:"int"; }}
-    if(strcmp(t,"OpBinaria")==0||strcmp(t,"OpUnaria")==0) return "int";
-    if(strcmp(t,"LlamadaFuncion")==0) {{
-        struct LlamadaFuncion* l=(struct LlamadaFuncion*)n;
-        char m[256]; {_PH}cp(m,l->nombre);
-        if(strcmp(m,"_argc")==0) return "int";
-        if(strcmp(m,"_argv")==0||strcmp(m,"leer")==0||strcmp(m,"leer_linea")==0||strcmp(m,"concat")==0) return "CadenaSegura";
-        if(strcmp(m,"abrir")==0) return "Canal";
-        if(strcmp(m,"cerrar")==0||strcmp(m,"salir")==0||strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0) return "void";
-        if(strcmp(m,"reserva")==0||strcmp(m,"suma")==0||strcmp(m,"producto")==0||strcmp(m,"relu")==0
-    ||strcmp(m,"crear_tensor")==0||strcmp(m,"suma_tensor")==0||strcmp(m,"producto_punto")==0) return "Tensor";
-        if(strcmp(m,"tokenizar")==0) return "int";
-        if(strcmp(m,"parsear")==0) return "struct Programa";
-        if(strcmp(m,"generar")==0) return "int";
-        if(strcmp(m,"libera")==0) return "void";
-        if(strcmp(m,"texto_a_entero")==0) return "int";
-        if(strcmp(m,"texto_a_decimal")==0) return "float";
-        if(strcmp(m,"decimal_a_texto")==0) return "CadenaSegura";
-        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0) {{ char _sret[64]; snprintf(_sret,sizeof(_sret),"struct %s",m); return _sret; }} }}
-        return "int";
-    }}
-    if(strcmp(t,"ExprAccesoCampo")==0||strcmp(t,"ArgumentoTransferido")==0) return "int";
-    if(strcmp(t,"ExprTensor")==0) return "Tensor";
-    if(strcmp(t,"ExprObtenerDireccion")==0) return "int*";
-    if(strcmp(t,"ExprDereferencia")==0) return "int";
-    return "int";
-}}
-
-void {_PH}ea(struct Nodo* n, char* b, int sz);
-void {_PH}vl(struct ListaNodo* l);
-void {_PH}v(struct Nodo* n);
-
-int {_PH}extern_needs_datos(const char* fn, int argidx) {{
-    for(int _ei=0;_ei<{_PH}nextern;_ei++){{
-        if(strcmp({_PH}extern_names[_ei],fn)==0){{
-            int _ec=0,_epos=0;
-            char _eb[256]; strcpy(_eb,{_PH}extern_params[_ei]);
-            while(_eb[_epos]){{
-                int _estart=_epos;
-                while(_eb[_epos]&&_eb[_epos]!=',') _epos++;
-                _eb[_epos]=0;
-                if(_ec==argidx) return strcmp(_eb+_estart,"char*")==0;
-                _ec++; _epos++;
-            }}
-            return 0;
-        }}
-    }}
-    return 0;
-}}
-void {_PH}vl(struct ListaNodo* l) {{ while(l){{ {_PH}v(l->cabeza); l=l->cola; }} }}
-
-void {_PH}ea(struct Nodo* n, char* b, int sz) {{
-    char i[512],d[512],o[512],m[256];
-    if(!n){{ snprintf(b,sz,"0"); return; }}
-    const char* t=n->tipo.datos;
-    if(strcmp(t,"LiteralNumero")==0){{ struct LiteralNumero* x=(struct LiteralNumero*)n; snprintf(b,sz,"%d",x->valor); return; }}
-    if(strcmp(t,"LiteralCadena")==0){{ struct LiteralCadena* x=(struct LiteralCadena*)n; snprintf(b,sz,"(CadenaSegura){{.longitud=%d,.datos=\\"%.*s\\"}}",x->valor.longitud,x->valor.longitud,x->valor.datos); return; }}
-    if(strcmp(t,"Identificador")==0){{ struct Identificador* x=(struct Identificador*)n; char _tmp_nm[256]; {_PH}cp(_tmp_nm,x->nombre); if(strcmp(_tmp_nm,"nulo")==0) strcpy(b,"NULL"); else strcpy(b,_tmp_nm); return; }}
-    if(strcmp(t,"OpBinaria")==0){{ struct OpBinaria* x=(struct OpBinaria*)n; {_PH}ea(x->izquierdo,i,512); {_PH}ea(x->derecho,d,512); char _o[16]; {_PH}cp(_o,x->operador->lexema); snprintf(b,sz,"(%s %s %s)",i,_o,d); return; }}
-    if(strcmp(t,"OpUnaria")==0){{ struct OpUnaria* x=(struct OpUnaria*)n; {_PH}ea(x->expr,i,512); char _o[16]; {_PH}cp(_o,x->operador->lexema); snprintf(b,sz,"(%s%s)",_o,i); return; }}
-    if(strcmp(t,"LlamadaFuncion")==0){{
-        struct LlamadaFuncion* x=(struct LlamadaFuncion*)n; {_PH}cp(m,x->nombre);
-        {{ char* _p=m; while(*_p){{ if(*_p=='.') *_p='_'; _p++; }} }}
-        int _is_struct = 0;
-        for(int _si=0;_si<{_PH}nsnames;_si++){{ if(strcmp(m,{_PH}snames[_si])==0){{ _is_struct=1; break; }} }}
-        if(_is_struct && !x->argumentos){{ snprintf(b,sz,"%s_nuevo()",m); return; }}
-        int _coer = (strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0||strcmp(m,"abrir")==0||strcmp(m,"concat")==0);
-        char a[4096]=""; int p=0; int aidx=0; struct ListaNodo* c=x->argumentos;
-        while(c){{ if(p>0){{ a[p++]=','; a[p++]=' '; }}
-            {_PH}ea(c->cabeza,i,512);
-            int _dos = {_PH}extern_needs_datos(m,aidx);
-            if(_dos){{ snprintf(o,sizeof(o),"(%s).datos",i); strcpy(i,o); }}
-            if(_coer){{ const char* _at = {_PH}tex(c->cabeza);
-                if(strcmp(_at,"int")==0){{ char _w[1024]; snprintf(_w,sizeof(_w),"entero_a_texto(%s)",i); int k=0; while(_w[k]) a[p++]=_w[k++]; }}
-                else if(strcmp(_at,"float")==0){{ char _w[1024]; snprintf(_w,sizeof(_w),"decimal_a_texto(%s)",i); int k=0; while(_w[k]) a[p++]=_w[k++]; }}
-                else{{ int k=0; while(i[k]) a[p++]=i[k++]; }}
-            }}else{{ int k=0; while(i[k]) a[p++]=i[k++]; }}
-            c=c->cola; aidx++;
-        }}
-        a[p]=0; snprintf(b,sz,"%s(%s)",m,a); return;
-    }}
-    if(strcmp(t,"ExprAccesoCampo")==0){{ struct ExprAccesoCampo* x=(struct ExprAccesoCampo*)n; {_PH}ea(x->objeto,o,512); {_PH}cp(m,x->nombre_campo); const char* _ot={_PH}tex(x->objeto); int _isp=(strlen(_ot)>0&&_ot[strlen(_ot)-1]=='*'); snprintf(b,sz,"%s%s%s",o,_isp?"->":".",m); return; }}
-    if(strcmp(t,"ExprTensor")==0){{ struct ExprTensor* x=(struct ExprTensor*)n; {_PH}ea(x->filas,i,512); {_PH}ea(x->columnas,d,512); snprintf(b,sz,"(Tensor){{.filas=%s,.columnas=%s,.datos=(float*)calloc(%s*%s,sizeof(float))}}",i,d,i,d); return; }}
-    if(strcmp(t,"ArgumentoTransferido")==0){{ struct ArgumentoTransferido* x=(struct ArgumentoTransferido*)n; {_PH}ea(x->expr,b,sz); return; }}
-    if(strcmp(t,"ExprObtenerDireccion")==0){{ struct ExprObtenerDireccion* x=(struct ExprObtenerDireccion*)n; {_PH}ea(x->expr,i,512); snprintf(b,sz,"(&%s)",i); return; }}
-    if(strcmp(t,"ExprDereferencia")==0){{ struct ExprDereferencia* x=(struct ExprDereferencia*)n; {_PH}ea(x->expr,i,512); snprintf(b,sz,"(*%s)",i); return; }}
-    snprintf(b,sz,"/*?*/");
-}}
-
-void {_PH}v_log(struct LogLlamada* n) {{
-    char f[4096]=""; int fp=0,ap=0,fi=1; char b[512]; char pr[4096]=""; char tn[64]; char tmp[512];
-    struct ListaNodo* c=n->argumentos;
-    while(c){{ if(!fi){{ f[fp++]=' '; }} fi=0; f[fp++]='%'; f[fp++]='s';
-        {_PH}cp(tn,c->cabeza->tipo);
-        {_PH}ea(c->cabeza,tmp,512);
-        if(strcmp(tn,"LiteralCadena")==0){{ snprintf(b,sizeof(b),"%s.datos",tmp); }}
-        else{{ strcpy(b,tmp); }}
-        if(ap>0){{ pr[ap++]=','; pr[ap++]=' '; }} int k=0; while(b[k]) pr[ap++]=b[k++]; c=c->cola;
-    }}
-    f[fp]=0; pr[ap]=0; char ln[4096];
-    if(ap>0) snprintf(ln,sizeof(ln),"printf(\\"%s\\\\n\\",%s);",f,pr);
-    else snprintf(ln,sizeof(ln),"printf(\\"%s\\\\n\\");",f);
-    {_PH}emit(ln);
-}}
-
-const char* {_PH}mt(const char* st) {{
-    char _mtb[64];
-    char _base[64]; strcpy(_base,st);
-    int _mlen = strlen(_base);
-    int _isptr = (_mlen>0 && _base[_mlen-1]=='*');
-    if(_isptr) _base[_mlen-1]=0;
-    const char* _r=NULL;
-    if(strcmp(_base,"entero")==0||strcmp(_base,"int")==0) _r="int";
-    else if(strcmp(_base,"texto")==0||strcmp(_base,"cadena")==0) _r="CadenaSegura";
-    else if(strcmp(_base,"nulo")==0||strcmp(_base,"vacio")==0) _r="void";
-    else if(strcmp(_base,"decimal")==0||strcmp(_base,"real")==0) _r="float";
-    else if(strcmp(_base,"logico")==0||strcmp(_base,"booleano")==0) _r="int";
-    else if(strcmp(_base,"Canal")==0||strcmp(_base,"canal")==0) _r="Canal";
-    else if(strcmp(_base,"Tensor")==0||strcmp(_base,"tensor")==0) _r="Tensor";
-    else if(strcmp(_base,"void")==0) _r="void";
-    else if(strcmp(_base,"char")==0) _r="char";
-    else if(strcmp(_base,"double")==0) _r="double";
-    if(!_r) return NULL;
-    if(_isptr){{ snprintf(_mtb,sizeof(_mtb),"%s*",_r); return _mtb; }}
-    return _r;
-}}
-void {_PH}vest(struct DefinicionEstructura* n) {{
-    char ln[4096];
-    snprintf(ln,sizeof(ln),"typedef struct %s {{",n->nombre.datos); {_PH}emit(ln);
-    {_PH}indent++;
-    struct ListaParametro* c=n->campos;
-    while(c){{ struct Parametro* p=(struct Parametro*)c->cabeza; char pn[256]; {_PH}cp(pn,p->nombre); char pt[256]; {_PH}cp(pt,p->tipo_param); const char* ct={_PH}mt(pt); if(ct){{ snprintf(ln,sizeof(ln),"%s %s;",ct,pn); }}else{{ snprintf(ln,sizeof(ln),"struct %s* %s;",pt,pn); }} {_PH}emit(ln); c=c->cola; }}
-    {_PH}indent--; snprintf(ln,sizeof(ln),"}} %s;",n->nombre.datos); {_PH}emit(ln);
-    snprintf(ln,sizeof(ln),"inline struct %s %s_nuevo() {{",n->nombre.datos,n->nombre.datos); {_PH}emit(ln);
-    {_PH}indent++; snprintf(ln,sizeof(ln),"struct %s _r={{0}}; return _r;",n->nombre.datos); {_PH}emit(ln);
-    {_PH}indent--; {_PH}emit("}}");
-    if({_PH}nsnames<64){{ strcpy({_PH}snames[{_PH}nsnames],n->nombre.datos); {_PH}nsnames++; }}
-}}
-
-void {_PH}v(struct Nodo* n) {{
-    if(!n) return;
-    char b[4096],b2[4096],m[256],v[4096];
-    const char* t=n->tipo.datos;
-    if(strcmp(t,"DefinicionFuncion")==0){{
-        {_PH}reset();
-        struct DefinicionFuncion* f=(struct DefinicionFuncion*)n; {_PH}cp(m,f->nombre);
-        {{ char* _p=m; while(*_p){{ if(*_p=='.') *_p='_'; _p++; }} }}
-        if(strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0||strcmp(m,"leer_linea")==0||strcmp(m,"abrir")==0||strcmp(m,"leer")==0||strcmp(m,"cerrar")==0||strcmp(m,"crear_tensor")==0||strcmp(m,"suma_tensor")==0||strcmp(m,"producto_punto")==0||strcmp(m,"relu")==0||strcmp(m,"reserva")==0||strcmp(m,"libera")==0||strcmp(m,"suma")==0||strcmp(m,"producto")==0||strcmp(m,"math_crear_tensor")==0||strcmp(m,"math_suma_tensor")==0||strcmp(m,"math_producto_punto")==0||strcmp(m,"math_relu")==0||strcmp(m,"mem_reserva")==0||strcmp(m,"mem_libera")==0||strcmp(m,"math_suma")==0||strcmp(m,"math_producto")==0||strcmp(m,"texto_a_entero")==0||strcmp(m,"texto_a_decimal")==0||strcmp(m,"decimal_a_texto")==0) return;
-        char ps[4096]="void"; int pp=0,fi=1; struct ListaParametro* pc=f->parametros;
-        while(pc){{ struct Parametro* p=(struct Parametro*)pc->cabeza; char pn[256]; {_PH}cp(pn,p->nombre); char pt[256]; {_PH}cp(pt,p->tipo_param);
-            if(fi){{ pp=0; fi=0; }}else{{ ps[pp++]=','; ps[pp++]=' '; }}
-            const char* _ct={_PH}mt(pt);
-            char _tb[64]; if(_ct){{ strcpy(_tb,_ct); }}else{{ snprintf(_tb,sizeof(_tb),"struct %s",pt); }} _ct=_tb;
-            int k=0; while(_ct[k]) ps[pp++]=_ct[k++]; ps[pp++]=' '; k=0; while(pn[k]) ps[pp++]=pn[k++];
-            {_PH}decl(pn,_ct); pc=pc->cola;
-        }}
-        ps[pp]=0; char rt[64]; {_PH}cp(rt,f->tipo_retorno);
-        {{
-            const char* _ct={_PH}mt(rt);
-            if(_ct){{ snprintf(b,sizeof(b),"%s %s(%s)",_ct,m,ps); strcpy({_PH}ret_type,_ct); }}
-            else{{ snprintf(b,sizeof(b),"struct %s %s(%s)",rt,m,ps); snprintf({_PH}ret_type,sizeof({_PH}ret_type),"struct %s",rt); }}
-        }}
-        {_PH}emit(b); {_PH}emit("{{"); {_PH}indent++; {_PH}vl(f->cuerpo); {_PH}indent--; {_PH}emit("}}"); return;
-    }}
-    if(strcmp(t,"SentenciaSi")==0){{
-        struct SentenciaSi* s=(struct SentenciaSi*)n; {_PH}ea(s->condicion,b,4096);
-        snprintf(b2,sizeof(b2),"if (%s) {{",b); {_PH}emit(b2); {_PH}indent++; {_PH}vl(s->cuerpo); {_PH}indent--;
-        if(s->cuerpo_sino){{ {_PH}emit("}} else {{"); {_PH}indent++; {_PH}vl(s->cuerpo_sino); {_PH}indent--; }}
-        {_PH}emit("}}"); return;
-    }}
-    if(strcmp(t,"SentenciaMientras")==0){{
-        struct SentenciaMientras* s=(struct SentenciaMientras*)n; {_PH}ea(s->condicion,b,4096);
-        snprintf(b2,sizeof(b2),"while (%s) {{",b); {_PH}emit(b2); {_PH}indent++; {_PH}vl(s->cuerpo); {_PH}indent--; {_PH}emit("}}"); return;
-    }}
-    if(strcmp(t,"AsignacionVariable")==0){{
-        struct AsignacionVariable* a=(struct AsignacionVariable*)n; {_PH}cp(m,a->nombre); {_PH}ea(a->expresion,v,4096);
-        const char* vt={_PH}tex(a->expresion); if(!vt) vt="int";
-        {{ int _ac=1; char* _p=m; while(*_p){{ if(!((*_p>='A'&&*_p<='Z')||(*_p>='0'&&*_p<='9')||*_p=='_')){{ _ac=0; break; }} _p++; }} if(_ac&&m[0]){{ snprintf(b,sizeof(b),"#define %s (%s)",m,v); {_PH}emit(b); return; }} }}
-        if({_PH}find(m)<0){{ {_PH}decl(m,vt); snprintf(b,sizeof(b),"%s %s = %s;",vt,m,v); }}
-        else snprintf(b,sizeof(b),"%s = %s;",m,v);
-        {_PH}emit(b); return;
-    }}
-    if(strcmp(t,"AsignacionCampo")==0){{
-        struct AsignacionCampo* a=(struct AsignacionCampo*)n; {_PH}ea(a->objeto,b,4096); {_PH}cp(m,a->nombre_campo); {_PH}ea(a->expresion,v,4096);
-        const char* _ot={_PH}tex(a->objeto); int _isp=(strlen(_ot)>0&&_ot[strlen(_ot)-1]=='*');
-        snprintf(b2,sizeof(b2),"%s%s%s = %s;",b,_isp?"->":".",m,v); {_PH}emit(b2); return;
-    }}
-    if(strcmp(t,"SentenciaRetornar")==0){{
-        struct SentenciaRetornar* r=(struct SentenciaRetornar*)n;
-        if(r->expr){{ {_PH}ea(r->expr,v,4096);
-            if(strcmp(v,"nulo")==0||strcmp(v,"0")==0||strcmp(v,"NULL")==0){{ if({_PH}ret_type[0]&&strcmp({_PH}ret_type,"void")!=0){{ snprintf(b,sizeof(b),"return (%s){{0}};",{_PH}ret_type); }}else snprintf(b,sizeof(b),"return;"); }}
-            else snprintf(b,sizeof(b),"return %s;",v);
-        }}else snprintf(b,sizeof(b),"return;");
-        {_PH}emit(b); return;
-    }}
-    if(strcmp(t,"SentenciaExpr")==0){{
-        struct SentenciaExpr* e=(struct SentenciaExpr*)n;
-        if(e->expr){{
-            if(strcmp(e->expr->tipo.datos,"LogLlamada")==0){{
-                {_PH}v_log((struct LogLlamada*)e->expr);
-            }}else if(strcmp(e->expr->tipo.datos,"LlamadaFuncion")==0){{
-                struct LlamadaFuncion* _lf=(struct LlamadaFuncion*)e->expr;
-                char _fn[256]; {_PH}cp(_fn,_lf->nombre);
-                if(strcmp(_fn,"asm")==0&&_lf->argumentos){{
-                    char _as[4096];
-                    struct LiteralCadena* _lc=(struct LiteralCadena*)_lf->argumentos->cabeza;
-                    {_PH}cp(_as,_lc->valor);
-                    snprintf(b,sizeof(b),"__asm__(\\"%s\\");",_as);
-                    {_PH}emit(b);
-                }}else{{ {_PH}ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); {_PH}emit(b); }}
-            }}else if(strcmp(e->expr->tipo.datos,"Identificador")==0){{
-                /* Skip orphan identifiers (bare constant keyword etc.) */
-            }}else{{ {_PH}ea(e->expr,v,4096); snprintf(b,sizeof(b),"%s;",v); {_PH}emit(b); }}
-        }}
-        return;
-    }}
-    if(strcmp(t,"LogLlamada")==0){{ {_PH}v_log((struct LogLlamada*)n); return; }}
-    if(strcmp(t,"SentenciaRomper")==0){{ {_PH}emit("break;"); return; }}
-    if(strcmp(t,"SentenciaSiguiente")==0){{ {_PH}emit("continue;"); return; }}
-    if(strcmp(t,"SentenciaLanzar")==0){{ struct SentenciaLanzar* l=(struct SentenciaLanzar*)n; char fn[256]=""; char ab[512]=""; int ha=0; if(strcmp(l->llamada->tipo.datos,"LlamadaFuncion")==0){{ struct LlamadaFuncion* lf=(struct LlamadaFuncion*)l->llamada; {_PH}cp(fn,lf->nombre); if(lf->argumentos){{ {_PH}ea(lf->argumentos->cabeza,ab,512); ha=1; }} }}else{{ {_PH}ea(l->llamada,fn,256); ha=1; }} if(ha){{ snprintf(b,sizeof(b),"synapse_lanzar_hilo((void*(*)(void*))%s,(void*)(intptr_t)(%s));",fn,ab); }}else{{ snprintf(b,sizeof(b),"synapse_lanzar_hilo((void*(*)(void*))%s,NULL);",fn); }} {_PH}emit(b); return; }}
-    if(strcmp(t,"SentenciaRecuperar")==0){{ struct SentenciaRecuperar* r=(struct SentenciaRecuperar*)n; {_PH}ea(r->accion_critica,b,4096); {_PH}ea(r->plan_b,v,4096); {_PH}emit("{{"); {_PH}indent++; snprintf(b2,sizeof(b2),"if(%s!=0){{%s;}}",b,v); {_PH}emit(b2); {_PH}indent--; {_PH}emit("}}"); return; }}
-    if(strcmp(t,"SentenciaEscuchar")==0){{ struct SentenciaEscuchar* e=(struct SentenciaEscuchar*)n; {_PH}ea(e->canal,b,4096); {_PH}ea(e->respuesta,v,4096); snprintf(b2,sizeof(b2),"/* escuchar: %s -> %s */",b,v); {_PH}emit(b2); return; }}
-    if(strcmp(t,"DefinicionEstructura")==0){{ {_PH}vest((struct DefinicionEstructura*)n); return; }}
-    if(strcmp(t,"SentenciaImportar")==0){{ struct SentenciaImportar* i=(struct SentenciaImportar*)n; {_PH}cp(b,i->ruta); snprintf(b2,sizeof(b2),"/* importar %s */",b); {_PH}emit(b2); return; }}
-    if(strcmp(t,"ImportarC")==0){{ struct ImportarC* x=(struct ImportarC*)n; {_PH}cp(m,x->ruta); if(x->es_sistema){{ snprintf(b,sizeof(b),"#include <%s>",m); }}else{{ snprintf(b,sizeof(b),"#include \\"%s\\"",m); }} {_PH}emit(b); return; }}
-    if(strcmp(t,"DeclaracionExterna")==0){{
-        struct DeclaracionExterna* x=(struct DeclaracionExterna*)n;
-        char _enm[256]; {_PH}cp(_enm,x->nombre);
-        strcpy({_PH}extern_names[{_PH}nextern],_enm);
-        char _ebuf[256]=""; int _ep=0;
-        struct ListaParametro* _epc=(struct ListaParametro*)x->parametros;
-        while(_epc){{
-            struct Parametro* p=(struct Parametro*)_epc->cabeza;
-            if(_ep>0){{ _ebuf[_ep++]=','; }}
-            char _ept[256]; {_PH}cp(_ept,p->tipo_param);
-            int _ek=0; while(_ept[_ek]) _ebuf[_ep++]=_ept[_ek++];
-            _epc=_epc->cola;
-        }}
-        _ebuf[_ep]=0;
-        strcpy({_PH}extern_params[{_PH}nextern],_ebuf);
-        {_PH}nextern++;
-        /* C declaration comes from #include via importar_c */
-        return;
-    }}
-    if(strcmp(t,"BloqueInseguro")==0){{ struct BloqueInseguro* x=(struct BloqueInseguro*)n; {_PH}emit("{{ /* unsafe */"); {_PH}indent++; {_PH}vl(x->cuerpo); {_PH}indent--; {_PH}emit("}}"); return; }}
-    {_PH}emit("/* ??? */");
-}}
-
-int generar(struct Programa programa, CadenaSegura ruta) {{
-    char sal[1024]; int sl=ruta.longitud;
-    if(sl>4&&ruta.datos[sl-4]=='.'&&(ruta.datos[sl-3]=='s'||ruta.datos[sl-3]=='S')&&(ruta.datos[sl-2]=='y'||ruta.datos[sl-2]=='Y')&&(ruta.datos[sl-1]=='n'||ruta.datos[sl-1]=='N')){{
-        memcpy(sal,ruta.datos,sl-4); sal[sl-4]='.'; sal[sl-3]='c'; sal[sl-2]=0;
-    }}else snprintf(sal,sizeof(sal),"%.*s.c",ruta.longitud,ruta.datos);
-    {_PH}out=fopen(sal,"w"); if(!{_PH}out){{ fprintf(stderr,"Error: no se puede crear %s\\n",sal); return 1; }}
-    fprintf({_PH}out,"// Generado por Synapse (auto-hospedado)\\n");
-    fprintf({_PH}out,"#include <stdio.h>\\n#include <stdlib.h>\\n#include <stdint.h>\\n#include <string.h>\\n#include <pthread.h>\\n");
-    fprintf({_PH}out,"typedef struct {{int longitud;const char* datos;}} CadenaSegura;\\n");
-    fprintf({_PH}out,"typedef struct {{uint32_t filas;uint32_t columnas;float* datos;}} Tensor;\\n");
-    fprintf({_PH}out,"typedef struct {{FILE* stream;int es_valido;int es_virtual;const char* virtual_data;int virtual_len;}} Canal;\\n");
-    fprintf({_PH}out,"#define POOL_BLOQUES 64\\n#define TAMANO_BLOQUE 4096\\n");
-    fprintf({_PH}out,"#define nulo ((void*)0)\\n");
-    fprintf({_PH}out,"// --- Declaraciones extern del runtime precompilado (synapse_rt.o) ---\\n");
-    fprintf({_PH}out,"extern void escribir(CadenaSegura contenido);\\n");
-    fprintf({_PH}out,"extern void escribir_linea(CadenaSegura contenido);\\n");
-    fprintf({_PH}out,"extern CadenaSegura leer_linea(void);\\n");
-    fprintf({_PH}out,"extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);\\n");
-    fprintf({_PH}out,"extern CadenaSegura leer(Canal canal);\\n");
-    fprintf({_PH}out,"extern void cerrar(Canal canal);\\n");
-    fprintf({_PH}out,"extern Tensor crear_tensor(int filas, int columnas);\\n");
-    fprintf({_PH}out,"extern Tensor suma_tensor(Tensor a, Tensor b);\\n");
-    fprintf({_PH}out,"extern Tensor producto_punto(Tensor a, Tensor b);\\n");
-    fprintf({_PH}out,"extern Tensor relu(Tensor a);\\n");
-    fprintf({_PH}out,"extern Tensor reserva(int tamano);\\n");
-    fprintf({_PH}out,"extern void libera(Tensor bloque);\\n");
-    fprintf({_PH}out,"extern Tensor suma(Tensor a, Tensor b);\\n");
-    fprintf({_PH}out,"extern Tensor producto(Tensor a, Tensor b);\\n");
-    fprintf({_PH}out,"extern int texto_a_entero(CadenaSegura str);\\n");
-    fprintf({_PH}out,"extern float texto_a_decimal(CadenaSegura str);\\n");
-    fprintf({_PH}out,"extern CadenaSegura decimal_a_texto(float n);\\n");
-    fprintf({_PH}out,"extern CadenaSegura entero_a_texto(int n);\\n");
-    fprintf({_PH}out,"extern int str_eq(CadenaSegura a, CadenaSegura b);\\n");
-    fprintf({_PH}out,"extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);\\n");
-    fprintf({_PH}out,"extern void synapse_esperar_hilos(void);\\n");
-    fprintf({_PH}out,"extern void pool_init(uint32_t total_blocks, uint32_t block_size);\\n");
-    fprintf({_PH}out,"extern void pool_free(void* ptr);\\n");
-    fprintf({_PH}out,"extern void* pool_alloc(size_t size);\\n");
-    fprintf({_PH}out,"int _g_argc;\\nchar** _g_argv;\\nint _argc(){{return _g_argc;}}\\n");
-    fprintf({_PH}out,"CadenaSegura _argv(int i){{if(i<0||i>=_g_argc)return (CadenaSegura){{0,(char*)\\"\\"}};return (CadenaSegura){{.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]}};}}\\n");
-    fprintf({_PH}out,"void salir(int c){{exit(c);}}\\n");
-    fprintf({_PH}out,"CadenaSegura concat(CadenaSegura a,CadenaSegura b){{int _tl=a.longitud+b.longitud;char* _buf=(char*)malloc(_tl+1);memcpy(_buf,a.datos,a.longitud);memcpy(_buf+a.longitud,b.datos,b.longitud);_buf[_tl]=0;CadenaSegura _r={{.longitud=_tl,.datos=_buf}};return _r;}}\\n");
-    // Forward declarations
-    struct ListaNodo* c=programa.sentencias;
-    while(c){{ if(c->cabeza&&strcmp(c->cabeza->tipo.datos,"DefinicionEstructura")==0){{ struct DefinicionEstructura* d=(struct DefinicionEstructura*)c->cabeza; fprintf({_PH}out,"struct %s;\\n",d->nombre.datos); }} c=c->cola; }}
-    // Function prototypes
-    c=programa.sentencias;
-    while(c){{ if(c->cabeza&&strcmp(c->cabeza->tipo.datos,"DefinicionFuncion")==0){{ struct DefinicionFuncion* f=(struct DefinicionFuncion*)c->cabeza; char _fn[256]; {_PH}cp(_fn,f->nombre); {{ char* _p=_fn; while(*_p){{ if(*_p=='.') *_p='_'; _p++; }} }} if(strcmp(_fn,"escribir")==0||strcmp(_fn,"escribir_linea")==0||strcmp(_fn,"leer_linea")==0||strcmp(_fn,"abrir")==0||strcmp(_fn,"leer")==0||strcmp(_fn,"cerrar")==0||strcmp(_fn,"crear_tensor")==0||strcmp(_fn,"suma_tensor")==0||strcmp(_fn,"producto_punto")==0||strcmp(_fn,"relu")==0||strcmp(_fn,"reserva")==0||strcmp(_fn,"libera")==0||strcmp(_fn,"suma")==0||strcmp(_fn,"producto")==0||strcmp(_fn,"math_crear_tensor")==0||strcmp(_fn,"math_suma_tensor")==0||strcmp(_fn,"math_producto_punto")==0||strcmp(_fn,"math_relu")==0||strcmp(_fn,"mem_reserva")==0||strcmp(_fn,"mem_libera")==0||strcmp(_fn,"math_suma")==0||strcmp(_fn,"math_producto")==0||strcmp(_fn,"str_eq")==0||strcmp(_fn,"texto_a_entero")==0||strcmp(_fn,"texto_a_decimal")==0||strcmp(_fn,"decimal_a_texto")==0) {{ c=c->cola; continue; }} char _ps[4096]="void"; int _pp=0,_fi=1; struct ListaParametro* _pc=f->parametros; while(_pc){{ struct Parametro* p=(struct Parametro*)_pc->cabeza; char _pn[256]; {_PH}cp(_pn,p->nombre); char _pt[256]; {_PH}cp(_pt,p->tipo_param); if(_fi){{ _pp=0; _fi=0; }}else{{ _ps[_pp++]=','; _ps[_pp++]=' '; }} const char* _ct={_PH}mt(_pt); char _tb[64]; if(_ct){{ strcpy(_tb,_ct); }}else{{ snprintf(_tb,sizeof(_tb),"struct %s",_pt); }} _ct=_tb; int _k=0; while(_ct[_k]) _ps[_pp++]=_ct[_k++]; _ps[_pp++]=' '; _k=0; while(_pn[_k]) _ps[_pp++]=_pn[_k++]; _pc=_pc->cola; }} _ps[_pp]=0; char _rt[64]; {_PH}cp(_rt,f->tipo_retorno); const char* _rct={_PH}mt(_rt); if(_rct){{ fprintf({_PH}out,"%s %s(%s);\\n",_rct,_fn,_ps); }}else{{ fprintf({_PH}out,"struct %s %s(%s);\\n",_rt,_fn,_ps); }} }} c=c->cola; }}
-    {_PH}indent=0; c=programa.sentencias;
-    while(c){{ {_PH}v(c->cabeza); c=c->cola; }}
-    // main()
-    {_PH}emit("int main(int argc, char** argv) {{");
-    {_PH}indent++;
-    {_PH}emit("int _g_argc=argc;");
-    {_PH}emit("char** _g_argv=argv;");
-    {_PH}emit("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);");
-    {_PH}emit("principal();");
-    {_PH}emit("synapse_esperar_hilos();");
-    {_PH}emit("return 0;");
-    {_PH}indent--;
-    {_PH}emit("}}");
-    fclose({_PH}out);
-    char cmd[2048];
-    char out_exe[1024];
-    int slen = (int)strlen(sal);
-    if (slen > 2 && sal[slen-2] == '.' && sal[slen-1] == 'c') {{
-        memcpy(out_exe, sal, slen - 2);
-        out_exe[slen - 2] = 0;
-        strcat(out_exe, ".exe");
-    }} else {{
-        snprintf(out_exe, sizeof(out_exe), "%s.exe", sal);
-    }}
-    snprintf(cmd, sizeof(cmd), "gcc -O2 -fno-ident -Wl,--no-insert-timestamp \\"%s\\" synapse_rt.o synapse_rt_memory.o synapse_rt_concurrency.o -o \\"%s\\" -lpthread -lm -lws2_32", sal, out_exe);
-    int rc = system(cmd);
-    if (rc != 0) {{
-        fprintf(stderr, "[LINKER ERROR] gcc fallo con codigo %d\\n", rc);
-        exit(1);
-    }}
-    fprintf(stderr, "OK: %s\\n", out_exe);
-    return 0;
-}}
-"""
-        H = H.replace(_PH, '_G_')
-        for ln in H.strip().split('\n'):
-            ctx.lineas.append(ln)
 

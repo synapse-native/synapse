@@ -1,0 +1,26 @@
+#lang: es
+
+// D-2 (FASE A/A5): instanciación de ADT genéricos T/E (monomorfización, Opción A).
+// `tipo Resultado<T, E> = ok(T) | err(E)` (Manual 2 §4.2 L279-280) instanciado
+// como `Resultado<entero,texto>`: el codegen emite un struct C especializado
+// con campos TIPADOS (int64_t ok; CadenaSegura err;) — cero void*.
+// El '?' (D-6) y los constructores ok/err resuelven contra el struct instanciado.
+
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion dividir(a: entero, b: entero) -> Resultado<entero,texto>:
+    si b == 0:
+        retornar err("division por cero")
+    retornar ok(a / b)
+
+funcion calcular(a: entero, b: entero) -> Resultado<entero,texto>:
+    r = dividir(a, b)?
+    escribir_linea(entero_a_texto(r))
+    retornar ok(r)
+
+funcion principal() -> nulo:
+    p = calcular(10, 2)
+    escribir_linea(entero_a_texto(p.tag))
+    q = calcular(1, 0)
+    escribir_linea(entero_a_texto(q.tag))
+    retornar

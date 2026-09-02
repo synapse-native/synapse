@@ -1,3 +1,5 @@
+// cumple Manual 1 1: infraestructura del compilador Synapse
+// cumple Manual 8 4: toolchain de construcción
 #lang: es
 // nucleo/cache.syn — Sistema de Caché de Compilación Incremental
 // Implementa caché SHA-256 para acelerar compilaciones repetidas
@@ -119,7 +121,7 @@ funcion calcular_clave(archivo: texto, deps: texto, flags: texto) -> texto:
     // Lee el contenido del archivo
     contenido = leer_archivo(archivo)
     hash_fuente = sha256_texto(contenido)
-    
+
     // Combina: hash_fuente + deps + flags + version
     version = "__VERSION__"
     combinado = concat(concat(concat(concat(hash_fuente, deps), flags), version), "")
@@ -128,14 +130,14 @@ funcion calcular_clave(archivo: texto, deps: texto, flags: texto) -> texto:
 funcion cache_buscar(clave: texto) -> CacheEntry:
     entry = CacheEntry()
     entry.clave = ""
-    
+
     meta_path = _meta_path(clave)
     si no existe_archivo(meta_path):
         retornar entry
-    
+
     meta_toml = leer_archivo(meta_path)
     doc = desde_texto(meta_toml)
-    
+
     entry.clave = obtener_campo(doc, "clave").valor_str
     entry.archivo_fuente = obtener_campo(doc, "archivo_fuente").valor_str
     entry.archivo_objeto = obtener_campo(doc, "archivo_objeto").valor_str
@@ -158,11 +160,11 @@ funcion cache_guardar(entry: CacheEntry) -> nulo:
     meta.version_compilador = entry.version_compilador
     meta.timestamp = entry.timestamp
     meta.tamano_bytes = entry.tamano_bytes
-    
+
     // Serializa a TOML
     doc = toml_desde_entrada(meta)
     escribir_archivo(_meta_path(entry.clave), a_texto(doc))
-    
+
     // Actualiza índice
     _actualizar_indice(entry)
 
@@ -171,7 +173,7 @@ funcion _actualizar_indice(entry: CacheEntry) -> nulo:
     doc = desde_texto("")
     si existe_archivo(index_path):
         doc = desde_texto(leer_archivo(index_path))
-    
+
     // Agrega/actualiza entrada en el índice (Simplificación: el índice es un array TOML)
     doc = actualizar_indice(doc, entry)
     escribir_archivo(index_path, a_texto(doc))
@@ -196,7 +198,7 @@ funcion cache_stats() -> CacheStats:
     stats.tamano_total_bytes = 0
     stats.hits_ultima_ejecucion = 0
     stats.misses_ultima_ejecucion = 0
-    
+
     // Leer stats persistidos si existen
     stats_path = concat(_cache_dir(), "stats.toml")
     si existe_archivo(stats_path):
@@ -207,7 +209,7 @@ funcion cache_stats() -> CacheStats:
         stats.tamano_total_bytes = obtener_campo(doc, "tamano_total_bytes").valor_ent
         stats.hits_ultima_ejecucion = obtener_campo(doc, "hits_ultima_ejecucion").valor_ent
         stats.misses_ultima_ejecucion = obtener_campo(doc, "misses_ultima_ejecucion").valor_ent
-    
+
     retornar stats
 
 funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
@@ -220,7 +222,7 @@ funcion cache_actualizar_stats(hit: booleano, tamano: entero) -> nulo:
         stats.misses = stats.misses + 1
         stats.misses_ultima_ejecucion = stats.misses_ultima_ejecucion + 1
     stats.tamano_total_bytes = stats.tamano_total_bytes + tamano
-    
+
     // Persistir
     doc = toml_desde_stats(stats)
     escribir_archivo(concat(_cache_dir(), "stats.toml"), a_texto(doc))
@@ -230,7 +232,7 @@ funcion _resolver_ruta_import(mod_nombre: texto) -> texto:
     // std.* modules
     si empieza_con(mod_nombre, "std."):
         sub = subcadena(mod_nombre, 4, len(mod_nombre) - 4)
-        retornar concat(concat("librerias/std/", sub), ".syn")
+        retornar concat(concat("std/", sub), ".syn")
     // compiler modules
     si empieza_con(mod_nombre, "compiler."):
         sub = subcadena(mod_nombre, 9, len(mod_nombre) - 9)

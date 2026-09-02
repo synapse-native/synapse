@@ -1,0 +1,87 @@
+#lang: es
+// R89 - driver del traductor Syquex -> SemNodo[] para fixture .syq
+// Verifica H-R87-2 (externo estructura/constante STRING) y
+// H-R88-1 (@export lang preservado en payload NODO_EXPORT).
+// (Manual 6 §1.3 L116; Manual 3 §11.1 mapeo a SemNodo; §11.2 metadatos).
+
+funcion principal() -> entero:
+    fuente = "#lang: es\n// R89 - fixture end-to-end: .syq -> SemNodo[] -> backend compartido\nestructura Punto:\n    x: entero\n    yy: entero\n    crear(px: entero):\n        self.x = px\n    metodo desplazar(d: entero):\n        self.x = self.x + d\n\nenumeracion Color:\n    rojo\n    verde\n\n@export(python) funcion visible(v: entero) -> entero:\n    retornar v * 2\n\n@export(typescript) funcion doble(n: entero) -> entero:\n    retornar n * 2\n\nexterno estructura Vec3\nexterno constante SALUDO = \"hola\"\nexterno funcion externa(k: entero) -> entero\n\nfuncion principal() -> entero:\n    let p = Punto()\n    p = p.desplazar(3)\n    let r = visible(21)\n    retornar r"
+
+    prog = sq_programa(fuente)
+    si prog < 0:
+        escribir_linea(concat("PARSE_ERROR=", entero_a_texto(prog)))
+        total = parser_obtener_total()
+        i = 0
+        mientras i < total:
+            si sq_token_tipo(i) == T_ERROR:
+                escribir_linea(concat(concat(concat("ERR_TOK:", entero_a_texto(i)), ":"), sq_token_lexema(i)))
+            i = i + 1
+        escribir_linea("FIN_DUMP")
+        retornar 1
+    r = traducir_programa(prog)
+    si r < 0:
+        escribir_linea(concat("TRAD_ERROR=", entero_a_texto(r)))
+        escribir_linea("FIN_DUMP")
+        retornar 2
+    total = trad_obtener_total()
+    escribir_linea(concat("TOTAL=", entero_a_texto(total)))
+    escribir_linea(concat("ROOT=", entero_a_texto(r)))
+    i = 0
+    mientras i < total:
+        t = trad_nodo_tipo(i)
+        lin = trad_nodo_linea(i)
+        col = trad_nodo_columna(i)
+        txt = trad_texto(i)
+        txt_out = txt
+        si txt == "":
+            txt_out = "-"
+        p1 = concat("TR:", entero_a_texto(i))
+        p2 = concat(p1, concat(":", entero_a_texto(t)))
+        p3 = concat(p2, concat(":", entero_a_texto(lin)))
+        p4 = concat(p3, concat(":", entero_a_texto(col)))
+        p5 = concat(p4, concat(":", txt_out))
+        escribir_linea(p5)
+        i = i + 1
+    // Dump de funciones con params
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_FUNCION:
+            fn_txt = trad_texto(i)
+            params_txt = ""
+            p = trad_hizq(i)
+            primero = 1
+            mientras p > 0:
+                pt = trad_texto(p)
+                si primero == 0:
+                    params_txt = concat(params_txt, "|")
+                params_txt = concat(params_txt, pt)
+                primero = 0
+                p = trad_herm(p)
+            escribir_linea(concat(concat(concat("FN:", fn_txt), ":params="), params_txt))
+        i = i + 1
+    // Dump de estructuras con campos
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_ESTRUCTURA:
+            en = trad_texto(i)
+            campos = ""
+            f = trad_hizq(i)
+            primero = 1
+            mientras f > 0:
+                si primero == 0:
+                    campos = concat(campos, "|")
+                campos = concat(campos, trad_texto(f))
+                primero = 0
+                f = trad_herm(f)
+            escribir_linea(concat(concat(concat(concat("EST:", en), ":"), entero_a_texto(trad_nodo_linea(i))), concat(":", campos)))
+        i = i + 1
+    // Conteo de BLOQUE_SQ residual
+    cnt_bsq = 0
+    i = 0
+    mientras i < total:
+        si trad_nodo_tipo(i) == NODO_BLOQUE_SQ:
+            cnt_bsq = cnt_bsq + 1
+        i = i + 1
+    escribir_linea(concat("BLOQUE_SQ=", entero_a_texto(cnt_bsq)))
+    escribir_linea("FIN_DUMP")
+    retornar 0

@@ -1,0 +1,11 @@
+#lang: es
+// tests/fixtures/test_h12_oraculo_modelo.syq
+// H12: Verificar que std.oraculo y std.modelo no tienen símbolos duplicados
+// Ambos módulos definen generar_texto — std.oraculo debe importar de std.modelo
+
+importar std.modelo
+importar std.oraculo
+
+funcion main() -> entero:
+    escribir_linea("H12: std.oraculo + std.modelo sin duplicados")
+    retornar 0

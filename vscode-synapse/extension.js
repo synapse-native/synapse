@@ -455,7 +455,89 @@ function _registrar_comandos_ia(contexto, cliente) {
         }
     );
 
-    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete);
+    // synapse.aiTranspile — Transpilar código Python a Synapse
+    const comandoTranspile = vscode.commands.registerCommand(
+        'synapse.aiTranspile',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let codigo = editor.document.getText(seleccion);
+            if (!codigo) {
+                vscode.window.showWarningMessage('Selecciona código Python a transpilar');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiTranspile', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    code: codigo,
+                    from: 'python',
+                    to: 'synapse',
+                });
+
+                if (resultado?.ai_available && resultado?.code) {
+                    editor.edit((editBuilder) => {
+                        const posicion = editor.selection.active;
+                        editBuilder.replace(seleccion, resultado.code);
+                    });
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible para transpilación'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error transpilación: ${err.message}`);
+            }
+        }
+    );
+
+    // synapse.aiBindings — Generar bindings Synapse desde cabecera C
+    const comandoBindings = vscode.commands.registerCommand(
+        'synapse.aiBindings',
+        async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showWarningMessage('No hay editor activo');
+                return;
+            }
+
+            const seleccion = editor.selection;
+            let header = editor.document.getText(seleccion);
+            if (!header) {
+                vscode.window.showWarningMessage('Selecciona una cabecera C o escribe el contenido');
+                return;
+            }
+
+            try {
+                const resultado = await cliente.sendRequest('synapse/aiBindings', {
+                    textDocument: { uri: editor.document.uri.toString() },
+                    header: header,
+                });
+
+                if (resultado?.ai_available && resultado?.bindings) {
+                    const panel = vscode.window.createOutputChannel('Synapse Bindings');
+                    panel.clear();
+                    panel.appendLine('=== Bindings Synapse generados ===');
+                    panel.appendLine('');
+                    panel.appendLine(resultado.bindings);
+                    panel.show();
+                } else {
+                    vscode.window.showWarningMessage(
+                        resultado?.message || 'IA local no disponible para bindings'
+                    );
+                }
+            } catch (err) {
+                vscode.window.showErrorMessage(`Error bindings: ${err.message}`);
+            }
+        }
+    );
+
+    contexto.subscriptions.push(comandoStatus, comandoExplain, comandoComplete, comandoTranspile, comandoBindings);
 }
 
 // ---------------------------------------------------------------------------

@@ -5,168 +5,276 @@ from exceptions import SynapseError
 
 DICCIONARIOS: Dict[str, Dict[str, TokenID]] = {
     'es': {
-        'si': TokenID.IF,
-        'sino': TokenID.ELSE,
-        'funcion': TokenID.FUNCTION,
-        'retornar': TokenID.RETURN,
-        'lanzar': TokenID.SPAWN,
-        'recuperar': TokenID.RECOVER,
-        'escuchar': TokenID.LISTEN,
-        'mientras': TokenID.WHILE,
-        'romper': TokenID.BREAK,
-        'siguiente': TokenID.CONTINUE,
-        'importar': TokenID.IMPORT,
-        'estructura': TokenID.STRUCT,
+        'si': TokenID.SI,
+        'sino': TokenID.SINO,
+        'funcion': TokenID.FUNCION,
+        'retornar': TokenID.RETORNAR,
+        'lanzar': TokenID.LANZAR,
+        'recuperar': TokenID.RECUPERAR,
+        'escuchar': TokenID.ESCUCHAR,
+        'mientras': TokenID.MIENTRAS,
+        'romper': TokenID.ROMPER,
+        'siguiente': TokenID.SIGUIENTE,
+        'importar': TokenID.IMPORTAR,
+        'estructura': TokenID.ESTRUCTURA,
         'y': TokenID.AND,
         'o': TokenID.OR,
         'no': TokenID.NOT,
-        'verdadero': TokenID.TRUE,
-        'falso': TokenID.FALSE,
+        'verdadero': TokenID.VERDADERO,
+        'falso': TokenID.FALSO,
         'inseguro': TokenID.INSEGURO,
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
-        'coincidir': TokenID.MATCH,
+        'coincidir': TokenID.COINCIDIR,
         'requiere': TokenID.REQUIERE,
         'garantiza': TokenID.GARANTIZA,
         'canal': TokenID.CANAL,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
         'para': TokenID.PARA,
+        # AUDITORIA F1 (H22): keywords del Manual 2 §3 conectados al lexer.
+        # F1.2 (D-F1 resuelta): activados tipo/tensor/nulo/ok/err/algun/ninguno
+        # con soporte de parser contextual (declaración `tipo X = ...`, `tensor()`
+        # como expresión, `nulo` literal/tipo, constructores ADT en coincidir).
+        # F1.4 (D-F1 cerrada): rc/modulo activados como keywords CONTEXTUALES —
+        # colisionan con identificadores reales (rc = variable de retorno en
+        # std/cluster.syn:149; modulo = parámetro en nucleo/generator.syn:343),
+        # por lo que el parser los acepta también donde un identificador vale
+        # (ver TOKENS_CONTEXTUALES y parser_base.es_token_identificador).
+        'let': TokenID.LET,
+        'delegar': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'débil': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'modulo': TokenID.MODULO,
+        'tipo': TokenID.TIPO,
+        'tensor': TokenID.TENSOR,
+        'nulo': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'algun': TokenID.ALGUN,
+        'ninguno': TokenID.NINGUNO,
     },
     'en': {
-        'if': TokenID.IF,
-        'else': TokenID.ELSE,
-        'function': TokenID.FUNCTION,
-        'return': TokenID.RETURN,
-        'spawn': TokenID.SPAWN,
-        'recover': TokenID.RECOVER,
-        'listen': TokenID.LISTEN,
-        'while': TokenID.WHILE,
-        'break': TokenID.BREAK,
-        'continue': TokenID.CONTINUE,
-        'import': TokenID.IMPORT,
-        'struct': TokenID.STRUCT,
+        'if': TokenID.SI,
+        'else': TokenID.SINO,
+        'function': TokenID.FUNCION,
+        'return': TokenID.RETORNAR,
+        'spawn': TokenID.LANZAR,
+        'recover': TokenID.RECUPERAR,
+        'listen': TokenID.ESCUCHAR,
+        'while': TokenID.MIENTRAS,
+        'break': TokenID.ROMPER,
+        'continue': TokenID.SIGUIENTE,
+        'import': TokenID.IMPORTAR,
+        'struct': TokenID.ESTRUCTURA,
         'and': TokenID.AND,
         'or': TokenID.OR,
         'not': TokenID.NOT,
-        'true': TokenID.TRUE,
-        'false': TokenID.FALSE,
+        'true': TokenID.VERDADERO,
+        'false': TokenID.FALSO,
         'unsafe': TokenID.INSEGURO,
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
-        'match': TokenID.MATCH,
+        'match': TokenID.COINCIDIR,
         'asm': TokenID.ASM,
         'constant': TokenID.CONSTANTE,
         'for': TokenID.PARA,
+        'let': TokenID.LET,
+        'delegate': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'weak': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
+        'type': TokenID.TIPO,
+        'tensor': TokenID.TENSOR,
+        'null': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'some': TokenID.ALGUN,
+        'none': TokenID.NINGUNO,
     },
     'fr': {
-        'si': TokenID.IF,
-        'sinon': TokenID.ELSE,
-        'fonction': TokenID.FUNCTION,
-        'retourner': TokenID.RETURN,
-        'lancer': TokenID.SPAWN,
-        'recuperer': TokenID.RECOVER,
-        'ecouter': TokenID.LISTEN,
-        'tantque': TokenID.WHILE,
-        'rompre': TokenID.BREAK,
-        'continuer': TokenID.CONTINUE,
-        'importer': TokenID.IMPORT,
-        'structure': TokenID.STRUCT,
+        'si': TokenID.SI,
+        'sinon': TokenID.SINO,
+        'fonction': TokenID.FUNCION,
+        'retourner': TokenID.RETORNAR,
+        'lancer': TokenID.LANZAR,
+        'recuperer': TokenID.RECUPERAR,
+        'ecouter': TokenID.ESCUCHAR,
+        'tantque': TokenID.MIENTRAS,
+        'rompre': TokenID.ROMPER,
+        'continuer': TokenID.SIGUIENTE,
+        'importer': TokenID.IMPORTAR,
+        'structure': TokenID.ESTRUCTURA,
         'et': TokenID.AND,
         'ou': TokenID.OR,
         'non': TokenID.NOT,
-        'vrai': TokenID.TRUE,
-        'faux': TokenID.FALSE,
+        'vrai': TokenID.VERDADERO,
+        'faux': TokenID.FALSO,
         'dangereux': TokenID.INSEGURO,
         'importer_c': TokenID.IMPORTAR_C,
         'externe': TokenID.EXTERNO,
-        'correspondre': TokenID.MATCH,
+        'correspondre': TokenID.COINCIDIR,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
         'pour': TokenID.PARA,
+        'let': TokenID.LET,
+        'déléguer': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'faible': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
+        'type': TokenID.TIPO,
+        'tenseur': TokenID.TENSOR,
+        'nul': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'some': TokenID.ALGUN,
+        'aucun': TokenID.NINGUNO,
     },
     'pt': {
-        'se': TokenID.IF,
-        'senao': TokenID.ELSE,
-        'funcao': TokenID.FUNCTION,
-        'retornar': TokenID.RETURN,
-        'lancar': TokenID.SPAWN,
-        'recuperar': TokenID.RECOVER,
-        'escutar': TokenID.LISTEN,
-        'enquanto': TokenID.WHILE,
-        'parar': TokenID.BREAK,
-        'continuar': TokenID.CONTINUE,
-        'importar': TokenID.IMPORT,
-        'estrutura': TokenID.STRUCT,
+        'se': TokenID.SI,
+        'senao': TokenID.SINO,
+        'funcao': TokenID.FUNCION,
+        'retornar': TokenID.RETORNAR,
+        'lancar': TokenID.LANZAR,
+        'recuperar': TokenID.RECUPERAR,
+        'escutar': TokenID.ESCUCHAR,
+        'enquanto': TokenID.MIENTRAS,
+        'parar': TokenID.ROMPER,
+        'continuar': TokenID.SIGUIENTE,
+        'importar': TokenID.IMPORTAR,
+        'estrutura': TokenID.ESTRUCTURA,
         'e': TokenID.AND,
         'ou': TokenID.OR,
         'nao': TokenID.NOT,
-        'verdadeiro': TokenID.TRUE,
-        'falso': TokenID.FALSE,
+        'verdadeiro': TokenID.VERDADERO,
+        'falso': TokenID.FALSO,
         'inseguro': TokenID.INSEGURO,
         'importar_c': TokenID.IMPORTAR_C,
         'externo': TokenID.EXTERNO,
-        'coincidir': TokenID.MATCH,
+        'coincidir': TokenID.COINCIDIR,
         'asm': TokenID.ASM,
         'constante': TokenID.CONSTANTE,
         'fuer': TokenID.PARA,
+        'let': TokenID.LET,
+        'delegar': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'fraco': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'modulo': TokenID.MODULO,
+        'tipo': TokenID.TIPO,
+        'tensor': TokenID.TENSOR,
+        'nulo': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'algum': TokenID.ALGUN,
+        'nenhum': TokenID.NINGUNO,
     },
     'de': {
-        'wenn': TokenID.IF,
-        'sonst': TokenID.ELSE,
-        'funktion': TokenID.FUNCTION,
-        'rueckgabe': TokenID.RETURN,
-        'starten': TokenID.SPAWN,
-        'wiederherstellen': TokenID.RECOVER,
-        'hoeren': TokenID.LISTEN,
-        'waehrend': TokenID.WHILE,
-        'abbrechen': TokenID.BREAK,
-        'fortsetzen': TokenID.CONTINUE,
-        'importieren': TokenID.IMPORT,
-        'struktur': TokenID.STRUCT,
+        'wenn': TokenID.SI,
+        'sonst': TokenID.SINO,
+        'funktion': TokenID.FUNCION,
+        'rueckgabe': TokenID.RETORNAR,
+        'starten': TokenID.LANZAR,
+        'wiederherstellen': TokenID.RECUPERAR,
+        'hoeren': TokenID.ESCUCHAR,
+        'waehrend': TokenID.MIENTRAS,
+        'abbrechen': TokenID.ROMPER,
+        'fortsetzen': TokenID.SIGUIENTE,
+        'importieren': TokenID.IMPORTAR,
+        'struktur': TokenID.ESTRUCTURA,
         'und': TokenID.AND,
         'oder': TokenID.OR,
         'nicht': TokenID.NOT,
-        'wahr': TokenID.TRUE,
-        'falsch': TokenID.FALSE,
+        'wahr': TokenID.VERDADERO,
+        'falsch': TokenID.FALSO,
         'unsicher': TokenID.INSEGURO,
         'import_c': TokenID.IMPORTAR_C,
         'extern': TokenID.EXTERNO,
-        'entsprechen': TokenID.MATCH,
+        'entsprechen': TokenID.COINCIDIR,
         'asm': TokenID.ASM,
         'konstante': TokenID.CONSTANTE,
+        # de/it no están en la tabla del Manual 2 §3 (solo es/en/fr/pt):
+        # fallback EN documentado.
+        'let': TokenID.LET,
+        'delegate': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'weak': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
+        'type': TokenID.TIPO,
+        'tensor': TokenID.TENSOR,
+        'null': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'some': TokenID.ALGUN,
+        'none': TokenID.NINGUNO,
     },
     'it': {
-        'se': TokenID.IF,
-        'altrimenti': TokenID.ELSE,
-        'funzione': TokenID.FUNCTION,
-        'restituisci': TokenID.RETURN,
-        'lancia': TokenID.SPAWN,
-        'recupera': TokenID.RECOVER,
-        'ascolta': TokenID.LISTEN,
-        'mentre': TokenID.WHILE,
-        'interrompi': TokenID.BREAK,
-        'continua': TokenID.CONTINUE,
-        'importa': TokenID.IMPORT,
-        'struttura': TokenID.STRUCT,
+        'se': TokenID.SI,
+        'altrimenti': TokenID.SINO,
+        'funzione': TokenID.FUNCION,
+        'restituisci': TokenID.RETORNAR,
+        'lancia': TokenID.LANZAR,
+        'recupera': TokenID.RECUPERAR,
+        'ascolta': TokenID.ESCUCHAR,
+        'mentre': TokenID.MIENTRAS,
+        'interrompi': TokenID.ROMPER,
+        'continua': TokenID.SIGUIENTE,
+        'importa': TokenID.IMPORTAR,
+        'struttura': TokenID.ESTRUCTURA,
         'e': TokenID.AND,
         'o': TokenID.OR,
         'non': TokenID.NOT,
-        'vero': TokenID.TRUE,
-        'falso': TokenID.FALSE,
+        'vero': TokenID.VERDADERO,
+        'falso': TokenID.FALSO,
         'non_sicuro': TokenID.INSEGURO,
         'importa_c': TokenID.IMPORTAR_C,
         'esterno': TokenID.EXTERNO,
-        'corrispondere': TokenID.MATCH,
+        'corrispondere': TokenID.COINCIDIR,
         'asm': TokenID.ASM,
         'costante': TokenID.CONSTANTE,
         'per': TokenID.PARA,
+        'let': TokenID.LET,
+        'delegate': TokenID.DELEGAR,
+        'arc': TokenID.ARC,
+        'weak': TokenID.DEBIL,
+        '@export': TokenID.EXPORT,
+        'rc': TokenID.RC,
+        'module': TokenID.MODULO,
+        'type': TokenID.TIPO,
+        'tensor': TokenID.TENSOR,
+        'null': TokenID.NULO,
+        'ok': TokenID.OK,
+        'err': TokenID.ERR,
+        'some': TokenID.ALGUN,
+        'none': TokenID.NINGUNO,
     },
 }
 
 DICCIONARIOS_INVERSO: Dict[str, Dict[TokenID, str]] = {}
 for _idioma, _mapa in DICCIONARIOS.items():
     DICCIONARIOS_INVERSO[_idioma] = {v: k for k, v in _mapa.items()}
+
+
+# AUDITORIA F1.2 (D-F1) + F1.4: keywords CONTEXTUALES del Manual 2 §3. Se
+# tokenizan como su TokenID (activación completa del lexer), pero el parser los
+# acepta también donde un identificador es válido (campo x.tipo, variable tipo,
+# parámetro tensor, patrón ok(...), tipo nulo/tensor, variable rc, parámetro
+# modulo). Para eso el lexer conserva el LEXEMA en Token.valor de estos tokens
+# (los demás keywords mantienen valor=None como antes).
+TOKENS_CONTEXTUALES: frozenset = frozenset({
+    TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
+    TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+    TokenID.ARC, TokenID.DEBIL, TokenID.RC, TokenID.MODULO,
+})
 
 
 OPERADORES_BINARIOS: dict[TokenID, str] = {
@@ -180,7 +288,7 @@ OPERADORES_BINARIOS: dict[TokenID, str] = {
     TokenID.MINUS: '-',
     TokenID.STAR: '*',
     TokenID.SLASH: '/',
-    TokenID.MODULO: '%',
+    TokenID.MOD: '%',
     TokenID.AND: '&&',
     TokenID.OR: '||',
 }
@@ -193,7 +301,7 @@ TOKEN_UNICARACTER: dict[str, TokenID] = {
     '-': TokenID.MINUS,
     '*': TokenID.STAR,
     '/': TokenID.SLASH,
-    '%': TokenID.MODULO,
+    '%': TokenID.MOD,
     '(': TokenID.LPAREN,
     ')': TokenID.RPAREN,
     ':': TokenID.COLON,
@@ -204,6 +312,8 @@ TOKEN_UNICARACTER: dict[str, TokenID] = {
     '!': TokenID.NOT,
     '[': TokenID.LBRACKET,
     ']': TokenID.RBRACKET,
+    '|': TokenID.PIPE,  # Manual 2 §2: separador de constructores en declaracion_tipo
+    '?': TokenID.INTERROGACION,  # D-6: operador '?' postfijo (Manual 3 §7 L331-342)
 }
 
 TOKEN_BICARACTER: dict[str, TokenID] = {
@@ -222,6 +332,9 @@ class Lexer:
                  idioma: Optional[str] = None):
         self.fuente = fuente
         self.lineas = fuente.split('\n')
+        # Limpiar BOM UTF-8 si está presente (Manual 1 §4)
+        if self.lineas and self.lineas[0].startswith('\ufeff'):
+            self.lineas[0] = self.lineas[0].lstrip('\ufeff')
         self.tokens: List[Token] = []
         self.linea_actual = 0
         self.pila_indent = [0]
@@ -236,10 +349,69 @@ class Lexer:
             self.pila_indent.pop()
             self.tokens.append(Token(TokenID.DEDENT, linea=self.linea_actual, columna=0))
         self.tokens.append(Token(TokenID.EOF, linea=self.linea_actual, columna=0))
+        self._validar_cuerpos()
         return self.tokens
 
+    def _validar_cuerpos(self):
+        """Valida que 'funcion' tenga un bloque indentado después del ':'
+        (Manual 2 §2.1). Solo valida 'funcion' porque si/mientras pueden
+        aparecer en contextos de tokenización parcial.
+        Excluye 'externo funcion' (declaraciones externas no tienen cuerpo)."""
+        for i, tok in enumerate(self.tokens):
+            if tok.tipo == TokenID.FUNCION:
+                # Verificar que no es 'externo funcion'
+                if i > 0 and self.tokens[i - 1].tipo == TokenID.EXTERNO:
+                    continue
+                # Buscar el ':' que está al FINAL de la línea (antes de NEWLINE)
+                # No confundir con ':' dentro de parámetros (x: tipo)
+                ultimo_colon_idx = None
+                for j in range(i + 1, min(i + 30, len(self.tokens))):
+                    if self.tokens[j].tipo == TokenID.NEWLINE:
+                        break
+                    if self.tokens[j].tipo == TokenID.COLON:
+                        # Verificar que este ':' es el último token antes de NEWLINE
+                        # (no uno dentro de parámetros)
+                        ultimo_colon_idx = j
+                if ultimo_colon_idx is not None:
+                    # Verificar que la firma es completa: debe tener LPAREN + RPAREN
+                    # antes del ':' (para no atrapar firmas incompletas como 'funcion f( -> nulo:')
+                    tiene_lparen = False
+                    tiene_rparen = False
+                    for k in range(i, ultimo_colon_idx):
+                        if self.tokens[k].tipo == TokenID.LPAREN:
+                            tiene_lparen = True
+                        if self.tokens[k].tipo == TokenID.RPAREN:
+                            tiene_rparen = True
+                    if not (tiene_lparen and tiene_rparen):
+                        continue  # Firma incompleta, dejar que el parser la maneje
+                    # Verificar que después del ':' solo queda NEWLINE/EOF/DEDENT
+                    tiene_token_despues = False
+                    for k in range(ultimo_colon_idx + 1, len(self.tokens)):
+                        if self.tokens[k].tipo == TokenID.NEWLINE:
+                            break
+                        if self.tokens[k].tipo in (TokenID.IDENTIFIER, TokenID.LPAREN,
+                                                   TokenID.RPAREN, TokenID.COLON,
+                                                   TokenID.NUMBER, TokenID.STRING):
+                            tiene_token_despues = True
+                            break
+                    if tiene_token_despues:
+                        continue  # ':' es de parámetros, no de cabecera
+                    # Verificar que hay INDENT después del ':'
+                    tiene_indent = False
+                    for k in range(ultimo_colon_idx + 1, min(ultimo_colon_idx + 5, len(self.tokens))):
+                        if self.tokens[k].tipo == TokenID.INDENT:
+                            tiene_indent = True
+                            break
+                        if self.tokens[k].tipo == TokenID.EOF:
+                            break
+                    if not tiene_indent:
+                        raise SynapseError(
+                            f"Error de sintaxis: 'funcion' sin cuerpo (falta bloque indentado)",
+                            tok.linea, tok.columna
+                        )
+
     def _detectar_idioma(self):
-        if not self.lineas:
+        if not self.fuente.strip():
             raise SynapseError("Error Crítico: Archivo vacío", 1, 0)
         primera = self.lineas[0].strip()
         if not primera.startswith('#lang:'):
@@ -256,7 +428,7 @@ class Lexer:
                     f"Error Crítico: Idioma '{codigo}' no soportado. Soporte: {', '.join(DICCIONARIOS)}", 1, 0
                 )
             self.diccionario = DICCIONARIOS[codigo]
-        
+
         if len(self.lineas) >= 2:
             segunda = self.lineas[1].strip()
             if segunda == '#pragma: no_std':
@@ -295,6 +467,7 @@ class Lexer:
 
     def _tokenizar_linea(self, texto: str):
         i = 0
+        despues_de_punto = False
         while i < len(texto):
             if texto[i] == ' ':
                 i += 1
@@ -322,6 +495,20 @@ class Lexer:
                             valor_chars.append('\\')
                         elif ch == comilla:
                             valor_chars.append(comilla)
+                        elif ch == 'u':
+                            # Escape Unicode: \uXXXX
+                            hex_str = ''
+                            for _ in range(4):
+                                i += 1
+                                if i < len(texto) and texto[i] in '0123456789abcdefABCDEF':
+                                    hex_str += texto[i]
+                                else:
+                                    raise SynapseError(
+                                        "Error Léxico: Escape Unicode incompleto, se esperan 4 dígitos hexadecimales",
+                                        self.linea_actual, inicio
+                                    )
+                            codepoint = int(hex_str, 16)
+                            valor_chars.append(chr(codepoint))
                         else:
                             valor_chars.append('\\' + ch)
                         escapando = False
@@ -354,10 +541,33 @@ class Lexer:
                 i += 2
                 continue
 
-            if texto[i] in TOKEN_UNICARACTER:
-                self.tokens.append(
-                    Token(TOKEN_UNICARACTER[texto[i]], linea=self.linea_actual, columna=i)
+            if texto[i] == '@':
+                # AUDITORIA F1 (H22): @export (T_EXPORT, Manual 2 §3).
+                # '@' seguido de una palabra conocida (p.ej. '@export'); si no
+                # hay palabra o no está en el diccionario -> error (paridad
+                # con el comportamiento previo de '@' como carácter inesperado).
+                inicio = i
+                i += 1
+                while i < len(texto) and (texto[i].isalnum() or texto[i] == '_'):
+                    i += 1
+                palabra = texto[inicio:i]
+                if self.diccionario and palabra in self.diccionario:
+                    self.tokens.append(
+                        Token(self.diccionario[palabra], linea=self.linea_actual, columna=inicio)
+                    )
+                    continue
+                # Reportar el token desconocido completo ('@' suelto o '@foo').
+                raise SynapseError(
+                    f"Error Léxico: Carácter inesperado '{palabra}'", self.linea_actual, inicio
                 )
+
+            if texto[i] in TOKEN_UNICARACTER:
+                tok = Token(TOKEN_UNICARACTER[texto[i]], linea=self.linea_actual, columna=i)
+                self.tokens.append(tok)
+                if tok.tipo == TokenID.DOT:
+                    despues_de_punto = True
+                else:
+                    despues_de_punto = False
                 i += 1
                 continue
 
@@ -369,6 +579,14 @@ class Lexer:
                 if i < len(texto) and texto[i] == '.':
                     es_float = True
                     i += 1
+                    while i < len(texto) and texto[i].isdigit():
+                        i += 1
+                # Notación científica: 1e3, 1.2e-3, 1.5E+2
+                if i < len(texto) and texto[i] in ('e', 'E'):
+                    es_float = True
+                    i += 1
+                    if i < len(texto) and texto[i] in ('+', '-'):
+                        i += 1
                     while i < len(texto) and texto[i].isdigit():
                         i += 1
                 if es_float:
@@ -388,14 +606,38 @@ class Lexer:
                 while i < len(texto) and (texto[i].isalnum() or texto[i] == '_'):
                     i += 1
                 palabra = texto[inicio:i]
-                if self.diccionario and palabra in self.diccionario:
+                # cumple Manual 2 2: después de DOT, tratar como identificador
+                # (no keyword) para soportar acceso a campos como p.y, p.x, etc.
+                # Si la palabra es un keyword seguida de '=' (asignación, no '=='),
+                # también tratarla como identificador (e.g. 'y = 5' donde 'y' es
+                # el keyword AND en español).
+                es_contexto_id = despues_de_punto
+                if not es_contexto_id and self.diccionario and palabra in self.diccionario:
+                    _peek = i
+                    while _peek < len(texto) and texto[_peek] == ' ':
+                        _peek += 1
+                    if _peek < len(texto) and texto[_peek] == '=':
+                        if _peek + 1 < len(texto) and texto[_peek + 1] == '=':
+                            pass  # es comparación ==, mantener keyword
+                        else:
+                            es_contexto_id = True  # asignación: 'y = ...' → identifier
+                if es_contexto_id and self.diccionario and palabra in self.diccionario:
                     self.tokens.append(
-                        Token(self.diccionario[palabra], linea=self.linea_actual, columna=inicio)
+                        Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
                     )
+                    despues_de_punto = False
+                elif self.diccionario and palabra in self.diccionario:
+                    tok_tipo = self.diccionario[palabra]
+                    valor = palabra
+                    self.tokens.append(
+                        Token(tok_tipo, linea=self.linea_actual, columna=inicio, valor=valor)
+                    )
+                    despues_de_punto = False
                 else:
                     self.tokens.append(
                         Token(TokenID.IDENTIFIER, linea=self.linea_actual, columna=inicio, valor=palabra)
                     )
+                    despues_de_punto = False
                 continue
 
             raise SynapseError(

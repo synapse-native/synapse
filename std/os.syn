@@ -1,0 +1,59 @@
+// cumple Manual 4 6: biblioteca estandar
+#lang: es
+// std.os — Información del sistema operativo y hardware
+// Integrante de la Biblioteca Estándar de Synapse.
+// Cumple Manual 9 §5.7: módulos std con FFI sobre runtime C.
+//
+// Uso desde Synapse:
+//   importar std.os
+//   total = memoria_total()
+//   libre = memoria_libre()
+//   nucleos = cpu_nucleos()
+//   arch = arquitectura()
+
+// --- Externos C (detect_hardware.c) ---
+
+externo funcion _syn_memoria_total() -> entero
+externo funcion _syn_memoria_libre() -> entero
+externo funcion _syn_vram_total() -> entero
+externo funcion _syn_cpu_nucleos() -> entero
+externo funcion _syn_arquitectura() -> texto
+
+// --- Funciones públicas con contratos ---
+
+funcion memoria_total() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    retornar _syn_memoria_total()
+
+funcion memoria_libre() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    garantiza:
+        resultado <= memoria_total()
+    retornar _syn_memoria_libre()
+
+funcion vram_total() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    retornar _syn_vram_total()
+
+funcion cpu_nucleos() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado > 0
+    retornar _syn_cpu_nucleos()
+
+funcion arquitectura() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    retornar _syn_arquitectura()

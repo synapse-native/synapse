@@ -174,25 +174,25 @@ static void test_add_pairs(void) {
         lt[i] = (float)i;
         ls[i] = (float)(9 - i);
     }
-    int idx = kd_agregar_par(sesion, lt, ls, 5, 1.0f);
+    int idx = kd_agregar_par_n(sesion, lt, ls, 10, 5, 1.0f);
     test_assert("Par 0 agregado", idx == 0);
     test_assert("1 par en dataset", sesion->dataset.num_pares == 1);
 
     // 4.2 Agregar segundo par
-    idx = kd_agregar_par(sesion, lt, ls, 3, 2.0f);
+    idx = kd_agregar_par_n(sesion, lt, ls, 10, 3, 2.0f);
     test_assert("Par 1 agregado", idx == 1);
     test_assert("2 pares en dataset", sesion->dataset.num_pares == 2);
 
     // 4.3 Agregar con NULL logits
-    idx = kd_agregar_par(sesion, NULL, ls, 0, 1.0f);
+    idx = kd_agregar_par_n(sesion, NULL, ls, 10, 0, 1.0f);
     test_assert("NULL teacher falla", idx == -1);
 
-    // 4.4 Agregar con target inválido
-    idx = kd_agregar_par(sesion, lt, ls, -1, 1.0f);
+    // 4.4 Agregar con target invǭlido
+    idx = kd_agregar_par_n(sesion, lt, ls, 10, -1, 1.0f);
     test_assert("Target -1 falla", idx == -1);
 
-    // 4.5 Agregar a sesión NULL
-    idx = kd_agregar_par(NULL, lt, ls, 0, 1.0f);
+    // 4.5 Agregar a sesi��n NULL
+    idx = kd_agregar_par_n(NULL, lt, ls, 10, 0, 1.0f);
     test_assert("Session NULL falla", idx == -1);
 
     kd_cerrar(sesion);
@@ -218,7 +218,7 @@ static void test_distillation_step(void) {
             lt[j] = (float)(j * (i + 1));
             ls[j] = (float)((vs - j) * (i + 1));
         }
-        kd_agregar_par(sesion, lt, ls, i % vs, 1.0f);
+        kd_agregar_par_n(sesion, lt, ls, vs, i % vs, 1.0f);
     }
     test_assert("5 pares agregados", sesion->dataset.num_pares == 5);
 
@@ -297,7 +297,7 @@ static void test_persistence(void) {
         lt[i] = (float)(i * 10);
         ls[i] = (float)(i);
     }
-    kd_agregar_par(sesion, lt, ls, 3, 1.0f);
+    kd_agregar_par_n(sesion, lt, ls, 8, 3, 1.0f);
     kd_paso_destilacion(sesion);
     test_assert("Perdida actual > 0", sesion->perdida_total_actual > 0.0f);
 
@@ -415,7 +415,11 @@ static void test_reduction_estimation(void) {
 // Sección 10: Evaluación
 // ============================================================
 static void test_evaluation(void) {
-    KDSession* sesion = kd_iniciar(NULL);
+    KDConfig cfg_ev = {0};
+    cfg_ev.vocab_size = 10;
+    cfg_ev.temperature = 2.0f;
+    cfg_ev.alpha = 0.5f;
+    KDSession* sesion = kd_iniciar(&cfg_ev);
     test_assert("Session evaluacion", sesion != NULL);
 
     int vs = 10;

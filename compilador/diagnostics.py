@@ -1,51 +1,54 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 
 import sys
-from enum import Enum, auto
+from enum import Enum
 from typing import Optional, List, Dict
 
 from compilador.ast_nodes import Token, TokenID
 
 
-class ErrorCodes(Enum):
-    ERR_SYNTAX_EXPECTED_TOKEN = auto()
-    ERR_SYNTAX_UNEXPECTED_TOKEN = auto()
-    ERR_SYNTAX_UNEXPECTED_EXPR = auto()
-    ERR_SYNTAX_EXPECTED_NEWLINE = auto()
-    ERR_LANG_MISSING = auto()
-    ERR_LANG_UNSUPPORTED = auto()
-    ERR_INDENT_INVALID = auto()
-    ERR_INDENT_INCONSISTENT = auto()
-    ERR_STRING_UNCLOSED = auto()
-    ERR_LEX_CHAR_UNEXPECTED = auto()
-    ERR_LEX = auto()
-    ERR_FILE_NOT_FOUND = auto()
-    ERR_CANONICAL_FORMAT = auto()
-    ERR_SEM_VAR_NO_DECLARADA = auto()
-    ERR_SEM_TIPO_INCOMPATIBLE = auto()
-    ERR_SEM_TIPO_RETORNO = auto()
-    ERR_SEM_FUNC_NO_DEFINIDA = auto()
-    ERR_SEM_REDEFINICION = auto()
-    ERR_SEM_ARGUMENTOS_INVALIDOS = auto()
-    ERR_SEM_ESTRUCTURA_NO_DEFINIDA = auto()
-    ERR_SEM_CAMPO_NO_EXISTE = auto()
-    ERR_SEM_VAR_MOVIDA = auto()
-    ERR_SEM_ACCESO_MEMORIA_MOVIDA = auto()
-    ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = auto()
-    ERR_MANIFEST_NOT_FOUND = auto()
-    ERR_MODULE_STD_NOT_FOUND = auto()
-    ERR_MODULE_AXON_NOT_FOUND = auto()
-    ERR_DEP_NOT_DECLARED = auto()
-    ERR_LOCK_HASH_MISMATCH = auto()
-    ERR_GIT_FAILURE = auto()
-    ERR_SEM_ASM_FUERA_INSEGURO = auto()
-    ERR_SEM_CONSTANTE_INMUTABLE = auto()
-    ERR_MEM_USE_AFTER_MOVE = auto()
-    ERR_VER_WHILE_INACOTADO = auto()
-    ERR_VER_MUTACION_GLOBAL = auto()
-    ERR_VER_RECURSION_NO_TERMINAL = auto()
-    ERR_VER_CONTRATO_INVALIDO = auto()
-    ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = auto()
-    ERR_MEM_BORROW_CONFLICT = auto()
+class ErrorCodes(str, Enum):
+    ERR_SYNTAX_EXPECTED_TOKEN = 'ERR_SINTAXIS_EXPECTED_TOKEN'
+    ERR_SYNTAX_UNEXPECTED_TOKEN = 'ERR_SINTAXIS_UNEXPECTED_TOKEN'
+    ERR_SYNTAX_UNEXPECTED_EXPR = 'ERR_SINTAXIS_UNEXPECTED_EXPR'
+    ERR_SYNTAX_EXPECTED_NEWLINE = 'ERR_SINTAXIS_EXPECTED_NEWLINE'
+    ERR_LANG_MISSING = 'ERR_LEXICO_LANG_MISSING'
+    ERR_LANG_UNSUPPORTED = 'ERR_LEXICO_LANG_UNSUPPORTED'
+    ERR_INDENT_INVALID = 'ERR_LEXICO_INDENT_INVALID'
+    ERR_INDENT_INCONSISTENT = 'ERR_LEXICO_INDENT_INCONSISTENT'
+    ERR_STRING_UNCLOSED = 'ERR_LEXICO_STRING_UNCLOSED'
+    ERR_LEX_CHAR_UNEXPECTED = 'ERR_LEXICO_CHAR_UNEXPECTED'
+    ERR_LEX = 'ERR_LEXICO'
+    ERR_FILE_NOT_FOUND = 'ERR_IO_FILE_NOT_FOUND'
+    ERR_CANONICAL_FORMAT = 'ERR_CANONICO_FORMAT'
+    ERR_SEM_VAR_NO_DECLARADA = 'ERR_SEM_VAR_NO_DECLARADA'
+    ERR_SEM_TIPO_INCOMPATIBLE = 'ERR_SEM_TIPO_INCOMPATIBLE'
+    ERR_SEM_TIPO_RETORNO = 'ERR_SEM_TIPO_RETORNO'
+    ERR_SEM_FUNC_NO_DEFINIDA = 'ERR_SEM_FUNC_NO_DEFINIDA'
+    ERR_SEM_REDEFINICION = 'ERR_SEM_REDEFINICION'
+    ERR_SEM_ARGUMENTOS_INVALIDOS = 'ERR_SEM_ARGUMENTOS_INVALIDOS'
+    ERR_SEM_ESTRUCTURA_NO_DEFINIDA = 'ERR_SEM_ESTRUCTURA_NO_DEFINIDA'
+    ERR_SEM_CAMPO_NO_EXISTE = 'ERR_SEM_CAMPO_NO_EXISTE'
+    ERR_SEM_VAR_MOVIDA = 'ERR_SEM_VAR_MOVIDA'
+    ERR_SEM_ACCESO_MEMORIA_MOVIDA = 'ERR_SEM_ACCESO_MEMORIA_MOVIDA'
+    ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR = 'ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR'
+    ERR_MANIFEST_NOT_FOUND = 'ERR_IO_MANIFEST_NOT_FOUND'
+    ERR_MODULE_STD_NOT_FOUND = 'ERR_MOD_STD_NOT_FOUND'
+    ERR_MODULE_AXON_NOT_FOUND = 'ERR_MOD_AXON_NOT_FOUND'
+    ERR_DEP_NOT_DECLARED = 'ERR_DEP_NOT_DECLARED'
+    ERR_LOCK_HASH_MISMATCH = 'ERR_LOCK_HASH_MISMATCH'
+    ERR_GIT_FAILURE = 'ERR_GIT_FAILURE'
+    ERR_SEM_ASM_FUERA_INSEGURO = 'ERR_SEM_ASM_FUERA_INSEGURO'
+    ERR_SEM_CONSTANTE_INMUTABLE = 'ERR_SEM_CONSTANTE_INMUTABLE'
+    ERR_MEM_USE_AFTER_MOVE = 'ERR_MEM_USE_AFTER_MOVE'
+    ERR_VER_WHILE_INACOTADO = 'ERR_VER_WHILE_INACOTADO'
+    ERR_VER_MUTACION_GLOBAL = 'ERR_VER_MUTACION_GLOBAL'
+    ERR_VER_RECURSION_NO_TERMINAL = 'ERR_VER_RECURSION_NO_TERMINAL'
+    ERR_VER_CONTRATO_INVALIDO = 'ERR_VER_CONTRATO_INVALIDO'
+    ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 'ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED'
+    ERR_MEM_BORROW_CONFLICT = 'ERR_MEM_BORROW_CONFLICT'
+    ERR_SEM_TYPE_AMBIGUOUS = 'ERR_SEM_TYPE_AMBIGUOUS'  # 2.4: Hindley-Milner (Manual 2 §8.2)
 
 
 ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
@@ -85,6 +88,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() solo puede usarse dentro de un bloque 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "No se puede reasignar la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acceso a variable '{nombre}' despues de move por lanzar/concurrencia (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Expresion con tipo ambiguo: no se puede inferir '{tipo}'",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Bucle 'mientras' sin cota estatica comprobable en modo --safe (E-700). Use 'para' con rango fijo.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Mutacion de variable global '{nombre}' prohibida en modo --safe (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Funcion '{nombre}' recursiva sin convergencia estructural comprobable en modo --safe (E-702)",
@@ -126,6 +130,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() can only be used inside an 'unsafe:' block",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Cannot reassign constant '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Access to variable '{nombre}' after move by lanzar/concurrency (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Ambiguous expression type: cannot infer '{tipo}'",
         ErrorCodes.ERR_VER_WHILE_INACOTADO: "Unbounded 'while' loop without static bound in --safe mode (E-700). Use 'for' with fixed range.",
         ErrorCodes.ERR_VER_MUTACION_GLOBAL: "Global variable '{nombre}' mutation forbidden in --safe mode (E-701)",
         ErrorCodes.ERR_VER_RECURSION_NO_TERMINAL: "Recursive function '{nombre}' without structural convergence in --safe mode (E-702)",
@@ -167,6 +172,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() ne peut etre utilise qu'a l'interieur d'un bloc 'dangereux:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossible de reassigner la constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acces a la variable '{nombre}' apres deplacement par lancer/concurrence (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Type d'expression ambigu: impossible de deduire '{tipo}'",
     },
     'pt': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Esperado {esperado}, encontrado '{encontrado}'",
@@ -204,6 +210,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() so pode ser usado dentro de um bloco 'inseguro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Nao e possivel reatribuir a constante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Acesso a variavel '{nombre}' apos move por lancar/concorrencia (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Tipo de expressao ambiguo: nao e possivel inferir '{tipo}'",
     },
     'de': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Erwartet {esperado}, gefunden '{encontrado}'",
@@ -241,6 +248,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() kann nur innerhalb eines 'unsicher:' Blocks verwendet werden",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Konstante '{nombre}' kann nicht neu zugewiesen werden",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Zugriff auf Variable '{nombre}' nach Verschiebung durch lanzar/Nebenlaufigkeit (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Mehrdeutiger Ausdruckstyp: '{tipo}' kann nicht abgeleitet werden",
     },
     'it': {
         ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN: "Previsto {esperado}, trovato '{encontrado}'",
@@ -278,6 +286,7 @@ ERROR_MESSAGES: Dict[str, Dict[ErrorCodes, str]] = {
         ErrorCodes.ERR_SEM_ASM_FUERA_INSEGURO: "asm() puo essere usato solo all'interno di un blocco 'non_sicuro:'",
         ErrorCodes.ERR_SEM_CONSTANTE_INMUTABLE: "Impossibile riassegnare la costante '{nombre}'",
         ErrorCodes.ERR_MEM_USE_AFTER_MOVE: "Accesso alla variabile '{nombre}' dopo spostamento da lanciare/concorrenza (E-504)",
+        ErrorCodes.ERR_SEM_TYPE_AMBIGUOUS: "Tipo di espressione ambiguo: impossibile dedurre '{tipo}'",
     },
 }
 

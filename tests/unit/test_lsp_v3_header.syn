@@ -1,0 +1,148 @@
+#lang: es
+// tests/unit/test_lsp_v3_header.syn — TDD Tests for LSP header parsing
+// Manual 8 §1.2, §1.7: leer_cabecera, leer_mensaje
+//
+// FLUJO TDD:
+//   1. Tests PRIMERO
+//   2. Verificar que FALLAN
+//   3. Implementar en nucleo/lsp_v3.syn
+//   4. Verificar que PASAN
+
+importar std.io
+importar std.texto
+
+// ============================================================
+// Contadores
+// ============================================================
+
+let tp: entero = 0
+let tf: entero = 0
+
+funcion pasar(nombre: texto) -> nulo:
+    escribir_linea("  PASS: " + nombre)
+    tp = tp + 1
+
+funcion fallar_e(nombre: texto, esp: entero, obs: entero) -> nulo:
+    escribir_linea("  FAIL: " + nombre)
+    escribir_linea("    Esperado: " + entero_a_texto(esp))
+    escribir_linea("    Obtenido: " + entero_a_texto(obs))
+    tf = tf + 1
+
+funcion fallar_t(nombre: texto, esp: texto, obs: texto) -> nulo:
+    escribir_linea("  FAIL: " + nombre)
+    escribir_linea("    Esperado: \"" + esp + "\"")
+    escribir_linea("    Obtenido: \"" + obs + "\"")
+    tf = tf + 1
+
+// ============================================================
+// Funciones de parseo de cabecera (las que vamos a implementar)
+// ============================================================
+
+// Extrae Content-Length de una cabecera HTTP-like
+// Retorna el valor numérico o -1 si no se encuentra
+funcion extraer_content_length(cabecera: texto) -> entero:
+    let idx = strstr_f(cabecera, "Content-Length:")
+    si idx == -1:
+        idx = strstr_f(cabecera, "content-length:")
+    si idx == -1:
+        retornar -1
+    let despues = idx + 15
+    let len_total = strlen_s(cabecera)
+    // Saltar espacios después de ":"
+    mientras despues < len_total:
+        let c = strchr_f(subcadena(cabecera, despues, despues + 1), 32)
+        si c == -1:
+            romper
+        despues = despues + 1
+    // Extraer el número
+    let num_str = subcadena(cabecera, despues, len_total)
+    let fin_num = strstr_f(num_str, "\r")
+    si fin_num == -1:
+        fin_num = strstr_f(num_str, "\n")
+    si fin_num == -1:
+        fin_num = strlen_s(num_str)
+    let num_text = subcadena(num_str, 0, fin_num)
+    retornar atoi_f(num_text)
+
+// ============================================================
+// TEST 1-3: extraer_content_length
+// ============================================================
+
+funcion verificar_cl_normal() -> nulo:
+    let r = extraer_content_length("Content-Length: 50\r\n\r\n")
+    si r == 50:
+        pasar("extraer_content_length('50') == 50")
+    sino:
+        fallar_e("CL normal", 50, r)
+
+funcion verificar_cl_sin_espacios() -> nulo:
+    let r = extraer_content_length("Content-Length:128\r\n\r\n")
+    si r == 128:
+        pasar("extraer_content_length('128') == 128")
+    sino:
+        fallar_e("CL sin espacios", 128, r)
+
+funcion verificar_cl_minusculas() -> nulo:
+    let r = extraer_content_length("content-length: 1024\r\n\r\n")
+    si r == 1024:
+        pasar("extraer_content_length('1024') minusculas == 1024")
+    sino:
+        fallar_e("CL minusculas", 1024, r)
+
+funcion verificar_cl_no_encontrado() -> nulo:
+    let r = extraer_content_length("Accept: text/html\r\n\r\n")
+    si r == -1:
+        pasar("extraer_content_length(no encontrado) == -1")
+    sino:
+        fallar_e("CL no encontrado", -1, r)
+
+// ============================================================
+// TEST 5-6: strstr_f y atoi_f integración
+// ============================================================
+
+funcion verificar_strstr_con_subcadena() -> nulo:
+    let hdr = "Content-Length: 42\r\n"
+    let idx = strstr_f(hdr, "Content-Length:")
+    si idx == 0:
+        pasar("strstr_f en cabecera == 0")
+    sino:
+        fallar_e("strstr cabecera", 0, idx)
+
+funcion verificar_atoi_subcadena() -> nulo:
+    let num = subcadena("42\r\n", 0, 2)
+    let r = atoi_f(num)
+    si r == 42:
+        pasar("atoi_f(subcadena('42')) == 42")
+    sino:
+        fallar_e("atoi subcadena", 42, r)
+
+// ============================================================
+// PRINCIPAL
+// ============================================================
+
+funcion principal() -> entero:
+    escribir_linea("=== test_lsp_v3_header.syn — TDD Tests LSP Header ===")
+    escribir_linea("")
+
+    escribir_linea("--- extraer_content_length ---")
+    verificar_cl_normal()
+    verificar_cl_sin_espacios()
+    verificar_cl_minusculas()
+    verificar_cl_no_encontrado()
+    escribir_linea("")
+
+    escribir_linea("--- integración strstr + atoi ---")
+    verificar_strstr_con_subcadena()
+    verificar_atoi_subcadena()
+    escribir_linea("")
+
+    escribir_linea("=== RESUMEN ===")
+    escribir_linea("Pasados: " + entero_a_texto(tp))
+    escribir_linea("Fallidos: " + entero_a_texto(tf))
+
+    si tf > 0:
+        escribir_linea("RESULTADO: FAIL")
+        retornar 1
+    sino:
+        escribir_linea("RESULTADO: PASS")
+        retornar 0

@@ -3,7 +3,7 @@
 ; Compilar con: iscc instalador_synapse.iss
 
 #define MyAppName "Synapse Language"
-#define MyAppVersion "5.1.1-industrial"
+#define MyAppVersion "8.1.0-industrial"
 #define MyAppPublisher "Synapse Language Team"
 #define MyAppURL "https://github.com/synapse-lang/synapse"
 #define MyAppExeName "synapse.exe"
@@ -18,7 +18,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName=C:\Synapse
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile=LICENSE.txt
+LicenseFile=LICENSE
 OutputDir=dist
 OutputBaseFilename=Synapse-{#MyAppVersion}-Windows-x64
 Compression=lzma/ultra64
@@ -27,7 +27,6 @@ PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64
 ArchitecturesAllowed=x64
 WizardStyle=modern
-SetupIconFile=assets\synapse.ico
 UninstallDisplayIcon={app}\synapse.exe
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 VersionInfoVersion={#MyAppVersion}
@@ -37,6 +36,9 @@ VersionInfoCompany={#MyAppPublisher}
 ; Embudo de decisiones modular - el usuario elige qué instalar
 Name: "core_only"; Description: "Synapse Core (Ligero - Solo Lenguaje, MinGW y VSIX)"; Flags: iscustom
 Name: "opensyn_full"; Description: "OpenSyn (Completo - Lenguaje + IA Local Autónoma)"; Flags: iscustom
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Components]
 ; Componente base obligatorio
@@ -51,20 +53,35 @@ Name: "ai_engine\model"; Description: "Modelo .gguf (Llama-3.2-1B-Instruct-Q4_K_
 
 [Files]
 ; --- CORE (Siempre) ---
+; --- CORE (Siempre) ---
+; ME-R6: dist\bin\synapse.exe se construye en CI (workflow Build synapse.exe) con el
+; link del runtime modular completo (Manual 3 S3.1) ANTES de iscc.
 Source: "dist\bin\synapse.exe"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
-Source: "dist\bin\*.dll"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
-Source: "dist\lib\*"; DestDir: "{app}\lib"; Components: core; Flags: ignoreversion recursesubdirs
-Source: "dist\include\*"; DestDir: "{app}\include"; Components: core; Flags: ignoreversion recursesubdirs
-Source: "dist\axon.toml"; DestDir: "{app}"; Components: core; Flags: ignoreversion
-Source: "dist\synapse_rt.h"; DestDir: "{app}"; Components: core; Flags: ignoreversion
-Source: "vscode-synapse\synapse-vscode-v5.1.1.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
-Source: "synapse_rt.c"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion
-Source: "tweetnacl.h"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion
-Source: "tweetnacl.c"; DestDir: "{app}\src"; Components: core; Flags: ignoreversion
+; ME-R6: el compilador nativo enlaza el runtime desde fuente con rutas absolutas
+; derivadas del propio ejecutable (GetModuleFileNameA) -> fuentes/headers del runtime
+; instalados junto al binario en {app}\bin (validado E2E: synapse hola.syn desde CWD
+; aislado genera el .exe; Manual 9 S9.9.1 dependencia de instalacion).
+Source: "synapse_rt.c"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
+Source: "synapse_rt.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
+Source: "synapse_rt_types.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
+Source: "synapse_rt_memory.h"; DestDir: "{app}\bin"; Components: core; Flags: ignoreversion
+Source: "axon\tweetnacl.c"; DestDir: "{app}\bin\axon"; Components: core; Flags: ignoreversion
+Source: "axon\tweetnacl.h"; DestDir: "{app}\bin\axon"; Components: core; Flags: ignoreversion
+Source: "runtime\core\memory.c"; DestDir: "{app}\bin\runtime\core"; Components: core; Flags: ignoreversion
+Source: "runtime\core\concurrency.c"; DestDir: "{app}\bin\runtime\core"; Components: core; Flags: ignoreversion
+Source: "librerias\embedded_libs.h"; DestDir: "{app}\bin\librerias"; Components: core; Flags: ignoreversion
+; Manual 9 S9.9.1: libreria estandar (std/*.syn)
+Source: "std\*"; DestDir: "{app}\std"; Components: core; Flags: ignoreversion recursesubdirs
+Source: "librerias\*"; DestDir: "{app}\librerias"; Components: core; Flags: ignoreversion recursesubdirs
+Source: "axon.toml"; DestDir: "{app}"; Components: core; Flags: ignoreversion
+; Script de aprovisionamiento MinGW (usado en [Run])
+Source: "scripts\install.ps1"; DestDir: "{app}"; Components: core; Flags: ignoreversion
+Source: "vscode-synapse\synapse-vscode-v8.1.0.vsix"; DestDir: "{app}\vscode"; Components: core; Flags: ignoreversion
 
 ; --- AI ENGINE (Solo en opensyn_full) ---
-Source: "dist\ia\llama-server.exe"; DestDir: "{app}\ia"; Components: ai_engine\llama_server; Flags: ignoreversion
-Source: "dist\ia\model.gguf"; DestDir: "{app}\ia"; Components: ai_engine\model; Flags: ignoreversion
+; ME-R6: llama-server.exe y model.gguf se DESCARGAN en tiempo de instalacion
+; (procedimiento DownloadAIComponents en [Code]); no se empaquetan en el .iss
+; (antes: Source dist\ia\* inexistentes -> iscc abortaba).
 Source: "nucleo\ai_orchestrator.h"; DestDir: "{app}\include"; Components: ai_engine; Flags: ignoreversion
 Source: "nucleo\ai_orchestrator.c"; DestDir: "{app}\src"; Components: ai_engine; Flags: ignoreversion
 Source: "nucleo\llama_client.h"; DestDir: "{app}\include"; Components: ai_engine; Flags: ignoreversion
@@ -73,14 +90,13 @@ Source: "nucleo\llama_client.c"; DestDir: "{app}\src"; Components: ai_engine; Fl
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\synapse.exe"; WorkingDir: "{app}"; Components: core
 Name: "{group}\Desinstalar Synapse"; Filename: "{uninstallexe}"; Components: core
+Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\synapse.exe"; WorkingDir: "{app}"; Tasks: desktopicon; Components: core
 
 [Run]
 ; Paso final: ejecutar install.ps1 para aprovisionar MinGW (Fase 1)
 ; Solo si el componente core está instalado
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden waituntilterminated; Components: core; StatusMsg: "Configurando MinGW Toolchain..."
 
-; Regenerar embedded_libs.h tras instalación
-Filename: "cmd.exe"; Parameters: "/c python ""{app}\tests\_gen_embedded.py"""; Description: "Regenerando librerías embebidas"; Components: core; Flags: runhidden waituntilterminated
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

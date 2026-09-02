@@ -1,3 +1,7 @@
+
+"""
+Manual 2
+"""
 """
 test_live_migration.py — Integration tests for M8.4 Live Task Migration (Checkpoint/Restore)
 
@@ -14,14 +18,18 @@ import sys
 import os
 import pytest
 
+from conftest import rt_objs
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
 TEST_C = os.path.join(PROJECT_ROOT, "tests", "test_live_migration.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "test_live_migration.exe")
-CLUSTER_SYN = os.path.join(PROJECT_ROOT, "librerias", "std", "cluster.syn")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+CLUSTER_SYN = os.path.join(PROJECT_ROOT, "std", "cluster.syn")
+
+
 
 GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
 
@@ -48,8 +56,7 @@ def _compile_test_binary() -> subprocess.CompletedProcess:
         "-I", os.path.join(PROJECT_ROOT, "librerias"),
         "-o", TEST_BIN,
         TEST_C,
-        RT_O, RT_MEM_O, RT_CONC_O,
-        TWEETNACL_O,
+        *RT_OBJS,
         "-lm", "-lws2_32", "-static",
     ]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=30)

@@ -16,7 +16,7 @@ extern void* pool_alloc(size_t size);
 extern void pool_free(void* ptr);
 
 extern int tr_inicializar_recording(void);
-extern int tr_grabar_snapshot(CadenaSegura nombre_variable, long long valor_entero,
+extern int tr_grabar_snapshot(CadenaSegura nombre_variable, int valor_entero,
                                CadenaSegura valor_texto, int linea);
 extern int tr_grabar_bifurcacion(int linea, int rama, CadenaSegura id_funcion);
 extern int tr_grabar_llamada(CadenaSegura funcion, int linea, int num_args);

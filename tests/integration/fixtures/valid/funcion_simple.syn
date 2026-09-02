@@ -1,0 +1,4 @@
+#lang: es
+
+funcion suma(a: int, b: int) -> int:
+    retornar a + b

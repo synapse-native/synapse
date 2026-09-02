@@ -1,3 +1,5 @@
+// cumple Manual 1 1: infraestructura del compilador Synapse
+// cumple Manual 8 4: toolchain de construcción
 #lang: es
 
 // ============================================================
@@ -64,6 +66,13 @@ constante NODO_RECIBIR_CANAL = 43
 constante NODO_VACIO         = 44
 constante NODO_PARA          = 45
 constante NODO_CONTRATO      = 46
+constante NODO_NULO          = 47
+constante NODO_LET           = 48
+constante NODO_DELEGAR       = 49
+constante NODO_EXPORT        = 50
+constante NODO_DECLARACION_TIPO = 51
+constante NODO_CONSTRUCTOR   = 52
+constante NODO_PROPAGAR     = 53  // D-6: operador '?' postfijo (Manual 3 §7)
 
 // ----------------------------------------------------------
 // Constantes de tipo de token

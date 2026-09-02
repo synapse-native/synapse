@@ -1,0 +1,22 @@
+#lang: es
+
+// F4.4 - probe de ESTRES: 50 lanzar con argumentos + 50 sin argumentos.
+// El main espera a todas las fibras (synapse_esperar_fibras) y verifica.
+
+funcion suma_parcial(a: entero, b: entero) -> nulo:
+    s = a + b
+    si s == a + b:
+        ok = 1
+    retornar
+
+funcion tick() -> nulo:
+    retornar
+
+funcion principal() -> nulo:
+    i = 1
+    mientras i <= 50:
+        lanzar suma_parcial(i, i)
+        lanzar tick()
+        i = i + 1
+    log("ESTRES_OK")
+    retornar

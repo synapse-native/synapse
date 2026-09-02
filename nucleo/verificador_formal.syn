@@ -1,15 +1,28 @@
 #lang: es
 // nucleo/verificador_formal.syn — Módulo de Verificación Formal (M10.1)
 //
-// Subconjunto de verificación para modo --safe.
-// Responsabilidades:
-//   1. Prohibir bucles 'mientras' sin cota estática comprobable
-//   2. Prohibir efectos secundarios mutables globales
-//   3. Verificar terminación por inducción estructural en funciones puras
-//   4. Validación estática de contratos requiere/garantiza como pre/postcondiciones
+// Subconjunto de verificación para modo --safe. Se ejecuta después del
+// análisis semántico y antes de la generación de código.
 //
-// Este módulo se ejecuta después del análisis semántico, antes de la
-// generación de código, cuando el flag --safe está activo.
+// Responsabilidades (paridad compilador/verificador_formal.py):
+//   1. Prohibir bucles 'mientras' sin cota estática comprobable (E-700)
+//   2. Prohibir efectos secundarios mutables globales (E-701)
+//   3. Verificar terminación por inducción estructural en funciones
+//      recursivas (E-702)
+//   4. Validación estática de contratos requiere/garantiza como
+//      pre/postcondiciones (E-703)
+//
+// REESCRITURA 2026-08 (M10.1 nativo): la versión anterior usaba
+// construcciones del dialecto que no compilaban ('es nulo', cast sintáctico,
+// subcadena sobre texto) y no tenía paridad estructural con el S1. Esta
+// versión accede al AST tipado (ast_nodes.syn) directamente en C vía asm()
+// sobre struct Programa* (patrón puente_ast.syn / generator.syn). Cada pasada
+// re-recorre el AST (sin estado compartido entre bloques asm, que quedan
+// confinados en su propio scope C) y devuelve el número de errores hallados.
+//
+// La función de entrada verificar() devuelve 0 si el código es válido; el
+// pipeline nativo (nucleo/principal.syn) la invoca desde generar_etapa cuando
+// el flag --safe está activo y aborta la compilación si el conteo es > 0.
 
 importar tokens
 importar ast_nodes
@@ -17,504 +30,532 @@ importar errores
 importar tabla_simbolos
 
 // ================================================================
-// Constantes de verificación
-// ================================================================
-
-constante VER_OK = 0
-constante VER_ERR_BASE = 700
-
-// Códigos de error específicos (ERR_VER_*)
-// E-700: Bucle 'mientras' sin cota estática comprobable
-constante ERR_VER_WHILE_INACOTADO = 700
-// E-701: Mutación de variable global prohibida en modo --safe
-constante ERR_VER_MUTACION_GLOBAL = 701
-// E-702: Función recursiva sin convergencia estructural comprobable
-constante ERR_VER_RECURSION_NO_TERMINAL = 702
-// E-703: Contrato inválido en la función
-constante ERR_VER_CONTRATO_INVALIDO = 703
-
-// ================================================================
-// Estructuras de verificación
-// ================================================================
-
-estructura ResultadoVerificacion:
-    codigo: entero
-    funcion: texto
-    detalle: texto
-    linea: entero
-    columna: entero
-
-estructura EstadoVerificador:
-    modo_safe: booleano
-    errores: ListaNodo
-    funciones_puras: ListaNodo
-    globales_mutables: ListaNodo
-    funciones_recursivas: ListaNodo
-    umbral_iteraciones_max: entero
-
-// ================================================================
 // Función principal de verificación
 // ================================================================
+// Retorna el número de errores de verificación (0 = válido en modo --safe).
 
-funcion verificar(ast: Programa, modo_safe: booleano) -> ListaNodo:
-    // Inicializar estado del verificador
-    estado = EstadoVerificador()
-    estado.modo_safe = modo_safe
-    estado.umbral_iteraciones_max = 1000000
-
-    resultado = ListaNodo()
-
-    si no modo_safe:
-        retornar resultado
-
-    // Pasada 1: Identificar funciones puras y globales mutables
-    _identificar_funciones_puras(ast, estado)
-
-    // Pasada 2: Validar bucles 'mientras' en funciones puras
-    _verificar_bucles_acotados(ast, estado, resultado)
-
-    // Pasada 3: Verificar mutaciones globales
-    _verificar_mutaciones_globales(ast, estado, resultado)
-
-    // Pasada 4: Verificar terminación recursiva
-    _verificar_terminacion_recursiva(ast, estado, resultado)
-
-    // Pasada 5: Validar contratos
-    _verificar_contratos(ast, estado, resultado)
-
-    retornar resultado
+funcion verificar(ast: puntero, modo_safe: booleano) -> entero:
+    requiere:
+        ast != nulo
+    garantiza:
+        _resultado_ >= 0
+    total = 0
+    si modo_safe:
+        total = _ver_bucles_acotados(ast)
+        total = total + _ver_mutaciones_globales(ast)
+        total = total + _ver_recursion(ast)
+        total = total + _ver_contratos(ast)
+    retornar total
 
 // ================================================================
-// Pasada 1: Identificar funciones puras y globales mutables
+// Pasada 2: bucles 'mientras' con cota estática (E-700)
 // ================================================================
 
-funcion _identificar_funciones_puras(ast: Programa, estado: EstadoVerificador) -> nulo:
-    // Recorrer el AST para encontrar:
-    // 1. Funciones marcadas como puras (anotación 'puro')
-    // 2. Variables globales mutables
-    si no estado.modo_safe:
-        retornar
-
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        tipo = nodo.tipo
-        si tipo == "DefinicionFuncion":
-            func = (DefinicionFuncion)nodo
-            _analizar_funcion_pura(func, estado)
-        si tipo == "StmtConstante" o tipo == "DeclaracionVariable":
-            _verificar_global_mutable(nodo, estado)
-        sentencias = sentencias.cola
-
-funcion _analizar_funcion_pura(func: DefinicionFuncion, estado: EstadoVerificador) -> nulo:
-    // Detectar funciones puras por convención de nombre o anotación
-    es_pura = falso
-    nombre = func.nombre
-    largo = nombre.longitud
-
-    // Funciones que terminan en '_pura' o comienzan con 'pura_' se consideran puras
-    si largo >= 5:
-        sufijo = _subcadena(nombre, largo - 5, largo)
-        si sufijo == "_pura":
-            es_pura = verdadero
-    si largo >= 5:
-        prefijo = _subcadena(nombre, 0, 5)
-        si prefijo == "pura_":
-            es_pura = verdadero
-
-    // Verificar que no tenga parámetros mutables ni accesos inseguros
-    si es_pura:
-        _registrar_funcion_pura(func, estado)
-
-funcion _verificar_global_mutable(nodo: Nodo, estado: EstadoVerificador) -> nulo:
-    // Registrar variables/constantes globales para verificar que no sean mutadas
-    tipo = nodo.tipo
-    si tipo == "AsignacionVariable":
-        asignacion = (AsignacionVariable)nodo
-        estado.globales_mutables = _agregar_nodo(estado.globales_mutables, asignacion)
-
-funcion _registrar_funcion_pura(func: DefinicionFuncion, estado: EstadoVerificador) -> nulo:
-    estado.funciones_puras = _agregar_nodo(estado.funciones_puras, func)
-
-// ================================================================
-// Pasada 2: Verificar bucles 'mientras' acotados
-// ================================================================
-
-funcion _verificar_bucles_acotados(ast: Programa, estado: EstadoVerificador, resultado: ListaNodo) -> nulo:
-    si no estado.modo_safe:
-        retornar
-
-    // Recorrer cuerpos de funciones buscando bucles 'mientras'
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        si nodo.tipo == "DefinicionFuncion":
-            func = (DefinicionFuncion)nodo
-            _inspeccionar_cuerpo_por_bucles(func.cuerpo, func.nombre, estado, resultado)
-        sentencias = sentencias.cola
-
-funcion _inspeccionar_cuerpo_por_bucles(cuerpo: ListaNodo, nombre_func: texto,
-                                         estado: EstadoVerificador, resultado: ListaNodo) -> nulo:
-    stmts = cuerpo
-    mientras stmts.cabeza no es nulo:
-        stmt = stmts.cabeza
-        si stmt.tipo == "SentenciaMientras":
-            mientras_stmt = (SentenciaMientras)stmt
-            // En modo --safe, los bucles 'mientras' requieren cota estática
-            // verificable (contador explícito con límite conocido)
-            si no _tiene_cota_estatica(mientras_stmt):
-                err = _crear_error(ERR_VER_WHILE_INACOTADO, nombre_func,
-                                   "Bucle 'mientras' sin cota estática comprobable en modo --safe. Use 'para' con rango fijo.",
-                                   stmt.linea, stmt.columna)
-                resultado = _agregar_nodo(resultado, err)
-        // Búsqueda recursiva en sub-bloques
-        si tiene_cuerpo(stmt):
-            cuerpo_interno = obtener_cuerpo(stmt)
-            _inspeccionar_cuerpo_por_bucles(cuerpo_interno, nombre_func, estado, resultado)
-        stmts = stmts.cola
-
-funcion _tiene_cota_estatica(mientras_stmt: SentenciaMientras) -> booleano:
-    // Verificar si la condición del bucle usa un contador con límite conocido
-    // Criterio: la condición debe involucrar una comparación (<, >, <=, >=)
-    // con un valor literal o constante
-    cond = mientras_stmt.condicion
-    si cond es nulo:
-        retornar falso
-
-    // Verificar que la condición sea una OpBinaria con operador de comparación
-    si cond.tipo == "OpBinaria":
-        op = (OpBinaria)cond
-        operador = op.operador
-        // Operadores de comparación que pueden servir como cota
-        si operador == "<" o operador == ">" o operador == "<=" o operador == ">=":
-            izquierdo = op.izquierdo
-            derecho = op.derecho
-            // Verificar que al menos un lado sea un literal numérico o identificador constante
-            si _es_literal_o_constante(izquierdo) o _es_literal_o_constante(derecho):
-                retornar verdadero
-    retornar falso
-
-funcion _es_literal_o_constante(expr: Nodo) -> booleano:
-    si expr es nulo:
-        retornar falso
-    tipo = expr.tipo
-    si tipo == "LiteralNumero" o tipo == "LiteralDecimal":
-        retornar verdadero
-    si tipo == "Identificador":
-        id = (Identificador)expr
-        nombre = id.nombre
-        // Constantes comunes que indican límites conocidos
-        si nombre == "MAX" o nombre == "LIMITE" o nombre == "N" o nombre == "TAMANO":
-            retornar verdadero
-    retornar falso
-
-// ================================================================
-// Pasada 3: Verificar mutaciones globales
-// ================================================================
-
-funcion _verificar_mutaciones_globales(ast: Programa, estado: EstadoVerificador, resultado: ListaNodo) -> nulo:
-    si no estado.modo_safe:
-        retornar
-
-    // En modo --safe, las mutaciones de variables globales están prohibidas
-    // Solo se permiten asignaciones a variables locales dentro de funciones
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        si nodo.tipo == "AsignacionVariable":
-            asignacion = (AsignacionVariable)nodo
-            // Asignación a nivel global está prohibida en modo --safe
-            err = _crear_error(ERR_VER_MUTACION_GLOBAL, "global",
-                               "Mutacion de variable global '" + asignacion.nombre + "' prohibida en modo --safe",
-                               nodo.linea, nodo.columna)
-            resultado = _agregar_nodo(resultado, err)
-        sentencias = sentencias.cola
-
-    // Verificar dentro de funciones que no se mute el estado global
-    _verificar_funciones_sin_efectos_globales(ast, estado, resultado)
-
-funcion _verificar_funciones_sin_efectos_globales(ast: Programa, estado: EstadoVerificador,
-                                                    resultado: ListaNodo) -> nulo:
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        si nodo.tipo == "DefinicionFuncion":
-            func = (DefinicionFuncion)nodo
-            _verificar_funcion_pura_sin_efectos(func, estado, resultado)
-        sentencias = sentencias.cola
-
-funcion _verificar_funcion_pura_sin_efectos(func: DefinicionFuncion, estado: EstadoVerificador,
-                                              resultado: ListaNodo) -> nulo:
-    // Verificar que las funciones puras no tengan efectos secundarios
-    _verificar_sentencias_sin_efectos(func.cuerpo, func.nombre, estado, resultado)
-
-funcion _verificar_sentencias_sin_efectos(cuerpo: ListaNodo, nombre_func: texto,
-                                           estado: EstadoVerificador, resultado: ListaNodo) -> nulo:
-    stmts = cuerpo
-    mientras stmts.cabeza no es nulo:
-        stmt = stmts.cabeza
-        si stmt.tipo == "AsignacionCampo":
-            // Asignación a campo de estructura global
-            err = _crear_error(ERR_VER_MUTACION_GLOBAL, nombre_func,
-                               "Asignacion a campo prohibida en funcion pura '"+ nombre_func + "' en modo --safe",
-                               stmt.linea, stmt.columna)
-            resultado = _agregar_nodo(resultado, err)
-        si stmt.tipo == "BloqueInseguro":
-            // Bloques 'unsafe' prohibidos en modo --safe
-            err = _crear_error(ERR_VER_MUTACION_GLOBAL, nombre_func,
-                               "Bloque 'inseguro' prohibido en modo --safe en funcion '" + nombre_func + "'",
-                               stmt.linea, stmt.columna)
-            resultado = _agregar_nodo(resultado, err)
-        // Recurrir en sub-bloques
-        si tiene_cuerpo(stmt):
-            cuerpo_interno = obtener_cuerpo(stmt)
-            _verificar_sentencias_sin_efectos(cuerpo_interno, nombre_func, estado, resultado)
-        stmts = stmts.cola
-
-// ================================================================
-// Pasada 4: Verificar terminación recursiva
-// ================================================================
-
-funcion _verificar_terminacion_recursiva(ast: Programa, estado: EstadoVerificador,
-                                          resultado: ListaNodo) -> nulo:
-    si no estado.modo_safe:
-        retornar
-
-    // Identificar funciones recursivas directas
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        si nodo.tipo == "DefinicionFuncion":
-            func = (DefinicionFuncion)nodo
-            si _es_funcion_recursiva(func, ast):
-                estado.funciones_recursivas = _agregar_nodo(estado.funciones_recursivas, func)
-                // Verificar que la recursión tenga convergencia estructural
-                si no _tiene_convergencia_estructural(func):
-                    err = _crear_error(ERR_VER_RECURSION_NO_TERMINAL, func.nombre,
-                                       "Funcion recursiva '" + func.nombre + "' sin convergencia estructural comprobable en modo --safe",
-                                       func.linea, func.columna)
-                    resultado = _agregar_nodo(resultado, err)
-        sentencias = sentencias.cola
-
-funcion _es_funcion_recursiva(func: DefinicionFuncion, ast: Programa) -> booleano:
-    nombre = func.nombre
-    // Buscar llamadas recursivas directas en el cuerpo
-    retornar _buscar_llamada_recursiva(func.cuerpo, nombre)
-
-funcion _buscar_llamada_recursiva(cuerpo: ListaNodo, nombre_func: texto) -> booleano:
-    stmts = cuerpo
-    mientras stmts.cabeza no es nulo:
-        stmt = stmts.cabeza
-        si stmt.tipo == "LlamadaFuncion":
-            llamada = (LlamadaFuncion)stmt
-            si llamada.nombre == nombre_func:
-                retornar verdadero
-        // Recurrir en sub-bloques
-        si tiene_cuerpo(stmt):
-            cuerpo_interno = obtener_cuerpo(stmt)
-            si _buscar_llamada_recursiva(cuerpo_interno, nombre_func):
-                retornar verdadero
-        stmts = stmts.cola
-    retornar falso
-
-funcion _tiene_convergencia_estructural(func: DefinicionFuncion) -> booleano:
-    // Verificar que la función recursiva tenga al menos un caso base
-    // (retorno que no sea llamada recursiva) antes de la llamada recursiva
-    //
-    // Criterio: buscar una SentenciaSi con un caso que retorne sin recursión
-    // y otro caso que haga la llamada recursiva con argumento decreciente
-    stmts = func.cuerpo
-    mientras stmts.cabeza no es nulo:
-        stmt = stmts.cabeza
-        si stmt.tipo == "SentenciaSi":
-            si_stmt = (SentenciaSi)stmt
-            // El cuerpo del "si" (caso base) no debe llamar a la función
-            si _tiene_caso_base(si_stmt.cuerpo, func.nombre):
-                // El cuerpo del "sino" (caso recursivo) debe llamar a la función
-                si si_stmt.cuerpo_sino no es nulo:
-                    si _tiene_llamada_recursiva(si_stmt.cuerpo_sino, func.nombre):
-                        // Verificar que el argumento decrece (simplificación: asumir si hay caso base)
-                        retornar verdadero
-        stmts = stmts.cola
-    retornar falso
-
-funcion _tiene_caso_base(cuerpo: ListaNodo, nombre_func: texto) -> booleano:
-    // Verificar que el cuerpo no contenga llamadas recursivas directas
-    stmts = cuerpo
-    mientras stmts.cabeza no es nulo:
-        stmt = stmts.cabeza
-        si stmt.tipo == "SentenciaRetornar":
-            ret_stmt = (SentenciaRetornar)stmt
-            si ret_stmt.expr no es nulo:
-                si ret_stmt.expr.tipo == "LlamadaFuncion":
-                    llamada = (LlamadaFuncion)ret_stmt.expr
-                    si llamada.nombre == nombre_func:
-                        retornar falso  // Caso base no debe llamar a sí mismo
-        si stmt.tipo == "LlamadaFuncion":
-            llamada = (LlamadaFuncion)stmt
-            si llamada.nombre == nombre_func:
-                retornar falso
-        stmts = stmts.cola
-    retornar verdadero  // No tiene llamada recursiva → es un caso base válido
-
-funcion _tiene_llamada_recursiva(cuerpo: ListaNodo, nombre_func: texto) -> booleano:
-    retornar _buscar_llamada_recursiva(cuerpo, nombre_func)
-
-// ================================================================
-// Pasada 5: Validación de contratos
-// ================================================================
-
-funcion _verificar_contratos(ast: Programa, estado: EstadoVerificador, resultado: ListaNodo) -> nulo:
-    si no estado.modo_safe:
-        retornar
-
-    sentencias = ast.sentencias
-    mientras sentencias.cabeza no es nulo:
-        nodo = sentencias.cabeza
-        si nodo.tipo == "DefinicionFuncion":
-            func = (DefinicionFuncion)nodo
-            _validar_contratos_funcion(func, resultado)
-        sentencias = sentencias.cola
-
-funcion _validar_contratos_funcion(func: DefinicionFuncion, resultado: ListaNodo) -> nulo:
-    tiene_requiere = falso
-    tiene_garantiza = falso
-
-    // Verificar que los contratos sean expresiones válidas
-    si func.requiere.cabeza no es nulo:
-        tiene_requiere = verdadero
-        // Verificar que las expresiones de require sean lógicas
-        si no _validar_expresion_contrato(func.requiere):
-            err = _crear_error(ERR_VER_CONTRATO_INVALIDO, func.nombre,
-                               "Expresion 'requiere' invalida: debe ser una condicion logica",
-                               func.linea, func.columna)
-            resultado = _agregar_nodo(resultado, err)
-
-    si func.garantiza.cabeza no es nulo:
-        tiene_garantiza = verdadero
-        si no _validar_expresion_contrato(func.garantiza):
-            err = _crear_error(ERR_VER_CONTRATO_INVALIDO, func.nombre,
-                               "Expresion 'garantiza' invalida: debe ser una condicion logica",
-                               func.linea, func.columna)
-            resultado = _agregar_nodo(resultado, err)
-
-    // Validar consistencia: si la función retorna void y tiene garantiza,
-    // verificar que no use _resultado_
-    si tiene_garantiza y func.tipo_retorno == "nulo":
-        si _expresion_menciona_resultado(func.garantiza):
-            err = _crear_error(ERR_VER_CONTRATO_INVALIDO, func.nombre,
-                               "Contrato 'garantiza' menciona '_resultado_' pero la funcion retorna nulo",
-                               func.linea, func.columna)
-            resultado = _agregar_nodo(resultado, err)
-
-funcion _validar_expresion_contrato(exprs: ListaNodo) -> booleano:
-    // Validar que las expresiones de contrato sean booleanas/comparables
-    stmts = exprs
-    mientras stmts.cabeza no es nulo:
-        expr = stmts.cabeza
-        si expr.tipo == "OpBinaria":
-            op = (OpBinaria)expr
-            // Los contratos deben usar operadores de comparación o lógicos
-            operador = op.operador
-            operadores_validos = "==" o "!=" o "<" o ">" o "<=" o ">="
-            operadores_validos = operadores_validos o "&&" o "||"
-            // Simplificación: en una implementación completa verificaríamos
-            // contra una lista exhaustiva de operadores booleanos
-            si operador == "+" o operador == "-" o operador == "*" o operador == "/":
-                retornar falso  // Operaciones aritméticas no son contratos válidos
-        si expr.tipo == "LlamadaFuncion":
-            llamada = (LlamadaFuncion)expr
-            // Las llamadas en contratos deben ser funciones booleanas
-            si llamada.nombre == "escribir" o llamada.nombre == "leer":
-                retornar falso  // Efectos secundarios no permitidos en contratos
-        stmts = stmts.cola
-    retornar verdadero
-
-funcion _expresion_menciona_resultado(exprs: ListaNodo) -> booleano:
-    stmts = exprs
-    mientras stmts.cabeza no es nulo:
-        expr = stmts.cabeza
-        si expr.tipo == "Identificador":
-            id = (Identificador)expr
-            si id.nombre == "_resultado_":
-                retornar verdadero
-        si expr.tipo == "OpBinaria":
-            op = (OpBinaria)expr
-            si _expresion_menciona_resultado_nodo(op.izquierdo):
-                retornar verdadero
-            si _expresion_menciona_resultado_nodo(op.derecho):
-                retornar verdadero
-        stmts = stmts.cola
-    retornar falso
-
-funcion _expresion_menciona_resultado_nodo(expr: Nodo) -> booleano:
-    si expr es nulo:
-        retornar falso
-    si expr.tipo == "Identificador":
-        id = (Identificador)expr
-        retornar id.nombre == "_resultado_"
-    retornar falso
-
-// ================================================================
-// Funciones auxiliares
-// ================================================================
-
-funcion _crear_error(codigo: entero, nombre_func: texto, detalle: texto,
-                     linea: entero, columna: entero) -> ResultadoVerificacion:
-    err = ResultadoVerificacion()
-    err.codigo = codigo
-    err.funcion = nombre_func
-    err.detalle = detalle
-    err.linea = linea
-    err.columna = columna
-    retornar err
-
-funcion _subcadena(s: texto, inicio: entero, fin: entero) -> texto:
-    // Stub: implementación simplificada de subcadena
-    r = ""
-    i = inicio
-    mientras i < fin:
-        r = concat(r, _caracter_en(s, i))
-        i = i + 1
-    retornar r
-
-funcion _caracter_en(s: texto, pos: entero) -> texto:
-    // Stub: retorna el caracter en la posición dada como texto
+funcion _ver_bucles_acotados(ast: puntero) -> entero:
+    requiere:
+        ast != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
     inseguro:
-        asm("char _c = s.datos[pos];")
-        asm("char _buf[2] = {_c, 0};")
-        asm("r = (CadenaSegura){.longitud=1,.datos=strdup(_buf)};")
+        asm("struct Programa* _p = (struct Programa*)ast;")
+        asm("if (!_p) return errs;")
+        asm("struct ListaNodo* _c = _p->sentencias;")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos && strcmp(_s->tipo.datos, \"DefinicionFuncion\") == 0) {")
+        asm("        struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_s;")
+        asm("        char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
+        asm("        errs += _ver_inspeccionar_bucles(_f->cuerpo, _fn);")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
+
+funcion _ver_inspeccionar_bucles(cuerpo: puntero, nombre_func: puntero) -> entero:
+    requiere:
+        nombre_func != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
+    inseguro:
+        asm("struct ListaNodo* _c = (struct ListaNodo*)cuerpo;")
+        asm("char* _fn = (char*)nombre_func;")
+        asm("if (!_fn) _fn = (char*)\"\";")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos) {")
+        asm("        const char* _t = _s->tipo.datos;")
+        asm("        if (strcmp(_t, \"SentenciaMientras\") == 0) {")
+        asm("            struct SentenciaMientras* _w = (struct SentenciaMientras*)_s;")
+        asm("            if (!_ver_tiene_cota(_w->condicion)) {")
+        asm("                fprintf(stderr, \"[Synapse] Error de verificacion (E-700): bucle 'mientras' sin cota estatica comprobable en funcion '%s' en modo --safe\\n\", _fn);")
+        asm("                errs++;")
+        asm("            }")
+        asm("            errs += _ver_inspeccionar_bucles(_w->cuerpo, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaPara\") == 0) {")
+        asm("            struct SentenciaPara* _pa = (struct SentenciaPara*)_s;")
+        asm("            errs += _ver_inspeccionar_bucles(_pa->cuerpo, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaSi\") == 0) {")
+        asm("            struct SentenciaSi* _si = (struct SentenciaSi*)_s;")
+        asm("            errs += _ver_inspeccionar_bucles(_si->cuerpo, _fn);")
+        asm("            if (_si->cuerpo_sino) errs += _ver_inspeccionar_bucles(_si->cuerpo_sino, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"BloqueInseguro\") == 0) {")
+        asm("            struct BloqueInseguro* _bi = (struct BloqueInseguro*)_s;")
+        asm("            errs += _ver_inspeccionar_bucles(_bi->cuerpo, _fn);")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
+
+// Criterio: la condición contiene un operador de comparación (<, >, <=, >=,
+// ==, !=), posiblemente anidado dentro de operadores lógicos (y, o).
+// Un 'mientras verdadero:' (sin comparación) se sigue rechazando, pero
+// 'mientras i < len_texto:' o 'mientras t != T_MAYOR o x > 0:' se aceptan.
+
+funcion _ver_tiene_cota(cond: puntero) -> entero:
+    requiere:
+        cond != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct Nodo* _e = (struct Nodo*)cond;")
+        asm("if (!_e || !_e->tipo.datos) { r = 0; } else if (strcmp(_e->tipo.datos, \"OpBinaria\") == 0) {")
+        asm("    struct OpBinaria* _op = (struct OpBinaria*)_e;")
+        asm("    if (_op->operador && _op->operador->lexema.datos) {")
+        asm("        const char* _oc = _op->operador->lexema.datos;")
+        asm("        int _es_cmp = (strcmp(_oc, \"<\") == 0 || strcmp(_oc, \">\") == 0 || strcmp(_oc, \"<=\") == 0 || strcmp(_oc, \">=\") == 0 || strcmp(_oc, \"==\") == 0 || strcmp(_oc, \"!=\") == 0);")
+        asm("        int _es_logico = (strcmp(_oc, \"y\") == 0 || strcmp(_oc, \"o\") == 0 || strcmp(_oc, \"&&\") == 0 || strcmp(_oc, \"||\") == 0);")
+        asm("        if (_es_cmp) { r = 1; }")
+        asm("        else if (_es_logico) { r = (_ver_tiene_cota(_op->izquierdo) || _ver_tiene_cota(_op->derecho)) ? 1 : 0; }")
+        asm("    }")
+        asm("}")
     retornar r
 
-funcion _agregar_nodo(lista: ListaNodo, nodo: Nodo) -> ListaNodo:
-    // TODO: Implementar append real a ListaNodo.
-    // Actualmente es un stub porque la API nativa de ListaNodo aún no soporta
-    // inserción por referencia en modo --safe. Al compilar con el generador
-    // auto-hospedado, reemplazar con la llamada a ListaNodo.append() cuando
-    // esté disponible. Por ahora, los errores se reportan vía el pipeline Python.
-    retornar lista
-
 // ================================================================
-// Funciones de utilidad que serán implementadas en el AST/generador
+// Pasada 3: mutaciones globales y efectos en funciones puras (E-701)
 // ================================================================
 
-funcion tiene_cuerpo(nodo: Nodo) -> booleano:
-    tipo = nodo.tipo
-    retornar tipo == "SentenciaSi" o tipo == "SentenciaMientras" o tipo == "SentenciaPara"
-           o tipo == "BloqueInseguro"
+funcion _ver_mutaciones_globales(ast: puntero) -> entero:
+    requiere:
+        ast != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
+    inseguro:
+        asm("struct Programa* _p = (struct Programa*)ast;")
+        asm("if (!_p) return errs;")
+        asm("struct ListaNodo* _c = _p->sentencias;")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos) {")
+        asm("        const char* _t = _s->tipo.datos;")
+        asm("        if (strcmp(_t, \"AsignacionVariable\") == 0) {")
+        asm("            struct AsignacionVariable* _av = (struct AsignacionVariable*)_s;")
+        asm("            if (!_av->es_constante) {")
+        asm("                char* _nm = _av->nombre.datos ? _av->nombre.datos : (char*)\"(desconocida)\";")
+        asm("                fprintf(stderr, \"[Synapse] Error de verificacion (E-701): mutacion de variable global '%s' prohibida en modo --safe\\n\", _nm);")
+        asm("                errs++;")
+        asm("            }")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"DefinicionFuncion\") == 0) {")
+        asm("            struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_s;")
+        asm("            char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
+        asm("            if (_ver_comprobar_pureza(_fn)) {")
+        asm("                errs += _ver_funcion_sin_efectos(_f->cuerpo, _fn);")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
 
-funcion obtener_cuerpo(nodo: Nodo) -> ListaNodo:
-    tipo = nodo.tipo
-    si tipo == "SentenciaSi":
-        si_stmt = (SentenciaSi)nodo
-        retornar si_stmt.cuerpo
-    si tipo == "SentenciaMientras":
-        mientras_stmt = (SentenciaMientras)nodo
-        retornar mientras_stmt.cuerpo
-    si tipo == "SentenciaPara":
-        para_stmt = (SentenciaPara)nodo
-        retornar para_stmt.cuerpo
-    si tipo == "BloqueInseguro":
-        inseguro = (BloqueInseguro)nodo
-        retornar inseguro.cuerpo
-    retornar ListaNodo()
+// Funciones puras por convención de nombre: sufijo '_pura' o prefijo 'pura_'.
+
+funcion _ver_comprobar_pureza(nombre: puntero) -> entero:
+    requiere:
+        nombre != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("char* _nm = (char*)nombre;")
+        asm("if (!_nm) { r = 0; } else {")
+        asm("    int _l = (int)strlen(_nm);")
+        asm("    if (_l >= 5 && strcmp(_nm + _l - 5, \"_pura\") == 0) { r = 1; }")
+        asm("    else if (strncmp(_nm, \"pura_\", 5) == 0) { r = 1; }")
+        asm("}")
+    retornar r
+
+funcion _ver_funcion_sin_efectos(cuerpo: puntero, nombre_func: puntero) -> entero:
+    requiere:
+        nombre_func != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
+    inseguro:
+        asm("struct ListaNodo* _c = (struct ListaNodo*)cuerpo;")
+        asm("char* _fn = (char*)nombre_func;")
+        asm("if (!_fn) _fn = (char*)\"\";")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos) {")
+        asm("        const char* _t = _s->tipo.datos;")
+        asm("        if (strcmp(_t, \"AsignacionCampo\") == 0) {")
+        asm("            fprintf(stderr, \"[Synapse] Error de verificacion (E-701): asignacion a campo prohibida en funcion pura '%s' en modo --safe\\n\", _fn); errs++;")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"BloqueInseguro\") == 0) {")
+        asm("            fprintf(stderr, \"[Synapse] Error de verificacion (E-701): bloque 'inseguro' prohibido en funcion pura '%s' en modo --safe\\n\", _fn); errs++;")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaLanzar\") == 0) {")
+        asm("            fprintf(stderr, \"[Synapse] Error de verificacion (E-701): sentencia 'lanzar' prohibida en funcion pura '%s' en modo --safe\\n\", _fn); errs++;")
+        asm("        }")
+        asm("        if (strcmp(_t, \"SentenciaSi\") == 0) {")
+        asm("            struct SentenciaSi* _si = (struct SentenciaSi*)_s;")
+        asm("            errs += _ver_funcion_sin_efectos(_si->cuerpo, _fn);")
+        asm("            if (_si->cuerpo_sino) errs += _ver_funcion_sin_efectos(_si->cuerpo_sino, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaMientras\") == 0) {")
+        asm("            struct SentenciaMientras* _w = (struct SentenciaMientras*)_s;")
+        asm("            errs += _ver_funcion_sin_efectos(_w->cuerpo, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaPara\") == 0) {")
+        asm("            struct SentenciaPara* _pa = (struct SentenciaPara*)_s;")
+        asm("            errs += _ver_funcion_sin_efectos(_pa->cuerpo, _fn);")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"BloqueInseguro\") == 0) {")
+        asm("            struct BloqueInseguro* _bi = (struct BloqueInseguro*)_s;")
+        asm("            errs += _ver_funcion_sin_efectos(_bi->cuerpo, _fn);")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
+
+// ================================================================
+// Pasada 4: terminación por inducción estructural (E-702)
+// ================================================================
+
+funcion _ver_recursion(ast: puntero) -> entero:
+    requiere:
+        ast != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
+    inseguro:
+        asm("struct Programa* _p = (struct Programa*)ast;")
+        asm("if (!_p) return errs;")
+        asm("struct ListaNodo* _c = _p->sentencias;")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos && strcmp(_s->tipo.datos, \"DefinicionFuncion\") == 0) {")
+        asm("        struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_s;")
+        asm("        char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
+        asm("        if (_ver_buscar_llamada_recursiva(_f->cuerpo, _fn)) {")
+        asm("            if (!_ver_tiene_convergencia(_f)) {")
+        asm("                fprintf(stderr, \"[Synapse] Error de verificacion (E-702): funcion '%s' recursiva sin convergencia estructural comprobable en modo --safe\\n\", _fn);")
+        asm("                errs++;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
+
+funcion _ver_buscar_llamada_recursiva(cuerpo: puntero, nombre_func: puntero) -> entero:
+    requiere:
+        nombre_func != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct ListaNodo* _c = (struct ListaNodo*)cuerpo;")
+        asm("char* _fn = (char*)nombre_func;")
+        asm("if (!_fn) _fn = (char*)\"\";")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos) {")
+        asm("        const char* _t = _s->tipo.datos;")
+        asm("        if (strcmp(_t, \"SentenciaRetornar\") == 0) {")
+        asm("            struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)_s;")
+        asm("            if (_rt->expr && _ver_es_llamada_a(_rt->expr, _fn)) { r = 1; }")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaExpr\") == 0) {")
+        asm("            struct SentenciaExpr* _se = (struct SentenciaExpr*)_s;")
+        asm("            if (_se->expr && _ver_es_llamada_a(_se->expr, _fn)) { r = 1; }")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_s;")
+        asm("            if (_lf->nombre.datos && strcmp(_lf->nombre.datos, _fn) == 0) { r = 1; }")
+        asm("        }")
+        asm("        if (r == 0) {")
+        asm("            if (strcmp(_t, \"SentenciaSi\") == 0) {")
+        asm("                struct SentenciaSi* _si = (struct SentenciaSi*)_s;")
+        asm("                r = _ver_buscar_llamada_recursiva(_si->cuerpo, _fn);")
+        asm("                if (r == 0 && _si->cuerpo_sino) r = _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn);")
+        asm("            }")
+        asm("            else if (strcmp(_t, \"SentenciaMientras\") == 0) {")
+        asm("                struct SentenciaMientras* _w = (struct SentenciaMientras*)_s;")
+        asm("                r = _ver_buscar_llamada_recursiva(_w->cuerpo, _fn);")
+        asm("            }")
+        asm("            else if (strcmp(_t, \"SentenciaPara\") == 0) {")
+        asm("                struct SentenciaPara* _pa = (struct SentenciaPara*)_s;")
+        asm("                r = _ver_buscar_llamada_recursiva(_pa->cuerpo, _fn);")
+        asm("            }")
+        asm("            else if (strcmp(_t, \"BloqueInseguro\") == 0) {")
+        asm("                struct BloqueInseguro* _bi = (struct BloqueInseguro*)_s;")
+        asm("                r = _ver_buscar_llamada_recursiva(_bi->cuerpo, _fn);")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("    if (r) return r;")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar r
+
+funcion _ver_es_llamada_a(expr: puntero, nombre_func: puntero) -> entero:
+    requiere:
+        nombre_func != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct Nodo* _e = (struct Nodo*)expr;")
+        asm("char* _fn = (char*)nombre_func;")
+        asm("if (!_fn) _fn = (char*)\"\";")
+        asm("if (_e && _e->tipo.datos && strcmp(_e->tipo.datos, \"LlamadaFuncion\") == 0) {")
+        asm("    struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_e;")
+        asm("    if (_lf->nombre.datos && strcmp(_lf->nombre.datos, _fn) == 0) { r = 1; }")
+        asm("}")
+    retornar r
+
+// Convergencia estructural: un patrón if/else donde el caso base (if) no
+// llama recursivamente y el caso recursivo (sino) sí llama a la función.
+// También se acepta un if anidado dentro del caso base con el mismo patrón.
+
+funcion _ver_tiene_convergencia(func: puntero) -> entero:
+    requiere:
+        func != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct DefinicionFuncion* _f = (struct DefinicionFuncion*)func;")
+        asm("char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
+        asm("struct ListaNodo* _c = _f->cuerpo;")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos && strcmp(_s->tipo.datos, \"SentenciaSi\") == 0) {")
+        asm("        struct SentenciaSi* _si = (struct SentenciaSi*)_s;")
+        asm("            if (_ver_tiene_caso_base(_si->cuerpo, _fn)) {")
+        asm("            if ((_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_si->cuerpo_sino, _fn)) || (!_si->cuerpo_sino && _ver_buscar_llamada_recursiva(_c->cola, _fn))) { r = 1; }")
+        asm("            struct ListaNodo* _ic = _si->cuerpo;")
+        asm("            while (_ic) {")
+        asm("                struct Nodo* _is = _ic->cabeza;")
+        asm("                if (_is && _is->tipo.datos && strcmp(_is->tipo.datos, \"SentenciaSi\") == 0) {")
+        asm("                    struct SentenciaSi* _sub = (struct SentenciaSi*)_is;")
+        asm("                    if (_ver_tiene_caso_base(_sub->cuerpo, _fn) && ((_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_sub->cuerpo_sino, _fn)) || (!_sub->cuerpo_sino && _ver_buscar_llamada_recursiva(_ic->cola, _fn)))) { r = 1; }")
+        asm("                }")
+        asm("                _ic = _ic->cola;")
+        asm("            }")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar r
+
+// Un caso base no contiene llamadas recursivas directas (solo sentencias
+// directas del cuerpo, sin recursar en sub-bloques — paridad S1).
+
+funcion _ver_tiene_caso_base(cuerpo: puntero, nombre_func: puntero) -> entero:
+    requiere:
+        nombre_func != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 1
+    inseguro:
+        asm("struct ListaNodo* _c = (struct ListaNodo*)cuerpo;")
+        asm("char* _fn = (char*)nombre_func;")
+        asm("if (!_fn) _fn = (char*)\"\";")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos) {")
+        asm("        const char* _t = _s->tipo.datos;")
+        asm("        if (strcmp(_t, \"SentenciaRetornar\") == 0) {")
+        asm("            struct SentenciaRetornar* _rt = (struct SentenciaRetornar*)_s;")
+        asm("            if (_rt->expr && _ver_es_llamada_a(_rt->expr, _fn)) { r = 0; }")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"SentenciaExpr\") == 0) {")
+        asm("            struct SentenciaExpr* _se = (struct SentenciaExpr*)_s;")
+        asm("            if (_se->expr && _ver_es_llamada_a(_se->expr, _fn)) { r = 0; }")
+        asm("        }")
+        asm("        else if (strcmp(_t, \"LlamadaFuncion\") == 0) {")
+        asm("            struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_s;")
+        asm("            if (_lf->nombre.datos && strcmp(_lf->nombre.datos, _fn) == 0) { r = 0; }")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar r
+
+// ================================================================
+// Pasada 5: contratos requiere/garantiza (E-703)
+// ================================================================
+
+funcion _ver_contratos(ast: puntero) -> entero:
+    requiere:
+        ast != nulo
+    garantiza:
+        _resultado_ >= 0
+    errs = 0
+    inseguro:
+        asm("struct Programa* _p = (struct Programa*)ast;")
+        asm("if (!_p) return errs;")
+        asm("struct ListaNodo* _c = _p->sentencias;")
+        asm("while (_c) {")
+        asm("    struct Nodo* _s = _c->cabeza;")
+        asm("    if (_s && _s->tipo.datos && strcmp(_s->tipo.datos, \"DefinicionFuncion\") == 0) {")
+        asm("        struct DefinicionFuncion* _f = (struct DefinicionFuncion*)_s;")
+        asm("        char* _fn = _f->nombre.datos ? _f->nombre.datos : (char*)\"\";")
+        asm("        int _es_void = _f->tipo_retorno.datos && (strcmp(_f->tipo_retorno.datos, \"nulo\") == 0 || strcmp(_f->tipo_retorno.datos, \"void\") == 0);")
+        asm("        struct ListaNodo* _r = _f->requiere;")
+        asm("        while (_r) {")
+        asm("            if (_r->cabeza && !_ver_expr_booleana_valida(_r->cabeza)) {")
+        asm("                fprintf(stderr, \"[Synapse] Error de verificacion (E-703): contrato invalido en funcion '%s': 'requiere' debe ser una condicion logica\\n\", _fn); errs++;")
+        asm("            }")
+        asm("            _r = _r->cola;")
+        asm("        }")
+        asm("        struct ListaNodo* _g = _f->garantiza;")
+        asm("        while (_g) {")
+        asm("            if (_g->cabeza) {")
+        asm("                if (!_ver_expr_booleana_valida(_g->cabeza)) {")
+        asm("                    fprintf(stderr, \"[Synapse] Error de verificacion (E-703): contrato invalido en funcion '%s': 'garantiza' debe ser una condicion logica\\n\", _fn); errs++;")
+        asm("                }")
+        asm("                if (_es_void && _ver_menciona_resultado(_g->cabeza)) {")
+        asm("                    fprintf(stderr, \"[Synapse] Error de verificacion (E-703): contrato invalido en funcion '%s': 'garantiza' menciona '_resultado_' pero la funcion retorna nulo\\n\", _fn); errs++;")
+        asm("                }")
+        asm("            }")
+        asm("            _g = _g->cola;")
+        asm("        }")
+        asm("    }")
+        asm("    _c = _c->cola;")
+        asm("}")
+    retornar errs
+
+// Condición booleana válida para contratos: comparaciones como raíz (con
+// subexpresiones internas arbitrarias), operadores lógicos &&/||, literales,
+// identificadores y llamadas sin efectos de I/O. Rechaza aritmética pura como
+// condición y efectos secundarios (paridad S1 _es_expresion_booleana_valida).
+
+funcion _ver_expr_booleana_valida(expr: puntero) -> entero:
+    requiere:
+        expr != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct Nodo* _e = (struct Nodo*)expr;")
+        asm("if (!_e || !_e->tipo.datos) { r = 0; } else {")
+        asm("    const char* _t = _e->tipo.datos;")
+        asm("    if (strcmp(_t, \"LiteralNumero\") == 0 || strcmp(_t, \"LiteralDecimal\") == 0 || strcmp(_t, \"LiteralBooleano\") == 0 || strcmp(_t, \"LiteralNulo\") == 0) { r = 1; }")
+        asm("    else if (strcmp(_t, \"Identificador\") == 0) { r = 1; }")
+        asm("    else if (strcmp(_t, \"OpBinaria\") == 0) {")
+        asm("        struct OpBinaria* _op = (struct OpBinaria*)_e;")
+        asm("        const char* _oc = _op->operador && _op->operador->lexema.datos ? _op->operador->lexema.datos : \"\";")
+        asm("        if (strcmp(_oc, \"==\") == 0 || strcmp(_oc, \"!=\") == 0 || strcmp(_oc, \"<\") == 0 || strcmp(_oc, \">\") == 0 || strcmp(_oc, \"<=\") == 0 || strcmp(_oc, \">=\") == 0) {")
+        asm("            r = (_ver_expr_contrato_interna(_op->izquierdo) && _ver_expr_contrato_interna(_op->derecho)) ? 1 : 0;")
+        asm("        }")
+        asm("        else if (strcmp(_oc, \"&&\") == 0 || strcmp(_oc, \"||\") == 0) {")
+        asm("            r = (_ver_expr_booleana_valida(_op->izquierdo) && _ver_expr_booleana_valida(_op->derecho)) ? 1 : 0;")
+        asm("        }")
+        asm("        else if (strcmp(_oc, \"+\") == 0 || strcmp(_oc, \"-\") == 0 || strcmp(_oc, \"*\") == 0 || strcmp(_oc, \"/\") == 0 || strcmp(_oc, \"%\") == 0) { r = 0; }")
+        asm("        else { r = (_ver_expr_booleana_valida(_op->izquierdo) && _ver_expr_booleana_valida(_op->derecho)) ? 1 : 0; }")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"OpUnaria\") == 0) {")
+        asm("        struct OpUnaria* _ou = (struct OpUnaria*)_e;")
+        asm("        const char* _oc = _ou->operador && _ou->operador->lexema.datos ? _ou->operador->lexema.datos : \"\";")
+        asm("        r = (strcmp(_oc, \"!\") == 0 || strcmp(_oc, \"-\") == 0) ? 1 : 0;")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_e;")
+        asm("        char* _nm = _lf->nombre.datos ? _lf->nombre.datos : (char*)\"\";")
+        asm("        if (strcmp(_nm, \"escribir\") == 0 || strcmp(_nm, \"escribir_linea\") == 0 || strcmp(_nm, \"leer\") == 0 || strcmp(_nm, \"leer_linea\") == 0 || strcmp(_nm, \"abrir\") == 0 || strcmp(_nm, \"cerrar_archivo\") == 0 || strcmp(_nm, \"lanzar\") == 0) { r = 0; } else { r = 1; }")
+        asm("    }")
+        asm("}")
+    retornar r
+
+// Expresión interna de contrato (dentro de una comparación): permite
+// aritmética, literales, identificadores y llamadas sin efectos (paridad S1
+// _es_expresion_contrato_interna).
+
+funcion _ver_expr_contrato_interna(expr: puntero) -> entero:
+    requiere:
+        expr != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct Nodo* _e = (struct Nodo*)expr;")
+        asm("if (!_e || !_e->tipo.datos) { r = 0; } else {")
+        asm("    const char* _t = _e->tipo.datos;")
+        asm("    if (strcmp(_t, \"LiteralNumero\") == 0 || strcmp(_t, \"LiteralDecimal\") == 0 || strcmp(_t, \"LiteralBooleano\") == 0 || strcmp(_t, \"LiteralNulo\") == 0 || strcmp(_t, \"Identificador\") == 0) { r = 1; }")
+        asm("    else if (strcmp(_t, \"OpBinaria\") == 0) {")
+        asm("        struct OpBinaria* _op = (struct OpBinaria*)_e;")
+        asm("        const char* _oc = _op->operador && _op->operador->lexema.datos ? _op->operador->lexema.datos : \"\";")
+        asm("        if (strcmp(_oc, \"+\") == 0 || strcmp(_oc, \"-\") == 0 || strcmp(_oc, \"*\") == 0 || strcmp(_oc, \"/\") == 0 || strcmp(_oc, \"%\") == 0 || strcmp(_oc, \"==\") == 0 || strcmp(_oc, \"!=\") == 0 || strcmp(_oc, \"<\") == 0 || strcmp(_oc, \">\") == 0 || strcmp(_oc, \"<=\") == 0 || strcmp(_oc, \">=\") == 0 || strcmp(_oc, \"&&\") == 0 || strcmp(_oc, \"||\") == 0) {")
+        asm("            r = (_ver_expr_contrato_interna(_op->izquierdo) && _ver_expr_contrato_interna(_op->derecho)) ? 1 : 0;")
+        asm("        } else { r = 0; }")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"OpUnaria\") == 0) {")
+        asm("        struct OpUnaria* _ou = (struct OpUnaria*)_e;")
+        asm("        const char* _oc = _ou->operador && _ou->operador->lexema.datos ? _ou->operador->lexema.datos : \"\";")
+        asm("        r = (strcmp(_oc, \"!\") == 0 || strcmp(_oc, \"-\") == 0) ? 1 : 0;")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_e;")
+        asm("        char* _nm = _lf->nombre.datos ? _lf->nombre.datos : (char*)\"\";")
+        asm("        if (strcmp(_nm, \"escribir\") == 0 || strcmp(_nm, \"escribir_linea\") == 0 || strcmp(_nm, \"leer\") == 0 || strcmp(_nm, \"leer_linea\") == 0 || strcmp(_nm, \"abrir\") == 0 || strcmp(_nm, \"cerrar_archivo\") == 0 || strcmp(_nm, \"lanzar\") == 0) { r = 0; } else { r = 1; }")
+        asm("    }")
+        asm("}")
+    retornar r
+
+// Verifica si una expresión menciona la variable especial '_resultado_'
+// (paridad S1 _menciona_resultado).
+
+funcion _ver_menciona_resultado(expr: puntero) -> entero:
+    requiere:
+        expr != nulo
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    r = 0
+    inseguro:
+        asm("struct Nodo* _e = (struct Nodo*)expr;")
+        asm("if (_e && _e->tipo.datos) {")
+        asm("    const char* _t = _e->tipo.datos;")
+        asm("    if (strcmp(_t, \"Identificador\") == 0) {")
+        asm("        struct Identificador* _id = (struct Identificador*)_e;")
+        asm("        if (_id->nombre.datos && strcmp(_id->nombre.datos, \"_resultado_\") == 0) { r = 1; }")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"OpBinaria\") == 0) {")
+        asm("        struct OpBinaria* _op = (struct OpBinaria*)_e;")
+        asm("        r = (_ver_menciona_resultado(_op->izquierdo) || _ver_menciona_resultado(_op->derecho)) ? 1 : 0;")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"OpUnaria\") == 0) {")
+        asm("        struct OpUnaria* _ou = (struct OpUnaria*)_e;")
+        asm("        r = _ver_menciona_resultado(_ou->expr);")
+        asm("    }")
+        asm("    else if (strcmp(_t, \"LlamadaFuncion\") == 0) {")
+        asm("        struct LlamadaFuncion* _lf = (struct LlamadaFuncion*)_e;")
+        asm("        struct ListaNodo* _arg = _lf->argumentos;")
+        asm("        while (_arg) {")
+        asm("            if (_arg->cabeza && _ver_menciona_resultado(_arg->cabeza)) { r = 1; }")
+        asm("            _arg = _arg->cola;")
+        asm("        }")
+        asm("    }")
+        asm("}")
+    retornar r

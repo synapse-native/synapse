@@ -1,0 +1,14 @@
+#lang: es
+
+tipo Resultado<T, E> = ok(T) | err(E)
+
+funcion procesar(r: Resultado<entero, texto>) -> texto:
+    coincidir r:
+        ok(valor) =>
+            retornar entero_a_texto(valor)
+        err(msg) =>
+            retornar msg
+
+funcion principal() -> nulo:
+    escribir_linea(procesar(ok(42)))
+    retornar

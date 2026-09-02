@@ -1,19 +1,54 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 import re
 from typing import Dict
 
 from compilador.ast_nodes import (
-    Nodo, DefinicionFuncion, DefinicionEstructura,
+    Nodo, DefinicionFuncion, DefinicionEstructura, Parametro,
     AsignacionVariable, DeclaracionVariable, StmtConstante,
     AsignacionCampo, SentenciaSi, SentenciaMientras, SentenciaPara,
     SentenciaRetornar, SentenciaLanzar, SentenciaExpr,
     SentenciaEscuchar, SentenciaRecuperar, BloqueInseguro,
     SentenciaEnviarCanal, LogLlamada, NodoCoincidir, Identificador,
     LlamadaFuncion, DeclaracionExterna, ArgumentoTransferido,
+    DeclaracionExport, DeclaracionTipo,
 )
 from compilador.diagnostics import ErrorCodes
 from compilador.symbol_table import Simbolo
 from compilador.semantic_scope import _tipo_normalizado, _FUNCIONES_BUILTIN
 from compilador.semantic_types import AnalizadorSemanticoTypes
+
+
+# F1.2d: tipos de conteo de referencias rc/arc/débil (Manual 2 §2 L151-153 y
+# §4.3 L290-292). Se compilan a void* (ABI placeholder hasta Fase 23); el
+# literal `nulo` (puntero) es su valor inicial válido (Manual 4 §4.1).
+_TIPOS_RC = frozenset({'rc', 'arc', 'debil', 'débil', 'weak', 'faible', 'fraco'})
+
+
+def _es_tipo_referencia_rc(tipo: str) -> bool:
+    """True si `tipo` es un tipo de conteo de referencias (rc/arc/débil).
+    Soporta sintaxis SyQuex `rc entero` (Manual 3 §3 L155-169) y
+    `rc<entero>` (ángulos)."""
+    if tipo in _TIPOS_RC:
+        return True
+    if '<' in tipo:
+        base = tipo.split('<')[0].strip()
+    elif ' ' in tipo:
+        base = tipo.split()[0].strip()
+    else:
+        base = tipo.strip()
+    return base in _TIPOS_RC
+
+
+def _tipo_necesita_move(tipo: str) -> bool:
+    """True si el tipo necesita move semantics (tiene destructor).
+    Tipos con destructor: rc, arc, weak, texto, cadena, NodoJson, NodoToml.
+    Tipos valor (copian): entero, decimal, nulo, bool, enteroptr."""
+    if _es_tipo_referencia_rc(tipo):
+        return True
+    _TIPOS_CON_DESTRUCTOR = ('texto', 'cadena', 'CadenaSegura', 'NodoJson', 'NodoToml')
+    base = tipo.split('<')[0].strip().split()[0].strip() if ('<' in tipo or ' ' in tipo) else tipo.strip()
+    return base in _TIPOS_CON_DESTRUCTOR
 
 
 # --- Lifetime/Region type constants (Manual 4.3) ---
@@ -91,7 +126,7 @@ class UnionFind:
 
 class RegionGraph:
     """Grafo de restricciones de regiones (Manual 4.3).
-    
+
     Almacena todas las restricciones entre lifetimes para su
     posterior resolucion mediante el algoritmo de unificacion.
     """
@@ -104,7 +139,7 @@ class RegionGraph:
     @staticmethod
     def _check_outlives(origen: Lifetime, destino: Lifetime) -> bool:
         """M21.4: Verificar que el lifetime origen >= destino (Manual 4.3).
-        
+
         Static outlives todo, parametric outlives local,
         local: ambito menor = exterior = vive mas.
         """
@@ -128,11 +163,11 @@ class RegionGraph:
         destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
         origen_root = uf.find(origen_idx)
         destino_root = uf.find(destino_idx)
-        
+
         # Misma raiz en union-find = mismo lifetime unificado = OK
         if origen_root == destino_root:
             return True
-        
+
         # Verificar compatibilidad de metadatos de lifetime
         if not hasattr(c.origen, 'kind') or not hasattr(c.destino, 'kind'):
             return True  # No se puede determinar, asumir OK
@@ -140,11 +175,11 @@ class RegionGraph:
 
     def resolver(self, uf: UnionFind, report_error=None) -> bool:
         """M21.4: Resolver grafo de restricciones con validacion completa.
-        
+
         1. Unificar EQUALS mediante union-find
         2. Detectar ciclos en OUTLIVES mediante DFS (ERR_MEM_LIFETIME_CYCLE)
         3. Verificar OUTLIVES contra violaciones (ERR_MEM_LIFETIME_MISMATCH)
-        
+
         Returns: True si hay ciclo o violacion, False si OK
         """
         # Paso 1: Unificar EQUALS
@@ -153,7 +188,7 @@ class RegionGraph:
                 origen_idx = c.origen.indice if hasattr(c.origen, 'indice') else c.origen
                 destino_idx = c.destino.indice if hasattr(c.destino, 'indice') else c.destino
                 uf.union(origen_idx, destino_idx)
-        
+
         # Paso 2: Detectar ciclos
         has_cycle, ciclo_idx = self._dfs_cycle_detection(uf)
         if has_cycle and report_error:
@@ -164,7 +199,7 @@ class RegionGraph:
                 f"Ciclo de dependencia de lifetimes detectado"
             )
             return True
-        
+
         # Paso 3: Verificar OUTLIVES (M21.4 - Manual 4.3)
         for c in self.constraints:
             if c.tipo != REGION_OUTLIVES:
@@ -178,14 +213,14 @@ class RegionGraph:
                         f"no vive lo suficiente para el prestamo '{repr(c.destino)}'"
                     )
                 return True
-        
+
         return False
 
     def _dfs_cycle_detection(self, uf: UnionFind) -> tuple[bool, int]:
         """DFS 3-state para detectar ciclos en OUTLIVES (M21.2)."""
         n = uf.n
         estado = [0] * n  # 0=white, 1=grey, 2=black
-        
+
         def _dfs(v: int) -> tuple[bool, int]:
             estado[v] = 1  # grey
             for ci, c in enumerate(self.constraints):
@@ -204,7 +239,7 @@ class RegionGraph:
                         return True, ci_cycle
             estado[v] = 2  # black
             return False, -1
-        
+
         for v in range(n):
             if estado[v] == 0:
                 has_cycle, ci = _dfs(v)
@@ -225,6 +260,38 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     )
                 else:
                     self._estructuras[s.nombre] = s
+        # D-6/F1.2: registrar ADTs (`tipo X = ok(...) | err(...)`) como
+        # pseudo-estructuras (campos: tag + campos de constructores) para que el
+        # acceso a campos (.tag) y la inferencia de `expr?` funcionen (Manual 2
+        # §2 L75, Manual 3 §7).
+        for s in self.programa.sentencias:
+            if isinstance(s, DeclaracionTipo) and s.constructores:
+                # R23 (paridad nativo): la redefinicion de un ADT (mismo nombre
+                # que una estructura o un ADT anterior) es REDEFINICION — no se
+                # silencia con el `if not in` de registro.
+                if s.nombre in self._estructuras:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(s.linea, s.columna),
+                        nombre=s.nombre
+                    )
+                    continue
+                campos = [Parametro(nombre='tag', tipo='entero')]
+                for c in s.constructores:
+                    t_campo = c.tipos[0] if c.tipos else 'entero'
+                    campos.append(Parametro(nombre=c.nombre, tipo=t_campo))
+                    self._constructores_adt[c.nombre] = s.nombre
+                # D-2: registro de parámetros de tipo y constructores originales
+                # de ADT genéricos (para la sustitución en la monomorfización).
+                self._adt_parametros[s.nombre] = list(s.parametros_tipo)
+                self._adt_constructores[s.nombre] = [
+                    (c.nombre, c.tipos[0] if c.tipos else 'entero')
+                    for c in s.constructores
+                ]
+                if s.nombre not in self._estructuras:
+                    self._estructuras[s.nombre] = DefinicionEstructura(
+                        nombre=s.nombre, campos=campos,
+                        linea=s.linea, columna=s.columna)
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion):
                 if not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
@@ -234,11 +301,28 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         nombre=s.nombre
                     )
             elif isinstance(s, DeclaracionExterna):
-                if not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
+                if s.tipo_retorno == "__extern_struct":
+                    if s.nombre in self._estructuras:
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_REDEFINICION,
+                            self._token(s.linea, s.columna),
+                            nombre=s.nombre
+                        )
+                    else:
+                        self._estructuras[s.nombre] = s
+                elif not self.tabla.declarar(s.nombre, s.tipo_retorno, s):
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_REDEFINICION,
                         self._token(s.linea, s.columna),
                         nombre=s.nombre
+                    )
+            elif isinstance(s, DeclaracionExport):
+                fn = s.funcion
+                if isinstance(fn, DefinicionFuncion) and not self.tabla.declarar(fn.nombre, fn.tipo_retorno, fn):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(fn.linea, fn.columna),
+                        nombre=fn.nombre
                     )
             elif isinstance(s, StmtConstante):
                 tipo_const = self._inferir_tipo(s.valor)
@@ -253,9 +337,31 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         )
                     else:
                         cur[s.nombre] = sim
+            elif isinstance(s, DeclaracionVariable):
+                # R93: registrar variable global MUTABLE en Pasada 1 (Manual 2
+                # §8.1 L457). Manual 2 §2 L47-54 no define globales mutables
+                # en Synapse nativo (solo constante); Manual 3 §3 L74 define
+                # `variable` como keyword a nivel módulo en SyQuex.
+                tipo_decl = s.tipo
+                if not tipo_decl:
+                    tipo_decl = self._inferir_tipo(s.expresion) or 'int'
+                sim = Simbolo(s.nombre, tipo_decl, s, es_constante=False)
+                cur = self.tabla._scopes[-1]
+                if s.nombre in cur:
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(s.linea, s.columna),
+                        nombre=s.nombre
+                    )
+                else:
+                    cur[s.nombre] = sim
         for s in self.programa.sentencias:
             if isinstance(s, DefinicionFuncion) and s.nombre not in _FUNCIONES_BUILTIN:
                 self._analizar_funcion(s)
+            elif isinstance(s, DeclaracionExport):
+                fn = s.funcion
+                if isinstance(fn, DefinicionFuncion) and fn.nombre not in _FUNCIONES_BUILTIN:
+                    self._analizar_funcion(fn)
 
     # M21.3: Report error from lifetime resolver
     def _reportar_error(self, code: str, linea: int, mensaje: str):
@@ -277,7 +383,7 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         for p in self._func_params if hasattr(self, '_func_params') else []:
             lt = Lifetime(LT_PARAMETRICO, self.tabla.scope_nivel, self._proximo_lifetime, -1)
             self._proximo_lifetime += 1
-    
+
     # M21.3: Resolve lifetime constraints after function body analysis
     def _resolver_lifetimes_funcion(self):
         if self._region_graph.constraints and self._uf.n > 0:
@@ -286,24 +392,30 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                 self._hay_error = True
 
     def _analizar_funcion(self, nodo: DefinicionFuncion):
+        # 2.4: Hindley-Milner (Manual 2 §8.2) — validar la firma (parámetros y
+        # retorno): aridad de instanciaciones de ADT y argumentos conocidos.
+        self._validar_firma_funcion(nodo)
+        # Manual 2 §5.1: validar que las expresiones de requiere/garantiza
+        # sean booleanas (en todos los modos, no solo --safe).
+        self._validar_contratos_tipos(nodo)
         self.tabla.entrar_scope()
         self._func_retorno = nodo.tipo_retorno
         self._func_actual = nodo.nombre
         self._asignaciones_campos: Dict[str, Dict[str, str]] = {}
-        
+
         # M21.3: Initialize lifetime tracking for this function
         self._func_params = nodo.parametros
         self._inicializar_lifetimes_funcion()
         self._prestamos_registrados = set()  # Manual 4 S4.2: prestamos verificados por funcion
-        
+
         for p in nodo.parametros:
             self.tabla.declarar(p.nombre, p.tipo, nodo)
         for s in nodo.cuerpo:
             self._analizar_sentencia(s)
-        
+
         # M21.3: Resolve lifetime constraints
         self._resolver_lifetimes_funcion()
-        
+
         self.tabla.salir_scope()
         self._func_retorno = None
         self._func_actual = None
@@ -324,6 +436,8 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
                 if sim_existente:
+                    # Manual 2 L516: reasignación resetea ownership (después de move, nueva asignación restaura)
+                    self.tabla.desmarcar_movido(nodo.nombre)
                     # Variable already declared: validate type compatibility
                     norm_existente = _tipo_normalizado(sim_existente.tipo)
                     norm_expr = _tipo_normalizado(tipo_expr)
@@ -334,6 +448,10 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         # M22.6: Allow int->pointer assignment inside inseguro blocks (NULL ptr)
                         elif self._dentro_de_inseguro and norm_expr == 'int' and norm_existente.endswith('*'):
                             pass  # Allow NULL assignment to pointer in unsafe mode
+                        # F1.2d: `nulo` (puntero) -> rc/arc/débil (ABI void*, Manual 2 §4.3)
+                        elif (_es_tipo_referencia_rc(sim_existente.tipo)
+                              and norm_expr in ('puntero', 'void*')):
+                            pass
                         else:
                             self.diag.reportar(
                                 ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
@@ -359,24 +477,50 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                     nombre=nodo.nombre
                 )
                 return
+            # F1.2c: `let IDENT [":" tipo] ["=" expresion]` — el tipo es opcional.
+            # Sin anotacion se infiere de la expresion; sin ambas, defecto 'int'
+            # (Manual 2 §2 L134, paridad con el codegen S1/S2).
+            tipo_decl = nodo.tipo
+            if not tipo_decl:
+                tipo_decl = self._inferir_tipo(nodo.expresion) or 'int'
             tipo_expr = self._inferir_tipo(nodo.expresion)
             if tipo_expr:
-                norm_decl = _tipo_normalizado(nodo.tipo)
+                norm_decl = _tipo_normalizado(tipo_decl)
                 norm_expr = _tipo_normalizado(tipo_expr)
-                if norm_decl != norm_expr:
+                # F1.2d: `let x: arc<T> = nulo` — nulo (puntero) es válido para
+                # tipos de conteo de referencias (ABI void*, Manual 2 §4.3).
+                compat_rc = (_es_tipo_referencia_rc(tipo_decl)
+                             and norm_expr in ('puntero', 'void*'))
+                if norm_decl != norm_expr and not compat_rc:
                     self.diag.reportar(
                         ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                         self._token(nodo.linea, nodo.columna),
-                        tipo1=tipo_expr, tipo2=nodo.tipo, operacion='declaracion'
+                        tipo1=tipo_expr, tipo2=tipo_decl, operacion='declaracion'
                     )
                 else:
-                    self.tabla.declarar(nodo.nombre, nodo.tipo, nodo)
-                    # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
-                    if hasattr(self, '_region_graph'):
-                        lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
-                        scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
-                        self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
-                        self._proximo_lifetime += 1
+                    # R23 (paridad nativo): `let x` con el mismo nombre en el
+                    # mismo ambito es REDEFINICION (declarar retorna False).
+                    if not self.tabla.declarar(nodo.nombre, tipo_decl, nodo):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_REDEFINICION,
+                            self._token(nodo.linea, nodo.columna),
+                            nombre=nodo.nombre
+                        )
+                    else:
+                        # M21.3: Asignar LT_LOCAL lifetime + constraint SUBSCOPE
+                        if hasattr(self, '_region_graph'):
+                            lt_local = Lifetime(LT_LOCAL, self.tabla.scope_nivel, self._proximo_lifetime, -1)
+                            scope_lt = Lifetime(LT_LOCAL, 0, 0, -1)
+                            self._region_graph.agregar_restriccion(REGION_SUBSCOPE, lt_local, scope_lt, nodo.linea)
+                            self._proximo_lifetime += 1
+            else:
+                # R23 (paridad nativo): mismo ambito -> REDEFINICION
+                if not self.tabla.declarar(nodo.nombre, tipo_decl, nodo):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_REDEFINICION,
+                        self._token(nodo.linea, nodo.columna),
+                        nombre=nodo.nombre
+                    )
         elif isinstance(nodo, StmtConstante):
             tipo_const = self._inferir_tipo(nodo.valor)
             if tipo_const:
@@ -411,7 +555,12 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
                         )
                     else:
                         tipo_expr = self._inferir_tipo(nodo.expresion)
-                        if tipo_expr and _tipo_normalizado(tipo_expr) != _tipo_normalizado(campo_val.tipo):
+                        # F1.2d: `campo_arc = nulo` — nulo (puntero) es válido para
+                        # campos rc/arc/débil (ABI void*, Manual 2 §4.3).
+                        compat_rc = (_es_tipo_referencia_rc(campo_val.tipo)
+                                     and _tipo_normalizado(tipo_expr) in ('puntero', 'void*'))
+                        if (tipo_expr and not compat_rc
+                                and _tipo_normalizado(tipo_expr) != _tipo_normalizado(campo_val.tipo)):
                             self.diag.reportar(
                                 ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
                                 self._token(nodo.linea, nodo.columna),
@@ -442,11 +591,15 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, SentenciaMientras):
             tipo_cond = self._inferir_tipo(nodo.condicion)
             if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
-                self.diag.reportar(
-                    ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                    self._token(nodo.linea, nodo.columna),
-                    tipo1=tipo_cond, tipo2='int', operacion='condicion mientras'
-                )
+                # H-R90-15c: range-for lowering usa iterable como condición
+                # (Solo colecciones — texto/cadena NO son válidos como condición booleana)
+                if not (tipo_cond and (tipo_cond.startswith('Lista')
+                                       or tipo_cond.startswith('Mapa'))):
+                    self.diag.reportar(
+                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                        self._token(nodo.linea, nodo.columna),
+                        tipo1=tipo_cond, tipo2='int', operacion='condicion mientras'
+                    )
             self.tabla.entrar_scope()
             for s in nodo.cuerpo:
                 self._analizar_sentencia(s)
@@ -458,11 +611,17 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if nodo.condicion:
                 tipo_cond = self._inferir_tipo(nodo.condicion)
                 if tipo_cond and _tipo_normalizado(tipo_cond) not in ('int', 'float', 'booleano'):
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
-                        self._token(nodo.linea, nodo.columna),
-                        tipo1=tipo_cond, tipo2='int', operacion='condicion para'
-                    )
+                    # H-R90-15c: range-for sobre colecciones iterables (Manual 3 §2.1)
+                    # Lista<T>, Mapa<K,V>, texto son iterables válidos
+                    if not (tipo_cond and (tipo_cond.startswith('Lista')
+                                           or tipo_cond.startswith('Mapa')
+                                           or tipo_cond == 'texto'
+                                           or tipo_cond == 'cadena')):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_TIPO_INCOMPATIBLE,
+                            self._token(nodo.linea, nodo.columna),
+                            tipo1=tipo_cond, tipo2='int', operacion='condicion para'
+                        )
             if nodo.incremento:
                 self._analizar_sentencia(nodo.incremento)
             for s in nodo.cuerpo:
@@ -472,12 +631,16 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
             if nodo.expr:
                 tipo_ret = self._inferir_tipo(nodo.expr)
                 if tipo_ret and _tipo_normalizado(tipo_ret) != _tipo_normalizado(self._func_retorno or 'nulo'):
-                    self.diag.reportar(
-                        ErrorCodes.ERR_SEM_TIPO_RETORNO,
-                        self._token(nodo.linea, nodo.columna),
-                        esperado=self._func_retorno or 'nulo',
-                        obtenido=tipo_ret
-                    )
+                    # F1.2d: `retornar nulo` en funcion que devuelve rc/arc/débil
+                    # (nulo es el valor nulo de void*, Manual 2 §4.3).
+                    if not (_es_tipo_referencia_rc(self._func_retorno or '')
+                            and _tipo_normalizado(tipo_ret) in ('puntero', 'void*')):
+                        self.diag.reportar(
+                            ErrorCodes.ERR_SEM_TIPO_RETORNO,
+                            self._token(nodo.linea, nodo.columna),
+                            esperado=self._func_retorno or 'nulo',
+                            obtenido=tipo_ret
+                        )
             elif self._func_retorno and _tipo_normalizado(self._func_retorno) != 'void':
                 self.diag.reportar(
                     ErrorCodes.ERR_SEM_TIPO_RETORNO,
@@ -488,21 +651,38 @@ class AnalizadorSemanticoChecker(AnalizadorSemanticoTypes):
         elif isinstance(nodo, SentenciaLanzar):
             self._inferir_tipo(nodo.llamada)
             if isinstance(nodo.llamada, LlamadaFuncion):
+                # Manual 5 §2.4: args a lanzar se mueven si son tipos con destructor
+                # (rc, arc, weak, texto, etc.). Tipos valor (entero, decimal) se copian.
                 for arg in nodo.llamada.argumentos:
                     if isinstance(arg, ArgumentoTransferido) and isinstance(arg.expr, Identificador):
                         self.tabla.marcar_movido(arg.expr.nombre)
+                    elif isinstance(arg, Identificador):
+                        sim = self.tabla.buscar(arg.nombre)
+                        if sim and _tipo_necesita_move(sim.tipo):
+                            self.tabla.marcar_movido(arg.nombre)
         elif isinstance(nodo, SentenciaExpr):
             self._inferir_tipo(nodo.expr)
         elif isinstance(nodo, SentenciaEscuchar):
+            # F3-7: gramatica alineada al Manual 2 L113 (`escuchar canal:` +
+            # INDENT bloque DEDENT). La forma antigua `escuchar canal ->
+            # callback` NO existe en el manual; el bloque se analiza como
+            # cuerpo de sentencia (puede contener `canal ->` para recibir).
             self._inferir_tipo(nodo.canal) if nodo.canal else None
-            if nodo.respuesta and isinstance(nodo.respuesta, LlamadaFuncion):
-                sim = self.tabla.buscar(nodo.respuesta.nombre)
-                if sim and isinstance(sim.nodo, DefinicionFuncion):
-                    pass
-                self._inferir_tipo(nodo.respuesta)
+            for s in nodo.cuerpo:
+                self._analizar_sentencia(s)
         elif isinstance(nodo, SentenciaRecuperar):
-            self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
-            self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
+            if nodo.cuerpo_critico:
+                for s in nodo.cuerpo_critico:
+                    self._analizar_sentencia(s)
+                if nodo.cuerpo_atrapar:
+                    # H-R90-14: registrar variable_excepcion en scope (Manual 3 §7.3)
+                    if nodo.variable_excepcion:
+                        self.tabla.declarar(nodo.variable_excepcion, 'texto', nodo)
+                    for s in nodo.cuerpo_atrapar:
+                        self._analizar_sentencia(s)
+            else:
+                self._inferir_tipo(nodo.accion_critica) if nodo.accion_critica else None
+                self._inferir_tipo(nodo.plan_b) if nodo.plan_b else None
         elif isinstance(nodo, BloqueInseguro):
             self.tabla.entrar_scope()
             _prev_inseguro = self._dentro_de_inseguro

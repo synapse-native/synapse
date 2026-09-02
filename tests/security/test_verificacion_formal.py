@@ -1,3 +1,4 @@
+# cumple Manual 9 4
 """
 tests/security/test_verificacion_formal.py — Pruebas de Verificación Formal (M10.1)
 
@@ -63,6 +64,10 @@ funcion dividir(a: entero, b: entero) -> entero:
 """
 
 # Código válido en modo --safe (debe pasar sin errores)
+# ME-R2: se agrego 'principal' para que el fragmento sea un programa completo
+# compilable y enlazable. Sin entrada el pipeline no puede generar el exe y la
+# propagacion de errores (antes tragada) devuelve RC=1, destapando el fallo
+# preexistente de los tests de integracion con --safe.
 CODIGO_VALIDO_SAFE = """#lang: es
 
 funcion factorial(n: entero) -> entero:
@@ -70,6 +75,9 @@ funcion factorial(n: entero) -> entero:
         retornar 1
     sino:
         retornar n * factorial(n - 1)
+
+funcion principal() -> nulo:
+    retornar
 """
 
 # E-703: Contrato garantiza menciona _resultado_ en función void

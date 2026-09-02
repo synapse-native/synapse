@@ -1,3 +1,5 @@
+// cumple Manual 1 5: generador unificado del compilador
+// cumple Manual 8 4.1: compilador nativo S2
 // Parser state (file scope)
 #define MAX_TOKS 16384
 typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;
@@ -141,7 +143,7 @@ extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
+extern void cerrar_archivo(Canal canal);
 extern Tensor crear_tensor(int filas, int columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
@@ -165,7 +167,7 @@ extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
-extern void cerrar_canal(CanalConcurrencia* canal);
+extern void cerrar(CanalConcurrencia* canal);
 int _g_argc;
 char** _g_argv;
 int _argc() { return _g_argc; }
@@ -1370,7 +1372,7 @@ void gen_tipo_de_expr(struct GeneradorCEst est, int nodos, int total_nodos, int 
             if (strcmp(_str, "_argc")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "_argv")==0||strcmp(_str,"leer")==0||strcmp(_str,"leer_linea")==0||strcmp(_str,"concat")==0||strcmp(_str,"decimal_a_texto")==0||strcmp(_str,"entero_a_texto")==0) { strcpy(_gen_tmp_buf, "CadenaSegura"); return; }
             if (strcmp(_str, "abrir")==0) { strcpy(_gen_tmp_buf, "Canal"); return; }
-            if (strcmp(_str, "cerrar")==0||strcmp(_str,"salir")==0||strcmp(_str,"escribir")==0||strcmp(_str,"escribir_linea")==0||strcmp(_str,"libera")==0||strcmp(_str,"volcar_ast")==0||strcmp(_str,"canal_enviar")==0||strcmp(_str,"cerrar_canal")==0) { strcpy(_gen_tmp_buf, "void"); return; }
+            if (strcmp(_str, "cerrar_archivo")==0||strcmp(_str,"salir")==0||strcmp(_str,"escribir")==0||strcmp(_str,"escribir_linea")==0||strcmp(_str,"libera")==0||strcmp(_str,"volcar_ast")==0||strcmp(_str,"canal_enviar")==0||strcmp(_str,"cerrar")==0) { strcpy(_gen_tmp_buf, "void"); return; }
             if (strcmp(_str, "tokenizar")==0||strcmp(_str,"texto_a_entero")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "generar")==0) { strcpy(_gen_tmp_buf, "int"); return; }
             if (strcmp(_str, "texto_a_decimal")==0) { strcpy(_gen_tmp_buf, "float"); return; }
@@ -1438,7 +1440,7 @@ void gen_emitir_parsear_c(struct GeneradorCEst est) {
         gen_emitir_linea(est, "continue;");
         est.indent_actual = est.indent_actual - 1;
         gen_emitir_linea(est, "}");
-        // Single-char tokens and identifiers... 
+        // Single-char tokens and identifiers...
         gen_emitir_linea(est, "if(c=='\\\"'||c=='\\''){char q=c;int st=i;int scol=co;i++;co++;while(i<len&&s[i]!=q){i++;co++;}if(i>=len)break;i++;co++;int vl=(i-st-2)<255?(i-st-2):255;strncpy(_P_tks[_P_ntks].val,s+st+1,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_STR;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;continue;}");
         gen_emitir_linea(est, "if(c>='0'&&c<='9'){int st=i;int scol=co;while(i<len&&s[i]>='0'&&s[i]<='9')i++;if(i<len&&s[i]=='.'){i++;while(i<len&&s[i]>='0'&&s[i]<='9')i++;}int vl=(i-st)<255?(i-st):255;strncpy(_P_tks[_P_ntks].val,s+st,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_NUM;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;co+=i-st;continue;}");
         est.indent_actual = est.indent_actual - 1;
@@ -2274,7 +2276,7 @@ const char* _G_tex(struct Nodo* n) {
         if(strcmp(m,"_argc")==0) return "int";
         if(strcmp(m,"_argv")==0||strcmp(m,"leer")==0||strcmp(m,"leer_linea")==0||strcmp(m,"concat")==0) return "CadenaSegura";
         if(strcmp(m,"abrir")==0) return "Canal";
-        if(strcmp(m,"cerrar")==0||strcmp(m,"salir")==0||strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0) return "void";
+        if(strcmp(m,"cerrar_archivo")==0||strcmp(m,"salir")==0||strcmp(m,"escribir")==0||strcmp(m,"escribir_linea")==0) return "void";
         if(strcmp(m,"reserva")==0||strcmp(m,"suma")==0||strcmp(m,"producto")==0||strcmp(m,"relu")==0
    ||strcmp(m,"crear_tensor")==0||strcmp(m,"suma_tensor")==0||strcmp(m,"producto_punto")==0) return "Tensor";
         if(strcmp(m,"tokenizar")==0) return "int";
@@ -2508,7 +2510,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     fprintf(_G_out,"extern CadenaSegura leer_linea(void);\n");
     fprintf(_G_out,"extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);\n");
     fprintf(_G_out,"extern CadenaSegura leer(Canal canal);\n");
-    fprintf(_G_out,"extern void cerrar(Canal canal);\n");
+    fprintf(_G_out,"extern void cerrar_archivo(Canal canal);\n");
     fprintf(_G_out,"extern Tensor crear_tensor(int filas, int columnas);\n");
     fprintf(_G_out,"extern Tensor suma_tensor(Tensor a, Tensor b);\n");
     fprintf(_G_out,"extern Tensor producto_punto(Tensor a, Tensor b);\n");

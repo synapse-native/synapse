@@ -51,19 +51,110 @@ estructura ParserEst:
     contr_ultima_temp: entero
     contr_cuenta_temp: entero
 
+// ---- Buffer compartido de nodos del AST plano (FASE A, A2.4a) ----
+// Patron lexer_buffers()/lexer_obtener_tokens() (A2.1): el estado mutable vive
+// en un buffer estatico accesible por nombre (S1 pasa los structs POR VALOR, asi
+// que un campo 'nodos: NodoAST' por valor se copiaria en cada llamada).
+// parsear() (parser.syn) enlaza este buffer a ParserEst.nodos; el flatten (F8)
+// y los harnesses de paridad lo leen via esta funcion.
+funcion parser_nodos() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static struct NodoAST _N_nodos[65536];")
+        asm("r = (void*)_N_nodos;")
+        retornar r
+
+// ---- Meta informacion compartida del parser (FASE A, A2.3) ----
+// Patron lexer_buffers()/lexer_obtener_total(): el total de nodos generados
+// por parsear() vive en un static accesible por nombre (S1 pasa structs por
+// valor, asi que est.total_nodos local se perderia al salir de parsear).
+// parsear() (parser.syn) lo escribe; el harness de paridad y el flatten (F8)
+// lo leen via parser_obtener_total().
+// ---- Payload lexico: bits altos (32-63) de NodoAST.ptr_str (FASE A, A3.0) ----
+// NodoAST.ptr_str es entero (32 bits) y los buffers del lexer viven en
+// direcciones de 64 bits; sin la pareja de bits altos, el puente plano->tipado
+// (A3) reconstruiria punteros truncados (misma clase de bug que el segfault
+// &mut de A2.3b). Patron _f8_ptr_hi del flatten F8 (principal.syn L182).
+funcion parser_ptr_hi() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _N_ptr_hi[65536];")
+        asm("r = (void*)_N_ptr_hi;")
+        retornar r
+
+// ---- Payload lexico: segundo slot de cadena por nodo (FASE A, A3.0) ----
+// Varios nodos tipados necesitan DOS cadenas: NODO_FUNCION (nombre +
+// tipo_retorno), NODO_PARAMETRO (nombre + tipo_param), NODO_LET (nombre +
+// tipo_param). El NodoAST plano solo tiene un slot (ptr_str/len_str + hi);
+// se anade un slot paralelo por nodo (ptr + len + bits altos).
+funcion parser_str2_ptr() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _N_str2_ptr[65536];")
+        asm("r = (void*)_N_str2_ptr;")
+        retornar r
+
+funcion parser_str2_hi() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _N_str2_hi[65536];")
+        asm("r = (void*)_N_str2_hi;")
+        retornar r
+
+funcion parser_str2_len() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _N_str2_len[65536];")
+        asm("r = (void*)_N_str2_len;")
+        retornar r
+
+funcion parser_meta() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _N_parser_total = 0;")
+        asm("r = (void*)&_N_parser_total;")
+        retornar r
+
+funcion parser_obtener_total() -> entero:
+    inseguro:
+        r = 0
+        asm("r = *((int*)parser_meta());")
+        retornar r
+
 // ---- Node allocation via asm ----
 funcion parser_nuevo_nodo(est: ParserEst, tipo: entero, linea: entero, columna: entero) -> entero:
     inseguro:
         idx = 0
-        asm("idx = est.total_nodos")
-        asm("est.nodos[idx].tipo_nodo = tipo")
-        asm("est.nodos[idx].linea = linea")
-        asm("est.nodos[idx].columna = columna")
-        asm("est.nodos[idx].valor_int = 0")
-        asm("est.nodos[idx].hijo_izq = 0")
-        asm("est.nodos[idx].hijo_der = 0")
-        asm("est.nodos[idx].hermano = 0")
-        asm("est.total_nodos = idx + 1")
+        // FASE A (A2.3): guarda de desbordamiento — el buffer estatico
+        // parser_nodos() tiene NODO_MAX (65536) entradas; sin esta guarda, un
+        // archivo muy grande corrompia el buffer (el lexer ya hace clamp en
+        // lexer_obtener_tokens). Bajo error se marca hay_error y se retorna 0:
+        // parsear() aborta con -1 al ver el flag (no se indexa nodos[-1]).
+        asm("idx = est->total_nodos")
+        asm("if (idx >= 65536) { est->hay_error = 1; return 0; }")
+        asm("est->nodos[idx].tipo_nodo = tipo")
+        asm("est->nodos[idx].linea = linea")
+        asm("est->nodos[idx].columna = columna")
+        asm("est->nodos[idx].valor_int = 0")
+        asm("est->nodos[idx].hijo_izq = 0")
+        asm("est->nodos[idx].hijo_der = 0")
+        asm("est->nodos[idx].hermano = 0")
+        // FASE A (A4.5): ZERO COMPLETO del payload — el buffer plano
+        // parser_nodos() se REUTILIZA entre archivos del unity build
+        // (cada parsear() resetea total_nodos a 0), asi que un indice
+        // reutilizado heredaba ptr_str/len_str/ptr_extra del archivo
+        // anterior. El puente plano->tipado (puente_str/puente_str2)
+        // reconstruia punteros basura -> crash (harness) o mis-parse
+        // (S2). Se zeroean tambien los arrays paralelos de bits altos y
+        // el slot str2.
+        asm("est->nodos[idx].valor_dec = 0")
+        asm("est->nodos[idx].ptr_str = 0")
+        asm("est->nodos[idx].len_str = 0")
+        asm("est->nodos[idx].ptr_extra = 0")
+        asm("int* _hi_z = (int*)parser_ptr_hi(); if (_hi_z) _hi_z[idx] = 0;")
+        asm("int* _s2p_z = (int*)parser_str2_ptr(); int* _s2h_z = (int*)parser_str2_hi(); int* _s2l_z = (int*)parser_str2_len();")
+        asm("if (_s2p_z) _s2p_z[idx] = 0; if (_s2h_z) _s2h_z[idx] = 0; if (_s2l_z) _s2l_z[idx] = 0;")
+        asm("est->total_nodos = idx + 1")
         retornar idx
 
 // ---- Error reporting ----
@@ -73,52 +164,78 @@ funcion parser_error(est: ParserEst, mensaje: cadena, linea: entero, columna: en
     est.error_linea = linea
     est.error_columna = columna
 
+// FASE A (A3.1, anti-cuelgue): sincronizacion de errores, paridad _P_sinc_skip
+// (_parser.c L491-497): ante un token no reconocido en posicion de sentencia,
+// avanzar hasta un punto de sincronizacion (nueva linea, dedent, fin, coma,
+// paren derecho o dos puntos). Sin esto, el loop de sentencias quedaba
+// ESTANCADO en el token invalido -> bucle infinito (repro: 'let y = ...',
+// donde 'y' es T_Y, el keyword AND, no un nombre).
+// NOTA de paridad (revisor A3.1): el do-while consume SIEMPRE al menos un
+// token (anti-cuelgue) mientras _P_sinc_skip se detiene en el sync point sin
+// consumirlo — diferencia intencional: garantiza progreso incluso si el token
+// actual ya es de sincronizacion (ej: ',' suelto). Los loops de cuerpo chequean
+// T_NUEVALINEA/T_DESINDENTAR/T_FIN antes de llamar a parsear_sentencia, asi que
+// el fallthrough solo ve tokens invalidos reales.
+funcion parser_sinc_skip(est: ParserEst) -> nulo:
+    // do-while: consume SIEMPRE al menos un token (garantiza progreso del loop
+    // de sentencias aunque el token actual ya sea de sincronizacion, ej: ','
+    // suelto — sin esto el loop quedaria estancado igualmente).
+    token_avanzar(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_NUEVALINEA o t == T_DESINDENTAR o t == T_FIN o t == T_COMA o t == T_PAREN_DER o t == T_DOSPUNTOS:
+            r = 0
+            romper
+        token_avanzar(est)
+    retornar
+
 // ---- Token access helpers ----
 funcion token_tipo(est: ParserEst, pos: entero) -> entero:
     inseguro:
         r = 0
-        asm("r = (pos < est.total_tokens) ? est.tokens[pos].tipo : 57")
+        asm("r = (pos < est->total_tokens) ? est->tokens[pos].tipo : 57")
         retornar r
 
 funcion token_linea(est: ParserEst, pos: entero) -> entero:
     inseguro:
         r = 0
-        asm("r = (pos < est.total_tokens) ? est.tokens[pos].linea : 0")
+        asm("r = (pos < est->total_tokens) ? est->tokens[pos].linea : 0")
         retornar r
 
 funcion token_columna(est: ParserEst, pos: entero) -> entero:
     inseguro:
         r = 0
-        asm("r = (pos < est.total_tokens) ? est.tokens[pos].columna : 0")
+        asm("r = (pos < est->total_tokens) ? est->tokens[pos].columna : 0")
         retornar r
 
 funcion token_ptr_valor(est: ParserEst, pos: entero) -> entero:
     inseguro:
         r = 0
-        asm("r = (pos < est.total_tokens) ? est.tokens[pos].ptr_valor : 0")
+        asm("r = (pos < est->total_tokens) ? est->tokens[pos].ptr_valor : 0")
         retornar r
 
 funcion token_len_valor(est: ParserEst, pos: entero) -> entero:
     inseguro:
         r = 0
-        asm("r = (pos < est.total_tokens) ? est.tokens[pos].len_valor : 0")
+        asm("r = (pos < est->total_tokens) ? est->tokens[pos].len_valor : 0")
         retornar r
 
 funcion token_avanzar(est: ParserEst) -> nulo:
     inseguro:
-        asm("est.posicion = est.posicion + 1")
+        asm("est->posicion = est->posicion + 1")
 
 funcion token_mirar(est: ParserEst) -> entero:
     inseguro:
         r = 0
-        asm("r = (est.posicion < est.total_tokens) ? est.tokens[est.posicion].tipo : 57")
+        asm("r = (est->posicion < est->total_tokens) ? est->tokens[est->posicion].tipo : 57")
         retornar r
 
 funcion token_esperar(est: ParserEst, esperado: entero) -> entero:
     t = token_mirar(est)
     si t == esperado:
         inseguro:
-            asm("est.posicion = est.posicion + 1")
+            asm("est->posicion = est->posicion + 1")
         retornar 1
     est.hay_error = verdadero
     retornar 0
@@ -129,9 +246,55 @@ funcion token_esperar_texto(est: ParserEst, esperado: entero) -> entero:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         inseguro:
-            asm("est.posicion = est.posicion + 1")
+            asm("est->posicion = est->posicion + 1")
         retornar parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
     est.hay_error = verdadero
+    retornar 0
+
+// AUDITORIA F1 (D-F1): keywords contextuales del Manual 2 §3 — se comportan como
+// identificadores cuando el parser lo decide por contexto (tipo/tensor/nulo en
+// posicion de tipo; ok/err/algun/ninguno como constructores ADT; keyword tras '.').
+// Paridad con el parser Python (compilador/parser*.py): el lexer ya emite T_TIPO/
+// T_TENSOR/T_NULO/T_OK/T_ERR/T_ALGUN/T_NINGUNO conservando el lexema; aqui se
+// aceptan en todas las posiciones de identificador/nombre/tipo.
+//
+// AUDITORIA FASE A (A2.2): keywords contextuales activadas en A2.1 que también
+// deben comportarse como identificadores en posicion de nombre/tipo:
+//   T_LET (let x = ...), T_DELEGAR (delegar expresion), T_RC/T_ARC/T_DEBIL (rc/arc/débil<T>),
+//   T_MODULO (modulo), T_EXPORT (@export ... funcion).
+// Manual 2 §3: let, delegar, rc, arc, débil, modulo conservan el lexema.
+funcion token_es_nombre(t: entero) -> entero:
+    si t == T_IDENTIFICADOR:
+        retornar 1
+    si t == T_TIPO:
+        retornar 1
+    si t == T_TENSOR:
+        retornar 1
+    si t == T_NULO:
+        retornar 1
+    si t == T_OK:
+        retornar 1
+    si t == T_ERR:
+        retornar 1
+    si t == T_ALGUN:
+        retornar 1
+    si t == T_NINGUNO:
+        retornar 1
+    // AUDITORIA FASE A (A2.2): keywords contextuales para identificadores/tipos
+    si t == T_LET:
+        retornar 1
+    si t == T_DELEGAR:
+        retornar 1
+    si t == T_RC:
+        retornar 1
+    si t == T_ARC:
+        retornar 1
+    si t == T_DEBIL:
+        retornar 1
+    si t == T_MODULO:
+        retornar 1
+    si t == T_CANAL:
+        retornar 1
     retornar 0
 
 // ---- Expression parsing ----

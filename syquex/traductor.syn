@@ -1,0 +1,942 @@
+// cumple Manual 1 5: nucleo del compilador Synapse
+#lang: es
+
+// ============================================================
+// syquex/traductor.syn — Traductor Syquex -> SemNodo[] (R88)
+// Manual 6 §1.3 ("El traductor convierte el AST de Syquex en
+// SemNodo[]; biyectiva en cuanto a semántica") y Manual 3 §11.1
+// (mapeo de nodos clave) / §11.2 (preservación de metadatos
+// archivo/línea/columna). DECISIÓN D-F22-A: escrito en Synapse.
+//
+// ENTRADA: NodoAST[] plano producido por sq_programa() (parser R87,
+// buffers parser_nodos()/sq_tokens_hi()/parser_str2_*).
+// SALIDA: SemNodo[] canónico ABI v1 (R85, nucleo/ast_abi.syn) en
+// buffers propios _TR_*; PROGRAMA reservado en el índice 0 (contrato
+// del puente puente_construir_programa, que lee _an[0].hijo_izq).
+//
+// Transformaciones (M6 §1.3 L103-117):
+//   - MetodoDef -> NODO_FUNCION hoistada con nombre "Struct_metodo"
+//     y self como primer parámetro (el self lo antepone el parser);
+//     ConstructorDef -> NODO_FUNCION "__init__" hoistada (L107-108).
+//     Orden en la salida: métodos ANTES de su estructura (algoritmo
+//     §1.3 L146-150); la ESTRUCTURA conserva SOLO campos PARAMETRO.
+//   - NODO_BLOQUE_SQ(58, extensión D-F22-C) se desenrolla en todas
+//     las posiciones de cuerpo: forma canónica = cadena de sentencias
+//     enlazada por hermano (paridad parser Synapse R22).
+//   - CASO de coincidir: patrón reconstruido como SPAN slot1
+//     ("ctor(var)", "_", literal — paridad parsear_coincidir R11/R22)
+//     y cuerpo como cadena en hijo_izq.
+//   - Contratos: la cadena Syquex (un CONTRATO por bloque con
+//     valor_int=clase T_REQUIERE/T_GARANTIZA) se FUSIONA en un único
+//     CONTRATO canónico (hijo_izq=requiere, hijo_der=garantiza,
+//     valor_int=cuenta_req; paridad parsear_contratos del parser
+//     Synapse, parser.syn L294-300).
+//   - Metadatos: linea/columna copiados nodo a nodo (M3 §11.2); los
+//     payloads de cadena apuntan al buffer estable de la fuente.
+//
+// Extensiones ABI D-F22-C preservadas aditivamente (54 INTENTO,
+// 55 LISTA_LIT, 56 MAPA_LIT, 57 PARA_EN): sus CUERPOS se desenrollan;
+// el cableado backend es alcance R89.
+//
+// Códigos de retorno negativos (funciones de traducción):
+//   -1 desborde de nodos · -2 desborde de arena · -3 límite de guardas
+//   -4 patrón/estructura inválida
+// ============================================================
+
+importar parser_constantes
+importar parser_base
+importar lexer
+
+// ---- Buffers de salida (SemNodo[] canónico) ----
+funcion trad_nodos() -> puntero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        let r: puntero = nulo
+        asm("static struct NodoAST _TR_out[65536];")
+        asm("r = (void*)_TR_out;")
+        retornar r
+
+funcion trad_hi() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_hi[65536];")
+        asm("r = (void*)_TR_hi;")
+        retornar r
+
+funcion trad_s2p() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_s2p[65536];")
+        asm("r = (void*)_TR_s2p;")
+        retornar r
+
+funcion trad_s2h() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_s2h[65536];")
+        asm("r = (void*)_TR_s2h;")
+        retornar r
+
+funcion trad_s2l() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_s2l[65536];")
+        asm("r = (void*)_TR_s2l;")
+        retornar r
+
+funcion trad_meta() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_total = 0;")
+        asm("r = (void*)&_TR_total;")
+        retornar r
+
+funcion trad_arena() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static char _TR_arena[262144];")
+        asm("r = (void*)_TR_arena;")
+        retornar r
+
+funcion trad_arena_usada() -> puntero:
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _TR_ausada = 0;")
+        asm("r = (void*)&_TR_ausada;")
+        retornar r
+
+// ---- Accessores de salida ----
+funcion trad_reset() -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("*((int*)trad_meta()) = 0;")
+        asm("*((int*)trad_arena_usada()) = 0;")
+
+funcion trad_obtener_total() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        r = 0
+        asm("r = *((int*)trad_meta());")
+        retornar r
+
+funcion trad_nodo_tipo(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].tipo_nodo;")
+        retornar r
+
+funcion trad_nodo_linea(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].linea;")
+        retornar r
+    retornar 0
+
+funcion trad_nodo_columna(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].columna;")
+        retornar r
+    retornar 0
+
+funcion trad_nodo_extra(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].ptr_extra;")
+        retornar r
+    retornar 0
+
+funcion trad_hizq(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].hijo_izq;")
+        retornar r
+    retornar 0
+
+funcion trad_hder(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].hijo_der;")
+        retornar r
+    retornar 0
+
+funcion trad_herm(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)trad_nodos(); if (_n && i < 65536) r = _n[i].hermano;")
+        retornar r
+    retornar 0
+
+// Vista CadenaSegura del payload primario (slot1) del nodo de salida.
+// El puntero es PRESTADO (apunta a la arena _TR_* o al buffer de la
+// fuente _SQ_*); no liberar.
+funcion trad_texto(i: entero) -> texto:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        let s: texto = ""
+        asm("struct NodoAST* _o = (struct NodoAST*)trad_nodos(); int* _h = (int*)trad_hi(); if (i < 65536 && _o[i].len_str > 0) { uintptr_t _p = ((uintptr_t)(unsigned)_h[i] << 32) | (unsigned)_o[i].ptr_str; CadenaSegura _cs; _cs.longitud = _o[i].len_str; _cs.datos = (char*)_p; s = _cs; }")
+        retornar s
+    retornar ""
+
+// ---- Allocación en la salida ----
+funcion trad_nuevo(tipo: entero, linea: entero, col: entero) -> entero:
+    requiere:
+        tipo > 0
+    garantiza:
+        _resultado_ >= -1
+    inseguro:
+        i = -1
+        asm("int* _tc = (int*)trad_meta(); struct NodoAST* _tn = (struct NodoAST*)trad_nodos(); if (*_tc < 65536) { i = *_tc; memset(&_tn[i], 0, sizeof(struct NodoAST)); _tn[i].tipo_nodo = tipo; _tn[i].linea = linea; _tn[i].columna = col; *_tc = i + 1; } else { i = -1; }")
+        retornar i
+    retornar -1
+
+// Copia payload escalar + hi + spans slot2 del nodo fuente al destino.
+funcion trad_copiar_payload(src: entero, dst: entero) -> nulo:
+    requiere:
+        src >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); struct NodoAST* _out = (struct NodoAST*)trad_nodos(); int _tot = *((int*)parser_meta()); if (src < _tot && dst >= 0 && dst < 65536) { _out[dst].valor_int = _in[src].valor_int; _out[dst].valor_dec = _in[src].valor_dec; _out[dst].ptr_str = _in[src].ptr_str; _out[dst].len_str = _in[src].len_str; _out[dst].ptr_extra = _in[src].ptr_extra; int* _ih = (int*)sq_tokens_hi(); int* _oh = (int*)trad_hi(); if (_ih && _oh) { _oh[dst] = _ih[src]; } int* _sp = (int*)parser_str2_ptr(); int* _sh = (int*)parser_str2_hi(); int* _sl = (int*)parser_str2_len(); int* _dp = (int*)trad_s2p(); int* _dh = (int*)trad_s2h(); int* _dl = (int*)trad_s2l(); if (_sp && _dp) { _dp[dst] = _sp[src]; } if (_sh && _dh) { _dh[dst] = _sh[src]; } if (_sl && _dl) { _dl[dst] = _sl[src]; } }")
+
+// ---- Marcado de ownership (F4: Manual 4 §3.1/§4.3/§5.2) ----
+// Lee el span de tipo (slot2) del nodo de salida y marca valor_int con los
+// bits de ownership: bit0=rc, bit1=arc, bit2=débil. Solo aplica a
+// NODO_LET / NODO_DECLARACION / NODO_PARAMETRO (los que llevan tipo).
+// Esto alimenta a _a_analizar_bloque (memory.c) y a analizar_ciclos
+// (analizador_alcance.syq), que dependen de estos bits (F4 cierra la
+// conexion frontend<->analizador).
+funcion trad_set_ownership(n: entero) -> nulo:
+    requiere:
+        n >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("{ int _nt = -1; { struct NodoAST* _on = (struct NodoAST*)trad_nodos(); if (_on && n >= 0 && n < 65536) _nt = _on[n].tipo_nodo; } if (_nt == NODO_LET || _nt == NODO_DECLARACION || _nt == NODO_PARAMETRO) { int* _s2p = (int*)trad_s2p(); int* _s2h = (int*)trad_s2h(); int* _s2l = (int*)trad_s2l(); if (_s2p && _s2h && _s2l && n >= 0 && n < 65536) { uintptr_t _p = ((uintptr_t)(unsigned)_s2h[n] << 32) | (unsigned)_s2p[n]; int _len = _s2l[n]; struct NodoAST* _on = (struct NodoAST*)trad_nodos(); int _bits = 0; if (_len >= 2) { char _c0 = ((char*)_p)[0]; char _c1 = ((char*)_p)[1]; if (_c0 == 114 && _c1 == 99) { _bits |= 1; } else if (_c0 == 97 && _c1 == 114) { if (_len >= 3 && ((char*)_p)[2] == 99) _bits |= 2; } else if (_c0 == 100) { if (_len >= 5 && ((char*)_p)[2] == 98) _bits |= 4; if (_len >= 6 && ((char*)_p)[3] == 98) _bits |= 4; } } _on[n].valor_int |= _bits; } } }")
+    retornar
+
+// ---- Arena de cadenas (nombres decorados y spans reconstruidos) ----
+funcion trad_arena_escribir(lo: entero, hi_bits: entero, len: entero) -> entero:
+    requiere:
+        len >= 0
+    garantiza:
+        _resultado_ >= -1
+    inseguro:
+        off = -1
+        asm("char* _ar = (char*)trad_arena(); int* _au = (int*)trad_arena_usada(); uintptr_t _src = ((uintptr_t)(unsigned)hi_bits << 32) | (unsigned)lo; if (len >= 0 && *_au + len < 262144) { memcpy(_ar + *_au, (const void*)_src, (size_t)len); off = *_au; *_au += len; }")
+        retornar off
+    retornar -1
+
+funcion trad_arena_byte(b: entero) -> entero:
+    requiere:
+        b >= 0
+    garantiza:
+        _resultado_ >= -1
+    inseguro:
+        off = -1
+        asm("char* _ar = (char*)trad_arena(); int* _au = (int*)trad_arena_usada(); if (*_au + 1 < 262144) { _ar[*_au] = (char)b; off = *_au; *_au += 1; }")
+        retornar off
+    retornar -1
+
+// Escribe en el nodo dst el nombre (off,len) de la arena (slot1 + hi).
+funcion trad_fijar_nombre_arena(dst: entero, off: entero, len: entero) -> nulo:
+    requiere:
+        dst >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("if (dst >= 0 && dst < 65536 && off >= 0) { struct NodoAST* _o = (struct NodoAST*)trad_nodos(); char* _ar = (char*)trad_arena(); uintptr_t _p = (uintptr_t)(_ar + off); _o[dst].ptr_str = (int)(_p & 0xFFFFFFFFu); _o[dst].len_str = len; int* _th = (int*)trad_hi(); if (_th) { _th[dst] = (int)(_p >> 32); } }")
+
+// ---- Accessores de ENTRADA (árbol Syquex de sq_programa) ----
+funcion tr_lo(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].ptr_str;")
+        retornar r
+    retornar 0
+
+funcion tr_hi(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("int* _ih = (int*)sq_tokens_hi(); if (_ih && n >= 0 && n < 65536) r = _ih[n];")
+        retornar r
+    retornar 0
+
+funcion tr_len(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].len_str;")
+        retornar r
+    retornar 0
+
+funcion tr_tipo(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].tipo_nodo;")
+        retornar r
+    retornar 0
+
+funcion tr_lin(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].linea;")
+        retornar r
+    retornar 0
+
+funcion tr_col(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].columna;")
+        retornar r
+    retornar 0
+
+funcion tr_vi(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].valor_int;")
+        retornar r
+    retornar 0
+
+funcion tr_hizq(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hijo_izq;")
+        retornar r
+    retornar 0
+
+funcion tr_hder(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hijo_der;")
+        retornar r
+    retornar 0
+
+funcion tr_herm(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].hermano;")
+        retornar r
+    retornar 0
+
+funcion tr_extra(n: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (n >= 0 && n < 65536) r = _in[n].ptr_extra;")
+        retornar r
+    retornar 0
+
+// ¿La función fuente es "__init__" (ConstructorDef, M6 §1.3 L107)?
+funcion tr_es_init(f: entero) -> entero:
+    requiere:
+        f >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _in = (struct NodoAST*)parser_nodos(); if (f >= 0 && f < 65536 && _in[f].len_str == 8) { uintptr_t _p = ((uintptr_t)(unsigned)((int*)sq_tokens_hi())[f] << 32) | (unsigned)_in[f].ptr_str; r = (memcmp((const void*)_p, \"__init__\", 8) == 0) ? 1 : 0; }")
+        retornar r
+    retornar 0
+
+// ---- Expresiones: traducción de UN nodo (sin tocar hermanos) ----
+funcion trad_expr_uno(e: entero) -> entero:
+    requiere:
+        e >= 0
+    garantiza:
+        _resultado_ >= -4
+    si e <= 0:
+        retornar 0
+    t = tr_tipo(e)
+    n = trad_nuevo(t, tr_lin(e), tr_col(e))
+    si n < 0:
+        retornar -1
+    trad_copiar_payload(e, n)
+    trad_set_ownership(n)
+    izq = trad_expr(tr_hizq(e))
+    si izq < 0:
+        retornar izq
+    der = trad_expr(tr_hder(e))
+    si der < 0:
+        retornar der
+    ex = tr_extra(e)
+    nex = 0
+    si ex > 0:
+        nex = trad_expr(ex)
+        si nex < 0:
+            retornar nex
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = izq; _on[n].hijo_der = der; if (nex > 0) { _on[n].ptr_extra = nex; } }")
+    retornar n
+
+// Traduce una CADENA de expresiones (nodo + hermanos); retorna cabeza.
+funcion trad_expr(e: entero) -> entero:
+    requiere:
+        e >= 0
+    garantiza:
+        _resultado_ >= -4
+    primero = 0
+    ultimo = 0
+    g = 0
+    mientras e > 0:
+        g = g + 1
+        si g > 200000:
+            retornar -3
+        n = trad_expr_uno(e)
+        si n < 0:
+            retornar n
+        si primero == 0:
+            primero = n
+        sino:
+            inseguro:
+                asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[ultimo].hermano = n; }")
+        ultimo = n
+        e = tr_herm(e)
+    retornar primero
+
+// Enlaza dos nodos ya traducidos por hermano (sin efecto con índices <0).
+funcion trad_encadenar(prev: entero, nuevo: entero) -> nulo:
+    requiere:
+        prev > 0
+        nuevo > 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[prev].hermano = nuevo; }")
+
+// Helper: último nodo de una cadena traducida (output)
+funcion trad_ultimo(head: entero) -> entero:
+    requiere:
+        head >= 0
+    garantiza:
+        _resultado_ >= 0
+    si head <= 0:
+        retornar 0
+    cur = head
+    g = 0
+    mientras trad_herm(cur) > 0:
+        g = g + 1
+        si g > 200000:
+            retornar cur
+        cur = trad_herm(cur)
+    retornar cur
+
+// ---- Cuerpos: desenrolla BLOQUE_SQ(58) y traduce sentencia a sentencia ----
+funcion trad_stmts(head: entero) -> entero:
+    requiere:
+        head >= 0
+    garantiza:
+        _resultado_ >= -4
+    primero = 0
+    ultimo = 0
+    s = head
+    g = 0
+    mientras s > 0:
+        g = g + 1
+        si g > 200000:
+            retornar -3
+        si tr_tipo(s) == 58:
+            inner = tr_hizq(s)
+            outer_next = tr_herm(s)
+            inner_trans = trad_stmts(inner)
+            si inner_trans < 0:
+                retornar inner_trans
+            si inner_trans > 0:
+                si primero == 0:
+                    primero = inner_trans
+                    ultimo = trad_ultimo(inner_trans)
+                sino:
+                    trad_encadenar(ultimo, inner_trans)
+                    ultimo = trad_ultimo(inner_trans)
+            s = outer_next
+            siguiente
+        t = trad_stmt_uno(s)
+        si t < 0:
+            retornar t
+        si t > 0:
+            si primero == 0:
+                primero = t
+            sino:
+                trad_encadenar(ultimo, t)
+            ultimo = t
+        s = tr_herm(s)
+    retornar primero
+
+// Igual que trad_stmts pero acepta la cabeza envuelta en BLOQUE_SQ
+// (posiciones cuerpo de si/mientras/etc.) y retorna 0 para vacío.
+funcion trad_stmts_desde(head: entero) -> entero:
+    requiere:
+        head >= 0
+    garantiza:
+        _resultado_ >= -4
+    si head <= 0:
+        retornar 0
+    si tr_tipo(head) == 58:
+        head = tr_hizq(head)
+    retornar trad_stmts(head)
+
+// Reconstruye el patrón del caso como texto canónico (span slot1):
+// ident | ctor(var) | literal (M3 §3 L139-140; paridad R11/R22).
+funcion trad_patron_span(patron: entero, dst_caso: entero) -> entero:
+    requiere:
+        patron > 0
+        dst_caso >= 0
+    garantiza:
+        _resultado_ >= -4
+    pt = tr_tipo(patron)
+    si pt == NODO_LLAMADA:
+        ctor = tr_hizq(patron)
+        varg = tr_hder(patron)
+        si ctor <= 0 o varg <= 0:
+            retornar -4
+        l1 = trad_arena_escribir(tr_lo(ctor), tr_hi(ctor), tr_len(ctor))
+        si l1 < 0:
+            retornar -2
+        l2 = trad_arena_byte(40)
+        si l2 < 0:
+            retornar -2
+        l3 = trad_arena_escribir(tr_lo(varg), tr_hi(varg), tr_len(varg))
+        si l3 < 0:
+            retornar -2
+        l4 = trad_arena_byte(41)
+        si l4 < 0:
+            retornar -2
+        total = tr_len(ctor) + 1 + tr_len(varg) + 1
+        trad_fijar_nombre_arena(dst_caso, l1, total)
+        retornar 0
+    // identificador (incluye "_") o literal con lexema en el payload
+    si tr_len(patron) > 0:
+        off = trad_arena_escribir(tr_lo(patron), tr_hi(patron), tr_len(patron))
+        si off < 0:
+            retornar -2
+        trad_fijar_nombre_arena(dst_caso, off, tr_len(patron))
+        retornar 0
+    retornar -4
+
+// Traduce UNA sentencia (sin tocar sus hermanos).
+funcion trad_stmt_uno(s: entero) -> entero:
+    requiere:
+        s > 0
+    garantiza:
+        _resultado_ >= -4
+    t = tr_tipo(s)
+    // --- coincidir: patrón span canónico + cuerpo desenrollado ---
+    si t == NODO_COINCIDIR:
+        n = trad_nuevo(NODO_COINCIDIR, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        sujeto = trad_expr(tr_hizq(s))
+        si sujeto < 0:
+            retornar sujeto
+        primer_caso = 0
+        ult_caso = 0
+        c = tr_hder(s)
+        mientras c > 0:
+            caso_n = trad_nuevo(NODO_CASO, tr_lin(c), tr_col(c))
+            si caso_n < 0:
+                retornar -1
+            rp = trad_patron_span(tr_hizq(c), caso_n)
+            si rp < 0:
+                retornar rp
+            cuerpo = trad_stmts_desde(tr_hder(c))
+            si cuerpo < 0:
+                retornar cuerpo
+            inseguro:
+                asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[caso_n].hijo_izq = cuerpo; }")
+            si primer_caso == 0:
+                primer_caso = caso_n
+            sino:
+                trad_encadenar(ult_caso, caso_n)
+            ult_caso = caso_n
+            c = tr_herm(c)
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = sujeto; _on[n].hijo_der = primer_caso; }")
+        retornar n
+    // --- intentar/atrapar (M6 §1.3 L111: Intento -> NODO_INTENTO) ---
+    si t == NODO_INTENTO:
+        n = trad_nuevo(NODO_INTENTO, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        trad_copiar_payload(s, n)
+        tb = trad_stmts_desde(tr_hizq(s))
+        si tb < 0:
+            retornar tb
+        cb = trad_stmts_desde(tr_hder(s))
+        si cb < 0:
+            retornar cb
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = tb; _on[n].hijo_der = cb; }")
+        retornar n
+    // --- si/sino (cuerpos desenrollados; forma canónica del parser) ---
+    si t == NODO_SI:
+        n = trad_nuevo(NODO_SI, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        cond = trad_expr(tr_hizq(s))
+        si cond < 0:
+            retornar cond
+        entonces = trad_stmts_desde(tr_hder(s))
+        si entonces < 0:
+            retornar entonces
+        sino_c = trad_stmts_desde(tr_extra(s))
+        si sino_c < 0:
+            retornar sino_c
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = cond; _on[n].hijo_der = entonces; _on[n].ptr_extra = sino_c; }")
+        retornar n
+    // --- mientras ---
+    si t == NODO_MIENTRAS:
+        n = trad_nuevo(NODO_MIENTRAS, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        cond = trad_expr(tr_hizq(s))
+        si cond < 0:
+            retornar cond
+        cuerpo = trad_stmts_desde(tr_hder(s))
+        si cuerpo < 0:
+            retornar cuerpo
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = cond; _on[n].hijo_der = cuerpo; }")
+        retornar n
+    // --- para..en (extensión D-F22-C; cableado backend R89) ---
+    si t == NODO_PARA_EN:
+        n = trad_nuevo(NODO_PARA_EN, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        idv = trad_expr(tr_hizq(s))
+        si idv < 0:
+            retornar idv
+        iterable = trad_expr(tr_hder(s))
+        si iterable < 0:
+            retornar iterable
+        cuerpo = trad_stmts_desde(tr_extra(s))
+        si cuerpo < 0:
+            retornar cuerpo
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = idv; _on[n].hijo_der = iterable; _on[n].ptr_extra = cuerpo; }")
+        retornar n
+    // --- escuchar (M6 §1.3 L113) ---
+    si t == NODO_ESCUCHAR:
+        n = trad_nuevo(NODO_ESCUCHAR, tr_lin(s), tr_col(s))
+        si n < 0:
+            retornar -1
+        ch_esc = trad_expr(tr_hizq(s))
+        si ch_esc < 0:
+            retornar ch_esc
+        cuerpo = trad_stmts_desde(tr_hder(s))
+        si cuerpo < 0:
+            retornar cuerpo
+        inseguro:
+            asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = ch_esc; _on[n].hijo_der = cuerpo; }")
+        retornar n
+    // --- genérica: copiar nodo + traducir expresiones hijas ---
+    // (let/asignacion/expr/retornar/lanzar/romper/siguiente/constante/
+    //  externo/declaracion_tipo+constructores/propagar/enviar canal...)
+    n = trad_nuevo(t, tr_lin(s), tr_col(s))
+    si n < 0:
+        retornar -1
+    trad_copiar_payload(s, n)
+    trad_set_ownership(n)
+    izq = trad_expr(tr_hizq(s))
+    si izq < 0:
+        retornar izq
+    der = trad_expr(tr_hder(s))
+    si der < 0:
+        retornar der
+    ex = tr_extra(s)
+    nex = 0
+    si ex > 0:
+        nex = trad_expr(ex)
+        si nex < 0:
+            retornar nex
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = izq; _on[n].hijo_der = der; if (nex > 0) { _on[n].ptr_extra = nex; } }")
+    retornar n
+
+// ---- Parámetros de función (cadena PARAMETRO) ----
+funcion trad_params(p_head: entero) -> entero:
+    requiere:
+        p_head >= 0
+    garantiza:
+        _resultado_ >= -4
+    primero = 0
+    ultimo = 0
+    p = p_head
+    mientras p > 0:
+        pn = trad_expr_uno(p)
+        si pn < 0:
+            retornar pn
+        si primero == 0:
+            primero = pn
+        sino:
+            trad_encadenar(ultimo, pn)
+        ultimo = pn
+        p = tr_herm(p)
+    retornar primero
+
+// Fusiona la cadena Syquex de CONTRATOs en el descriptor canónico ÚNICO
+// (paridad parsear_contratos: hijo_izq=req, hijo_der=gar, vi=cuenta_req).
+funcion trad_contratos(extra_src: entero) -> entero:
+    requiere:
+        extra_src >= 0
+    garantiza:
+        _resultado_ >= -4
+    si extra_src <= 0:
+        retornar 0
+    req_first = 0
+    req_last = 0
+    gar_first = 0
+    gar_last = 0
+    cuenta_req = 0
+    c = extra_src
+    mientras c > 0:
+        clase = tr_vi(c)
+        exprs = trad_expr(tr_hizq(c))
+        si exprs < 0:
+            retornar exprs
+        si clase == T_REQUIERE:
+            si exprs > 0:
+                cuenta_req = cuenta_req + 1
+                si req_first == 0:
+                    req_first = exprs
+                    req_last = exprs
+                sino:
+                    trad_encadenar(req_last, exprs)
+                    req_last = exprs
+        sino:
+            si exprs > 0:
+                si gar_first == 0:
+                    gar_first = exprs
+                    gar_last = exprs
+                sino:
+                    trad_encadenar(gar_last, exprs)
+                    gar_last = exprs
+        c = tr_herm(c)
+    si req_first == 0 y gar_first == 0:
+        retornar 0
+    nc = trad_nuevo(NODO_CONTRATO, 0, 0)
+    si nc < 0:
+        retornar -1
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[nc].hijo_izq = req_first; _on[nc].hijo_der = gar_first; _on[nc].valor_int = cuenta_req; }")
+    retornar nc
+
+// Traduce una FUNCION. deco_struct > 0 => método: nombre "Struct_metodo"
+// (M6 §1.3 L108); deco_struct == 0 conserva el nombre fuente.
+funcion trad_funcion(f: entero, deco_struct: entero) -> entero:
+    requiere:
+        f > 0
+    garantiza:
+        _resultado_ >= -4
+    n = trad_nuevo(NODO_FUNCION, tr_lin(f), tr_col(f))
+    si n < 0:
+        retornar -1
+    si deco_struct > 0:
+        si tr_es_init(f) == 1:
+            // ME-9: ConstructorDef — conserva nombre "__init__" pero marca
+            // valor_int = struct_node_idx para que el puente asocie el
+            // constructor al struct dueño (Manual 3 §6.1).
+            trad_copiar_payload(f, n)
+            inseguro:
+                asm("{ struct NodoAST* _tn = (struct NodoAST*)trad_nodos(); if (_tn) { _tn[n].valor_int = deco_struct; } }")
+        sino:
+            // MetodoDef — decora nombre "Struct_method" y marca valor_int
+            // (Manual 3 §6.1: "es_metodo" como metadato, no partition("_")).
+            l1 = trad_arena_escribir(tr_lo(deco_struct), tr_hi(deco_struct), tr_len(deco_struct))
+            si l1 < 0:
+                retornar -2
+            l2 = trad_arena_byte(95)
+            si l2 < 0:
+                retornar -2
+            l3 = trad_arena_escribir(tr_lo(f), tr_hi(f), tr_len(f))
+            si l3 < 0:
+                retornar -2
+            total = tr_len(deco_struct) + 1 + tr_len(f)
+            trad_fijar_nombre_arena(n, l1, total)
+            // El span del tipo de retorno (slot2) se preserva para los métodos
+            // (trad_copiar_payload no corre en esta rama).
+            inseguro:
+                asm("{ int* _sp = (int*)parser_str2_ptr(); int* _sh = (int*)parser_str2_hi(); int* _sl = (int*)parser_str2_len(); int* _dp = (int*)trad_s2p(); int* _dh = (int*)trad_s2h(); int* _dl = (int*)trad_s2l(); if (_sp && _dp) { _dp[n] = _sp[f]; } if (_sh && _dh) { _dh[n] = _sh[f]; } if (_sl && _dl) { _dl[n] = _sl[f]; } }")
+                asm("{ struct NodoAST* _tn = (struct NodoAST*)trad_nodos(); if (_tn) { _tn[n].valor_int = deco_struct; } }")
+    sino:
+        trad_copiar_payload(f, n)
+    params = trad_params(tr_hizq(f))
+    si params < 0:
+        retornar params
+    contr = trad_contratos(tr_extra(f))
+    si contr < 0:
+        retornar contr
+    cuerpo_src = tr_hder(f)
+    cuerpo = 0
+    si cuerpo_src > 0:
+        si tr_tipo(cuerpo_src) == NODO_RETORNAR:
+            // forma una-expresión (M3 §3 L79): RETORNAR directo sin bloque
+            cuerpo = trad_stmt_uno(cuerpo_src)
+            si cuerpo < 0:
+                retornar cuerpo
+        sino:
+            cuerpo = trad_stmts_desde(cuerpo_src)
+            si cuerpo < 0:
+                retornar cuerpo
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = params; if (cuerpo > 0) { _on[n].hijo_der = cuerpo; } if (contr > 0) { _on[n].ptr_extra = contr; } }")
+    retornar n
+
+// ---- Programa completo (algoritmo M6 §1.3 L121-160) ----
+// Retorna el índice raíz (siempre 0: PROGRAMA reservado) o negativo
+// según los códigos de la cabecera.
+funcion traducir_programa(prog: entero) -> entero:
+    requiere:
+        prog > 0
+    garantiza:
+        _resultado_ >= -4
+    trad_reset()
+    root = trad_nuevo(NODO_PROGRAMA, 1, 1)
+    si root < 0:
+        retornar -1
+    primero = 0
+    ultimo = 0
+    d = tr_hizq(prog)
+    g = 0
+    mientras d > 0:
+        g = g + 1
+        si g > 100000:
+            retornar -3
+        t = tr_tipo(d)
+        // --- estructura: campos en la cadena + métodos hoistados ---
+        si t == NODO_ESTRUCTURA:
+            es_n = trad_nuevo(NODO_ESTRUCTURA, tr_lin(d), tr_col(d))
+            si es_n < 0:
+                retornar -1
+            trad_copiar_payload(d, es_n)
+            campos_first = 0
+            campos_last = 0
+            m = tr_hizq(d)
+            mientras m > 0:
+                mt = tr_tipo(m)
+                si mt == NODO_FUNCION:
+                    // ME-9: siempre pasa el nodo del struct (deco=d) para
+                    // marcar tanto métodos como constructores con valor_int.
+                    fn = trad_funcion(m, d)
+                    si fn < 0:
+                        retornar fn
+                    // Método hoistado a nivel programa (M6 §1.3 L146-149);
+                    // se añade ANTES de la estructura (algoritmo §1.3).
+                    si primero == 0:
+                        primero = fn
+                        ultimo = fn
+                    sino:
+                        trad_encadenar(ultimo, fn)
+                        ultimo = fn
+                sino:
+                    si mt == NODO_PARAMETRO:
+                        cn = trad_expr_uno(m)
+                        si cn < 0:
+                            retornar cn
+                        si campos_first == 0:
+                            campos_first = cn
+                            campos_last = cn
+                        sino:
+                            trad_encadenar(campos_last, cn)
+                            campos_last = cn
+                m = tr_herm(m)
+            inseguro:
+                asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[es_n].hijo_izq = campos_first; }")
+            si primero == 0:
+                primero = es_n
+                ultimo = es_n
+            sino:
+                trad_encadenar(ultimo, es_n)
+                ultimo = es_n
+            d = tr_herm(d)
+            siguiente
+        si t == NODO_FUNCION:
+            fn2 = trad_funcion(d, 0)
+            si fn2 < 0:
+                retornar fn2
+            si primero == 0:
+                primero = fn2
+                ultimo = fn2
+            sino:
+                trad_encadenar(ultimo, fn2)
+                ultimo = fn2
+            d = tr_herm(d)
+            siguiente
+        // --- exportación: envuelve una función (se traduce el interior) ---
+        si t == NODO_EXPORT:
+            n = trad_nuevo(NODO_EXPORT, tr_lin(d), tr_col(d))
+            si n < 0:
+                retornar -1
+            trad_copiar_payload(d, n)
+            // M6 §1.3 L116: export registra la función para bindings; el
+            // interior debe ser un NODO_FUNCION canónico (cuerpo sin 58,
+            // params encadenados) — misma ruta que una función top-level.
+            ni = 0
+            si tr_hizq(d) > 0:
+                ni = trad_funcion(tr_hizq(d), 0)
+                si ni < 0:
+                    retornar ni
+            inseguro:
+                asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[n].hijo_izq = ni; }")
+            si primero == 0:
+                primero = n
+                ultimo = n
+            sino:
+                trad_encadenar(ultimo, n)
+                ultimo = n
+            d = tr_herm(d)
+            siguiente
+        // --- resto: funcion clásica/una-expresión, externo, constante,
+        //     let global, tipo sinonimo/enumeracion ---
+        dn = trad_stmt_uno(d)
+        si dn < 0:
+            retornar dn
+        si dn > 0:
+            si primero == 0:
+                primero = dn
+                ultimo = dn
+            sino:
+                trad_encadenar(ultimo, dn)
+                ultimo = dn
+        d = tr_herm(d)
+    inseguro:
+        asm("{ struct NodoAST* _on = (struct NodoAST*)trad_nodos(); _on[root].hijo_izq = primero; }")
+    retornar root

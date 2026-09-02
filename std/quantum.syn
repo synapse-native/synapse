@@ -1,0 +1,63 @@
+#lang: es
+// std/quantum.syn — Biblioteca Estándar de Computación Cuántica Simulada (M16.1)
+// ==============================================================================
+// Bindings para el runtime de simulación cuántica quantico.
+// Proporciona primitivas para manipulación de estados cuánticos,
+// puertas lógicas, medición y algoritmos cuánticos.
+//
+// Zero-telemetry: todas las operaciones son locales.
+// ==============================================================================
+
+constante QC_EXITO = 0
+constante QC_ERROR = -1
+constante QC_MAX_QUBITS = 9
+
+// ============================================================
+// Declaraciones externas (bindings C)
+// ============================================================
+
+externo funcion _syn_qc_crear_sistema(num_qubits: Entero) -> Puntero
+externo funcion _syn_qc_liberar_sistema(sistema: Puntero) -> Nulo
+externo funcion _syn_qc_inicializar_estado_cero(sistema: Puntero) -> Entero
+externo funcion _syn_qc_inicializar_estado_uniforme(sistema: Puntero) -> Entero
+externo funcion _syn_qc_aplicar_hadamard(sistema: Puntero, qubit: Entero) -> Entero
+externo funcion _syn_qc_aplicar_pauli_x(sistema: Puntero, qubit: Entero) -> Entero
+externo funcion _syn_qc_aplicar_cnot(sistema: Puntero, control: Entero, target: Entero) -> Entero
+externo funcion _syn_qc_medir(sistema: Puntero, qubit: Entero) -> Entero
+externo funcion _syn_qc_probabilidad_cero(sistema: Puntero, qubit: Entero) -> Flotante
+externo funcion _syn_qc_probabilidad_conservada(sistema: Puntero) -> Flotante
+externo funcion _syn_qc_crear_estado_bell(sistema: Puntero, q1: Entero, q2: Entero) -> Entero
+
+// ============================================================
+// API pública de alto nivel
+// ============================================================
+
+funcion crear_sistema(num_qubits: Entero) -> Puntero:
+    retornar _syn_qc_crear_sistema(num_qubits)
+
+funcion liberar_sistema(sistema: Puntero) -> Nulo:
+    _syn_qc_liberar_sistema(sistema)
+
+funcion inicializar_estado_cero(sistema: Puntero) -> Entero:
+    retornar _syn_qc_inicializar_estado_cero(sistema)
+
+funcion aplicar_hadamard(sistema: Puntero, qubit: Entero) -> Entero:
+    retornar _syn_qc_aplicar_hadamard(sistema, qubit)
+
+funcion aplicar_pauli_x(sistema: Puntero, qubit: Entero) -> Entero:
+    retornar _syn_qc_aplicar_pauli_x(sistema, qubit)
+
+funcion aplicar_cnot(sistema: Puntero, control: Entero, target: Entero) -> Entero:
+    retornar _syn_qc_aplicar_cnot(sistema, control, target)
+
+funcion medir(sistema: Puntero, qubit: Entero) -> Entero:
+    retornar _syn_qc_medir(sistema, qubit)
+
+funcion probabilidad_cero(sistema: Puntero, qubit: Entero) -> Flotante:
+    retornar _syn_qc_probabilidad_cero(sistema, qubit)
+
+funcion verificar_conservacion(sistema: Puntero) -> Flotante:
+    retornar _syn_qc_probabilidad_conservada(sistema)
+
+funcion crear_estado_bell(sistema: Puntero, q1: Entero, q2: Entero) -> Entero:
+    retornar _syn_qc_crear_estado_bell(sistema, q1, q2)

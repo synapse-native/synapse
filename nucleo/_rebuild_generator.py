@@ -1,3 +1,5 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 #!/usr/bin/env python3
 """
 _rebuild_generator.py — Reconstruye nucleo/generator.syn desde los submódulos
@@ -27,8 +29,18 @@ SUB_MODULOS = [
     "emision_c.syn",
     "expr_eval.syn",       # _oo_expr_a_c (extraido de nodos_flujo.syn para < 1000 lineas)
     "nodos_flujo.syn",
-    "frontend_p.syn",      # Front-end canonico _P_* embebido (generado por nucleo/_gen_frontend_p.py)
-    "orquestador.syn",     # Debe ir DESPUES de frontend_p.syn (gen_visitar_top_level los invoca)
+    "frontend_nativo.syn", # Wrapper del frontend nativo (A3.2/A4): gen_emitir_frontend_nativo.
+                          # El espejo embebido frontend_p.syn (_P_*) se retiro en A4.
+    "escaneo.syn",         # Modularizacion (AUDITORIA): escaneo de estructuras/retornos/alias/constructores
+                          # (extraido de orquestador.syn; bloques ME-B4/ME-B6/ME-F1.2b/ME-D6)
+    "monomorfizacion.syn", # Modularizacion: registro de ADT genericos + scan D-2 de instanciaciones
+                          # (extraido de orquestador.syn; bloque ME-D2, R16/R17/R18)
+    "recorrido.syn",       # Modularizacion: walk top-level del AST en orden alfabetico
+                          # (extraido de orquestador.syn; bloque WALK)
+    "funciones.syn",       # Modularizacion (AUDITORIA 13): emision de funciones de usuario
+                          # (extraido de la rama DefinicionFuncion de gen_visitar_top_level)
+    "orquestador.syn",     # Debe ir DESPUES de frontend_nativo.syn (hook ME-B7 lo invoca) y de
+                          # los modulos extraidos en la modularizacion (los invoca en orden)
 ]
 
 DIR_GENERADOR = os.path.join(os.path.dirname(__file__), "generador")

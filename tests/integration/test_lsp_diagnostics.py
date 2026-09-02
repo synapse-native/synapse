@@ -7,6 +7,8 @@ import json
 import os
 import subprocess
 
+pytestmark = pytest.mark.integration
+
 
 BINARIO_LSP = os.path.join(
     os.path.dirname(__file__),

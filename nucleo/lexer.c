@@ -1,3 +1,5 @@
+// cumple Manual 1 2: lexer del compilador
+// cumple Manual 8 4.1: compilador nativo S2
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
@@ -69,325 +71,7 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 
 #define _GEN_TMP_SIZE (4096)
 #include "librerias/embedded_libs.h"
-
-// --- Token ID constants (Manual 2 §2.3) ---
-#ifndef T_IF
-#define T_IF (1)
-#endif
-#ifndef T_ELSE
-#define T_ELSE (2)
-#endif
-#ifndef T_FUNCION
-#define T_FUNCION (3)
-#endif
-#ifndef T_RETORNAR
-#define T_RETORNAR (4)
-#endif
-#ifndef T_LANZAR
-#define T_LANZAR (5)
-#endif
-#ifndef T_RECUPERAR
-#define T_RECUPERAR (6)
-#endif
-#ifndef T_ESCUCHAR
-#define T_ESCUCHAR (7)
-#endif
-#ifndef T_MIENTRAS
-#define T_MIENTRAS (8)
-#endif
-#ifndef T_IMPORTAR
-#define T_IMPORTAR (9)
-#endif
-#ifndef T_ESTRUCTURA
-#define T_ESTRUCTURA (10)
-#endif
-#ifndef T_ROMPER
-#define T_ROMPER (11)
-#endif
-#ifndef T_SIGUIENTE
-#define T_SIGUIENTE (12)
-#endif
-#ifndef T_PUNTO
-#define T_PUNTO (13)
-#endif
-#ifndef T_Y
-#define T_Y (14)
-#endif
-#ifndef T_O
-#define T_O (15)
-#endif
-#ifndef T_NO
-#define T_NO (16)
-#endif
-#ifndef T_VERDADERO
-#define T_VERDADERO (17)
-#endif
-#ifndef T_FALSO
-#define T_FALSO (18)
-#endif
-#ifndef T_IDENTIFICADOR
-#define T_IDENTIFICADOR (19)
-#endif
-#ifndef T_NUMERO
-#define T_NUMERO (20)
-#endif
-#ifndef T_FLOTANTE
-#define T_FLOTANTE (21)
-#endif
-#ifndef T_CADENA
-#define T_CADENA (22)
-#endif
-#ifndef T_MAYOR
-#define T_MAYOR (23)
-#endif
-#ifndef T_MENOR
-#define T_MENOR (24)
-#endif
-#ifndef T_IGUAL
-#define T_IGUAL (25)
-#endif
-#ifndef T_DISTINTO
-#define T_DISTINTO (26)
-#endif
-#ifndef T_MENOR_IGUAL
-#define T_MENOR_IGUAL (27)
-#endif
-#ifndef T_MAYOR_IGUAL
-#define T_MAYOR_IGUAL (28)
-#endif
-#ifndef T_ASIGNAR
-#define T_ASIGNAR (29)
-#endif
-#ifndef T_MAS
-#define T_MAS (30)
-#endif
-#ifndef T_MENOS
-#define T_MENOS (31)
-#endif
-#ifndef T_POR
-#define T_POR (32)
-#endif
-#ifndef T_DIV
-#define T_DIV (33)
-#endif
-#ifndef T_MOD
-#define T_MOD (34)
-#endif
-#ifndef T_FLECHA
-#define T_FLECHA (35)
-#endif
-#ifndef T_COINCIDIR
-#define T_COINCIDIR (36)
-#endif
-#ifndef T_FLECHA_DER
-#define T_FLECHA_DER (37)
-#endif
-#ifndef T_PAREN_IZQ
-#define T_PAREN_IZQ (38)
-#endif
-#ifndef T_PAREN_DER
-#define T_PAREN_DER (39)
-#endif
-#ifndef T_DOSPUNTOS
-#define T_DOSPUNTOS (40)
-#endif
-#ifndef T_COMA
-#define T_COMA (41)
-#endif
-#ifndef T_NUEVALINEA
-#define T_NUEVALINEA (42)
-#endif
-#ifndef T_INDENTAR
-#define T_INDENTAR (43)
-#endif
-#ifndef T_DESINDENTAR
-#define T_DESINDENTAR (44)
-#endif
-#ifndef T_AMPERSAND
-#define T_AMPERSAND (45)
-#endif
-#ifndef T_INSEGURO
-#define T_INSEGURO (46)
-#endif
-#ifndef T_IMPORTAR_C
-#define T_IMPORTAR_C (47)
-#endif
-#ifndef T_EXTERNO
-#define T_EXTERNO (48)
-#endif
-#ifndef T_FLECHA_IZQ
-#define T_FLECHA_IZQ (49)
-#endif
-#ifndef T_REQUIERE
-#define T_REQUIERE (50)
-#endif
-#ifndef T_GARANTIZA
-#define T_GARANTIZA (51)
-#endif
-#ifndef T_CANAL
-#define T_CANAL (52)
-#endif
-#ifndef T_ASM
-#define T_ASM (53)
-#endif
-#ifndef T_CONSTANTE
-#define T_CONSTANTE (54)
-#endif
-#ifndef T_PUNTOCOMA
-#define T_PUNTOCOMA (55)
-#endif
-#ifndef T_PARA
-#define T_PARA (56)
-#endif
-#ifndef T_CORCH_IZQ
-#define T_CORCH_IZQ (57)
-#endif
-#ifndef T_CORCH_DER
-#define T_CORCH_DER (58)
-#endif
-#ifndef T_FIN
-#define T_FIN (57)
-#endif
-
-// --- Nodo type constants (AST node types) ---
-#ifndef NODO_PROGRAMA
-#define NODO_PROGRAMA (1)
-#endif
-#ifndef NODO_FUNCION
-#define NODO_FUNCION (2)
-#endif
-#ifndef NODO_SI
-#define NODO_SI (3)
-#endif
-#ifndef NODO_MIENTRAS
-#define NODO_MIENTRAS (4)
-#endif
-#ifndef NODO_RETORNAR
-#define NODO_RETORNAR (5)
-#endif
-#ifndef NODO_EXPR
-#define NODO_EXPR (6)
-#endif
-#ifndef NODO_ASIGNACION
-#define NODO_ASIGNACION (7)
-#endif
-#ifndef NODO_IDENTIFICADOR
-#define NODO_IDENTIFICADOR (8)
-#endif
-#ifndef NODO_NUMERO
-#define NODO_NUMERO (9)
-#endif
-#ifndef NODO_DECIMAL
-#define NODO_DECIMAL (10)
-#endif
-#ifndef NODO_CADENA_LIT
-#define NODO_CADENA_LIT (11)
-#endif
-#ifndef NODO_BINARIA
-#define NODO_BINARIA (12)
-#endif
-#ifndef NODO_UNARIA
-#define NODO_UNARIA (13)
-#endif
-#ifndef NODO_LLAMADA
-#define NODO_LLAMADA (14)
-#endif
-#ifndef NODO_PARAMETRO
-#define NODO_PARAMETRO (15)
-#endif
-#ifndef NODO_ESTRUCTURA
-#define NODO_ESTRUCTURA (16)
-#endif
-#ifndef NODO_IMPORTAR
-#define NODO_IMPORTAR (17)
-#endif
-#ifndef NODO_LANZAR
-#define NODO_LANZAR (18)
-#endif
-#ifndef NODO_ESCUCHAR
-#define NODO_ESCUCHAR (19)
-#endif
-#ifndef NODO_ROMPER
-#define NODO_ROMPER (20)
-#endif
-#ifndef NODO_SIGUIENTE
-#define NODO_SIGUIENTE (21)
-#endif
-#ifndef NODO_BOOLEANO
-#define NODO_BOOLEANO (22)
-#endif
-#ifndef NODO_CONSTANTE
-#define NODO_CONSTANTE (23)
-#endif
-#ifndef NODO_INSEGURO
-#define NODO_INSEGURO (24)
-#endif
-#ifndef NODO_IMPORTAR_C
-#define NODO_IMPORTAR_C (25)
-#endif
-#ifndef NODO_EXTERNO
-#define NODO_EXTERNO (26)
-#endif
-#ifndef NODO_RECUPERAR
-#define NODO_RECUPERAR (27)
-#endif
-#ifndef NODO_TENSOR
-#define NODO_TENSOR (28)
-#endif
-#ifndef NODO_INDICE
-#define NODO_INDICE (29)
-#endif
-#ifndef NODO_TRANSFERIDO
-#define NODO_TRANSFERIDO (30)
-#endif
-#ifndef NODO_ACCESO_CAMPO
-#define NODO_ACCESO_CAMPO (31)
-#endif
-#ifndef NODO_ASIGNACION_CAMPO
-#define NODO_ASIGNACION_CAMPO (32)
-#endif
-#ifndef NODO_PARRAFO
-#define NODO_PARRAFO (33)
-#endif
-#ifndef NODO_DECLARACION
-#define NODO_DECLARACION (34)
-#endif
-#ifndef NODO_LOG
-#define NODO_LOG (35)
-#endif
-#ifndef NODO_PUNTERO
-#define NODO_PUNTERO (36)
-#endif
-#ifndef NODO_DEREF
-#define NODO_DEREF (37)
-#endif
-#ifndef NODO_COINCIDIR
-#define NODO_COINCIDIR (38)
-#endif
-#ifndef NODO_CASO
-#define NODO_CASO (39)
-#endif
-#ifndef NODO_ASM
-#define NODO_ASM (40)
-#endif
-#ifndef NODO_CANAL_CREAR
-#define NODO_CANAL_CREAR (41)
-#endif
-#ifndef NODO_ENVIAR_CANAL
-#define NODO_ENVIAR_CANAL (42)
-#endif
-#ifndef NODO_RECIBIR_CANAL
-#define NODO_RECIBIR_CANAL (43)
-#endif
-#ifndef NODO_VACIO
-#define NODO_VACIO (44)
-#endif
-#ifndef NODO_PARA
-#define NODO_PARA (45)
-#endif
-#ifndef NODO_CONTRATO
-#define NODO_CONTRATO (46)
-#endif
+#include "runtime/core/ast_nodos.h"
 
 // --- Error code constants (Manual 3 §3.5) ---
 #ifndef ERR_SYNTAX_EXPECTED_TOKEN
@@ -502,6 +186,12 @@ typedef struct Programa { CadenaSegura tipo; struct ListaNodo* sentencias; } Pro
 #define ERR_VER_CONTRATO_INVALIDO (37)
 #endif
 #ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
+#define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (38)
+#endif
+#ifndef ERR_MEM_BORROW_CONFLICT
+#define ERR_MEM_BORROW_CONFLICT (39)
+#endif
+#ifndef ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED
 #define ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED (33)
 #endif
 #ifndef ERR_MEM_LIFETIME_MISMATCH
@@ -536,6 +226,30 @@ extern char _gen_tmp_buf[4096];
 extern char _G_emit_buf[1048576];
 extern int _G_emit_pos;
 extern FILE* _G_fp;
+
+// ME-B4: nombres de estructuras definidas (para constructores en C nativo)
+extern char _G_native_structs[256][64];
+extern int _G_native_structs_count;
+extern int _G_native_es_estructura(const char* n);
+
+// ME-B6: tipos de retorno de funciones definidas (inferencia de tipos nativa)
+extern char _G_native_func_returns[512][64];
+extern int _G_native_func_returns_count;
+extern int _G_native_tipo_retorno(const char* fn, char* out);
+
+// ME-B7: dedup de funciones emitidas y hoisting de variables (paridad orquestador nativo)
+extern char _G_emit_func_names[2048][64];
+extern int _G_emit_func_count;
+extern char _G_fn_vars[2048][64];
+extern int _G_fn_vars_count;
+extern void* _G_fn_var_src[2048];
+extern int _G_fn_var_auto[2048];
+extern char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
+extern char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
+extern int _G_fn_ptr_vars_count;
+extern char _G_tipo_aliases[128][64];
+extern char _G_tipo_aliases_base[128][64];
+extern int _G_tipo_aliases_count;
 
 // PGO variables (defined in self-hosted parser module)
 extern int _P_ntks, _P_tpos, _P_p_err;
@@ -574,7 +288,7 @@ extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
+extern void cerrar_archivo(Canal canal);
 extern Tensor crear_tensor(int filas, int columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
@@ -585,8 +299,8 @@ extern Tensor suma(Tensor a, Tensor b);
 extern Tensor producto(Tensor a, Tensor b);
 extern int texto_a_entero(CadenaSegura str);
 extern float texto_a_decimal(CadenaSegura str);
-extern CadenaSegura decimal_a_texto(float n);
-extern CadenaSegura entero_a_texto(int n);
+extern CadenaSegura decimal_a_texto(double n);
+extern CadenaSegura entero_a_texto(int64_t n);
 extern int str_eq(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
@@ -600,7 +314,7 @@ extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
-extern void cerrar_canal(CanalConcurrencia* canal);
+extern void cerrar(CanalConcurrencia* canal);
 // --- Deteccion SIMD unificada (delegada al runtime synapse_rt.o) ---
 extern void _simd_detectar(void);
 
@@ -625,6 +339,41 @@ int _G_scope_vars_depth[256];
 char _G_scope_vars_names[256][64];
 int _G_scope_vars_total;
 int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
+char _G_native_structs[256][64];
+int _G_native_structs_count;
+int _G_native_es_estructura(const char* n) {
+    if (!n) return 0;
+    for (int _i = 0; _i < _G_native_structs_count; _i++) {
+        if (strcmp(_G_native_structs[_i], n) == 0) return 1;
+    }
+    return 0;
+}
+
+char _G_native_func_returns[512][64];
+int _G_native_func_returns_count;
+int _G_native_tipo_retorno(const char* fn, char* out) {
+    if (!fn || !out) return 0;
+    for (int _i = 0; _i < _G_native_func_returns_count; _i++) {
+        if (strcmp(_G_native_func_returns[_i], fn) == 0) {
+            strcpy(out, _G_native_func_returns[_i + 256]); return 1;
+        }
+    }
+    return 0;
+}
+
+char _G_emit_func_names[2048][64];
+int _G_emit_func_count;
+char _G_fn_vars[2048][64];
+int _G_fn_vars_count;
+void* _G_fn_var_src[2048];
+int _G_fn_var_auto[2048];
+char _G_fn_var_tipos[2048][64];  // ME-C4: tipo inferido por hoisting
+char _G_fn_ptr_vars[64][64];  // ME-B9.x: parametros puntero
+int _G_fn_ptr_vars_count;
+char _G_tipo_aliases[128][64];
+char _G_tipo_aliases_base[128][64];
+int _G_tipo_aliases_count;
+
 
 int _g_argc;
 char** _g_argv;
@@ -647,25 +396,21 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     return (CadenaSegura){_tl, _buf};
 }
 
-struct LexerEstado;
+struct LexerBuffers;
 struct TokenLex;
 
-typedef struct LexerEstado {
-    int ptr_fuente;
-    int len_fuente;
-    int posicion;
-    int linea_actual;
-    int columna_actual;
-    struct TokenLex* tokens;
+typedef struct LexerBuffers {
+    void* tokens;
+    void* sbuf;
+    void* indent_stack;
+    int str_pos;
+    int ntks;
     int total_tokens;
-    int pila_indent[64];
-    int nivel_pila;
-    int idioma;
     int hay_error;
-    CadenaSegura error_mensaje;
-    int error_linea;
-    int error_columna;
-} LexerEstado;
+    int idioma;
+    int linea_actual;
+    int nivel_pila;
+} LexerBuffers;
 
 typedef struct TokenLex {
     int tipo;
@@ -682,20 +427,28 @@ int keyword_token_en(CadenaSegura palabra);
 int keyword_token_es(CadenaSegura palabra);
 int keyword_token_fr(CadenaSegura palabra);
 int keyword_token_pt(CadenaSegura palabra);
-int lexer_detectar_idioma(struct LexerEstado lex);
-void lexer_error(struct LexerEstado lex, CadenaSegura mensaje, int linea, int columna);
-void lexer_procesar_indentacion(struct LexerEstado lex, int ptr_linea, int len_linea);
-void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna);
-void lexer_push_token_valor(struct LexerEstado lex, int tipo, int linea, int columna, CadenaSegura valor);
-void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto);
+void* lexer_buffers(void);
+CadenaSegura lexer_decodificar_cadena(void* ptr, int ini, int len);
+int lexer_detectar_idioma(void* ptr, int len);
+void lexer_error(CadenaSegura mensaje, int linea, int columna);
+void lexer_fijar_linea(int n);
+int lexer_hay_error(void);
+int lexer_idioma_actual(void);
+int lexer_linea_actual(void);
+int lexer_obtener_total(void);
+void lexer_procesar_indentacion(void* ptr_linea, int len_linea);
+void lexer_push_token(int tipo, int linea, int columna);
+void lexer_push_token_valor(int tipo, int linea, int columna, CadenaSegura valor);
+void lexer_reset_buffers(void);
+void lexer_tokenizar_linea(void* ptr_texto, int len_texto);
 int str_char(CadenaSegura s, int i);
-int str_char_at(int ptr, int i);
+int str_char_at(void* ptr, int i);
 int str_len(CadenaSegura s);
-int str_len_ptr(int ptr);
+int str_len_ptr(void* ptr);
 int tokenizar(CadenaSegura fuente);
 
-#define T_IF (1)
-#define T_ELSE (2)
+#define T_SI (1)
+#define T_SINO (2)
 #define T_FUNCION (3)
 #define T_RETORNAR (4)
 #define T_LANZAR (5)
@@ -752,6 +505,21 @@ int tokenizar(CadenaSegura fuente);
 #define T_PARA (56)
 #define T_FIN (57)
 #define T_ERROR (58)
+#define T_LET (59)
+#define T_TIPO (60)
+#define T_TENSOR (61)
+#define T_NULO (62)
+#define T_OK (63)
+#define T_ERR (64)
+#define T_ALGUN (65)
+#define T_NINGUNO (66)
+#define T_MODULO (67)
+#define T_DELEGAR (68)
+#define T_EXPORT (69)
+#define T_RC (70)
+#define T_ARC (71)
+#define T_DEBIL (72)
+#define T_PIPE (73)
 #define IDIOMA_ES (0)
 #define IDIOMA_EN (1)
 #define IDIOMA_FR (2)
@@ -784,6 +552,10 @@ int es_digito(int c) {
 }
 
 int es_letra(int c) {
+    if ((c >= 128)) {
+        return 1;
+          /* [Lifetime Scope: exit depth=1] */
+    }
     if ((c >= 65)) {
         if ((c <= 90)) {
             return 1;
@@ -825,11 +597,11 @@ int keyword_token(CadenaSegura palabra, int idioma) {
 
 int keyword_token_en(CadenaSegura palabra) {
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("if"), .datos = "if" }) == 1)) {
-        return T_IF;
+        return T_SI;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("else"), .datos = "else" }) == 1)) {
-        return T_ELSE;
+        return T_SINO;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("function"), .datos = "function" }) == 1)) {
@@ -932,17 +704,69 @@ int keyword_token_en(CadenaSegura palabra) {
         return T_PARA;
           /* [Lifetime Scope: exit depth=1] */
     }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("type"), .datos = "type" }) == 1)) {
+        return T_TIPO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tensor"), .datos = "tensor" }) == 1)) {
+        return T_TENSOR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("null"), .datos = "null" }) == 1)) {
+        return T_NULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ok"), .datos = "ok" }) == 1)) {
+        return T_OK;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("err"), .datos = "err" }) == 1)) {
+        return T_ERR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("some"), .datos = "some" }) == 1)) {
+        return T_ALGUN;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("none"), .datos = "none" }) == 1)) {
+        return T_NINGUNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("let"), .datos = "let" }) == 1)) {
+        return T_LET;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("delegate"), .datos = "delegate" }) == 1)) {
+        return T_DELEGAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("rc"), .datos = "rc" }) == 1)) {
+        return T_RC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("arc"), .datos = "arc" }) == 1)) {
+        return T_ARC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("weak"), .datos = "weak" }) == 1)) {
+        return T_DEBIL;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("module"), .datos = "module" }) == 1)) {
+        return T_MODULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
     return 0;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int keyword_token_es(CadenaSegura palabra) {
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("si"), .datos = "si" }) == 1)) {
-        return T_IF;
+        return T_SI;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("sino"), .datos = "sino" }) == 1)) {
-        return T_ELSE;
+        return T_SINO;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("funcion"), .datos = "funcion" }) == 1)) {
@@ -1045,17 +869,69 @@ int keyword_token_es(CadenaSegura palabra) {
         return T_PARA;
           /* [Lifetime Scope: exit depth=1] */
     }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tipo"), .datos = "tipo" }) == 1)) {
+        return T_TIPO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tensor"), .datos = "tensor" }) == 1)) {
+        return T_TENSOR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("nulo"), .datos = "nulo" }) == 1)) {
+        return T_NULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ok"), .datos = "ok" }) == 1)) {
+        return T_OK;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("err"), .datos = "err" }) == 1)) {
+        return T_ERR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("algun"), .datos = "algun" }) == 1)) {
+        return T_ALGUN;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ninguno"), .datos = "ninguno" }) == 1)) {
+        return T_NINGUNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("let"), .datos = "let" }) == 1)) {
+        return T_LET;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("delegar"), .datos = "delegar" }) == 1)) {
+        return T_DELEGAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("rc"), .datos = "rc" }) == 1)) {
+        return T_RC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("arc"), .datos = "arc" }) == 1)) {
+        return T_ARC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("débil"), .datos = "débil" }) == 1)) {
+        return T_DEBIL;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("modulo"), .datos = "modulo" }) == 1)) {
+        return T_MODULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
     return 0;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int keyword_token_fr(CadenaSegura palabra) {
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("si"), .datos = "si" }) == 1)) {
-        return T_IF;
+        return T_SI;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("sinon"), .datos = "sinon" }) == 1)) {
-        return T_ELSE;
+        return T_SINO;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("fonction"), .datos = "fonction" }) == 1)) {
@@ -1154,17 +1030,69 @@ int keyword_token_fr(CadenaSegura palabra) {
         return T_PARA;
           /* [Lifetime Scope: exit depth=1] */
     }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("type"), .datos = "type" }) == 1)) {
+        return T_TIPO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tenseur"), .datos = "tenseur" }) == 1)) {
+        return T_TENSOR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("nul"), .datos = "nul" }) == 1)) {
+        return T_NULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ok"), .datos = "ok" }) == 1)) {
+        return T_OK;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("err"), .datos = "err" }) == 1)) {
+        return T_ERR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("some"), .datos = "some" }) == 1)) {
+        return T_ALGUN;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("aucun"), .datos = "aucun" }) == 1)) {
+        return T_NINGUNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("let"), .datos = "let" }) == 1)) {
+        return T_LET;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("déléguer"), .datos = "déléguer" }) == 1)) {
+        return T_DELEGAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("rc"), .datos = "rc" }) == 1)) {
+        return T_RC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("arc"), .datos = "arc" }) == 1)) {
+        return T_ARC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("faible"), .datos = "faible" }) == 1)) {
+        return T_DEBIL;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("module"), .datos = "module" }) == 1)) {
+        return T_MODULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
     return 0;
       /* [Lifetime Scope: exit depth=0] */
 }
 
 int keyword_token_pt(CadenaSegura palabra) {
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("se"), .datos = "se" }) == 1)) {
-        return T_IF;
+        return T_SI;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("senao"), .datos = "senao" }) == 1)) {
-        return T_ELSE;
+        return T_SINO;
           /* [Lifetime Scope: exit depth=1] */
     }
     if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("funcao"), .datos = "funcao" }) == 1)) {
@@ -1263,30 +1191,127 @@ int keyword_token_pt(CadenaSegura palabra) {
         return T_PARA;
           /* [Lifetime Scope: exit depth=1] */
     }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tipo"), .datos = "tipo" }) == 1)) {
+        return T_TIPO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("tensor"), .datos = "tensor" }) == 1)) {
+        return T_TENSOR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("nulo"), .datos = "nulo" }) == 1)) {
+        return T_NULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("ok"), .datos = "ok" }) == 1)) {
+        return T_OK;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("err"), .datos = "err" }) == 1)) {
+        return T_ERR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("algum"), .datos = "algum" }) == 1)) {
+        return T_ALGUN;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("nenhum"), .datos = "nenhum" }) == 1)) {
+        return T_NINGUNO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("let"), .datos = "let" }) == 1)) {
+        return T_LET;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("delegar"), .datos = "delegar" }) == 1)) {
+        return T_DELEGAR;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("rc"), .datos = "rc" }) == 1)) {
+        return T_RC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("arc"), .datos = "arc" }) == 1)) {
+        return T_ARC;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("fraco"), .datos = "fraco" }) == 1)) {
+        return T_DEBIL;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    if ((str_eq(palabra, (CadenaSegura){ .longitud = (int)strlen("modulo"), .datos = "modulo" }) == 1)) {
+        return T_MODULO;
+          /* [Lifetime Scope: exit depth=1] */
+    }
     return 0;
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int lexer_detectar_idioma(struct LexerEstado lex) {
+void* lexer_buffers(void) {
+    { /* unsafe */
+        void* r = nulo;
+        static struct LexerBuffers _N_bufs = {0,0,0,0,0,0,0,0,0,0};
+        static struct TokenLex _N_tks[65536];
+        static char _N_sbuf[65536];
+        static int _N_indents[64];
+        if (_N_bufs.tokens == 0) { _N_bufs.tokens = (void*)_N_tks; _N_bufs.sbuf = (void*)_N_sbuf; _N_bufs.indent_stack = (void*)_N_indents; }
+        r = (void*)&_N_bufs;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura lexer_decodificar_cadena(void* ptr, int ini, int len) {
+    CadenaSegura r = {0};
+    { /* unsafe */
+        _syn_texto_liberar(r);
+        r = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+        struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
+        const char* _p = (const char*)ptr + ini;
+        char* _out = (char*)_b->sbuf + _b->str_pos; int _n = 0;
+        for (int _k = 0; _k < len && _n < 65535 - _b->str_pos; _k++) {
+            if (_p[_k] == 92 && _k + 1 < len) {
+                switch (_p[_k + 1]) {
+                    case 34: _out[_n++] = 34; _k++; break;
+                    case 39: _out[_n++] = 39; _k++; break;
+                    case 92: _out[_n++] = 92; _k++; break;
+                    case 110: _out[_n++] = 10; _k++; break;
+                    case 116: _out[_n++] = 9; _k++; break;
+                    case 114: _out[_n++] = 13; _k++; break;
+                    case 48: _out[_n++] = 0; _k++; break;
+                    default: _out[_n++] = _p[_k]; break;
+                }
+            } else { _out[_n++] = _p[_k]; }
+        }
+        r = (CadenaSegura){_n, _out};
+        _b->str_pos += _n;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_detectar_idioma(void* ptr, int len) {
     int r;
     int ini;
     int fin;
     CadenaSegura lang = {0};
     { /* unsafe */
         r = 0;
-        r = (lex.len_fuente >= 7 && ((const char*)lex.ptr_fuente)[0] == '#' && ((const char*)lex.ptr_fuente)[1] == 'l' && ((const char*)lex.ptr_fuente)[2] == 'a' && ((const char*)lex.ptr_fuente)[3] == 'n' && ((const char*)lex.ptr_fuente)[4] == 'g' && ((const char*)lex.ptr_fuente)[5] == ':') ? 1 : 0;
+        r = (len >= 7 && ((const char*)ptr)[0] == '#' && ((const char*)ptr)[1] == 'l' && ((const char*)ptr)[2] == 'a' && ((const char*)ptr)[3] == 'n' && ((const char*)ptr)[4] == 'g' && ((const char*)ptr)[5] == ':') ? 1 : 0;
         if ((r == 0)) {
             return (-1);
               /* [Lifetime Scope: exit depth=2] */
         }
         ini = 6;
         fin = 6;
-        while (ini < lex.len_fuente && ((const char*)lex.ptr_fuente)[ini] == ' ') { ini = ini + 1; }
+        while (ini < len && ((const char*)ptr)[ini] == ' ') { ini = ini + 1; }
         fin = ini;
-        while (fin < lex.len_fuente && ((const char*)lex.ptr_fuente)[fin] != ' ' && ((const char*)lex.ptr_fuente)[fin] != 10 && ((const char*)lex.ptr_fuente)[fin] != 13) { fin = fin + 1; }
+        while (fin < len && ((const char*)ptr)[fin] != ' ' && ((const char*)ptr)[fin] != 10 && ((const char*)ptr)[fin] != 13) { fin = fin + 1; }
         _syn_texto_liberar(lang);
         lang = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
-        lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)lex.ptr_fuente + ini};
+        lang = (CadenaSegura){.longitud = (fin - ini), .datos = (char*)ptr + ini};
         if ((str_eq(lang, (CadenaSegura){ .longitud = (int)strlen("es"), .datos = "es" }) == 1)) {
             return IDIOMA_ES;
               /* [Lifetime Scope: exit depth=2] */
@@ -1309,51 +1334,106 @@ int lexer_detectar_idioma(struct LexerEstado lex) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_error(struct LexerEstado lex, CadenaSegura mensaje, int linea, int columna) {
-    lex.hay_error = 1;
-    lex.error_mensaje = mensaje;
-    lex.error_linea = linea;
-    lex.error_columna = columna;
+void lexer_error(CadenaSegura mensaje, int linea, int columna) {
+    { /* unsafe */
+        struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
+        _b->hay_error = 1;
+          /* [Lifetime Scope: exit depth=1] */
+    }
       /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_procesar_indentacion(struct LexerEstado lex, int ptr_linea, int len_linea) {
+void lexer_fijar_linea(int n) {
+    { /* unsafe */
+        ((struct LexerBuffers*)lexer_buffers())->linea_actual = n;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_hay_error(void) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = ((struct LexerBuffers*)lexer_buffers())->hay_error;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_idioma_actual(void) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = ((struct LexerBuffers*)lexer_buffers())->idioma;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_linea_actual(void) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = ((struct LexerBuffers*)lexer_buffers())->linea_actual;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+int lexer_obtener_total(void) {
+    int r;
+    { /* unsafe */
+        r = 0;
+        r = ((struct LexerBuffers*)lexer_buffers())->ntks;
+        return r;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void lexer_procesar_indentacion(void* ptr_linea, int len_linea) {
     int espacios;
     int r;
     int nivel;
     int tope;
     { /* unsafe */
+        struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
         espacios = 0;
         while (espacios < len_linea && ((const char*)ptr_linea)[espacios] == ' ') { espacios = espacios + 1; }
         if ((espacios < len_linea)) {
             r = 0;
             r = (((const char*)ptr_linea)[espacios] == '	') ? 1 : 0;
             if ((r == 1)) {
-                lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Tabulador prohibido E-101"), .datos = "Tabulador prohibido E-101" }, lex.linea_actual, (espacios + 1));
+                lexer_error((CadenaSegura){ .longitud = (int)strlen("Tabulador prohibido E-101"), .datos = "Tabulador prohibido E-101" }, lexer_linea_actual(), (espacios + 1));
                 return;
                   /* [Lifetime Scope: exit depth=3] */
             }
               /* [Lifetime Scope: exit depth=2] */
         }
         if (((espacios % 4) != 0)) {
-            lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Indentacion debe ser multiplo de 4 espacios"), .datos = "Indentacion debe ser multiplo de 4 espacios" }, lex.linea_actual, 0);
+            lexer_error((CadenaSegura){ .longitud = (int)strlen("Indentacion debe ser multiplo de 4 espacios"), .datos = "Indentacion debe ser multiplo de 4 espacios" }, lexer_linea_actual(), 0);
             return;
               /* [Lifetime Scope: exit depth=2] */
         }
         nivel = (espacios / 4);
         tope = 0;
-        tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0;
+        tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0;
         if ((nivel > tope)) {
-            lex.pila_indent[lex.nivel_pila] = nivel;
-            lex.nivel_pila = lex.nivel_pila + 1;
-            lexer_push_token(lex, T_INDENTAR, lex.linea_actual, 0);
+            ((int*)_b->indent_stack)[_b->nivel_pila] = nivel;
+            _b->nivel_pila = _b->nivel_pila + 1;
+            tope = nivel;
+            lexer_push_token(T_INDENTAR, lexer_linea_actual(), 0);
               /* [Lifetime Scope: exit depth=2] */
         }
         if ((nivel < tope)) {
             while ((nivel < tope)) {
-                lex.nivel_pila = lex.nivel_pila - 1;
-                tope = (lex.nivel_pila > 0) ? lex.pila_indent[lex.nivel_pila - 1] : 0;
-                lexer_push_token(lex, T_DESINDENTAR, lex.linea_actual, 0);
+                _b->nivel_pila = _b->nivel_pila - 1;
+                tope = (_b->nivel_pila > 0) ? ((int*)_b->indent_stack)[_b->nivel_pila - 1] : 0;
+                lexer_push_token(T_DESINDENTAR, lexer_linea_actual(), 0);
                   /* [Lifetime Scope: exit depth=3] */
             }
               /* [Lifetime Scope: exit depth=2] */
@@ -1363,28 +1443,50 @@ void lexer_procesar_indentacion(struct LexerEstado lex, int ptr_linea, int len_l
       /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_push_token(struct LexerEstado lex, int tipo, int linea, int columna) {
-    lexer_push_token_valor(lex, tipo, linea, columna, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
+void lexer_push_token(int tipo, int linea, int columna) {
+    lexer_push_token_valor(tipo, linea, columna, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" });
       /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_push_token_valor(struct LexerEstado lex, int tipo, int linea, int columna, CadenaSegura valor) {
+void lexer_push_token_valor(int tipo, int linea, int columna, CadenaSegura valor) {
     { /* unsafe */
-        if (lex.total_tokens >= 16384) return;
-        lex.tokens[lex.total_tokens].tipo = tipo;
-        lex.tokens[lex.total_tokens].linea = linea;
-        lex.tokens[lex.total_tokens].columna = columna;
-        lex.tokens[lex.total_tokens].valor = valor;
-        lex.total_tokens = lex.total_tokens + 1;
+        struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
+        if (_b->ntks >= 65536) return;
+        struct TokenLex* _t = (struct TokenLex*)_b->tokens;
+        _t[_b->ntks].tipo = tipo;
+        _t[_b->ntks].linea = linea;
+        _t[_b->ntks].columna = columna;
+        _t[_b->ntks].valor = valor;
+        _b->ntks = _b->ntks + 1;
+        _b->total_tokens = _b->ntks;
           /* [Lifetime Scope: exit depth=1] */
     }
       /* [Lifetime Scope: exit depth=0] */
 }
 
-void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto) {
+void lexer_reset_buffers(void) {
+    { /* unsafe */
+        struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
+        _b->ntks = 0; _b->str_pos = 0; _b->hay_error = 0; _b->total_tokens = 0; _b->nivel_pila = 0;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+void lexer_tokenizar_linea(void* ptr_texto, int len_texto) {
     int i;
     int r;
     int c;
+    int c2;
+    int q;
+    int inicio_str;
+    int cerrada;
+    CadenaSegura contenido = {0};
+    int inicio_num;
+    int es_float;
+    CadenaSegura lexema_num = {0};
+    int inicio_ar;
+    CadenaSegura arroba = {0};
     int inicio;
     CadenaSegura palabra = {0};
     int tok;
@@ -1392,6 +1494,7 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
     r = 1;
     while ((r == 1)) {
         { /* unsafe */
+            struct LexerBuffers* _b = (struct LexerBuffers*)lexer_buffers();
             r = (i < len_texto) ? 1 : 0;
             if ((r == 0)) {
                 break;
@@ -1406,8 +1509,9 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
             }
             if ((c == 47)) {
                 if (((i + 1) < len_texto)) {
-                    c = (unsigned char)((const char*)ptr_texto)[i + 1];
-                    if ((c == 47)) {
+                    c2 = 0;
+                    c2 = (unsigned char)((const char*)ptr_texto)[i + 1];
+                    if ((c2 == 47)) {
                         return;
                           /* [Lifetime Scope: exit depth=5] */
                     }
@@ -1415,7 +1519,14 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 }
                   /* [Lifetime Scope: exit depth=3] */
             }
-            if ((c == 34)) {
+            if ((c == 35)) {
+                return;
+                  /* [Lifetime Scope: exit depth=3] */
+            }
+            if (((c == 34) || (c == 39))) {
+                q = c;
+                inicio_str = i;
+                cerrada = 0;
                 i = i + 1;
                 while ((i < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i];
@@ -1424,7 +1535,8 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                           /* [Lifetime Scope: exit depth=5] */
                     }
                     else {
-                        if ((c == 34)) {
+                        if ((c == q)) {
+                            cerrada = 1;
                             break;
                               /* [Lifetime Scope: exit depth=6] */
                         }
@@ -1433,26 +1545,10 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                     i = i + 1;
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                i = i + 1;
-                continue;
-                  /* [Lifetime Scope: exit depth=3] */
-            }
-            if ((c == 39)) {
-                i = i + 1;
-                while ((i < len_texto)) {
-                    c = (unsigned char)((const char*)ptr_texto)[i];
-                    if ((c == 92)) {
-                        i = i + 1;
-                          /* [Lifetime Scope: exit depth=5] */
-                    }
-                    else {
-                        if ((c == 39)) {
-                            break;
-                              /* [Lifetime Scope: exit depth=6] */
-                        }
-                          /* [Lifetime Scope: exit depth=5] */
-                    }
-                    i = i + 1;
+                if ((cerrada == 1)) {
+                    _syn_texto_liberar(contenido);
+                    contenido = lexer_decodificar_cadena(ptr_texto, (inicio_str + 1), ((i - inicio_str) - 1));
+                    lexer_push_token_valor(T_CADENA, lexer_linea_actual(), (inicio_str + 1), contenido);
                       /* [Lifetime Scope: exit depth=4] */
                 }
                 i = i + 1;
@@ -1461,6 +1557,7 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
             }
             if ((c >= 48)) {
                 if ((c <= 57)) {
+                    inicio_num = i;
                     while ((i < len_texto)) {
                         c = (unsigned char)((const char*)ptr_texto)[i];
                         if ((c < 48)) {
@@ -1474,9 +1571,78 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                         i = i + 1;
                           /* [Lifetime Scope: exit depth=5] */
                     }
+                    es_float = 0;
+                    if ((i < len_texto)) {
+                        c = (unsigned char)((const char*)ptr_texto)[i];
+                        if ((c == 46)) {
+                            es_float = 1;
+                            i = i + 1;
+                            while ((i < len_texto)) {
+                                c = (unsigned char)((const char*)ptr_texto)[i];
+                                if ((c < 48)) {
+                                    break;
+                                      /* [Lifetime Scope: exit depth=8] */
+                                }
+                                if ((c > 57)) {
+                                    break;
+                                      /* [Lifetime Scope: exit depth=8] */
+                                }
+                                i = i + 1;
+                                  /* [Lifetime Scope: exit depth=7] */
+                            }
+                              /* [Lifetime Scope: exit depth=6] */
+                        }
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    _syn_texto_liberar(lexema_num);
+                    lexema_num = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+                    { /* unsafe */
+                        lexema_num = (CadenaSegura){.longitud = (i - inicio_num), .datos = (char*)ptr_texto + inicio_num};
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    if ((es_float == 1)) {
+                        lexer_push_token_valor(T_FLOTANTE, lexer_linea_actual(), (inicio_num + 1), lexema_num);
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    else {
+                        lexer_push_token_valor(T_NUMERO, lexer_linea_actual(), (inicio_num + 1), lexema_num);
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
                     continue;
                       /* [Lifetime Scope: exit depth=4] */
                 }
+                  /* [Lifetime Scope: exit depth=3] */
+            }
+            if ((c == 64)) {
+                inicio_ar = i;
+                i = i + 1;
+                while ((i < len_texto)) {
+                    c = (unsigned char)((const char*)ptr_texto)[i];
+                    if ((es_alnum(c) == 0)) {
+                        if ((c != 95)) {
+                            break;
+                              /* [Lifetime Scope: exit depth=6] */
+                        }
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    i = i + 1;
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                _syn_texto_liberar(arroba);
+                arroba = (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" };
+                { /* unsafe */
+                    arroba = (CadenaSegura){.longitud = (i - inicio_ar), .datos = (char*)ptr_texto + inicio_ar};
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                if ((str_eq(arroba, (CadenaSegura){ .longitud = (int)strlen("@export"), .datos = "@export" }) == 1)) {
+                    lexer_push_token_valor(T_EXPORT, lexer_linea_actual(), (inicio_ar + 1), arroba);
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                else {
+                    lexer_error((CadenaSegura){ .longitud = (int)strlen("Caracter inesperado '@'"), .datos = "Caracter inesperado '@'" }, lexer_linea_actual(), (inicio_ar + 1));
+                      /* [Lifetime Scope: exit depth=4] */
+                }
+                continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((es_letra(c) == 1)) {
@@ -1499,24 +1665,31 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                     palabra = (CadenaSegura){.longitud = (i - inicio), .datos = (char*)ptr_texto + inicio};
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                tok = keyword_token(palabra, lex.idioma);
+                tok = keyword_token(palabra, lexer_idioma_actual());
                 if ((tok == 0)) {
                     tok = T_IDENTIFICADOR;
                       /* [Lifetime Scope: exit depth=4] */
                 }
                 if ((tok == T_IDENTIFICADOR)) {
-                    lexer_push_token_valor(lex, tok, lex.linea_actual, (inicio + 1), palabra);
+                    lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), palabra);
                       /* [Lifetime Scope: exit depth=4] */
                 }
                 else {
-                    lexer_push_token(lex, tok, lex.linea_actual, (inicio + 1));
+                    if ((((((((((((((tok == T_TIPO) || (tok == T_TENSOR)) || (tok == T_NULO)) || (tok == T_OK)) || (tok == T_ERR)) || (tok == T_ALGUN)) || (tok == T_NINGUNO)) || (tok == T_LET)) || (tok == T_DELEGAR)) || (tok == T_RC)) || (tok == T_ARC)) || (tok == T_DEBIL)) || (tok == T_MODULO))) {
+                        lexer_push_token_valor(tok, lexer_linea_actual(), (inicio + 1), palabra);
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
+                    else {
+                        lexer_push_token(tok, lexer_linea_actual(), (inicio + 1));
+                          /* [Lifetime Scope: exit depth=5] */
+                    }
                       /* [Lifetime Scope: exit depth=4] */
                 }
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 43)) {
-                lexer_push_token(lex, T_MAS, lex.linea_actual, (i + 1));
+                lexer_push_token(T_MAS, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
@@ -1525,20 +1698,20 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 62)) {
-                        lexer_push_token(lex, T_FLECHA, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_FLECHA, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                     if ((c == 60)) {
-                        lexer_push_token(lex, T_FLECHA_IZQ, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_FLECHA_IZQ, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                lexer_push_token(lex, T_MENOS, lex.linea_actual, (i + 1));
+                lexer_push_token(T_MENOS, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
@@ -1547,20 +1720,20 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 62)) {
-                        lexer_push_token(lex, T_FLECHA_DER, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_FLECHA_DER, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                     if ((c == 61)) {
-                        lexer_push_token(lex, T_IGUAL, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_IGUAL, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                lexer_push_token(lex, T_ASIGNAR, lex.linea_actual, (i + 1));
+                lexer_push_token(T_ASIGNAR, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
@@ -1569,7 +1742,7 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 61)) {
-                        lexer_push_token(lex, T_DISTINTO, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_DISTINTO, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
@@ -1584,14 +1757,14 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 61)) {
-                        lexer_push_token(lex, T_MENOR_IGUAL, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_MENOR_IGUAL, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                lexer_push_token(lex, T_MENOR, lex.linea_actual, (i + 1));
+                lexer_push_token(T_MENOR, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
@@ -1600,79 +1773,85 @@ void lexer_tokenizar_linea(struct LexerEstado lex, int ptr_texto, int len_texto)
                 if (((i + 1) < len_texto)) {
                     c = (unsigned char)((const char*)ptr_texto)[i + 1];
                     if ((c == 61)) {
-                        lexer_push_token(lex, T_MAYOR_IGUAL, lex.linea_actual, (i + 1));
+                        lexer_push_token(T_MAYOR_IGUAL, lexer_linea_actual(), (i + 1));
                         i = i + 2;
                         continue;
                           /* [Lifetime Scope: exit depth=5] */
                     }
                       /* [Lifetime Scope: exit depth=4] */
                 }
-                lexer_push_token(lex, T_MAYOR, lex.linea_actual, (i + 1));
+                lexer_push_token(T_MAYOR, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 42)) {
-                lexer_push_token(lex, T_POR, lex.linea_actual, (i + 1));
+                lexer_push_token(T_POR, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 47)) {
-                lexer_push_token(lex, T_DIV, lex.linea_actual, (i + 1));
+                lexer_push_token(T_DIV, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 37)) {
-                lexer_push_token(lex, T_MOD, lex.linea_actual, (i + 1));
+                lexer_push_token(T_MOD, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 40)) {
-                lexer_push_token(lex, T_PAREN_IZQ, lex.linea_actual, (i + 1));
+                lexer_push_token(T_PAREN_IZQ, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 41)) {
-                lexer_push_token(lex, T_PAREN_DER, lex.linea_actual, (i + 1));
+                lexer_push_token(T_PAREN_DER, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 58)) {
-                lexer_push_token(lex, T_DOSPUNTOS, lex.linea_actual, (i + 1));
+                lexer_push_token(T_DOSPUNTOS, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 44)) {
-                lexer_push_token(lex, T_COMA, lex.linea_actual, (i + 1));
+                lexer_push_token(T_COMA, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 46)) {
-                lexer_push_token(lex, T_PUNTO, lex.linea_actual, (i + 1));
+                lexer_push_token(T_PUNTO, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 38)) {
-                lexer_push_token(lex, T_AMPERSAND, lex.linea_actual, (i + 1));
+                lexer_push_token(T_AMPERSAND, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
             if ((c == 59)) {
-                lexer_push_token(lex, T_PUNTOCOMA, lex.linea_actual, (i + 1));
+                lexer_push_token(T_PUNTOCOMA, lexer_linea_actual(), (i + 1));
                 i = i + 1;
                 continue;
                   /* [Lifetime Scope: exit depth=3] */
             }
-            lexer_error(lex, (CadenaSegura){ .longitud = (int)strlen("Caracter inesperado"), .datos = "Caracter inesperado" }, lex.linea_actual, (i + 1));
+            if ((c == 124)) {
+                lexer_push_token(T_PIPE, lexer_linea_actual(), (i + 1));
+                i = i + 1;
+                continue;
+                  /* [Lifetime Scope: exit depth=3] */
+            }
+            lexer_error((CadenaSegura){ .longitud = (int)strlen("Caracter inesperado"), .datos = "Caracter inesperado" }, lexer_linea_actual(), (i + 1));
             i = i + 1;
               /* [Lifetime Scope: exit depth=2] */
         }
@@ -1693,7 +1872,7 @@ int str_char(CadenaSegura s, int i) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int str_char_at(int ptr, int i) {
+int str_char_at(void* ptr, int i) {
     int r;
     { /* unsafe */
         r = 0;
@@ -1715,7 +1894,7 @@ int str_len(CadenaSegura s) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
-int str_len_ptr(int ptr) {
+int str_len_ptr(void* ptr) {
     int r;
     { /* unsafe */
         r = 0;

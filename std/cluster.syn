@@ -1,0 +1,723 @@
+#lang: es
+// std.cluster — Red de Nodos Synapse (M8.1 + M8.2)
+// Transporte UDP cifrado con autenticación mutua Ed25519
+// Canales remotos asíncronos para comunicación entre nodos
+// Scheduler distribuido Work-Stealing (M8.2)
+//
+// CanalRemoto<T> — Canal tipado con handshake criptográfico Zero-Trust
+// Uso:
+//   ch = conectar("192.168.1.1:9700")
+//   enviar(ch, "Hola mundo")
+//   datos = recibir(ch, 5000)
+
+importar std.err
+
+// ============================================================
+// ParEd25519 — Par de claves criptográficas
+// ============================================================
+estructura ParEd25519:
+    clave_publica: texto
+    clave_privada: texto
+
+// ============================================================
+// NodoCluster — Representación de un nodo remoto
+// ============================================================
+estructura NodoCluster:
+    id: texto
+    direccion: texto
+    puerto: entero
+    clave_publica: texto
+    estado: entero  // 0=DESCONECTADO, 1=CONECTADO, 2=AUTENTICADO
+
+// ============================================================
+// CanalRemoto — Canal de comunicación asíncrono entre nodos
+// con handshake criptográfico Ed25519 obligatorio.
+// El tipo T es el tipo del contenido transmitido.
+// ============================================================
+estructura CanalRemoto:
+    descriptor: entero       // slot interno del canal
+    id_destino: texto        // identidad del nodo remoto
+    direccion: texto         // IP del nodo remoto
+    puerto: entero           // puerto del nodo remoto
+    estado: entero           // 0=ABIERTO, 1=CERRADO, 2=AUTENTICADO
+    clave_publica_remota: texto  // pubkey Ed25519 del nodo remoto (64 hex chars)
+    clave_publica_local: texto   // pubkey Ed25519 local (64 hex chars)
+    clave_privada_local: texto   // privkey Ed25519 local (128 hex chars)
+    tipo_contenido: texto    // descriptor del tipo T (para tipo-seguridad en runtime)
+
+// ============================================================
+// Funciones Externas — M8.1 (Transporte + Criptografía)
+// ============================================================
+
+// generar_par_claves — Genera un nuevo par Ed25519
+// Retorna "clave_publica_hex:clave_privada_hex"
+externo funcion cluster_generar_par_claves() -> texto
+
+// firmar_mensaje — Firma texto con clave privada (hex)
+// Retorna firma de 128 caracteres hex
+externo funcion cluster_firmar_mensaje(mensaje: texto, clave_privada_hex: texto) -> texto
+
+// verificar_firma — Verifica firma Ed25519 (0=valida, -1=invalida)
+externo funcion cluster_verificar_firma(mensaje: texto, firma_hex: texto, clave_publica_hex: texto) -> entero
+
+// iniciar_nodo — Inicializa socket UDP en puerto
+externo funcion cluster_iniciar_nodo(puerto: entero) -> entero
+
+// detener_nodo — Cierra socket UDP y libera recursos
+externo funcion cluster_detener_nodo() -> entero
+
+// enviar_hello — Envía mensaje HELLO handshake
+externo funcion cluster_enviar_hello(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto) -> entero
+
+// generar_nonce — Genera nonce aleatorio de 32 bytes (64 hex chars)
+externo funcion cluster_generar_nonce() -> texto
+
+// enviar_hello_firmado — Envía HELLO con nonce y firma Ed25519
+// Formato: HELLO:id:nonce_hex:pubkey_hex:firma_hex
+externo funcion cluster_enviar_hello_firmado(ip: texto, puerto: entero, id_origen: texto, pubkey_hex: texto, nonce_hex: texto, firma_hex: texto) -> entero
+
+// canal_remoto_enviar — Envía datos por canal remoto
+externo funcion cluster_canal_remoto_enviar(ip: texto, puerto: entero, datos: texto, lon: entero, chan_id: entero) -> entero
+
+// recibir_paquete — Recibe datagrama (no bloqueante). Retorna texto vacío si no hay datos.
+externo funcion cluster_recibir_paquete(timeout_ms: entero) -> texto
+
+// establecer_clave_sesion — Deriva y activa la clave de sesión tras handshake exitoso
+externo funcion cluster_establecer_clave_sesion(pubkey_local: texto, pubkey_remota: texto) -> nulo
+
+// limpiar_clave_sesion — Desactiva la clave de sesión (al cerrar el canal)
+externo funcion cluster_limpiar_clave_sesion() -> nulo
+
+// kx_generar_par — Genera el par efímero X25519 del nodo (R78, Manual 5 §6.2 paso 3)
+// Retorna la clave pública en hex (64 chars); el secreto queda en el runtime
+externo funcion cluster_kx_generar_par() -> texto
+
+// kx_derivar — Deriva y activa la clave de sesión (ECDH X25519 + SHA-512)
+// kx_pub_remota_hex: clave pública X25519 del peer; rol_cliente: 1 si este nodo envió el HELLO
+externo funcion cluster_kx_derivar(kx_pub_remota_hex: texto, rol_cliente: entero) -> entero
+
+// enviar_kx_init — Envía KX_INIT:<kxpub>:<firma> al servidor
+externo funcion cluster_enviar_kx_init(ip: texto, puerto: entero, kx_pk_hex: texto, firma_hex: texto) -> entero
+
+// clave_sesion_hex — Hex de la clave de sesión activa (texto vacío si no hay sesión)
+externo funcion cluster_clave_sesion_hex() -> texto
+
+// ============================================================
+// Funciones de alto nivel — CanalRemoto<T> + Handshake Ed25519
+// ============================================================
+
+// _extraer_parte — Extrae un segmento delimitado por ':'
+// usado internamente para parsear "pubkey:privkey"
+funcion _extraer_parte(origen: texto, inicio: entero, fin: entero) -> texto:
+    resultado = ""
+    i = inicio
+    mientras i < fin y i < len(origen):
+        resultado = resultado + subcadena(origen, i, 1)
+        i = i + 1
+    retornar resultado
+
+// _parsear_url — Extrae ip y puerto de "ip:puerto" o "tcp://ip:puerto"
+// Retorna "ip:puerto" (el parseo real se hace por slicing)
+funcion _parsear_url(url: texto) -> texto:
+    // Si el formato es tcp://ip:puerto, saltar el prefijo
+    prefijo = "tcp://"
+    si empieza_con(url, prefijo) == 1:
+        retornar _extraer_parte(url, len(prefijo), len(url))
+    retornar url
+
+// _buscar_dos_puntos — Encuentra posición de ':' en una cadena
+funcion _buscar_dos_puntos(s: texto) -> entero:
+    i = 0
+    mientras i < len(s):
+        si subcadena(s, i, 1) == ":":
+            retornar i
+        i = i + 1
+    retornar -1
+
+// conectar — Establece un CanalRemoto<T> con handshake Ed25519 Zero-Trust
+// url: formato "ip:puerto" o "tcp://ip:puerto"
+// tipo: cadena descriptiva del tipo T
+// Retorna CanalRemoto en estado AUTENTICADO si el handshake es exitoso,
+// o CanalRemoto con estado CERRADO si falla la autenticación.
+funcion conectar(url: texto, tipo: texto) -> CanalRemoto:
+    ch = CanalRemoto()
+    ch.estado = 0  // ABIERTO
+    ch.tipo_contenido = tipo
+    ch.id_destino = ""
+
+    // Parsear URL
+    url_limpia = _parsear_url(url)
+    pos_dos_puntos = _buscar_dos_puntos(url_limpia)
+
+    si pos_dos_puntos < 0:
+        ch.estado = 1  // CERRADO (URL inválida)
+        retornar ch
+
+    ip = _extraer_parte(url_limpia, 0, pos_dos_puntos)
+    puerto_str = _extraer_parte(url_limpia, pos_dos_puntos + 1, len(url_limpia))
+    puerto = 0
+    i = 0
+    mientras i < len(puerto_str):
+        puerto = puerto * 10 + texto_a_entero(subcadena(puerto_str, i, 1))
+        i = i + 1
+
+    // Generar par de claves Ed25519
+    par_claves = cluster_generar_par_claves()
+    si par_claves == "":
+        ch.estado = 1  // CERRADO
+        retornar ch
+
+    // Extraer pubkey (64 hex chars) y privkey (128 hex chars)
+    ch.clave_publica_local = _extraer_parte(par_claves, 0, 64)
+    // formato: "pubkey:privkey" → pubkey=64, colon=1, privkey=128
+    ch.clave_privada_local = _extraer_parte(par_claves, 65, 193)
+
+    // Inicializar nodo UDP (puerto 0 = efímero asignado por OS)
+    rc = cluster_iniciar_nodo(0)
+    si rc < 0:
+        ch.estado = 1  // CERRADO
+        retornar ch
+
+    // Enviar HELLO firmado (Manual 6 §5.3: nonce + pubkey + firma)
+    nonce = cluster_generar_nonce()
+    si len(nonce) != 64:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    mensaje_nonce = nonce
+    firma = cluster_firmar_mensaje(mensaje_nonce, ch.clave_privada_local)
+    si len(firma) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rc = cluster_enviar_hello_firmado(ip, puerto, "synapse-node", ch.clave_publica_local, nonce, firma)
+    si rc < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Esperar HELLO_RESP (timeout 5000ms)
+    paquete = cluster_recibir_paquete(5000)
+    si paquete == "":
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Parsear HELLO_RESP: "HELLO_RESP:id_servidor:nonce_hex:pubkey_hex:firma_hex"
+    prefijo_ack = "HELLO_RESP:"
+    si len(paquete) < len(prefijo_ack):
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    coincide_prefijo = empieza_con(paquete, prefijo_ack) == 1
+    si no coincide_prefijo:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    resto = _extraer_parte(paquete, len(prefijo_ack), len(paquete))
+    p1 = _buscar_dos_puntos(resto)
+    si p1 < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    ch.id_destino = _extraer_parte(resto, 0, p1)
+    resto2 = _extraer_parte(resto, p1 + 1, len(resto))
+    p2 = _buscar_dos_puntos(resto2)
+    si p2 < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    nonce_serv = _extraer_parte(resto2, 0, p2)
+    resto3 = _extraer_parte(resto2, p2 + 1, len(resto2))
+    p3 = _buscar_dos_puntos(resto3)
+    si p3 < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    pubkey_serv = _extraer_parte(resto3, 0, p3)
+    firma_serv = _extraer_parte(resto3, p3 + 1, len(resto3))
+
+    si len(nonce_serv) != 64 o len(pubkey_serv) != 64 o len(firma_serv) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Verificar firma del servidor sobre su nonce
+    resultado_firma = cluster_verificar_firma(nonce_serv, firma_serv, pubkey_serv)
+    si resultado_firma != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    ch.direccion = ip
+    ch.puerto = puerto
+    ch.estado = 2  // AUTENTICADO
+    ch.clave_publica_remota = pubkey_serv
+
+    // Derivación de clave de sesión v2 (R78, Manual 5 §6.2 paso 3 / Manual 6 §5.3):
+    // intercambio efímero X25519 firmado (KX_INIT/KX_RESP) + ECDH + SHA-512.
+    kx_local = cluster_kx_generar_par()
+    si len(kx_local) != 64:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    mensaje_kx = concat(concat(kx_local, ":"), nonce)
+    firma_kx = cluster_firmar_mensaje(mensaje_kx, ch.clave_privada_local)
+    si len(firma_kx) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rc_kx = cluster_enviar_kx_init(ip, puerto, kx_local, firma_kx)
+    si rc_kx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    paquete_kx = cluster_recibir_paquete(5000)
+    prefijo_kx = "KX_RESP:"
+    si len(paquete_kx) < len(prefijo_kx) o empieza_con(paquete_kx, prefijo_kx) != 1:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    rkx = _extraer_parte(paquete_kx, len(prefijo_kx), len(paquete_kx))
+    qkx = _buscar_dos_puntos(rkx)
+    si qkx < 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    kx_remota = _extraer_parte(rkx, 0, qkx)
+    firma_kxs = _extraer_parte(rkx, qkx + 1, len(rkx))
+    si len(kx_remota) != 64 o len(firma_kxs) != 128:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Verificar firma del servidor sobre su kxpub + el nonce que envió en HELLO_RESP
+    mensaje_kxs = concat(concat(kx_remota, ":"), nonce_serv)
+    resultado_kxs = cluster_verificar_firma(mensaje_kxs, firma_kxs, pubkey_serv)
+    si resultado_kxs != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    // Derivar la clave de sesión con rol cliente (1)
+    si cluster_kx_derivar(kx_remota, 1) != 0:
+        cluster_detener_nodo()
+        ch.estado = 1
+        retornar ch
+
+    retornar ch
+
+// enviar — Envía datos a través de un CanalRemoto autenticado
+// ch: canal origen (debe estar en estado AUTENTICADO)
+// -> datos: texto a transmitir
+// Retorna 0 si ok, -1 si error
+funcion enviar(ch: CanalRemoto, -> datos: texto) -> entero:
+    si ch.estado != 2:
+        retornar -1  // Canal no autenticado
+    retornar cluster_canal_remoto_enviar(ch.direccion, ch.puerto, datos, len(datos), ch.descriptor)
+
+// recibir — Recibe datos de un CanalRemoto con timeout
+// ch: canal origen
+// timeout_ms: tiempo máximo de espera en milisegundos
+// Retorna texto con el payload, o texto vacío si timeout/error
+// Nota: cluster_recibir_paquete ya deserializa el payload binario (Manual 5 §6.3).
+funcion recibir(ch: CanalRemoto, timeout_ms: entero) -> texto:
+    si ch.estado != 2:
+        retornar ""
+
+    paquete = cluster_recibir_paquete(timeout_ms)
+    retornar paquete
+
+// cerrar_remoto — Cierra un CanalRemoto y libera sus recursos
+// -> ch: canal a cerrar
+funcion cerrar_remoto(-> ch: CanalRemoto) -> nulo:
+    ch.estado = 1  // CERRADO
+    cluster_limpiar_clave_sesion()
+    retornar
+
+// ============================================================
+// Funciones Externas — M8.2 (Work-Stealing Scheduler)
+// ============================================================
+
+// ws_inicializar — Inicializa la cola local de tareas
+externo funcion ws_inicializar(capacidad: entero) -> entero
+
+// ws_encolar — Agrega tarea a la cola local (por el fondo)
+//   id: identificador entero de la tarea
+//   datos: payload de la tarea
+//   Retorna 0 si ok, -1 si cola llena
+externo funcion ws_encolar(id: entero, datos: texto) -> entero
+
+// ws_desencolar — Extrae tarea de la cola local (por el fondo, LIFO)
+//   Retorna "id:datos" o vacío si no hay tareas
+externo funcion ws_desencolar() -> texto
+
+// ws_profundidad — Retorna cantidad de tareas en cola local
+externo funcion ws_profundidad() -> entero
+
+// ws_carga_estimada — Retorna estimación de carga 0-100
+externo funcion ws_carga_estimada() -> entero
+
+// ws_enviar_solicitud_robo — Envía solicitud WSTEAL a nodo remoto
+//   Retorna número de secuencia o -1 si error
+externo funcion ws_enviar_solicitud_robo(ip: texto, puerto: entero) -> entero
+
+// ws_procesar_mensaje — Procesa paquete entrante para protocolo de robo
+//   Si es WSTEAL: desencola tarea local y devuelve "ATENDIDO:WSTOLEN:..."
+//   Si es WSTOLEN: almacena tarea robada y devuelve "ROBADA:id:datos"
+//   Si es WNONE: devuelve "VACIA"
+//   Si no es mensaje de robo: devuelve el paquete original
+externo funcion ws_procesar_mensaje(paquete: texto) -> texto
+
+// ws_ultima_robada — Recupera la última tarea robada
+//   Retorna "id:datos" o vacío
+externo funcion ws_ultima_robada() -> texto
+
+// ws_reenviar_respuesta — Reenvía respuesta de robo al solicitante
+//   (usado en simulación para routing de mensajes)
+externo funcion ws_reenviar_respuesta(ip: texto, puerto: entero, respuesta: texto) -> entero
+
+// ============================================================
+// Funciones Externas — M8.3 (Raft Consensus, tolerante a fallos)
+// Manual 5 §6.5: sistemas distribuidos tolerantes a fallos
+// ============================================================
+
+// raft_inicializar — Inicializa estado Raft para un nodo
+//   node_id: identificador del nodo (0-N)
+//   num_nodes: total de nodos en el cluster
+//   seed: semilla para timeouts aleatorios
+externo funcion raft_inicializar(node_id: entero, num_nodes: entero, seed: entero) -> entero
+
+// raft_iniciar — Inicia nodo como seguidor (follower)
+//   tiempo_actual_ns: timestamp actual en nanosegundos
+externo funcion raft_iniciar(tiempo_actual_ns: entero, node_id: entero) -> entero
+
+// raft_tick — Avanza el tiempo Raft (llamar periódicamente)
+//   Retorna: 0=sin evento, 1=elección iniciada, 2=heartbeat enviado
+externo funcion raft_tick(tiempo_actual_ns: entero, node_id: entero) -> entero
+
+// raft_procesar_solicitud_voto — Procesa solicitud de voto (RequestVote)
+//   voter_id: nodo que recibe la solicitud
+//   candidate_term: término del candidato
+//   candidate_id: ID del candidato
+//   Retorna: 1=votó, 0=rechazó
+externo funcion raft_procesar_solicitud_voto(voter_id: entero, candidate_term: entero, candidate_id: entero, candidate_last_log: entero) -> entero
+
+// raft_procesar_respuesta_voto — Procesa respuesta a solicitud de voto
+//   Retorna: 1=líder electo, 0=continúa como candidato
+externo funcion raft_procesar_respuesta_voto(candidate_id: entero, responder_term: entero, responder_id: entero, granted: entero) -> entero
+
+// raft_procesar_heartbeat — Procesa latido del líder (AppendEntries)
+//   Retorna: 1=aceptado, 0=rechazado
+externo funcion raft_procesar_heartbeat(follower_id: entero, leader_term: entero, leader_id: entero, leader_commit: entero) -> entero
+
+// raft_estado — Retorna estado del nodo (0=follower, 1=candidate, 2=leader)
+externo funcion raft_estado(node_id: entero) -> entero
+
+// raft_term_actual — Retorna término actual del nodo
+externo funcion raft_term_actual(node_id: entero) -> entero
+
+// raft_lider_actual — Retorna ID del líder actual (-1 si no hay)
+externo funcion raft_lider_actual(node_id: entero) -> entero
+
+// raft_log_entradas — Retorna cantidad de entradas en el log
+externo funcion raft_log_entradas(node_id: entero) -> entero
+
+// raft_commit_index — Retorna índice de commit actual
+externo funcion raft_commit_index(node_id: entero) -> entero
+
+// raft_forzar_abdicacion — Fuerza abdicación del líder (para tests)
+externo funcion raft_forzar_abdicacion(node_id: entero) -> entero
+
+// raft_agregar_entrada — Agrega entrada al log del líder
+externo funcion raft_agregar_entrada(node_id: entero) -> entero
+
+// raft_reiniciar_nodo — Reinicia estado de un nodo (para tests)
+externo funcion raft_reiniciar_nodo(node_id: entero) -> entero
+
+// raft_info — Retorna string diagnóstico "term,state,leader,log,commit"
+externo funcion raft_info(node_id: entero) -> texto
+
+// ============================================================
+// Funciones Externas — Work-Stealing Scheduler (Manual 5 §6.5)
+// ============================================================
+
+// Worker — Worker del scheduler de fibras con work-stealing.
+// Manual 5 §6.5: cola_local es un deque (double-ended queue) por hilo OS.
+// Worker con cola_local para balanceo de carga entre hilos.
+estructura Worker:
+    hilo_os: entero        // pthread_t del hilo OS (identificador)
+    cola_local: entero    // índice base de la cola local de fibras (deque)
+    cola_primero: entero  // índice del primer elemento (pop local)
+    cola_ultimo: entero   // índice del último elemento (push local / pop remoto)
+    num_workers: entero   // número total de workers
+
+// worker_ejecutar — Ejecuta el bucle principal del worker:
+//   procesa fibras de su cola_local; si está vacía, roba (worker_robar).
+//   balanceo correcto entre hilos (Manual 5 §6.5).
+externo funcion worker_ejecutar(worker_id: entero) -> entero
+
+// worker_robar — Roba una fibra de la cola_local de otro worker.
+//   Retorna el ID de la fibra robada, o -1 si no hay nada que robar.
+//   Work-stealing: balanceo de carga entre hilos del sistema.
+externo funcion worker_robar(worker_id: entero) -> entero
+
+// worker_cola_vacia — Retorna 1 si la cola_local del worker está vacía.
+externo funcion worker_cola_vacia(worker_id: entero) -> entero
+
+// ============================================================
+// Funciones Externas — M8.4 (Checkpoint/Restore — Migración Live)
+// ============================================================
+
+// cm_inicializar — Inicializa el subsistema de checkpoint
+externo funcion cm_inicializar() -> entero
+
+// cm_serializar_checkpoint — Serializa tarea a formato CKPT
+//   Retorna "CKPT:<id>:<seq>:<checksum_hex>:<data_len>:<data>"
+externo funcion cm_serializar_checkpoint(task_id: entero, datos: texto) -> texto
+
+// cm_deserializar_checkpoint — Deserializa y verifica un checkpoint
+//   Retorna los datos de la tarea, o vacío si corrupto
+externo funcion cm_deserializar_checkpoint(checkpoint_str: texto) -> texto
+
+// cm_verificar_integridad — Verifica checksum del checkpoint
+//   Retorna 0 si válido, -1 si corrupto
+externo funcion cm_verificar_integridad(checkpoint_str: texto) -> entero
+
+// cm_restaurar_checkpoint — Restaura tarea desde checkpoint en la cola WS
+//   Retorna 0 si ok, -1 si error
+externo funcion cm_restaurar_checkpoint(checkpoint_str: texto) -> entero
+
+// cm_migrar_tarea — Migración completa: checkpoint + ownership transfer
+//   Retorna el checkpoint generado, o vacío si falla
+externo funcion cm_migrar_tarea(datos_debug: texto) -> texto
+
+// cm_migrar_entre_nodos — Simula migración entre dos nodos del cluster
+//   Retorna 0 si ok, -1 si error
+externo funcion cm_migrar_entre_nodos(ip_destino: texto, puerto_destino: entero) -> entero
+
+// cm_ultima_migracion — Retorna info de la última migración
+externo funcion cm_ultima_migracion() -> texto
+
+// cm_migraciones_completadas — Retorna número de migraciones exitosas
+externo funcion cm_migraciones_completadas() -> entero
+
+// cm_migraciones_fallidas — Retorna número de migraciones fallidas
+externo funcion cm_migraciones_fallidas() -> entero
+
+// ============================================================
+// Funciones Externas — M8.5 (Auto-Discovery & Membership)
+// ============================================================
+
+// descubrimiento_inicializar — Inicializa la tabla de membresía
+//   max_nodos: capacidad máxima de la tabla (máx 64)
+//   Retorna 0 si ok
+externo funcion cluster_descubrimiento_inicializar(max_nodos: entero) -> entero
+
+// descubrimiento_detener — Detiene el subsistema y limpia la tabla
+externo funcion cluster_descubrimiento_detener() -> entero
+
+// registrar_nodo — Registra o actualiza un nodo en la tabla de membresía
+//   Retorna índice del nodo (0+) o -1 si tabla llena
+externo funcion cluster_registrar_nodo(id: texto, ip: texto, puerto: entero, pubkey: texto) -> entero
+
+// eliminar_nodo — Elimina un nodo de la tabla por ID
+//   Retorna 0 si ok, -1 si no se encontró
+externo funcion cluster_eliminar_nodo(id: texto) -> entero
+
+// nodos_activos — Retorna número de nodos con estado VIVO
+externo funcion cluster_nodos_activos() -> entero
+
+// total_nodos — Retorna número total de nodos en la tabla
+externo funcion cluster_total_nodos() -> entero
+
+// obtener_nodo — Obtiene info de un nodo por índice
+//   Retorna "id:ip:puerto:pubkey:estado:heartbeats" o vacío
+externo funcion cluster_obtener_nodo(indice: entero) -> texto
+
+// heartbeat_inicializar — Configura el subsistema de heartbeats
+//   intervalo_s: segundos entre ticks de heartbeat
+//   timeout_s: segundos sin heartbeat para marcar caída
+externo funcion cluster_heartbeat_inicializar(intervalo_s: entero, timeout_s: entero) -> entero
+
+// tick_heartbeat — Procesa heartbeats y purga nodos caídos
+//   tiempo_actual_s: timestamp UNIX actual en segundos
+//   Retorna cantidad de nodos purgados
+externo funcion cluster_tick_heartbeat(tiempo_actual_s: entero) -> entero
+
+// recibir_heartbeat — Registra heartbeat de un nodo (actualiza estado a VIVO)
+//   Retorna 0 si ok, -1 si nodo no encontrado
+externo funcion cluster_recibir_heartbeat(id: texto) -> entero
+
+// generar_anuncio — Genera paquete de descubrimiento SYNCLUSTER
+//   Formato: "SYNCLUSTER:id:ip:puerto:pubkey"
+externo funcion cluster_generar_anuncio(id: texto, ip: texto, puerto: entero, pubkey: texto) -> texto
+
+// procesar_anuncio — Procesa paquete SYNCLUSTER entrante
+//   Retorna 0 si se registró correctamente, -1 si inválido
+externo funcion cluster_procesar_anuncio(paquete: texto) -> entero
+
+// info_membresia_como_texto — Retorna tabla de membresía como texto
+//   Formato: "id:ip:puerto:estado|..."
+externo funcion cluster_info_membresia_como_texto() -> texto
+
+// verificar_salud_nodo — Verifica salud de un nodo por ID
+//   Retorna: 1=VIVO, 2=SOSPECHOSO, 3=MUERTO, -1=desconocido
+externo funcion cluster_verificar_salud_nodo(id: texto) -> entero
+
+// ultimo_tick_heartbeat — Retorna timestamp del último tick
+externo funcion cluster_ultimo_tick_heartbeat() -> entero
+
+// info_heartbeat — Retorna configuración de heartbeat
+//   "intervalo:timeout"
+externo funcion cluster_info_heartbeat() -> texto
+
+// ============================================================
+// Funciones Externas — M8.6 (Multicast UDP Real)
+// ============================================================
+
+// multicast_iniciar — Inicializa socket UDP y se une al grupo multicast
+//   grupo: dirección multicast ("239.255.0.1" por defecto)
+//   puerto: puerto multicast (9700 por defecto)
+//   Retorna fd del socket, o -1 si error
+externo funcion cluster_multicast_iniciar(grupo: texto, puerto: entero) -> entero
+
+// multicast_detener — Sale del grupo multicast y cierra el socket
+externo funcion cluster_multicast_detener() -> entero
+
+// anunciar_por_multicast — Envía anuncio SYNCLUSTER al grupo multicast
+//   Genera el anuncio via cluster_generar_anuncio y lo transmite por UDP real
+//   Retorna 0 si ok, negativo si error
+externo funcion cluster_anunciar_por_multicast(id: texto, ip_host: texto, puerto_host: entero, pubkey: texto) -> entero
+
+// escuchar_multicast — Recibe y procesa un paquete multicast
+//   timeout_ms: tiempo máximo de espera en ms (0 = no bloqueante)
+//   Retorna: 0=anuncio procesado, 1=sin datos, -1=error
+externo funcion cluster_escuchar_multicast(timeout_ms: entero) -> entero
+
+// iniciar_hilo_descubrimiento — Inicia hilo de fondo para anuncios periódicos
+//   Envía SYNCLUSTER cada intervalo_s segundos y escucha pasivamente
+//   Retorna 0 si ok, negativo si error
+externo funcion cluster_iniciar_hilo_descubrimiento(id: texto, ip_host: texto, puerto_host: entero, pubkey: texto, intervalo_s: entero) -> entero
+
+// detener_hilo_descubrimiento — Detiene el hilo de descubrimiento activo
+externo funcion cluster_detener_hilo_descubrimiento() -> entero
+
+// hilo_descubrimiento_activo — Verifica si el hilo de descubrimiento está activo
+//   Retorna 1 si activo, 0 si inactivo
+externo funcion cluster_hilo_descubrimiento_activo() -> entero
+
+// multicast_info — Retorna información del grupo multicast configurado
+//   Formato: "grupo:puerto:fd"
+externo funcion cluster_multicast_info() -> texto
+
+// ============================================================
+// Funciones Externas — M9.4 (Debugging Distribuido Multi-Nodo)
+// ============================================================
+
+// dd_inicializar — Inicializa subsistema de debug distribuido
+//   nodo_id: identificador único de este nodo en el clúster
+externo funcion dd_inicializar(nodo_id: entero) -> entero
+
+// dd_registrar_nodo_remoto — Registra un nodo remoto para debug distribuido
+//   Retorna índice (0+) o -1 si error, -2 si tabla llena
+externo funcion dd_registrar_nodo_remoto(nodo_id: entero, ip: texto, puerto: entero) -> entero
+
+// dd_enviar_traza_remota — Envía eventos de traza local a nodo remoto
+//   Retorna 0 si ok, negativo si error de red
+externo funcion dd_enviar_traza_remota(ip: texto, puerto: entero, num_eventos: entero) -> entero
+
+// dd_recibir_traza_remota — Procesa paquete SYNDBG:TRACE entrante
+//   Retorna 0 si procesado, negativo si formato inválido
+externo funcion dd_recibir_traza_remota(paquete: texto) -> entero
+
+// dd_sincronizar_trazas — Sincroniza traza local con todos los nodos registrados
+//   Retorna número de nodos que recibieron la sincronización
+externo funcion dd_sincronizar_trazas(num_eventos: entero) -> entero
+
+// dd_buscar_evento_remoto — Busca evento en buffers remotos por tag
+//   Retorna "nodo_id:tag|seq|..." o vacío si no se encuentra
+externo funcion dd_buscar_evento_remoto(tag: entero, desde_secuencia: entero) -> texto
+
+// dd_breakpoint_remoto — Establece breakpoint en nodo remoto vía RPC
+//   tipo: 0=línea, 1=variable, 2=tag
+//   Retorna 0 si ok, negativo si error de red
+externo funcion dd_breakpoint_remoto(ip: texto, puerto: entero, bp_tipo: entero, patron: texto, valor_int: entero) -> entero
+
+// dd_inspeccionar_remoto — Inspecciona variable en nodo remoto vía RPC
+//   Retorna resultado de la inspección o vacío
+externo funcion dd_inspeccionar_remoto(ip: texto, puerto: entero, nombre_variable: texto) -> texto
+
+// dd_pila_remota — Obtiene pila de llamadas de nodo remoto vía RPC
+//   Retorna "remote_stack:local_id" o vacío
+externo funcion dd_pila_remota(ip: texto, puerto: entero) -> texto
+
+// dd_total_eventos_remotos — Total de eventos recibidos de todos los nodos remotos
+externo funcion dd_total_eventos_remotos() -> entero
+
+// dd_nodos_remotos_registrados — Número de nodos remotos registrados
+externo funcion dd_nodos_remotos_registrados() -> entero
+
+// dd_nodo_local_id — ID del nodo local configurado
+externo funcion dd_nodo_local_id() -> entero
+
+// dd_info — Información del subsistema de debug distribuido
+//   Formato: "local_id:num_remotos:total_eventos:ultima_sincro"
+externo funcion dd_info() -> texto
+
+// ============================================================
+// Funciones Externas — M10.4 (Fuzzing Distribuido Multi-Nodo)
+// ============================================================
+
+// fz_iniciar_coordinador — Inicializa el coordinador de fuzzing
+//   puerto: puerto de escucha del coordinador
+//   Retorna 0 si ok, -1 si puerto inválido
+externo funcion fz_iniciar_coordinador(puerto: entero) -> entero
+
+// fz_enviar_caso — Envía un caso de fuzzing a un nodo esclavo
+//   Formato: "SYNFUZZ:CASE:caso_id:longitud:contenido"
+//   Retorna caso_id si ok, negativo si error
+externo funcion fz_enviar_caso(ip: texto, puerto: entero, caso_id: entero, contenido: texto) -> entero
+
+// fz_procesar_mensaje — Procesa un paquete SYNFUZZ entrante
+//   Retorna "CASE:contenido", "RESULT:caso_id:exit_code", "IGNORED" o vacío
+externo funcion fz_procesar_mensaje(paquete: texto) -> texto
+
+// fz_reportar_resultado — Reporta un resultado desde esclavo al coordinador
+//   Envía "SYNFUZZ:RESULT:caso_id:exit_code:stderr"
+externo funcion fz_reportar_resultado(ip_coordinador: texto, puerto_coordinador: entero, caso_id: entero, exit_code: entero, stderr_resumen: texto) -> entero
+
+// fz_obtener_resultado — Obtiene un resultado por índice
+//   Retorna "caso_id:exit_code:timestamp" o vacío
+externo funcion fz_obtener_resultado(indice: entero) -> texto
+
+// fz_ultimo_caso_id — Retorna el último ID de caso procesado
+externo funcion fz_ultimo_caso_id() -> entero
+
+// fz_total_casos_enviados — Total de casos enviados a slaves
+externo funcion fz_total_casos_enviados() -> entero
+
+// fz_total_resultados_recibidos — Total de resultados recibidos de slaves
+externo funcion fz_total_resultados_recibidos() -> entero
+
+// fz_total_crashes — Total de crashes detectados en fuzzing remoto
+externo funcion fz_total_crashes() -> entero
+
+// fz_num_resultados — Número de resultados almacenados
+externo funcion fz_num_resultados() -> entero
+
+// fz_info — Información del subsistema de fuzzing distribuido
+//   Formato: "enviados:recibidos:crashes:ultimo_caso_id:num_resultados"
+externo funcion fz_info() -> texto

@@ -1,0 +1,515 @@
+// cumple Manual 1 5: nucleo del compilador Synapse
+#lang: es
+
+// ============================================================
+// syquex/expr.syn — Expresiones de Syquex (R87)
+// Precedencia compartida: Manual 2 §6; primarios/postfijos: Manual 3 §3.
+// BINARIA usa valor_int con los CÓDIGOS CANÓNICOS del puente
+// (100/101 lógicos, 200-205 relacionales, 300/301 aditivos,
+// 400-402 multiplicativos; unarios 500 '-' y 501 '!').
+// Extensión ABI Syquex (D-F22-C, aditiva): LISTA_LIT/MAPA_LIT/PARA_EN.
+// Estilo 1 expresión por línea (H-R86-2).
+// ============================================================
+
+importar parser_constantes
+importar parser_base
+importar lexer
+funcion sq_nuevo(est: ParserEst, tipo: entero, linea: entero, col: entero) -> entero:
+    retornar parser_nuevo_nodo(est, tipo, linea, col)
+
+funcion sq_id(est: ParserEst) -> entero:
+    // Consume identificador/keyword-contextual → NODO_IDENTIFICADOR con lexema
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    t = token_mirar(est)
+    si token_es_nombre(t) != 1:
+        // Constructores de colección/arena de Syquex (M3 §3 L157-158, L167,
+        // L197): lista<T>, mapa<K,V>, arena — keyword contextual en posición
+        // de nombre (patrón rc/modulo de FASE A); el lexema se conserva.
+        si t != T_LISTA y t != T_MAPA y t != T_ARENA:
+            inseguro:
+                asm("est->hay_error = true;")
+            retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    n = sq_nuevo(est, NODO_IDENTIFICADOR, linea, col)
+    inseguro:
+        asm("if (est->posicion < est->total_tokens) { struct SqLexerBuffers* _bi=(struct SqLexerBuffers*)sq_buffers(); CadenaSegura vi=((struct TokenLex*)_bi->tokens)[est->posicion].valor; uintptr_t tpi=(uintptr_t)vi.datos; est->nodos[n].ptr_str=(int)(tpi&0xFFFFFFFFu); est->nodos[n].len_str=vi.longitud; int* hii=(int*)sq_tokens_hi(); if(hii) hii[n]=(int)(tpi>>32); }")
+    token_avanzar(est)
+    retornar n
+
+funcion sq_binaria(est: ParserEst, izq: entero, codigo: entero, der: entero) -> entero:
+    n = sq_nuevo(est, NODO_BINARIA, token_linea(est, est.posicion), token_columna(est, est.posicion))
+    inseguro:
+        asm("est->nodos[n].hijo_izq = izq")
+        asm("est->nodos[n].hijo_der = der")
+        asm("est->nodos[n].valor_int = codigo")
+    retornar n
+
+funcion sq_es_op_rel(t: entero) -> entero:
+    si t == T_IGUAL:
+        retornar 1
+    si t == T_DISTINTO:
+        retornar 1
+    si t == T_MENOR:
+        retornar 1
+    si t == T_MAYOR:
+        retornar 1
+    si t == T_MENOR_IGUAL:
+        retornar 1
+    si t == T_MAYOR_IGUAL:
+        retornar 1
+    retornar 0
+
+funcion sq_es_op_adit(t: entero) -> entero:
+    si t == T_MAS:
+        retornar 1
+    si t == T_MENOS:
+        retornar 1
+    retornar 0
+
+funcion sq_es_op_mult(t: entero) -> entero:
+    si t == T_POR:
+        retornar 1
+    si t == T_DIV:
+        retornar 1
+    si t == T_MOD:
+        retornar 1
+    retornar 0
+
+funcion sq_codigo_rel(t: entero) -> entero:
+    si t == T_IGUAL:
+        retornar 202
+    si t == T_DISTINTO:
+        retornar 203
+    si t == T_MENOR:
+        retornar 201
+    si t == T_MAYOR:
+        retornar 200
+    si t == T_MENOR_IGUAL:
+        retornar 204
+    si t == T_MAYOR_IGUAL:
+        retornar 205
+    retornar 0
+
+funcion parse_or_sq(est: ParserEst) -> entero:
+    izq = parse_and_sq(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_O:
+            token_avanzar(est)
+            der = parse_and_sq(est)
+            izq = sq_binaria(est, izq, 101, der)
+        sino:
+            r = 0
+    retornar izq
+
+funcion parse_and_sq(est: ParserEst) -> entero:
+    izq = parse_rel_sq(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_Y:
+            token_avanzar(est)
+            der = parse_rel_sq(est)
+            izq = sq_binaria(est, izq, 100, der)
+        sino:
+            r = 0
+    retornar izq
+
+funcion parse_rel_sq(est: ParserEst) -> entero:
+    izq = parse_adit_sq(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si sq_es_op_rel(t) == 1:
+            token_avanzar(est)
+            der = parse_adit_sq(est)
+            izq = sq_binaria(est, izq, sq_codigo_rel(t), der)
+        sino:
+            r = 0
+    retornar izq
+
+funcion sq_codigo_adit(t: entero) -> entero:
+    si t == T_MAS:
+        retornar 300
+    retornar 301
+
+funcion parse_adit_sq(est: ParserEst) -> entero:
+    izq = parse_mult_sq(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si sq_es_op_adit(t) == 1:
+            token_avanzar(est)
+            der = parse_mult_sq(est)
+            izq = sq_binaria(est, izq, sq_codigo_adit(t), der)
+        sino:
+            r = 0
+    retornar izq
+
+funcion sq_codigo_mult(t: entero) -> entero:
+    si t == T_POR:
+        retornar 400
+    si t == T_DIV:
+        retornar 401
+    retornar 402
+
+funcion parse_mult_sq(est: ParserEst) -> entero:
+    izq = parse_unario_sq(est)
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_FLECHA_IZQ:
+            // H-R90-7: canal <- valor (NODO_ENVIAR_CANAL)
+            e_linea = token_linea(est, est.posicion)
+            e_col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            der = parse_unario_sq(est)
+            n = sq_nuevo(est, NODO_ENVIAR_CANAL, e_linea, e_col)
+            inseguro:
+                asm("est->nodos[n].hijo_izq = izq")
+                asm("est->nodos[n].hijo_der = der")
+            izq = n
+        sino:
+            si sq_es_op_mult(t) == 1:
+                token_avanzar(est)
+                der = parse_unario_sq(est)
+                izq = sq_binaria(est, izq, sq_codigo_mult(t), der)
+            sino:
+                r = 0
+    retornar izq
+
+funcion parse_unario_sq(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    si t == T_MENOS:
+        token_avanzar(est)
+        operando = parse_unario_sq(est)
+        n = sq_nuevo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est->nodos[n].valor_int = 500")
+            asm("est->nodos[n].hijo_izq = operando")
+        retornar n
+    si t == T_NO:
+        token_avanzar(est)
+        operando = parse_unario_sq(est)
+        n = sq_nuevo(est, NODO_UNARIA, linea, col)
+        inseguro:
+            asm("est->nodos[n].valor_int = 501")
+            asm("est->nodos[n].hijo_izq = operando")
+        retornar n
+    si t == T_INTERROGACION:
+        token_avanzar(est)
+        operando = parse_postfix_sq(est)
+        n = sq_nuevo(est, NODO_PROPAGAR, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = operando")
+        retornar n
+    si t == T_AMPERSAND:
+        token_avanzar(est)
+        es_mut = 0
+        si token_mirar(est) == T_IDENTIFICADOR:
+            lexema = sq_token_lexema(est.posicion)
+            si str_eq_sq(lexema, "mut") == 1:
+                es_mut = 1
+                token_avanzar(est)
+        operando = parse_postfix_sq(est)
+        n = sq_nuevo(est, NODO_PUNTERO, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = operando")
+            asm("est->nodos[n].valor_int = es_mut")
+        retornar n
+    retornar parse_postfix_sq(est)
+
+funcion sq_args(est: ParserEst, nodo_llamada: entero) -> entero:
+    primero = 0
+    ultimo = 0
+    si token_mirar(est) == T_PAREN_DER:
+        token_avanzar(est)
+        inseguro:
+            asm("est->nodos[nodo_llamada].hijo_der = primero")
+        retornar nodo_llamada
+    r = 1
+    mientras r == 1:
+        a = parse_expresion_sq(est)
+        si primero == 0:
+            primero = a
+            ultimo = a
+        sino:
+            inseguro:
+                asm("est->nodos[ultimo].hermano = a")
+            ultimo = a
+        si token_mirar(est) == T_COMA:
+            token_avanzar(est)
+        sino:
+            r = 0
+    inseguro:
+        asm("token_esperar(est, T_PAREN_DER)")
+        asm("est->nodos[nodo_llamada].hijo_der = primero")
+    retornar nodo_llamada
+
+funcion sq_campo_despues_punto(est: ParserEst, base: entero) -> entero:
+    dot_linea = token_linea(est, est.posicion)
+    dot_col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    campo = sq_id(est)
+    n = sq_nuevo(est, NODO_ACCESO_CAMPO, dot_linea, dot_col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = base")
+        asm("if (campo > 0 && campo < est->total_nodos && n < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[campo].ptr_str; est->nodos[n].len_str = est->nodos[campo].len_str; int* hi_f=(int*)sq_tokens_hi(); int* hi_t=(int*)sq_tokens_hi(); if (hi_f && hi_t) hi_t[n]=hi_f[campo]; }")
+    retornar n
+
+funcion sq_nodo_es_identificador(est: ParserEst, n: entero) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("r = (n >= 0 && n < est->total_nodos && est->nodos[n].tipo_nodo == NODO_IDENTIFICADOR) ? 1 : 0")
+        retornar r
+    retornar 0
+
+funcion sq_scan_genericos(est: ParserEst) -> entero:
+    // Argumentos genéricos de constructor (M3 §3 L157-158, uso canónico §8.1
+    // 'Canal<texto>(10)'): retorna el nº de tokens '<...>' a consumir SOLO si
+    // el patrón es '<' {tipo} '>' seguido INMEDIATAMENTE de '(' — en otro caso
+    // 0 (la comparación 'a < b' no se ve afectada; heurística registrada).
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        r = 0
+        // MED-1 FIX: token set completo de sq_tipo (M3 §3 L155-169).
+        // Agregados: T_FUNCION(3), T_CANAL(52), T_NULO(62), T_OK(63), T_ERR(64),
+        // T_TENSOR(61), T_ALGUN(65), T_NINGUNO(66). T_TENSOR es necesario para
+        // el ejemplo canónico del manual (M3 §14: 'Resultado<tensor, texto>');
+        // T_ALGUN/T_NINGUNO son reservadas de la tabla M3 §4 que no deben
+        // romper el escaneo léxico de genéricos.
+        asm("do { int _gn = est->total_tokens; int _gp = est->posicion; if (_gp < _gn && est->tokens[_gp].tipo == T_MENOR) { int _gi = _gp + 1; int _gprof = 1; int _gok = 1; int _gcer = 0; while (_gi < _gn) { int _gt = est->tokens[_gi].tipo; if (_gt == T_MENOR) { _gprof++; } else if (_gt == T_MAYOR) { _gprof--; if (_gprof == 0) { _gi++; _gcer = 1; break; } } else if (_gt == T_FIN || _gt == T_NUEVALINEA) { _gok = 0; break; } else if (!(_gt == T_IDENTIFICADOR || _gt == T_COMA || _gt == T_LISTA || _gt == T_MAPA || _gt == T_RC || _gt == T_ARC || _gt == T_DEBIL || _gt == T_ARENA || _gt == T_CORCH_IZQ || _gt == T_CORCH_DER || _gt == T_AMPERSAND || _gt == T_FUNCION || _gt == T_CANAL || _gt == T_NULO || _gt == T_OK || _gt == T_ERR || _gt == T_TENSOR || _gt == T_ALGUN || _gt == T_NINGUNO)) { _gok = 0; break; } _gi++; } if (_gok && _gcer && _gi < _gn && est->tokens[_gi].tipo == T_PAREN_IZQ) { r = _gi - _gp; } } } while (0);")
+        retornar r
+    retornar 0
+
+funcion parse_postfix_sq(est: ParserEst) -> entero:
+    base = parse_primario_sq(est)
+    gen_ini = 0
+    gen_fin = -1
+    salir = 0
+    mientras salir == 0:
+        t = token_mirar(est)
+        si t == T_PAREN_IZQ:
+            // Convención canónica (paridad puente nativo): una llamada
+            // sobre identificador simple es NODO_LLAMADA(nombre, args en
+            // hijo_der). Si la base es un acceso (método), los argumentos
+            // quedan en su hijo_der — lowering requiere tipos (H-R90-5).
+            si sq_nodo_es_identificador(est, base) == 1:
+                c_linea = token_linea(est, est.posicion)
+                c_col = token_columna(est, est.posicion)
+                token_avanzar(est)
+                llamada = sq_nuevo(est, NODO_LLAMADA, c_linea, c_col)
+                sq_copiar_nombre(est, llamada, base)
+                base = sq_args(est, llamada)
+                si gen_ini > 0:
+                    // El span <K,V> queda en slot2 del nodo de llamada
+                    inseguro:
+                        asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")
+                    gen_ini = 0
+            sino:
+                token_avanzar(est)
+                base = sq_args(est, base)
+                // Marcador de LLAMADA (R91): un acceso a campo seguido de
+                // '(' es invocación de método aunque los argumentos sean
+                // vacíos (hijo_der=0 lo haría indistinguible del acceso
+                // simple p.x). valor_int=1 = hubo call-site.
+                inseguro:
+                    asm("if (base >= 0 && base < est->total_nodos) { est->nodos[base].valor_int = 1; }")
+                si gen_ini > 0:
+                    inseguro:
+                        asm("sq_guardar_span_sq(est, base, gen_ini, gen_fin, 2)")
+                    gen_ini = 0
+        sino:
+            si t == T_MENOR:
+                salto = sq_scan_genericos(est)
+                si salto > 0:
+                    si sq_nodo_es_identificador(est, base) == 1:
+                        gen_ini = est.posicion
+                        gen_fin = est.posicion + salto - 1
+                        k2 = 0
+                        mientras k2 < salto:
+                            token_avanzar(est)
+                            k2 = k2 + 1
+                    sino:
+                        salir = 1
+                sino:
+                    salir = 1
+            sino:
+                si t == T_PUNTO:
+                    base = sq_campo_despues_punto(est, base)
+                sino:
+                    si t == T_CORCH_IZQ:
+                        i_linea = token_linea(est, est.posicion)
+                        i_col = token_columna(est, est.posicion)
+                        token_avanzar(est)
+                        idx = parse_expresion_sq(est)
+                        inseguro:
+                            asm("token_esperar(est, T_CORCH_DER)")
+                        n = sq_nuevo(est, NODO_INDICE, i_linea, i_col)
+                        inseguro:
+                            asm("est->nodos[n].hijo_izq = base")
+                            asm("est->nodos[n].hijo_der = idx")
+                        base = n
+                    sino:
+                        si t == T_INTERROGACION:
+                            q_linea = token_linea(est, est.posicion)
+                            q_col = token_columna(est, est.posicion)
+                            token_avanzar(est)
+                            n = sq_nuevo(est, NODO_PROPAGAR, q_linea, q_col)
+                            inseguro:
+                                asm("est->nodos[n].hijo_izq = base")
+                            base = n
+                        sino:
+                            si t == T_FLECHA:
+                                // H-R90-7: canal -> recibe un valor del canal (NODO_RECIBIR_CANAL)
+                                r_linea = token_linea(est, est.posicion)
+                                r_col = token_columna(est, est.posicion)
+                                token_avanzar(est)
+                                n = sq_nuevo(est, NODO_RECIBIR_CANAL, r_linea, r_col)
+                                inseguro:
+                                    asm("est->nodos[n].hijo_izq = base")
+                                base = n
+                            sino:
+                                salir = 1
+    retornar base
+
+funcion sq_lexema_contiene_punto_o_e(est: ParserEst, pos: entero) -> entero:
+    inseguro:
+        r = 0
+        asm("struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); if (_b && pos < _b->ntks) { CadenaSegura v=((struct TokenLex*)_b->tokens)[pos].valor; for (int i=0;i<v.longitud;i++){ char ch=v.datos[i]; if (ch=='.'||ch=='e'||ch=='E'){ r=1; break; } } }")
+        retornar r
+    retornar 0
+
+funcion parse_primario_sq(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    si t == T_NUMERO o t == T_FLOTANTE:
+        es_flot = 0
+        si t == T_FLOTANTE:
+            es_flot = 1
+        sino:
+            es_flot = sq_lexema_contiene_punto_o_e(est, est.posicion)
+        tipo_nodo = NODO_NUMERO
+        si es_flot == 1:
+            tipo_nodo = NODO_DECIMAL
+        n = sq_nuevo(est, tipo_nodo, linea, col)
+        inseguro:
+            asm("if (est->posicion < est->total_tokens) { struct SqLexerBuffers* _bn=(struct SqLexerBuffers*)sq_buffers(); CadenaSegura vn=((struct TokenLex*)_bn->tokens)[est->posicion].valor; uintptr_t tpn=(uintptr_t)vn.datos; est->nodos[n].ptr_str=(int)(tpn&0xFFFFFFFFu); est->nodos[n].len_str=vn.longitud; int* hin=(int*)sq_tokens_hi(); if(hin) hin[n]=(int)(tpn>>32); }")
+        token_avanzar(est)
+        retornar n
+    si t == T_CADENA:
+        // El lexer almacena el valor YA decodificado y SIN comillas
+        // (sq_push_valor con escapes uXXXX resueltos): el span es el
+        // valor completo. Recortar aquí truncaba literales (hallazgo
+        // R90: "cero" -> "er").
+        n = sq_nuevo(est, NODO_CADENA_LIT, linea, col)
+        inseguro:
+            asm("if (est->posicion < est->total_tokens) { struct SqLexerBuffers* _bs=(struct SqLexerBuffers*)sq_buffers(); CadenaSegura vs=((struct TokenLex*)_bs->tokens)[est->posicion].valor; uintptr_t tps=(uintptr_t)vs.datos; est->nodos[n].ptr_str=(int)(tps&0xFFFFFFFFu); est->nodos[n].len_str=vs.longitud; int* his=(int*)sq_tokens_hi(); if(his) his[n]=(int)(tps>>32); }")
+        token_avanzar(est)
+        retornar n
+    si t == T_VERDADERO o t == T_FALSO:
+        n = sq_nuevo(est, NODO_BOOLEANO, linea, col)
+        inseguro:
+            asm("est->nodos[n].valor_int = (t == T_VERDADERO) ? 1 : 0")
+        token_avanzar(est)
+        retornar n
+    si t == T_NULO:
+        n = sq_nuevo(est, NODO_NULO, linea, col)
+        token_avanzar(est)
+        retornar n
+    si t == T_CORCH_IZQ:
+        token_avanzar(est)
+        n = sq_nuevo(est, NODO_LISTA_LIT, linea, col)
+        primero = 0
+        ultimo = 0
+        si token_mirar(est) != T_CORCH_DER:
+            r2 = 1
+            mientras r2 == 1:
+                el = parse_expresion_sq(est)
+                si primero == 0:
+                    primero = el
+                    ultimo = el
+                sino:
+                    inseguro:
+                        asm("est->nodos[ultimo].hermano = el")
+                    ultimo = el
+                si token_mirar(est) == T_COMA:
+                    token_avanzar(est)
+                sino:
+                    r2 = 0
+        inseguro:
+            asm("token_esperar(est, T_CORCH_DER)")
+            asm("est->nodos[n].hijo_izq = primero")
+        retornar n
+    si t == T_LLAVE_IZQ:
+        token_avanzar(est)
+        n = sq_nuevo(est, NODO_MAPA_LIT, linea, col)
+        primero = 0
+        ultimo = 0
+        si token_mirar(est) != T_LLAVE_DER:
+            r3 = 1
+            mientras r3 == 1:
+                k = parse_expresion_sq(est)
+                inseguro:
+                    asm("token_esperar(est, T_DOSPUNTOS)")
+                val = parse_expresion_sq(est)
+                par = sq_nuevo(est, NODO_ASIGNACION, linea, col)
+                inseguro:
+                    asm("est->nodos[par].hijo_izq = k")
+                    asm("est->nodos[par].hijo_der = val")
+                si primero == 0:
+                    primero = par
+                    ultimo = par
+                sino:
+                    inseguro:
+                        asm("est->nodos[ultimo].hermano = par")
+                    ultimo = par
+                si token_mirar(est) == T_COMA:
+                    token_avanzar(est)
+                sino:
+                    r3 = 0
+        inseguro:
+            asm("token_esperar(est, T_LLAVE_DER)")
+            asm("est->nodos[n].hijo_izq = primero")
+        retornar n
+    // Identificador (o keyword contextual en posición de nombre)
+    si token_es_nombre(t) == 1:
+        retornar sq_id(est)
+    si t == T_LISTA o t == T_MAPA o t == T_ARENA:
+        // Constructores de colección/arena (M3 §3 L157-158, L167, L197):
+        // los TokenID propios 75+ no están en token_es_nombre del módulo
+        // compartido; se aceptan aquí como nombre contextual (patrón FASE A).
+        retornar sq_id(est)
+    linea_err = token_linea(est, est.posicion)
+    col_err = token_columna(est, est.posicion)
+    inseguro:
+        // MED-3 FIX: reportar token inesperado en posición de expresión primaria.
+        // Código de error -1 (no 0, que es un nodo válido). Diagnóstico
+        // observable con línea/columna (patrón parser.syn:187; lección R21)
+        // + marca hay_error (paridad con parser_base nativo).
+        asm("fprintf(stderr, \"SQ_EXPR_INESPERADA tipo=%d linea=%d col=%d\\n\", t, linea_err, col_err);")
+        asm("est->hay_error = 1;")
+    token_avanzar(est)
+    retornar -1
+
+funcion parse_expresion_sq(est: ParserEst) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    retornar parse_or_sq(est)

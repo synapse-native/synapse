@@ -1,0 +1,11 @@
+#lang: es
+
+funcion generar_tensor() -> tensor:
+    // Creamos y transferimos la custodia hacia afuera
+    datos = tensor(2, 2)
+    retornar -> datos
+
+funcion principal() -> nulo:
+    // Recibimos la custodia
+    matriz = generar_tensor()
+    log("Tensor recibido y memoria gestionada correctamente.")

@@ -4,7 +4,8 @@
 
 #include "synapse_rt_types.h"
 #include "librerias/embedded_libs.h"
-#include "tweetnacl.h"
+#include "axon/tweetnacl.h"
+#include <stdatomic.h>
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -136,8 +137,47 @@ static uint8_t* g_slab_bases[SLAB_COUNT];
 static volatile MemoryPool _g_pool;
 static pthread_mutex_t _g_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+/* --- R10: registro de punteros fuera-del-pool -------------------------
+ * pool_alloc usa malloc de escape cuando el pool esta agotado o el tamano
+ * excede el bloque. pool_free solo debe llamar free() a esos punteros.
+ * Cualquier otro puntero (literal estatico ".rodata", memoria ajena) se
+ * IGNORA: free() sobre un literal = 0xC0000374 / SEGV (Manual 4 S2.1:
+ * nunca liberar lo que no se asigno via el allocator).
+ * Protegido por _g_pool_mutex; solo se toca en el camino lento de
+ * pool_free (punteros fuera del pool), nunca en la ruta rapida slab.
+ */
+static void** _g_extra_ptrs = NULL;
+static size_t _g_extra_count = 0;
+static size_t _g_extra_cap = 0;
+
+static void _extra_registrar(void* p) {
+    if (!p) return;
+    pthread_mutex_lock(&_g_pool_mutex);
+    if (_g_extra_count == _g_extra_cap) {
+        size_t ncap = _g_extra_cap ? _g_extra_cap * 2 : 16;
+        void** nptrs = (void**)realloc(_g_extra_ptrs, ncap * sizeof(void*));
+        if (!nptrs) {
+            /* No registrado: pool_free lo ignorara (leak controlado y
+             * documentado; nunca un free() ilegal). */
+            pthread_mutex_unlock(&_g_pool_mutex);
+            return;
+        }
+        _g_extra_ptrs = nptrs;
+        _g_extra_cap = ncap;
+    }
+    _g_extra_ptrs[_g_extra_count++] = p;
+    pthread_mutex_unlock(&_g_pool_mutex);
+}
+
+/* El scan del registro se hace INLINE bajo _g_pool_mutex (ver pool_free):
+ * nunca re-tomar el mutex ya tomado (R10 fix 2, deadlock). */
+
 void pool_init(uint32_t total_blocks, uint32_t block_size) {
     pthread_mutex_lock(&_g_pool_mutex);
+    /* R10 (hardening): re-inicializacion sin pool_destroy previo no debe
+     * conservar entradas stale del registro fuera-del-pool (un puntero
+     * ajeno que colisionara con una entrada vieja seria liberado). */
+    _g_extra_count = 0;
     _g_pool.total_blocks = total_blocks;
     _g_pool.block_size = block_size;
     _g_pool.pool_base = (uint8_t*)malloc(total_blocks * block_size);
@@ -220,6 +260,7 @@ void* pool_alloc(size_t size) {
                     pthread_mutex_unlock(&_g_pool_mutex);
                     void* _p = malloc(size);
                     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+                    _extra_registrar(_p);
                     return _p;
                 }
             }
@@ -251,6 +292,7 @@ void* pool_alloc(size_t size) {
             /* Cache no pudo llenarse: malloc directo */
             void* _p = malloc(size);
             if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc slab malloc fallo\n"); exit(1); }
+            _extra_registrar(_p);
             return _p;
         }
     }
@@ -275,9 +317,14 @@ void* pool_alloc(size_t size) {
     pthread_mutex_unlock(&_g_pool_mutex);
     void* _p = malloc(size);
     if (!_p) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc malloc fallo\n"); exit(1); }
+    _extra_registrar(_p);
     return _p;
 }
 
+/* CONTRATO DE OWNERSHIP (R10, Manual 4 S2.1): pool_free solo es valido para
+ * punteros devueltos por pool_alloc (slab / bloque grande del pool / malloc de
+ * escape registrado). Literales estaticos (.rodata) y memoria ajena se IGNORAN
+ * (no-op): nunca liberar lo que no se asigno via el allocator. */
 void pool_free(void* ptr) {
     if (!ptr) return;
     /* Determinar clase slab via atomic reads de g_slab_bases (lock-free) */
@@ -325,10 +372,27 @@ void pool_free(void* ptr) {
         uint32_t _w = _index / 32;
         uint32_t _b = _index % 32;
         _g_pool.bitmap[_w] &= ~(1u << _b);
-    } else {
-        free(ptr);
+        pthread_mutex_unlock(&_g_pool_mutex);
+        return;
     }
-    pthread_mutex_unlock(&_g_pool_mutex);
+    /* Puntero fuera del pool: solo liberar si pool_alloc lo asigno via
+     * malloc de escape (registrado). Scan INLINE bajo el mutex tomado
+     * (R10 fix 2: _extra_consumir re-tomaba el mutex -> deadlock).
+     * Literales estaticos (.rodata) / punteros ajenos: no-op (Manual 4
+     * S2.1: nunca liberar lo que no se asigno via el allocator). */
+    {
+        int es_nuestro = 0;
+        for (size_t i = 0; i < _g_extra_count; i++) {
+            if (_g_extra_ptrs[i] == ptr) {
+                _g_extra_ptrs[i] = _g_extra_ptrs[_g_extra_count - 1];
+                _g_extra_count--;
+                es_nuestro = 1;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&_g_pool_mutex);
+        if (es_nuestro) free(ptr);
+    }
 }
 
 void pool_destroy(void) {
@@ -349,6 +413,12 @@ void pool_destroy(void) {
         free(_g_pool.bitmap);
         _g_pool.bitmap = NULL;
     }
+    if (_g_extra_ptrs) {
+        free(_g_extra_ptrs);
+        _g_extra_ptrs = NULL;
+    }
+    _g_extra_count = 0;
+    _g_extra_cap = 0;
     pthread_mutex_unlock(&_g_pool_mutex);
 }
 
@@ -385,5 +455,590 @@ CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
 }
 
 void _syn_texto_liberar(CadenaSegura s) {
-    if (s.datos) pool_free((void*)s.datos);
+    if (s.datos) pool_free((void*)s.datos);  // cumple Manual 2 4.1 + §9.1: todo CadenaSegura es pool_alloc, RAII libera con pool_free
 }
+
+// ============================================================
+// Arena allocator (Manual 4 §2: Arenas por ámbito)
+// bump allocator: O(1) alloc, O(1) lib (bloque entero), 0 fragmentación.
+// Anidamiento padre-hijo: liberar padre libera hijos en cascada (§2.4).
+// Expansión (§2.3): se encadena un NUEVO segmento SIN mover el bloque
+//   actual, de modo que los punteros ya devueltos por arena_alloc siguen
+//   válidos (F9). El fallback a heap de arenas no globales se rastrea y
+//   libera en arena_free (F10: 0 fugas).
+// ============================================================
+
+// Nodo de la lista de bloques fallback (malloc) rastreados para liberar en
+// arena_free (F10). Interno al runtime.
+typedef struct ArenaFallback {
+    void* ptr;
+    struct ArenaFallback* sig;
+} ArenaFallback;
+
+static void arena_expandir(Arena* a, size_t tamano_extra) {
+    // F9: crear un NUEVO segmento encadenado; NO reubicar el bloque actual
+    // (los punteros ya devueltos por arena_alloc quedarían colgantes).
+    size_t nuevo = (a->tamano > tamano_extra) ? a->tamano * 2
+                                              : tamano_extra * 2 + 4096;
+    uint8_t* bloque = (uint8_t*)malloc(nuevo);
+    if (!bloque) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_expandir malloc fallo\n");
+        exit(1);
+    }
+    Arena* seg = (Arena*)malloc(sizeof(Arena));
+    if (!seg) {
+        free(bloque);
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_expandir malloc fallo\n");
+        exit(1);
+    }
+    seg->inicio = bloque;
+    seg->puntero = bloque;
+    seg->fin = bloque + nuevo;
+    seg->tamano = nuevo;
+    seg->padre = NULL;
+    seg->hijo = NULL;
+    seg->sig_hermano = NULL;
+    seg->seg_sig = NULL;
+    seg->fb_list = NULL;
+    seg->es_global = false;
+    // Encadenar al final de la cadena de segmentos.
+    Arena* cur = a;
+    while (cur->seg_sig) cur = cur->seg_sig;
+    cur->seg_sig = seg;
+    // Tamaño reportado crece (semántica de "tamaño total" del Manual §2.2).
+    a->tamano += nuevo;
+}
+
+Arena* arena_crear(size_t tamano_inicial) {
+    if (tamano_inicial < 4096) tamano_inicial = 4096;
+
+    Arena* a = (Arena*)malloc(sizeof(Arena));
+    if (!a) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_crear malloc fallo\n");
+        return NULL;
+    }
+
+    a->inicio = (uint8_t*)malloc(tamano_inicial);
+    if (!a->inicio) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_crear bloque fallo\n");
+        free(a);
+        return NULL;
+    }
+
+    a->puntero = a->inicio;
+    a->fin = a->inicio + tamano_inicial;
+    a->padre = NULL;
+    a->hijo = NULL;
+    a->sig_hermano = NULL;
+    a->seg_sig = NULL;
+    a->fb_list = NULL;
+    a->tamano = tamano_inicial;
+    a->es_global = false;
+    return a;
+}
+
+Arena* arena_crear_hijo(Arena* padre, size_t tamano_inicial) {
+    if (!padre) return arena_crear(tamano_inicial);
+
+    Arena* a = arena_crear(tamano_inicial);
+    if (!a) return NULL;
+
+    a->padre = padre;
+    a->sig_hermano = padre->hijo;
+    padre->hijo = a;
+    return a;
+}
+
+void* arena_alloc(Arena* arena, size_t tamano, size_t alineacion) {
+    if (!arena) return NULL;
+    if (alineacion == 0) alineacion = 1;
+    while (1) {
+        // Buscar un segmento (cadena bump) con espacio; el último es el actual.
+        Arena* seg = arena;
+        while (1) {
+            uintptr_t addr = (uintptr_t)seg->puntero;
+            uintptr_t aligned = (addr + alineacion - 1) & ~((uintptr_t)alineacion - 1);
+            size_t offset = aligned - addr;
+            if (seg->puntero + offset + tamano <= seg->fin) {
+                seg->puntero += offset + tamano;
+                return (void*)aligned;
+            }
+            if (seg->seg_sig) { seg = seg->seg_sig; continue; }
+            break;
+        }
+        if (arena->es_global) {
+            // F9: expandir encadenando un nuevo segmento (punteros previos válidos).
+            arena_expandir(arena, tamano);
+            continue;
+        }
+        // F10: fallback a heap para arenas no globales. El bloque se rastrea en
+        // fb_list para liberarlo en arena_free (0 fugas).
+        void* p = malloc(tamano);
+        if (!p) {
+            fprintf(stderr, "ESCAPA_DEL_ALCANCE: arena_alloc fallback malloc fallo\n");
+            return NULL;
+        }
+        ArenaFallback* fb = (ArenaFallback*)malloc(sizeof(ArenaFallback));
+        if (!fb) { free(p); return NULL; }
+        fb->ptr = p;
+        fb->sig = (ArenaFallback*)arena->fb_list;
+        arena->fb_list = fb;
+        return p;
+    }
+}
+
+void arena_free(Arena* arena) {
+    if (!arena) return;
+
+    // Cascada de hijos (jerarquía, §2.4)
+    Arena* child = arena->hijo;
+    while (child) {
+        Arena* next = child->sig_hermano;
+        arena_free(child);
+        child = next;
+    }
+
+    // F10: liberar bloques fallback rastreados (0 fugas)
+    ArenaFallback* fb = (ArenaFallback*)arena->fb_list;
+    while (fb) {
+        ArenaFallback* nxt = fb->sig;
+        free(fb->ptr);
+        free(fb);
+        fb = nxt;
+    }
+
+    // F9: liberar cadena de segmentos (cada uno con su propio bloque)
+    Arena* seg = arena->seg_sig;
+    while (seg) {
+        Arena* nxt = seg->seg_sig;
+        free(seg->inicio);
+        free(seg);
+        seg = nxt;
+    }
+
+    if (arena->inicio) free(arena->inicio);
+    free(arena);
+}
+
+void arena_reset(Arena* arena) {
+    if (!arena || !arena->inicio) return;
+    // Reset de TODOS los segmentos (F9): cada uno vuelve a su inicio.
+    Arena* seg = arena;
+    while (seg) {
+        if (seg->inicio) seg->puntero = seg->inicio;
+        seg = seg->seg_sig;
+    }
+}
+
+// ============================================================
+// Reference Counting (Manual 4 §3.2)
+// rc<T>: no atómico — para objetos de una sola fibra.
+// arc<T>: atómico — para objetos compartidos entre fibras (canales).
+// El layout en memoria es: [Header][data...]. El usuario recibe (void*)data
+// y el header está justo antes. rc_decrementar/arc_decrementar hacen
+// pointer-math para recuperar el header.
+// ============================================================
+
+void* rc_alloc(size_t tamano, void (*destructor)(void*)) {
+    size_t total = sizeof(RcHeader) + tamano;
+    RcHeader* h = (RcHeader*)malloc(total);
+    if (!h) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: rc_alloc malloc fallo\n");
+        return NULL;
+    }
+    h->ref_count = 1;
+    h->weak_count = 0;
+    h->version = 0;
+    h->data = (uint8_t*)h + sizeof(RcHeader);
+    h->destructor = destructor;
+    return h->data;
+}
+
+void rc_incrementar(void* ptr) {
+    if (!ptr) return;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->ref_count++;
+}
+
+void rc_decrementar(void* ptr) {
+    if (!ptr) return;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->ref_count--;
+    if (h->ref_count == 0) {
+        if (h->destructor) h->destructor(ptr);
+        if (h->weak_count > 0) {
+            h->version++;
+            return;
+        }
+        free(h);
+    }
+}
+
+void* arc_alloc(size_t tamano, void (*destructor)(void*)) {
+    size_t total = sizeof(ArcHeader) + tamano;
+    ArcHeader* h = (ArcHeader*)malloc(total);
+    if (!h) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: arc_alloc malloc fallo\n");
+        return NULL;
+    }
+    h->ref_count = 1;
+    h->weak_count = 0;
+    h->version = 0;
+    h->data = (uint8_t*)h + sizeof(ArcHeader);
+    h->destructor = destructor;
+    return h->data;
+}
+
+void arc_incrementar(void* ptr) {
+    if (!ptr) return;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    __atomic_fetch_add(&h->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+void arc_decrementar(void* ptr) {
+    if (!ptr) return;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    uint32_t prev = __atomic_fetch_sub(&h->ref_count, 1, __ATOMIC_ACQ_REL);
+    if (prev == 1) {
+        if (h->destructor) h->destructor(ptr);
+        if (h->weak_count > 0) {
+            // Manual 4 §4.2: la débil se invalida al destruir el fuerte.
+            // version es compartido con lecturas __atomic_load_n en
+            // arc_weak_ref/arc_weak_upgrade (F7): el incremento debe ser
+            // una RMW atómica para no competir con ellas.
+            __atomic_fetch_add(&h->version, 1, __ATOMIC_RELEASE);
+            return;
+        }
+        free(h);
+    }
+}
+
+// ============================================================
+// WeakRef (débil<T>) — Manual 4 §4.2
+// No incrementa ref_count. Se invalida al destruir el fuerte.
+// El header sobrevive hasta que weak_count también llega a 0.
+// ============================================================
+
+WeakRef rc_weak_ref(void* ptr) {
+    WeakRef w = { .header = NULL, .version = 0 };
+    if (!ptr) return w;
+    RcHeader* h = (RcHeader*)((uint8_t*)ptr - sizeof(RcHeader));
+    h->weak_count++;
+    w.header = h;
+    w.version = h->version;
+    return w;
+}
+
+WeakRef arc_weak_ref(void* ptr) {
+    WeakRef w = { .header = NULL, .version = 0 };
+    if (!ptr) return w;
+    ArcHeader* h = (ArcHeader*)((uint8_t*)ptr - sizeof(ArcHeader));
+    __atomic_fetch_add(&h->weak_count, 1, __ATOMIC_RELAXED);
+    w.header = (RcHeader*)h;
+    w.version = __atomic_load_n(&h->version, __ATOMIC_ACQUIRE);
+    return w;
+}
+
+void* rc_weak_upgrade(WeakRef* w) {
+    if (!w || !w->header) return NULL;
+    if (w->header->version != w->version) return NULL;
+    if (w->header->ref_count == 0) return NULL;
+    w->header->ref_count++;
+    return w->header->data;
+}
+
+void* arc_weak_upgrade(WeakRef* w) {
+    if (!w || !w->header) return NULL;
+    ArcHeader* h = (ArcHeader*)w->header;
+    uint32_t ver = __atomic_load_n(&h->version, __ATOMIC_ACQUIRE);
+    if (ver != w->version) return NULL;
+    // Manual 4 §4.2 / F8: el camino arc entre fibras es concurrente. La
+    // lectura de ref_count seguida de un fetch_add separado era un TOCTOU
+    // (UAF): otro hilo podía llevar ref_count a 0 y free(h) entre medias.
+    // CAS loop: solo promovemos la débil a fuerte si ref_count > 0, en una
+    // sola operación atómica. Si ref_count llega a 0 el objeto ya murió.
+    uint32_t rc = __atomic_load_n(&h->ref_count, __ATOMIC_ACQUIRE);
+    while (rc > 0) {
+        if (__atomic_compare_exchange_n(&h->ref_count, &rc, rc + 1, false,
+                __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+            return h->data;
+        }
+        // rc se reescribió con el valor actual; reintentar mientras viva.
+    }
+    return NULL;
+}
+
+void rc_weak_release(WeakRef* w) {
+    if (!w || !w->header) return;
+    RcHeader* h = w->header;
+    h->weak_count--;
+    if (h->ref_count == 0 && h->weak_count == 0) {
+        free(h);
+    }
+    w->header = NULL;
+    w->version = 0;
+}
+
+void arc_weak_release(WeakRef* w) {
+    if (!w || !w->header) return;
+    ArcHeader* h = (ArcHeader*)w->header;
+    uint32_t wc = __atomic_fetch_sub(&h->weak_count, 1, __ATOMIC_ACQ_REL);
+    if (wc == 1) {
+        if (__atomic_load_n(&h->ref_count, __ATOMIC_ACQUIRE) == 0) {
+            free(h);
+        }
+    }
+    w->header = NULL;
+    w->version = 0;
+}
+
+// ============================================================
+// ComponentArena (Manual 4 §6.3)
+// Cada componente UI tiene su propia arena. comp_destroy libera
+// toda la jerarquía de componentes hijos en masa.
+// ============================================================
+
+ComponentArena* comp_arena_crear(ComponentArena* padre, size_t tamano_inicial) {
+    if (tamano_inicial < 1024) tamano_inicial = 1024;
+    Arena* parent_arena = padre ? padre->arena : NULL;
+    Arena* arena = arena_crear_hijo(parent_arena, tamano_inicial);
+    if (!arena) return NULL;
+
+    ComponentArena* ca = (ComponentArena*)malloc(sizeof(ComponentArena));
+    if (!ca) {
+        arena_free(arena);
+        return NULL;
+    }
+    ca->arena = arena;
+    ca->padre = padre;
+    ca->primer_hijo = NULL;
+    ca->siguiente = NULL;
+    ca->num_hijos = 0;
+    ca->ref_count = 1;
+    ca->marcado_para_liberar = false;
+    ca->destructor = NULL;
+
+    // Registrar como hijo del padre
+    if (padre) {
+        ca->siguiente = padre->primer_hijo;
+        padre->primer_hijo = ca;
+        padre->num_hijos++;
+    }
+
+    return ca;
+}
+
+void* comp_alloc(ComponentArena* ca, size_t tamano) {
+    if (!ca || !ca->arena) return NULL;
+    return arena_alloc(ca->arena, tamano, 8);
+}
+
+// Límite máximo de componentes en una jerarquía (para evitar recursión infinita)
+#define COMP_MAX_DEPTH 256
+
+void comp_destroy(ComponentArena* ca) {
+    if (!ca) return;
+
+    // 1. Recolectar todos los ComponentArena* en un array plano
+    //    (antes de liberar nada, para evitar use-after-free)
+    ComponentArena* stack[COMP_MAX_DEPTH];
+    int top = 0;
+
+    // DFS preorder para recolectar
+    ComponentArena* walk_stack[COMP_MAX_DEPTH];
+    int wtop = 0;
+    walk_stack[wtop++] = ca;
+    while (wtop > 0 && top < COMP_MAX_DEPTH) {
+        ComponentArena* cur = walk_stack[--wtop];
+        stack[top++] = cur;
+        // Empajar hijos en orden inverso para mantener orden
+        ComponentArena* h = cur->primer_hijo;
+        while (h && wtop < COMP_MAX_DEPTH) {
+            walk_stack[wtop++] = h;
+            h = h->siguiente;
+        }
+    }
+
+    // 2. Guardar y desvincular todas las arenas antes de liberar
+    Arena* arenas[COMP_MAX_DEPTH];
+    for (int i = 0; i < top; i++) {
+        arenas[i] = stack[i]->arena;
+        stack[i]->arena = NULL;  // desvincular
+    }
+
+    // 3. Liberar las arenas (solo la raíz en cascada — §2.4)
+    if (arenas[0]) {
+        arena_free(arenas[0]);
+    }
+
+    // 4. Llamar destructores y liberar los structs ComponentArena
+    for (int i = 0; i < top; i++) {
+        if (stack[i]->destructor) {
+            stack[i]->destructor(stack[i]);
+        }
+        free(stack[i]);
+    }
+}
+
+// ============================================================
+// FFI Marshaling zero-copy (Manual 4 §7.2)
+// texto_a_c_string: convierte CadenaSegura (sin \0) a const char*
+// (con \0) añadiendo el byte nulo al final en la arena.
+// Zero-copy: el buffer resultante vive en la arena, no en heap.
+// ============================================================
+
+const char* texto_a_c_string(CadenaSegura* texto, Arena* arena) {
+    if (!texto || !arena) return NULL;
+    if (!texto->datos) return NULL;
+
+    // Asignar longitud + 1 byte para el \0 en la arena
+    size_t len = (size_t)texto->longitud;
+    char* c_str = (char*)arena_alloc(arena, len + 1, 1);
+    if (!c_str) return NULL;
+
+    // Copiar contenido y añadir \0 al final
+    if (len > 0) {
+        memcpy(c_str, texto->datos, len);
+    }
+    c_str[len] = '\0';
+
+    return c_str;
+}
+
+// ============================================================
+// SemNodo AST walker for analizador_alcance.syq (Manual 4 §5.2)
+// ============================================================
+
+static NodoAST* g_ast_base = NULL;
+static int g_rc_count = 0;
+
+void _a_set_nodos_base(NodoAST* base) {
+    g_ast_base = base;
+}
+
+void _a_reset_rc_vars(void) {
+    g_rc_count = 0;
+}
+
+void _a_analizar_bloque(int n) {
+    if (!g_ast_base || n < 0) return;
+    NodoAST* nodo = &g_ast_base[n];
+
+    // NODO_DECLARACION (34) / NODO_LET (48): variable con ownership
+    // valor_int flags: bit0=rc, bit1=arc, bit2=débil
+    if (nodo->tipo_nodo == NODO_DECLARACION || nodo->tipo_nodo == NODO_LET) {
+        int flags = (int)nodo->valor_int;
+        // rc (bit0) o arc (bit1) pero NO débil (bit2)
+        if ((flags & 3) > 0 && (flags & 4) == 0) {
+            g_rc_count++;
+        }
+    }
+
+    // Recursión en hijos
+    _a_analizar_bloque((int)nodo->hijo_izq);
+    _a_analizar_bloque((int)nodo->hijo_der);
+    _a_analizar_bloque((int)nodo->hermano);
+}
+
+int _a_get_rc_count(void) {
+    return g_rc_count;
+}
+
+// ============================================================
+// Read-only SemNodo accessors for analizador_alcance.syq (§5.2)
+// tr_* son los externos del .syq que permiten al programa de
+// SyQuex traversear el SemNodo[] desde C. Comparten el mismo
+// g_ast_base que _a_analizar_bloque (§5.2: walker + accessors
+// sobre el mismo arreglo). (Manual 4 §5.2-5.3, Manual 3 §11.1)
+// ============================================================
+
+int64_t tr_tipo(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return -1;
+    return (int64_t)g_ast_base[n].tipo_nodo;
+}
+
+int64_t tr_hizq(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hijo_izq;
+}
+
+int64_t tr_hder(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hijo_der;
+}
+
+int64_t tr_herm(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].hermano;
+}
+
+int64_t tr_vi(int n) {
+    if (!g_ast_base || n < 0 || n >= 65536) return 0;
+    return (int64_t)g_ast_base[n].valor_int;
+}
+
+// cumple Manual 4 5.2; Manual 2 §4.3; D-1 (Fase 23): primitivas rc/arc.
+// El compilador mapea rc<T>/arc<T> a void* = puntero al header SynRc/SynArc.
+typedef struct {
+    _Atomic long refcount;
+    void (*destructor)(void*);
+    void* data;
+} SynRc;
+
+typedef struct {
+    _Atomic long strong;
+    _Atomic long weak;
+    void (*destructor)(void*);
+    void* data;
+} SynArc;
+
+void* _syn_rc_crear(void* data, void (*dtor)(void*)) {
+    SynRc* r = (SynRc*)malloc(sizeof(SynRc));
+    if (!r) return NULL;
+    atomic_store(&r->refcount, 1);
+    r->destructor = dtor;
+    r->data = data;
+    return r;
+}
+
+void _syn_rc_increment(void* p) {
+    if (!p) return;
+    atomic_fetch_add(&((SynRc*)p)->refcount, 1);
+}
+
+void _syn_rc_decrement(void* p) {
+    if (!p) return;
+    SynRc* r = (SynRc*)p;
+    long c = atomic_fetch_sub(&r->refcount, 1) - 1;
+    if (c == 0) {
+        if (r->destructor) r->destructor(r->data);
+        free(r);
+    }
+}
+
+void* _syn_arc_crear(void* data, void (*dtor)(void*)) {
+    SynArc* a = (SynArc*)malloc(sizeof(SynArc));
+    if (!a) return NULL;
+    atomic_store(&a->strong, 1);
+    atomic_store(&a->weak, 1);
+    a->destructor = dtor;
+    a->data = data;
+    return a;
+}
+
+void _syn_arc_increment(void* p) {
+    if (!p) return;
+    atomic_fetch_add(&((SynArc*)p)->strong, 1);
+}
+
+void _syn_arc_decrement(void* p) {
+    if (!p) return;
+    SynArc* a = (SynArc*)p;
+    long s = atomic_fetch_sub(&a->strong, 1) - 1;
+    if (s == 0) {
+        if (a->destructor) a->destructor(a->data);
+        long w = atomic_fetch_sub(&a->weak, 1) - 1;
+        if (w == 0) free(a);
+    }
+}
+

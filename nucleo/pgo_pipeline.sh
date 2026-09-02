@@ -108,8 +108,8 @@ _compile_runtime() {
     fi
     ok "Runtime: $SYNAPSE_RT_OBJ"
 
-    if [ -f "$ROOT_DIR/tweetnacl.c" ]; then
-        "$_gcc" -c "$ROOT_DIR/tweetnacl.c" -o "$ROOT_DIR/$SYNAPSE_TN_OBJ" \
+    if [ -f "$ROOT_DIR/axon/tweetnacl.c" ]; then
+        "$_gcc" -c "$ROOT_DIR/axon/tweetnacl.c" -o "$ROOT_DIR/$SYNAPSE_TN_OBJ" \
             -O2 2>&1 | sed 's/^/  /'
         ok "TweetNaCl: $SYNAPSE_TN_OBJ"
     fi

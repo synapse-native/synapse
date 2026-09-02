@@ -1,3 +1,5 @@
+// cumple Manual 1 5: punto de entrada principal
+// cumple Manual 8 4.1: compilador nativo S2
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
 #include <stdio.h>
@@ -123,7 +125,7 @@ extern void escribir_linea(CadenaSegura contenido);
 extern CadenaSegura leer_linea(void);
 extern Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 extern CadenaSegura leer(Canal canal);
-extern void cerrar(Canal canal);
+extern void cerrar_archivo(Canal canal);
 extern Tensor crear_tensor(int filas, int columnas);
 extern Tensor suma_tensor(Tensor a, Tensor b);
 extern Tensor producto_punto(Tensor a, Tensor b);
@@ -147,7 +149,7 @@ extern CanalConcurrencia* canal_crear(uint32_t capacidad);
 extern void canal_enviar(CanalConcurrencia* canal, void* paquete);
 extern void* canal_recibir(CanalConcurrencia* canal);
 extern void canal_destruir(CanalConcurrencia* canal);
-extern void cerrar_canal(CanalConcurrencia* canal);
+extern void cerrar(CanalConcurrencia* canal);
 static int _g_argc;
 static char** _g_argv;
 int _argc() { return _g_argc; }

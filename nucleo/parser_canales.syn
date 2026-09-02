@@ -1,0 +1,60 @@
+﻿// cumple Manual 1 3: parser
+// cumple Manual 8 4.1: compilador nativo S2
+#lang: es
+
+// R29 (regla 13, modularizacion): canales extraidos de nucleo/parser.syn
+// (enviar/crear/recibir canal). Mecanico: texto identico; emisor S1 ordena
+// alfabeticamente -> C byte-identico (bootstrap, Manual 8 §8.2).
+// ------------------------------------------------------------
+funcion parsear_enviar_canal(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_ENVIAR_CANAL, linea, col)
+    // FASE A (A3.1): nombre del canal en payload primario y valor enlazado en
+    // hijo_der (SentenciaEnviarCanal{canal=Identificador, valor} del puente).
+    si token_es_nombre(token_mirar(est)) == 1:
+        pos_canal = est.posicion
+        token_avanzar(est)
+        nodo_guardar_token(est, nodo, pos_canal)
+    si token_esperar(est, T_FLECHA_IZQ) == 0:
+        retornar 0
+    expr = parsear_expresion(est)
+    inseguro:
+        asm("est->nodos[nodo].hijo_der = expr")
+    retornar nodo
+
+funcion parsear_crear_canal(est: ParserEst) -> entero:
+    si token_esperar(est, T_CANAL) == 0:
+        retornar 0
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
+    si token_esperar(est, T_PAREN_IZQ) == 0:
+        retornar 0
+    si token_es_nombre(token_mirar(est)) == 1:
+        token_avanzar(est)
+    si token_mirar(est) == T_COMA:
+        token_avanzar(est)
+        expr = parsear_expresion(est)
+        inseguro:
+            asm("est->nodos[nodo].hijo_izq = expr")
+    si token_esperar(est, T_PAREN_DER) == 0:
+        retornar 0
+    retornar nodo
+
+funcion parsear_recibir_canal(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    nodo = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
+    // FASE A (A3.1): nombre del canal en payload primario (ExprRecibirCanal{canal}).
+    si token_es_nombre(token_mirar(est)) == 1:
+        pos_canal = est.posicion
+        token_avanzar(est)
+        nodo_guardar_token(est, nodo, pos_canal)
+    si token_esperar(est, T_FLECHA) == 0:
+        retornar 0
+    retornar nodo
+
+// AUDITORIA FASE A (A2.2): declaracion_tipo (Manual 2 §2 L74-76)
+// tipo Nombre [<T, E>] = tipo_base | ctor(T1) | ctor(T1) | ctor2
+// o alias simple: tipo Nombre = tipo_base

@@ -1,3 +1,5 @@
+// cumple Manual 1 5: generador unificado del compilador
+// cumple Manual 8 4.1: compilador nativo S2
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
 #include <stdio.h>
@@ -37,6 +39,7 @@ extern int texto_a_entero(CadenaSegura str);
 extern float texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(float n);
 extern CadenaSegura entero_a_texto(int n);
+extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);
 
@@ -50,17 +53,6 @@ CadenaSegura _argv(int i) {
 }
 
 void salir(int codigo) { exit(codigo); }
-
-CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
-    int _tl = a.longitud + b.longitud;
-    char* _buf = (char*)malloc(_tl + 1);
-    if (!_buf) { fprintf(stderr,"Error: Asignación de memoria falló en concat()\n"); exit(1); }
-    memcpy(_buf, a.datos, a.longitud);
-    memcpy(_buf + a.longitud, b.datos, b.longitud);
-    _buf[_tl] = 0;
-    CadenaSegura _r = { .longitud = _tl, .datos = _buf };
-    return _r;
-}
 
 struct Token;
 struct Nodo;
@@ -1522,7 +1514,6 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     fprintf(_G_out,"static int _g_argc;\nstatic char** _g_argv;\nint _argc(){return _g_argc;}\n");
     fprintf(_G_out,"CadenaSegura _argv(int i){if(i<0||i>=_g_argc)return (CadenaSegura){0,(char*)\"\"};return (CadenaSegura){.longitud=(int)strlen(_g_argv[i]),.datos=_g_argv[i]};}\n");
     fprintf(_G_out,"void salir(int c){exit(c);}\n");
-    fprintf(_G_out,"CadenaSegura concat(CadenaSegura a,CadenaSegura b){int _tl=a.longitud+b.longitud;char* _buf=(char*)malloc(_tl+1);memcpy(_buf,a.datos,a.longitud);memcpy(_buf+a.longitud,b.datos,b.longitud);_buf[_tl]=0;CadenaSegura _r={.longitud=_tl,.datos=_buf};return _r;}\n");
     // Forward declarations
     struct ListaNodo* c=programa.sentencias;
     while(c){ if(c->cabeza&&strcmp(c->cabeza->tipo.datos,"DefinicionEstructura")==0){ struct DefinicionEstructura* d=(struct DefinicionEstructura*)c->cabeza; fprintf(_G_out,"struct %s;\n",d->nombre.datos); } c=c->cola; }
@@ -1638,7 +1629,7 @@ int main(int argc, char** argv) {
         const char* proj_dir = (argc > 2) ? argv[2] : ".";
         char toml_path[4096];
         snprintf(toml_path, sizeof(toml_path), "%s/axon.toml", proj_dir);
-        
+
         FILE* f = fopen(toml_path, "rb");
         if (!f) {
             fprintf(stderr, "ERROR:%d\n", 1);
@@ -1651,18 +1642,18 @@ int main(int argc, char** argv) {
         size_t nread = fread(content, 1, sz, f);
         content[nread] = '\0';
         fclose(f);
-        
+
         char* punto_entrada = _toml_read_section_value(content, "proyecto", "punto_entrada");
         if (!punto_entrada) {
             fprintf(stderr, "ERROR:%d\n", 3);
             free(content);
             return 3;
         }
-        
+
         char syn_path[4096];
         snprintf(syn_path, sizeof(syn_path), "%s/%s", proj_dir, punto_entrada);
         free(punto_entrada);
-        
+
         FILE* sf = fopen(syn_path, "rb");
         if (!sf) {
             fprintf(stderr, "ERROR: archivo '%s' no encontrado\n", syn_path);
@@ -1676,28 +1667,28 @@ int main(int argc, char** argv) {
         fread(src, 1, slen, sf);
         src[slen] = '\0';
         fclose(sf);
-        
+
         // Tokenize and parse
         _P_ntks = 0; _P_tpos = 0; _P_p_err = 0;
         _P_nivel_pila = 0; _P_pila_indent[0] = 0;
         _P_tokenizar(src, slen);
         struct Programa prog = _P_programa();
         free(src);
-        
+
         // Generate C and compile
         CadenaSegura ruta_salida;
         ruta_salida.datos = syn_path;
         ruta_salida.longitud = (int)strlen(syn_path);
         generar(prog, ruta_salida);
-        
+
         free(content);
         return 0;
     }
-    
-    printf("Synapse v5.1.1-industrial — Self-Hosted Compiler\n");
+
+    printf("Synapse v8.1.0-industrial — Self-Hosted Compiler\n");
     printf("Uso: synapse_v2.exe construir [directorio]\n");
     printf("     synapse_v2.exe <archivo.syn>\n");
-    
+
     if (argc > 1) {
         // Compile a single file directly
         char* src_path = argv[1];
@@ -1710,18 +1701,18 @@ int main(int argc, char** argv) {
         fread(src, 1, slen, sf);
         src[slen] = '\0';
         fclose(sf);
-        
+
         _P_ntks = 0; _P_tpos = 0; _P_p_err = 0;
         _P_nivel_pila = 0; _P_pila_indent[0] = 0;
         _P_tokenizar(src, slen);
         struct Programa prog = _P_programa();
         free(src);
-        
+
         CadenaSegura ruta;
         ruta.datos = src_path;
         ruta.longitud = (int)strlen(src_path);
         return generar(prog, ruta);
     }
-    
+
     return 0;
 }

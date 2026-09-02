@@ -1,3 +1,5 @@
+// cumple Manual 1 5: orquestador AI nativo
+// cumple Manual 8 4: toolchain
 // ai_orchestrator.h — Orquestador del motor IA local (llama-server.exe)
 // Parte del núcleo Synapse LSP nativo — C99, Windows (CreateProcess) / POSIX
 
@@ -41,7 +43,25 @@ typedef struct {
 } HwConfig;
 
 // Contexto opaco del orquestador
-typedef struct AIOrchestrator AIOrchestrator;
+typedef struct AIOrchestrator {
+    char* server_exe;
+    char* model_path;
+    char* host;
+    int port;
+    HwConfig hw;
+
+#ifdef _WIN32
+    HANDLE hProcess;
+    HANDLE hThread;
+    DWORD dwProcessId;
+    PROCESS_INFORMATION pi;
+#else
+    pid_t pid;
+#endif
+
+    int corriendo;
+    int hw_detectado;
+} AIOrchestrator;
 
 // Inicializa el orquestador (no inicia el servidor todavía)
 AIOrchestrator* ai_orch_crear(const char* server_exe, const char* model_path,

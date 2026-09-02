@@ -1,0 +1,239 @@
+#lang: es
+// std.debug — Sistema de Trazas para Depuración Time-Travel
+// Integrante de la Biblioteca Estandar de Synapse.
+// Limite duro: 50,000 eventos maximo en buffer circular
+// Persistencia: ~/.synapse/traces/{id}.trace al finalizar sesion
+
+importar std.err
+
+// ============================================================
+// TraceEvent — Tipos de eventos de traza
+// ============================================================
+estructura TraceEvent:
+    tipo_evento: entero
+    timestamp: entero
+    fn_nombre: texto
+    archivo: texto
+    linea: entero
+    valor_entero: entero
+    valor_decimal: decimal
+    valor_texto: texto
+    variable: texto
+
+// Tags de evento (definidos en C como enums)
+// EVENT_ASSIGNMENT      = 0  // Asignacion de variable
+// EVENT_FN_CALL   = 1  // Llamada a funcion
+// EVENT_FN_RETURN = 2  // Retorno de funcion
+// EVENT_ERROR           = 3  // Error detectado
+// EVENT_BRANCH_TAKEN    = 4  // Rama tomada (if/else)
+// EVENT_LOOP_ITERATION  = 5  // Iteracion de bucle
+// EVENT_VARIABLE_CHANGE = 6  // Cambio de valor de variable
+// EVENT_CONTRACT_CHECK  = 7  // Verificacion de contrato (pre/post)
+// EVENT_USER_TRACE      = 8  // Traza manual del usuario (trace)
+
+constante EVENT_ASSIGNMENT      = 0
+constante EVENT_FN_CALL   = 1
+constante EVENT_FN_RETURN = 2
+constante EVENT_ERROR           = 3
+constante EVENT_BRANCH_TAKEN    = 4
+constante EVENT_LOOP_ITERATION  = 5
+constante EVENT_VARIABLE_CHANGE = 6
+constante EVENT_CONTRACT_CHECK  = 7
+constante EVENT_USER_TRACE      = 8
+
+constante TRACE_MAX_EVENTOS = 50000
+
+// ============================================================
+// TraceSession — Sesion de traza completa
+// ============================================================
+estructura TraceSession:
+    id: texto
+    programa: texto
+    eventos: puntero
+    total_eventos: entero
+    estado: entero
+    // estado 0 = ACTIVA, 1 = FINALIZADA, 2 = PERSISTIDA
+
+// ============================================================
+// Funciones Externas (Runtime C)
+// ============================================================
+// ME-R2: firmas alineadas con las definiciones reales de synapse_rt.c.
+//   - _syn_debug_iniciar_sesion / _syn_debug_finalizar_sesion: el runtime usa
+//     CadenaSegura (texto) tanto en entrada como salida -> representable en Synapse.
+//   - _syn_debug_registrar_evento / _syn_debug_trace: el runtime usa const char*,
+//     long long y double (no representables con tipos Synapse) -> se declaran con
+//     su prototipo C exacto dentro del asm de sus wrappers para garantizar ABI.
+//   - _syn_debug_obtener_sesion: devuelve el TraceSession interno del runtime
+//     (estructura no representable en Synapse) -> declaracion eliminada (sin uso).
+
+// Inicializa una nueva sesion de traza. Retorna el id de sesion ("trace_...").
+externo funcion _syn_debug_iniciar_sesion(programa: texto) -> texto
+
+// Finaliza la sesion y persiste a ~/.synapse/traces/{id}.trace. Retorna el id.
+externo funcion _syn_debug_finalizar_sesion() -> texto
+
+// ============================================================
+// Funciones Externas — M9.1 (Grabación Determinista rr-style)
+// ============================================================
+
+// tr_inicializar_recording — Inicializa grabación con numeración secuencial
+externo funcion tr_inicializar_recording() -> entero
+
+// tr_grabar_bifurcacion — Graba una decisión de bifurcación (rama if/else)
+//   linea: línea fuente, rama: 0=false/else, 1=true/if
+//   Retorna número de secuencia del evento
+externo funcion tr_grabar_bifurcacion(linea: entero, rama: entero, fn_id: texto) -> entero
+
+// tr_grabar_snapshot — Captura el valor de una variable en un punto de ejecución
+//   Retorna número de secuencia del snapshot
+externo funcion tr_grabar_snapshot(nombre_variable: texto, valor_entero: entero, valor_texto: texto, linea: entero) -> entero
+
+// tr_grabar_llamada — Graba una entrada a función
+externo funcion tr_grabar_llamada(nombre_fn: texto, linea: entero, num_args: entero) -> entero
+
+// tr_grabar_retorno — Graba un retorno de función
+externo funcion tr_grabar_retorno(nombre_fn: texto, linea: entero) -> entero
+
+// tr_grabar_error — Graba un evento de error (para inducción de fallos)
+externo funcion tr_grabar_error(mensaje: texto, linea: entero) -> entero
+
+// tr_buscar_evento — Busca hacia atrás el último evento con un tag específico
+//   desde_secuencia: límite superior de búsqueda (-1 para buscar en todo)
+//   Retorna secuencia del evento, o -1 si no se encuentra
+externo funcion tr_buscar_evento(tag: entero, desde_secuencia: entero) -> entero
+
+// tr_obtener_evento — Obtiene un evento grabado por índice como texto
+//   Retorna "tag|seq|funcion|linea|variable|valor" o vacío
+externo funcion tr_obtener_evento(indice: entero) -> texto
+
+// tr_reproducir_hasta — Simula replay hasta un número de secuencia objetivo
+//   Retorna cantidad de eventos que se reproducirían
+externo funcion tr_reproducir_hasta(secuencia_objetivo: entero) -> entero
+
+// tr_indice_ultimo_error — Retorna secuencia del último error (-1 si no hay)
+externo funcion tr_indice_ultimo_error() -> entero
+
+// tr_total_eventos — Retorna total de eventos grabados (conteo de secuencia)
+externo funcion tr_total_eventos() -> entero
+
+// ============================================================
+// Funciones Externas — M9.2 (Replay con Breakpoints Reversibles)
+// ============================================================
+
+// rp_inicializar — Inicializa el motor de replay inverso
+externo funcion rp_inicializar() -> entero
+
+// rp_establecer_breakpoint — Configura un breakpoint reversible
+//   tipo: 0=por línea, 1=por variable, 2=por tag
+//   patron: nombre de variable (tipo=1) o texto (tipo=0/2 ignorado)
+//   valor_int: línea (tipo=0) o tag (tipo=2) o ignorado (tipo=1)
+//   Retorna ID del breakpoint (0-based) o -1 si hay error
+externo funcion rp_establecer_breakpoint(tipo: entero, patron: texto, valor_int: entero) -> entero
+
+// rp_eliminar_breakpoint — Elimina un breakpoint por su ID
+externo funcion rp_eliminar_breakpoint(id: entero) -> entero
+
+// rp_limpiar_breakpoints — Limpia todos los breakpoints
+externo funcion rp_limpiar_breakpoints() -> entero
+
+// rp_buscar_breakpoint — Busca hacia atrás un evento que cumpla el breakpoint
+//   Retorna índice lógico del evento, o -1 si no se encuentra
+externo funcion rp_buscar_breakpoint(id: entero) -> entero
+
+// rp_retroceder — Retrocede N eventos desde una posición
+//   desde_evento: -1 para empezar desde el final
+//   Retorna nueva posición, o -1 si al inicio
+externo funcion rp_retroceder(pasos: entero, desde_evento: entero) -> entero
+
+// rp_posicion_actual — Retorna la posición actual del cursor de replay
+externo funcion rp_posicion_actual() -> entero
+
+// rp_ir_a_pre_error — Salta al evento inmediatamente anterior al último error
+//   Retorna índice del evento pre-error, o -1 si no hay error
+externo funcion rp_ir_a_pre_error() -> entero
+
+// rp_inspeccionar_variable — Obtiene el valor de una variable en un evento
+//   Retorna "tipo:valor" o vacío si no coincide
+externo funcion rp_inspeccionar_variable(indice_evento: entero, nombre: texto) -> texto
+
+// rp_pila_llamadas — Construye la pila de llamadas en un punto de la traza
+//   Retorna "funcion:linea|funcion:linea|..." o vacío
+externo funcion rp_pila_llamadas(indice_evento: entero) -> texto
+
+// rp_buscar_cambio_variable — Busca hacia atrás un cambio de variable a un valor específico
+//   Retorna índice del evento, o -1 si no se encuentra
+externo funcion rp_buscar_cambio_variable(nombre: texto, valor: entero) -> entero
+
+// ============================================================
+// Funciones Externas — M9.3 (Snapshots de Memoria y Diff Histórico)
+// ============================================================
+
+// ms_tomar_en — Captura un snapshot del estado de variables en una secuencia
+//   Retorna snapshot serializado "nombre|tipo|valor\n..." o vacío
+externo funcion ms_tomar_en(secuencia: entero) -> texto
+
+// ms_diferenciar — Compara dos snapshots y produce diff estructural
+//   Retorna diff con prefijos +/-/~ o vacío si son iguales
+externo funcion ms_diferenciar(snap_a: texto, snap_b: texto) -> texto
+
+// ms_diff_entre — Atajo: diff entre dos números de secuencia
+externo funcion ms_diff_entre(seq_a: entero, seq_b: entero) -> texto
+
+// ms_snapshot_contar_vars — Cuenta variables en un snapshot
+externo funcion ms_snapshot_contar_vars(snapshot: texto) -> entero
+
+// ms_snapshot_tamano — Tamaño en bytes del snapshot
+externo funcion ms_snapshot_tamano(snapshot: texto) -> entero
+
+// ms_snapshot_contiene — Busca variable en snapshot, retorna "tipo:valor"
+externo funcion ms_snapshot_contiene(snapshot: texto, nombre: texto) -> texto
+
+// ============================================================
+// API Publica Synapse
+// ============================================================
+
+// registrar_evento — Registra un evento de traza en la sesion actual
+// Retorna ok(0) si exito, err(Error) si fallo (ej. buffer lleno no esperado)
+funcion registrar_evento(evento: TraceEvent) -> Resultado:
+    // ME-R2: fix preexistente destapado por la propagacion de errores del pipeline.
+    // Bugs corregidos:
+    //   1. evento se recibe POR VALOR (struct TraceEvent) -> el cast requiere &evento.
+    //   2. El primer campo de TraceEvent es tipo_evento (no existia 'tag' en el struct).
+    //   3. La declaracion externo '-> Resultado' no coincidia con el runtime C (int):
+    //      ahora se declara el prototipo C exacto localmente (const char*, long long,
+    //      double) para ABI identica a synapse_rt.c y se construye Resultado como ADT.
+    inseguro:
+        asm("extern int _syn_debug_registrar_evento(int tag, const char* fn, const char* arc, int ln, const char* var, long long vi, double vd, const char* vt);")
+        asm("struct TraceEvent* _e = (struct TraceEvent*)&evento;")
+        asm("int _rc = _syn_debug_registrar_evento(_e->tipo_evento, _e->fn_nombre.datos, _e->archivo.datos, _e->linea, _e->variable.datos, (long long)_e->valor_entero, (double)_e->valor_decimal, _e->valor_texto.datos);")
+        asm("struct Resultado _res; _res.tag = 0; _res.dato.valor = _rc; return _res;")
+
+// trace — Evalua una expresion y registra su valor en la traza
+// Util para inspeccionar valores intermedios sin modificar logica
+// Uso: trace(x + y)  -- registra el valor de x+y
+funcion trace(expresion: texto) -> Resultado:
+    // ME-R2: el asm anterior usaba #expr/typeof (no es C valido y nunca compilo).
+    // Ahora registra el texto de la expresion; el runtime ignora valor y tipo.
+    inseguro:
+        asm("extern int _syn_debug_trace(const char* e, void* v, const char* t);")
+        asm("struct Resultado _res; _res.tag = 0;")
+        asm("_res.dato.valor = _syn_debug_trace(expresion.datos, 0, \"\");")
+        asm("return _res;")
+
+// iniciar_sesion — Crea una nueva sesion de traza para un programa
+// Inicializa el buffer circular (max 50,000 eventos)
+funcion iniciar_sesion(programa: texto) -> texto:
+    // ME-R2: antes declaraba -> TraceSession (estructura no representable); el
+    // runtime retorna el id de sesion (CadenaSegura). El struct TraceSession se
+    // mantiene solo como documentacion del estado interno del runtime.
+    retornar _syn_debug_iniciar_sesion(programa)
+
+// finalizar_sesion — Cierra la sesion actual y persiste la traza
+// Serializa a ~/.synapse/traces/{id}.trace
+// Retorna la sesion finalizada con estado PERSISTIDA
+funcion finalizar_sesion() -> Resultado:
+    // ME-R2: antes declaraba '-> Resultado' pero el runtime retorna CadenaSegura;
+    // ahora se construye el Resultado ADT con valor_str = id de sesion persistido.
+    inseguro:
+        asm("CadenaSegura _id = _syn_debug_finalizar_sesion();")
+        asm("struct Resultado _res; _res.tag = 0; _res.dato.valor_str = _id; return _res;")

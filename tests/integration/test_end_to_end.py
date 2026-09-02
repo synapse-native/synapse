@@ -8,6 +8,8 @@ from compilador.analizador_semantico import AnalizadorSemantico
 from compilador.generator import GeneradorC
 from compilador.diagnostics import DiagnosticManager
 
+pytestmark = pytest.mark.integration
+
 
 class TestIntegrationEndToEnd:
     """Tests de integraci??n end-to-end del pipeline de compilaci??n"""
@@ -53,7 +55,10 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int sumar(void)" in codigo_c or "int sumar(int" in codigo_c
+        # D-7 (A5, ABI Manual 2 §4.1 L267-268): entero/int -> int64_t (8 bytes).
+        # Excepcion regla 5 documentada en docs/reportes/FASE_A_A5_D6.md: el
+        # assert original (`int sumar(int`) quedo obsoleto tras el cierre de D-7.
+        assert "int64_t sumar(int64_t" in codigo_c or "int sumar(int" in codigo_c
         assert "a + b" in codigo_c
     
     def test_condicional_si(self):
@@ -227,8 +232,9 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int f1(void)" in codigo_c or "int f1(" in codigo_c
-        assert "int f2(void)" in codigo_c or "int f2(" in codigo_c
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t f1(void)" in codigo_c or "int64_t f1(" in codigo_c
+        assert "int64_t f2(void)" in codigo_c or "int64_t f2(" in codigo_c
     
     def test_parametros_funcion(self):
         """Test compilaci??n de funci??n con par??metros"""
@@ -238,7 +244,8 @@ class TestIntegrationEndToEnd:
         
         assert not diag.hay_errores()
         assert codigo_c
-        assert "int sumar(int a, int b, int c)" in codigo_c
+        # D-7 (A5): entero/int -> int64_t (excepcion regla 5, ver reporte D-6).
+        assert "int64_t sumar(int64_t a, int64_t b, int64_t c)" in codigo_c
     
     def test_anidamiento_bloques(self):
         """Test compilaci??n de bloques anidados"""
@@ -394,8 +401,9 @@ class TestIntegrationFixtures:
         return codigo_c, diag
     
     def test_fixture_basico(self):
-        """Test usando fixture b??sico existente"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\01_basico.syn"
+        """Test usando fixture basico existente"""
+        fixture_path = os.path.join(os.path.dirname(__file__), "..", "..",
+                                     "examples", "synapse", "00_hola_mundo", "main.syn")
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")
@@ -410,7 +418,8 @@ class TestIntegrationFixtures:
     
     def test_fixture_estructuras(self):
         """Test usando fixture de estructuras"""
-        fixture_path = "d:\\proyecto_synapse\\examples\\02_estructuras.syn"
+        fixture_path = os.path.join(os.path.dirname(__file__), "..", "..",
+                                     "examples", "synapse", "02_estructuras", "main.syn")
         
         if not os.path.exists(fixture_path):
             pytest.skip(f"Fixture no encontrado: {fixture_path}")

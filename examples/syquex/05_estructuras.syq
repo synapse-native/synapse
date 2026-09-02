@@ -1,0 +1,16 @@
+#lang: es
+// 05_estructuras.syq — Structs básicos
+// cumple Manual 2 2: estructuras
+
+importar std.io
+
+estructura Persona:
+    nombre: texto
+    edad: entero
+
+funcion principal() -> nulo:
+    let p = Persona()
+    p.nombre = "Ana"
+    p.edad = 25
+    escribir_linea("Nombre: " + p.nombre)
+    escribir_linea("Edad: " + entero_a_texto(p.edad))

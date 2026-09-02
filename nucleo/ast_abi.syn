@@ -1,0 +1,180 @@
+// cumple Manual 1 5: nucleo del compilador Synapse
+// ============================================================
+// ast_abi.syn — Definición formal del SemNodo ABI v1
+// (FASE 22.B del ROADMAP; Manual 6 §1.1-§1.2 "El AST Canónico Unificado";
+//  Manual 2 §7.3 AST aplanado)
+//
+// POLITICA DE ABI (Manual 6 §1.2 / ROADMAP Fase 22.B):
+//   - La ABI v1 está CONGELADA. Cualquier cambio en los campos de SemNodo
+//     o en la numeración de NODO_* exige una nueva versión de ABI y un
+//     traductor adaptador.
+//   - Fuente única de verdad de la numeración vigente: nucleo/parser_constantes.syn
+//     (importada abajo; los valores del Manual 2 §7.2 son ILUSTRATIVOS).
+//   - El binding nativo se ejercita en tests/unit/test_ast_abi.py (e2e S1).
+// ============================================================
+
+importar parser_constantes
+
+// Versión actual de la ABI del AST canónico
+constante AST_ABI_VERSION = 1
+
+// Capacidad máxima del array aplanado SemNodo[] (Manual 2 §7.3)
+constante AST_ABI_MAX_NODOS = 65536
+
+// Número de campos del registro plano SemNodo[] (Manual 6 §1.2 forma real):
+// [tipo, linea, columna, valor_int, hijo_izq, hijo_der, hermano, extra, txt1, txt2]
+constante AST_ABI_NODOS_CAMPOS = 10
+
+// Formato real del SemNodo[] aplanado (Manual 6 §1.2, Manual 2 §7.3):
+// Cada nodo es un registro de 10 campos enteros/float (NodoAST en
+// synapse_rt_types.h): tipo, linea, columna, valor_int, hijo_izq, hijo_der,
+// hermano, ptr_extra, ptr_str+len_str (span texto como byte-array).
+// El struct rico de Manual 6 §1.2 (con archivo/owner_id/scope_id/es_owned/
+// union de sub-structs) es el MODELO CONCEPTUAL del AST; la representacion
+// aplanada canónica usada por el runtime C y el puente Python es la de 10
+// campos arriba. La verificacion cross-language de este formato se realiza
+// en tests/unit/test_ast_nodos_consistency.py (ast_nodos.h vs parser_constantes)
+// y tests/unit/test_ast_abi.py (verificador + tabla canónica 1:1).
+// Preservación de metadatos (linea/columna) OBLIGATORIA en el traductor de
+// Syquex (Manual 3 §11.2).
+
+// Verifica que la tabla canónica de nodos coincide con parser_constantes.
+// Retorna el número de divergencias (0 = ABI íntegra).
+funcion ast_abi_verificar() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    divergencias = 0
+
+    si NODO_PROGRAMA != 1:
+        divergencias = divergencias + 1
+    si NODO_FUNCION != 2:
+        divergencias = divergencias + 1
+    si NODO_SI != 3:
+        divergencias = divergencias + 1
+    si NODO_MIENTRAS != 4:
+        divergencias = divergencias + 1
+    si NODO_RETORNAR != 5:
+        divergencias = divergencias + 1
+    si NODO_EXPR != 6:
+        divergencias = divergencias + 1
+    si NODO_ASIGNACION != 7:
+        divergencias = divergencias + 1
+    si NODO_IDENTIFICADOR != 8:
+        divergencias = divergencias + 1
+    si NODO_NUMERO != 9:
+        divergencias = divergencias + 1
+    si NODO_DECIMAL != 10:
+        divergencias = divergencias + 1
+    si NODO_CADENA_LIT != 11:
+        divergencias = divergencias + 1
+    si NODO_BINARIA != 12:
+        divergencias = divergencias + 1
+    si NODO_UNARIA != 13:
+        divergencias = divergencias + 1
+    si NODO_LLAMADA != 14:
+        divergencias = divergencias + 1
+    si NODO_PARAMETRO != 15:
+        divergencias = divergencias + 1
+    si NODO_ESTRUCTURA != 16:
+        divergencias = divergencias + 1
+    si NODO_IMPORTAR != 17:
+        divergencias = divergencias + 1
+    si NODO_LANZAR != 18:
+        divergencias = divergencias + 1
+    si NODO_ESCUCHAR != 19:
+        divergencias = divergencias + 1
+    si NODO_ROMPER != 20:
+        divergencias = divergencias + 1
+    si NODO_SIGUIENTE != 21:
+        divergencias = divergencias + 1
+    si NODO_BOOLEANO != 22:
+        divergencias = divergencias + 1
+    si NODO_CONSTANTE != 23:
+        divergencias = divergencias + 1
+    si NODO_INSEGURO != 24:
+        divergencias = divergencias + 1
+    si NODO_IMPORTAR_C != 25:
+        divergencias = divergencias + 1
+    si NODO_EXTERNO != 26:
+        divergencias = divergencias + 1
+    si NODO_RECUPERAR != 27:
+        divergencias = divergencias + 1
+    si NODO_TENSOR != 28:
+        divergencias = divergencias + 1
+    si NODO_INDICE != 29:
+        divergencias = divergencias + 1
+    si NODO_TRANSFERIDO != 30:
+        divergencias = divergencias + 1
+    si NODO_ACCESO_CAMPO != 31:
+        divergencias = divergencias + 1
+    si NODO_PARRAFO != 33:
+        divergencias = divergencias + 1
+    si NODO_ASIGNACION_CAMPO != 32:
+        divergencias = divergencias + 1
+    si NODO_DECLARACION != 34:
+        divergencias = divergencias + 1
+    si NODO_LOG != 35:
+        divergencias = divergencias + 1
+    si NODO_PUNTERO != 36:
+        divergencias = divergencias + 1
+    si NODO_DEREF != 37:
+        divergencias = divergencias + 1
+    si NODO_COINCIDIR != 38:
+        divergencias = divergencias + 1
+    si NODO_CASO != 39:
+        divergencias = divergencias + 1
+    si NODO_ASM != 40:
+        divergencias = divergencias + 1
+    si NODO_CANAL_CREAR != 41:
+        divergencias = divergencias + 1
+    si NODO_ENVIAR_CANAL != 42:
+        divergencias = divergencias + 1
+    si NODO_RECIBIR_CANAL != 43:
+        divergencias = divergencias + 1
+    si NODO_PARA != 45:
+        divergencias = divergencias + 1
+    si NODO_CONTRATO != 46:
+        divergencias = divergencias + 1
+    si NODO_VACIO != 44:
+        divergencias = divergencias + 1
+    si NODO_NULO != 47:
+        divergencias = divergencias + 1
+    si NODO_LET != 48:
+        divergencias = divergencias + 1
+    si NODO_DELEGAR != 49:
+        divergencias = divergencias + 1
+    si NODO_EXPORT != 50:
+        divergencias = divergencias + 1
+    si NODO_DECLARACION_TIPO != 51:
+        divergencias = divergencias + 1
+    si NODO_CONSTRUCTOR != 52:
+        divergencias = divergencias + 1
+    si NODO_PROPAGAR != 53:
+        divergencias = divergencias + 1
+    // AUDITORIA F1 (H23): extensiones SyQuex — verificadas contra parser_constantes
+    si NODO_INTENTO != 54:
+        divergencias = divergencias + 1
+    si NODO_LISTA_LIT != 55:
+        divergencias = divergencias + 1
+    si NODO_MAPA_LIT != 56:
+        divergencias = divergencias + 1
+    si NODO_PARA_EN != 57:
+        divergencias = divergencias + 1
+    si NODO_BLOQUE_SQ != 58:
+        divergencias = divergencias + 1
+
+    // Self-check de campos: el registro plano tiene 10 campos (Manual 6 §1.2)
+    si AST_ABI_NODOS_CAMPOS != 10:
+        divergencias = divergencias + 1
+
+    retornar divergencias
+
+// Retorna la versión vigente de la ABI (Manual 6 §1.2 AST_ABI_VERSION)
+funcion ast_abi_version() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == AST_ABI_VERSION
+    retornar AST_ABI_VERSION

@@ -1,3 +1,5 @@
+// cumple Manual 1 5: pipeline RAG
+// cumple Manual 8 4: toolchain
 // synapse_rag.h — Pipeline RAG quirúrgico para extracción de contexto AST e indexación semántica
 // v2.0: Añadido: AST chunking, embedding storage, cosine similarity search, n_ctx negotiation dinámica
 // Implementa: extracción de nodo actual, línea activa, diagnósticos; indexación semántica; búsqueda por similitud
@@ -178,5 +180,49 @@ int synapse_rag_re_rankear_con_ft(void* sesion_ft, const RagIndex* idx,
 // Retorna: puntero al embedding (debe liberarse con free()), NULL en error
 float* synapse_rag_generar_embedding_ft(void* sesion_ft, const char* texto,
                                          int* out_dim);
+
+// ============================================================
+// Sistema de Inyección de Contexto Estático (M7 §2.3)
+// ============================================================
+
+// Estructura para las reglas de contexto estático
+typedef struct {
+    char* titulo_synapse;
+    char* descripcion_synapse;
+    char* reglas_synapse;
+    char* titulo_syquex;
+    char* descripcion_syquex;
+    char* reglas_syquex;
+    char* ejemplos;
+    char* idioma;
+    int version;
+} RagContextoEstatico;
+
+// Estructura de configuración
+typedef struct {
+    char ruta_archivo[512];
+    int habilitado;
+    int actualizable;
+    RagContextoEstatico reglas;
+} RagConfiguracionEstatica;
+
+// Inicializa configuración con valores por defecto
+void rag_configuracion_inicializar(RagConfiguracionEstatica* config);
+
+// Carga reglas desde archivo TOML
+int rag_configuracion_cargar(RagConfiguracionEstatica* config, const char* ruta_archivo);
+
+// Libera memoria de las reglas
+void rag_configuracion_liberar(RagConfiguracionEstatica* config);
+
+// Construye bloque de contexto estático para System Prompt
+int rag_construir_bloque_estatico(const RagConfiguracionEstatica* config,
+                                  char* buf, size_t cap,
+                                  const char* idioma_solicitado);
+
+// Construye prompt con contexto estático integrado
+int synapse_rag_construir_prompt_con_contexto_estatico(const SynapseRagContexto* ctx,
+                                                       const RagConfiguracionEstatica* config,
+                                                       char* buf, size_t cap);
 
 #endif // SYNAPSE_RAG_H

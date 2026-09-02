@@ -1,0 +1,214 @@
+#lang: es
+# opensyn/installer.syn - Instalador OpenSyn
+# Manual 7 §2.3, Manual 9 §5.2-5.4
+# cumple Manual 7 2.3
+# cumple Manual 9 5.2
+# cumple Manual 9 5.3
+# cumple Manual 9 5.4
+# cumple Manual 2 12 (contratos requiere/garantiza)
+
+estructura HardwareInfo:
+    ram_total: entero
+    vram_total: entero
+    cpu_nucleos: entero
+    arquitectura: texto
+
+estructura ModeloInfo:
+    nombre: texto
+    url: texto
+    sha256: texto
+    tamano_aprox: entero
+
+externo funcion _syn_memoria_total() -> entero
+externo funcion _syn_vram_total() -> entero
+externo funcion _syn_cpu_nucleos() -> entero
+externo funcion _syn_arquitectura() -> texto
+externo funcion _syn_existe_archivo(ruta: texto) -> logico
+externo funcion _syn_eliminar_archivo(ruta: texto) -> logico
+externo funcion _syn_sha256_archivo(ruta: texto) -> texto
+externo funcion _syn_descargar(url: texto, destino: texto) -> logico
+externo funcion _syn_home() -> texto
+externo funcion _syn_escribir_archivo(ruta: texto, contenido: texto) -> logico
+
+funcion memoria_total() -> entero:
+    retornar _syn_memoria_total()
+
+funcion vram_total() -> entero:
+    retornar _syn_vram_total()
+
+funcion cpu_nucleos() -> entero:
+    retornar _syn_cpu_nucleos()
+
+funcion arquitectura() -> texto:
+    retornar _syn_arquitectura()
+
+funcion detectar_hardware() -> HardwareInfo:
+    requiere:
+        verdadero
+    garantiza:
+        resultado.ram_total >= 0
+        resultado.cpu_nucleos > 0
+    let hw: HardwareInfo
+    hw.ram_total = memoria_total()
+    hw.vram_total = vram_total()
+    hw.cpu_nucleos = cpu_nucleos()
+    hw.arquitectura = arquitectura()
+    retornar hw
+
+funcion seleccionar_modelo(vram: entero) -> ModeloInfo:
+    requiere:
+        vram >= 0
+    garantiza:
+        longitud(resultado.nombre) > 0
+        longitud(resultado.url) > 0
+        resultado.tamano_aprox > 0
+    let m: ModeloInfo
+    si vram < 4096:
+        m.nombre = "deepseek-coder-1.3b-q4_k_m"
+        m.url = "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
+        m.sha256 = ""
+        m.tamano_aprox = 1073741824
+    sino:
+        si vram < 8192:
+            m.nombre = "codellama-7b-q4_k_m"
+            m.url = "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
+            m.sha256 = ""
+            m.tamano_aprox = 4294967296
+        sino:
+            si vram < 12288:
+                m.nombre = "codellama-13b-q4_k_m"
+                m.url = "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
+                m.sha256 = ""
+                m.tamano_aprox = 7516192768
+            sino:
+                m.nombre = "codellama-34b-q4_k_m"
+                m.url = "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
+                m.sha256 = ""
+                m.tamano_aprox = 19327352832
+    retornar m
+
+funcion seleccionar_hilos(nucleos: entero) -> entero:
+    requiere:
+        nucleos > 0
+    garantiza:
+        resultado >= 2
+        resultado <= nucleos
+    si nucleos <= 4:
+        retornar 2
+    sino:
+        si nucleos <= 8:
+            retornar 4
+        sino:
+            retornar 8
+
+funcion seleccionar_capas_gpu(vram: entero) -> entero:
+    requiere:
+        vram >= 0
+    garantiza:
+        resultado >= 0
+    si vram < 4096:
+        retornar 0
+    sino:
+        si vram < 8192:
+            retornar 12
+        sino:
+            retornar 35
+
+# cumple Manual 9 5.3
+funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
+    requiere:
+        longitud(info.nombre) > 0
+        longitud(info.url) > 0
+    garantiza:
+        verdadero
+    let ruta: texto = _syn_home() + "/.opensyn/models/" + info.nombre + ".gguf"
+    si _syn_existe_archivo(ruta):
+        let hash: texto = _syn_sha256_archivo(ruta)
+        si hash == info.sha256:
+            escribir_linea("Modelo ya descargado y verificado")
+            retornar ok(ruta)
+        sino:
+            escribir_linea("Hash incorrecto, eliminando archivo corrupto")
+            _syn_eliminar_archivo(ruta)
+    escribir_linea("Descargando modelo (" + entero_a_texto(info.tamano_aprox / 1073741824) + " GB)...")
+    si no _syn_descargar(info.url, ruta):
+        retornar err("Error al descargar el modelo")
+    let hash: texto = _syn_sha256_archivo(ruta)
+    si hash != info.sha256:
+        _syn_eliminar_archivo(ruta)
+        retornar err("Checksum incorrecto")
+    retornar ok(ruta)
+
+# cumple Manual 9 5.4 — principal: orquesta instalación completa
+funcion principal() -> nulo:
+    let hw: HardwareInfo = detectar_hardware()
+    let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
+    let capas: entero = seleccionar_capas_gpu(hw.vram_total)
+    escribir_linea("Hardware:")
+    escribir_linea("Hilos:")
+    escribir_linea("Capas GPU:")
+    escribir_linea(entero_a_texto(hilos))
+    escribir_linea(entero_a_texto(capas))
+    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
+    escribir_linea("Modelo seleccionado: " + modelo.nombre)
+    escribir_linea("Modelo:")
+    escribir_linea("descargando desde: " + modelo.url)
+    let cfg: ConfigInfo = generar_config(hw, ".opensyn/models/" + modelo.nombre + ".gguf")
+    escribir_config(cfg)
+
+# cumple Manual 9 5.3 — instalar_modelo: descarga y verifica modelo según HW
+funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
+    requiere:
+        hw.vram_total >= 0
+    garantiza:
+        verdadero
+    let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
+    escribir_linea("Modelo seleccionado: " + modelo.nombre)
+    retornar descargar_modelo(modelo)
+
+# cumple Manual 9 5.4 — ConfigInfo: configuración para llama-server
+estructura ConfigInfo:
+    nombre_modelo: texto
+    ruta_modelo: texto
+    n_ctx: entero
+    n_threads: entero
+    n_gpu_layers: entero
+    puerto: entero
+    host: texto
+    timeout: entero
+
+# cumple Manual 9 5.4 — generar_config: produce ConfigInfo basada en HW
+funcion generar_config(hw: HardwareInfo, ruta_modelo: texto) -> ConfigInfo:
+    requiere:
+        longitud(ruta_modelo) > 0
+    garantiza:
+        longitud(resultado.ruta_modelo) > 0
+        resultado.n_ctx > 0
+        resultado.n_threads >= 2
+        resultado.puerto > 0
+    let cfg: ConfigInfo
+    cfg.nombre_modelo = "codellama-7b-Q4_K_M"
+    cfg.ruta_modelo = ruta_modelo
+    cfg.n_ctx = 4096
+    cfg.n_threads = seleccionar_hilos(hw.cpu_nucleos)
+    cfg.n_gpu_layers = seleccionar_capas_gpu(hw.vram_total)
+    cfg.puerto = 8088
+    cfg.host = "127.0.0.1"
+    cfg.timeout = 30
+    retornar cfg
+
+# cumple Manual 9 5.4 — escribir_config: escribe ~/.opensyn/config.toml
+funcion escribir_config(config: ConfigInfo) -> logico:
+    requiere:
+        longitud(config.ruta_modelo) > 0
+        longitud(config.host) > 0
+    garantiza:
+        verdadero
+    let ruta: texto = _syn_home() + "/.opensyn/config.toml"
+    let contenido: texto = "[general]\n" + "idioma = \"es\"\n" + "editor = \"vscode\"\n\n" + "[modelo]\n" + "nombre = \"" + config.nombre_modelo + "\"\n" + "ruta = \"" + config.ruta_modelo + "\"\n" + "n_ctx = " + entero_a_texto(config.n_ctx) + "\n" + "n_threads = " + entero_a_texto(config.n_threads) + "\n" + "n_gpu_layers = " + entero_a_texto(config.n_gpu_layers) + "\n\n" + "[server]\n" + "puerto = " + entero_a_texto(config.puerto) + "\n" + "host = \"" + config.host + "\"\n" + "timeout = " + entero_a_texto(config.timeout) + "\n"
+    si _syn_escribir_archivo(ruta, contenido):
+        escribir_linea("Configuracion escrita en " + ruta)
+        retornar verdadero
+    sino:
+        escribir_linea("Error: no se pudo escribir configuracion en " + ruta)
+        retornar falso

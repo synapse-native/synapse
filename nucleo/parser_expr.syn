@@ -1,3 +1,5 @@
+// cumple Manual 1 1: infraestructura del compilador Synapse
+// cumple Manual 8 4: toolchain de construcción
 #lang: es
 
 funcion parsear_expresion(est: ParserEst) -> entero:
@@ -19,9 +21,9 @@ funcion parsear_logica(est: ParserEst) -> entero:
             der = parsear_comparacion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 100")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 100")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_O:
@@ -31,9 +33,9 @@ funcion parsear_logica(est: ParserEst) -> entero:
             der = parsear_comparacion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 101")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 101")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         r = 0
@@ -55,9 +57,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 200")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 200")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_MENOR:
@@ -67,9 +69,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 201")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 201")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_IGUAL:
@@ -79,9 +81,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 202")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 202")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_DISTINTO:
@@ -91,9 +93,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 203")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 203")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_MENOR_IGUAL:
@@ -103,9 +105,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 204")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 204")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_MAYOR_IGUAL:
@@ -115,9 +117,9 @@ funcion parsear_comparacion(est: ParserEst) -> entero:
             der = parsear_adicion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 205")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 205")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         r = 0
@@ -139,9 +141,9 @@ funcion parsear_adicion(est: ParserEst) -> entero:
             der = parsear_multiplicacion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 300")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 300")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_MENOS:
@@ -151,9 +153,9 @@ funcion parsear_adicion(est: ParserEst) -> entero:
             der = parsear_multiplicacion(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 301")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 301")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         r = 0
@@ -175,9 +177,9 @@ funcion parsear_multiplicacion(est: ParserEst) -> entero:
             der = parsear_unario(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 400")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 400")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_DIV:
@@ -187,9 +189,9 @@ funcion parsear_multiplicacion(est: ParserEst) -> entero:
             der = parsear_unario(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 401")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 401")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         si t == T_MOD:
@@ -199,9 +201,9 @@ funcion parsear_multiplicacion(est: ParserEst) -> entero:
             der = parsear_unario(est)
             nodo = parser_nuevo_nodo(est, NODO_BINARIA, linea, col)
             inseguro:
-                asm("est.nodos[nodo].valor_int = 402")
-                asm("est.nodos[nodo].hijo_izq = izq")
-                asm("est.nodos[nodo].hijo_der = der")
+                asm("est->nodos[nodo].valor_int = 402")
+                asm("est->nodos[nodo].hijo_izq = izq")
+                asm("est->nodos[nodo].hijo_der = der")
             izq = nodo
             siguiente
         r = 0
@@ -220,8 +222,8 @@ funcion parsear_unario(est: ParserEst) -> entero:
         expr = parsear_unario(est)
         nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
         inseguro:
-            asm("est.nodos[nodo].valor_int = 500")
-            asm("est.nodos[nodo].hijo_izq = expr")
+            asm("est->nodos[nodo].valor_int = 500")
+            asm("est->nodos[nodo].hijo_izq = expr")
         retornar nodo
     si t == T_NO:
         linea = token_linea(est, est.posicion)
@@ -230,25 +232,31 @@ funcion parsear_unario(est: ParserEst) -> entero:
         expr = parsear_unario(est)
         nodo = parser_nuevo_nodo(est, NODO_UNARIA, linea, col)
         inseguro:
-            asm("est.nodos[nodo].valor_int = 501")
-            asm("est.nodos[nodo].hijo_izq = expr")
+            asm("est->nodos[nodo].valor_int = 501")
+            asm("est->nodos[nodo].hijo_izq = expr")
         retornar nodo
     si t == T_AMPERSAND:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         token_avanzar(est)
         // Manual 4 §4.2: &mut x (préstamo mutable) — consumir la palabra 'mut'
+        // FASE A (A3.0, fix del revisor): 64-bit-safe via LexerBuffers (CadenaSegura
+        // real) — antes token_ptr_valor() truncaba a 32 bits y dereferenciar
+        // (const char*)ptr_m segfault en x64 (misma clase que el bug &mut de A2.3b,
+        // ahora en EXPRESIONES — el fix A2.3c solo cubria parametros).
         es_mut = 0
         si token_mirar(est) == T_IDENTIFICADOR:
-            ptr_m = token_ptr_valor(est, est.posicion)
-            len_m = token_len_valor(est, est.posicion)
             inseguro:
-                asm("if (len_m == 3 && ((const char*)ptr_m)[0]=='m' && ((const char*)ptr_m)[1]=='u' && ((const char*)ptr_m)[2]=='t') { est.posicion++; es_mut = 1; }")
+                asm("struct LexerBuffers* _lb_u = (struct LexerBuffers*)lexer_buffers();")
+                asm("if (_lb_u && est->posicion >= 0 && est->posicion < _lb_u->ntks) {")
+                asm("    CadenaSegura _lv_u = ((struct TokenLex*)_lb_u->tokens)[est->posicion].valor;")
+                asm("    if (_lv_u.longitud == 3 && _lv_u.datos && _lv_u.datos[0]=='m' && _lv_u.datos[1]=='u' && _lv_u.datos[2]=='t') { est->posicion++; es_mut = 1; }")
+                asm("}")
         expr = parsear_unario(est)
         nodo = parser_nuevo_nodo(est, NODO_PUNTERO, linea, col)
         inseguro:
-            asm("est.nodos[nodo].hijo_izq = expr")
-            asm("est.nodos[nodo].valor_int = es_mut")
+            asm("est->nodos[nodo].hijo_izq = expr")
+            asm("est->nodos[nodo].valor_int = es_mut")
         retornar nodo
     si t == T_POR:
         linea = token_linea(est, est.posicion)
@@ -257,7 +265,7 @@ funcion parsear_unario(est: ParserEst) -> entero:
         expr = parsear_unario(est)
         nodo = parser_nuevo_nodo(est, NODO_DEREF, linea, col)
         inseguro:
-            asm("est.nodos[nodo].hijo_izq = expr")
+            asm("est->nodos[nodo].hijo_izq = expr")
         retornar nodo
     retornar parsear_primario(est)
 
@@ -269,20 +277,30 @@ funcion parsear_primario(est: ParserEst) -> entero:
     si t == T_NUMERO:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
+        pos_num = est.posicion
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_NUMERO, linea, col)
+        // FASE A (A3.0): payload del literal (lexema del token en la fuente) —
+        // el puente plano->tipado (A3) lo convierte a LiteralNumero.valor.
+        nodo_guardar_token(est, nodo, pos_num)
         retornar nodo
     si t == T_FLOTANTE:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
+        pos_dec = est.posicion
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_DECIMAL, linea, col)
+        nodo_guardar_token(est, nodo, pos_dec)
         retornar nodo
     si t == T_CADENA:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
+        pos_cad = est.posicion
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_CADENA_LIT, linea, col)
+        // FASE A (A3.0): payload de la cadena YA DECODIFICADA por el lexer
+        // (sbuf acumulativo, puntero estable) — paridad _P_* LiteralCadena.valor.
+        nodo_guardar_token(est, nodo, pos_cad)
         retornar nodo
     si t == T_VERDADERO:
         linea = token_linea(est, est.posicion)
@@ -290,7 +308,7 @@ funcion parsear_primario(est: ParserEst) -> entero:
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
         inseguro:
-            asm("est.nodos[nodo].valor_int = 1")
+            asm("est->nodos[nodo].valor_int = 1")
         retornar nodo
     si t == T_FALSO:
         linea = token_linea(est, est.posicion)
@@ -298,27 +316,100 @@ funcion parsear_primario(est: ParserEst) -> entero:
         token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_BOOLEANO, linea, col)
         inseguro:
-            asm("est.nodos[nodo].valor_int = 0")
+            asm("est->nodos[nodo].valor_int = 0")
         retornar nodo
-    si t == T_IDENTIFICADOR:
+    // AUDITORIA FASE A (A2.2): nulo -> LiteralNulo (Manual 2 §2 L160, §4.1)
+    si t == T_NULO:
         linea = token_linea(est, est.posicion)
         col = token_columna(est, est.posicion)
         token_avanzar(est)
+        nodo = parser_nuevo_nodo(est, NODO_NULO, linea, col)
+        retornar nodo
+    // AUDITORIA FASE A (A2.2): tensor(filas, columnas) -> ExprTensor (Manual 2 §2 L194-195)
+    // T_TENSOR también puede ser tipo contextual (tensor: tensor), se decide tras '('.
+    si t == T_TENSOR y token_tipo(est, est.posicion + 1) == T_PAREN_IZQ:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        token_esperar(est, T_PAREN_IZQ)
+        filas = parsear_expresion(est)
+        token_esperar(est, T_COMA)
+        columnas = parsear_expresion(est)
+        token_esperar(est, T_PAREN_DER)
+        nodo = parser_nuevo_nodo(est, NODO_TENSOR, linea, col)
+        inseguro:
+            asm("est->nodos[nodo].hijo_izq = filas")
+            asm("est->nodos[nodo].hijo_der = columnas")
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
+        retornar nodo
+    // AUDITORIA F1 (D-F1): keywords contextuales como identificadores en expresiones
+    // (tipo/tensor/nulo como variables; ok/err/algun/ninguno como constructores ADT).
+    si token_es_nombre(t) == 1:
+        linea = token_linea(est, est.posicion)
+        col = token_columna(est, est.posicion)
+        pos_id = est.posicion
+        token_avanzar(est)
         nodo = parser_nuevo_nodo(est, NODO_IDENTIFICADOR, linea, col)
+        // FASE A (A3.0): payload del nombre (identificador o llamada) —
+        // el puente lo convierte a Identificador.nombre / LlamadaFuncion.nombre.
+        nodo_guardar_token(est, nodo, pos_id)
         t2 = token_mirar(est)
         si t2 == T_PAREN_IZQ:
             inseguro:
-                asm("est.nodos[nodo].tipo_nodo = 14")
+                asm("est->nodos[nodo].tipo_nodo = 14")
             token_esperar(est, T_PAREN_IZQ)
+            // FASE A (A3.1): los argumentos se ENLAZAN al nodo de llamada
+            // (hijo_der = primer argumento, cadena hermano) — antes se parseaban
+            // y se DESCARTABAN (LlamadaFuncion.argumentos del puente estaria
+            // vacio). Paridad _P_* args (ListaNodo) en _parser.c _P_prim.
             r = 1
+            primer_arg = 0
+            ultimo_arg = 0
+            arg = 0
             mientras r == 1:
                 si token_mirar(est) == T_PAREN_DER:
                     romper
-                arg = parsear_expresion(est)
+                // R15: argumento transferido ->expr (Manual 4 S3.3, paridad S1
+                // parser_expressions.py _parsear_llamada: ARROW ->
+                // ArgumentoTransferido). El envio de ownership por lanzar
+                // invalida el origen; NODO_TRANSFERIDO lo conserva para que el
+                // analizador marque movido (solo dentro de SentenciaLanzar).
+                si token_mirar(est) == T_FLECHA:
+                    linea_tr = token_linea(est, est.posicion)
+                    col_tr = token_columna(est, est.posicion)
+                    token_avanzar(est)
+                    arg_expr = parsear_expresion(est)
+                    arg = parser_nuevo_nodo(est, NODO_TRANSFERIDO, linea_tr, col_tr)
+                    inseguro:
+                        asm("est->nodos[arg].hijo_izq = arg_expr")
+                sino:
+                    arg = parsear_expresion(est)
+                si arg != 0:
+                    si primer_arg == 0:
+                        primer_arg = arg
+                    sino:
+                        inseguro:
+                            asm("est->nodos[ultimo_arg].hermano = arg")
+                    ultimo_arg = arg
                 si token_mirar(est) == T_COMA:
                     token_avanzar(est)
                     siguiente
+                sino:
+                    si arg == 0:
+                        romper
                 r = 1
+            si primer_arg > 0:
+                inseguro:
+                    asm("est->nodos[nodo].hijo_der = primer_arg")
             token_esperar(est, T_PAREN_DER)
         si t2 == T_PUNTO:
             si token_mirar(est) == T_PUNTO:
@@ -326,12 +417,26 @@ funcion parsear_primario(est: ParserEst) -> entero:
                 tok_campo = token_mirar(est)
                 linea2 = token_linea(est, est.posicion)
                 col2 = token_columna(est, est.posicion)
-                si tok_campo == T_IDENTIFICADOR:
+                // AUDITORIA F1 (D-F1): keyword tras '.' como nombre de campo (x.tipo)
+                si token_es_nombre(tok_campo) == 1:
+                    pos_campo = est.posicion
                     token_avanzar(est)
                     nodo2 = parser_nuevo_nodo(est, NODO_ACCESO_CAMPO, linea2, col2)
+                    // FASE A (A3.0): payload del nombre de campo
+                    nodo_guardar_token(est, nodo2, pos_campo)
                     inseguro:
-                        asm("est.nodos[nodo2].hijo_izq = nodo")
+                        asm("est->nodos[nodo2].hijo_izq = nodo")
                     nodo = nodo2
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
         retornar nodo
     si t == T_CANAL:
         linea = token_linea(est, est.posicion)
@@ -340,13 +445,16 @@ funcion parsear_primario(est: ParserEst) -> entero:
         si token_mirar(est) == T_PAREN_IZQ:
             nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
             token_esperar(est, T_PAREN_IZQ)
-            si token_mirar(est) == T_IDENTIFICADOR:
+            si token_es_nombre(token_mirar(est)) == 1:
+                // FASE A (A3.0): payload del tipo de contenido (ExprCrearCanal.tipo_contenido)
+                pos_canal = est.posicion
                 token_avanzar(est)
+                nodo_guardar_token(est, nodo, pos_canal)
             si token_mirar(est) == T_COMA:
                 token_avanzar(est)
                 expr = parsear_expresion(est)
                 inseguro:
-                    asm("est.nodos[nodo].hijo_izq = expr")
+                    asm("est->nodos[nodo].hijo_izq = expr")
             token_esperar(est, T_PAREN_DER)
             retornar nodo
         parser_error(est, "Se esperaba ( despues de canal", linea, col)
@@ -355,7 +463,18 @@ funcion parsear_primario(est: ParserEst) -> entero:
         token_avanzar(est)
         expr = parsear_expresion(est)
         token_esperar(est, T_PAREN_DER)
-        retornar expr
+        nodo = expr
+        // AUDITORIA FASE A (A5/D-6): operador '?' postfijo (Manual 3 §7 L331-342).
+        // `expr?` propaga el err del Resultado (retorna) y desempaqueta el valor ok.
+        mientras token_mirar(est) == T_INTERROGACION:
+            linea_q = token_linea(est, est.posicion)
+            col_q = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = parser_nuevo_nodo(est, NODO_PROPAGAR, linea_q, col_q)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = nodo")
+            nodo = nodo_q
+        retornar nodo
     parser_error(est, "Expresion inesperada", token_linea(est, est.posicion), token_columna(est, est.posicion))
     retornar 0
 

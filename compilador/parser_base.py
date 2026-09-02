@@ -1,3 +1,5 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 from typing import List, Optional, Set
 
 from compilador.ast_nodes import (
@@ -6,11 +8,36 @@ from compilador.ast_nodes import (
 from compilador.diagnostics import DiagnosticManager, ErrorCodes
 
 
-_SYNC_TOP = {TokenID.FUNCTION, TokenID.IMPORT, TokenID.EOF}
+_SYNC_TOP = {TokenID.FUNCION, TokenID.IMPORTAR, TokenID.EOF}
 _SYNC_STMT = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF} | _SYNC_TOP
 _SYNC_BLOCK = {TokenID.DEDENT, TokenID.EOF}
 _SYNC_EXPR = {TokenID.NEWLINE, TokenID.DEDENT, TokenID.EOF,
               TokenID.COMMA, TokenID.RPAREN, TokenID.COLON, TokenID.SEMICOLON}
+
+# AUDITORIA F1.2 (D-F1) + F1.4: keywords contextuales que el parser acepta
+# donde un identificador es válido (campo x.tipo, variable/parámetro tipo o
+# tensor, tipo de retorno nulo/tensor, patrones ADT ok/err/algun/ninguno,
+# variable rc, parámetro modulo — F1.4). El lexer conserva su lexema en
+# Token.valor (ver TOKENS_CONTEXTUALES en lexer.py).
+TOKENS_CONTEXTUALES: frozenset = frozenset({
+    TokenID.TIPO, TokenID.TENSOR, TokenID.NULO,
+    TokenID.OK, TokenID.ERR, TokenID.ALGUN, TokenID.NINGUNO,
+    TokenID.ARC, TokenID.DEBIL, TokenID.RC, TokenID.MODULO,
+})
+
+
+def es_token_identificador(t: Token) -> bool:
+    """True si el token puede actuar como identificador (IDENTIFIER o keyword contextual)."""
+    return t.tipo == TokenID.IDENTIFIER or t.tipo in TOKENS_CONTEXTUALES
+
+
+def nombre_de_token(t: Token) -> str:
+    """Lexema usable del token (identificadores y keywords contextuales)."""
+    if t.valor:
+        return t.valor
+    if t.tipo == TokenID.IDENTIFIER:
+        return t.valor or ''
+    return t.tipo.name.lower()
 
 
 class ParserBase:
@@ -45,6 +72,17 @@ class ParserBase:
             esperado = ' o '.join(tt.name for tt in tipos)
             self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, t,
                                esperado=esperado, encontrado=t.tipo.name)
+            self._sincronizar(_SYNC_EXPR)
+            return None
+        return self._avanzar()
+
+    def _esperar_identificador(self) -> Optional[Token]:
+        """Consume un token usable como identificador: IDENTIFIER o keyword
+        contextual (F1.2). Devuelve el token (con su lexema en .valor) o None."""
+        t = self._mirar()
+        if not es_token_identificador(t):
+            self.diag.reportar(ErrorCodes.ERR_SYNTAX_EXPECTED_TOKEN, t,
+                               esperado='IDENTIFICADOR', encontrado=t.tipo.name)
             self._sincronizar(_SYNC_EXPR)
             return None
         return self._avanzar()
@@ -106,21 +144,42 @@ class ParserBase:
         # Manual 4 §4.2: referencias &T y &mut T
         if self._mirar().tipo == TokenID.AMPERSAND:
             self._avanzar()
-            if (self._mirar().tipo == TokenID.IDENTIFIER
-                    and (self._mirar().valor or '') == 'mut'):
+            if es_token_identificador(self._mirar()) and (self._mirar().valor or '') == 'mut':
                 self._avanzar()
                 prefijo = '&mut '
             else:
                 prefijo = '&'
-        tok_tipo = self._esperar(TokenID.IDENTIFIER)
+        tok_tipo = self._esperar_identificador()
         if tok_tipo is None:
             return prefijo + 'int'
-        tipo = prefijo + tok_tipo.valor
+        tipo = prefijo + (tok_tipo.valor or tok_tipo.tipo.name.lower())
         if self._mirar().tipo == TokenID.LESS:
             self._avanzar()
             partes = [tipo, '<']
-            while self._mirar().tipo not in (TokenID.GREATER, TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
-                partes.append(str(self._avanzar().valor or ''))
+            profundidad = 0
+            while True:
+                t_actual = self._mirar()
+                if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                    break
+                if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                    break
+                t_parte = self._avanzar()
+                # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                # Manual 2 §8.2 ALGEBRAICO con argumentos): consumir '<'/'<' con
+                # profundidad y solo cerrar en el '>' de nivel 0.
+                if t_parte.tipo == TokenID.LESS:
+                    profundidad += 1
+                    partes.append('<')
+                elif t_parte.tipo == TokenID.GREATER:
+                    profundidad -= 1
+                    partes.append('>')
+                elif t_parte.tipo == TokenID.COMMA:
+                    # D-2: el token COMMA no lleva valor -> conservar la coma para
+                    # que `Resultado<entero,texto>` (paridad con el span nativo S2/S3)
+                    # sea parseable por el recolector de instanciaciones de ADT.
+                    partes.append(',')
+                else:
+                    partes.append(str(t_parte.valor or ''))
             if self._mirar().tipo == TokenID.GREATER:
                 self._avanzar()
             partes.append('>')

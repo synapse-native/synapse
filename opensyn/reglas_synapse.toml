@@ -1,0 +1,87 @@
+# reglas_synapse.toml — Reglas de contexto estático para OpenSyn (Manual 7 §2.3)
+# Este archivo es configurable y actualizable por el usuario.
+# Se inyecta en el System Prompt de cada consulta RAG.
+
+[config]
+version = "1.0"
+idioma_default = "es"
+actualizable = true
+
+[synapse]
+titulo = "REGLAS DE SYNAPSE (Sintaxis Estricta)"
+descripcion = "Synapse es un lenguaje de bajo nivel para sistemas, con semántica de ownership y tipos estáticos."
+
+[synapse.funciones]
+sintaxis = "funcion nombre(parametros) -> tipo:"
+ejemplo = "funcion sumar(a: entero, b: entero) -> entero: retornar a + b"
+
+[synapse.variables]
+sintaxis = "let nombre = valor"
+ejemplo = "let x = 42"
+
+[synapse.condicional]
+sintaxis = "si condicion:"
+ejemplo = "si x > 0: escribir_linea(\"positivo\")"
+
+[synapse.bucle]
+sintaxis = "mientras condicion:"
+ejemplo = "mientras i < 10: i = i + 1"
+
+[synapse.retorno]
+sintaxis = "retornar valor"
+ejemplo = "retornar a + b"
+
+[synapse.concurrencia]
+sintaxis = "lanzar funcion()"
+ejemplo = "lanzar tarea_lenta()"
+
+[synapse.canales]
+sintaxis = "Canal<T>"
+ejemplo = "let c = Canal<entero>(10)"
+
+[synapse.tensores]
+sintaxis = "tensor(filas, columnas)"
+ejemplo = "let t = tensor(3, 3)"
+
+[syquex]
+titulo = "REGLAS DE SYQUEX (Sintaxis Flexible y Automática)"
+descripcion = "Syquex es un lenguaje de alto nivel para productividad, con inferencia de tipos y manejo de errores."
+
+[syquex.funciones]
+sintaxis = "funcion nombre(parametros) -> tipo:"
+ejemplo = "funcion saludar(nombre: texto) -> texto: retornar \"Hola, \" + nombre"
+
+[syquex.estructuras]
+sintaxis = "estructura Nombre: campo: tipo"
+ejemplo = "estructura Persona: nombre: texto, edad: entero"
+
+[syquex.metodos]
+sintaxis = "metodo nombre(parametros) -> tipo:"
+ejemplo = "metodo area(self) -> decimal: retornar self.base * self.altura"
+
+[syquex.constructores]
+sintaxis = "crear(parametros):"
+ejemplo = "crear(nombre: texto, edad: entero): self.nombre = nombre"
+
+[syquex.errores]
+sintaxis = "Resultado<T, E> y operador ?"
+ejemplo = "funcion dividir(a: decimal, b: decimal) -> Resultado<decimal, texto>: si b == 0: retornar err(\"División por cero\")"
+
+[syquex.concurrencia]
+sintaxis = "lanzar funcion()"
+ejemplo = "lanzar procesar_datos()"
+
+[syquex.canales]
+sintaxis = "Canal<T>(capacidad)"
+ejemplo = "let c = Canal<texto>(100)"
+
+[syquex.modulos]
+sintaxis = "importar lib.modulo"
+ejemplo = "importar std.io"
+
+[ejemplos]
+basico = """
+funcion main() -> entero:
+    escribir_linea("Hola, Mundo")
+    retornar 0
+"""

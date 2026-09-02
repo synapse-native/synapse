@@ -1,0 +1,79 @@
+﻿// cumple Manual 4 6: biblioteca estándar
+#lang: es
+
+# =============================================================================
+# std/wasm.syn — Synapse WebAssembly WAT Backend Bindings (M12.1.2)
+#
+# Declaraciones externo funcion para la API WAT text emitter
+# implementada en synapse_wasm.c.
+#
+# Los nombres de función coinciden EXACTAMENTE con las funciones C
+# implementadas en synapse_wasm.c.
+# =============================================================================
+
+# -------------------------------------------------------------------
+# WasmModule
+# -------------------------------------------------------------------
+externo funcion WasmModuleCreate(nombre: texto) -> puntero
+externo funcion WasmModuleDispose(mod: puntero) -> nulo
+externo funcion WasmModuleGetWAT(mod: puntero) -> texto
+externo funcion WasmModuleGetWATLength(mod: puntero) -> entero
+externo funcion WasmModuleEmitHeader(mod: puntero) -> nulo
+externo funcion WasmModuleEmitRuntimeDecls(mod: puntero) -> nulo
+
+# -------------------------------------------------------------------
+# WasmBuilder
+# -------------------------------------------------------------------
+externo funcion WasmBuilderCreate(mod: puntero) -> puntero
+externo funcion WasmBuilderDispose(b: puntero) -> nulo
+externo funcion WasmBuilderBeginFunction(b: puntero, nombre: texto,
+    num_params: entero, num_results: entero) -> nulo
+externo funcion WasmBuilderEndFunction(b: puntero) -> nulo
+
+# -------------------------------------------------------------------
+# Instrucciones WASM (M12.1.2)
+# -------------------------------------------------------------------
+externo funcion WasmEmitI32Const(b: puntero, val: entero) -> nulo
+externo funcion WasmEmitI32Add(b: puntero) -> nulo
+externo funcion WasmEmitI32Sub(b: puntero) -> nulo
+externo funcion WasmEmitI32Mul(b: puntero) -> nulo
+externo funcion WasmEmitI32DivS(b: puntero) -> nulo
+externo funcion WasmEmitReturn(b: puntero) -> nulo
+externo funcion WasmEmitCall(b: puntero, nombre: texto) -> nulo
+externo funcion WasmEmitLocalGet(b: puntero, nombre: texto) -> nulo
+externo funcion WasmEmitLocalSet(b: puntero, nombre: texto) -> nulo
+externo funcion WasmEmitLocalDecl(b: puntero, nombre: texto) -> nulo
+externo funcion WasmEmitIf(b: puntero) -> nulo
+externo funcion WasmEmitElse(b: puntero) -> nulo
+externo funcion WasmEmitEnd(b: puntero) -> nulo
+externo funcion WasmEmitBrIf(b: puntero, etiqueta: texto) -> nulo
+externo funcion WasmEmitBr(b: puntero, etiqueta: texto) -> nulo
+externo funcion WasmEmitDrop(b: puntero) -> nulo
+
+# -------------------------------------------------------------------
+# Comparaciones (M12.1.2)
+# -------------------------------------------------------------------
+externo funcion WasmEmitI32Eq(b: puntero) -> nulo
+externo funcion WasmEmitI32Ne(b: puntero) -> nulo
+externo funcion WasmEmitI32LtS(b: puntero) -> nulo
+externo funcion WasmEmitI32GtS(b: puntero) -> nulo
+
+# -------------------------------------------------------------------
+# Constructores de alto nivel
+# -------------------------------------------------------------------
+
+# Programa mínimo: define main que retorna una constante
+externo funcion WasmBuildMinimalProgram(nombre_modulo: texto,
+    valor_retorno: entero) -> texto
+
+# Programa aritmético: main() { return lhs <op> rhs; }
+externo funcion WasmBuildArithmeticProgram(nombre_modulo: texto,
+    op: entero, lhs: entero, rhs: entero) -> texto
+
+# Programa if-else: retorna 1 si a < b, sino 0
+externo funcion WasmBuildIfElseProgram(nombre_modulo: texto,
+    a: entero, b: entero) -> texto
+
+# Programa con llamada a función
+externo funcion WasmBuildCallProgram(nombre_modulo: texto,
+    a: entero, b: entero) -> texto

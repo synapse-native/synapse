@@ -5,6 +5,8 @@ Valida contratos requiere/garantiza en funciones.
 import pytest
 from conftest import compilar_texto
 
+pytestmark = pytest.mark.integration
+
 
 def test_requiere_simple_pasa():
     fuente = '''#lang: es

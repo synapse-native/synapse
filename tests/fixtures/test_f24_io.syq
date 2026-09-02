@@ -1,0 +1,11 @@
+#lang: es
+// Test de lib/io.syq — Fase 24
+// Verifica que el módulo IO compila y ejecuta correctamente
+
+importar lib.io
+
+funcion principal() -> nulo:
+    io.escribir_linea("Fase 24: lib/io.syq funciona")
+    io.escribir("Hola ")
+    io.escribir_linea("Syquex")
+    io.escribir_linea("测试完成")

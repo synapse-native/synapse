@@ -1,5 +1,62 @@
 #lang: es
 
+// FASE A (A3.0): capturar el payload lexico del token `pos` en el nodo `nodo`
+// (NodoAST.ptr_str/len_str + bits altos en parser_ptr_hi()). 64-bit-safe: lee
+// LexerBuffers.tokens (CadenaSegura con puntero real) como el fix &mut de
+// A2.3b — token_ptr_valor() trunca a 32 bits. Los buffers del lexer persisten
+// tras tokenizar (fuente + sbuf acumulativo), asi que el puntero es estable
+// hasta el final de la compilacion (el puente plano->tipado de A3 lo lee).
+funcion nodo_guardar_token(est: ParserEst, nodo: entero, pos: entero) -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _lb_g = (struct LexerBuffers*)lexer_buffers();")
+        asm("if (_lb_g && pos >= 0 && pos < _lb_g->ntks && nodo >= 0 && nodo < est->total_nodos) {")
+        asm("    CadenaSegura _v_g = ((struct TokenLex*)_lb_g->tokens)[pos].valor;")
+        asm("    uintptr_t _tp_g = (uintptr_t)_v_g.datos;")
+        asm("    est->nodos[nodo].ptr_str = (int)(_tp_g & 0xFFFFFFFFu);")
+        asm("    est->nodos[nodo].len_str = _v_g.longitud;")
+        asm("    int* _hi_g = (int*)parser_ptr_hi();")
+        asm("    if (_hi_g && nodo >= 0 && nodo < 65536) _hi_g[nodo] = (int)(_tp_g >> 32);")
+        asm("}")
+
+// FASE A (A3.1): capturar el SPAN contiguo de la fuente entre el token pos_ini y
+// el FINAL del token pos_fin en el slot de cadena `slot` del nodo. Paridad _P_*
+// que CONCATENA los tipos genericos token a token (parametro _pt / campo _pt /
+// retorno _rt en _parser.c): para `arc<NodoLista>` el span de la fuente es
+// exactamente "arc<NodoLista>". NOTA de paridad: con espacios dentro del generico
+// ('arc < NodoLista >') el span los incluiria (el codigo real no los usa).
+funcion nodo_guardar_span(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin: entero, slot: entero) -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _lb_s = (struct LexerBuffers*)lexer_buffers();")
+        asm("if (_lb_s && pos_ini >= 0 && pos_ini < _lb_s->ntks && pos_fin >= pos_ini && pos_fin < _lb_s->ntks && nodo >= 0 && nodo < est->total_nodos) {")
+        asm("    struct TokenLex* _t0_s = &((struct TokenLex*)_lb_s->tokens)[pos_ini];")
+        asm("    struct TokenLex* _t1_s = &((struct TokenLex*)_lb_s->tokens)[pos_fin];")
+        asm("    uintptr_t _p0_s = (uintptr_t)_t0_s->valor.datos;")
+        asm("    int _len_s = (int)(_t1_s->valor.datos - _t0_s->valor.datos) + _t1_s->valor.longitud;")
+        asm("    if (slot == 2) {")
+        asm("        int* _s2p = (int*)parser_str2_ptr(); int* _s2h = (int*)parser_str2_hi(); int* _s2l = (int*)parser_str2_len();")
+        asm("        if (_s2p && _s2h && _s2l) { _s2p[nodo] = (int)(_p0_s & 0xFFFFFFFFu); _s2h[nodo] = (int)(_p0_s >> 32); _s2l[nodo] = _len_s; }")
+        asm("    } else {")
+        asm("        est->nodos[nodo].ptr_str = (int)(_p0_s & 0xFFFFFFFFu); est->nodos[nodo].len_str = _len_s;")
+        asm("        int* _hi_s = (int*)parser_ptr_hi(); if (_hi_s) _hi_s[nodo] = (int)(_p0_s >> 32);")
+        asm("    }")
+        asm("}")
+
+// FASE A (A3.0): segundo slot de cadena por nodo (parser_str2_{ptr,hi,len}()).
+// Uso: NODO_FUNCION tipo_retorno, NODO_PARAMETRO tipo_param, NODO_LET tipo_param.
+funcion nodo_guardar_token2(est: ParserEst, nodo: entero, pos: entero) -> nulo:
+    inseguro:
+        asm("struct LexerBuffers* _lb_g2 = (struct LexerBuffers*)lexer_buffers();")
+        asm("if (_lb_g2 && pos >= 0 && pos < _lb_g2->ntks && nodo >= 0 && nodo < est->total_nodos) {")
+        asm("    CadenaSegura _v_g2 = ((struct TokenLex*)_lb_g2->tokens)[pos].valor;")
+        asm("    uintptr_t _tp_g2 = (uintptr_t)_v_g2.datos;")
+        asm("    int* _s2p = (int*)parser_str2_ptr(); int* _s2h = (int*)parser_str2_hi(); int* _s2l = (int*)parser_str2_len();")
+        asm("    if (_s2p && _s2h && _s2l && nodo >= 0 && nodo < 65536) {")
+        asm("        _s2p[nodo] = (int)(_tp_g2 & 0xFFFFFFFFu);")
+        asm("        _s2h[nodo] = (int)(_tp_g2 >> 32);")
+        asm("        _s2l[nodo] = _v_g2.longitud;")
+        asm("    }")
+        asm("}")
+
 // Results stored in these temp fields for caller to save
 funcion parsear_bloque_contrato(est: ParserEst) -> entero:
     r2 = 1
@@ -27,12 +84,55 @@ funcion parsear_bloque_contrato(est: ParserEst) -> entero:
                         est.contr_ultima_temp = expr
                     sino:
                         inseguro:
-                            asm("est.nodos[est.contr_ultima_temp].hermano = expr")
+                            asm("est->nodos[est->contr_ultima_temp].hermano = expr")
                         est.contr_ultima_temp = expr
                     est.contr_cuenta_temp = est.contr_cuenta_temp + 1
                 siguiente
         sino:
             r2 = 0
+    retornar 1
+
+// FASE A (A2.3b): consumir un tipo compuesto (base + genericos <T,E> + puntero *),
+// paridad S1 _parsear_tipo_parametro (compilador/parser_base.py L141-167). Usado en
+// campos de estructura (x: Lista<texto>, siguiente: arc<NodoLista>) y parametros
+// (a: entero*, b: Canal<entero>).
+// NOTA de paridad del fallback (sino): para CAMPOS de estructura, S1 (_parsear_def_
+// estructura) avanza CUALQUIER token no-especial como tipo y usa su lexema (incluye
+// 'y'/'o' = T_Y/T_O y 'canal'); para PARAMETROS, S1 (_esperar_identificador) es mas
+// estricto (rechaza numeros). La tolerancia unica se aplica a ambos por simplicidad:
+// solo afecta input malformado (ej: 'a: 5'), no codigo valido. No reutilizar en
+// parsear_tipo_retorno: el fallback no excluye T_DOSPUNTOS y romperia '-> :'.
+funcion parsear_tipo_compuesto(est: ParserEst, nodo: entero) -> entero:
+    // FASE A (A3.1): el tipo completo (base + <T,E> + *) se captura como SPAN
+    // contiguo en el slot secundario del nodo (paridad _P_* que concatena).
+    pos_ini = est.posicion
+    si token_es_nombre(token_mirar(est)) == 1:
+        token_avanzar(est)
+    sino:
+        si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DESINDENTAR y token_mirar(est) != T_FIN y token_mirar(est) != T_COMA y token_mirar(est) != T_PAREN_DER:
+            token_avanzar(est)
+    si token_mirar(est) == T_MENOR:
+        // R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+        // Manual 2 §8.2 ALGEBRAICO con argumentos): consumir con profundidad;
+        // solo el '>' de nivel 0 cierra la instanciacion.
+        token_avanzar(est)
+        profundidad = 0
+        t = token_mirar(est)
+        mientras t != T_MAYOR o profundidad > 0:
+            si t == T_MENOR:
+                profundidad = profundidad + 1
+            si t == T_MAYOR:
+                profundidad = profundidad - 1
+            si t == T_FIN:
+                romper
+            token_avanzar(est)
+            t = token_mirar(est)
+        token_esperar(est, T_MAYOR)
+    si token_mirar(est) == T_POR:
+        token_avanzar(est)
+    pos_fin = est.posicion - 1
+    si pos_fin >= pos_ini:
+        nodo_guardar_span(est, nodo, pos_ini, pos_fin, 2)
     retornar 1
 
 // Helper: Parse function parameters (Manual 2 §2.2)
@@ -42,37 +142,61 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     si token_mirar(est) != T_PAREN_DER:
         r = 1
         mientras r == 1:
-            si token_mirar(est) != T_IDENTIFICADOR:
+            // R26 (Manual 2 L59-60): `parametro ::= [ ">" ] IDENTIFICADOR ":" tipo`
+            // — el prefijo "->" marca transferencia de ownership (move). Paridad
+            // S1 parser_declarations.py L37-38 (es_transferencia). El flag viaja
+            // en valor_int del NODO_PARAMETRO (puente -> es_transferencia).
+            es_trans_p = 0
+            si token_mirar(est) == T_FLECHA:
+                token_avanzar(est)
+                es_trans_p = 1
+            si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
             linea_p = token_linea(est, est.posicion)
             col_p = token_columna(est, est.posicion)
-            ptr_n = token_ptr_valor(est, est.posicion)
-            len_n = token_len_valor(est, est.posicion)
+            pos_nombre = est.posicion
             token_avanzar(est)
             si token_esperar(est, T_DOSPUNTOS) == 0:
                 retornar -1
             // Manual 4 §4.2: tipos de referencia &T / &mut T
+            // FASE A (A2.3b): comparacion 64-bit-safe del lexema 'mut' via
+            // LexerBuffers (CadenaSegura con ptr real de 64 bits). Antes se usaba
+            // token_ptr_valor() que trunca el puntero a 32 bits -> segfault
+            // (0xC0000005) al dereferenciar (const char*)ptr_m en Windows x64.
             si token_mirar(est) == T_AMPERSAND:
                 token_avanzar(est)
                 si token_mirar(est) == T_IDENTIFICADOR:
-                    ptr_m = token_ptr_valor(est, est.posicion)
-                    len_m = token_len_valor(est, est.posicion)
                     inseguro:
-                        asm("if (len_m == 3 && ((const char*)ptr_m)[0]=='m' && ((const char*)ptr_m)[1]=='u' && ((const char*)ptr_m)[2]=='t') est.posicion++;")
-            si token_mirar(est) != T_IDENTIFICADOR:
+                        asm("struct LexerBuffers* _lb_m = (struct LexerBuffers*)lexer_buffers();")
+                        asm("if (_lb_m && est->posicion >= 0 && est->posicion < _lb_m->ntks) {")
+                        asm("    CadenaSegura _lv_m = ((struct TokenLex*)_lb_m->tokens)[est->posicion].valor;")
+                        asm("    if (_lv_m.longitud == 3 && _lv_m.datos && _lv_m.datos[0]=='m' && _lv_m.datos[1]=='u' && _lv_m.datos[2]=='t') est->posicion++;")
+                        asm("}")
+            si token_es_nombre(token_mirar(est)) == 0:
                 r = 0
                 romper
-            token_avanzar(est)
+            // FASE A (A2.3b): consumir el tipo del parametro (base + <T,E> + *)
+            // via parsear_tipo_compuesto. Sustituye al fix A2.3 (token_avanzar del
+            // tipo base, BUG 6) y al bucle generico de A2.2; paridad S1 completa.
+            // FASE A (A3.0): se captura el primer token del tipo ANTES de consumirlo
+            // (segundo payload: Parametro.tipo_param), y el nombre via
+            // nodo_guardar_token 64-bit-safe (antes token_ptr_valor truncaba a 32 bits).
+            // FASE A (A3.1): el nodo se crea ANTES de consumir el tipo para que
+            // parsear_tipo_compuesto capture el span en su slot secundario.
             nodo_p = parser_nuevo_nodo(est, NODO_PARAMETRO, linea_p, col_p)
-            inseguro:
-                asm("est.nodos[nodo_p].ptr_str = ptr_n")
-                asm("est.nodos[nodo_p].len_str = len_n")
+            // R26: flag de transferencia de ownership (->) en valor_int — el
+            // puente lo lee como Parametro.es_transferencia (paridad S1).
+            si es_trans_p == 1:
+                inseguro:
+                    asm("est->nodos[nodo_p].valor_int = 1")
+            nodo_guardar_token(est, nodo_p, pos_nombre)
+            parsear_tipo_compuesto(est, nodo_p)
             si primero == 0:
                 primero = nodo_p
             sino:
                 inseguro:
-                    asm("est.nodos[ultimo].hermano = nodo_p")
+                    asm("est->nodos[ultimo].hermano = nodo_p")
             ultimo = nodo_p
             si token_mirar(est) == T_COMA:
                 token_avanzar(est)
@@ -82,14 +206,50 @@ funcion parsear_parametros(est: ParserEst) -> entero:
     retornar primero
 
 // Helper: Parse return type
-funcion parsear_tipo_retorno(est: ParserEst) -> entero:
-    si token_mirar(est) == T_IDENTIFICADOR:
+// AUDITORIA FASE A (A2.2): soportar tipos genericos en retorno -> arc<T>, -> Resultado<T,E>
+// (Manual 2 §2 L144-153, §4.2). Se consumen identificador + posible < T1, T2 >.
+funcion parsear_tipo_retorno(est: ParserEst, nodo_func: entero) -> entero:
+    // FASE A (A3.1): el tipo de retorno completo (base + <T,E>) se captura como
+    // span en el slot secundario del nodo funcion (DefinicionFuncion.tipo_retorno,
+    // paridad _P_* _rt concatenado).
+    pos_ini = est.posicion
+    si token_es_nombre(token_mirar(est)) == 1:
         token_avanzar(est)
+        // AUDITORIA FASE A (A2.2): genericos <T, E> en tipo de retorno
+        // FASE A (A2.3): avance de seguridad — si el token no es nombre ni coma
+        // (ej: '<' malformado), ninguna rama avanzaba -> bucle infinito (misma
+        // clase de bug que A2.3 arregla en otros puntos del parser).
+        si token_mirar(est) == T_MENOR:
+            // R13: tipos ADT anidados en el retorno (`-> Resultado<Resultado<entero,texto>,texto>`,
+            // Manual 2 §8.2): consumir con profundidad; solo el '>' de nivel 0 cierra.
+            token_avanzar(est)
+            prof13 = 0
+            t13 = token_mirar(est)
+            mientras t13 != T_MAYOR o prof13 > 0:
+                si t13 == T_MENOR:
+                    prof13 = prof13 + 1
+                si t13 == T_MAYOR:
+                    prof13 = prof13 - 1
+                si t13 == T_FIN:
+                    romper
+                token_avanzar(est)
+                t13 = token_mirar(est)
+            token_esperar(est, T_MAYOR)
+    pos_fin = est.posicion - 1
+    si pos_fin >= pos_ini:
+        nodo_guardar_span(est, nodo_func, pos_ini, pos_fin, 2)
     si token_esperar(est, T_DOSPUNTOS) == 0:
         retornar 0
     retornar 1
 
 // Helper: Parse requiere/garantiza contracts
+// FASE A (A4.5): CORRECCION — parsear_contratos NO debe consumir INDENTAR.
+// El INDENTAR se consume en parsear_funcion (paridad con el parser Python
+// compilador/parser_declarations.py L79-80). parsear_contratos asume que ya
+// estamos DENTRO del bloque (tras INDENTAR) y busca T_REQUIERE/T_GARANTIZA
+// al inicio de linea. Al terminar, el cursor queda posicionado en el primer
+// token DESPUES de los contratos (ya sea DESINDENTAR o primera sentencia
+// del cuerpo). Paridad con _P_bloque y parser Python.
 funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
     r = 1
     mientras r == 1:
@@ -97,89 +257,88 @@ funcion parsear_contratos(est: ParserEst, nodo_func: entero) -> entero:
         si t == T_NUEVALINEA:
             token_avanzar(est)
             siguiente
-        si t == T_INDENTAR:
+        si t == T_REQUIERE:
             token_avanzar(est)
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_REQUIERE:
-                    token_avanzar(est)
-                    si token_esperar(est, T_DOSPUNTOS) == 0:
-                        retornar 0
-                    // Initialize state for requiere
-                    est.contr_primera_temp = 0
-                    est.contr_ultima_temp = 0
-                    est.contr_cuenta_temp = 0
-                    parsear_bloque_contrato(est)
-                    // Save requiere results
-                    est.contr_primera_requiere = est.contr_primera_temp
-                    est.contr_ultima_requiere = est.contr_ultima_temp
-                    est.contr_cuenta_requiere = est.contr_cuenta_temp
-                si t == T_GARANTIZA:
-                    token_avanzar(est)
-                    si token_esperar(est, T_DOSPUNTOS) == 0:
-                        retornar 0
-                    // Initialize state for garantiza
-                    est.contr_primera_temp = 0
-                    est.contr_ultima_temp = 0
-                    est.contr_cuenta_temp = 0
-                    parsear_bloque_contrato(est)
-                    // Save garantiza results
-                    est.contr_primera_garantiza = est.contr_primera_temp
-                    est.contr_ultima_garantiza = est.contr_ultima_temp
-                    est.contr_cuenta_garantiza = est.contr_cuenta_temp
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                r = 0
+            si token_esperar(est, T_DOSPUNTOS) == 0:
+                retornar 0
+            // Initialize state for requiere
+            est.contr_primera_temp = 0
+            est.contr_ultima_temp = 0
+            est.contr_cuenta_temp = 0
+            parsear_bloque_contrato(est)
+            // Save requiere results
+            est.contr_primera_requiere = est.contr_primera_temp
+            est.contr_ultima_requiere = est.contr_ultima_temp
+            est.contr_cuenta_requiere = est.contr_cuenta_temp
+            siguiente
+        si t == T_GARANTIZA:
+            token_avanzar(est)
+            si token_esperar(est, T_DOSPUNTOS) == 0:
+                retornar 0
+            // Initialize state for garantiza
+            est.contr_primera_temp = 0
+            est.contr_ultima_temp = 0
+            est.contr_cuenta_temp = 0
+            parsear_bloque_contrato(est)
+            // Save garantiza results
+            est.contr_primera_garantiza = est.contr_primera_temp
+            est.contr_ultima_garantiza = est.contr_ultima_temp
+            est.contr_cuenta_garantiza = est.contr_cuenta_temp
+            siguiente
+        si t == T_DESINDENTAR:
+            r = 0
+            romper
         sino:
             r = 0
     // Store contract descriptor node if any contracts
     si est.contr_primera_requiere != 0 o est.contr_primera_garantiza != 0:
         contrato = parser_nuevo_nodo(est, NODO_CONTRATO, est.contr_linea, est.contr_col)
         inseguro:
-            asm("est.nodos[contrato].hijo_izq = est.contr_primera_requiere")
-            asm("est.nodos[contrato].hijo_der = est.contr_primera_garantiza")
-            asm("est.nodos[contrato].valor_int = est.contr_cuenta_requiere")
-            asm("est.nodos[nodo_func].ptr_extra = contrato")
-    retornar 1
-
-// Helper: Parse return type
-funcion parsear_tipo_retorno(est: ParserEst) -> entero:
-    si token_mirar(est) == T_IDENTIFICADOR:
-        token_avanzar(est)
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
+            asm("est->nodos[contrato].hijo_izq = est->contr_primera_requiere")
+            asm("est->nodos[contrato].hijo_der = est->contr_primera_garantiza")
+            asm("est->nodos[contrato].valor_int = est->contr_cuenta_requiere")
+            asm("est->nodos[nodo_func].ptr_extra = contrato")
     retornar 1
 
 // Helper: Parse function body (returns first stmt index, 0 if none)
+// FASE A (A4.5): El INDENTAR se consume en parsear_funcion ANTES de
+// parsear_contratos (paridad Python parser L79-80). Esta funcion asume que ya
+// estamos DENTRO del bloque (INDENTAR ya consumido) y parsea sentencias
+// hasta DESINDENTAR.
 funcion parsear_cuerpo_funcion(est: ParserEst, nodo_func: entero) -> entero:
     primero = 0
     ultimo = 0
     r = 1
+    // Si estamos al inicio del bloque (sin contratos), consumir INDENTAR.
+    // Si parsear_contratos ya lo consumio (habia contratos), saltar este paso.
     si token_mirar(est) == T_INDENTAR:
         token_avanzar(est)
-        mientras r == 1:
-            t = token_mirar(est)
-            si t == T_NUEVALINEA:
-                token_avanzar(est)
-                siguiente
-            si t == T_DESINDENTAR:
-                token_avanzar(est)
-                r = 0
-                romper
-            si t == T_FIN:
-                r = 0
-                romper
-            stmt = parsear_sentencia(est)
-            si stmt != 0:
-                si primero == 0:
-                    primero = stmt
-                sino:
-                    inseguro:
-                        asm("est.nodos[ultimo].hermano = stmt")
-                ultimo = stmt
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
             siguiente
+        si t == T_DESINDENTAR:
+            token_avanzar(est)
+            r = 0
+            romper
+        si t == T_FIN:
+            r = 0
+            romper
+        stmt = parsear_sentencia(est)
+        si stmt != 0:
+            si primero == 0:
+                primero = stmt
+            sino:
+                inseguro:
+                    asm("est->nodos[ultimo].hermano = stmt")
+            ultimo = stmt
+        sino:
+            // Anti-cuelgue (paridad parsear_nativo / A3.1): si el token no
+            // produce sentencia, avanzar (repro: T_INDENTAR huerfano tras un
+            // tipo de retorno invalido A<B<C>,D> -> bucle infinito del cuerpo).
+            token_avanzar(est)
+        siguiente
     retornar primero
 
 // Main function parser - refactored
@@ -194,8 +353,17 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         retornar 0
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
+    pos_nombre = est.posicion
     token_avanzar(est)
     nodo_func = parser_nuevo_nodo(est, NODO_FUNCION, linea, col)
+    // Resetear estado de contratos entre funciones (paridad S1 parser_declarations.py L94-95)
+    // Sin esto, una funcion sin requiere/garantiza hereda los de la anterior.
+    est.contr_primera_requiere = 0
+    est.contr_cuenta_requiere = 0
+    est.contr_primera_garantiza = 0
+    est.contr_cuenta_garantiza = 0
+    // FASE A (A3.0): payload del nombre de la funcion (DefinicionFuncion.nombre)
+    nodo_guardar_token(est, nodo_func, pos_nombre)
     si token_esperar(est, T_PAREN_IZQ) == 0:
         retornar 0
     // parametros (Manual 2 §2.2)
@@ -204,518 +372,67 @@ funcion parsear_funcion(est: ParserEst) -> entero:
         retornar 0
     si primer_param > 0:
         inseguro:
-            asm("est.nodos[nodo_func].hijo_der = primer_param")
+            asm("est->nodos[nodo_func].hijo_der = primer_param")
     si token_esperar(est, T_PAREN_DER) == 0:
         retornar 0
     si token_esperar(est, T_FLECHA) == 0:
         retornar 0
-    // tipo retorno
-    parsear_tipo_retorno(est)
+    // tipo retorno — FASE A (A3.1): span completo (DefinicionFuncion.tipo_retorno)
+    // F2-2.4c (anti-cuelgue R2): si el tipo no termina en ':' (p.ej. tipos
+    // anidados A<B<C>,D> que el parser no soporta), el fallo se ignoraba y el
+    // INDENTAR quedaba sin consumir -> bucle infinito del cuerpo en T_INDENTAR.
+    // Reportar error limpio (paridad S1, que da error de sintaxis).
+    si parsear_tipo_retorno(est, nodo_func) == 0:
+        parser_error(est, "Se esperaba ':' tras el tipo de retorno", linea, col)
+        retornar 0
+    // FASE A (A4.5): consumir INDENTAR ANTES de parsear_contratos, paridad con
+    // Python parser (compilador/parser_declarations.py L79-80). Si hay NL antes
+    // de INDENTAR, saltarlas (caso firma en linea y bloque en siguiente).
+    si token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+        mientras token_mirar(est) == T_NUEVALINEA:
+            token_avanzar(est)
+    // Soporte para funcion f() -> T: inseguro: (nivel de funcion)
+    // Si hay inseguro: antes de INDENTAR/contratos, parsear el cuerpo inseguro.
+    si token_mirar(est) == T_INSEGURO:
+        // parsear_inseguro consume T_INSEGURO, T_DOSPUNTOS, T_NUEVALINEA(s), T_INDENTAR
+        // y parsea sentencias hasta T_DESINDENTAR, devolviendo NODO_INSEGURO
+        nodo_inseguro = parsear_inseguro(est)
+        si nodo_inseguro > 0:
+            inseguro:
+                asm("est->nodos[nodo_func].hijo_izq = nodo_inseguro")
+        retornar nodo_func
+    si token_mirar(est) == T_INDENTAR:
+        token_avanzar(est)
     // requiere: / garantiza: blocks (Manual 2 §2.5)
     parsear_contratos(est, nodo_func)
     // cuerpo (Manual 2 §2.2 Bloque)
     primer_cuerpo = parsear_cuerpo_funcion(est, nodo_func)
     si primer_cuerpo > 0:
         inseguro:
-            asm("est.nodos[nodo_func].hijo_izq = primer_cuerpo")
+            asm("est->nodos[nodo_func].hijo_izq = primer_cuerpo")
     retornar nodo_func
 
 // ---- Other statement parsers ----
-funcion parsear_si(est: ParserEst) -> entero:
-    stmt = 0
-    r = 1
-    si token_esperar(est, T_IF) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_SI, linea, col)
-    cond = parsear_expresion(est)
+
+// R29 (regla 13, modularizacion): sentencias/declaraciones/canales extraidos a
+// parser_sentencias.syn / parser_declaraciones.syn / parser_canales.syn
+// (diagnostico FASE A 2026-08-07). Este modulo conserva los helpers de nodos,
+// tipos/parametros/contratos, cuerpo y firma de funcion, y el orquestador
+// parsear()/parsear_nativo. Mecanico: texto identico; emisor S1 ordena
+// alfabeticamente (Manual 8 §8.2) -> C byte-identico verificado por bootstrap.
+// ------------------------------------------------------------
+funcion parsear_nativo(est: ParserEst) -> entero:
     inseguro:
-        asm("est.nodos[nodo].hijo_izq = cond")
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    primero_si = 0
-    ultimo_si = 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                stmt = parsear_sentencia(est)
-                si stmt != 0:
-                    si primero_si == 0:
-                        primero_si = stmt
-                    sino:
-                        inseguro:
-                            asm("est.nodos[ultimo_si].hermano = stmt")
-                    ultimo_si = stmt
-                siguiente
-    si primero_si > 0:
-        inseguro:
-            asm("est.nodos[nodo].hijo_der = primero_si")
-    r = 1
-    si token_mirar(est) == T_ELSE:
-        token_avanzar(est)
-        si token_esperar(est, T_DOSPUNTOS) == 0:
-            retornar 0
-        si token_mirar(est) == T_NUEVALINEA:
-            token_avanzar(est)
-            si token_mirar(est) == T_INDENTAR:
-                token_avanzar(est)
-                mientras r == 1:
-                    t = token_mirar(est)
-                    si t == T_NUEVALINEA:
-                        token_avanzar(est)
-                        siguiente
-                    si t == T_DESINDENTAR:
-                        token_avanzar(est)
-                        r = 0
-                        romper
-                    si t == T_FIN:
-                        r = 0
-                        romper
-                    stmt = parsear_sentencia(est)
-                    si stmt != 0:
-                        inseguro:
-                            asm("est.nodos[ultimo_si].hermano = stmt")
-                        ultimo_si = stmt
-                    siguiente
-    retornar nodo
-
-funcion parsear_mientras(est: ParserEst) -> entero:
-    si token_esperar(est, T_MIENTRAS) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_MIENTRAS, linea, col)
-    cond = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_izq = cond")
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    primero = 0
-    ultimo = 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            r = 1
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                stmt = parsear_sentencia(est)
-                si stmt != 0:
-                    si primero == 0:
-                        primero = stmt
-                    sino:
-                        inseguro:
-                            asm("est.nodos[ultimo].hermano = stmt")
-                    ultimo = stmt
-                siguiente
-    si primero > 0:
-        inseguro:
-            asm("est.nodos[nodo].hijo_der = primero")
-    retornar nodo
-
-funcion parsear_para(est: ParserEst) -> entero:
-    // Synapse-style: para Identificador = Expresion mientras Expresion: (Manual 2 §2.2)
-    // Ej: para i = 0 mientras i < 10:
-    si token_esperar(est, T_PARA) == 0:
-        retornar 0
-    si token_mirar(est) != T_IDENTIFICADOR:
-        parser_error(est, "Se esperaba variable de bucle para", token_linea(est, est.posicion), token_columna(est, est.posicion))
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_PARA, linea, col)
-    ptr_var = token_ptr_valor(est, est.posicion)
-    len_var = token_len_valor(est, est.posicion)
-    token_avanzar(est)
-    si token_esperar(est, T_ASIGNAR) == 0:
-        retornar 0
-    inicializacion = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_izq = inicializacion")
-        asm("est.nodos[nodo].ptr_str = ptr_var")
-        asm("est.nodos[nodo].len_str = len_var")
-    si token_esperar(est, T_MIENTRAS) == 0:
-        retornar 0
-    condicion = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_der = condicion")
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    primero = 0
-    ultimo = 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            r = 1
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                stmt = parsear_sentencia(est)
-                si stmt != 0:
-                    si primero == 0:
-                        primero = stmt
-                    sino:
-                        inseguro:
-                            asm("est.nodos[ultimo].hermano = stmt")
-                    ultimo = stmt
-                siguiente
-    si primero > 0:
-        inseguro:
-            asm("est.nodos[nodo].ptr_extra = primero")
-    retornar nodo
-
-funcion parsear_retornar(est: ParserEst) -> entero:
-    si token_esperar(est, T_RETORNAR) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_RETORNAR, linea, col)
-    t = token_mirar(est)
-    si t != T_NUEVALINEA:
-        si t != T_DESINDENTAR:
-            si t != T_FIN:
-                expr = parsear_expresion(est)
-                inseguro:
-                    asm("est.nodos[nodo].hijo_izq = expr")
-    retornar nodo
-
-funcion parsear_lanzar(est: ParserEst) -> entero:
-    si token_esperar(est, T_LANZAR) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_LANZAR, linea, col)
-    expr = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_izq = expr")
-    retornar nodo
-
-funcion parsear_escuchar(est: ParserEst) -> entero:
-    si token_esperar(est, T_ESCUCHAR) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_ESCUCHAR, linea, col)
-    parsear_expresion(est)
-    si token_esperar(est, T_FLECHA) == 0:
-        retornar 0
-    expr = parsear_expresion(est)
-    retornar nodo
-
-funcion parsear_asignacion(est: ParserEst) -> entero:
-    t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
-    si token_esperar(est, T_ASIGNAR) == 0:
-        retornar 0
-    nodo = parser_nuevo_nodo(est, NODO_ASIGNACION, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR y token_tipo(est, est.posicion + 1) == T_FLECHA:
-        expr = parsear_recibir_canal(est)
-    sino:
-        expr = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_der = expr")
-    retornar nodo
-
-funcion parsear_estructura_def(est: ParserEst) -> entero:
-    si token_esperar(est, T_ESTRUCTURA) == 0:
-        retornar 0
-    t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
-    nodo = parser_nuevo_nodo(est, NODO_ESTRUCTURA, linea, col)
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            r = 1
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                si t == T_IDENTIFICADOR:
-                    token_avanzar(est)
-                    si token_esperar(est, T_DOSPUNTOS) == 0:
-                        retornar 0
-                    si token_mirar(est) == T_IDENTIFICADOR:
-                        token_avanzar(est)
-                siguiente
-            retornar nodo
-    retornar nodo
-
-funcion parsear_constante(est: ParserEst) -> entero:
-    si token_esperar(est, T_CONSTANTE) == 0:
-        retornar 0
-    t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
-    nodo = parser_nuevo_nodo(est, NODO_CONSTANTE, linea, col)
-    si token_mirar(est) == T_DOSPUNTOS:
-        token_avanzar(est)
-        si token_mirar(est) == T_IDENTIFICADOR:
-            token_avanzar(est)
-    si token_esperar(est, T_ASIGNAR) == 0:
-        retornar 0
-    expr = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_izq = expr")
-    retornar nodo
-
-funcion parsear_asm(est: ParserEst) -> entero:
-    si token_esperar(est, T_ASM) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_ASM, linea, col)
-    si token_esperar(est, T_PAREN_IZQ) == 0:
-        retornar 0
-    si token_mirar(est) == T_CADENA:
-        inseguro:
-            asm("est.nodos[nodo].ptr_str = est.tokens[est.posicion].ptr_valor")
-            asm("est.nodos[nodo].len_str = est.tokens[est.posicion].len_valor")
-        token_avanzar(est)
-    si token_esperar(est, T_PAREN_DER) == 0:
-        retornar 0
-    retornar nodo
-
-funcion parsear_inseguro(est: ParserEst) -> entero:
-    si token_esperar(est, T_INSEGURO) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_INSEGURO, linea, col)
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            r = 1
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                stmt = parsear_sentencia(est)
-                siguiente
-    retornar nodo
-
-funcion parsear_importar_c(est: ParserEst) -> entero:
-    si token_esperar(est, T_IMPORTAR_C) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_IMPORTAR_C, linea, col)
-    si token_mirar(est) == T_CADENA:
-        token_avanzar(est)
-    retornar nodo
-
-funcion parsear_externo(est: ParserEst) -> entero:
-    si token_esperar(est, T_EXTERNO) == 0:
-        retornar 0
-    si token_esperar(est, T_FUNCION) == 0:
-        retornar 0
-    t = token_mirar(est)
-    si t != T_IDENTIFICADOR:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    token_avanzar(est)
-    nodo = parser_nuevo_nodo(est, NODO_EXTERNO, linea, col)
-    si token_esperar(est, T_PAREN_IZQ) == 0:
-        retornar 0
-    r = 1
-    mientras r == 1:
-        t = token_mirar(est)
-        si t == T_PAREN_DER:
-            r = 0
-            romper
-        si t == T_IDENTIFICADOR:
-            token_avanzar(est)
-            si token_esperar(est, T_DOSPUNTOS) == 0:
-                retornar 0
-            si token_mirar(est) == T_IDENTIFICADOR:
-                token_avanzar(est)
-            si token_mirar(est) == T_POR:
-                token_avanzar(est)
-            si token_mirar(est) == T_COMA:
-                token_avanzar(est)
-                siguiente
-    si token_esperar(est, T_PAREN_DER) == 0:
-        retornar 0
-    si token_esperar(est, T_FLECHA) == 0:
-        retornar 0
-    si token_mirar(est) == T_IDENTIFICADOR:
-        token_avanzar(est)
-    retornar nodo
-
-funcion parsear_coincidir(est: ParserEst) -> entero:
-    si token_esperar(est, T_COINCIDIR) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_COINCIDIR, linea, col)
-    expr = parsear_expresion(est)
-    inseguro:
-        asm("est.nodos[nodo].hijo_izq = expr")
-    si token_esperar(est, T_DOSPUNTOS) == 0:
-        retornar 0
-    si token_mirar(est) == T_NUEVALINEA:
-        token_avanzar(est)
-        si token_mirar(est) == T_INDENTAR:
-            token_avanzar(est)
-            r = 1
-            mientras r == 1:
-                t = token_mirar(est)
-                si t == T_NUEVALINEA:
-                    token_avanzar(est)
-                    siguiente
-                si t == T_DESINDENTAR:
-                    token_avanzar(est)
-                    r = 0
-                    romper
-                si t == T_FIN:
-                    r = 0
-                    romper
-                si t == T_IDENTIFICADOR:
-                    linea_c = token_linea(est, est.posicion)
-                    col_c = token_columna(est, est.posicion)
-                    token_avanzar(est)
-                    nodo_caso = parser_nuevo_nodo(est, NODO_CASO, linea_c, col_c)
-                    si token_mirar(est) == T_PAREN_IZQ:
-                        token_avanzar(est)
-                        si token_mirar(est) == T_IDENTIFICADOR:
-                            token_avanzar(est)
-                        si token_esperar(est, T_PAREN_DER) == 0:
-                            retornar 0
-                    si token_esperar(est, T_FLECHA_DER) == 0:
-                        retornar 0
-                    r2 = 1
-                    mientras r2 == 1:
-                        t = token_mirar(est)
-                        si t == T_NUEVALINEA:
-                            r2 = 0
-                            romper
-                        si t == T_DESINDENTAR:
-                            r2 = 0
-                            romper
-                        si t == T_FIN:
-                            r2 = 0
-                            romper
-                        stmt = parsear_sentencia(est)
-                        siguiente
-                siguiente
-    retornar nodo
-
-funcion parsear_enviar_canal(est: ParserEst) -> entero:
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_ENVIAR_CANAL, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR:
-        token_avanzar(est)
-    si token_esperar(est, T_FLECHA_IZQ) == 0:
-        retornar 0
-    expr = parsear_expresion(est)
-    retornar nodo
-
-funcion parsear_crear_canal(est: ParserEst) -> entero:
-    si token_esperar(est, T_CANAL) == 0:
-        retornar 0
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_CANAL_CREAR, linea, col)
-    si token_esperar(est, T_PAREN_IZQ) == 0:
-        retornar 0
-    si token_mirar(est) == T_IDENTIFICADOR:
-        token_avanzar(est)
-    si token_mirar(est) == T_COMA:
-        token_avanzar(est)
-        expr = parsear_expresion(est)
-        inseguro:
-            asm("est.nodos[nodo].hijo_izq = expr")
-    si token_esperar(est, T_PAREN_DER) == 0:
-        retornar 0
-    retornar nodo
-
-funcion parsear_recibir_canal(est: ParserEst) -> entero:
-    linea = token_linea(est, est.posicion)
-    col = token_columna(est, est.posicion)
-    nodo = parser_nuevo_nodo(est, NODO_RECIBIR_CANAL, linea, col)
-    si token_mirar(est) == T_IDENTIFICADOR:
-        token_avanzar(est)
-    si token_esperar(est, T_FLECHA) == 0:
-        retornar 0
-    retornar nodo
-
-// ---- Main parse function ----
-funcion parsear(tokens: TokenExt, total: entero) -> entero:
-    est = ParserEst()
-    est.tokens = tokens
-    est.total_tokens = total
+        asm("est->tokens = (struct TokenExt*)lexer_obtener_tokens()")
+        asm("est->total_tokens = lexer_obtener_total()")
+        asm("est->nodos = (struct NodoAST*)parser_nodos()")
     est.posicion = 0
     est.total_nodos = 0
     est.hay_error = falso
     est.error_mensaje = ""
+    inseguro:
+        asm("*((int*)parser_meta()) = 0")
 
     // Program node
     prog = parser_nuevo_nodo(est, NODO_PROGRAMA, 0, 0)
@@ -733,11 +450,11 @@ funcion parsear(tokens: TokenExt, total: entero) -> entero:
         si stmt != 0:
             si ultimo_stmt == 0:
                 inseguro:
-                    asm("est.nodos[prog].hijo_izq = stmt")
+                    asm("est->nodos[prog].hijo_izq = stmt")
                 ultimo_stmt = stmt
             sino:
                 inseguro:
-                    asm("est.nodos[ultimo_stmt].hermano = stmt")
+                    asm("est->nodos[ultimo_stmt].hermano = stmt")
                 ultimo_stmt = stmt
         sino:
             token_avanzar(est)
@@ -745,4 +462,39 @@ funcion parsear(tokens: TokenExt, total: entero) -> entero:
     si est.hay_error == verdadero:
         retornar -1
 
+    inseguro:
+        asm("*((int*)parser_meta()) = est->total_nodos")
+
     retornar prog
+
+
+// ---------------------------------------------------------------------
+// parsear() canonico (A3.2/A4): STUB reemplazado SIEMPRE por el hook ME-B7 del
+// generador (nucleo/generator.syn), que emite la firma canonica
+// 'struct Programa parsear(CadenaSegura fuente)' que consume principal.syn
+// (L53) y lsp.syn (L193):
+//   A4: el frontend nativo es el UNICO frontend — gen_emitir_frontend_nativo
+//     emite el wrapper nativo
+//     tokenizar (lexer.syn) -> parsear_nativo() -> puente_construir_programa()
+//     (puente_ast.syn, A3.1). El flag de rollback _G_usar_nativo_frontend y el
+//     espejo embebido frontend_p.syn (_P_*) se retiraron en A4.
+// Este cuerpo nunca se emite en el C generado (el hook lo descarta); existe solo
+// para que el AST del unity build contenga una definicion 'parsear' que el hook
+// pueda interceptar.
+// Manual 2 S2 (EBNF: funcion/retorno) / Manual 3 S3.3 (el pipeline runtime
+// consume struct Programa) / Manual 9 S9.7 (determinismo bootstrap, diff 0).
+funcion parsear() -> entero:
+    // FASE A (A4.5, fix harness): este STUB era `retornar -1` — el harness
+    // native_parser_paridad/native_puente_paridad renombra `parsear()` a
+    // `_nat_parsear()` y la llama como entrada real del parser (el hook ME-B7
+    // que emite el wrapper nativo solo existe en el unity build de principal.syn).
+    // El rename a parsear_nativo(est) del tramo A3.2 dejo el stub muerto y los
+    // harnesses rotos (PARSE_ERROR en todo input). Ahora el stub DELEGA en
+    // parsear_nativo (misma pipeline que el wrapper nativo de gen_emitir_
+    // frontend_nativo: tokenizar -> parsear_nativo(&_pe) -> puente). En el
+    // unity build el hook ME-B7 sigue interceptando por nombre (el cuerpo del
+    // stub nunca se emite).
+    inseguro:
+        asm("struct ParserEst _pe = {0};")
+        asm("return parsear_nativo(&_pe);")
+    retornar -1

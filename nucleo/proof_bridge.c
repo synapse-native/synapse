@@ -208,7 +208,13 @@ const char* pb_traducir_a_lean(const char* expr_synapse) {
     int i = 0;
 
     while (*p && i < PB_MAX_EXPR_LEN - 1) {
-        if (strncmp(p, "&&", 2) == 0) {
+        if (strncmp(p, ">=", 2) == 0) {
+            d += snprintf(d, (size_t)(buffer + PB_MAX_EXPR_LEN - d), "≥");
+            p += 2; i += 3;
+        } else if (strncmp(p, "<=", 2) == 0) {
+            d += snprintf(d, (size_t)(buffer + PB_MAX_EXPR_LEN - d), "≤");
+            p += 2; i += 3;
+        } else if (strncmp(p, "&&", 2) == 0) {
             d += snprintf(d, (size_t)(buffer + PB_MAX_EXPR_LEN - d), " ∧ ");
             p += 2; i += 3;
         } else if (strncmp(p, "||", 2) == 0) {

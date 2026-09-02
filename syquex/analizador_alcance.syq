@@ -1,0 +1,118 @@
+#lang: es
+// ============================================================
+// syquex/analizador_alcance.syq — Analizador de alcance y ciclos
+// (FASE 23 ME-4, Manual 3 §5 + Manual 4 §4.4/§5)
+//
+// Programa SyQuex que implementa el análisis de alcance del modelo
+// de memoria híbrido (arenas + RC + débiles). Se compila con el
+// frontend SyQuex (syq_frontend.exe) y se enlaza con el runtime C
+// para acceder al SemNodo[].
+//
+// API pública:
+//   analizar_ciclos(p: entero)        → entero (ciclos detectados)
+//   analizar_funcion(f: entero)       → entero (rc_vars vivas al final)
+//   analizar_programa(p: entero)      → entero (ciclos detectados)
+// ============================================================
+
+// --- Externs: acceso al SemNodo[] (definidos en runtime C) ---
+// tr_tipo(n): tipo_nodo del nodo n
+// tr_hizq(n): indice hijo_izq
+// tr_hder(n): indice hijo_der
+// tr_herm(n): indice hermano
+// tr_vi(n): valor_int (flags: bit0=rc, bit1=arc, bit2=debil)
+externo funcion tr_tipo(n: entero) -> entero
+externo funcion tr_hizq(n: entero) -> entero
+externo funcion tr_hder(n: entero) -> entero
+externo funcion tr_herm(n: entero) -> entero
+externo funcion tr_vi(n: entero) -> entero
+
+// --- Estado del analizador (managed en C) ---
+externo funcion _a_reset_rc_vars() -> nulo
+externo funcion _a_analizar_bloque(n: entero) -> nulo
+externo funcion _a_get_rc_count() -> entero
+
+// --- Constantes de nodo (Manual 2 §7.2 / parser_constantes.syn) ---
+constante NODO_DECLARACION_TIPO = 51
+constante NODO_DECLARACION = 34
+constante NODO_LET = 48
+constante NODO_FUNCION = 2
+constante NODO_RETORNAR = 5
+constante NODO_PROPAGAR = 53
+constante NODO_LLAMADA = 14
+
+// ============================================================
+// 1. Deteccion de ciclos (Manual 4 §4.4)
+// ============================================================
+
+funcion tipo_es_rc(n: entero) -> entero:
+    r = tr_vi(n)
+    si r % 2 == 1:
+        retornar 1
+    retornar 0
+
+funcion tipo_es_arc(n: entero) -> entero:
+    r = tr_vi(n)
+    si r % 4 >= 2:
+        retornar 1
+    retornar 0
+
+funcion tipo_es_debil(n: entero) -> entero:
+    r = tr_vi(n)
+    si r % 8 >= 4:
+        retornar 1
+    retornar 0
+
+funcion analizar_ciclos(prog: entero) -> entero:
+    // Detecta ciclos potenciales entre estructuras con campos rc<T>.
+    // Un struct con rc<T> pero sin debil<T> es un ciclo potencial (§4.4).
+    ciclos = 0
+    d = tr_hizq(prog)
+    mientras d > 0:
+        t = tr_tipo(d)
+        si t == NODO_DECLARACION_TIPO:
+            rc_count = 0
+            debil_count = 0
+            m = tr_hizq(d)
+            mientras m > 0:
+                si tipo_es_rc(m) == 1:
+                    rc_count = rc_count + 1
+                sino:
+                    si tipo_es_debil(m) == 1:
+                        debil_count = debil_count + 1
+                m = tr_herm(m)
+            si rc_count > 0 y debil_count == 0:
+                ciclos = ciclos + 1
+        d = tr_herm(d)
+    retornar ciclos
+
+// ============================================================
+// 2. Analisis de lifetimes (Manual 4 §5.2-5.3)
+// ============================================================
+
+funcion analizar_funcion(f: entero) -> entero:
+    // Analiza una funcion: recorre su cuerpo identificando rc/arc vars,
+    // marca puntos de salida (retornar, NODO_PROPAGAR) para cleanup.
+    // Retorna rc_vars vivas al final.
+    _a_reset_rc_vars()
+    cuerpo = tr_hder(f)
+    _a_analizar_bloque(cuerpo)
+    retornar _a_get_rc_count()
+
+funcion analizar_programa(prog: entero) -> entero:
+    // Analisis completo (§4.4 + §5.2):
+    // 1. Detectar ciclos entre estructuras
+    // 2. Analizar cada funcion para cleanup blocks
+    // Retorna: ciclos detectados (0 = limpio).
+    ciclos = analizar_ciclos(prog)
+
+    d = tr_hizq(prog)
+    mientras d > 0:
+        t = tr_tipo(d)
+        si t == NODO_FUNCION:
+            rc_vivas = analizar_funcion(d)
+        d = tr_herm(d)
+
+    retornar ciclos
+
+funcion principal(prog: entero) -> entero:
+    retornar analizar_programa(prog)

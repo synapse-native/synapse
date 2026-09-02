@@ -1,64 +1,71 @@
-# Synapse/OpenSyn v5.1.1-industrial
+# Synapse/OpenSyn v8.1.0
 
 > **Lenguaje de sistemas nativo, compilado, auto-hospedado y verificado criptográficamente**
-> **Estado:** **CERTIFICADO PRODUCCIÓN** — 125/125 tests Python, bootstrap determinista, SBOM SPDX 2.3, firma Ed25519
-> **Auditoría:** Fase 0 a Fase 20 certificada punto por punto bajo estándares industriales
+> **Estado:** **FASE 30 COMPLETADA** — Instalación Unificada y Distribución Final
+> **Suite:** 667 tests Python PASS, bootstrap determinista, SBOM SPDX 2.3, firma Ed25519
+> **Instaladores:** Windows, Linux, macOS con verificación Ed25519
 
 ---
 
-## 🏆 Insignias
+## Insignias
 
 | Calidad | Estado |
 |---------|--------|
-| **Tests Python** | 125/125 PASS (unitarios + semántica) |
-| **Tests Integración** | 337/337 PASS |
-| **Tests Nativos C** | 1/1 PASS |
-| **GCC/Clang** | 0 errores, 0 warnings |
-| **Bootstrap** | Stage0→Stage1→Stage2→Stage3, **diff=0 bytes** |
+| **Tests Python** | 667/667 PASS (unitarios + semántica + integración) |
+| **Bootstrap** | Stage1→Stage2→Stage3, **diff=0 bytes** (Manual 9 §9.7) |
 | **Fuzzing** | 500+ entradas, **0 crashes** |
 | **Concurrencia** | 50 hilos, 13,004 msg/s, **0 deadlocks** |
 | **Determinismo** | SHA-256 idéntico en compilaciones repetidas |
 | **Firma Ed25519** | Verificada + detección de manipulación |
-| **SBOM SPDX 2.3** | 3,023 archivos escaneados |
-| **SLSA Level 3** | Attestación firmada |
-| **Runtime** | < 139 KB |
+| **SBOM SPDX 2.3** | Regenerado con v8.1.0 |
 | **Multiplataforma** | Windows (MinGW), Linux (gcc), macOS (clang/clang ARM) |
+| **Instaladores** | ✅ Windows (Inno Setup), Linux (Bash), macOS (.dmg) |
 
 ---
 
-## 📋 Documentación Maestra
+## Instalación Rápida
 
-| Documento | Descripción |
-|-----------|-------------|
-| [`MANUAL_1.md` — Arquitectura del Lenguaje](./docs/manuales/MANUAL_1.md) | Arquitectura del lenguaje, filosofía de diseño, hoja de ruta |
-| [`MANUAL_2.md` — Especificación Sintáctica](./docs/manuales/MANUAL_2.md) | Gramática EBNF, tipos, operadores, contratos |
-| [`MANUAL_3.md` — Arquitectura del Compilador](./docs/manuales/MANUAL_3.md) | Pipeline 5 etapas, AST, tabla de símbolos, motor ATP |
-| [`MANUAL_4.md` — Gestión de Memoria y Ownership](./docs/manuales/MANUAL_4.md) | Ownership, borrowing, lifetimes, pool allocator |
-| [`MANUAL_5.md` — Concurrencia y Comunicación](./docs/manuales/MANUAL_5.md) | Canales, hilos, sincronización, federated learning |
-| [`MANUAL_6.md` — Gestor de Paquetes Axon](./docs/manuales/MANUAL_6.md) | Axon, Ed25519, axon.lock, TAR |
-| [`MANUAL_7.md` — Herramientas de Desarrollo](./docs/manuales/MANUAL_7.md) | LSP nativo, VS Code extension, CLI |
-| [`MANUAL_8.md` — Backend y Generación de Código](./docs/manuales/MANUAL_8.md) | Generación C/LLVM/WASM, orden alfabético, PGO |
-| [`MANUAL_9.md` — Bootstrap, Pruebas y QA](./docs/manuales/MANUAL_9.md) | Bootstrap 3 etapas, CI/CD, sanitizadores, SBOM |
-| [`ROADMAP.md`](./ROADMAP.md) | Historial completo de desarrollo y fases F0–F20 |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
-| [`BENCHMARK_RESULTS.md`](./BENCHMARK_RESULTS.md) | Benchmark completo: JSON parsing, SIMD, canales, throughput |
-| [`DOCS/`](./docs/) | Especificaciones adicionales y guías de migración |
+### Windows
+```cmd
+# Descargar e instalar
+synapse-setup.exe
+```
+
+### Linux
+```bash
+# Instalación interactiva
+curl -fsSL https://raw.githubusercontent.com/anomalyco/opencode/main/instaladores/linux/install.sh | bash
+
+# O con opciones
+./install.sh --opensyn    # Solo OpenSyn
+./install.sh --ecosistema # Ecosistema completo
+```
+
+### macOS
+```bash
+# Crear instalador DMG
+./instaladores/macos/create_dmg.sh
+
+# Abrir DMG y arrastrar a Applications
+```
+
+**[Guía completa de instalación](./docs/guia_usuario_instaladores.md)**
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Requisitos
 
 - **GCC** (MinGW-w64 en Windows, gcc en Linux) o **Clang** (macOS)
-- **Python 3.10+** (solo para desarrollo, no para producción)
+- **Python 3.10+** (solo para desarrollo)
 
 ### 1. Compilar el runtime
 
 ```bash
 gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-gcc -c axon_rt.c -o axon_rt.o -lpthread -lm
-gcc -c tweetnacl.c -o tweetnacl.o
+gcc -c axon/axon_rt.c -o axon_rt.o -lpthread -lm
+gcc -c axon/tweetnacl.c -o tweetnacl.o
 ```
 
 ### 2. Escribir tu primer programa
@@ -89,9 +96,28 @@ synapse.exe axon fetch --online
 
 ---
 
-## ✨ Características Clave
+## Documentación
 
-### 🔐 Seguridad por Diseño
+| Documento | Descripción |
+|-----------|-------------|
+| [`MANUAL 1.md` — Arquitectura del Lenguaje](./docs/manuales/MANUAL%201.md) | Arquitectura del lenguaje, filosofía de diseño |
+| [`MANUAL 2.md` — Especificación Sintáctica](./docs/manuales/MANUAL%202.md) | Gramática EBNF, tipos, operadores |
+| [`MANUAL 3.md` — Arquitectura del Compilador](./docs/manuales/MANUAL%203.md) | Pipeline 5 etapas, AST, tabla de símbolos |
+| [`MANUAL 4.md` — Gestión de Memoria](./docs/manuales/MANUAL%204.md) | Ownership, borrowing, lifetimes |
+| [`MANUAL 5.md` — Concurrencia](./docs/manuales/MANUAL%205.md) | Canales, hilos, sincronización |
+| [`MANUAL 6.md` — Gestor de Paquetes Axon](./docs/manuales/MANUAL%206.md) | Axon, Ed25519, axon.lock |
+| [`MANUAL 7.md` — Herramientas de Desarrollo](./docs/manuales/MANUAL%207.md) | LSP nativo, VS Code extension |
+| [`MANUAL 8.md` — Backend y Generación de Código](./docs/manuales/MANUAL%208.md) | Generación C/LLVM/WASM |
+| [`MANUAL 9.md` — Bootstrap, Pruebas y QA](./docs/manuales/MANUAL%209.md) | Bootstrap 3 etapas, CI/CD |
+| [`ROADMAP.md`](./ROADMAP.md) | Roadmap de implementación F0–F30 |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Guía de contribución |
+| [`Guía de Instaladores`](./docs/guia_usuario_instaladores.md) | Guía completa de instalación |
+
+---
+
+## Características Clave
+
+### Seguridad por Diseño
 
 | Característica | Detalle |
 |---------------|---------|
@@ -102,7 +128,7 @@ synapse.exe axon fetch --online
 | **Contracts** | `requiere`/`garantiza` — aserciones en tiempo real |
 | **ATP** | Motor de verificación formal en modo `--safe` |
 
-### ⚡ Rendimiento
+### Rendimiento
 
 | Componente | Métrica |
 |-----------|---------|
@@ -113,27 +139,27 @@ synapse.exe axon fetch --online
 | Determinismo | **SHA-256 idéntico** en compilaciones repetidas |
 | Bootstrap | **diff 0 bytes** Stage 2 ↔ Stage 3 |
 
-### 🛠️ Herramientas
+### Herramientas
 
 | Herramienta | Descripción |
 |-------------|-------------|
 | **LSP Nativo** | Servidor JSON-RPC 2.0, binario nativo **sin Python** |
-| **VS Code Extension** | `vscode-synapse/` — auto-detect del binario LSP |
+| **VS Code Extension** | Auto-detect del binario LSP |
 | **IA Local (llama.cpp)** | Pipeline RAG + negociación dinámica n_ctx |
 | **Shutdown Hooks** | Liberación forzosa RAM/VRAM en señales del SO |
 
-### 🌐 Multiplataforma
+### Multiplataforma
 
 | Plataforma | Compilador | Estado |
 |-----------|-----------|--------|
-| Windows x64 | `gcc` (MinGW) | ✅ Probado + Instalador |
-| Linux x64 | `gcc` | ✅ Release matrix |
+| Windows x64 | `gcc` (MinGW) | ✅ Instalador disponible |
+| Linux x64 | `gcc` | ✅ Instalador disponible |
 | Linux ARM64 | `aarch64-linux-gnu-gcc` | ✅ Cross-compile |
-| macOS ARM (Apple Silicon) | `clang` | ✅ Release matrix |
+| macOS ARM (Apple Silicon) | `clang` | ✅ Instalador disponible |
 
 ---
 
-## 🔬 Suites de Validación
+## Suites de Validación
 
 ```bash
 # Tests unitarios y semántica
@@ -153,62 +179,59 @@ python scripts/run_native_tests.py
 
 # Suite completa release matrix
 python -m pytest tests/integration/test_release_matrix.py -v
+
+# Tests de instaladores
+python -m pytest tests/installers/ -v
 ```
 
 ---
 
-## 🏗️ Arquitectura del Repositorio
+## Arquitectura del Repositorio
 
 ```
 proyecto_synapse/
 ├── nucleo/                  # Compilador nativo en Synapse (.syn)
-│   ├── tokens.syn           # Definición de tokens
-│   ├── lexer.syn            # Tokenizador
-│   ├── parser.syn           # Parser recursivo descendente
-│   ├── analizador_semantico.syn  # Validación semántica (3 pasadas)
-│   ├── generator.syn        # Generador de código C/LLVM/WASM
-│   ├── principal.syn        # Pipeline nativa (orquestador)
-│   ├── lsp.syn              # Servidor LSP nativo
-│   ├── verificador_formal.syn  # Motor ATP
-│   └── cache.syn            # Caché incremental SHA-256
 ├── runtime/                 # Runtime modularizado en C
-│   ├── core/                # memory.c, concurrency.c, io.c
-│   ├── net/                 # http.c
-│   ├── quantum/             # matrix.c
-│   └── federated/           # aggregator.c
+│   └── core/                # memory.c, concurrency.c
 ├── std/                     # Librería estándar (.syn)
+├── librerias/               # Librerías embebidas
 ├── compilador/              # Compilador Python (referencia)
-├── axon/                    # Runtime Axon
+├── axon/                    # Runtime Axon (axon_rt.c, tweetnacl.c)
 ├── opensyn/                 # Servicio IA local
+├── syquex/                  # Lenguaje de alto nivel
 ├── scripts/                 # Scripts de build, test, release
-├── .github/workflows/       # CI/CD: release matrix, cross-compile, instalador
-├── docs/manuales/          # Los 9 manuales de ingeniería (MANUAL_1.md..MANUAL_9.md)
+├── .github/workflows/       # CI/CD: release matrix, cross-compile
+├── docs/manuales/           # Los 9 manuales de ingeniería
+├── docs/book.toml           # Configuración mdBook
+├── instaladores/            # Instaladores multiplataforma
+│   ├── windows/             # Inno Setup
+│   ├── linux/               # Bash installer
+│   ├── macos/               # DMG creator
+│   └── common/              # Verificación Ed25519, auto-actualización
 ├── vscode-synapse/          # Extensión VS Code
-│   ├── extension.js         # Cliente LSP nativo
-│   └── package.json         # Configuración
 ├── tests/                   # Suites de prueba
-│   ├── unit/                # Tests unitarios Python
-│   ├── integration/         # Tests de integración
-│   ├── fuzz/                # Fuzzing destructivo
-│   ├── synapse/             # Tests nativos C Synapse
-│   └── micro_bootstrap/     # Tests de bootstrap
-├── nucleo/principal.syn.json  # Manifiesto del compilador
-├── axon.toml                # Configuración Axon
-├── synapse_rt.c/.h          # Runtime base
-├── tweetnacl.c/.h           # Criptografía Ed25519
 ├── main.py                  # Entry point compilador Python
-├── cli.py                   # CLI unificada
-├── VERSION                  # Versión canónica: 5.1.1-industrial
-├── instalador_synapse.iss   # Inno Setup installer
+├── VERSION                  # Versión canónica: 8.1.0
 └── synapse.spdx.json        # SBOM SPDX 2.3
 ```
 
 ---
 
-## 📜 Licencia
+## CI/CD
+
+| Workflow | Trigger | Propósito |
+|----------|---------|-----------|
+| `ci-tests.yml` | Push/PR a `main` | Tests multiplataforma, linting, bootstrap |
+| `release-installers.yml` | Tag `v*` | Build instaladores y publicar en Releases |
+| `release_matrix.yml` | Tag `v*` | Build binarios multiplataforma |
+| `deploy-docs.yml` | Push a `main` | Despliegue mdBook a GitHub Pages |
+
+---
+
+## Licencia
 
 Distribuido bajo licencia **MIT**. Consulte el archivo [`LICENSE`](./LICENSE) para términos completos.
 
 ---
 
-**Synapse/OpenSyn v5.1.1-industrial** — *Auditado, certificado y sellado bajo estándares de ingeniería de grado industrial.*
+**Synapse/OpenSyn v8.1.0** — *Lanzamiento público con instalación unificada multiplataforma.*

@@ -1,0 +1,1102 @@
+// cumple Manual 1 5: nucleo del compilador Synapse
+#lang: es
+
+// ============================================================
+// syquex/parser.syn — Parser de Syquex (R87, Manual 3 §3 EBNF)
+// Descenso recursivo sobre los tokens de syquex/lexer.syn.
+// Produce el NodoAST[] plano (misma estructura del frontend
+// Synapse, parser_base.syn) para que el traductor R88 genere el
+// SemNodo[] canónico (Manual 6 §1.3).
+//
+// Extensión ABI Syquex (D-F22-C, aditiva): nodos 54-58.
+// Mapeos M6 §1.3 aplicados EN EL PARSER:
+//   crear(...)   -> NODO_FUNCION "__init__"
+//   metodo m(...) -> NODO_FUNCION "Struct_m" con self implícito
+//   enumeracion   -> NODO_DECLARACION_TIPO + constructores
+// Desugares: para a..b[paso c] -> MIENTRAS equivalente;
+//   para v en it -> NODO_PARA_EN; cuerpos -> NODO_BLOQUE_SQ(58).
+// ============================================================
+
+importar parser_constantes
+importar parser_base
+importar lexer
+importar expr
+
+// --- Conversión a TokenExt[] para el parser (patrón lexer_obtener_tokens
+// A3.1b): puntero 64-bit partido en ptr_valor (low) + array paralelo de bits
+// altos. VIVE EN EL PARSER (no en el lexer): depende de struct TokenExt de
+// parser_base.syn y el harness del lexer R86 compila sin parser_base.
+funcion sq_tokens_hi() -> puntero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        let r: puntero = nulo
+        asm("static int _SQ_tk_hi[65536];")
+        asm("r = (void*)_SQ_tk_hi;")
+        retornar r
+
+funcion sq_tokens_ext() -> puntero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    inseguro:
+        asm("static struct TokenExt _SQ_ext[65536];")
+        asm("struct SqLexerBuffers* _b = (struct SqLexerBuffers*)sq_buffers();")
+        asm("int _n = (_b ? (_b->ntks < 65536 ? _b->ntks : 65536) : 0);")
+        asm("int* _hi = (int*)sq_tokens_hi();")
+        asm("for (int _i = 0; _i < _n; _i++) { struct TokenLex* _tl = (struct TokenLex*)_b->tokens + _i; _SQ_ext[_i].tipo = _tl->tipo; _SQ_ext[_i].linea = _tl->linea; _SQ_ext[_i].columna = _tl->columna; uintptr_t _pv = (uintptr_t)_tl->valor.datos; _SQ_ext[_i].ptr_valor = (int)(_pv & 0xFFFFFFFFu); _SQ_ext[_i].len_valor = _tl->valor.longitud; if (_hi) _hi[_i] = (int)(_pv >> 32); }")
+        asm("return (void*)_SQ_ext;")
+    retornar nulo
+
+
+funcion sq_parser_total_set(n: entero) -> nulo:
+    inseguro:
+        asm("static int _SQP_total = 0; _SQP_total = n;")
+        asm("*((int*)parser_meta()) = n;")
+
+funcion sq_total_nodos() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        r = 0
+        asm("r = *((int*)parser_meta());")
+        retornar r
+
+funcion sq_nodo_tipo(i: entero) -> entero:
+    requiere:
+        i >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        r = 0
+        asm("struct NodoAST* _n = (struct NodoAST*)parser_nodos(); if (_n && i < 65536) r = _n[i].tipo_nodo;")
+        retornar r
+
+funcion sq_programa(fuente: cadena) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    retornar sq_parsear_decls(fuente)
+
+funcion sq_declaracion(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    si t == T_IMPORTAR:
+        token_avanzar(est)
+        nombre = sq_id(est)
+        n = sq_nuevo(est, NODO_IMPORTAR, linea, col)
+        sq_copiar_nombre(est, n, nombre)
+        saltar_nl(est)
+        retornar n
+    si t == T_FUNCION:
+        retornar sq_funcion(est)
+    si t == T_ESTRUCTURA:
+        retornar sq_estructura(est)
+    si t == T_ENUMERACION:
+        retornar sq_enumeracion(est)
+    si t == T_CONSTANTE:
+        token_avanzar(est)
+        nombre = sq_id(est)
+        inseguro:
+            asm("token_esperar(est, T_ASIGNAR)")
+        valor = parse_expresion_sq(est)
+        n = sq_nuevo(est, NODO_CONSTANTE, linea, col)
+        inseguro:
+            asm("if (nombre > 0) { struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); int pp = est->posicion; (void)pp; } ")
+            asm("est->nodos[n].hijo_der = valor")
+        sq_copiar_nombre(est, n, nombre_pos_previa(est, nombre))
+        retornar n
+    si t == T_VARIABLE:
+        // M3 §3 L74: declaracion a nivel de módulo (H-R87-1 cierre R92).
+        retornar sq_variable(est)
+    si t == T_LET:
+        // Opción B del Arquitecto (R92): `let` es SOLO local (M3 §3 L122).
+        // A nivel de módulo ya no se tolera — error limpio.
+        inseguro:
+            asm("est->hay_error = true;")
+            asm("fprintf(stderr, \"[Syquex] 'let' solo es válido dentro de funciones; usa 'variable' a nivel de módulo (M3 §3 L74/L122)\\n\");")
+        token_avanzar(est)
+        saltar_nl(est)
+        retornar 0
+    si t == T_TIPO:
+        token_avanzar(est)
+        nombre = sq_id(est)
+        inseguro:
+            asm("token_esperar(est, T_ASIGNAR)")
+        pos_ini = est.posicion
+        sq_tipo(est)
+        pos_fin = est.posicion - 1
+        n = sq_nuevo(est, NODO_DECLARACION_TIPO, linea, col)
+        sq_copiar_nombre(est, n, nombre_pos_previa(est, nombre))
+        inseguro:
+            asm("sq_guardar_span_sq(est, n, pos_ini, pos_fin, 2)")
+        retornar n
+    si t == T_EXTERNO:
+        token_avanzar(est)
+        // M3 §3 L99: externo ::= "externo" funcion | "externo" estructura
+        // | "externo" "constante" ID "=" STRING
+        si token_mirar(est) == T_FUNCION:
+            token_avanzar(est)
+            retornar sq_funcion_firma(est, NODO_EXTERNO, "", linea, col)
+        // H-R87-2: externo estructura — nombre del struct C externo
+        si token_mirar(est) == T_ESTRUCTURA:
+            token_avanzar(est)
+            nombre = sq_id(est)
+            n = sq_nuevo(est, NODO_EXTERNO, linea, col)
+            sq_copiar_nombre(est, n, nombre)
+            inseguro:
+                asm("est->nodos[n].valor_int = 1")
+            retornar n
+        // H-R87-2: externo constante ID "=" STRING
+        si token_mirar(est) == T_CONSTANTE:
+            token_avanzar(est)
+            nombre = sq_id(est)
+            inseguro:
+                asm("token_esperar(est, T_ASIGNAR)")
+            valor = parse_expresion_sq(est)
+            n = sq_nuevo(est, NODO_EXTERNO, linea, col)
+            sq_copiar_nombre(est, n, nombre)
+            inseguro:
+                asm("est->nodos[n].hijo_der = valor")
+                asm("est->nodos[n].valor_int = 2")
+            retornar n
+        inseguro:
+            asm("fprintf(stderr, \"SQ_DECL_UNKNOWN externo sin tipo\\n\")")
+            asm("est->hay_error = true;")
+        retornar -1
+    si t == T_EXPORT:
+        token_avanzar(est)
+        inseguro:
+            asm("token_esperar(est, T_PAREN_IZQ)")
+        lang = sq_id(est)
+        lang_linea = linea
+        inseguro:
+            asm("token_esperar(est, T_PAREN_DER)")
+        f = sq_funcion(est)
+        n = sq_nuevo(est, NODO_EXPORT, lang_linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = f")
+        // H-R88-1 (Manual 6 §1.2 L41 export_lang): preservar el identificador de
+        // lenguaje en el payload del NODO_EXPORT; el traductor propaga ptr_str/len_str
+        // a SemNodo vía trad_copiar_payload, exponiéndolo a codegen y tests.
+        sq_copiar_nombre(est, n, lang)
+        inseguro:
+            asm("if (lang > 0) { struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); int pp=est->posicion; (void)pp; }")
+        retornar n
+    // Declaración no reconocida: error y sincronizar
+    inseguro:
+        asm("fprintf(stderr, \"SQ_DECL_UNKNOWN tipo=%d linea=%d col=%d\\n\", t, linea, col);")
+        asm("est->hay_error = true;")
+    retornar -1
+
+funcion nombre_pos_previa(est: ParserEst, nodo_nombre: entero) -> entero:
+    // Recupera la posición de token del identificador previamente consumido
+    // por token_esperar_texto: se apoya en que el nodo ID copió el lexema;
+    // aquí solo se usa como marcador (el nombre real lo copia sq_copiar_nombre
+    // leyendo el nodo ID).
+    inseguro:
+        r = 0
+        asm("r = nodo_nombre")
+        retornar r
+    retornar 0
+
+funcion sq_copiar_nombre(est: ParserEst, n_destino: entero, nodo_id: entero) -> nulo:
+    // Copia ptr_str/len_str + bits altos desde el nodo IDENTIFICADOR fuente
+    // al destino (R88: los bits altos viven en sq_tokens_hi; sin ellos la
+    // reconstrucción 64-bit del nombre queda truncada).
+    // Nota: nodo_id puede ser 0 (primer nodo del buffer); se usa >=0.
+    inseguro:
+        asm("if (nodo_id >= 0 && nodo_id < est->total_nodos && n_destino >= 0 && n_destino < est->total_nodos) { est->nodos[n_destino].ptr_str = est->nodos[nodo_id].ptr_str; est->nodos[n_destino].len_str = est->nodos[nodo_id].len_str; int* _hi_sq_c = (int*)sq_tokens_hi(); if (_hi_sq_c) { _hi_sq_c[n_destino] = _hi_sq_c[nodo_id]; } }")
+    retornar
+
+// Núcleo compartido de declaraciones let/variable (M3 §3 L74 y L122):
+// keyword ya consumido; ID [":" tipo] ["=" expr] con span slot2.
+funcion sq_let_nucleo(est: ParserEst, linea: entero, col: entero) -> entero:
+    nombre = sq_id(est)
+    n = sq_nuevo(est, NODO_LET, linea, col)
+    sq_copiar_nombre(est, n, nombre)
+    tiene_tipo = 0
+    si token_mirar(est) == T_DOSPUNTOS:
+        token_avanzar(est)
+        pos_ini = est.posicion
+        sq_tipo(est)
+        pos_fin = est.posicion - 1
+        tiene_tipo = 1
+        inseguro:
+            asm("sq_guardar_span_sq(est, n, pos_ini, pos_fin, 2)")
+    expr = 0
+    si token_mirar(est) == T_ASIGNAR:
+        token_avanzar(est)
+        expr = parse_expresion_sq(est)
+    inseguro:
+        asm("est->nodos[n].hijo_der = expr")
+        asm("(void)tiene_tipo")
+    saltar_nl(est)
+    retornar n
+
+funcion sq_let(est: ParserEst) -> entero:
+    // M3 §3 L122: declaracion_variable_local (dentro de funciones).
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    retornar sq_let_nucleo(est, linea, col)
+
+funcion sq_variable(est: ParserEst) -> entero:
+    // M3 §3 L74 (H-R87-1 cierre R92): declaracion a nivel de módulo.
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    retornar sq_let_nucleo(est, linea, col)
+
+funcion saltar_nl(est: ParserEst) -> nulo:
+    mientras token_mirar(est) == T_NUEVALINEA:
+        token_avanzar(est)
+    retornar
+
+// Guarda span usando los buffers SQ (variante de nodo_guardar_span que lee
+// SqLexerBuffers en lugar de LexerBuffers).
+funcion sq_guardar_span_sq(est: ParserEst, nodo: entero, pos_ini: entero, pos_fin: entero, slot: entero) -> nulo:
+    inseguro:
+        asm("struct SqLexerBuffers* _lb_s = (struct SqLexerBuffers*)sq_buffers();")
+        asm("if (_lb_s && pos_ini >= 0 && pos_ini < _lb_s->ntks && pos_fin >= pos_ini && pos_fin < _lb_s->ntks && nodo >= 0 && nodo < est->total_nodos) {")
+        asm("    struct TokenLex* _t0_s = &((struct TokenLex*)_lb_s->tokens)[pos_ini];")
+        asm("    struct TokenLex* _t1_s = &((struct TokenLex*)_lb_s->tokens)[pos_fin];")
+        asm("    uintptr_t _p0_s = (uintptr_t)_t0_s->valor.datos;")
+        asm("    int _len_s = (int)(_t1_s->valor.datos - _t0_s->valor.datos) + _t1_s->valor.longitud;")
+        asm("    if (slot == 2) {")
+        asm("        int* _s2p = (int*)parser_str2_ptr(); int* _s2h = (int*)parser_str2_hi(); int* _s2l = (int*)parser_str2_len();")
+        asm("        if (_s2p && _s2h && _s2l) { _s2p[nodo] = (int)(_p0_s & 0xFFFFFFFFu); _s2h[nodo] = (int)(_p0_s >> 32); _s2l[nodo] = _len_s; }")
+        asm("    } else {")
+        asm("        est->nodos[nodo].ptr_str = (int)(_p0_s & 0xFFFFFFFFu); est->nodos[nodo].len_str = _len_s;")
+        asm("        int* _hi_s = (int*)sq_tokens_hi(); if (_hi_s) _hi_s[nodo] = (int)(_p0_s >> 32);")
+        asm("    }")
+        asm("}")
+
+// Tipo Syquex (M3 §3 L155-169): primitivos | ID | Lista<T> | Mapa<K,V>
+// | Resultado<T,E> | Opcion<T> | Canal<T> | [T] | &T | rc/arc/débil/arena T
+// | funcion(tipos)->T (M3 §3 L162). Consume con profundidad de < > y deja
+// el cursor tras el tipo.
+// NOTA M3 §2: el desarrollador nunca escribe &mut en annotations; &T es
+// solo para modo sistema/FFI (M3 §5.3). Ver D-F22-A para &mut en exprs.
+funcion sq_tipo(est: ParserEst) -> nulo:
+    t = token_mirar(est)
+    si t == T_CORCH_IZQ:
+        token_avanzar(est)
+        sq_tipo(est)
+        inseguro:
+            asm("token_esperar(est, T_CORCH_DER)")
+        retornar
+    si t == T_AMPERSAND:
+        // M3 §5.3: &T — préstamo inmutable SOLO en modo sistema/FFI.
+        // M3 §2: el desarrollador nunca escribe &mut. No consumir 'mut'.
+        token_avanzar(est)
+        sq_tipo(est)
+        retornar
+    si t == T_FUNCION:
+        // M3 §3 L162: funcion "(" [ tipos ] ")" "->" tipo
+        token_avanzar(est)
+        inseguro:
+            asm("token_esperar(est, T_PAREN_IZQ)")
+        si token_mirar(est) != T_PAREN_DER:
+            sq_tipo(est)
+            mientras token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                sq_tipo(est)
+        inseguro:
+            asm("token_esperar(est, T_PAREN_DER)")
+            asm("token_esperar(est, T_FLECHA_DER)")
+        sq_tipo(est)
+        retornar
+    si t == T_RC o t == T_ARC o t == T_DEBIL o t == T_ARENA:
+        token_avanzar(est)
+        sq_tipo(est)
+        retornar
+    si token_es_nombre(t) == 1:
+        token_avanzar(est)
+    sino:
+        // MED-2 FIX: error recovery — diagnóstico observable con línea/columna
+        // (convención del frontend: patrón SQ_DECL_UNKNOWN, parser.syn:187;
+        // lección R21: los diagnósticos mudos son invisibles para el usuario).
+        linea_err = token_linea(est, est.posicion)
+        col_err = token_columna(est, est.posicion)
+        inseguro:
+            asm("fprintf(stderr, \"SQ_TIPO_INVALIDA tipo=%d linea=%d col=%d\\n\", t, linea_err, col_err);")
+            asm("est->hay_error = 1;")
+        token_avanzar(est)
+    si token_mirar(est) == T_MENOR:
+        token_avanzar(est)
+        prof = 1
+        mientras prof > 0:
+            tt = token_mirar(est)
+            si tt == T_FIN:
+                // MED-2 FIX: error recovery — '>' de cierre faltante
+                linea_err = token_linea(est, est.posicion)
+                col_err = token_columna(est, est.posicion)
+                inseguro:
+                    asm("fprintf(stderr, \"SQ_GENERICO_SIN_CERRAR linea=%d col=%d\\n\", linea_err, col_err);")
+                    asm("est->hay_error = 1;")
+                romper
+            si tt == T_MENOR:
+                prof = prof + 1
+            si tt == T_MAYOR:
+                prof = prof - 1
+            token_avanzar(est)
+    retornar
+
+funcion sq_params(est: ParserEst, nodo_fun: entero) -> entero:
+    // '(' ya consumido. M3 §3 L82: parametro ::= ID [":" tipo] ["=" expresion]
+    // (el tipo es OPCIONAL; el default va como hijo_der del PARAMETRO).
+    primero = 0
+    ultimo = 0
+    si token_mirar(est) == T_PAREN_DER:
+        token_avanzar(est)
+        retornar primero
+    r = 1
+    mientras r == 1:
+        p_linea = token_linea(est, est.posicion)
+        p_col = token_columna(est, est.posicion)
+        es_trans = 0
+        si token_mirar(est) == T_FLECHA:
+            es_trans = 1
+            token_avanzar(est)
+        nombre = sq_id(est)
+        pos_ini = 0
+        pos_fin = -1
+        si token_mirar(est) == T_DOSPUNTOS:
+            token_avanzar(est)
+            pos_ini = est.posicion
+            sq_tipo(est)
+            pos_fin = est.posicion - 1
+        p = sq_nuevo(est, NODO_PARAMETRO, p_linea, p_col)
+        sq_copiar_nombre(est, p, nombre)
+        inseguro:
+            asm("if (pos_ini > 0 && pos_fin >= pos_ini) { sq_guardar_span_sq(est, p, pos_ini, pos_fin, 2); }")
+            asm("est->nodos[p].valor_int = es_trans")
+        si token_mirar(est) == T_ASIGNAR:
+            token_avanzar(est)
+            def_expr = parse_expresion_sq(est)
+            inseguro:
+                asm("est->nodos[p].hijo_der = def_expr")
+        si primero == 0:
+            primero = p
+            ultimo = p
+        sino:
+            inseguro:
+                asm("est->nodos[ultimo].hermano = p")
+            ultimo = p
+        si token_mirar(est) == T_COMA:
+            token_avanzar(est)
+        sino:
+            r = 0
+    inseguro:
+        asm("token_esperar(est, T_PAREN_DER)")
+    retornar primero
+
+funcion sq_bloque_interno(est: ParserEst) -> entero:
+    // Cadena de sentencias dentro de un INDENT ya consumido; termina con
+    // T_DESINDENTAR/T_FIN (lo consume). Reutilizado por sq_bloque (M3 §3
+    // L104) y por el cuerpo en bloque del caso coincidir (L140).
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    primero = 0
+    ultimo = 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_DESINDENTAR o t == T_FIN o t == T_SINO:
+            r = 0
+            romper
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        s = sq_sentencia(est)
+        si s == -1:
+            retornar -1
+        si s > 0:
+            si primero == 0:
+                primero = s
+                ultimo = s
+            sino:
+                inseguro:
+                    asm("est->nodos[ultimo].hermano = s")
+                ultimo = s
+        sino:
+            parser_sinc_skip(est)
+    inseguro:
+        asm("if (token_mirar(est) == T_DESINDENTAR) token_esperar(est, T_DESINDENTAR)")
+    retornar primero
+
+funcion sq_bloque(est: ParserEst) -> entero:
+    // ':' NL INDENT stmts DEDENT → primera sentencia (cadena por hermano)
+    inseguro:
+        asm("token_esperar(est, T_DOSPUNTOS)")
+    saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_INDENTAR)")
+    primero = sq_bloque_interno(est)
+    saltar_nl(est)
+    retornar primero
+
+funcion sq_caso_cuerpo(est: ParserEst, linea: entero, col: entero) -> entero:
+    // M3 §3 L140: caso ::= patron "=>" ( sentencia | NEWLINE INDENT bloque DEDENT )
+    // — la forma de una línea NO lleva ':' ni INDENT.
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    cuerpo = 0
+    si token_mirar(est) == T_NUEVALINEA:
+        saltar_nl(est)
+        inseguro:
+            asm("token_esperar(est, T_INDENTAR)")
+        cuerpo = sq_bloque_interno(est)
+        saltar_nl(est)
+    sino:
+        cuerpo = sq_sentencia(est)
+    n = sq_nuevo(est, NODO_BLOQUE_SQ, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = cuerpo")
+    retornar n
+
+funcion sq_cuerpo_bloque_sq(est: ParserEst, linea: entero, col: entero) -> entero:
+    cuerpo = sq_bloque(est)
+    n = sq_nuevo(est, NODO_BLOQUE_SQ, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = cuerpo")
+    retornar n
+
+funcion sq_funcion_firma(est: ParserEst, nodo_tipo: entero, decoracion: cadena, linea: entero, col: entero) -> entero:
+    // 'funcion' ya consumido (o externo). firma sin cuerpo para EXTERNO.
+    nombre = sq_id(est)
+    inseguro:
+        asm("token_esperar(est, T_PAREN_IZQ)")
+    params = sq_params(est, 0)
+    tipo_ret = ""
+    n = sq_nuevo(est, nodo_tipo, linea, col)
+    sq_copiar_nombre(est, n, nombre)
+    inseguro:
+        asm("(void)decoracion;")
+        asm("est->nodos[n].hijo_izq = params")
+    si token_mirar(est) == T_FLECHA:
+        token_avanzar(est)
+        pos_ini = est.posicion
+        sq_tipo(est)
+        pos_fin = est.posicion - 1
+        inseguro:
+            asm("sq_guardar_span_sq(est, n, pos_ini, pos_fin, 2)")
+    retornar n
+
+funcion sq_funcion(est: ParserEst) -> entero:
+    // M3 §3 L78-79: ambas formas comparten 'funcion' ID '(' params ')';
+    // el [ "->" tipo ] se consume ANTES de decidir la forma (sin
+    // backtracking), luego '=' → una-expresión; contratos+':' → clásica.
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nombre_f = sq_id(est)
+    inseguro:
+        asm("token_esperar(est, T_PAREN_IZQ)")
+    params = sq_params(est, 0)
+    pos_ini_ret = 0
+    si token_mirar(est) == T_FLECHA:
+        token_avanzar(est)
+        pos_ini_ret = est.posicion
+        sq_tipo(est)
+    n = sq_nuevo(est, NODO_FUNCION, linea, col)
+    sq_copiar_nombre(est, n, nombre_f)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = params")
+    si pos_ini_ret > 0:
+        inseguro:
+            asm("sq_guardar_span_sq(est, n, pos_ini_ret, est->posicion - 1, 2)")
+    si token_mirar(est) == T_ASIGNAR:
+        token_avanzar(est)
+        cuerpo_expr = parse_expresion_sq(est)
+        ret = sq_nuevo(est, NODO_RETORNAR, linea, col)
+        inseguro:
+            asm("est->nodos[ret].hijo_izq = cuerpo_expr")
+            asm("est->nodos[n].hijo_der = ret")
+        saltar_nl(est)
+        retornar n
+    si token_mirar(est) == T_REQUIERE o token_mirar(est) == T_GARANTIZA:
+        sq_contratos_adj(est, n)
+    cuerpo = sq_bloque(est)
+    inseguro:
+        asm("est->nodos[n].hijo_der = cuerpo")
+    saltar_nl(est)
+    retornar n
+
+funcion sq_contratos_adj(est: ParserEst, n_fun: entero) -> nulo:
+    // Bloques requiere:/garantiza: → un CONTRATO(46) colgado de ptr_extra
+    // del nodo función; exprs encadenadas por hermano desde hijo_izq.
+    primer_contr = 0
+    ult_contr = 0
+    mientras token_mirar(est) == T_REQUIERE o token_mirar(est) == T_GARANTIZA:
+        clase = token_mirar(est)
+        c_linea = token_linea(est, est.posicion)
+        c_col = token_columna(est, est.posicion)
+        token_avanzar(est)
+        saltar_nl(est)
+        inseguro:
+            asm("token_esperar(est, T_INDENTAR)")
+        primero = 0
+        ultimo = 0
+        r = 1
+        mientras r == 1:
+            tt = token_mirar(est)
+            si tt == T_DESINDENTAR o tt == T_FIN:
+                r = 0
+                romper
+            si tt == T_NUEVALINEA:
+                token_avanzar(est)
+                siguiente
+            e = parse_expresion_sq(est)
+            si e > 0:
+                si primero == 0:
+                    primero = e
+                    ultimo = e
+                sino:
+                    inseguro:
+                        asm("est->nodos[ultimo].hermano = e")
+                    ultimo = e
+            sino:
+                parser_sinc_skip(est)
+        inseguro:
+            asm("token_esperar(est, T_DESINDENTAR)")
+        nc = sq_nuevo(est, NODO_CONTRATO, c_linea, c_col)
+        inseguro:
+            asm("est->nodos[nc].valor_int = clase")
+            asm("est->nodos[nc].hijo_izq = primero")
+        si primer_contr == 0:
+            primer_contr = nc
+            ult_contr = nc
+        sino:
+            inseguro:
+                asm("est->nodos[ult_contr].hermano = nc")
+            ult_contr = nc
+    inseguro:
+        asm("est->nodos[n_fun].ptr_extra = primer_contr")
+    saltar_nl(est)
+    retornar
+
+funcion sq_estructura(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nombre = sq_id(est)
+    n = sq_nuevo(est, NODO_ESTRUCTURA, linea, col)
+    sq_copiar_nombre(est, n, nombre)
+    inseguro:
+        asm("token_esperar(est, T_DOSPUNTOS)")
+    saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_INDENTAR)")
+    miembros = 0
+    ult_miembro = 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_DESINDENTAR o t == T_FIN:
+            r = 0
+            romper
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        m_linea = token_linea(est, est.posicion)
+        m_col = token_columna(est, est.posicion)
+        miembro = 0
+        pos_antes_miembro = est.posicion
+        si t == T_CREAR:
+            token_avanzar(est)
+            inseguro:
+                asm("token_esperar(est, T_PAREN_IZQ)")
+            // M3 §6.1: el cuerpo de crear usa self.<campo> → self
+            // implícito TIPADO también para el constructor.
+            params_self = sq_self_param(est, m_linea, m_col, n)
+            params_expl = sq_params(est, 0)
+            si params_expl == 0:
+                params = params_self
+            sino:
+                inseguro:
+                    asm("{ int _l_cc = params_self; struct NodoAST* _ns_cc=(struct NodoAST*)parser_nodos(); while (_ns_cc[_l_cc].hermano != 0) _l_cc = _ns_cc[_l_cc].hermano; _ns_cc[_l_cc].hermano = params_expl; }")
+                params = params_self
+            cuerpo = sq_cuerpo_bloque_sq(est, m_linea, m_col)
+            // M6 §1.3: ConstructorDef -> NODO_FUNCION "__init__"
+            miembro = sq_nuevo(est, NODO_FUNCION, m_linea, m_col)
+            inseguro:
+                asm("static const char _SQ_INIT[] = \"__init__\";")
+                asm("if (miembro < 65536) { est->nodos[miembro].ptr_str = (int)(uintptr_t)_SQ_INIT; est->nodos[miembro].len_str = 8; }")
+                asm("est->nodos[miembro].hijo_izq = params")
+                asm("est->nodos[miembro].hijo_der = cuerpo")
+        sino:
+            si t == T_METODO:
+                token_avanzar(est)
+                nombre_m = sq_id(est)
+                inseguro:
+                    asm("token_esperar(est, T_PAREN_IZQ)")
+                params_self = sq_self_param(est, m_linea, m_col, n)
+                params = sq_params(est, 0)
+                // concatenar self + params. GUARD contra el valor
+                // REASIGNADO: capturar el conteo original ANTES del
+                // `params = params_self` — si no, el asm ve params≠0 y
+                // concatena la cadena self consigo misma (ciclo,
+                // hallazgo R91: metodos sin params explícitos, M3 §3 L91).
+                params_expl = params
+                si params == 0:
+                    params = params_self
+                sino:
+                    inseguro:
+                        asm("")
+                ret_ini = 0
+                ret_fin = 0
+                si token_mirar(est) == T_FLECHA:
+                    // M3 §3 L91: metodo ::= "metodo" IDENT "(" [params] ")"
+                    // [ "->" tipo ] ":" — el tipo de retorno queda en slot2
+                    // para el traductor (trad_funcion lo preserva).
+                    token_avanzar(est)
+                    ret_ini = est.posicion
+                    sq_tipo(est)
+                    // pos_fin INMEDIATO (antes del cuerpo): el cursor ya no
+                    // vuelve aquí (bug R91: guardar tras el cuerpo usaba una
+                    // posición lejana y el span resultante era inválido).
+                    ret_fin = est.posicion - 1
+                cuerpo = sq_cuerpo_bloque_sq(est, m_linea, m_col)
+                // M6 §1.3: MetodoDef -> NODO_FUNCION con self primero; la
+                // decoración "Struct_metodo" y el hoisting viven en el
+                // traductor (R88).
+                miembro = sq_nuevo(est, NODO_FUNCION, m_linea, m_col)
+                sq_copiar_nombre(est, miembro, nombre_m)
+                si ret_ini > 0:
+                    inseguro:
+                        asm("sq_guardar_span_sq(est, miembro, ret_ini, ret_fin, 2)")
+                inseguro:
+                    asm("est->nodos[miembro].hijo_izq = params_self")
+                    asm("if (params_expl != 0) { int _l = params_self; struct NodoAST* _ns=(struct NodoAST*)parser_nodos(); while (_ns[_l].hermano != 0) _l = _ns[_l].hermano; _ns[_l].hermano = params_expl; }")
+                    asm("est->nodos[miembro].hijo_der = cuerpo")
+            sino:
+                // campo: ID ':' tipo [= expr]
+                nombre_c = sq_id(est)
+                inseguro:
+                    asm("token_esperar(est, T_DOSPUNTOS)")
+                pos_ini = est.posicion
+                sq_tipo(est)
+                pos_fin = est.posicion - 1
+                miembro = sq_nuevo(est, NODO_PARAMETRO, m_linea, m_col)
+                sq_copiar_nombre(est, miembro, nombre_c)
+                inseguro:
+                    asm("sq_guardar_span_sq(est, miembro, pos_ini, pos_fin, 2)")
+                si token_mirar(est) == T_ASIGNAR:
+                    token_avanzar(est)
+                    defx = parse_expresion_sq(est)
+                    inseguro:
+                        asm("est->nodos[miembro].hijo_der = defx")
+                saltar_nl(est)
+        si miembro > 0:
+            si miembros == 0:
+                miembros = miembro
+                ult_miembro = miembro
+            sino:
+                inseguro:
+                    asm("est->nodos[ult_miembro].hermano = miembro")
+                ult_miembro = miembro
+        sino:
+            // Anti-cuelgue (patrón R2): miembro no reconocido sin avance →
+            // error y salir del bucle de miembros (evita spin infinito -3).
+            si est.posicion == pos_antes_miembro:
+                inseguro:
+                    asm("est->hay_error = true;")
+                    asm("token_avanzar(est)")
+                r = 0
+                romper
+    inseguro:
+        asm("token_esperar(est, T_DESINDENTAR)")
+    saltar_nl(est)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = miembros")
+    retornar n
+
+funcion sq_self_param(est: ParserEst, linea: entero, col: entero, nodo_struct: entero) -> entero:
+    // Self IMPLÍCITO y TIPADO (M3 §6.1 L283-290: crear y metodo usan
+    // self.<campo> en su cuerpo; M6 §1.3 L105: método → función con
+    // self primero). El TIPO de self es la propia estructura: se copia el
+    // nombre del nodo ESTRUCTURA al slot2 del parámetro (mismo mecanismo
+    // sq_guardar_span_sq slot2: parser_str2_ptr/hi/len) para que la
+    // semántica resuelva campos y el puente despache métodos.
+    p = sq_nuevo(est, NODO_PARAMETRO, linea, col)
+    inseguro:
+        asm("static const char _SQ_SELF[] = \"self\";")
+        asm("if (p < 65536) { est->nodos[p].ptr_str = (int)(uintptr_t)_SQ_SELF; est->nodos[p].len_str = 4; int* _hi_nm=(int*)sq_tokens_hi(); if (_hi_nm) _hi_nm[p]=(int)((uintptr_t)_SQ_SELF>>32); }")
+        asm("{ int* _s2p_sp = (int*)parser_str2_ptr(); int* _s2h_sp = (int*)parser_str2_hi(); int* _s2l_sp = (int*)parser_str2_len(); struct NodoAST* _ns_sp = (struct NodoAST*)parser_nodos(); int* _hi_sp2 = (int*)sq_tokens_hi(); if (_s2p_sp && _s2h_sp && _s2l_sp && p >= 0 && p < 65536 && nodo_struct >= 0 && nodo_struct < est->total_nodos) { _s2p_sp[p] = _ns_sp[nodo_struct].ptr_str; _s2h_sp[p] = _hi_sp2[nodo_struct]; _s2l_sp[p] = _ns_sp[nodo_struct].len_str; } }")
+    retornar p
+
+// H-R88 (R88; Manual 6 §1.3 L108, M3 §11.1): los stubs
+// `sq_decorar_metodo`/`nombre_struct_actual` se eliminan — la
+// decoración "Struct_metodo" y el hoisting ahora viven en
+// syquex/traductor.syn (traducir_programa hoistea y decora).
+
+funcion sq_enumeracion(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    nombre = sq_id(est)
+    n = sq_nuevo(est, NODO_DECLARACION_TIPO, linea, col)
+    sq_copiar_nombre(est, n, nombre)
+    inseguro:
+        asm("token_esperar(est, T_DOSPUNTOS)")
+    saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_INDENTAR)")
+    casos = 0
+    ult_caso = 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_DESINDENTAR o t == T_FIN:
+            r = 0
+            romper
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        c_linea = token_linea(est, est.posicion)
+        c_col = token_columna(est, est.posicion)
+        caso_nombre = sq_id(est)
+        ctor = sq_nuevo(est, NODO_CONSTRUCTOR, c_linea, c_col)
+        sq_copiar_nombre(est, ctor, caso_nombre)
+        si casos == 0:
+            casos = ctor
+            ult_caso = ctor
+        sino:
+            inseguro:
+                asm("est->nodos[ult_caso].hermano = ctor")
+            ult_caso = ctor
+        saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_DESINDENTAR)")
+    saltar_nl(est)
+    inseguro:
+        asm("est->nodos[n].hijo_der = casos")
+        asm("est->nodos[n].valor_int = 1")
+    retornar n
+
+funcion sq_sentencia(est: ParserEst) -> entero:
+    t = token_mirar(est)
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    si t == T_LET:
+        n = sq_let(est)
+        saltar_nl(est)
+        retornar n
+    si t == T_SI:
+        retornar sq_si(est)
+    si t == T_MIENTRAS:
+        retornar sq_mientras(est)
+    si t == T_PARA:
+        retornar sq_para(est)
+    si t == T_COINCIDIR:
+        retornar sq_coincidir(est)
+    si t == T_INTENTAR:
+        retornar sq_intentar(est)
+    si t == T_LANZAR:
+        token_avanzar(est)
+        e = parse_expresion_sq(est)
+        n = sq_nuevo(est, NODO_LANZAR, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = e")
+        saltar_nl(est)
+        retornar n
+    si t == T_ESCUCHAR:
+        token_avanzar(est)
+        ch_escuchar = parse_expresion_sq(est)
+        cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
+        n = sq_nuevo(est, NODO_ESCUCHAR, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = ch_escuchar")
+            asm("est->nodos[n].hijo_der = cuerpo")
+        saltar_nl(est)
+        retornar n
+    si t == T_ROMPER:
+        token_avanzar(est)
+        n = sq_nuevo(est, NODO_ROMPER, linea, col)
+        saltar_nl(est)
+        retornar n
+    si t == T_SIGUIENTE:
+        token_avanzar(est)
+        n = sq_nuevo(est, NODO_SIGUIENTE, linea, col)
+        saltar_nl(est)
+        retornar n
+    si t == T_RETORNAR:
+        token_avanzar(est)
+        transfer = 0
+        si token_mirar(est) == T_FLECHA:
+            transfer = 1
+            token_avanzar(est)
+        e = 0
+        si token_mirar(est) != T_NUEVALINEA:
+            e = parse_expresion_sq(est)
+        n = sq_nuevo(est, NODO_RETORNAR, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = e")
+            asm("est->nodos[n].valor_int = transfer")
+        saltar_nl(est)
+        retornar n
+    // Expresión / asignación
+    e = parse_expresion_sq(est)
+    t2 = token_mirar(est)
+    si t2 == T_ASIGNAR:
+        token_avanzar(est)
+        val = parse_expresion_sq(est)
+        n = sq_nuevo(est, NODO_ASIGNACION, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = e")
+            asm("est->nodos[n].hijo_der = val")
+        saltar_nl(est)
+        retornar n
+    n = sq_nuevo(est, NODO_EXPR, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = e")
+    saltar_nl(est)
+    retornar n
+
+funcion sq_si(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    cond = parse_expresion_sq(est)
+    entonces = sq_cuerpo_bloque_sq(est, linea, col)
+    cuerpo_sino = 0
+    si token_mirar(est) == T_SINO:
+        token_avanzar(est)
+        cuerpo_sino = sq_cuerpo_bloque_sq(est, linea, col)
+    n = sq_nuevo(est, NODO_SI, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = cond")
+        asm("est->nodos[n].hijo_der = entonces")
+        asm("est->nodos[n].ptr_extra = cuerpo_sino")
+    saltar_nl(est)
+    retornar n
+
+funcion sq_mientras(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    cond = parse_expresion_sq(est)
+    cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
+    n = sq_nuevo(est, NODO_MIENTRAS, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = cond")
+        asm("est->nodos[n].hijo_der = cuerpo")
+    saltar_nl(est)
+    retornar n
+
+funcion sq_para(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    idv = sq_id(est)
+    forma_en = 0
+    si token_mirar(est) == T_EN:
+        forma_en = 1
+        token_avanzar(est)
+        iterable = parse_expresion_sq(est)
+        cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
+        n = sq_nuevo(est, NODO_PARA_EN, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = idv")
+            asm("est->nodos[n].hijo_der = iterable")
+            asm("est->nodos[n].ptr_extra = cuerpo")
+        saltar_nl(est)
+        retornar n
+    inseguro:
+        asm("token_esperar(est, T_ASIGNAR)")
+    inicio = parse_expresion_sq(est)
+    inseguro:
+        asm("token_esperar(est, T_PUNTOPUNTO)")
+    fin = parse_expresion_sq(est)
+    expr_paso = 0
+    si token_mirar(est) == T_PASO:
+        token_avanzar(est)
+        expr_paso = parse_expresion_sq(est)
+    sino:
+        // M3 §3 L132: el paso es opcional → incremento unitario
+        expr_paso = sq_nuevo(est, NODO_NUMERO, linea, col)
+        inseguro:
+            asm("static const char _SQ_ONE[] = \"1\";")
+            asm("if (expr_paso >= 0 && expr_paso < est->total_nodos) { est->nodos[expr_paso].ptr_str = (int)(uintptr_t)_SQ_ONE; est->nodos[expr_paso].len_str = 1; }")
+    cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
+    // Desugar a MIENTRAS: init ASIG(i,inicio); cond i .. fin → BINARIA '<'
+    // con lexema "<"; incremento i = i + paso dentro del cuerpo.
+    init = sq_nuevo(est, NODO_ASIGNACION, linea, col)
+    inseguro:
+        asm("est->nodos[init].hijo_izq = idv")
+        asm("est->nodos[init].hijo_der = inicio")
+    lt = sq_binaria(est, idv, -1, fin)
+    inseguro:
+        asm("if (lt >= 0 && lt < est->total_nodos) { static const char _LT[] = \"<\"; est->nodos[lt].ptr_str = (int)(uintptr_t)_LT; est->nodos[lt].len_str = 1; }")
+    incr_val = sq_binaria(est, idv, -1, expr_paso)
+    inseguro:
+        asm("if (incr_val >= 0 && incr_val < est->total_nodos) { static const char _PL[] = \"+\"; est->nodos[incr_val].ptr_str = (int)(uintptr_t)_PL; est->nodos[incr_val].len_str = 1; }")
+    incr = sq_nuevo(est, NODO_ASIGNACION, linea, col)
+    inseguro:
+        asm("est->nodos[incr].hijo_izq = idv")
+        asm("est->nodos[incr].hijo_der = incr_val")
+    // CRIT-2 FIX: cuerpo → incr (el incremento va DESPUÉS del cuerpo, no antes).
+    // El patrón de cadena previamente usado (incr → cuerpo) invertía el orden.
+    // Manual 3 §3 L132: "incremento i = i + paso dentro del cuerpo" (después).
+    si cuerpo != 0:
+        inseguro:
+            // CRIT-2 FIX: cuerpo es NODO_BLOQUE_SQ(58) → la cadena real está en hijo_izq.
+            // Append incr al final de esa cadena interior (hijo_izq → hermano).
+            asm("{ struct NodoAST* _ns = (struct NodoAST*)parser_nodos(); int _l = _ns[cuerpo].hijo_izq; while (_l > 0 && _l < est->total_nodos && _ns[_l].hermano != 0) _l = _ns[_l].hermano; if (_l > 0 && _l < est->total_nodos) _ns[_l].hermano = incr; }")
+        cuerpo_final = cuerpo
+    sino:
+        cuerpo_final = incr
+    n = sq_nuevo(est, NODO_MIENTRAS, linea, col)
+    bloqueador = sq_nuevo(est, NODO_BLOQUE_SQ, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = lt")
+        asm("est->nodos[n].hijo_der = cuerpo_final")
+        asm("est->nodos[init].hermano = n")
+        asm("est->nodos[bloqueador].hijo_izq = init")
+    saltar_nl(est)
+    retornar bloqueador
+
+funcion sq_coincidir(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    sujeto = parse_expresion_sq(est)
+    inseguro:
+        asm("token_esperar(est, T_DOSPUNTOS)")
+    saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_INDENTAR)")
+    casos = 0
+    ult = 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_DESINDENTAR o t == T_FIN:
+            r = 0
+            romper
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        c_linea = token_linea(est, est.posicion)
+        c_col = token_columna(est, est.posicion)
+        patron = 0
+        si token_es_nombre(t) == 1:
+            nombre_p = sq_id(est)
+            patron = nombre_p
+            si token_mirar(est) == T_PAREN_IZQ:
+                token_avanzar(est)
+                arg_v = sq_id(est)
+                inseguro:
+                    asm("token_esperar(est, T_PAREN_DER)")
+                llamada_p = sq_nuevo(est, NODO_LLAMADA, c_linea, c_col)
+                inseguro:
+                    asm("est->nodos[llamada_p].hijo_izq = patron")
+                    asm("est->nodos[llamada_p].hijo_der = arg_v")
+                patron = llamada_p
+        sino:
+            patron = parse_expresion_sq(est)
+        inseguro:
+            asm("token_esperar(est, T_FLECHA_DER)")
+        cuerpo = sq_caso_cuerpo(est, c_linea, c_col)
+        caso = sq_nuevo(est, NODO_CASO, c_linea, c_col)
+        inseguro:
+            asm("est->nodos[caso].hijo_izq = patron")
+            asm("est->nodos[caso].hijo_der = cuerpo")
+        si casos == 0:
+            casos = caso
+            ult = caso
+        sino:
+            inseguro:
+                asm("est->nodos[ult].hermano = caso")
+            ult = caso
+        saltar_nl(est)
+    inseguro:
+        asm("token_esperar(est, T_DESINDENTAR)")
+    saltar_nl(est)
+    n = sq_nuevo(est, NODO_COINCIDIR, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = sujeto")
+        asm("est->nodos[n].hijo_der = casos")
+    retornar n
+
+funcion sq_intentar(est: ParserEst) -> entero:
+    linea = token_linea(est, est.posicion)
+    col = token_columna(est, est.posicion)
+    token_avanzar(est)
+    try_body = sq_cuerpo_bloque_sq(est, linea, col)
+    var_exc = 0
+    catch_body = 0
+    si token_mirar(est) == T_ATRAPAR:
+        token_avanzar(est)
+        var_exc = sq_id(est)
+        catch_body = sq_cuerpo_bloque_sq(est, linea, col)
+    n = sq_nuevo(est, NODO_INTENTO, linea, col)
+    inseguro:
+        asm("est->nodos[n].hijo_izq = try_body")
+        asm("est->nodos[n].hijo_der = catch_body")
+        asm("if (var_exc > 0 && var_exc < est->total_nodos) { est->nodos[n].ptr_str = est->nodos[var_exc].ptr_str; est->nodos[n].len_str = est->nodos[var_exc].len_str; int* hi_s=(int*)sq_tokens_hi(); int* hi_d=(int*)sq_tokens_hi(); if (hi_s && hi_d) hi_d[n]=hi_s[var_exc]; }")
+    saltar_nl(est)
+    retornar n
+
+
+funcion sq_parsear_decls(fuente: cadena) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    total_tk = tokenizar_syquex(fuente)
+    si total_tk < 0:
+        retornar -1
+    let est: ParserEst
+    inseguro:
+        asm("memset(&est, 0, sizeof(struct ParserEst));")
+        asm("est.tokens = (struct TokenExt*)sq_tokens_ext();")
+        asm("est.total_tokens = total_tk;")
+        asm("est.nodos = (struct NodoAST*)parser_nodos();")
+        asm("est.max_nodos = 65536;")
+    primero = 0
+    ultimo = 0
+    r = 1
+    mientras r == 1:
+        t = token_mirar(est)
+        si t == T_FIN:
+            r = 0
+            romper
+        si t == T_NUEVALINEA:
+            token_avanzar(est)
+            siguiente
+        d = sq_declaracion(est)
+        si d == -1:
+            retornar -2
+        si d > 0:
+            si primero == 0:
+                primero = d
+                ultimo = d
+            sino:
+                inseguro:
+                    asm("est.nodos[ultimo].hermano = d")
+                ultimo = d
+        sino:
+            parser_sinc_skip(est)
+    si est.hay_error == verdadero:
+        retornar -3
+    prog = parser_nuevo_nodo(est, NODO_PROGRAMA, 1, 1)
+    inseguro:
+        asm("est.nodos[prog].hijo_izq = primero")
+    inseguro:
+        asm("*((int*)parser_meta()) = est.total_nodos;")
+    saltar_nl(est)
+    retornar prog

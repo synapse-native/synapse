@@ -1,0 +1,24 @@
+#lang: es
+
+importar std.io
+
+# examples/syquex/python_pipeline/fibonacci.py
+# Script de ejemplo para el pipeline Python -> Syquex
+# Calcula los primeros 10 números de Fibonacci
+
+funcion fibonacci(n):
+    si n <= 1:
+        retornar n
+    retornar fibonacci(n - 1) + fibonacci(n - 2)
+
+funcion main():
+    escribir_linea("Fibonacci sequence:")
+    para i en rango(10):
+        result = fibonacci(i)
+        escribir_linea(result)
+
+
+
+funcion principal() -> entero:
+    main()
+    retornar 0

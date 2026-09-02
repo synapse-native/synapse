@@ -94,11 +94,19 @@ jobs:
           python -c "import flake8; print(f'flake8 {flake8.__version__}')"
 
       - name: Ejecutar tests unitarios y de integración
+        shell: bash
         run: |
-          python -m pytest tests/ -v \
-            --tb=short \
-            --cov=. --cov-report=term-missing \
-            --cov-report=html:coverage_reports/
+          python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html:coverage_reports/
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Ejecutar oráculos en modo release
+        run: |
+          # NDEBUG se activa en release para comprobar que los oráculos (tests)
+          # verifican el comportamiento de producción, evitando olvidos de validación real.
+          export SYNAPSE_BUILD_MODE=release
+          export CFLAGS="-DNDEBUG -O3"
+          python -m pytest tests/ -v --tb=short
         env:
           PYTHONPATH: ${{ github.workspace }}
 
@@ -107,14 +115,14 @@ jobs:
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Compilar runtime (C) - Windows
         if: matrix.os == 'windows-latest'
         run: |
           gcc --version
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lws2_32
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Smoke test — compilar programas Synapse
         run: |
@@ -151,7 +159,7 @@ jobs:
       - name: Compilar runtime objects
         run: |
           gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
+          gcc -c axon/tweetnacl.c -o tweetnacl.o -lm
 
       - name: Crear directorios de fuzzing
         run: |
@@ -218,21 +226,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Compilar runtime objects
+      - name: Bootstrap — generar binario nativo (Manual 9 S9.1)
         run: |
-          gcc -c synapse_rt.c -o synapse_rt.o -lpthread -lm
-          gcc -c tweetnacl.c -o tweetnacl.o -lm
-          gcc -c axon_rt.c -o axon_rt.o -lpthread -lm 2>/dev/null || true
-
-      - name: Bootstrap — generar binario nativo
-        run: |
-          python main.py src/main.syn 2>&1 | tee bootstrap.log
+          # ME-R2: el pipeline compila el runtime modular desde fuente (build/obj/),
+          # no se compilan .o a mano. Entrada: nucleo/principal.syn (Manual 9 S9.1).
+          python main.py nucleo/principal.syn -o synapse_stage1.exe 2>&1 | tee bootstrap.log
           if grep -q "error:" bootstrap.log; then
             echo "❌ Bootstrap fallo"
             grep "error:" bootstrap.log
             exit 1
           fi
-          echo "✅ Bootstrap exitoso"
+          if [ ! -f synapse_stage1.exe ]; then
+            echo "❌ Bootstrap fallo: synapse_stage1.exe no generado"
+            exit 1
+          fi
+          echo "✅ Bootstrap exitoso: synapse_stage1.exe"
 
       - name: Verificar micro-tests (bootstrap nativo)
         run: |
@@ -327,3 +335,147 @@ jobs:
         if: always()
         run: |
           echo "## ✅ Benchmark M19.1 completado" >> $GITHUB_STEP_SUMMARY
+
+  calidad-tests:
+    # Gate de calidad de tests (Manual 7 §2.3): ningún test nuevo puede ser SNIFF
+    # (assert substring en artefacto sin ejecutar/compilar) ni SIN_CITA (sin cita de
+    # Manual). Modo incremental: solo evalúa los test_*.py modificados en este cambio,
+    # para no bloquear la deuda SNIFF preexistente (se aborda aparte, sin romper la CI).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Auditar calidad de tests (incremental)
+        run: |
+          CHANGED=$(git diff --name-only "${{ steps.base.outputs.ref }}" HEAD -- tests || true)
+          if [ -z "$CHANGED" ]; then
+            echo "✅ Sin tests modificados en este cambio — gate de calidad omitido"
+            exit 0
+          fi
+          echo "Tests modificados a auditar:"
+          echo "$CHANGED"
+          python auditoria/auditar_calidad_tests.py --files "$CHANGED"
+
+  trazabilidad-codigo:
+    # Cierre del bucle codigo<->manual para trabajo rutinario (no solo MTS):
+    # exige que TODO archivo de produccion NUEVO (A) lleve un comentario de
+    # trazabilidad (cumple Manual X §Y | requiere:/garantiza:). Así el repo no
+    # acepta código de producción sin anclar a un manual, aunque no haya plan_ME.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar trazabilidad de produccion nueva
+        run: |
+          FAIL=0
+          while IFS=$'\t' read -r st f; do
+            case "$st" in
+              A*) ;;
+              *) continue ;;
+            esac
+            case "$f" in
+              *.c|*.h|*.py|*.syn) ;;
+              *) continue ;;
+            esac
+            # Excluir paths no productivos (mirrors auditoria/registrar_lectura.py:es_produccion)
+            case "$f" in
+              tests/*|auditoria/*|docs/*|scripts/*|examples/*|.github/*|benchmarks/*|vscode-synapse/*|vendor/*) continue ;;
+            esac
+            case "$f" in
+              _*) continue ;;   # regla 12: artefacto/instrumentacion temporal
+            esac
+            if ! grep -Eq 'cumple[[:space:]]+Manual[[:space:]]+[0-9]+|(requiere|garantiza):' "$f"; then
+              echo "  ❌ Archivo de produccion nuevo sin trazabilidad: $f" >&2
+              echo "    Agrega '// cumple Manual X §Y' (o '# cumple...' en Python) o requiere:/garantiza:." >&2
+              FAIL=1
+            fi
+          done < <(git diff --name-status "${{ steps.base.outputs.ref }}" HEAD -- '*.c' '*.h' '*.py' '*.syn')
+          if [ "$FAIL" -ne 0 ]; then
+            echo "❌ TRAZABILIDAD DE CÓDIGO — commit bloqueado" >&2
+            exit 1
+          fi
+          echo "✅ Trazabilidad de código verificada (archivos nuevos de producción)"
+
+  lectura-previa:
+    # Gate de lectura previa (regla 1) en CI: exige que auditoria/lecturas.jsonl
+    # (commiteado en el PR) cubra los archivos de produccion modificados. Asi no se
+    # puede saltar con --no-verify: el servidor lo bloquea antes del merge.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar lectura previa (CI)
+        run: python auditoria/registrar_lectura.py --verificar-ci --base "${{ steps.base.outputs.ref }}"
+
+  auditoria:
+    # Gate de alineación con los manuales (R31): ningún push/PR puede introducir
+    # brechas de trazabilidad (bitácora/reportes/hashes), deuda sin registrar,
+    # código muerto en la raíz, módulos >1200 líneas sin registrar, ni funciones
+    # nuevas sin requiere/garantiza (Manual 2 §12).
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
+        run: |
+          python auditoria/verificar_alineacion.py 2>&1 | tee auditoria.log
+          echo ""
+          if grep -q "BRECHAS (errores de trazabilidad):" auditoria.log && \
+             grep -qE "^  \[!\]" auditoria.log; then
+            echo "❌ Brechas de alineación detectadas — resolver antes de mergear (regla 11)"
+            exit 1
+          fi
+          echo "✅ Alineación verificada: 0 brechas"

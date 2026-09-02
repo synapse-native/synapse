@@ -1,0 +1,90 @@
+// cumple Manual 4 6: biblioteca estandar
+#lang: es
+// std.io — Entrada/Salida estándar (consola y archivos)
+// Integrante de la Biblioteca Estandar de Synapse.
+// Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
+//
+// Uso desde Synapse:
+//   importar std.io
+//   escribir("hola")
+//   escribir_linea("mundo")
+//   entrada = leer_linea()
+
+importar std.sistema
+
+funcion abrir(ruta: texto, modo: texto) -> Canal:
+    requiere:
+        longitud(ruta) > 0
+    requiere:
+        longitud(modo) > 0
+    garantiza:
+        resultado >= 0
+    ruta_segura = _validar_ruta_segura(ruta)
+    si ruta_segura == "":
+        retornar 0
+    retornar _syn_abrir(ruta_segura, modo)
+
+funcion leer(c: Canal) -> texto:
+    requiere:
+        c >= 0
+    garantiza:
+        longitud(resultado) >= 0
+    retornar _syn_leer(c)
+
+externo funcion cerrar_archivo(c: Canal) -> nulo
+
+funcion escribir(texto: texto) -> nulo:
+    requiere:
+        longitud(texto) >= 0
+    _syn_escribir(texto)
+
+funcion escribir_linea(texto: texto) -> nulo:
+    requiere:
+        longitud(texto) >= 0
+    _syn_escribir_linea(texto)
+
+funcion leer_linea() -> texto:
+    garantiza:
+        longitud(resultado) >= 0
+    retornar _syn_leer_linea()
+
+// ============================================================
+// §1.7.1 — Leer bytes (lectura binaria de stdin)
+// ============================================================
+
+funcion leer_bytes(cantidad: entero) -> texto:
+    requiere:
+        cantidad >= 0
+    garantiza:
+        longitud(resultado) >= 0
+    retornar _syn_leer_bytes(cantidad)
+
+externo funcion _syn_abrir(ruta: texto, modo: texto) -> Canal
+externo funcion _syn_leer(c: Canal) -> texto
+externo funcion _syn_escribir(texto: texto) -> nulo
+externo funcion _syn_escribir_linea(texto: texto) -> nulo
+externo funcion _syn_leer_linea() -> texto
+externo funcion _syn_leer_bytes(cantidad: entero) -> texto
+
+// ============================================================
+// §1.7 — I/O de bajo nivel para LSP (fgetc, fprintf, fflush)
+// ============================================================
+
+// Lee un byte de stdin (0-255), o -1 si EOF
+externo funcion _syn_fgetc_stdin() -> entero
+
+// Escribe texto formateado a un canal (0=stdout, 1=stderr)
+// Retorna el número de bytes escritos
+externo funcion _syn_fprintf(canalm: entero, formato: texto) -> entero
+
+// Escribe texto formateado con 1 argumento entero
+externo funcion _syn_fprintf_i(canalm: entero, formato: texto, valor: entero) -> entero
+
+// Escribe texto formateado con 2 argumentos (entero + texto)
+externo funcion _syn_fprintf_it(canalm: entero, formato: texto, val1: entero, val2: texto) -> entero
+
+// Flush de un canal (0=stdout, 1=stderr)
+externo funcion _syn_fflush(canalm: entero) -> nulo
+
+// Desactiva buffering en un canal
+externo funcion _syn_setbuf_null(canalm: entero) -> nulo

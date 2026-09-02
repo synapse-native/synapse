@@ -28,7 +28,7 @@ def test_rutas_normales_permitidas():
     """Rutas sin ../ deben ser permitidas."""
     rutas_normales = [
         "lib/file.syn",
-        "src/main.syn",
+        "nucleo/principal.syn",
         "tests/valid/empty.syn",
         "a/b/c/d.syn",
     ]

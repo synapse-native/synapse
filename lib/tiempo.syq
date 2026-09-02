@@ -1,0 +1,82 @@
+#lang: es
+// lib/tiempo.syq — Fechas y tiempos de Syquex
+// Manual 3 §12.1: Módulo Tiempo
+//
+// Uso desde Syquex:
+//   importar lib.tiempo
+//   let ts = tiempo.timestamp_unix()
+//   let anio = tiempo.anio()
+//   let fecha = tiempo.fecha_actual()
+
+// --- Timestamp ---
+
+funcion timestamp_unix() -> entero:
+    return _syn_timestamp_unix()
+
+funcion timestamp_ms() -> entero:
+    return _syn_timestamp_ms()
+
+// --- Componentes de fecha ---
+
+funcion anio() -> entero:
+    return _syn_tiempo_anio()
+
+funcion mes() -> entero:
+    return _syn_tiempo_mes()
+
+funcion dia() -> entero:
+    return _syn_tiempo_dia()
+
+// --- Componentes de hora ---
+
+funcion hora() -> entero:
+    return _syn_tiempo_hora()
+
+funcion minuto() -> entero:
+    return _syn_tiempo_minuto()
+
+funcion segundo() -> entero:
+    return _syn_tiempo_segundo()
+
+// --- Día de la semana ---
+
+funcion dia_semana() -> entero:
+    return _syn_tiempo_dia_semana()
+
+// --- Día del año ---
+
+funcion dia_anio() -> entero:
+    return _syn_tiempo_dia_anio()
+
+// --- Formateo ---
+
+funcion fecha_actual() -> texto:
+    return _syn_tiempo_fecha_actual()
+
+funcion hora_actual() -> texto:
+    return _syn_tiempo_hora_actual()
+
+funcion datetime_actual() -> texto:
+    return _syn_tiempo_datetime_actual()
+
+// --- Diferencia ---
+
+funcion diferencia_segundos(ts1: entero, ts2: entero) -> entero:
+    return _syn_tiempo_diferencia_segundos(ts1, ts2)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_timestamp_unix() -> entero
+externo funcion _syn_timestamp_ms() -> entero
+externo funcion _syn_tiempo_anio() -> entero
+externo funcion _syn_tiempo_mes() -> entero
+externo funcion _syn_tiempo_dia() -> entero
+externo funcion _syn_tiempo_hora() -> entero
+externo funcion _syn_tiempo_minuto() -> entero
+externo funcion _syn_tiempo_segundo() -> entero
+externo funcion _syn_tiempo_dia_semana() -> entero
+externo funcion _syn_tiempo_dia_anio() -> entero
+externo funcion _syn_tiempo_fecha_actual() -> texto
+externo funcion _syn_tiempo_hora_actual() -> texto
+externo funcion _syn_tiempo_datetime_actual() -> texto
+externo funcion _syn_tiempo_diferencia_segundos(ts1: entero, ts2: entero) -> entero

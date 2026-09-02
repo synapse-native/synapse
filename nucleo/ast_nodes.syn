@@ -24,10 +24,16 @@ estructura Programa:
 estructura Identificador:
     tipo: texto
     nombre: texto
+    linea: entero
+    columna: entero
 
 estructura LiteralNumero:
     tipo: texto
     valor: entero
+
+estructura LiteralDecimal:
+    tipo: texto
+    valor: decimal
 
 estructura LiteralCadena:
     tipo: texto
@@ -48,6 +54,10 @@ estructura LlamadaFuncion:
     tipo: texto
     nombre: texto
     argumentos: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_TYPE_AMBIGUOUS/INCOMPATIBLE del R1 —
+    // validar_llamada_generica diagnostica sobre el nodo de la llamada).
+    linea: entero
+    columna: entero
 
 estructura ExprAccesoCampo:
     tipo: texto
@@ -58,13 +68,32 @@ estructura AsignacionVariable:
     tipo: texto
     nombre: texto
     expresion: Nodo
+    // R9: marcador StmtConstante (1 si el puente la creo desde
+    // NODO_CONSTANTE). El flatten F8 lo copia a SemNodo.valor_int y la pasada
+    // 2 / analizar_sentencia registran la constante con es_constante=1
+    // (inmutabilidad real, paridad S1 semantic_checker.py StmtConstante).
+    es_constante: booleano
+    // R21: linea/columna reales (calidad de diagnostico de la pasada 3:
+    // ERR_SEM_CONSTANTE_INMUTABLE y REDEFINICION — paridad S1 L367/L387).
+    linea: entero
+    columna: entero
 
 estructura DeclaracionVariable:
     tipo: texto
     nombre: texto
+    tipo_param: texto
     expresion: Nodo
     linea: entero
     columna: entero
+
+estructura SentenciaDelegar:
+    tipo: texto
+    expresion: Nodo
+
+estructura DeclaracionExport:
+    tipo: texto
+    destino: texto
+    funcion: Nodo
 
 estructura AsignacionCampo:
     tipo: texto
@@ -100,6 +129,9 @@ estructura Parametro:
     nombre: texto
     tipo_param: texto
     es_transferencia: booleano
+    // R21: linea/columna reales (validacion 2.4 de aridad/base en parametros).
+    linea: entero
+    columna: entero
 
 estructura ListaParametro:
     cabeza: Parametro
@@ -113,11 +145,17 @@ estructura DefinicionFuncion:
     requiere: ListaNodo
     garantiza: ListaNodo
     cuerpo: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura DefinicionEstructura:
     tipo: texto
     nombre: texto
     campos: ListaParametro
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 1, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura SentenciaRomper:
     tipo: texto
@@ -129,10 +167,11 @@ estructura SentenciaPara:
     tipo: texto
     linea: entero
     columna: entero
+    nombre: texto
     inicializacion: Nodo
     condicion: Nodo
     incremento: Nodo
-    cuerpo: Nodo
+    cuerpo: ListaNodo
 
 estructura SentenciaLanzar:
     tipo: texto
@@ -146,7 +185,7 @@ estructura SentenciaRecuperar:
 estructura SentenciaEscuchar:
     tipo: texto
     canal: Nodo
-    respuesta: Nodo
+    cuerpo: ListaNodo
 
 estructura ExprTensor:
     tipo: texto
@@ -157,6 +196,12 @@ estructura ExprIndice:
     tipo: texto
     expr: Nodo
     indice: Nodo
+
+// D-6: operador '?' postfijo — propaga el err de un Resultado y desempaqueta el
+// valor ok (Manual 3 §7 L331-342).
+estructura ExprPropagar:
+    tipo: texto
+    expresion: Nodo
 
 estructura ArgumentoTransferido:
     tipo: texto
@@ -174,6 +219,8 @@ estructura ExprObtenerDireccion:
     tipo: texto
     expr: Nodo
     es_mutable: booleano
+    linea: entero
+    columna: entero
 
 estructura ExprDereferencia:
     tipo: texto
@@ -189,6 +236,9 @@ estructura DeclaracionExterna:
     nombre: texto
     parametros: ListaParametro
     tipo_retorno: texto
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION pasada 2, paridad S1)
+    linea: entero
+    columna: entero
 
 estructura ExprCrearCanal:
     tipo: texto
@@ -199,7 +249,46 @@ estructura SentenciaEnviarCanal:
     tipo: texto
     canal: Nodo
     valor: Nodo
+    linea: entero
+    columna: entero
 
 estructura ExprRecibirCanal:
     tipo: texto
     canal: Nodo
+
+estructura LiteralNulo:
+    tipo: texto
+
+estructura ConstructorTipo:
+    tipo: texto
+    nombre: texto
+    tipos: ListaNodo
+
+estructura DeclaracionTipo:
+    tipo: texto
+    nombre: texto
+    parametros_tipo: ListaNodo
+    tipo_base: texto
+    constructores: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_REDEFINICION ADT, paridad S1)
+    linea: entero
+    columna: entero
+
+// R11 (deuda FASE_2_2.4_NATIVA.md): NodoCoincidir/NodoCaso — el coincidir de
+// patrones (Manual 2 S2.4). Paridad S1 ast_nodes.py NodoCoincidir{expresion,
+// casos} / NodoCaso{patron, cuerpo}. El puente plano->tipado (puente_ast.syn)
+// los construye desde NODO_COINCIDIR/NODO_CASO (parser.syn parsear_coincidir),
+// el flatten F8 los aplana a SemNodo[38]/[39] y el analizador valida la
+// exhaustividad (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED).
+estructura NodoCoincidir:
+    tipo: texto
+    expresion: Nodo
+    casos: ListaNodo
+    // R21: linea/columna reales (ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED, paridad S1)
+    linea: entero
+    columna: entero
+
+estructura NodoCaso:
+    tipo: texto
+    patron: texto
+    cuerpo: ListaNodo

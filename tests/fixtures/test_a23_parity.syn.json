@@ -1,0 +1,154 @@
+{
+  "tipo": "Programa",
+  "declaraciones": [
+    {
+      "tipo": "DeclaracionTipo",
+      "nombre": "Edad",
+      "parametros_tipo": [],
+      "tipo_base": "entero",
+      "constructores": []
+    },
+    {
+      "tipo": "DefinicionEstructura",
+      "nombre": "NodoLista",
+      "campos": [
+        {
+          "nombre": "valor",
+          "tipo": "entero",
+          "es_transferencia": false
+        },
+        {
+          "nombre": "siguiente",
+          "tipo": "arc<NodoLista>",
+          "es_transferencia": false
+        }
+      ]
+    },
+    {
+      "tipo": "FuncionDef",
+      "nombre": "principal",
+      "parametros": [],
+      "tipo_retorno": "nulo",
+      "contratos": null,
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "",
+            "nombre": "x",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 5
+            }
+          },
+          {
+            "tipo": "entero",
+            "nombre": "edad",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 10
+            }
+          },
+          {
+            "tipo": "",
+            "nombre": "s",
+            "expresion": {
+              "tipo": "LiteralCadena",
+              "valor": "hola"
+            }
+          },
+          {
+            "tipo": "débil<NodoLista>",
+            "nombre": "ref",
+            "expresion": {
+              "tipo": "LiteralNulo"
+            }
+          },
+          {
+            "tipo": "",
+            "nombre": "t",
+            "expresion": {
+              "tipo": "ExprTensor",
+              "filas": {
+                "tipo": "LiteralNumero",
+                "valor": 2
+              },
+              "columnas": {
+                "tipo": "LiteralNumero",
+                "valor": 3
+              }
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "entero_a_texto",
+                  "argumentos": [
+                    {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "x"
+                      },
+                      "operador": "+",
+                      "derecha": {
+                        "tipo": "Identificador",
+                        "nombre": "edad"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "s"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "entero_a_texto",
+                  "argumentos": [
+                    {
+                      "tipo": "ExprAccesoCampo",
+                      "objeto": {
+                        "tipo": "Identificador",
+                        "nombre": "t"
+                      },
+                      "nombre_campo": "filas"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaRetornar",
+            "es_transferencia": false
+          }
+        ]
+      }
+    }
+  ],
+  "is_no_std": false
+}

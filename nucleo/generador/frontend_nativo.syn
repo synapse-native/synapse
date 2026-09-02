@@ -1,0 +1,74 @@
+﻿// cumple Manual 1 5: generador de código
+// cumple Manual 8 4.1: compilador nativo S2
+// ==========================================================
+// frontend_nativo — wrapper del frontend NATIVO (único frontend
+// desde A4). El espejo embebido frontend_p.syn (_P_*) fue
+// retirado en A4 (AUDITORIA_ALINEACION_MANUALES.md).
+// Pipeline: tokenizar (lexer.syn) -> parsear_nativo (parser.syn)
+//   -> puente_construir_programa (puente_ast.syn, A3.1).
+// ==========================================================
+
+// ----------------------------------------------------------
+// gen_emitir_frontend_nativo — wrapper 'struct Programa parsear(CadenaSegura
+// fuente)' para el frontend NATIVO (A3.2/A4): ejecuta la pipeline
+//   tokenizar (cuerpo nativo de lexer.syn) -> parsear_nativo (parser.syn) ->
+//   puente_construir_programa (puente_ast.syn, A3.1).
+// Paridad: firma canonica 'struct Programa parsear(CadenaSegura fuente)'
+// (L3818 / S1 _SPECIAL_SIGS generator.py) que consume principal.syn y lsp.syn.
+// Guard _G_fnn_emitido: evita doble emision si el hook ME-B7 se invoca 2 veces.
+// ----------------------------------------------------------
+funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
+    inseguro:
+        asm("static int _G_fnn_emitido = 0;")
+        asm("if (_G_fnn_emitido) return; _G_fnn_emitido = 1;")
+        asm("// A4: el frontend embebido _P_* se retiró; estos globals")
+        asm("// (_P_ntks/_P_tpos/_P_p_err) son compatibilidad linker-ficticia")
+        asm("// (muertos en el pipeline nativo, nunca se leen ni escriben).")
+        asm("static char _G_fnn00[] = \"int _P_ntks = 0, _P_tpos = 0, _P_p_err = 0;\";")
+        asm("gen_emitir_str(est, _G_fnn00);")
+        asm("static char _G_fnn0[] = \"struct Programa parsear(CadenaSegura fuente) {\";")
+        asm("gen_emitir_str(est, _G_fnn0);")
+        asm("static char _G_fnn1[] = \"    int _nt = tokenizar(fuente);\";")
+        asm("gen_emitir_str(est, _G_fnn1);")
+        asm("static char _G_fnn2[] = \"    if (_nt < 0) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn2);")
+        asm("static char _G_fnn3[] = \"    struct ParserEst _pe = {0};\";")
+        asm("gen_emitir_str(est, _G_fnn3);")
+        asm("static char _G_fnn3a[] = \"    parsear_nativo(&_pe);\";")
+        asm("gen_emitir_str(est, _G_fnn3a);")
+        // R5 (F2-2.4c): si el parser nativo marco _pe.hay_error, imprimir el
+        // diagnostico y senalizar _G_parse_error (paridad emit_declarations.py
+        // _emitir_parsear_nativo). El pipeline de principal.syn aborta con rc=8.
+        // NOTA escape: el fprintf se emite como array C (_G_fnn3i), por lo que
+        // \\\\n en este .syn = \\n en el literal C = backslash+n en el array = \\n
+        // valido en el C emitido. Con \\n (2 BS) el array contenia un newline REAL
+        // y rompia el literal (hallazgo R5, bootstrap E2). No simplificar.
+        asm("static char _G_fnn3b[] = \"    if (_pe.hay_error) {\";")
+        asm("gen_emitir_str(est, _G_fnn3b);")
+        asm("static char _G_fnn3c[] = \"        int64_t _ln = _pe.error_linea, _co = _pe.error_columna;\";")
+        asm("gen_emitir_str(est, _G_fnn3c);")
+        asm("static char _G_fnn3d[] = \"        if (!_ln && _pe.posicion >= 0 && _pe.posicion < _pe.total_tokens) {\";")
+        asm("gen_emitir_str(est, _G_fnn3d);")
+        asm("static char _G_fnn3e[] = \"            _ln = _pe.tokens[_pe.posicion].linea;\";")
+        asm("gen_emitir_str(est, _G_fnn3e);")
+        asm("static char _G_fnn3f[] = \"            _co = _pe.tokens[_pe.posicion].columna;\";")
+        asm("gen_emitir_str(est, _G_fnn3f);")
+        asm("static char _G_fnn3g[] = \"        }\";")
+        asm("gen_emitir_str(est, _G_fnn3g);")
+        asm("static char _G_fnn3h[] = \"        const char* _msg = (_pe.error_mensaje.datos && _pe.error_mensaje.datos[0]) ? _pe.error_mensaje.datos : \\\"Error de sintaxis\\\";\";")
+        asm("gen_emitir_str(est, _G_fnn3h);")
+        asm("static char _G_fnn3i[] = \"        fprintf(stderr, \\\"[Synapse] Error de sintaxis (linea %lld, columna %lld): %s\\\\n\\\", (long long)_ln, (long long)_co, _msg);\";")
+        asm("gen_emitir_str(est, _G_fnn3i);")
+        asm("static char _G_fnn3j[] = \"        _G_parse_error = 1; struct Programa _e2 = {0}; return _e2;\";")
+        asm("gen_emitir_str(est, _G_fnn3j);")
+        asm("static char _G_fnn3k[] = \"    }\";")
+        asm("gen_emitir_str(est, _G_fnn3k);")
+        asm("static char _G_fnn4[] = \"    struct Programa* _pr = (struct Programa*)puente_construir_programa();\";")
+        asm("gen_emitir_str(est, _G_fnn4);")
+        asm("static char _G_fnn5[] = \"    if (!_pr) { struct Programa _e = {0}; return _e; }\";")
+        asm("gen_emitir_str(est, _G_fnn5);")
+        asm("static char _G_fnn6[] = \"    return *_pr;\";")
+        asm("gen_emitir_str(est, _G_fnn6);")
+        asm("static char _G_fnn7[] = \"}\";")
+        asm("gen_emitir_str(est, _G_fnn7);")
+

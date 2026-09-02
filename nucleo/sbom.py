@@ -1,3 +1,5 @@
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 """
 nucleo/sbom.py — Generación de SBOM (Software Bill of Materials) estándar SPDX 2.3
 
@@ -175,7 +177,7 @@ def _leer_version(ruta_proyecto: str) -> str:
         with open(version_path, 'r') as f:
             return f.read().strip()
     except (OSError, IOError):
-        return '5.1.1-industrial'
+        return '8.1.0-industrial'
 
 
 def generar_sbom(ruta_proyecto: str,

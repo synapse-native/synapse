@@ -18,11 +18,32 @@
 *.lib
 *.a
 
+# CLASE C2: Artefactos de cobertura
+.coverage
+.coverage.*
+htmlcov/
+
 # CLASE D: C generado intermedio (no fuente)
 synapse_unity.c
-synapse_llvm.c
 _*.c
 _*.c.o
+_*.h
+*.syn.json
+# C generado por el compilador Synapse a partir de .syn fuente (ej: lsp_v3.syn -> lsp_v3.c)
+nucleo/lsp_v3.c
+# Scratch/drivers temporales de verificacion (no fuente definitiva)
+nucleo/_tmp_*.syn
+tests/fixtures/tmp_*.syn
+# CLASE D1: C generado al lado de .syn fuente (ej: hola.syn → hola.c)
+examples/**/*.c
+tests/fixtures/*.c
+std/**/*.c
+opensyn/*.c
+
+# CLASE D2: Artefactos de prueba en raíz (auditoría Fase 0)
+prueba_*.c
+prueba_*.syn.json
+prueba_*.c.json
 
 # CLASE E: Directorios temporales de tests
 _test_*/
@@ -35,6 +56,8 @@ __pycache__/
 stage2_*.txt
 stdout.log
 stderr.log
+pipeline.err
+pipeline.out
 --output
 --output.exe
 -o
@@ -49,8 +72,11 @@ runtime_linked.dll
 
 # CLASE I: Directorios de build/toolchain (no fuente)
 toolchain_gcc12/
+build/
+bootstrap_tmp/
 
-# CLASE J: Directorios de distribución
+# CLASE J: Directorios de distribución (artefactos generados por workflows/instalador)
+dist/
 distbin/
 
 # CLASE K: Bootstrap binaries (generados por pipeline)
@@ -68,6 +94,16 @@ programa.c
 runtime_stubs.c
 test_toolchain.c
 tests/dummy_main.c
+tests/validate_borrow_abort.c
+tests/validate_borrow_abort.syn.json
+
+# CLASE M2: Artefactos de ejecución de tests en raíz
+test_*.txt
+test_*.c
+test_*.syn
+_out_*.txt
+*.out
+hola.c
 
 # CLASE N: Paquetes locales Axon
 paquetes_oficiales/
@@ -79,6 +115,9 @@ _test_migration_*/
 # CLASE P: Archivos varios residuales
 nul
 
+# CLASE S: Dependencias Node.js
+node_modules/
+
 # CLASE Q: Archivos binarios LSP
 test_lsp_bin.oculto
 test_lsp_bin
@@ -88,7 +127,27 @@ test_lsp_bin
 *.pub
 *.attestation.json
 
+# CLASE R2: Artefactos públicos de release (checksums y changelog — NO son secretos)
+!CHANGELOG_v*.md
+!*.sha256
+
+# CLASE R3: Artefactos de perfilamiento PGO
+*.profdata
+*.profraw
+
 # Estándar Python
 *.egg-info/
 .venv/
 venv/
+tests/probe_f46.c
+tests/probe_f46.syn.json
+
+# Estado local de agentes de edicion (kilo)
+.kilo/
+
+# VS Code Synapse extension dependencies
+vscode-synapse/node_modules/
+
+# Logs
+logs/
+pipeline.log

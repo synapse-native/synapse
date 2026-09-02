@@ -1,0 +1,5 @@
+#lang: es
+// Utilidades generales
+
+funcion saludar() -> nulo:
+    log("Hola desde utilidades!")

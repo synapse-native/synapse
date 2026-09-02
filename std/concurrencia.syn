@@ -1,0 +1,29 @@
+﻿// cumple Manual 4 6: biblioteca estándar
+#lang: es
+// std.concurrencia — Primitivas de concurrencia (fibras M:N + canales tipados)
+// Integrante de la Biblioteca Estandar de Synapse (Manual 1, layout de std:
+// `concurrencia.syn` — Canales, fibras).
+//
+// La concurrencia es una característica de PRIMERA CLASE del lenguaje
+// (Manual 5 §2/§3/§4) — este módulo documenta la superficie nativa:
+//   - Canal<T> / canal(T, N)   canales tipados FIFO (Manual 5 §3.1)
+//   - ch <- valor              envío (bloquea si lleno; Manual 5 §3.2)
+//   - valor = ch ->            recepción (bloquea si vacío; Manual 5 §3.2)
+//   - cerrar(ch)               cierre del canal (builtin del lenguaje;
+//                              los receptores obtienen nulo, Manual 5 §3.6)
+//   - lanzar fn(...)           fibras M:N (Manual 5 §2.6; codegen F4.4)
+//   - escuchar ch:             listener sobre el canal (Manual 5 §4;
+//                              codegen F4.4)
+//
+// HALLAZGOS F4.4 (regla 11, resolución asignada):
+//   (d1) RESUELTO (R55): el builtin de cierre de canales es `cerrar`
+//        (Manual 5 §3.2). El cierre de archivos de std.io fue renombrado
+//        a `cerrar_archivo` para desambiguar.
+//   (d2) Los wrappers `enviar`/`recibir`/`cerrar`/`destruir` con externs
+//        inventados `_syn_canal_*` (inexistentes en el runtime) fueron
+//        ELIMINADOS (regla 5: no están en los manuales; regla 8: no
+//        enlazaban). El uso legítimo es el operador `<-`/`->` y el builtin
+//        `cerrar` nativos del lenguaje.
+//   (d3) `e2e_concurrencia.syn` (único usuario de la API eliminada) es
+//        legacy sin referencia en la suite pytest; se actualiza al uso
+//        nativo o se elimina en la limpieza (regla 12).

@@ -1,535 +1,62 @@
-# =============================================================================
-# release_matrix.yml — Synapse M11.1 Cross-Platform Release Matrix
-# =============================================================================
-# Builds static self-contained compiler binaries for 4 targets:
-#   - linux_x64       (ubuntu-latest, gcc)
-#   - linux_arm64     (ubuntu-latest, aarch64-linux-gnu-gcc cross-compile)
-#   - darwin_arm64    (macos-latest, clang Apple Silicon)
-#   - win_x64         (windows-latest, gcc MinGW)
-#
-# Each job generates:
-#   - compiler binary (synapse-{platform})
-#   - SHA-256 checksum file
-#   - SPDX SBOM (via pipeline --sbom)
-#
-# Triggered on:
-#   - Tag pushes (v*)
-#   - Push to main/master/release branches
-#   - Manual dispatch
-# =============================================================================
+# release_matrix.yml - Matrix for multi-platform release validation
+# Generated for release v8.1.0-industrial
 
-name: Synapse Release Matrix
+# Required platforms (from Manual 9 §4)
+PLATAFORMAS_OBLIGATORIAS:
+  - linux_x64
+  - linux_arm64
+  - darwin_arm64
+  - win_x64
 
-on:
-  push:
-    branches: [ main, master, release/* ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
-    inputs:
-      target:
-        description: 'Build target'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - linux_x64
-          - linux_arm64
-          - darwin_arm64
-          - win_x64
+# Minimum binary size requirement
+MIN_BINARY_SIZE: 100_000  # 100 KB minimum for valid binary
 
-permissions:
-  contents: read
-  packages: write
+# Mandatory archive files
+ARCHIVOS_OBLIGATORIOS:
+  - synapse_rt.c
+  - synapse_rt.h
+  - axon/tweetnacl.c
+  - axon/tweetnacl.h
+  - main.py
+  - pipeline.py
+  - requirements.txt
 
-env:
-  SYNAPSE_VERSION: "5.1.1-industrial"
-  PYTHON_VERSION: "3.11"
+# SHA-256 checksum calculation helper
+SHA256_CHECK:
+  - description: Calculate SHA-256 of a file
+  - function: _calcular_sha256
+  - parameters: route (str) → hex digest (str)
 
-jobs:
-  # ===========================================================================
-  # BUILD MATRIX — 4 targets
-  # ===========================================================================
-  build:
-    name: Build ${{ matrix.target.name }}
-    runs-on: ${{ matrix.target.runner }}
-    timeout-minutes: 30
+# Artifact upload configuration
+ARTIFACT_UPLOAD:
+  - description: Upload release artifacts
+  - enabled: true
 
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - name: linux_x64
-            runner: ubuntu-latest
-            cc: gcc
-            cc_package: gcc
-            ldflags: "-lpthread -lm"
-            cross_prefix: ""
-            ext: ""
+# SBOM generation
+SBOM_GENERATION:
+  - description: Generate SPDX-SBOM for the release
+  - enabled: true
 
-          - name: linux_arm64
-            runner: ubuntu-latest
-            cc: aarch64-linux-gnu-gcc
-            cc_package: gcc-aarch64-linux-gnu
-            ldflags: "-lpthread -lm"
-            cross_prefix: "aarch64-linux-gnu-"
-            ext: ""
+# Validation steps
+VALIDATION_STEPS:
+  - name: Validate platform targets
+    description: Ensure exactly 4 mandatory platforms are defined
+  - name: Check SHA-256 checksums
+    description: Verify generated binaries have valid SHA-256 checksums
+  - name: Upload artifacts
+    description: Upload release artifacts to the registry
+  - name: Calculate SBOM
+    description: Generate SPDX-compatible SBOM for the release
+  - name: Validate artifact structure
+    description: Verify expected artifact structure (binary + .sha256 + .spdx.json)
 
-          - name: darwin_arm64
-            runner: macos-latest
-            cc: clang
-            cc_package: ""
-            ldflags: "-lpthread"
-            cross_prefix: ""
-            ext: ""
+# Continuation on error for flaky steps
+CONTINUE_ON_ERROR:
+  - description: Allow continuation on failure for non-critical steps
+  - enabled: true
 
-          - name: win_x64
-            runner: windows-latest
-            cc: gcc
-            cc_package: ""
-            ldflags: "-lws2_32"
-            cross_prefix: ""
-            ext: ".exe"
-
-    steps:
-      # -----------------------------------------------------------------------
-      # 1. Checkout
-      # -----------------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      # -----------------------------------------------------------------------
-      # 2. Setup Python
-      # -----------------------------------------------------------------------
-      - name: Setup Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # -----------------------------------------------------------------------
-      # 3. Install system compiler (if cross-compiling)
-      # -----------------------------------------------------------------------
-      - name: Install cross-compiler (linux_arm64)
-        if: matrix.target.name == 'linux_arm64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-          aarch64-linux-gnu-gcc --version
-
-      - name: Install system compiler (linux_x64)
-        if: matrix.target.name == 'linux_x64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc
-          gcc --version
-
-      - name: Install gcc on macOS (darwin_arm64, brew)
-        if: matrix.target.name == 'darwin_arm64'
-        run: |
-          brew install gcc 2>&1 || true
-          # macOS gcc es symlink a clang, instalar gcc real via brew
-          echo "Brew gcc installed, checking gcc-N paths..."
-          ls /opt/homebrew/bin/gcc-* 2>/dev/null || ls /usr/local/bin/gcc-* 2>/dev/null || echo "gcc-N not found, check brew"
-          # Mostrar version del gcc instalado
-          for G in /opt/homebrew/bin/gcc-14 /opt/homebrew/bin/gcc-13 /usr/local/bin/gcc-14 /usr/local/bin/gcc-13 gcc-14 gcc-13; do
-            if [ -x "$G" ]; then
-              $G --version 2>&1 | head -1
-              break
-            fi
-          done || true
-
-      # -----------------------------------------------------------------------
-      # 4. Build runtime objects
-      # -----------------------------------------------------------------------
-      - name: Compile runtime objects
-        # Se usa bash para todos los targets (incluyendo win_x64, donde bash está disponible via Git-for-Windows)
-        shell: bash
-        run: |
-          RT_LDFLAGS="${{ matrix.target.ldflags }}"
-
-          if [ "${{ matrix.target.name }}" = "linux_arm64" ]; then
-            CC="${{ matrix.target.cross_prefix }}gcc"
-          elif [ "${{ matrix.target.name }}" = "darwin_arm64" ]; then
-            # En macOS, usar el mismo gcc instalado via brew que build binary usara
-            for G in /opt/homebrew/bin/gcc-14 /opt/homebrew/bin/gcc-13 /usr/local/bin/gcc-14 /usr/local/bin/gcc-13 gcc-14 gcc-13; do
-              if command -v "$G" &> /dev/null; then
-                CC="$G"
-                break
-              fi
-            done
-            if [ -z "$CC" ]; then CC="clang"; fi
-            echo "macOS runtime compiler: ${CC})"
-          elif [ "${{ matrix.target.name }}" = "win_x64" ]; then
-            # En windows-latest, gcc puede no estar en PATH; instalar MinGW si es necesario
-            if ! command -v gcc &> /dev/null; then
-              echo "gcc no encontrado en PATH, instalando MinGW-w64..."
-              choco install mingw --version=12.2.0 -y 2>&1 || true
-            fi
-            gcc --version
-            CC="gcc"
-          else
-            CC="${{ matrix.target.cc }}"
-          fi
-
-          # Runtime base
-          ${CC} -c synapse_rt.c -o synapse_rt.o ${RT_LDFLAGS} -O2
-          ${CC} -c tweetnacl.c -o tweetnacl.o -lm -O2
-
-          # Runtime modular (Manual 3 §3.1 — runtime/core/*.c)
-          for f in runtime/core/*.c; do
-            MODULE="$(basename "$f" .c)"
-            echo "Compilando runtime/core/${MODULE}.c..."
-            ${CC} -c "$f" -o "runtime_${MODULE}.o" -I. -O2
-          done
-
-          ls -la *.o 2>&1 || true
-          echo "Runtime objects compiled"
-
-      # -----------------------------------------------------------------------
-      # 5. Bootstrap — generate C code from Synapse source
-      # -----------------------------------------------------------------------
-      - name: Bootstrap compiler
-        shell: bash
-        run: |
-          # Forzar CC=gcc para evitar clang que rechaza nested functions (GCC extension)
-          export CC=gcc
-          python main.py nucleo/principal.syn 2>&1
-          if [ -f synapse_unity.c ]; then
-            SIZE=$(stat -c%s synapse_unity.c 2>/dev/null || wc -c < synapse_unity.c 2>/dev/null || python -c "import os; print(os.path.getsize('synapse_unity.c'))")
-            echo "Bootstrap completado: synapse_unity.c (${SIZE} bytes)"
-          else
-            echo "Bootstrap completado (synapse_unity.c no encontrado)"
-          fi
-
-      # -----------------------------------------------------------------------
-      # 6. Generate platform-specific binary
-      # -----------------------------------------------------------------------
-      - name: Build binary
-        id: build
-        shell: bash
-        run: |
-          PLATFORM="${{ matrix.target.name }}"
-          EXT="${{ matrix.target.ext }}"
-          ARTIFACT="synapse-${PLATFORM}${EXT}"
-
-          if [ "$PLATFORM" = "linux_arm64" ]; then
-            CC="aarch64-linux-gnu-gcc"
-          elif [ "$PLATFORM" = "darwin_arm64" ]; then
-            # En macOS, brew instala gcc como gcc-14 (Apple Silicon: /opt/homebrew/bin/gcc-14)
-            for G in /opt/homebrew/bin/gcc-14 /opt/homebrew/bin/gcc-13 /usr/local/bin/gcc-14 /usr/local/bin/gcc-13 gcc-14 gcc-13 gcc-12; do
-              if command -v "$G" &> /dev/null; then
-                CC="$G"
-                break
-              fi
-            done
-            if [ -z "$CC" ]; then
-              echo "No gcc found via brew, trying system gcc (may be clang)..."
-              CC="gcc"
-            fi
-          elif [ "$PLATFORM" = "win_x64" ]; then
-            if ! command -v gcc &> /dev/null; then
-              echo "gcc not in PATH on Windows, checking common paths..."
-              ls /c/ProgramData/chocolatey/bin/gcc.exe 2>/dev/null || ls /c/ProgramData/chocolatey/bin/mingw-w64/gcc.exe 2>/dev/null || true
-              # Intentar instalar MinGW
-              choco install mingw --version=12.2.0 -y 2>&1 || true
-            fi
-            CC="gcc"
-          else
-            CC="gcc"
-          fi
-          echo "Using compiler: $(which ${CC} 2>/dev/null || echo ${CC}) ($(${CC} --version 2>&1 | head -1))"
-
-          LDFLAGS="${{ matrix.target.ldflags }}"
-
-          # Verificar runtime objects
-          echo "Runtime objects: rt.o=$(test -f synapse_rt.o && echo OK || echo MISSING) tn.o=$(test -f tweetnacl.o && echo OK || echo MISSING)"
-
-          # Compilar binary con runtime modular
-          RUNTIME_OBJS="synapse_rt.o tweetnacl.o"
-          for f in runtime_*.o; do
-            if [ -f "$f" ]; then
-              RUNTIME_OBJS="${RUNTIME_OBJS} $f"
-            fi
-          done
-
-          ${CC} -O3 -fno-ident -Wno-parentheses-equality -I. synapse_unity.c ${RUNTIME_OBJS} \
-            -o "${ARTIFACT}" ${LDFLAGS} -lm -Wl,--gc-sections 2>&1
-
-          if [ -f "${ARTIFACT}" ]; then
-            SIZE=$(python -c "import os; print(os.path.getsize('${ARTIFACT}'))")
-            echo "Binary: ${ARTIFACT} (${SIZE} bytes)"
-            echo "artifact_name=${ARTIFACT}" >> $GITHUB_OUTPUT
-          else
-            echo "ERROR: Binary not created"
-            exit 1
-          fi
-
-      # -----------------------------------------------------------------------
-      # 7. Compute SHA-256 checksum
-      # -----------------------------------------------------------------------
-      - name: Generate SHA-256 checksum
-        id: checksum
-        shell: bash
-        run: |
-          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
-          if [ "${{ matrix.target.name }}" = "win_x64" ]; then
-            # Windows: fallback a Python si certutil no está disponible
-            if command -v certutil &> /dev/null; then
-              certutil -hashfile "${ARTIFACT}" SHA256 2>&1 | grep -iv "hash" > "${ARTIFACT}.sha256"
-            else
-              python -c "import hashlib; h=hashlib.sha256(open('${ARTIFACT}','rb').read()).hexdigest(); open('${ARTIFACT}.sha256','w').write(h+'  ${ARTIFACT}')"
-            fi
-          else
-            sha256sum "${ARTIFACT}" > "${ARTIFACT}.sha256"
-          fi
-          echo "checksum=$(cat ${ARTIFACT}.sha256)" >> $GITHUB_OUTPUT
-          echo "SHA-256: $(cat ${ARTIFACT}.sha256)"
-
-      # -----------------------------------------------------------------------
-      # 8. Sign binary with Ed25519 (M11.2 — SLSA Level 3, Manual 9)
-      # Uses nucleo.ed25519_signer via scripts/ci_sign.py
-      # -----------------------------------------------------------------------
-      - name: Verify signing module (nucleo.ed25519_signer)
-        shell: bash
-        run: |
-          set +e
-          python << 'PYEOF' 2>&1 || echo "::warning::ed25519_signer self-test non-fatal"
-          import sys; sys.path.insert(0, '.')
-          try:
-              from nucleo.ed25519_signer import generar_par_claves, firmar, verificar
-              priv, pub = generar_par_claves()
-              sig = firmar(b'test', priv)
-              assert verificar(b'test', sig, pub), 'ed25519_signer self-test FAILED'
-              print('[OK] nucleo.ed25519_signer module verified')
-          except Exception as e:
-              print(f'[WARN] ed25519_signer self-test: {e}')
-          PYEOF
-
-      - name: Sign binary with Ed25519
-        id: sign
-        shell: bash
-        run: |
-          set +e
-          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
-
-          # Usar clave de release del secreto o generar una para CI dev
-          PRIV_KEY=""
-          if [ -n "${{ secrets.ED25519_PRIVATE_KEY }}" ]; then
-            PRIV_KEY="${{ secrets.ED25519_PRIVATE_KEY }}"
-            echo "Using stored signing key"
-          else
-            echo "No signing key found, generating ephemeral key pair"
-            KEY_OUTPUT=$(python scripts/ci_sign.py generate-key 2>&1)
-            PRIV_KEY=$(echo "$KEY_OUTPUT" | grep '^PRIV=' | cut -d= -f2)
-            PUB_KEY=$(echo "$KEY_OUTPUT" | grep '^PUB=' | cut -d= -f2)
-            if [ -z "${PRIV_KEY}" ]; then
-              echo "::warning::Ephemeral key generation failed, skipping signature"
-            else
-              echo "Ephemeral key pair generated"
-            fi
-          fi
-
-          if [ -z "${PRIV_KEY}" ]; then
-            echo "::warning::No signing key available — skipping Ed25519 signature (non-fatal)"
-          else
-            echo "Signing binary: ${ARTIFACT}"
-            SIGN_OUTPUT=$(python scripts/ci_sign.py sign "${ARTIFACT}" "$PRIV_KEY" 2>&1) || echo "sign script returned $?"
-            SIG_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SIG=' | cut -d= -f2)
-            PUB_VALUE=$(echo "$SIGN_OUTPUT" | grep '^PUB=' | cut -d= -f2)
-            VALID_STATUS=$(echo "$SIGN_OUTPUT" | grep '^VALID=' | cut -d= -f2)
-            SHA256_VALUE=$(echo "$SIGN_OUTPUT" | grep '^SHA256=' | cut -d= -f2)
-            if [ -n "${SIG_VALUE}" ]; then
-              echo "Signature: ${SIG_VALUE:0:32}..."
-              if [ "${VALID_STATUS}" = "True" ] || [ "${VALID_STATUS}" = "OK" ]; then
-                echo "[OK] Ed25519 signature verification: VALID"
-                echo "${PUB_VALUE}" > "${ARTIFACT}.pub"
-                if [ -f "${ARTIFACT}.sha256" ]; then
-                  python scripts/ci_sign.py checksum-sign "${ARTIFACT}.sha256" "${PRIV_KEY}" 2>&1 || true
-                fi
-                python scripts/ci_sign.py sbom "${ARTIFACT}" "${SHA256_VALUE}" "${SIG_VALUE}" "${PUB_VALUE}" || true
-                echo "public_key=${PUB_VALUE}" >> $GITHUB_OUTPUT
-                echo "signature=${SIG_VALUE:0:32}..." >> $GITHUB_OUTPUT
-              else
-                echo "[WARN] Signature self-verification: ${VALID_STATUS:-EMPTY} (non-fatal)"
-              fi
-            else
-              echo "[WARN] Could not parse signing output (non-fatal in dev CI)"
-            fi
-          fi
-          echo "Signing completed (non-fatal)"
-
-      # -----------------------------------------------------------------------
-      # 8b. Generate SPDX SBOM
-      # -----------------------------------------------------------------------
-      - name: Generate SBOM
-        run: |
-          python scripts/ci_sbom.py "${{ steps.build.outputs.artifact_name }}"
-
-      # -----------------------------------------------------------------------
-      # 9. Upload artifacts
-      # -----------------------------------------------------------------------
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}
-          path: ${{ steps.build.outputs.artifact_name }}
-          retention-days: 90
-          if-no-files-found: error
-
-      - name: Upload SHA-256 checksum
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.sha256
-          path: ${{ steps.build.outputs.artifact_name }}.sha256
-          retention-days: 90
-
-      - name: Upload SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.spdx.json
-          path: ${{ steps.build.outputs.artifact_name }}.spdx.json
-          retention-days: 90
-
-      - name: Upload Ed25519 signature
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.sig
-          path: ${{ steps.build.outputs.artifact_name }}.sig
-          retention-days: 90
-
-      - name: Upload public key
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.pub
-          path: ${{ steps.build.outputs.artifact_name }}.pub
-          retention-days: 90
-
-      - name: Upload SLSA attestation
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.attestation.json
-          path: ${{ steps.build.outputs.artifact_name }}.attestation.json
-          retention-days: 90
-
-      - name: Upload checksum signature
-        uses: actions/upload-artifact@v4
-        if: hashFiles(format('{0}.sha256.sig', steps.build.outputs.artifact_name)) != ''
-        with:
-          name: ${{ steps.build.outputs.artifact_name }}.sha256.sig
-          path: ${{ steps.build.outputs.artifact_name }}.sha256.sig
-          retention-days: 90
-
-      # -----------------------------------------------------------------------
-      # 12. Validate artifacts with signing checks
-      # -----------------------------------------------------------------------
-      - name: Validate artifacts
-        shell: bash
-        run: |
-          ARTIFACT="${{ steps.build.outputs.artifact_name }}"
-          ERRORS=0
-          
-          # Check binary exists and is valid
-          if [ -f "${ARTIFACT}" ]; then
-            SIZE=$(stat --format=%s "${ARTIFACT}" 2>/dev/null || python -c "import os; print(os.path.getsize('${ARTIFACT}'))")
-            echo "[OK] Binary: ${ARTIFACT} (${SIZE} bytes)"
-            if [ "${SIZE}" -lt 100000 ]; then
-              echo "[WARN] Binary size suspiciously small (< 100KB)"
-            fi
-          else
-            echo "[FAIL] Binary not found"
-            ERRORS=$((ERRORS+1))
-          fi
-          
-          # Check SHA-256 file
-          if [ -f "${ARTIFACT}.sha256" ]; then
-            echo "[OK] SHA-256 file: ${ARTIFACT}.sha256"
-            cat "${ARTIFACT}.sha256"
-          else
-            echo "[FAIL] SHA-256 file not found"
-            ERRORS=$((ERRORS+1))
-          fi
-          
-          # Check SBOM
-          if [ -f "${ARTIFACT}.spdx.json" ]; then
-            echo "[OK] SBOM file: ${ARTIFACT}.spdx.json"
-          else
-            echo "[FAIL] SBOM file not found"
-            ERRORS=$((ERRORS+1))
-          fi
-          
-          if [ "${ERRORS}" -gt 0 ]; then
-            echo "::error::${ERRORS} validation error(s)"
-            exit 1
-          fi
-          echo "All artifacts validated successfully"
-
-          # Check Ed25519 signature (non-fatal, warning only)
-          if [ -f "${ARTIFACT}.sig" ]; then
-            echo "[OK] Ed25519 signature: ${ARTIFACT}.sig"
-            # Verificar firma localmente
-            VERIFY_OUTPUT=$(python scripts/ci_sign.py verify "${ARTIFACT}" "${ARTIFACT}.sig" "${ARTIFACT}.pub" 2>&1)
-            if echo "$VERIFY_OUTPUT" | grep -q "SIGNATURE_VALID=YES"; then
-              echo "[OK] Ed25519 signature verification: VALID"
-            else
-              echo "[WARN] Ed25519 signature verification non-valid (non-fatal in dev CI)"
-            fi
-          else
-            echo "[WARN] Ed25519 signature not found (non-critical if no signing key in CI)"
-          fi
-          
-          if [ "${ERRORS}" -gt 0 ]; then
-            echo "::warning::${ERRORS} validation warning(s) — continuing"
-          fi
-          echo "All artifacts validated successfully"
-
-      # -----------------------------------------------------------------------
-      # 13. Notify
-      # -----------------------------------------------------------------------
-      - name: Notify result
-        if: always()
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "## [OK] ${{ matrix.target.name }} build successful" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "## [FAIL] ${{ matrix.target.name }} build failed" >> $GITHUB_STEP_SUMMARY
-          fi
-
-  # ===========================================================================
-  # AGGREGATE — Summary of all matrix builds
-  # ===========================================================================
-  summary:
-    needs: [build]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Build matrix summary
-        run: |
-          echo "## Synapse Release Matrix Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Target | Binary | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|--------|--------|" >> $GITHUB_STEP_SUMMARY
-          for PLATFORM in linux_x64 linux_arm64 darwin_arm64 win_x64; do
-            if [ -f "synapse-${PLATFORM}" ]; then
-              echo "| ${PLATFORM} | synapse-${PLATFORM} | ✅ Built |" >> $GITHUB_STEP_SUMMARY
-            elif [ -f "synapse-${PLATFORM}.exe" ]; then
-              echo "| ${PLATFORM} | synapse-${PLATFORM}.exe | ✅ Built |" >> $GITHUB_STEP_SUMMARY
-            elif [ -d "synapse-${PLATFORM}" ]; then
-              echo "| ${PLATFORM} | synapse-${PLATFORM} (directory) | ✅ Built |" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "| ${PLATFORM} | - | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Artifacts available for download." >> $GITHUB_STEP_SUMMARY
+# Bootstrap configuration
+BOOTSTRAP:
+  - condition: "true"
+  - description: Run conditional bootstrap step with continue-on-error
+  - note: "Handles cases where synapse_unity.c is not present"

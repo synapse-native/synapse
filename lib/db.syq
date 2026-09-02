@@ -1,0 +1,98 @@
+#lang: es
+// lib/db.syq — Conexión a SQLite de Syquex
+// Manual 3 §12.1: Módulo DB (SQLite bundled)
+//
+// Uso desde Syquex:
+//   importar lib.db
+//   let conn = db.abrir("mi_base.db")
+//   db.ejecutar(conn, "CREATE TABLE usuarios (id INTEGER PRIMARY KEY, nombre TEXT)")
+//   db.ejecutar(conn, "INSERT INTO usuarios (nombre) VALUES ('Ana')")
+//   let rs = db.consultar(conn, "SELECT * FROM usuarios")
+//   db.cerrar(conn)
+
+// --- Apertura / Cierre ---
+
+funcion abrir(ruta: texto) -> entero:
+    return _syn_db_abrir(ruta)
+
+funcion cerrar(conn: entero) -> nulo:
+    _syn_db_cerrar(conn)
+
+// --- Ejecución directa (sin resultados) ---
+
+funcion ejecutar(conn: entero, sql: texto) -> entero:
+    return _syn_db_ejecutar(conn, sql)
+
+// --- Consulta (retorna cursor) ---
+
+funcion consultar(conn: entero, sql: texto) -> entero:
+    return _syn_db_consultar(conn, sql)
+
+// --- Cursor: iteración ---
+
+funcion cursor_siguiente(cursor: entero) -> booleano:
+    return _syn_db_cursor_siguiente(cursor)
+
+funcion cursor_numero_columnas(cursor: entero) -> entero:
+    return _syn_db_cursor_num_columnas(cursor)
+
+funcion cursor_nombre_columna(cursor: entero, indice: entero) -> texto:
+    return _syn_db_cursor_nombre_columna(cursor, indice)
+
+funcion cursor_texto(cursor: entero, indice: entero) -> texto:
+    return _syn_db_cursor_texto(cursor, indice)
+
+funcion cursor_entero(cursor: entero, indice: entero) -> entero:
+    return _syn_db_cursor_entero(cursor, indice)
+
+funcion cursor_decimal(cursor: entero, indice: entero) -> decimal:
+    return _syn_db_cursor_decimal(cursor, indice)
+
+funcion cursor_nulo(cursor: entero, indice: entero) -> booleano:
+    return _syn_db_cursor_es_nulo(cursor, indice)
+
+funcion cursor_cerrar(cursor: entero) -> nulo:
+    _syn_db_cursor_cerrar(cursor)
+
+// --- Transacciones ---
+
+funcion transaccion_iniciar(conn: entero) -> entero:
+    return _syn_db_transaccion_iniciar(conn)
+
+funcion transaccion_confirmar(conn: entero) -> entero:
+    return _syn_db_transaccion_confirmar(conn)
+
+funcion transaccion_deshacer(conn: entero) -> entero:
+    return _syn_db_transaccion_deshacer(conn)
+
+// --- Información ---
+
+funcion ultimo_error(conn: entero) -> texto:
+    return _syn_db_ultimo_error(conn)
+
+funcion cambios_fila(conn: entero) -> entero:
+    return _syn_db_cambios_fila(conn)
+
+funcion ultima_id(conn: entero) -> entero:
+    return _syn_db_ultima_id(conn)
+
+// --- Externs del runtime C ---
+
+externo funcion _syn_db_abrir(ruta: texto) -> entero
+externo funcion _syn_db_cerrar(conn: entero) -> nulo
+externo funcion _syn_db_ejecutar(conn: entero, sql: texto) -> entero
+externo funcion _syn_db_consultar(conn: entero, sql: texto) -> entero
+externo funcion _syn_db_cursor_siguiente(cursor: entero) -> booleano
+externo funcion _syn_db_cursor_num_columnas(cursor: entero) -> entero
+externo funcion _syn_db_cursor_nombre_columna(cursor: entero, indice: entero) -> texto
+externo funcion _syn_db_cursor_texto(cursor: entero, indice: entero) -> texto
+externo funcion _syn_db_cursor_entero(cursor: entero, indice: entero) -> entero
+externo funcion _syn_db_cursor_decimal(cursor: entero, indice: entero) -> decimal
+externo funcion _syn_db_cursor_es_nulo(cursor: entero, indice: entero) -> booleano
+externo funcion _syn_db_cursor_cerrar(cursor: entero) -> nulo
+externo funcion _syn_db_transaccion_iniciar(conn: entero) -> entero
+externo funcion _syn_db_transaccion_confirmar(conn: entero) -> entero
+externo funcion _syn_db_transaccion_deshacer(conn: entero) -> entero
+externo funcion _syn_db_ultimo_error(conn: entero) -> texto
+externo funcion _syn_db_cambios_fila(conn: entero) -> entero
+externo funcion _syn_db_ultima_id(conn: entero) -> entero

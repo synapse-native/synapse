@@ -17,6 +17,8 @@ constante NODO_UNARIA = 13
 constante NODO_LLAMADA = 14
 constante NODO_PARAMETRO = 15
 constante NODO_ESTRUCTURA = 16
+constante NODO_DECLARACION_TIPO = 51
+constante NODO_CONSTRUCTOR = 52
 constante NODO_IMPORTAR = 17
 constante NODO_LANZAR = 18
 constante NODO_ESCUCHAR = 19
@@ -63,6 +65,7 @@ constante ERR_SEM_CONSTANTE_INMUTABLE = 32
 constante ERR_SEM_EXHAUSTIVE_MATCH_REQUIRED = 33
 constante ERR_MEM_LIFETIME_MISMATCH = 34
 constante ERR_MEM_LIFETIME_CYCLE = 35
+constante ERR_SEM_TYPE_AMBIGUOUS = 40  // 2.4 nativa (paridad diagnostics.py)
 
 // --- Property constants ---
 constante PROPIEDAD_VIVO = 1
@@ -103,6 +106,17 @@ estructura SemEstructuraInfo:
     campos_tipo: cadena
     total_campos: entero
 
+estructura SemAdtInfo:
+    nombre: cadena
+    num_parametros: entero
+
+// R1: registro de funciones de usuario (nombre -> nodo aplanado F8). Lo
+// consume la validacion de llamadas genericas (TVars, Manual 2 §8.2, paridad
+// S1 semantic_types.py _inferir_llamada_hm).
+estructura SemFuncionInfo:
+    nombre: cadena
+    nodo: entero
+
 // M21.4: Borrow tracking entries (Manual 4 S4.2)
 estructura SemPrestamo:
     idx_simbolo: entero
@@ -118,8 +132,21 @@ estructura AnalizadorSemanticoEst:
     en_coincidir: booleano
     dentro_de_inseguro: booleano
     hay_error: booleano
+    // 2.4 nativa (Fase 2): flag especifico de la validacion de instanciaciones
+    // de ADT (aridad/base/argumentos). Separa la validacion 2.4 del flag global
+    // hay_error (que el pipeline nativo pre-existente no aborta, paridad S1).
+    hay_error_2_4: booleano
     info_estructuras: SemEstructuraInfo
     total_estructuras: entero
+    // 2.4 nativa (Fase 2): registro de ADTs (tipo X<T,E>) y cadenas de
+    // retorno/parametros guardadas por el flatten F8 (paridad S1 tipos.py)
+    info_adts: SemAdtInfo
+    total_adts: entero
+    // R1: registro de funciones (nombre -> nodo aplanado) para la validacion
+    // de llamadas genericas en la pasada 3 (paridad S1 _inferir_llamada_hm)
+    info_funciones: SemFuncionInfo
+    total_funciones: entero
+    asignaciones_retorno_campo: cadena
     asignaciones_campos_var: cadena
     asignaciones_campos_campo: cadena
     asignaciones_campos_tipo: cadena
@@ -144,8 +171,23 @@ funcion sem_error(est: AnalizadorSemanticoEst, codigo: entero, idx_nodo: entero,
         asm("linea = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].linea : 0")
         asm("columna = (idx_nodo >= 0 && idx_nodo < est->total_nodos) ? est->nodos[idx_nodo].columna : 0")
     est.hay_error = verdadero
-    inseguro:
-        asm("// sem_error: reportado")
+    // Checklist 2.3 (Manual 2 §10.1): diagnostico observable con paridad S1
+    // ("[Synapse] Error semantico (linea L, columna C): mensaje"). El S1 los
+    // imprime; el nativo los tragaba (solo marcaba hay_error). Se excluye
+    // ERR_SEM_CONSTANTE_INMUTABLE: su call-site (R9) ya imprime el
+    // diagnostico especifico con el nombre formateado.
+    si codigo == ERR_SEM_REDEFINICION:
+        // R23: el call-site pasa el NOMBRE crudo; se interpola con la plantilla
+        // de diagnostics.syn L134 (paridad S1 diagnostics.py: "Redefinicion de
+        // '{nombre}' en el mismo ambito"). Antes el mensaje salia ": <nombre>".
+        inseguro:
+            asm("    static char _mre_buf[256]; _mre_buf[0]=0;")
+            asm("    if (mensaje.datos) snprintf(_mre_buf, 256, \"Redefinicion de '%s' en el mismo ambito\", mensaje.datos);")
+            asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, _mre_buf);")
+    sino:
+        si codigo != ERR_SEM_CONSTANTE_INMUTABLE:
+            inseguro:
+                asm("    if (mensaje.datos) fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): %s\\n\", linea, columna, mensaje.datos);")
 
 // --- Symbol table operations ---
 funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena, idx_nodo: entero, es_constante: booleano) -> booleano:
@@ -190,6 +232,13 @@ funcion tabla_declarar(est: AnalizadorSemanticoEst, nombre: cadena, tipo: cadena
     retornar verdadero
 
 funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
+    // R9: precedencia de ambito innermost-first (paridad S1 symbol_table.py
+    // buscar: for scope in reversed(self._scopes)). La tabla es lineal con
+    // niveles de ambito y tabla_salir_scope hace pop de las entradas del
+    // scope saliente, por lo que recorrer desde el final encuentra la
+    // vinculacion del ambito mas interno. Antes (first-match desde el indice
+    // 0) un parametro o variable local que sombreaba una constante global
+    // encontraba la constante -> falso positivo ERR_SEM_CONSTANTE_INMUTABLE.
     i = 0
     r = 1
     mientras r == 1:
@@ -198,13 +247,14 @@ funcion tabla_buscar(est: AnalizadorSemanticoEst, nombre: cadena) -> entero:
             si r == 0:
                 romper
             asm("int _eq = 1;")
+            asm("int _idx = est->tabla->total_entradas - 1 - i;")
             asm("for (int _si = 0; _si < 256; _si++) {")
             asm("    char _a = nombre.datos[_si];")
-            asm("    char _b = est->tabla->entradas[i].nombre.datos[_si];")
+            asm("    char _b = est->tabla->entradas[_idx].nombre.datos[_si];")
             asm("    if (_a != _b) { _eq = 0; break; }")
             asm("    if (_a == 0) break;")
             asm("}")
-            asm("if (_eq) { return i; }")
+            asm("if (_eq) { return _idx; }")
             asm("i = i + 1")
     retornar -1
 
@@ -272,7 +322,7 @@ funcion es_builtin(nombre: cadena) -> booleano:
         asm("if (strcmp(nombre.datos, \"escribir\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"leer_linea\") == 0) { return verdadero; }")
-        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"suma\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"producto\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"relu\") == 0) { return verdadero; }")
@@ -291,7 +341,7 @@ funcion es_builtin(nombre: cadena) -> booleano:
         asm("if (strcmp(nombre.datos, \"canal_crear\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return verdadero; }")
-        asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return verdadero; }")
+        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"len\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return verdadero; }")
         asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return verdadero; }")
@@ -309,7 +359,7 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
         asm("if (strcmp(nombre.datos, \"escribir\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"escribir_linea\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"leer_linea\") == 0) { return 0; }")
-        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"cerrar_archivo\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"suma\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"producto\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"relu\") == 0) { return 1; }")
@@ -328,7 +378,7 @@ funcion builtin_cantidad_args(nombre: cadena) -> entero:
         asm("if (strcmp(nombre.datos, \"canal_crear\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"canal_enviar\") == 0) { return 2; }")
         asm("if (strcmp(nombre.datos, \"canal_recibir\") == 0) { return 1; }")
-        asm("if (strcmp(nombre.datos, \"cerrar_canal\") == 0) { return 1; }")
+        asm("if (strcmp(nombre.datos, \"cerrar\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"len\") == 0) { return 1; }")
         asm("if (strcmp(nombre.datos, \"subcadena\") == 0) { return 3; }")
         asm("if (strcmp(nombre.datos, \"empieza_con\") == 0) { return 2; }")
@@ -345,7 +395,7 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     si nombre == "escribir": retornar "nulo"
     si nombre == "escribir_linea": retornar "nulo"
     si nombre == "leer_linea": retornar "texto"
-    si nombre == "cerrar": retornar "nulo"
+    si nombre == "cerrar_archivo": retornar "nulo"
     si nombre == "suma": retornar "tensor"
     si nombre == "producto": retornar "tensor"
     si nombre == "relu": retornar "tensor"
@@ -364,7 +414,7 @@ funcion builtin_tipo_retorno(nombre: cadena) -> cadena:
     si nombre == "canal_crear": retornar "CanalConcurrencia*"
     si nombre == "canal_enviar": retornar "nulo"
     si nombre == "canal_recibir": retornar "void*"
-    si nombre == "cerrar_canal": retornar "nulo"
+    si nombre == "cerrar": retornar "nulo"
     si nombre == "len": retornar "int"
     si nombre == "subcadena": retornar "texto"
     si nombre == "empieza_con": retornar "int"
@@ -376,7 +426,7 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
         si idx == 1 o nombre == "reserva" o nombre == "libera": retornar "int"
     si nombre == "abrir":
         si idx == 0 o idx == 1: retornar "texto"
-    si nombre == "leer" o nombre == "cerrar":
+    si nombre == "leer" o nombre == "cerrar_archivo":
         si idx == 0: retornar "Canal"
     si nombre == "escribir" o nombre == "escribir_linea":
         si idx == 0: retornar "texto"
@@ -402,7 +452,7 @@ funcion builtin_tipo_parametro(nombre: cadena, idx: entero) -> cadena:
     si nombre == "canal_enviar":
         si idx == 0: retornar "CanalConcurrencia*"
         si idx == 1: retornar "void*"
-    si nombre == "canal_recibir" o nombre == "cerrar_canal":
+    si nombre == "canal_recibir" o nombre == "cerrar":
         si idx == 0: retornar "CanalConcurrencia*"
     si nombre == "len" o nombre == "empieza_con":
         si idx == 0: retornar "texto"
@@ -457,6 +507,14 @@ funcion nodo_valor_int(est: AnalizadorSemanticoEst, idx: entero) -> entero:
         asm("r = (idx >= 0 && idx < est->total_nodos) ? est->nodos[idx].valor_int : 0")
     retornar r
 
+funcion nodo_cadena_retorno(est: AnalizadorSemanticoEst, idx: entero) -> cadena:
+    // 2.4 nativa: cadena guardada por el flatten F8 en ptr_extra +
+    // asignaciones_retorno_campo (tipo_retorno de funcion o tipo de parametro).
+    r = ""
+    inseguro:
+        asm("{ int* _phi=(int*)est->asignaciones_retorno_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_extra; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; r=_cs; } }")
+    retornar r
+
 // --- M21.4: Borrow tracking (Manual 4 S4.2) ---
 funcion prestamo_activo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_mutable: booleano) -> booleano:
     // Conflicto si: hay mutable y pedimos inmutable, o hay cualquier prestamo y pedimos mutable
@@ -487,20 +545,155 @@ funcion registrar_prestamo(est: AnalizadorSemanticoEst, idx_simbolo: entero, es_
         asm("}")
     retornar verdadero
 
+// --- R1: validacion de llamadas a funciones genericas (Manual 2 §8.2) ---
+// Paridad S1: semantic_types.py _inferir_llamada_hm (algoritmo W simplificado:
+// TVars frescos por llamada, unificacion con occurs check, aridad y
+// ERR_SEM_TYPE_AMBIGUOUS si el retorno queda con un TVar sin resolver).
+// Patron nested C unico auto-contenido (sin referencias cruzadas, leccion 2.4).
+funcion validar_llamada_generica(est: AnalizadorSemanticoEst, idx_llamada: entero) -> nulo:
+    inseguro:
+        asm("void _f8_r1_llamada_generica(struct AnalizadorSemanticoEst* e, int idx) {")
+        asm("    int* _phi=(int*)e->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)e->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _callee=(const char*)_bp;")
+        asm("    if(!_callee||!_callee[0]) return;")
+        asm("    int _fn=-1; for(int _i=0;_i<e->total_funciones;_i++){ if(e->info_funciones[_i].nombre.datos && strcmp(e->info_funciones[_i].nombre.datos,_callee)==0){ _fn=_i; break; } }")
+        asm("    if(_fn<0) return; int _fnod=e->info_funciones[_fn].nodo;")
+        asm("    char _ret[256]; _ret[0]=0;")
+        asm("    { int* _phr=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _br=(uintptr_t)(unsigned)e->nodos[_fnod].ptr_extra; if(_phr){ _br|=((uintptr_t)(unsigned)_phr[_fnod])<<32; } const char* _vr=(const char*)_br; if(_vr){ int _l=(int)strlen(_vr); if(_l>255)_l=255; memcpy(_ret,_vr,_l); _ret[_l]=0; } }")
+        asm("    char _pars[8][256]; int _np=0; int _pr=((int*)&e->nodos[_fnod])[6];")
+        asm("    while(_pr>0 && _np<8){")
+        asm("        char _pt[256]; _pt[0]=0;")
+        asm("        { int* _php=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _bpr=(uintptr_t)(unsigned)e->nodos[_pr].ptr_extra; if(_php){ _bpr|=((uintptr_t)(unsigned)_php[_pr])<<32; } const char* _vp=(const char*)_bpr; if(_vp){ int _l=(int)strlen(_vp); if(_l>255)_l=255; memcpy(_pt,_vp,_l); _pt[_l]=0; } }")
+        asm("        memcpy(_pars[_np],_pt,256); _np++; _pr=e->nodos[_pr].hermano;")
+        asm("    }")
+        asm("    // TVars: tipo desnudo en mayuscula y desconocido (paridad S1 _recolectar_tvars_firma)")
+        asm("    char _tvn[8][64]; int _ntv=0;")
+        asm("    { const char* _srcs[9]; int _ns=0; if(_ret[0]){ _srcs[_ns++]=_ret; } for(int _i=0;_i<_np;_i++){ if(_pars[_i][0]){ _srcs[_ns++]=_pars[_i]; } }")
+        asm("        for(int _s=0;_s<_ns;_s++){ const char* _c=_srcs[_s]; while(*_c==' '){ _c++; }")
+        asm("            while(*_c=='&'){ if(strncmp(_c,\"&mut \",5)==0){ _c+=5; } else { _c++; } while(*_c==' '){ _c++; } }")
+        asm("            int _len=(int)strlen(_c); while(_len>0 && (_c[_len-1]=='*'||_c[_len-1]==' ')){ _len--; }")
+        asm("            if(_len==0) continue; if(!(_c[0]>='A'&&_c[0]<='Z')) continue;")
+        asm("            int _ok=1; for(int _j=0;_j<_len;_j++){ char _ch=_c[_j]; if(_ch=='<'||_ch=='>'||_ch=='('||_ch==')'||_ch=='['||_ch==']'||_ch==','||_ch==' '||_ch=='&'||_ch=='*'){ _ok=0; break; } } if(!_ok) continue;")
+        asm("            char _nm[64]; int _nl=_len; if(_nl>63){ _nl=63; } memcpy(_nm,_c,_nl); _nm[_nl]=0;")
+        asm("            if(strcmp(_nm,\"entero\")==0||strcmp(_nm,\"decimal\")==0||strcmp(_nm,\"texto\")==0||strcmp(_nm,\"booleano\")==0||strcmp(_nm,\"nulo\")==0||strcmp(_nm,\"void\")==0) continue;")
+        asm("            int _con=0; for(int _i=0;_i<e->total_estructuras;_i++){ if(e->info_estructuras[_i].nombre.datos&&strcmp(e->info_estructuras[_i].nombre.datos,_nm)==0){ _con=1; break; } } if(_con) continue;")
+        asm("            for(int _i=0;_i<e->total_adts;_i++){ if(e->info_adts[_i].nombre.datos&&strcmp(e->info_adts[_i].nombre.datos,_nm)==0){ _con=1; break; } } if(_con) continue;")
+        asm("            int _dup=0; for(int _i=0;_i<_ntv;_i++){ if(strcmp(_tvn[_i],_nm)==0){ _dup=1; break; } } if(_dup) continue;")
+        asm("            if(_ntv<8){ memcpy(_tvn[_ntv],_nm,64); _ntv++; }")
+        asm("        }")
+        asm("    }")
+        asm("    if(_ntv==0) return;")
+        asm("    char _sub[8][256]; int _sb[8]; for(int _i=0;_i<8;_i++){ _sb[_i]=0; _sub[_i][0]=0; }")
+        asm("    // tipos de argumentos (inferencia minima de expresion)")
+        asm("    char _args[8][256]; int _na=0; int _argn=((int*)&e->nodos[idx])[6];")
+        asm("    while(_argn>0 && _na<8){")
+        asm("        char _ab[256]; _ab[0]=0; int _at=e->nodos[_argn].tipo_nodo;")
+        // R19: NODO_TRANSFERIDO (30) ->expr (paridad S1 semantic_types.py L167:
+        // ArgumentoTransferido -> _inferir_tipo(expr)). El argumento transferido
+        // aporta el tipo de su expr envuelta (hijo_izq) a la unificacion; se
+        // guarda el hermano del argumento real para no perder la cadena.
+        asm("        int _her=e->nodos[_argn].hermano;")
+        asm("        int _g=0; while(_at==30 && _g<8){ int _hx=e->nodos[_argn].hijo_izq; if(_hx<=0){ _at=0; break; } _argn=_hx; _at=e->nodos[_argn].tipo_nodo; _g++; }")
+        asm("        if(_at==9){ strcpy(_ab,\"entero\"); }")
+        asm("        else if(_at==10){ strcpy(_ab,\"decimal\"); }")
+        asm("        else if(_at==11){ strcpy(_ab,\"texto\"); }")
+        asm("        else if(_at==22){ strcpy(_ab,\"booleano\"); }")
+        asm("        else if(_at==8){")
+        asm("            int* _pa=(int*)e->asignaciones_campos_campo.datos; uintptr_t _ba=(uintptr_t)(unsigned)e->nodos[_argn].ptr_str; if(_pa){ _ba|=((uintptr_t)(unsigned)_pa[_argn])<<32; } const char* _va=(const char*)_ba;")
+        asm("            if(_va&&_va[0]){ int _ti=-1; for(int _s=e->tabla->total_entradas-1;_s>=0;_s--){ if(!e->tabla->entradas[_s].nombre.datos) continue; int _eq=1; for(int _k=0;_k<256;_k++){ if(_va[_k]!=e->tabla->entradas[_s].nombre.datos[_k]){ _eq=0; break; } if(_va[_k]==0) break; } if(_eq){ _ti=_s; break; } }")
+        asm("                if(_ti>=0&&e->tabla->entradas[_ti].tipo.datos){ int _l=(int)strlen(e->tabla->entradas[_ti].tipo.datos); if(_l>255)_l=255; memcpy(_ab,e->tabla->entradas[_ti].tipo.datos,_l); _ab[_l]=0; } }")
+        asm("        }")
+        asm("        else if(_at==14){")
+        asm("            int* _pa=(int*)e->asignaciones_campos_campo.datos; uintptr_t _ba=(uintptr_t)(unsigned)e->nodos[_argn].ptr_str; if(_pa){ _ba|=((uintptr_t)(unsigned)_pa[_argn])<<32; } const char* _va=(const char*)_ba;")
+        asm("            if(_va&&_va[0]){ int _ci=-1; for(int _i=0;_i<e->total_funciones;_i++){ if(e->info_funciones[_i].nombre.datos&&strcmp(e->info_funciones[_i].nombre.datos,_va)==0){ _ci=_i; break; } }")
+        asm("                if(_ci>=0){ int _no=e->info_funciones[_ci].nodo; int* _phr=(int*)e->asignaciones_retorno_campo.datos; uintptr_t _br=(uintptr_t)(unsigned)e->nodos[_no].ptr_extra; if(_phr){ _br|=((uintptr_t)(unsigned)_phr[_no])<<32; } const char* _vr=(const char*)_br; if(_vr){ int _l=(int)strlen(_vr); if(_l>255)_l=255; memcpy(_ab,_vr,_l); _ab[_l]=0; } }")
+        asm("                if(_ci<0){ int _sc=0; for(int _i=0;_i<e->total_estructuras;_i++){ if(e->info_estructuras[_i].nombre.datos&&strcmp(e->info_estructuras[_i].nombre.datos,_va)==0){ _sc=1; break; } } if(_sc){ strcpy(_ab,_va); } } }")
+        asm("        }")
+        asm("        memcpy(_args[_na],_ab,256); _na++; _argn=_her;")
+        asm("    }")
+        asm("    if(_na!=_np){ char _mm[256]; snprintf(_mm,256,\"Cantidad de argumentos invalida para '%s': se esperaban %d (Manual 2 seccion 8.2)\",_callee,_np);")
+        asm("        fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; return; }")
+        asm("    // unificador iterativo (worklist de pares) con sustitucion de TVars y occurs check")
+        asm("    for(int _pari=0;_pari<_np;_pari++){")
+        asm("        char _a[256]; char _b[256]; strcpy(_a,_pars[_pari]); strcpy(_b,_args[_pari]); if(!_b[0]) continue;")
+        asm("        char _q1[8][256]; char _q2[8][256]; int _qh=0; int _fails=0; if(_qh<8){ strcpy(_q1[_qh],_a); strcpy(_q2[_qh],_b); _qh++; }")
+        asm("        while(_qh>0 && !_fails){")
+        asm("            _qh--; strcpy(_a,_q1[_qh]); strcpy(_b,_q2[_qh]);")
+        asm("            char _ta[256]; char _tb[256]; strcpy(_ta,_a); strcpy(_tb,_b);")
+        asm("            for(int _it=0;_it<8;_it++){ int _changed=0; for(int _t=0;_t<_ntv;_t++){ if(_sb[_t] && strcmp(_ta,_tvn[_t])==0){ strcpy(_ta,_sub[_t]); _changed=1; } if(_sb[_t] && strcmp(_tb,_tvn[_t])==0){ strcpy(_tb,_sub[_t]); _changed=1; } } if(!_changed) break; }")
+        asm("            if(strcmp(_ta,_tb)==0) continue;")
+        asm("            int _ia=-1,_ib=-1; for(int _t=0;_t<_ntv;_t++){ if(strcmp(_ta,_tvn[_t])==0){ _ia=_t; } if(strcmp(_tb,_tvn[_t])==0){ _ib=_t; } }")
+        asm("            if(_ia>=0 && !_sb[_ia]){")
+        asm("                if(_ib>=0){ strcpy(_sub[_ia],_tb); _sb[_ia]=1; }")
+        asm("                else { int _occ=0; for(int _k=0;_k<(int)strlen(_tb);_k++){ if((_tb[_k]>='A'&&_tb[_k]<='Z')||(_tb[_k]>='a'&&_tb[_k]<='z')||(_tb[_k]>='0'&&_tb[_k]<='9')||_tb[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_tb)&&((_tb[_k2]>='A'&&_tb[_k2]<='Z')||(_tb[_k2]>='a'&&_tb[_k2]<='z')||(_tb[_k2]>='0'&&_tb[_k2]<='9')||_tb[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_tb+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_ia])==0){ _occ=1; } _k=_k2-1; } }")
+        asm("                    if(_occ){ _fails=1; } else { strcpy(_sub[_ia],_tb); _sb[_ia]=1; } }")
+        asm("                continue;")
+        asm("            }")
+        asm("            if(_ib>=0 && !_sb[_ib]){")
+        asm("                int _occ=0; for(int _k=0;_k<(int)strlen(_ta);_k++){ if((_ta[_k]>='A'&&_ta[_k]<='Z')||(_ta[_k]>='a'&&_ta[_k]<='z')||(_ta[_k]>='0'&&_ta[_k]<='9')||_ta[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_ta)&&((_ta[_k2]>='A'&&_ta[_k2]<='Z')||(_ta[_k2]>='a'&&_ta[_k2]<='z')||(_ta[_k2]>='0'&&_ta[_k2]<='9')||_ta[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_ta+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_ib])==0){ _occ=1; } _k=_k2-1; } }")
+        asm("                if(_occ){ _fails=1; } else { strcpy(_sub[_ib],_ta); _sb[_ib]=1; } continue;")
+        asm("            }")
+        asm("            { int _la=(int)strlen(_ta); int _lb=(int)strlen(_tb); int _a1=-1,_b1=-1;")
+        asm("                for(int _k=0;_k<_la;_k++){ if(_ta[_k]=='<'){ _a1=_k; break; } } for(int _k=0;_k<_lb;_k++){ if(_tb[_k]=='<'){ _b1=_k; break; } }")
+        asm("                if(_a1>=0&&_b1>=0&&_ta[_la-1]=='>'&&_tb[_lb-1]=='>'){")
+        asm("                    char _ba0[64]; char _bb0[64]; int _la0=_a1; if(_la0>63)_la0=63; memcpy(_ba0,_ta,_la0); _ba0[_la0]=0; int _lb0=_b1; if(_lb0>63)_lb0=63; memcpy(_bb0,_tb,_lb0); _bb0[_lb0]=0;")
+        asm("                    if(strcmp(_ba0,_bb0)==0){")
+        asm("                        char _aa[4][256]; char _bb[4][256]; int _ana=0,_bna=0;")
+        asm("                        { int _prof=0; int _in=0; for(int _k=_a1+1;_k<_la-1;_k++){ char _ch=_ta[_k]; if(_ch=='<'||_ch=='('){ _prof++; } if(_ch=='>'||_ch==')'){ _prof--; } if(_ch==','&&_prof==0){ if(_ana<4){ _aa[_ana][_in]=0; _ana++; _in=0; } } else if(_ch!=' '){ if(_ana<4&&_in<255){ _aa[_ana][_in++]=_ch; } } } if(_ana<4){ _aa[_ana][_in]=0; _ana++; } }")
+        asm("                        { int _prof=0; int _in=0; for(int _k=_b1+1;_k<_lb-1;_k++){ char _ch=_tb[_k]; if(_ch=='<'||_ch=='('){ _prof++; } if(_ch=='>'||_ch==')'){ _prof--; } if(_ch==','&&_prof==0){ if(_bna<4){ _bb[_bna][_in]=0; _bna++; _in=0; } } else if(_ch!=' '){ if(_bna<4&&_in<255){ _bb[_bna][_in++]=_ch; } } } if(_bna<4){ _bb[_bna][_in]=0; _bna++; } }")
+        asm("                        if(_ana==_bna){ for(int _k=0;_k<_ana;_k++){ if(_qh<8){ strcpy(_q1[_qh],_aa[_k]); strcpy(_q2[_qh],_bb[_k]); _qh++; } } } else { _fails=1; }")
+        asm("                    } else { _fails=1; }")
+        asm("                } else { _fails=1; }")
+        asm("            }")
+        asm("        }")
+        asm("        if(_fails){ char _mm[256]; snprintf(_mm,256,\"Tipos incompatibles: no se puede usar '%s' con '%s' al instanciar '%s' (Manual 2 seccion 8.2)\",_a,_b,_callee);")
+        asm("            fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; break; }")
+        asm("    }")
+        asm("    // retorno: resolver y chequear TVar libre -> ERR_SEM_TYPE_AMBIGUOUS")
+        asm("    { char _rr[256]; strcpy(_rr,_ret);")
+        asm("        for(int _it=0;_it<8;_it++){ int _changed=0; for(int _t=0;_t<_ntv;_t++){ if(_sb[_t]&&strcmp(_rr,_tvn[_t])==0){ strcpy(_rr,_sub[_t]); _changed=1; } } if(!_changed) break; }")
+        asm("        int _libre=0; for(int _t=0;_t<_ntv && !_libre;_t++){ if(_sb[_t]) continue; for(int _k=0;_k<(int)strlen(_rr);_k++){ if((_rr[_k]>='A'&&_rr[_k]<='Z')||(_rr[_k]>='a'&&_rr[_k]<='z')||(_rr[_k]>='0'&&_rr[_k]<='9')||_rr[_k]=='_'){ int _k2=_k; while(_k2<(int)strlen(_rr)&&((_rr[_k2]>='A'&&_rr[_k2]<='Z')||(_rr[_k2]>='a'&&_rr[_k2]<='z')||(_rr[_k2]>='0'&&_rr[_k2]<='9')||_rr[_k2]=='_')){ _k2++; } char _tok[64]; int _tl=_k2-_k; if(_tl>63)_tl=63; memcpy(_tok,_rr+_k,_tl); _tok[_tl]=0; if(strcmp(_tok,_tvn[_t])==0){ _libre=1; } _k=_k2-1; } } }")
+        asm("        if(_libre){ char _mm[256]; snprintf(_mm,256,\"Expresion con tipo ambiguo: no se puede inferir '%s' (Manual 2 seccion 8.2)\",_rr);")
+        asm("            fprintf(stderr,\"[Synapse] Error semantico (linea %lld, columna %lld): %s\\n\",(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0),(long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0),_mm); e->hay_error=1; }")
+        asm("    }")
+        asm("}")
+        asm("_f8_r1_llamada_generica(est, idx_llamada);")
+    retornar
+
 // --- M21.4: Expression traversal to register borrows (Manual 4 S4.2) ---
 funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
     si idx <= 0:
         retornar
     tipo = nodo_tipo(est, idx)
+    // R14: NODO_IDENTIFICADOR (8) — use-after-move (Manual 4 §3.3, paridad S1
+    // semantic_types.py _inferir_tipo: tabla.esta_movido -> ERR_SEM_VAR_MOVIDA).
+    // Cualquier LECTURA de una variable marcada como movida por un envio de
+    // canal emite el diagnostico E-501. Las escrituras (NODO_ASIGNACION) no se
+    // chequean (paridad S1: la reasignacion no limpia el flag).
+    si tipo == NODO_IDENTIFICADOR:
+        nombre = ""
+        inseguro:
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
+        si nombre != "":
+            si tabla_esta_movido(est, nombre):  // cumple Manual 2 9: uso tras move -> ERR_MEM_USE_AFTER_MOVE
+                inseguro:
+                    asm("{ char _mm[256]; snprintf(_mm,256,\"Uso ilegal de variable ya movida '%s' (E-504)\", nombre.datos); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_USE_AFTER_MOVE,idx,_msg); }")
+        retornar
+    // R15: NODO_TRANSFERIDO (30) — argumento ->expr (paridad S1
+    // semantic_types.py L167-168: _inferir_tipo infiere el expr, que LEE la
+    // variable -> detecta uso de movida en doble transferencia). El MARCADO
+    // como movido ocurre solo en la rama NODO_LANZAR de analizar_sentencia.
+    si tipo == NODO_TRANSFERIDO:
+        analizar_expr(est, nodo_hijo_izq(est, idx))
+        retornar
     // NODO_PUNTERO (36): &x / &mut x
     si tipo == NODO_PUNTERO:
         es_mut = nodo_valor_int(est, idx)
-        hijo = nodo_expr(est, idx)
+        hijo = nodo_hijo_izq(est, idx)
         si hijo > 0:
             h_tipo = nodo_tipo(est, hijo)
             si h_tipo == NODO_IDENTIFICADOR:
                 inseguro:
-                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_cs); } } } }")
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; int _idx=tabla_buscar(est,_cs); if(_idx>=0){ if(!registrar_prestamo(est,_idx,es_mut)){ char _mm[256]; snprintf(_mm,256,\"Conflicto de prestamo sobre '%s': prestamo %s incompatible con prestamos activos (Manual 4 S4.2)\",_cs.datos,es_mut?\"&mut\":\"&\"); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_BORROW_CONFLICT,idx,_msg); } } } }")
                 // M21.4: restriccion OUTLIVES (paridad _inferir_tipo Manual 4.3)
                 inseguro:
                     asm("{ int _lt = est->proximo_lifetime;")
@@ -520,6 +713,27 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         retornar
     // NODO_LLAMADA (14): argumentos en cadena desde slot [6]
     si tipo == NODO_LLAMADA:
+        // R1: validar llamada a funcion generica (TVars, Manual 2 §8.2;
+        // paridad S1 _inferir_llamada_hm). No aborta: diagnostico observable.
+        validar_llamada_generica(est, idx)
+        // R27: llamada a nombre de estructura — el ctor de struct es `Punto()`
+        // sin argumentos (Manual 2 L67 declaracion_estructura; paridad S1
+        // semantic_types.py L355-360: esperados=0). Antes el nativo aceptaba
+        // `Punto(1,2)` y emitia C invalido `int64_t p = (struct Punto){...}`.
+        // Precedencia de funciones (paridad S1: tabla.buscar -> DefinicionFuncion
+        // se valida ANTES del check de _estructuras): si el callee es una funcion
+        // de usuario, se salta el check de aridad del struct.
+        inseguro:
+            asm("    int* _phi27=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp27=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi27){ _bp27|=((uintptr_t)(unsigned)_phi27[idx])<<32; } const char* _cal27=(const char*)_bp27;")
+            asm("    if(_cal27 && _cal27[0]){")
+            asm("        int _se27=0; for(int _i27=0;_i27<est->total_estructuras;_i27++){ if(est->info_estructuras[_i27].nombre.datos&&strcmp(est->info_estructuras[_i27].nombre.datos,_cal27)==0){ _se27=1; break; } }")
+            asm("        int _fn27=-1; for(int _j27=0;_j27<est->total_funciones;_j27++){ if(est->info_funciones[_j27].nombre.datos&&strcmp(est->info_funciones[_j27].nombre.datos,_cal27)==0){ _fn27=_j27; break; } }")
+            asm("        if(_se27 && _fn27<0 && ((int*)&est->nodos[idx])[6]!=0){")
+            asm("            static char _sebuf27[256]; _sebuf27[0]=0;")
+            asm("            snprintf(_sebuf27,256,\"Cantidad de argumentos invalida para '%s': se esperaban 0\", _cal27);")
+            asm("            sem_error(est, ERR_SEM_ARGUMENTOS_INVALIDOS, idx, (CadenaSegura){.longitud=(int)strlen(_sebuf27),.datos=_sebuf27});")
+            asm("        }")
+            asm("    }")
         arg = nodo_expr(est, idx)
         r2 = 1
         mientras r2 == 1:
@@ -560,27 +774,109 @@ funcion registrar_estructura(est: AnalizadorSemanticoEst, nombre: cadena, idx_no
         asm("est->info_estructuras[est->total_estructuras].total_campos = 0")
         asm("est->total_estructuras = est->total_estructuras + 1")
 
+// --- 2.4 nativa: registro de ADTs (tipo X<T,E>) y validacion de
+// instanciaciones (aridad + base + argumentos conocidos). Port de
+// compilador/tipos.py (es_tipo_conocido) + semantic_types.py
+// (_validar_aridad_instanciaciones). Manual 2 §8.2. ---
+funcion registrar_adt(est: AnalizadorSemanticoEst, nombre: cadena, num_parametros: entero, idx_nodo: entero) -> nulo:
+    i = 0
+    r = 1
+    mientras r == 1:
+        inseguro:
+            asm("r = (i < est->total_adts) ? 1 : 0")
+            si r == 0:
+                romper
+            asm("{ int _eq = 1; const char* _a = est->info_adts[i].nombre.datos; const char* _b = nombre.datos; for (int _si = 0; _si < 256; _si++) { if (_a[_si] != _b[_si]) { _eq = 0; break; } if (_a[_si] == 0) break; } if (_eq) { sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, nombre); return; } }")
+            asm("i = i + 1")
+    inseguro:
+        asm("char* _nmost = nombre.datos ? strdup(nombre.datos) : (char*)\"\";")
+        asm("est->info_adts[est->total_adts].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost};")
+        asm("est->info_adts[est->total_adts].num_parametros = num_parametros;")
+        asm("est->total_adts = est->total_adts + 1;")
+
+funcion validar_tipo_instanciacion(est: AnalizadorSemanticoEst, tipo: cadena, idx_nodo: entero) -> nulo:
+    // Valida instanciaciones de ADT en firmas: `Base<A,B>` con Base registrada
+    // (aridad contra tipo X<T,E>), base conocida (no typo) y argumentos
+    // conocidos (recursivo para anidados). Tipos simples: lenient (Etapa 1).
+    inseguro:
+        asm("")
+        asm("void _f8_tipo_instanciacion_2_4(struct AnalizadorSemanticoEst* e, const char* s0, int idx) {")
+        asm("    char base[512]; const char* s; char* lt;")
+        asm("    if (!s0 || !s0[0]) return;")
+        asm("    s = s0;")
+        asm("    if (strncmp(s, \"&mut \", 5) == 0) s += 5; else if (s[0] == '&') s += 1;")
+        asm("    if (strlen(s) >= 512) return;")
+        asm("    strcpy(base, s);")
+        asm("    while (base[0] && base[strlen(base)-1] == '*') base[strlen(base)-1] = 0;")
+        asm("    lt = strchr(base, '<');")
+        asm("    if (!(lt && base[strlen(base)-1] == '>')) return; /* tipo simple: lenient Etapa 1 */")
+        asm("    {")
+        asm("        char nom[128]; int nl, profundidad, nargs, i, es_adt, es_estructura, base_conocida, adt_np; const char* p;")
+        asm("        nl = (int)(lt - base); if (nl > 127) nl = 127;")
+        asm("        memcpy(nom, base, nl); nom[nl] = 0;")
+        asm("        profundidad = 0; nargs = 1; p = lt + 1;")
+        asm("        // R13: contar argumentos con profundidad (solo el '>' de nivel 0 cierra);")
+        asm("        // antes el bucle se detenia en el PRIMER '>' y un ADT anidado")
+        asm("        // (Resultado<Resultado<entero,texto>,texto>) contaba 1 argumento.")
+        asm("        for (; *p; p++) { if (*p == '<') profundidad++; else if (*p == '>') { if (profundidad == 0) break; profundidad--; } else if (*p == ',' && profundidad == 0) nargs++; }")
+        asm("                es_adt = 0; adt_np = 0;")
+        asm("        base_conocida = 0; { static const char* const _prim[] = {\"int\",\"entero\",\"int64_t\",\"long\",\"float\",\"decimal\",\"double\",\"real\",\"flotante\",\"texto\",\"cadena\",\"CadenaSegura\",\"string\",\"booleano\",\"logico\",\"bool\",\"nulo\",\"vacio\",\"void\",\"puntero\",\"void*\",\"rc\",\"arc\",\"debil\",\"débil\",\"weak\",\"faible\",\"fraco\",\"tensor\",\"CanalConcurrencia\",\"Canal\",0}; int _pi; for (_pi = 0; _prim[_pi]; _pi++) if (strcmp(nom, _prim[_pi]) == 0) { base_conocida = 1; break; } }")
+        asm("                for (i = 0; i < e->total_adts; i++) if (e->info_adts[i].nombre.datos && strcmp(e->info_adts[i].nombre.datos, nom) == 0) { es_adt = 1; adt_np = e->info_adts[i].num_parametros; break; }")
+        asm("        es_estructura = 0;")
+        asm("        for (i = 0; i < e->total_estructuras; i++) if (e->info_estructuras[i].nombre.datos && strcmp(e->info_estructuras[i].nombre.datos, nom) == 0) { es_estructura = 1; break; }")
+        asm("        base_conocida = es_adt || es_estructura || base_conocida; /* base conocida ya calculada arriba */")
+        asm("        if (es_adt && nargs != adt_np) { char _ma[256]; snprintf(_ma, 256, \"[Synapse] Error semantico (linea %lld, columna %lld): ADT '%s' instanciado con %d argumento(s); se esperaban %d (Manual 2 seccion 8.2)\", (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0), (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0), nom, nargs, adt_np); fprintf(stderr, \"%s\\n\", _ma); e->hay_error_2_4 = 1; }")
+        asm("                else if (!es_adt && !base_conocida) { char _mb[256]; snprintf(_mb, 256, \"[Synapse] Error semantico (linea %lld, columna %lld): tipo base '%s' no definido en este programa (instanciacion '%s')\", (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].linea:0), (long long)(idx>=0&&idx<e->total_nodos?e->nodos[idx].columna:0), nom, s0); fprintf(stderr, \"%s\\n\", _mb); e->hay_error_2_4 = 1; }")
+        asm("        p = lt + 1; profundidad = 0;")
+        asm("        // R13: dividir argumentos con profundidad (solo '>' de nivel 0 separa);")
+        asm("        // antes el bucle se detenia en el primer '>' y los argumentos tras un")
+        asm("        // ADT anidado no se validaban recursivamente.")
+        asm("        while (*p && !(*p == '>' && profundidad == 0)) {")
+        asm("            const char* ini = p;")
+        asm("            while (*p && !(*p == '>' && profundidad == 0) && !(*p == ',' && profundidad == 0)) { if (*p == '<') profundidad++; else if (*p == '>') profundidad--; p++; }")
+        asm("            { char arg[256]; int al = (int)(p - ini); if (al > 255) al = 255; memcpy(arg, ini, al); arg[al] = 0;")
+        asm("              while (arg[0] == ' ') memmove(arg, arg+1, strlen(arg)); while (arg[0] && arg[strlen(arg)-1] == ' ') arg[strlen(arg)-1] = 0;")
+        asm("              _f8_tipo_instanciacion_2_4(e, arg, idx); }")
+        asm("            if (*p == ',') p++; else break;")
+        asm("        }")
+        asm("    }")
+        asm("}")
+        asm("if (tipo.datos != NULL && tipo.datos[0] != 0) { _f8_tipo_instanciacion_2_4(est, tipo.datos, idx_nodo); }")
+
 // --- Regex-free pattern parser for match cases ---
 // Pattern format: "tag_name(var_name)" or "_"
-funcion parsear_patron_coincidir(patron: cadena, tag_nombre: cadena, var_nombre: cadena) -> entero:
+funcion parsear_patron_coincidir(patron: cadena, tag_buf: puntero, var_buf: puntero) -> entero:
     // Returns 0 = wildcard, 1 = tag(var), -1 = error
-    // First check if wildcard "_"
+    // R11: paridad S1 regex (\w+)(?:\((\w+)\))? — acepta tags SIN parentesis
+    // (ej. 'ninguno') como tag con variable vacia (semantic_checker.py L619).
+    // Escribe en buffers C (char[64]) pasados por puntero: los parametros
+    // CadenaSegura por valor NO propagan las asignaciones al caller (bug R11
+    // de paridad: tag_nombre/var_nombre se quedaban vacios y la exhaustividad
+    // nativa no marcaba variantes).
     inseguro:
         asm("if (patron.datos[0] == '_' && patron.datos[1] == 0) { return 0; }")
+        asm("char* _tbo = (char*)tag_buf; char* _vbo = (char*)var_buf;")
+        asm("if (!_tbo || !_vbo) return -1;")
         asm("// Extract tag name before '('")
         asm("int _i = 0;")
         asm("char _tag[64]; int _tp = 0;")
-        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != '(') { _tag[_tp++] = patron.datos[_i]; _i++; }")
+        asm("// R11-h: bound _tp < 63 (revision code-reviewer): un tag de >63 chars")
+        asm("// no debe desbordar el buffer de stack del compilador (trunca, no crashea).")
+        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != '(' && _tp < 63) { _tag[_tp++] = patron.datos[_i]; _i++; }")
         asm("_tag[_tp] = 0;")
-        asm("if (patron.datos[_i] != '(') { return -1; }")
+        asm("if (patron.datos[_i] != '(') {")
+        asm("    // R11: tag sin payload (ej. 'ninguno') -> var vacia, res=1")
+        asm("    strcpy(_tbo, _tag); _vbo[0] = 0;")
+        asm("    return 1;")
+        asm("}")
         asm("_i++; // skip '('")
         asm("char _var[64]; int _vp = 0;")
-        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != ')') { _var[_vp++] = patron.datos[_i]; _i++; }")
+        asm("while (patron.datos[_i] != 0 && patron.datos[_i] != ')' && _vp < 63) { _var[_vp++] = patron.datos[_i]; _i++; }")
         asm("_var[_vp] = 0;")
         asm("if (patron.datos[_i] != ')') { return -1; }")
-        asm("// Copy results using strdup to own memory")
-        asm("tag_nombre = (CadenaSegura){ .longitud = _tp, .datos = strdup(_tag) };")
-        asm("var_nombre = (CadenaSegura){ .longitud = _vp, .datos = strdup(_var) };")
+        asm("// Copy results into caller buffers (strcpy, no strdup: buffers estaticos")
+        asm("// del caller, vida de proceso; RAII pool_free no-op con R10)")
+        asm("strcpy(_tbo, _tag); strcpy(_vbo, _var);")
     retornar 1
 
 // --- Main analysis functions ---
@@ -593,23 +889,80 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
 
     // AsignacionVariable
     si tipo == NODO_ASIGNACION:
+        // R9: constantes LOCALES (StmtConstante aplanado con marcador
+        // es_constante en hijo_der; paridad S1 L446-458): se declaran como
+        // constantes, no como asignaciones. (R1 fix: el marcador via valor_int
+        // colisionaba con slot[6]/expresion y anulaba el RHS de la asignacion.)
+        esconstdecl = nodo_hijo_der(est, idx_nodo)
+        si esconstdecl == 1:
+            cnom = ""
+            inseguro:
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; cnom=_cs; } }")
+            si cnom != "":
+                ok_c = tabla_declarar(est, cnom, "entero", idx_nodo, verdadero)
+                si ok_c == falso:
+                    sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, cnom)
+            analizar_expr(est, nodo_expr(est, idx_nodo))
+            retornar
+        // R7: resolucion de simbolos de la pasada 3 (paridad S1
+        // semantic_checker.py _analizar_sentencia -> AsignacionVariable): si el
+        // nombre no esta en la tabla se declara implicitamente en el scope
+        // actual ("primera declaracion de este scope"); si existe y es
+        // constante -> ERR_SEM_CONSTANTE_INMUTABLE. Antes se reportaba
+        // ERR_SEM_VAR_NO_DECLARADA para parametros y asignaciones implicitas
+        // (653 falsos positivos en el bootstrap del propio compilador; deuda R7
+        // de docs/reportes/FASE_2_2.4_NATIVA.md).
+        varnombre = ""
         inseguro:
-            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)<0) sem_error(est,ERR_SEM_VAR_NO_DECLARADA,idx_nodo,_cs); } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        idx_sim = tabla_buscar(est, varnombre)
+        si idx_sim < 0:
+            si varnombre != "":
+                // S1: primera declaracion en este scope (declaracion implicita)
+                tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+        sino:
+            esconst = falso
+            inseguro:
+                asm("if (est->tabla->entradas[idx_sim].es_constante) { esconst = verdadero; }")
+            si esconst == verdadero:
+                // R9: inmutabilidad REAL (paridad S1 L367-372). La rama estaba
+                // inerte (ninguna pasada registraba constantes). Diagnostico
+                // observable en formato 2.4 "[Synapse] Error semantico ..."
+                // (paridad diagnostics.py: "No se puede reasignar la constante
+                // '{nombre}'") para tests de paridad; sem_error marca hay_error
+                // (no aborta: solo hay_error_2_4 aborta el pipeline).
+                inseguro:
+                    asm("    fprintf(stderr, \"[Synapse] Error semantico (linea %d, columna %d): No se puede reasignar la constante '%s'\n\", (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].linea:0, (idx_nodo>=0&&idx_nodo<est->total_nodos)?est->nodos[idx_nodo].columna:0, varnombre.datos);")
+                sem_error(est, ERR_SEM_CONSTANTE_INMUTABLE, idx_nodo, varnombre)
         // M21.4: analizar RHS para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
-
     // DeclaracionVariable
     si tipo == NODO_DECLARACION:
+        varnombre = ""
         inseguro:
-            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; if(tabla_buscar(est,_cs)>=0){ sem_error(est,ERR_SEM_REDEFINICION,idx_nodo,_cs); }else{ CadenaSegura _t={.longitud=5,.datos=\"entero\"}; tabla_declarar(est,_cs,_t,idx_nodo,0);")
-            asm("    // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)")
-            asm("    est->proximo_lifetime = est->proximo_lifetime + 1;")
-            asm("} } }")
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        // R7: REDEFINICION solo para duplicados en el MISMO scope (paridad S1
+        // SymbolTable.declarar / tabla_declarar nativa). Antes se usaba
+        // tabla_buscar (todos los scopes), que reportaba falsos positivos al
+        // sombrear parametros o variables de scopes externos con declaraciones
+        // anidadas (relevante tras declarar los parametros en la pasada 3).
+        si varnombre != "":
+            ok_decl = tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+            si ok_decl == falso:
+                sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, varnombre)
+            sino:
+                // M21.3: LT_LOCAL lifetime counter increment (full constraint gen in M21.4)
+                // R7: nota — antes se incrementaba solo si tabla_buscar < 0 (no
+                // encontrado en NINGUN scope); ahora se incrementa cuando
+                // tabla_declarar tiene exito (no duplicado del scope ACTUAL), por
+                // lo que en casos de sombra de un scope externo el contador avanza
+                // (indices internos de M21.4; sin impacto en el codegen).
+                inseguro:
+                    asm("est->proximo_lifetime = est->proximo_lifetime + 1;")
         // M21.4: analizar inicializador para prestamos (Manual 4 S4.2)
         analizar_expr(est, nodo_expr(est, idx_nodo))
         retornar
-
     // SentenciaSi
     si tipo == NODO_SI:
         // M21.4: analizar condicion para prestamos (Manual 4 S4.2, slot [6])
@@ -632,6 +985,63 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     si tipo == NODO_MIENTRAS:
         // M21.4: analizar condicion para prestamos (Manual 4 S4.2, slot [6])
         analizar_expr(est, nodo_expr(est, idx_nodo))
+        tabla_entrar_scope(est)
+        cuerpo = nodo_hijo_izq(est, idx_nodo)
+        stmt = cuerpo
+        r = 1
+        mientras r == 1:
+            si stmt <= 0:
+                r = 0
+                romper
+            analizar_sentencia(est, stmt)
+            inseguro:
+                asm("stmt = est->nodos[stmt].hermano")
+        tabla_salir_scope(est)
+        retornar
+
+    // SentenciaPara (R30, Manual 2 §2.2 L108): `para i = 0 mientras i < 3:`
+    // Antes el flatten F8 no mapeaba NODO_PARA -> el cuerpo nunca se analizaba
+    // (variables no declaradas, use-after-move, prestamos: invisibles dentro
+    // del bucle). Paridad S1 semantic_checker.py SentenciaPara: entra scope,
+    // declara la variable de bucle (primera declaracion), analiza init/cond y
+    // el cuerpo, sale del scope.
+    si tipo == NODO_PARA:
+        tabla_entrar_scope(est)
+        varnombre = ""
+        inseguro:
+            asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_nodo].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_nodo])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; varnombre=_cs; } }")
+        si varnombre != "":
+            ok_para = tabla_declarar(est, varnombre, "entero", idx_nodo, falso)
+            si ok_para == falso:
+                sem_error(est, ERR_SEM_REDEFINICION, idx_nodo, varnombre)
+        // inicializacion en slot[6], condicion en hijo_der (patron flatten R30)
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        cond_para = nodo_hijo_der(est, idx_nodo)
+        si cond_para > 0:
+            analizar_expr(est, cond_para)
+        cuerpo = nodo_hijo_izq(est, idx_nodo)
+        stmt = cuerpo
+        r = 1
+        mientras r == 1:
+            si stmt <= 0:
+                r = 0
+                romper
+            analizar_sentencia(est, stmt)
+            inseguro:
+                asm("stmt = est->nodos[stmt].hermano")
+        tabla_salir_scope(est)
+        retornar
+
+    // SentenciaEscuchar (F3-7, Manual 2 L113): `escuchar canal:` + bloque
+    // que recibe con `canal ->` (Manual 5 §4.2). Paridad S1 semantic_checker.py
+    // SentenciaEscuchar: analiza el canal, entra scope, analiza el cuerpo
+    // (use-after-move/prestamos dentro del bloque visibles), sale del scope.
+    // El listener se lanza como hilo (el generador lo emite); aqui solo se
+    // validan las expresiones.
+    si tipo == NODO_ESCUCHAR:
+        canal_expr = nodo_expr(est, idx_nodo)
+        si canal_expr > 0:
+            analizar_expr(est, canal_expr)
         tabla_entrar_scope(est)
         cuerpo = nodo_hijo_izq(est, idx_nodo)
         stmt = cuerpo
@@ -687,7 +1097,9 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
             res = 0
             inseguro:
                 asm("int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx_caso].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx_caso])<<32; } CadenaSegura _patron_s = { .longitud = 255, .datos = (const char*)_bp };")
-                asm("res = parsear_patron_coincidir(_patron_s, tag_nombre, var_nombre);")
+                asm("static char _tb_r11[64]; static char _vb_r11[64]; _tb_r11[0]=0; _vb_r11[0]=0;")
+                asm("res = parsear_patron_coincidir(_patron_s, _tb_r11, _vb_r11);")
+                asm("if (res == 1) { tag_nombre = (CadenaSegura){ .longitud = (int)strlen(_tb_r11), .datos = _tb_r11 }; var_nombre = (CadenaSegura){ .longitud = (int)strlen(_vb_r11), .datos = _vb_r11 }; }")
                 asm("// Manual 2 S2.4: marcar variantes para validacion de exhaustividad")
                 asm("if(res==1){ if(tag_nombre.datos){ if(strcmp(tag_nombre.datos,\"ok\")==0) tiene_ok=1; if(strcmp(tag_nombre.datos,\"err\")==0) tiene_err=1; if(strcmp(tag_nombre.datos,\"algun\")==0) tiene_algun=1; if(strcmp(tag_nombre.datos,\"ninguno\")==0) tiene_ninguno=1; } }")
             si res == 0:
@@ -706,8 +1118,11 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
                         asm("stmt_c = est->nodos[stmt_c].hermano")
                 tabla_salir_scope(est)
             si res == 1:
-                // tag(var) pattern
-                tabla_declarar(est, var_nombre, "int", idx_caso, falso)
+                // tag(var) pattern — R11: si el tag no tiene variable (ej.
+                // 'ninguno'), NO declarar (paridad S1 semantic_checker.py L625:
+                // 'if var_nombre: self.tabla.declarar(...)').
+                si var_nombre != "":
+                    tabla_declarar(est, var_nombre, "int", idx_caso, falso)
                 tabla_entrar_scope(est)
                 cuerpo_caso = nodo_hijo_izq(est, idx_caso)
                 stmt_c = cuerpo_caso
@@ -740,6 +1155,53 @@ funcion analizar_sentencia(est: AnalizadorSemanticoEst, idx_nodo: entero) -> nul
     si tipo == NODO_LOG:
         retornar
 
+    // R14: SentenciaEnviarCanal (42) — use-after-move (Manual 4 §3.3, paridad
+    // S1 semantic_checker.py SentenciaEnviarCanal): se analiza el VALOR (si era
+    // un identificador ya movido -> ERR_SEM_VAR_MOVIDA, p. ej. doble envio) y
+    // luego se MARCA como movido (el origen queda invalido).
+    si tipo == NODO_ENVIAR_CANAL:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        v = nodo_expr(est, idx_nodo)
+        si v > 0:
+            vt = nodo_tipo(est, v)
+            si vt == NODO_IDENTIFICADOR:
+                vnombre = ""
+                inseguro:
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[v].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[v])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; vnombre=_cs; } }")
+                si vnombre != "":
+                    tabla_marcar_movido(est, vnombre)
+        retornar
+
+    // R15: SentenciaLanzar (18) — transferencia por argumento ->expr
+    // (Manual 4 S3.3, paridad S1 semantic_checker.py SentenciaLanzar
+    // L565-568: se analiza la llamada — lectura que detecta E-501 si el origen
+    // ya estaba movido — y luego se marcan movidos los ArgumentoTransferido
+    // con Identificador). NODO_TRANSFERIDO se parsea dentro de los argumentos
+    // (parser_expr.syn) y se aplana con expr en hijo_izq.
+    si tipo == NODO_LANZAR:
+        analizar_expr(est, nodo_expr(est, idx_nodo))
+        llamada_t = nodo_expr(est, idx_nodo)
+        si llamada_t > 0:
+            arg_t = nodo_expr(est, llamada_t)
+            r3_t = 1
+            mientras r3_t == 1:
+                si arg_t <= 0:
+                    r3_t = 0
+                    romper
+                si nodo_tipo(est, arg_t) == NODO_TRANSFERIDO:
+                    hijo_t = nodo_hijo_izq(est, arg_t)
+                    si hijo_t > 0:
+                        ht = nodo_tipo(est, hijo_t)
+                        si ht == NODO_IDENTIFICADOR:
+                            t_nombre = ""
+                            inseguro:
+                                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[hijo_t].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[hijo_t])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; t_nombre=_cs; } }")
+                            si t_nombre != "":
+                                tabla_marcar_movido(est, t_nombre)
+                inseguro:
+                    asm("arg_t = est->nodos[arg_t].hermano")
+        retornar
+
     // SentenciaRetornar - analizar expr para prestamos (Manual 4 S4.2)
     si tipo == NODO_RETORNAR:
         analizar_expr(est, nodo_expr(est, idx_nodo))
@@ -763,6 +1225,18 @@ funcion analizar_paso_estructuras(est: AnalizadorSemanticoEst, idx_programa: ent
             inseguro:
                 asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
             registrar_estructura(est, nombre, stmt)
+        // 2.4 nativa: registrar los ADTs (tipo X<T,E>) con su aridad
+        si tipo == NODO_DECLARACION_TIPO:
+            nombre = ""
+            inseguro:
+                asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; nombre=_cs; } }")
+            nparams = 0
+            tp = nodo_expr(est, stmt)
+            mientras tp > 0:
+                nparams = nparams + 1
+                inseguro:
+                    asm("tp = est->nodos[tp].hermano")
+            registrar_adt(est, nombre, nparams, stmt)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 
@@ -786,6 +1260,29 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
                 ok = tabla_declarar(est, nombre, "int", stmt, falso)
                 si ok == falso:
                     sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
+            // 2.4 nativa: validar la firma (tipo de retorno y parametros)
+            retorno = nodo_cadena_retorno(est, stmt)
+            validar_tipo_instanciacion(est, retorno, stmt)
+            p = nodo_expr(est, stmt)
+            mientras p > 0:
+                tparam = nodo_cadena_retorno(est, p)
+                validar_tipo_instanciacion(est, tparam, p)
+                inseguro:
+                    asm("p = est->nodos[p].hermano")
+            // R1: registrar la funcion (nombre -> nodo aplanado) para validar
+            // llamadas genericas en la pasada 3 (Manual 2 §8.2; paridad S1
+            // semantic_checker.py L264-265: TODAS las DefinicionFuncion se
+            // declaran; la precedencia de usuario sobre builtins es del S1
+            // semantic_types.py L309-310). NO filtrar por es_builtin: si el
+            // usuario define 'funcion generar() -> T', el S1 la valida como
+            // generica (la definicion del usuario precede al builtin); bounds 256.
+            inseguro:
+                asm("if (est->total_funciones < 256 && nombre.datos) {")
+                asm("    char* _nmost = strdup(nombre.datos); // R1: copia propia (el nombre local se libera en la siguiente iteracion; paridad S1 registrar_funcion)")
+                asm("    est->info_funciones[est->total_funciones].nombre = (CadenaSegura){.longitud = (int)strlen(_nmost), .datos = _nmost};")
+                asm("    est->info_funciones[est->total_funciones].nodo = stmt;")
+                asm("    est->total_funciones = est->total_funciones + 1;")
+                asm("}")
         si tipo == NODO_EXTERNO:
             nombre = ""
             inseguro:
@@ -793,6 +1290,33 @@ funcion analizar_paso_funciones(est: AnalizadorSemanticoEst, idx_programa: enter
             ok = tabla_declarar(est, nombre, "int", stmt, falso)
             si ok == falso:
                 sem_error(est, ERR_SEM_REDEFINICION, stmt, nombre)
+        // R9: constantes globales (StmtConstante aplanado como NODO_ASIGNACION
+        // con marcador es_constante en hijo_der; paridad S1
+        // semantic_checker.py L286-299: cur[s.nombre] = Simbolo(..., True)).
+        // Solo las marcadas: las asignaciones globales planas NO se registran
+        // (paridad S1, que tampoco registra AsignacionVariable top-level).
+        si tipo == NODO_ASIGNACION:
+            esconst = nodo_hijo_der(est, stmt)
+            si esconst == 1:
+                cnombre = ""
+                inseguro:
+                    asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[stmt].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[stmt])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; cnombre=_cs; } }")
+                si cnombre != "":
+                    // R23 (hallazgo R21 + revision code-reviewer): los duplicados
+                    // de constantes globales del PROPIO archivo del usuario ahora
+                    // reportan REDEFINICION (paridad S1 semantic_checker.py
+                    // L286-299, estricto). La leniency anterior (checklist
+                    // 2.1/2.3: "duplicado de constante global = ignorado") era
+                    // para los ESPEJOS entre modulos del compilador
+                    // self-hosted (tokens/lexer/parser_constantes/diagnostics/
+                    // errores definen los mismos T_*/NODO_*/ERR_*) — pero R23
+                    // deduplica esos espejos en el merge del unity build
+                    // (_seen_sym, profundidad de modulo), asi que NUNCA llegan
+                    // al analizador y la leniency quedo obsoleta. Las funciones,
+                    // constantes locales y variables duplicadas ya reportaban.
+                    ok_c = tabla_declarar(est, cnombre, "entero", stmt, verdadero)
+                    si ok_c == falso:
+                        sem_error(est, ERR_SEM_REDEFINICION, stmt, cnombre)
         inseguro:
             asm("stmt = est->nodos[stmt].hermano")
 
@@ -812,9 +1336,30 @@ funcion analizar_paso_cuerpos(est: AnalizadorSemanticoEst, idx_programa: entero)
             si es_builtin(nombre) == falso:
                 tabla_entrar_scope(est)
                 est.func_actual = nombre
+                // R7: declarar los parametros en el scope de la funcion (paridad
+                // S1 semantic_checker.py _analizar_funcion: for p in nodo.parametros:
+                // self.tabla.declarar(p.nombre, p.tipo, nodo)). Sin esto, toda
+                // asignacion a un parametro en el cuerpo reportaba
+                // ERR_SEM_VAR_NO_DECLARADA (clase dominante de los 653 falsos
+                // positivos de la deuda R7).
+                p = nodo_expr(est, stmt)
+                mientras p > 0:
+                    pnombre = ""
+                    inseguro:
+                        asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[p].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[p])<<32; } const char* _v=(const char*)_bp; if(_v){ char* _dup=strdup(_v); CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_dup}; pnombre=_cs; } }")
+                    si pnombre != "":
+                        ptipo = nodo_cadena_retorno(est, p)
+                        tabla_declarar(est, pnombre, ptipo, p, falso)
+                    inseguro:
+                        asm("p = est->nodos[p].hermano")
                 // M21.4: Initialize lifetime tracking for this function scope (Manual 4.3)
                 inseguro:
-                    asm("est->proximo_lifetime = 0;")
+                    // R12: proximo_lifetime arranca en 1 — el indice 0 es el lifetime
+                    // original de la funcion (lt_kind[0]/lt_ambito[0]); si arranca en 0,
+                    // el primer prestamo crea OUTLIVES(0->0) (self-loop) y el DFS de
+                    // detectar_ciclo_outlives marca un ciclo FALSO (paridad S1: los
+                    // Lifetime son objetos con identidad, el nativo indices enteros).
+                    asm("est->proximo_lifetime = 1;")
                     asm("est->region_graph->total_constraints = 0;")
                     asm("for (int _ui = 0; _ui < est->uf->max; _ui++) { ((int*)est->uf->parent.datos)[_ui] = -1; ((int*)est->uf->rank.datos)[_ui] = 0; }")
                     asm("((int*)est->lt_kind.datos)[0] = LT_LOCAL; ((int*)est->lt_ambito.datos)[0] = 0;")

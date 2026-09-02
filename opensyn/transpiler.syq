@@ -1,0 +1,220 @@
+#lang: es
+// opensyn/transpiler.syq — Transpilador Python → Syquex
+// ================================================================================
+// Propósito: Convertir código Python a Syquex válido, mapeando tipos, estructuras
+// y patrones comunes. Primer paso del pipeline de OpenSyn para generación de código.
+//
+// Mapeo de tipos Python → Syquex:
+//   int       → entero
+//   float     → decimal
+//   bool      → booleano
+//   str       → texto
+//   list<T>   → Lista<T>
+//   dict<K,V> → Mapa<K, V>
+//   None      → nulo
+//   void      → nulo
+//
+// Mapeo de patrones:
+//   def         → funcion
+//   class       → estructura
+//   if/elif     → si/sino si
+//   while       → mientras
+//   for x in    → para x en
+//   return      → retornar
+//   try/except  → intentar/atrapar
+//   print()     → escribir_linea()
+//   True/False  → verdadero/falso
+//   None        → nulo
+//   and/or/not  → y/o/no
+//   self        → self
+//   import      → importar
+//   raise       → lanzar
+//
+// Referencias: Manual 3 §3 (Gramática Syquex), Manual 3 §5 (Tipos)
+// ================================================================================
+
+importar std.io
+
+// ============================================================
+// Tabla de mapeo de tipos
+// ============================================================
+
+estructura MapaTipo:
+    desde_python: texto
+    hacia_syquex: texto
+
+funcion crear_mapa_tipos() -> Lista<MapaTipo>:
+    let mapa = Lista<MapaTipo>()
+
+    // Tipos primitivos
+    mapa.agregar(MapaTipo("int", "entero"))
+    mapa.agregar(MapaTipo("float", "decimal"))
+    mapa.agregar(MapaTipo("bool", "booleano"))
+    mapa.agregar(MapaTipo("str", "texto"))
+    mapa.agregar(MapaTipo("bool", "booleano"))
+    mapa.agregar(MapaTipo("None", "nulo"))
+    mapa.agregar(MapaTipo("void", "nulo"))
+    mapa.agregar(MapaTipo("bytes", "texto"))
+    mapa.agregar(MapaTipo("any", "entero"))  // fallback
+
+    retornar mapa
+
+funcion mapear_tipo(tipo_python: texto, mapa: Lista<MapaTipo>) -> texto:
+    para m en mapa:
+        si m.desde_python == tipo_python:
+            retornar m.hacia_syquex
+
+    // Tipos compuestos: list<T>, dict<K,V>
+    si tipo_python.comienza_con("list"):
+        retornar "Lista<entero>"
+    si tipo_python.comienza_con("dict"):
+        retornar "Mapa<entero, entero>"
+    si tipo_python.comienza_con("Optional"):
+        retornar "entero"  // simplificado
+
+    // Default: entero
+    retornar "entero"
+
+// ============================================================
+// Tabla de mapeo de palabras clave
+// ============================================================
+
+estructura MapaPalabraClave:
+    desde_python: texto
+    hacia_syquex: texto
+
+funcion crear_mapa_palabras_clave() -> Lista<MapaPalabraClave>:
+    let mapa = Lista<MapaPalabraClave>()
+
+    mapa.agregar(MapaPalabraClave("def", "funcion"))
+    mapa.agregar(MapaPalabraClave("class", "estructura"))
+    mapa.agregar(MapaPalabraClave("if", "si"))
+    mapa.agregar(MapaPalabraClave("elif", "sino si"))
+    mapa.agregar(MapaPalabraClave("else", "sino"))
+    mapa.agregar(MapaPalabraClave("while", "mientras"))
+    mapa.agregar(MapaPalabraClave("for", "para"))
+    mapa.agregar(MapaPalabraClave("return", "retornar"))
+    mapa.agregar(MapaPalabraClave("try", "intentar"))
+    mapa.agregar(MapaPalabraClave("except", "atrapar"))
+    mapa.agregar(MapaPalabraClave("True", "verdadero"))
+    mapa.agregar(MapaPalabraClave("False", "falso"))
+    mapa.agregar(MapaPalabraClave("None", "nulo"))
+    mapa.agregar(MapaPalabraClave("and", "y"))
+    mapa.agregar(MapaPalabraClave("or", "o"))
+    mapa.agregar(MapaPalabraClave("not", "no"))
+    mapa.agregar(MapaPalabraClave("raise", "lanzar"))
+    mapa.agregar(MapaPalabraClave("import", "importar"))
+    mapa.agregar(MapaPalabraClave("print", "escribir_linea"))
+    mapa.agregar(MapaPalabraClave("len", "longitud"))
+    mapa.agregar(MapaPalabraClave("append", "agregar"))
+    mapa.agregar(MapaPalabraClave("range", "rango"))
+
+    retornar mapa
+
+funcion mapear_palabra_clave(palabra: texto, mapa: Lista<MapaPalabraClave>) -> texto:
+    para m in mapa:
+        si m.desde_python == palabra:
+            retornar m.hacia_syquex
+    retornar palabra
+
+// ============================================================
+// Funciones de transpilación
+// ============================================================
+
+// Transpila una línea de Python a Syquex
+funcion transpilar_linea(linea: texto, mapa_tipos: Lista<MapaTipo>, mapa_kw: Lista<MapaPalabraClave>) -> texto:
+    let resultado = linea
+
+    // Reemplazar print() → escribir_linea()
+    resultado = resultado.reemplazar("print(", "escribir_linea(")
+
+    // Reemplazar True/False/None
+    resultado = resultado.reemplazar("True", "verdadero")
+    resultado = resultado.reemplazar("False", "falso")
+    resultado = resultado.reemplazar("None", "nulo")
+
+    // Reemplazar operadores lógicos
+    resultado = resultado.reemplazar(" and ", " y ")
+    resultado = resultado.reemplazar(" or ", " o ")
+    resultado = resultado.reemplazar("not ", "no ")
+
+    // Reemplazar def → funcion
+    resultado = resultado.reemplazar("def ", "funcion ")
+
+    // Reemplazar class → estructura
+    resultado = resultado.reemplazar("class ", "estructura ")
+
+    // Reemplazar if/elif/else → si/sino si/sino
+    resultado = resultado.reemplazar("if ", "si ")
+    resultado = resultado.reemplazar("elif ", "sino si ")
+    resultado = resultado.reemplazar("else:", "sino:")
+
+    // Reemplazar while → mientras
+    resultado = resultado.reemplazar("while ", "mientras ")
+
+    // Reemplazar for ... in → para ... en
+    resultado = resultado.reemplazar(" in ", " en ")
+
+    // Reemplazar return → retornar
+    resultado = resultado.reemplazar("return ", "retornar ")
+
+    // Reemplazar try/except
+    resultado = resultado.reemplazar("try:", "intentar:")
+    resultado = resultado.reemplazar("except", "atrapar")
+
+    // Reemplazar raise → lanzar
+    resultado = resultado.reemplazar("raise ", "lanzar ")
+
+    // Reemplazar import → importar
+    resultado = resultado.reemplazar("import ", "importar ")
+
+    // Reemplazar len() → longitud()
+    resultado = resultado.reemplazar("len(", "longitud(")
+
+    // Reemplazar .append() → .agregar()
+    resultado = resultado.reemplazar(".append(", ".agregar(")
+
+    retornar resultado
+
+// Transpila un bloque completo de Python a Syquex
+funcion transpilar_bloque(bloque: texto, mapa_tipos: Lista<MapaTipo>, mapa_kw: Lista<MapaPalabraClave>) -> texto:
+    let lineas = bloque.dividir("\n")
+    let resultado = Lista<texto>()
+
+    para linea en lineas:
+        let linea_trimmed = linea.recortar()
+        si linea_trimmed == "":
+            resultado.agregar("")
+            continuar
+
+        let linea_tr = transpilar_linea(linea_trimmed, mapa_tipos, mapa_kw)
+        resultado.agregar(linea_tr)
+
+    retornar resultado.unir("\n")
+
+// ============================================================
+// Función principal de transpilación
+// ============================================================
+
+funcion transpilar_codigo_python(codigo_python: texto) -> texto:
+    let mapa_tipos = crear_mapa_tipos()
+    let mapa_kw = crear_mapa_palabras_clave()
+
+    let resultado = transpilar_bloque(codigo_python, mapa_tipos, mapa_kw)
+
+    // Agregar directiva #lang: es si no existe
+    si no resultado.comienza_con("#lang:"):
+        resultado = "#lang: es\n\n" + resultado
+
+    retornar resultado
+
+// ============================================================
+// Función para archivo completo
+// ============================================================
+
+funcion transpilar_archivo(ruta_python: texto) -> texto:
+    let contenido = leer_archivo(ruta_python)
+    si contenido == "":
+        retornar ""
+
+    retornar transpilar_codigo_python(contenido)

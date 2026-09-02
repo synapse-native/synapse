@@ -7,7 +7,7 @@
 set -e
 
 echo "[1/3] Compiling gen_axon_test_fixtures.exe..."
-gcc -I. -O2 tests/gen_axon_test_fixtures.c tweetnacl.c -o tests/gen_axon_test_fixtures.exe -lm
+gcc -I. -O2 tests/gen_axon_test_fixtures.c axon/tweetnacl.c -o tests/gen_axon_test_fixtures.exe -lm
 
 echo "[2/3] Compiling test_ed25519_axon_new.exe..."
 # Build .o files if not present

@@ -1,3 +1,4 @@
+# cumple Manual 7 2.3
 """Tests para F12.1: Nuevos proveedores LSP.
 
 Cubre:

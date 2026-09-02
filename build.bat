@@ -1,46 +1,50 @@
 @echo off
-:: build.bat — Synapse Build & Bootstrap Pipeline (Windows)
-:: Usage: build.bat [clean|test|bootstrap|full]
+:: build.bat - Synapse Build & Bootstrap Pipeline (Windows)
+:: Usage: build.bat [clean|test|bootstrap|bootstrap-full|full]
 ::
-:: Pipeline: regenerate -> fixup_generator.py -> fix_2errors.py -> gcc
+:: Pipeline (Manual 9 S9.1/S9.7):
+::   Etapa 1: python compila nucleo\principal.syn -> synapse_stage1.exe
+::   Etapa 2: synapse_stage1.exe compila nucleo\principal.syn -> synapse_stage2.exe
+::   Etapa 3: synapse_stage2.exe compila nucleo\principal.syn -> synapse_stage3.exe
+::   Verificacion: diff 0 bytes entre Etapa 2 y Etapa 3 (dos auto-compilaciones
+::   nativas consecutivas; Manual 9 S9.7 y roadmap Fase 5).
+:: ME-R3: entrada alineada al manual (nucleo\principal.syn); el runtime modular lo
+:: compila el pipeline desde fuente (ME-R2, build\obj\); paso fixup eliminado
+:: (referenciaba build\fixup_generator.py / fix_2errors.py, inexistentes).
+:: NOTA: archivo en ASCII puro (sin acentos) para compatibilidad de codepage con cmd.exe.
 ::
 setlocal enabledelayedexpansion
 set ROOT_DIR=%~dp0
 set NUCLEO=%ROOT_DIR%nucleo
-set BUILD=%ROOT_DIR%build
 
 if /I "%1"=="clean" goto :clean
 if /I "%1"=="test" goto :test
 if /I "%1"=="bootstrap" goto :bootstrap
 if /I "%1"=="bootstrap-full" goto :bootstrap_full
 if /I "%1"=="full" goto :full
-if /I "%1"=="fixup" goto :fixup
 
 echo === Synapse Build v2.1.0 ===
-echo Usage: build.bat [clean^|test^|bootstrap^|bootstrap-full^|fixup^|full]
+echo Usage: build.bat [clean^|test^|bootstrap^|bootstrap-full^|full]
 echo.
-echo   clean          Remove build artifacts (exe, o, c, json)
-echo   fixup          Run post-processing fixup scripts on generator.c
+echo   clean          Remove build artifacts (build\obj, exe, c, json)
 echo   test           Run full pytest suite
-echo   bootstrap      Stage 1: Python -^> synapse_stage2.exe (modular objects)
-echo   bootstrap-full Stage 1+2+3: Full bootstrap pipeline + byte comparison
-echo   full           Clean + fixup + test + bootstrap
+echo   bootstrap      Etapa 1: Python -^> synapse_stage1.exe
+echo   bootstrap-full Etapas 1+2+3: Full bootstrap pipeline + diff 0 bytes (S2 vs S3)
+echo   full           Clean + test + bootstrap
 exit /b 0
 
 :clean
 echo [*] Cleaning build artifacts...
+if exist "%ROOT_DIR%build\obj" rmdir /s /q "%ROOT_DIR%build\obj"
+if exist "%ROOT_DIR%synapse_stage1.exe" del "%ROOT_DIR%synapse_stage1.exe"
+if exist "%ROOT_DIR%synapse_stage2.exe" del "%ROOT_DIR%synapse_stage2.exe"
+if exist "%ROOT_DIR%synapse_stage3.exe" del "%ROOT_DIR%synapse_stage3.exe"
+if exist "%ROOT_DIR%synapse_bootstrap.exe" del "%ROOT_DIR%synapse_bootstrap.exe"
+if exist "%ROOT_DIR%synapse_unity.c" del "%ROOT_DIR%synapse_unity.c"
 if exist "%ROOT_DIR%synapse_rt.o" del "%ROOT_DIR%synapse_rt.o"
-if exist "%ROOT_DIR%synapse_rt_memory.o" del "%ROOT_DIR%synapse_rt_memory.o"
-if exist "%ROOT_DIR%synapse_rt_concurrency.o" del "%ROOT_DIR%synapse_rt_concurrency.o"
-if exist "%NUCLEO%\generator.o" del "%NUCLEO%\generator.o"
+if exist "%ROOT_DIR%tweetnacl.o" del "%ROOT_DIR%tweetnacl.o"
+if exist "%ROOT_DIR%synapse_rt_modular_test.exe" del "%ROOT_DIR%synapse_rt_modular_test.exe"
 echo [OK] Clean
-exit /b 0
-
-:fixup
-echo [FIXUP] Running post-processing on generator.c...
-python "%BUILD%\fixup_generator.py"
-python "%BUILD%\fix_2errors.py"
-echo [OK] Fixup complete
 exit /b 0
 
 :test
@@ -49,90 +53,69 @@ python -m pytest tests/ -v
 exit /b %ERRORLEVEL%
 
 :bootstrap
-echo [BOOTSTRAP] Compiling modular runtime objects...
-gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.c" -o "%ROOT_DIR%synapse_rt.o" -lpthread
+echo [BOOTSTRAP] Etapa 1 (Manual 9 S9.1): Python -^> synapse_stage1.exe
+echo [INFO] ME-R2: el pipeline compila el runtime modular desde fuente (build\obj\).
+python "%ROOT_DIR%main.py" "%NUCLEO%\principal.syn" -o "%ROOT_DIR%synapse_stage1.exe"
 if errorlevel 1 (
-    echo [FAIL] synapse_rt.o compilation failed
+    echo [FAIL] Bootstrap Etapa 1 failed
     exit /b 1
 )
-echo [OK] synapse_rt.o compiled
-
-gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt_memory.c" -o "%ROOT_DIR%synapse_rt_memory.o" -lpthread
-if errorlevel 1 (
-    echo [FAIL] synapse_rt_memory.o compilation failed
-    exit /b 1
-)
-echo [OK] synapse_rt_memory.o compiled
-
-gcc -c -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt_concurrency.c" -o "%ROOT_DIR%synapse_rt_concurrency.o" -lpthread
-if errorlevel 1 (
-    echo [FAIL] synapse_rt_concurrency.o compilation failed
-    exit /b 1
-)
-echo [OK] synapse_rt_concurrency.o compiled
-
-:: Link modular objects for integration test binary
-gcc -O2 -fno-ident -msse -msse2 -msse3 "%ROOT_DIR%synapse_rt.o" "%ROOT_DIR%synapse_rt_memory.o" "%ROOT_DIR%synapse_rt_concurrency.o" -o "%ROOT_DIR%synapse_rt_modular_test.exe" -lpthread -lm -lws2_32 2>&1
-if errorlevel 1 (
-    echo [WARN] Modular linked binary not used in Stage 1; pure Python path unaffected
-    goto :skip_modular_link
-)
-echo [OK] synapse_rt_modular_test.exe linked (modular objects)
-:skip_modular_link
-
-echo [BOOTSTRAP] Stage 1: Python -^> synapse_stage2.exe (modular objects)
-python "%ROOT_DIR%main.py" "%ROOT_DIR%src\main.syn" -o "%ROOT_DIR%synapse_stage2.exe"
-if errorlevel 1 (
-    echo [FAIL] Bootstrap Stage 1 failed
-    exit /b 1
-)
-echo [OK] Stage 1 complete: synapse_stage2.exe (modular compilation via _module_asts)
+echo [OK] Etapa 1 complete: synapse_stage1.exe
 exit /b 0
 
 :bootstrap_full
-echo === Synapse Full Bootstrap Pipeline (Stage 1 -^> Stage 2 -^> Stage 3) ===
+echo === Synapse Full Bootstrap Pipeline (Etapa 1 -^> Etapa 2 -^> Etapa 3) ===
 echo.
 
-:: Stage 1: Python -^> synapse_stage2.exe (modular objects)
+:: Etapa 1: Python -> synapse_stage1.exe
 call :bootstrap
 if errorlevel 1 exit /b 1
 
-:: Stage 2: Self-hosting — native compiler compiles itself
-echo [BOOTSTRAP] Stage 2: synapse_stage2.exe -^> synapse_stage3.exe
-if exist "%ROOT_DIR%synapse_stage2.exe" (
-    "%ROOT_DIR%synapse_stage2.exe" "%ROOT_DIR%nucleo\principal.syn" "%ROOT_DIR%synapse_stage3.exe"
-)
-if not exist "%ROOT_DIR%synapse_stage3.exe" (
-    echo [WARN] Stage 2 self-hosting blocked: parser version skew
-    echo [INFO] The native compiler source uses syntax newer than
-    echo [INFO] the Python bootstrap parser supports.
-    copy /Y "%ROOT_DIR%synapse_stage2.exe" "%ROOT_DIR%synapse_stage3.exe"
-)
-echo [OK] Stage 2 complete
+:: Etapa 2: Self-hosting 1 -- el compilador nativo se compila a si mismo
+echo [BOOTSTRAP] Etapa 2: synapse_stage1.exe -^> synapse_stage2.exe
+"%ROOT_DIR%synapse_stage1.exe" "%NUCLEO%\principal.syn" "%ROOT_DIR%synapse_stage2.exe" >nul 2>&1
+if not exist "%ROOT_DIR%synapse_stage2.exe" goto :fail_stage2
+echo [OK] Etapa 2 complete: synapse_stage2.exe
 
-:: Stage 3: Binary comparison
-echo [BOOTSTRAP] Stage 3: diff 0 bytes verification
+:: Etapa 3: Self-hosting 2 -- el compilador auto-compilado se compila a si mismo
+:: (el criterio de determinismo es S2 vs S3, dos etapas nativas consecutivas).
+echo [BOOTSTRAP] Etapa 3: synapse_stage2.exe -^> synapse_stage3.exe
+"%ROOT_DIR%synapse_stage2.exe" "%NUCLEO%\principal.syn" "%ROOT_DIR%synapse_stage3.exe" >nul 2>&1
+if not exist "%ROOT_DIR%synapse_stage3.exe" goto :fail_stage3
+echo [OK] Etapa 3 complete: synapse_stage3.exe
+
+:: Verificacion: diff 0 bytes entre Etapa 2 y Etapa 3
+echo [BOOTSTRAP] Verificacion: diff 0 bytes (S2 vs S3, Manual 9 S9.7)
 fc /b "%ROOT_DIR%synapse_stage2.exe" "%ROOT_DIR%synapse_stage3.exe" >nul
-if errorlevel 1 (
-    echo [FAIL] BINARY MISMATCH between Stage 2 and Stage 3
-    echo.
-    echo ==============================================
-    echo   Bootstrap INCOMPLETE: binary mismatch
-    echo ==============================================
-) else (
-    echo.
-    echo ==============================================
-    echo   BOOTSTRAP VERIFIED: diff = 0 bytes
-    echo   Stage 2 == Stage 3 (byte-identical)
-    echo ==============================================
-)
+if errorlevel 1 goto :fail_mismatch
+
+echo.
+echo ==============================================
+echo   BOOTSTRAP VERIFIED: diff = 0 bytes
+echo   Etapa 2 == Etapa 3 (byte-identical)
+echo ==============================================
 echo.
 echo Pipeline complete.
 exit /b 0
 
+:fail_stage2
+echo [FAIL] Etapa 2 (auto-compilacion 1) no genero synapse_stage2.exe
+exit /b 1
+
+:fail_stage3
+echo [FAIL] Etapa 3 (auto-compilacion 2) no genero synapse_stage3.exe
+exit /b 1
+
+:fail_mismatch
+echo [FAIL] BINARY MISMATCH between Etapa 2 and Etapa 3
+echo.
+echo ==============================================
+echo   Bootstrap INCOMPLETE: binary mismatch
+echo ==============================================
+exit /b 1
+
 :full
 call :clean
-call :fixup
 call :test
 if errorlevel 1 exit /b 1
 call :bootstrap

@@ -7,25 +7,29 @@ import subprocess
 import sys
 import pytest
 
+from conftest import rt_objs
+
+pytestmark = pytest.mark.integration
+
+RT_OBJS = rt_objs()  # F3-15: objetos del runtime derivados de runtime/core/*.c (sin hardcoding)
+
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 TOOLCHAIN_GCC = os.path.join(PROJECT_ROOT, "toolchain_gcc12", "mingw64", "bin", "gcc.exe")
-SYNAPSE_RT_O = os.path.join(PROJECT_ROOT, "synapse_rt.o")
-SYNAPSE_RT_MEM_O = os.path.join(PROJECT_ROOT, "synapse_rt_memory.o")
-SYNAPSE_RT_CONC_O = os.path.join(PROJECT_ROOT, "synapse_rt_concurrency.o")
-TWEETNACL_O = os.path.join(PROJECT_ROOT, "tweetnacl.o")
+
+
 TEST_SRC = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.c")
 TEST_BIN = os.path.join(PROJECT_ROOT, "tests", "test_distributed_debug.exe")
 
 
 @pytest.fixture(scope="module", autouse=True)
 def ensure_toolchain():
-    """Verify toolchain exists and test source is available."""
+    """Verify toolchain exists and test source is available.
+Manual 2
+"""
     if not os.path.exists(TOOLCHAIN_GCC):
         pytest.skip(f"Toolchain GCC not found: {TOOLCHAIN_GCC}")
-    if not os.path.exists(SYNAPSE_RT_O):
-        pytest.skip(f"synapse_rt.o not found: {SYNAPSE_RT_O}")
-    if not os.path.exists(TWEETNACL_O):
-        pytest.skip(f"tweetnacl.o not found: {TWEETNACL_O}")
+    if not any(os.path.exists(o) for o in RT_OBJS):
+        pytest.skip("objetos del runtime no encontrados")
     if not os.path.exists(TEST_SRC):
         pytest.skip(f"Test source not found: {TEST_SRC}")
     yield
@@ -35,7 +39,7 @@ def _compile_test_binary():
     """Compile the distributed debug C test binary. Return (success, output)."""
     cmd = [
         TOOLCHAIN_GCC, "-O2", "-std=c99",
-        TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+        TEST_SRC, *RT_OBJS,
         "-o", TEST_BIN,
         "-lm", "-lpthread", "-lws2_32"
     ]
@@ -90,7 +94,7 @@ class TestCompilacion:
         """Check that compilation produces no warnings."""
         result = subprocess.run(
             [TOOLCHAIN_GCC, "-O2", "-std=c99", "-Wall", "-Wextra",
-             TEST_SRC, SYNAPSE_RT_O, SYNAPSE_RT_MEM_O, SYNAPSE_RT_CONC_O, TWEETNACL_O,
+             TEST_SRC, *RT_OBJS,
              "-o", TEST_BIN, "-lm", "-lpthread", "-lws2_32"],
             capture_output=True, text=True, timeout=30,
             cwd=PROJECT_ROOT
@@ -189,7 +193,7 @@ class TestEstructuraCodigo:
 
     def test_externo_dd_en_cluster(self):
         """Verify dd_* externo functions are declared in cluster.syn."""
-        cluster_path = os.path.join(PROJECT_ROOT, "librerias/std/cluster.syn")
+        cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
@@ -215,8 +219,8 @@ class TestEstructuraCodigo:
             )
 
     def test_dd_proto_en_synapse_rt(self):
-        """Verify DD_PROTO_MAGIC and dd_* functions are in synapse_rt.c."""
-        rt_path = os.path.join(PROJECT_ROOT, "synapse_rt.c")
+        """Verify DD_PROTO_MAGIC and dd_* functions are in debug.c (D-9(d) corte 5: M9.4 extraido a runtime/core/debug.c)."""
+        rt_path = os.path.join(PROJECT_ROOT, "runtime/core/debug.c")
         with open(rt_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
@@ -238,7 +242,7 @@ class TestEstructuraCodigo:
 
     def test_dd_no_colision_lexica(self):
         """Verify no keyword collisions in dd_* parameter names."""
-        cluster_path = os.path.join(PROJECT_ROOT, "librerias/std/cluster.syn")
+        cluster_path = os.path.join(PROJECT_ROOT, "std/cluster.syn")
         with open(cluster_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
