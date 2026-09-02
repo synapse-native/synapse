@@ -1,5 +1,4 @@
 #lang: es
-
 tipo Resultado<T, E> = ok(T) | err(E)
 
 externo funcion ayuda_externa(r: Resultado<entero, texto>) -> entero

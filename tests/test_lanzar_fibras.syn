@@ -1,5 +1,4 @@
 #lang: es
-
 // F4.4 - lanzar/escuchar crean FIBRAS M:N (Manual 5 S2.6) en vez de pthread.
 // El main espera a todas las fibras (synapse_esperar_fibras) antes de salir.
 

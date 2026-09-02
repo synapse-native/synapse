@@ -1,7 +1,6 @@
-﻿// cumple Manual 1 2: lexer
-// cumple Manual 8 4.1: compilador nativo S2
 #lang: es
-
+﻿// cumple Manual 1 2: lexer
+# cumple Manual 8 4.1: compilador nativo S2
 // ============================================================
 // lexer_keywords.syn - tablas de keywords multi-idioma (Manual 2 S2.3)
 // ============================================================

@@ -1,5 +1,4 @@
 #lang: es
-
 // A2.3: paridad inferencia de tipos S1 (GeneradorC) vs S2 (orquestador nativo)
 // Casos: ExprTensor -> Tensor, LiteralNulo -> void*, LiteralCadena -> CadenaSegura,
 //        LiteralDecimal -> float, entero -> int, anotacion explicita.

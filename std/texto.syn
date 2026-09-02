@@ -1,5 +1,5 @@
-// cumple Manual 4 6: biblioteca estandar
 #lang: es
+# cumple Manual 4 6: biblioteca estandar
 // std.texto — Manipulación de cadenas
 // Manual 8 §1.7.3: contiene, indice_de, reemplazar (builtins existentes)
 // Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)

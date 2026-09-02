@@ -1,5 +1,4 @@
 #lang: es
-
 constante ERR_SYNTAX_EXPECTED_TOKEN = 1
 constante ERR_SYNTAX_UNEXPECTED_TOKEN = 2
 constante ERR_SYNTAX_UNEXPECTED_EXPR = 3

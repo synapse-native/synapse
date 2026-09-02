@@ -1,5 +1,4 @@
 #lang: es
-
 funcion productor(ch: Canal<entero>) -> nulo:
     dato1 = 42
     ch <- dato1

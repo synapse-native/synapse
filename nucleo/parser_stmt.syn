@@ -1,7 +1,6 @@
-// cumple Manual 1 1: infraestructura del compilador Synapse
-// cumple Manual 8 4: toolchain de construcción
 #lang: es
-
+# cumple Manual 1 1: infraestructura del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 funcion parsear_sentencia_simple(est: ParserEst, t: entero) -> entero:
     linea = 0
     col = 0

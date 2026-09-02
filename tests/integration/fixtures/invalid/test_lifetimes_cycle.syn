@@ -1,5 +1,4 @@
 #lang: es
-
 // M21.5: Test fixture for ERR_MEM_LIFETIME_CYCLE
 // NOTA: La deteccion completa via pipeline .syn requiere que
 // el generador de constraints cree dependencias ciclicas.

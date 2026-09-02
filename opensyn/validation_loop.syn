@@ -1,4 +1,4 @@
-// cumple Manual 4 5: validación de componentes
+# cumple Manual 4 5: validación de componentes
 # opensyn/validation_loop.syn  Bucle de corrección automática (M7 §6.3)
 # Implementa el bucle de hasta 3 intentos para corregir código generado que no compila.
 

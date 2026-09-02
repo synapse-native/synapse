@@ -1,7 +1,6 @@
-﻿// cumple Manual 1 3: parser
-// cumple Manual 8 4.1: compilador nativo S2
 #lang: es
-
+﻿// cumple Manual 1 3: parser
+# cumple Manual 8 4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): canales extraidos de nucleo/parser.syn
 // (enviar/crear/recibir canal). Mecanico: texto identico; emisor S1 ordena
 // alfabeticamente -> C byte-identico (bootstrap, Manual 8 §8.2).

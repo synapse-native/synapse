@@ -1,5 +1,4 @@
 #lang: es
-
 // F4.4 - probe de ESTRES: 50 lanzar con argumentos + 50 sin argumentos.
 // El main espera a todas las fibras (synapse_esperar_fibras) y verifica.
 

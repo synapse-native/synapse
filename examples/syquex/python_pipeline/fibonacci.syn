@@ -1,5 +1,4 @@
 #lang: es
-
 importar std.io
 externo funcion entero_a_texto(n: entero) -> texto
 

@@ -1,7 +1,6 @@
-// cumple Manual 1 1: infraestructura del compilador Synapse
-// cumple Manual 8 4: toolchain de construcción
 #lang: es
-
+# cumple Manual 1 1: infraestructura del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 // ============================================================
 // expr_eval.syn  —  Evaluador de expresiones OO para el generador C
 // ============================================================

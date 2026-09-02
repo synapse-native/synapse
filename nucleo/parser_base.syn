@@ -1,5 +1,4 @@
 #lang: es
-
 // ---- Struct for parser token (external representation) ----
 estructura TokenExt:
     tipo: entero

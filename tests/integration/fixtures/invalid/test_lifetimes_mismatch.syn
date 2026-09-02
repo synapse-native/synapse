@@ -1,5 +1,4 @@
 #lang: es
-
 // M21.5: Test fixture for ERR_MEM_LIFETIME_MISMATCH
 // NOTA: La deteccion completa via pipeline .syn requiere que
 // ExprObtenerDireccion genere lifetimes con ambito real (no hardcoded).

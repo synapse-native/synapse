@@ -1,5 +1,5 @@
-// cumple Manual 4 6: biblioteca estandar
 #lang: es
+# cumple Manual 4 6: biblioteca estandar
 // std.io — Entrada/Salida estándar (consola y archivos)
 // Integrante de la Biblioteca Estandar de Synapse.
 // Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.

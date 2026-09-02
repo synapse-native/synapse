@@ -1,5 +1,4 @@
 #lang: es
-
 // --- Error code constants (mirror nucleo/errores.syn) ---
 constante ERR_SYNTAX_EXPECTED_TOKEN = 1
 constante ERR_SYNTAX_UNEXPECTED_TOKEN = 2

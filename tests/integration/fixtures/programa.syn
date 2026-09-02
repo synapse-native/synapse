@@ -1,5 +1,4 @@
 #lang: es
-
 funcion generar_tensor() -> tensor:
     // Creamos y transferimos la custodia hacia afuera
     datos = tensor(2, 2)

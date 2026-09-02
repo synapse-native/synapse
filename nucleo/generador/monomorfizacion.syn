@@ -1,6 +1,5 @@
-// cumple Manual 1 5: nucleo del compilador Synapse
 #lang: es
-
+# cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // monomorfizacion.syn - monomorfizacion de ADT genericos (registro + scan D-2 de instanciaciones)
 // ============================================================

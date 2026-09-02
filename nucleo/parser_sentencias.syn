@@ -1,7 +1,6 @@
-﻿// cumple Manual 1 3: parser
-// cumple Manual 8 4.1: compilador nativo S2
 #lang: es
-
+﻿// cumple Manual 1 3: parser
+# cumple Manual 8 4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): sentencias de control de flujo extraidas de
 // nucleo/parser.syn (1,511 lineas -> parser.syn 486 + sentencias 553 +
 // declaraciones 420 + canales 52). Diagnostico FASE A (2026-08-07): parser.syn

@@ -1,7 +1,6 @@
-// cumple Manual 1 1: infraestructura del compilador Synapse
-// cumple Manual 8 4: toolchain de construcción
 #lang: es
-
+# cumple Manual 1 1: infraestructura del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 // ---- Token constants (mirror nucleo/tokens.syn) ----
 // AUDITORIA F1 (H23): nombres alineados al Manual 2 §3 (T_SI/T_SINO).
 constante T_SI = 1

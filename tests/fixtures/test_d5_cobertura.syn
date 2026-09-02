@@ -1,5 +1,4 @@
 #lang: es
-
 // D-5 (FASE A/A5): programa de cobertura del generador S1 (generator.py >=70%).
 // Ejercita las ramas del codegen: control de flujo (si/mientras/para/coincidir),
 // lanzar/recuperar, canales, tensores, punteros, contratos (requiere/garantiza),

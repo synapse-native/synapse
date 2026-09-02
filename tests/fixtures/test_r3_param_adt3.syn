@@ -1,5 +1,4 @@
 #lang: es
-
 tipo Resultado<T, E> = ok(T) | err(E)
 
 funcion procesar(r: Resultado<entero, texto>) -> texto:

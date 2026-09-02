@@ -1,5 +1,5 @@
-// cumple Manual 4 6: biblioteca estandar
 #lang: es
+# cumple Manual 4 6: biblioteca estandar
 // std.os — Información del sistema operativo y hardware
 // Integrante de la Biblioteca Estándar de Synapse.
 // Cumple Manual 9 §5.7: módulos std con FFI sobre runtime C.

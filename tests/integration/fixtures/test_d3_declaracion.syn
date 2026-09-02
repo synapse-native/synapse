@@ -1,5 +1,4 @@
 #lang: es
-
 // D-3 (FASE A): declaracion de variable con tipo anotado SIN inicializador,
 // seguida de asignacion. El pre-pass de hoisting S2 (orquestador.syn) recorria
 // el cuerpo en orden INVERSO (LIFO) -> registraba la AsignacionVariable `t = ...`

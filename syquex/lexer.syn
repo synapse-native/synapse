@@ -1,6 +1,5 @@
-// cumple Manual 1 5: nucleo del compilador Synapse
 #lang: es
-
+# cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // syquex/lexer.syn — Tokenizador de Syquex (FASE 22, R86)
 // Manual 3 §1 (directiva/codificación/comentarios ANIDABLES),

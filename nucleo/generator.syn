@@ -222,8 +222,6 @@ constante _G_SCOPE_MAX_VARS = 256
 
 // ===== From: emision_c.syn =====
 
-#lang: es
-
 // ============================================================
 // emision_c.syn  —  API de emision de codigo C de bajo nivel
 // ============================================================
@@ -436,7 +434,7 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
 // Emite ")" + newline + liberacion RAII en este ambito.
-// cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
+# cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
 // (cleanup block: decremento rc/arc/débil o _syn_texto_liberar al cierre de scope)
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------
@@ -521,8 +519,6 @@ funcion _syn_es_tipo(ptr_tipo_nodo: puntero, esperado: puntero) -> entero:
 
         asm("return strncmp((const char*)ptr_tipo_nodo, (const char*)esperado, 64) == 0;")
 // ===== From: expr_eval.syn =====
-
-#lang: es
 
 // ============================================================
 // expr_eval.syn  —  Evaluador de expresiones OO para el generador C
@@ -1044,8 +1040,6 @@ funcion _oo_expr_a_c(est: GeneradorCEst, nodo: puntero, buf: puntero, bufsz: ent
 
 // ===== From: nodos_flujo.syn =====
 
-#lang: es
-
 // ============================================================
 // nodos_flujo.syn  -  Visitantes de control de flujo (OO style)
 // ============================================================
@@ -1234,7 +1228,7 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_visitar_declaracion
-// cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+# cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
 // (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:
@@ -2236,8 +2230,6 @@ funcion gen_emitir_frontend_nativo(est: GeneradorCEst) -> nulo:
 
 // ===== From: escaneo.syn =====
 
-#lang: es
-
 // ============================================================
 // escaneo.syn - escaneo de declaraciones (estructuras, retornos, alias, constructores)
 // ============================================================
@@ -2442,8 +2434,6 @@ funcion gen_escanear_constructores(est: GeneradorCEst, programa: Programa) -> nu
         asm("fprintf(stderr, \"[Orquestador] D-6: %d constructores ADT registrados\\n\", _G_native_adt_ctrs_count); fflush(stderr);")
 
 // ===== From: monomorfizacion.syn =====
-
-#lang: es
 
 // ============================================================
 // monomorfizacion.syn - monomorfizacion de ADT genericos (registro + scan D-2 de instanciaciones)
@@ -3035,8 +3025,6 @@ funcion _G_native_escuchar_vars(n: puntero, out: puntero) -> nulo:
         asm("if (strcmp(_t, \"SentenciaSi\") == 0) { struct SentenciaSi* _s2 = (struct SentenciaSi*)_no; struct ListaNodo* _ls = _s2->cuerpo_sino; while (_ls) { _G_native_escuchar_vars(_ls->cabeza, out); _ls = _ls->cola; } }")
 
 // ===== From: recorrido.syn =====
-
-#lang: es
 
 // ============================================================
 // recorrido.syn - recorrido top-level del AST (orden alfabetico + dispatch)
@@ -3684,8 +3672,6 @@ funcion gen_visitar_funcion(est: GeneradorCEst, stmt: puntero) -> nulo:
         asm("    gen_cerrar_bloque_c(est);")
 
 // ===== From: orquestador.syn =====
-
-#lang: es
 
 // ============================================================
 // orquestador.syn  -  Orquestador del generador nativo

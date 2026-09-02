@@ -1,6 +1,5 @@
-// cumple Manual 1 5: nucleo del compilador Synapse
 #lang: es
-
+# cumple Manual 1 5: nucleo del compilador Synapse
 # =============================================================================
 # nucleo/llvm_backend.syn — LLVM IR Code Generator (M12.1.1)
 #

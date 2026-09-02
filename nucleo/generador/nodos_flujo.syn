@@ -1,5 +1,4 @@
 #lang: es
-
 // ============================================================
 // nodos_flujo.syn  -  Visitantes de control de flujo (OO style)
 // ============================================================
@@ -190,7 +189,7 @@ funcion gen_visitar_retornar(est: GeneradorCEst, stmt: puntero) -> nulo:
 
 // ----------------------------------------------------------
 // gen_visitar_declaracion
-// cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
+# cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; Manual 2 §4.3; D-1.2
 // (rastrea rc/arc/débil/ texto para emitir decremento al cierre de scope)
 // ----------------------------------------------------------
 funcion gen_visitar_declaracion(est: GeneradorCEst, stmt: puntero) -> nulo:

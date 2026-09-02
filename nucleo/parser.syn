@@ -1,5 +1,4 @@
 #lang: es
-
 // FASE A (A3.0): capturar el payload lexico del token `pos` en el nodo `nodo`
 // (NodoAST.ptr_str/len_str + bits altos en parser_ptr_hi()). 64-bit-safe: lee
 // LexerBuffers.tokens (CadenaSegura con puntero real) como el fix &mut de

@@ -1,6 +1,5 @@
-// cumple Manual 1 5: nucleo del compilador Synapse
 #lang: es
-
+# cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // syquex/traductor.syn — Traductor Syquex -> SemNodo[] (R88)
 // Manual 6 §1.3 ("El traductor convierte el AST de Syquex en

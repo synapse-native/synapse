@@ -1,5 +1,4 @@
 #lang: es
-
 # =============================================================================
 # nucleo/wasm_backend.syn — WebAssembly WAT Code Generator (M12.2)
 #

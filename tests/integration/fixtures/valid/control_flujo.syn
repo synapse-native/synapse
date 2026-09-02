@@ -1,5 +1,4 @@
 #lang: es
-
 funcion test(x: int) -> nulo:
     si x > 0:
         log("pos")

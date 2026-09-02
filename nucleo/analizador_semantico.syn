@@ -1,5 +1,4 @@
 #lang: es
-
 // --- Node type constants (mirror parser.syn) ---
 constante NODO_PROGRAMA = 1
 constante NODO_FUNCION = 2

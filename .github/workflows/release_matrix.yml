@@ -50,6 +50,16 @@ VALIDATION_STEPS:
   - name: Validate artifact structure
     description: Verify expected artifact structure (binary + .sha256 + .spdx.json)
 
+# Create Release
+- name: Create Release
+  uses: softprops/action-gh-release@v1
+  with:
+    tag_name: "v8.1.0-industrial"
+    name: "Release v8.1.0-industrial"
+    body: "Prepare release v8.1.0-industrial: update cross-compile workflow with toolchains for all platforms"
+    draft: true  # Draft release (will be published later)
+
+
 # Continuation on error for flaky steps
 CONTINUE_ON_ERROR:
   - description: Allow continuation on failure for non-critical steps

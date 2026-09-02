@@ -1,5 +1,4 @@
 #lang: es
-
 // F4.4 - probe MIXTO: lanzar con argumentos y sin argumentos en el mismo
 // programa, en ambos ordenes, para validar la alineacion del contador del
 // pre-scan (_wrap_N) con la emision.

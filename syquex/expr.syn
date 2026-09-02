@@ -1,6 +1,5 @@
-// cumple Manual 1 5: nucleo del compilador Synapse
 #lang: es
-
+# cumple Manual 1 5: nucleo del compilador Synapse
 // ============================================================
 // syquex/expr.syn — Expresiones de Syquex (R87)
 // Precedencia compartida: Manual 2 §6; primarios/postfijos: Manual 3 §3.
