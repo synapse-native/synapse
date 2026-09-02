@@ -10,6 +10,7 @@
   // ucontext_t (Manual 5 §2.6) requiere los feature-test macros ANTES de
   // cualquier include del TU (SUSv3).
   #define _XOPEN_SOURCE 700
+  #include <ucontext.h>
 #endif
 
 #include "synapse_rt_types.h"
