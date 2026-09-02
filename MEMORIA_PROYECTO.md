@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-09-02T20:31Z** (FASE 30 COMPLETADA — cleanup working tree)
+Última actualización: **2026-09-02T21:15Z** (FASE 30 COMPLETADA + Instalador Windows generado)
 
 ---
 
@@ -20,7 +20,8 @@ Estado:            F30 COMPLETADA — Todos los MEs GREEN
 Commit fase:       de901bb (ME_30_T8: Docs/Packaging)
 Próximo ME:        FASE 31 (próxima fase del roadmap)
 Próximo paso:      Verificar FASE 31 en ROADMAP.md
-Últimos commits:    d64a07e (fix(ci): normalizar line-endings CRLF→LF + limpiar artefactos)
+Últimos commits:    fa3c548 (feat(installer): generar instalador Windows Manual 9 §2.5)
+                     d64a07e (fix(ci): normalizar CRLF→LF + limpiar artefactos)
                      8c0cdc4 (Prepare release v8.1.0-industrial: cross-compile workflow)
                      de901bb (ME_30_T8: Docs/Packaging)
                     f3e5ad3 (ME_30_T7: Auto-actualización)
@@ -43,7 +44,9 @@ Próximo paso:      Verificar FASE 31 en ROADMAP.md
 | `e5e9b58` | ME_30_T3: Instalador Linux | install.sh con detección de distribución, 6 tests GREEN |
 | `5775c5a` | ME_30_T2: Instalador Windows | synapse.iss con componentes, 6 tests GREEN |
 | `b9aa55f` | ME_30_T1: Estructura instaladores | Directorios instaladores/{windows,linux,macos,common}, 5 tests GREEN |
-| `d64a07e` | fix(ci): normalizar line-endings + limpiar artefactos | CRLF→LF en 87 archivos, `// cumple Manual`→`# cumple Manual`, 2 stray files borrados, release_matrix.yml Create Release step
+| `d64a07e` | fix(ci): normalizar line-endings + limpiar artefactos | CRLF→LF en 87 archivos, `// cumple Manual`→`# cumple Manual`, 2 stray files borrados, release_matrix.yml Create Release step |
+| `fa3c548` | feat(installer): generar instalador Windows Manual 9 §2.5 | synapse.iss → instaladores/windows/, install.ps1, 3 CI workflows + 3 tests actualizados, valid_installer.py + AUDIT_EXITOSA, 48 tests pass |
+| `6dd0139` | docs(release): actualizar memoria y auditoría post-cleanup | Documentación post-commit cleanup |
 
 ### Deudas / Hallazgos críticos activos
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
