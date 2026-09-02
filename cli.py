@@ -1,3 +1,5 @@
+# cumple Manual 1 §1: infraestructura Python del compilador Synapse
+# cumple Manual 8 §4: toolchain de construcción
 import os
 import sys
 import json
@@ -7,7 +9,13 @@ import hashlib
 import tarfile
 import io
 import tempfile
-import tomllib
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
 from typing import Dict, Any, List, Optional
 
 from compilador.diagnostics import DiagnosticManager, ErrorCodes

@@ -1,5 +1,7 @@
 #ifndef AST_NODOS_H
 #define AST_NODOS_H
+// cumple Manual 2 §3: tabla canónica de tokens AST
+// cumple Manual 2 §7: tabla canónica de nodos AST
 
 /*
  * ast_nodos.h — Tabla canónica de constantes AST para el runtime C.

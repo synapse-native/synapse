@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: generador unificado del compilador
+// cumple Manual 8 §4.1: compilador nativo S2
 // Parser state (file scope)
 #define MAX_TOKS 16384
 typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;
@@ -1438,7 +1440,7 @@ void gen_emitir_parsear_c(struct GeneradorCEst est) {
         gen_emitir_linea(est, "continue;");
         est.indent_actual = est.indent_actual - 1;
         gen_emitir_linea(est, "}");
-        // Single-char tokens and identifiers... 
+        // Single-char tokens and identifiers...
         gen_emitir_linea(est, "if(c=='\\\"'||c=='\\''){char q=c;int st=i;int scol=co;i++;co++;while(i<len&&s[i]!=q){i++;co++;}if(i>=len)break;i++;co++;int vl=(i-st-2)<255?(i-st-2):255;strncpy(_P_tks[_P_ntks].val,s+st+1,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_STR;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;continue;}");
         gen_emitir_linea(est, "if(c>='0'&&c<='9'){int st=i;int scol=co;while(i<len&&s[i]>='0'&&s[i]<='9')i++;if(i<len&&s[i]=='.'){i++;while(i<len&&s[i]>='0'&&s[i]<='9')i++;}int vl=(i-st)<255?(i-st):255;strncpy(_P_tks[_P_ntks].val,s+st,vl);_P_tks[_P_ntks].val[vl]=0;_P_tks[_P_ntks].tipo=T_NUM;_P_tks[_P_ntks].linea=li;_P_tks[_P_ntks].col=scol;_P_ntks++;co+=i-st;continue;}");
         est.indent_actual = est.indent_actual - 1;

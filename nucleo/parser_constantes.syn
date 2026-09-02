@@ -1,3 +1,5 @@
+// cumple Manual 1 §1: infraestructura del compilador Synapse
+// cumple Manual 8 §4: toolchain de construcción
 #lang: es
 
 // ---- Token constants (mirror nucleo/tokens.syn) ----

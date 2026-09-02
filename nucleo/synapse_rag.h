@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: pipeline RAG
+// cumple Manual 8 §4: toolchain
 // synapse_rag.h — Pipeline RAG quirúrgico para extracción de contexto AST e indexación semántica
 // v2.0: Añadido: AST chunking, embedding storage, cosine similarity search, n_ctx negotiation dinámica
 // Implementa: extracción de nodo actual, línea activa, diagnósticos; indexación semántica; búsqueda por similitud

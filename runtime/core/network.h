@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §2: network runtime
 // runtime/core/network.h — std.net: Socket helpers (TCP client)
 // D-9(d): extracted from synapse_rt.c (modularization)
 //

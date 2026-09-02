@@ -1,5 +1,5 @@
 // runtime/core/detect_hardware.h — Detección de hardware del sistema
-// Cumple Manual 9 §5.7: std.os wrappers sobre funciones C del runtime
+// cumple Manual 9 §5.7: std.os wrappers sobre funciones C del runtime
 #ifndef DETECT_HARDWARE_H
 #define DETECT_HARDWARE_H
 

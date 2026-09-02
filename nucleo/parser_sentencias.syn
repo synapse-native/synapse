@@ -1,3 +1,5 @@
+﻿// cumple Manual 1 §3: parser
+// cumple Manual 8 §4.1: compilador nativo S2
 #lang: es
 
 // R29 (regla 13, modularizacion): sentencias de control de flujo extraidas de

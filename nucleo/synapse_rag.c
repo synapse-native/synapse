@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: pipeline RAG
+// cumple Manual 8 §4: toolchain
 // synapse_rag.c — Pipeline RAG quirúrgico para extracción de contexto AST e indexación semántica
 // v2.0: Añadido: AST chunking, embedding storage, cosine similarity search, n_ctx negotiation dinámica
 // Parte del núcleo Synapse LSP nativo — C99
@@ -515,7 +517,7 @@ static int rag_leer_linea(const char** pos, char* buf, size_t cap) {
     if (!pos || !*pos || !buf) return -1;
     const char* p = *pos;
     if (*p == '\0') return -1;
-    
+
     size_t i = 0;
     while (*p && *p != '\n' && i < cap - 1) {
         buf[i++] = *p++;
@@ -528,19 +530,19 @@ static int rag_leer_linea(const char** pos, char* buf, size_t cap) {
 
 int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) {
     if (!contenido || !reglas) return -1;
-    
+
     const char* p = contenido;
     char linea[4096];
     char seccion_actual[256] = "";
-    
+
     char buf_synapse[8192] = "";
     char buf_syquex[8192] = "";
     char buf_ejemplos[8192] = "";
     size_t pos_synapse = 0, pos_syquex = 0, pos_ejemplos = 0;
-    
+
     while (rag_leer_linea(&p, linea, sizeof(linea)) >= 0) {
         if (linea[0] == '#' || linea[0] == '\0') continue;
-        
+
         if (linea[0] == '[') {
             char* fin = strchr(linea, ']');
             if (fin) {
@@ -549,19 +551,19 @@ int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) 
             }
             continue;
         }
-        
+
         char* igual = strchr(linea, '=');
         if (!igual) continue;
-        
+
         *igual = '\0';
         char clave[256];
         char valor[4096];
         strcpy(clave, linea);
         strcpy(valor, igual + 1);
-        
+
         char* k = rag_trim(clave);
         char* v = rag_trim(valor);
-        
+
         if (strcmp(seccion_actual, "config") == 0) {
             if (strcmp(k, "idioma_default") == 0) {
                 free(reglas->idioma);
@@ -597,7 +599,7 @@ int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) 
             size_t len = strlen(subseccion) + strlen(k) + strlen(v) + 10;
             char* linea_formateada = (char*)malloc(len);
             snprintf(linea_formateada, len, "- %s: %s (%s)\n", subseccion, k, v);
-            
+
             if (pos_synapse + strlen(linea_formateada) < sizeof(buf_synapse)) {
                 strcpy(buf_synapse + pos_synapse, linea_formateada);
                 pos_synapse += strlen(linea_formateada);
@@ -609,7 +611,7 @@ int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) 
             size_t len = strlen(subseccion) + strlen(k) + strlen(v) + 10;
             char* linea_formateada = (char*)malloc(len);
             snprintf(linea_formateada, len, "- %s: %s (%s)\n", subseccion, k, v);
-            
+
             if (pos_syquex + strlen(linea_formateada) < sizeof(buf_syquex)) {
                 strcpy(buf_syquex + pos_syquex, linea_formateada);
                 pos_syquex += strlen(linea_formateada);
@@ -620,7 +622,7 @@ int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) 
             size_t len = strlen(k) + strlen(v) + 10;
             char* linea_formateada = (char*)malloc(len);
             snprintf(linea_formateada, len, "## %s:\n%s\n\n", k, v);
-            
+
             if (pos_ejemplos + strlen(linea_formateada) < sizeof(buf_ejemplos)) {
                 strcpy(buf_ejemplos + pos_ejemplos, linea_formateada);
                 pos_ejemplos += strlen(linea_formateada);
@@ -630,19 +632,19 @@ int rag_parsear_toml_simple(const char* contenido, RagContextoEstatico* reglas) 
         } else {
             free(v);
         }
-        
+
         free(k);
     }
-    
+
     free(reglas->reglas_synapse);
     reglas->reglas_synapse = strdup(buf_synapse);
-    
+
     free(reglas->reglas_syquex);
     reglas->reglas_syquex = strdup(buf_syquex);
-    
+
     free(reglas->ejemplos);
     reglas->ejemplos = strdup(buf_ejemplos);
-    
+
     return 0;
 }
 
@@ -652,7 +654,7 @@ void rag_configuracion_inicializar(RagConfiguracionEstatica* config) {
     strcpy(config->ruta_archivo, "opensyn/reglas_synapse.toml");
     config->habilitado = 1;
     config->actualizable = 1;
-    
+
     config->reglas.titulo_synapse = strdup("REGLAS DE SYNAPSE (Sintaxis Estricta)");
     config->reglas.descripcion_synapse = strdup("Synapse es un lenguaje de bajo nivel para sistemas.");
     config->reglas.reglas_synapse = strdup("");
@@ -666,40 +668,40 @@ void rag_configuracion_inicializar(RagConfiguracionEstatica* config) {
 
 int rag_configuracion_cargar(RagConfiguracionEstatica* config, const char* ruta_archivo) {
     if (!config || !ruta_archivo) return -1;
-    
+
     FILE* f = fopen(ruta_archivo, "r");
     if (!f) return -1;
-    
+
     fseek(f, 0, SEEK_END);
     long tamano = ftell(f);
     fseek(f, 0, SEEK_SET);
-    
+
     if (tamano <= 0) {
         fclose(f);
         return -1;
     }
-    
+
     char* contenido = (char*)malloc(tamano + 1);
     if (!contenido) {
         fclose(f);
         return -1;
     }
-    
+
     size_t leido = fread(contenido, 1, tamano, f);
     contenido[leido] = '\0';
     fclose(f);
-    
+
     strncpy(config->ruta_archivo, ruta_archivo, sizeof(config->ruta_archivo) - 1);
-    
+
     int resultado = rag_parsear_toml_simple(contenido, &config->reglas);
     free(contenido);
-    
+
     return resultado;
 }
 
 void rag_configuracion_liberar(RagConfiguracionEstatica* config) {
     if (!config) return;
-    
+
     free(config->reglas.titulo_synapse);
     free(config->reglas.descripcion_synapse);
     free(config->reglas.reglas_synapse);
@@ -708,7 +710,7 @@ void rag_configuracion_liberar(RagConfiguracionEstatica* config) {
     free(config->reglas.reglas_syquex);
     free(config->reglas.ejemplos);
     free(config->reglas.idioma);
-    
+
     memset(&config->reglas, 0, sizeof(RagContextoEstatico));
 }
 
@@ -720,14 +722,14 @@ int rag_construir_bloque_estatico(const RagConfiguracionEstatica* config,
         buf[0] = '\0';
         return 0;
     }
-    
+
     size_t pos = 0;
     buf[0] = '\0';
-    
+
     rag_append(buf, &pos, cap, "[SYSTEM]\n");
     rag_append(buf, &pos, cap, "Eres un experto en programación. Conoces Python, JavaScript, C, Rust y otros lenguajes.\n");
     rag_append(buf, &pos, cap, "Ahora te voy a enseñar dos lenguajes nuevos: **Synapse** (bajo nivel, sistemas) y **Syquex** (alto nivel, productividad).\n\n");
-    
+
     rag_append(buf, &pos, cap, "# ");
     rag_append(buf, &pos, cap, config->reglas.titulo_synapse ? config->reglas.titulo_synapse : "REGLAS DE SYNAPSE");
     rag_append(buf, &pos, cap, "\n");
@@ -735,7 +737,7 @@ int rag_construir_bloque_estatico(const RagConfiguracionEstatica* config,
     rag_append(buf, &pos, cap, "\n");
     rag_append(buf, &pos, cap, config->reglas.reglas_synapse ? config->reglas.reglas_synapse : "");
     rag_append(buf, &pos, cap, "\n");
-    
+
     rag_append(buf, &pos, cap, "# ");
     rag_append(buf, &pos, cap, config->reglas.titulo_syquex ? config->reglas.titulo_syquex : "REGLAS DE SYQUEX");
     rag_append(buf, &pos, cap, "\n");
@@ -743,15 +745,15 @@ int rag_construir_bloque_estatico(const RagConfiguracionEstatica* config,
     rag_append(buf, &pos, cap, "\n");
     rag_append(buf, &pos, cap, config->reglas.reglas_syquex ? config->reglas.reglas_syquex : "");
     rag_append(buf, &pos, cap, "\n");
-    
+
     if (config->reglas.ejemplos && strlen(config->reglas.ejemplos) > 0) {
         rag_append(buf, &pos, cap, "# EJEMPLOS:\n");
         rag_append(buf, &pos, cap, config->reglas.ejemplos);
         rag_append(buf, &pos, cap, "\n");
     }
-    
+
     rag_append(buf, &pos, cap, "\nAhora, responde a la siguiente instrucción en el lenguaje que te pida (Synapse o Syquex). Genera SOLO el código, sin explicaciones adicionales.\n");
-    
+
     return (int)pos;
 }
 
@@ -759,20 +761,20 @@ int synapse_rag_construir_prompt_con_contexto_estatico(const SynapseRagContexto*
                                                        const RagConfiguracionEstatica* config,
                                                        char* buf, size_t cap) {
     if (!ctx || !buf || cap < 2048) return -1;
-    
+
     size_t pos = 0;
     buf[0] = '\0';
-    
+
     if (config && config->habilitado) {
         char bloque_estatico[4096];
-        int len = rag_construir_bloque_estatico(config, bloque_estatico, sizeof(bloque_estatico), 
+        int len = rag_construir_bloque_estatico(config, bloque_estatico, sizeof(bloque_estatico),
                                                config->reglas.idioma ? config->reglas.idioma : "es");
         if (len > 0) {
             rag_append(buf, &pos, cap, bloque_estatico);
             rag_append(buf, &pos, cap, "\n");
         }
     }
-    
+
     rag_append(buf, &pos, cap, "[CONTEXT]\n");
     rag_append(buf, &pos, cap, "Archivo: ");
     rag_append(buf, &pos, cap, ctx->contexto_archivo ? ctx->contexto_archivo : "N/A");
@@ -786,8 +788,8 @@ int synapse_rag_construir_prompt_con_contexto_estatico(const SynapseRagContexto*
     rag_append(buf, &pos, cap, "Diagnósticos: ");
     rag_append(buf, &pos, cap, ctx->diagnosticos ? ctx->diagnosticos : "N/A");
     rag_append(buf, &pos, cap, "\n\n");
-    
+
     rag_append(buf, &pos, cap, "[INSTRUCCIÓN]\n");
-    
+
     return (int)pos;
 }

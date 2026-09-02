@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: destilacion de modelos
+// cumple Manual 8 §4: toolchain
 // distillation.h — Destilación de conocimiento (Knowledge Distillation) para modelos GGUF
 // ================================================================================
 // Implementa compresión de modelos grandes (teacher) a modelos pequeños (student)

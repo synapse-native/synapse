@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: runtime principal Synapse
+// cumple Manual 8 §4.1: compilador nativo S2
 // synapse_rt.c — Synapse runtime (modular: types, memory, concurrency)
 // Compilar: gcc -c synapse_rt.c -o synapse_rt.o
 // Linkear con: synapse_rt_memory.o synapse_rt_concurrency.o

@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §2: HTTP runtime
 // runtime/core/http.h — std.http: HTTP Server API (minimalista, síncrono)
 // D-9(d) corte 10: extraído de synapse_rt.c (texto byte-idéntico)
 // Manual 5 §6 (std.net, primitivas de socket sobre las que monta el servidor)

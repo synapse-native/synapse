@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: TOML parsing
 // runtime/core/toml.h — std.toml: Deterministic TOML Parser API
 // D-9(d) corte 9: extraído de synapse_rt.c (texto byte-idéntico)
 // Manual 5 §7: std.toml (deserializador TOML para configuracion Axon)

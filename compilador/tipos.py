@@ -19,6 +19,8 @@ Compatibilidad: el pipeline actual representa los tipos como cadenas
 normalizadas (p. ej. "Resultado<entero,texto>"); `tipo_desde_cadena` /
 `tipo_a_cadena` convierten entre ambas representaciones sin tocar el resto
 del compilador (parser, codegen, puente).
+
+cumple Manual 2 §8.2: representación estructurada de tipos
 """
 from dataclasses import dataclass, field
 from enum import Enum, auto

@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §4: base de datos
 // runtime/core/db.c — Database module (SQLite bundled) for Syquex
 // Manual 3 §12.1: lib/db.syq
 // Compilar: gcc -c runtime/core/db.c -o db.o -Ivendor/sqlite3

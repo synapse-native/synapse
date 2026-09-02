@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: destilacion de modelos
+// cumple Manual 8 §4: toolchain
 // distillation.c — Destilación de conocimiento (Knowledge Distillation) para modelos GGUF
 // ================================================================================
 // Implementa el motor de destilación: teacher model → student model más pequeño.

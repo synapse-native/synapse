@@ -1,3 +1,5 @@
+# cumple Manual 1 §1: infraestructura Python del compilador Synapse
+# cumple Manual 8 §4: toolchain de construcción
 """
 Generación de código C para declaraciones: funciones, structs, variables,
 declaraciones externas, asignaciones de campo, envío de canales, etc.
@@ -735,7 +737,7 @@ def visitar_lanzar(ctx: GeneratorContext, nodo: SentenciaLanzar):
 
 def visitar_recuperar(ctx: GeneratorContext, nodo: SentenciaRecuperar):
     """Genera código C para try/recover.
-    
+
     Soporte para dos formas:
     1. S1 expr recuperar expr2 (accion_critica/plan_b) → if (accion != 0) { plan_b; }
     2. SyQuex intentar/atrapar e: (cuerpo_critico/cuerpo_atrapar) → bloques

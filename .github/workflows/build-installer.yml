@@ -30,7 +30,7 @@ jobs:
     name: Build Windows Installer
     runs-on: windows-latest
     timeout-minutes: 30
-    
+
     steps:
       # -------------------------------------------------------------------------
       # 1. Checkout código
@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       # -------------------------------------------------------------------------
       # 2. Setup Python (para scripts embebidos)
       # -------------------------------------------------------------------------
@@ -47,7 +47,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       # -------------------------------------------------------------------------
       # 2b. Verificar requirements.txt existe y es válido
       # -------------------------------------------------------------------------
@@ -57,28 +57,29 @@ jobs:
           pip install --dry-run -r requirements.txt 2>&1 | head -2 || { echo "requirements.txt inválido"; exit 1; }
           echo "requirements.txt válido ✓"
         shell: cmd
-      
+
       # -------------------------------------------------------------------------
-      # 3. Instalar Inno Setup Compiler (iscc) — descarga directa
+      # 3. Instalar Inno Setup Compiler (iscc) — chocolatey (más estable que descarga directa)
       # -------------------------------------------------------------------------
       - name: Install Inno Setup
         run: |
-          $url = "https://jrsoftware.org/download.php/isetup-${{ env.INNO_SETUP_VERSION }}.exe"
-          $installer = "$env:TEMP\innosetup-${{ env.INNO_SETUP_VERSION }}.exe"
-          Write-Host "Descargando Inno Setup ${{ env.INNO_SETUP_VERSION }}..."
-          Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
-          Write-Host "Instalando Inno Setup..."
-          Start-Process -FilePath $installer -ArgumentList "/SILENT","/NORESTART","/NOCANCEL","/SP-","/CLOSEAPPLICATIONS","/RESTARTAPPLICATIONS","/DIR=C:\InnoSetup" -Wait -NoNewWindow
-          $isccPath = "C:\InnoSetup\ISCC.exe"
+          choco install innosetup --version=${{ env.INNO_SETUP_VERSION }} -y --no-progress 2>&1 | Select-Object -Last 10
+          $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            $isccPath = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
           if (Test-Path $isccPath) {
+            $isccDir = Split-Path -Parent $isccPath
             Write-Host "Inno Setup instalado en: $isccPath"
-            echo "C:\InnoSetup" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            echo "$isccDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           } else {
             Write-Host "::error::Inno Setup no encontrado tras instalacion"
+            Get-ChildItem -Path 'C:\Program Files*' -Filter 'ISCC.exe' -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "Found at: $($_.FullName)" }
             exit 1
           }
         shell: powershell
-      
+        shell: powershell
+
       # -------------------------------------------------------------------------
       # 4. Verificar iscc disponible
       # -------------------------------------------------------------------------
@@ -86,7 +87,7 @@ jobs:
         run: |
           iscc /?
           echo "ISCC_VERSION=$(iscc /? 2>&1 | head -1)" >> $GITHUB_ENV
-      
+
       # -------------------------------------------------------------------------
       # 4b. Construir el binario del compilador (ME-R6)
       # El instalador empaqueta dist\bin\synapse.exe; el link es el de ME-R1
@@ -118,19 +119,19 @@ jobs:
           # checkout (synapse_rt.c, synapse_rt_types.h, runtime\core\*, ...).
           New-Item -ItemType Directory -Force -Path dist\bin
           New-Item -ItemType Directory -Force -Path vscode-synapse
-          
+
           # VSIX placeholder (el .iss lo empaqueta)
           if (-not (Test-Path "vscode-synapse\synapse-vscode-v${{ env.SYNAPSE_VERSION }}.vsix")) {
             Write-Host "::warning::VSIX no encontrado, creando placeholder"
             "placeholder" | Out-File -Encoding utf8 vscode-synapse\synapse-vscode-v${{ env.SYNAPSE_VERSION }}.vsix
           }
-          
+
           # Puerta: el instalador no puede compilarse sin el binario
           if (-not (Test-Path "dist\bin\synapse.exe")) {
             Write-Host "::error::dist\bin\synapse.exe NO fue generado (ME-R6)"
             exit 1
           }
-      
+
       # -------------------------------------------------------------------------
       # 6. Compilar instalador con Inno Setup
       # -------------------------------------------------------------------------
@@ -138,7 +139,7 @@ jobs:
         run: |
           iscc instalador_synapse.iss
         shell: cmd
-      
+
       # -------------------------------------------------------------------------
       # 7. Verificar artefacto generado
       # -------------------------------------------------------------------------
@@ -149,7 +150,7 @@ jobs:
             $size = (Get-Item $installer).Length
             $sizeMB = [math]::Round($size / 1MB, 2)
             Write-Host "::notice::Instalador generado: $installer ($sizeMB MB)"
-            
+
             # Verificar firma PE
             $bytes = [System.IO.File]::ReadAllBytes($installer)
             if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
@@ -158,7 +159,7 @@ jobs:
               Write-Host "::error::Cabecera MZ INVÁLIDA"
               exit 1
             }
-            
+
             if ($size -lt 10MB) {
               Write-Host "::warning::Tamaño sospechosamente pequeño (< 10MB)"
             }
@@ -167,7 +168,7 @@ jobs:
             Get-ChildItem dist\ -Recurse
             exit 1
           }
-      
+
       # -------------------------------------------------------------------------
       # 8. Subir artefacto .exe (Instalador principal)
       # -------------------------------------------------------------------------
@@ -177,7 +178,7 @@ jobs:
           name: Synapse-${{ env.SYNAPSE_VERSION }}-Windows-x64-installer
           path: dist/Synapse-${{ env.SYNAPSE_VERSION }}-Windows-x64.exe
           retention-days: 30
-      
+
       # -------------------------------------------------------------------------
       # 9. Generar artefacto .zip alternativo (mitigación si iscc falla)
       # -------------------------------------------------------------------------
@@ -189,14 +190,14 @@ jobs:
           $sizeMB = [math]::Round($size / 1MB, 2)
           Write-Host "::notice::ZIP fallback generado: $zipName ($sizeMB MB)"
         shell: powershell
-      
+
       - name: Upload ZIP fallback artifact
         uses: actions/upload-artifact@v4
         with:
           name: Synapse-${{ env.SYNAPSE_VERSION }}-Windows-x64-zip
           path: dist/Synapse-${{ env.SYNAPSE_VERSION }}-Windows-x64.zip
           retention-days: 30
-      
+
       # -------------------------------------------------------------------------
       # 10. Publicar Release si es tag
       # -------------------------------------------------------------------------
@@ -220,17 +221,17 @@ jobs:
     name: Validate Source Structure
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Verify requirements.txt
         run: |
           test -f requirements.txt || { echo "FALTA requirements.txt"; exit 1; }
           pip install --dry-run -r requirements.txt 2>&1 | head -2 || { echo "requirements.txt inválido"; exit 1; }
           echo "requirements.txt válido ✓"
-      
+
       - name: Verify critical source files
         run: |
           # Verificar estructura mínima para instalador
@@ -242,7 +243,7 @@ jobs:
           # test_llama_client_smoke.c y test_synapse_shutdown_hook.c son Windows-only
           # build_installer.bat solo aplica en Windows; en Linux/macOS se salta
           echo "Estructura fuente válida ✓"
-      
+
       - name: Verify .iss syntax (basic)
         run: |
           # Verificar secciones críticas en .iss

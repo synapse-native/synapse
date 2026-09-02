@@ -94,11 +94,9 @@ jobs:
           python -c "import flake8; print(f'flake8 {flake8.__version__}')"
 
       - name: Ejecutar tests unitarios y de integración
+        shell: bash
         run: |
-          python -m pytest tests/ -v \
-            --tb=short \
-            --cov=. --cov-report=term-missing \
-            --cov-report=html:coverage_reports/
+          python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html:coverage_reports/
         env:
           PYTHONPATH: ${{ github.workspace }}
 

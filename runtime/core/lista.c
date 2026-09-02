@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: lista enlazada
 // runtime/core/lista.c — Dynamic list (vector) for Syquex lib/lista.syq
 // Manual 3 §5.2: Lista<T> — lista dinámica
 // Implementación simple: array dinámico con realloc

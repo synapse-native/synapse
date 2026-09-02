@@ -1,3 +1,5 @@
+# cumple Manual 1 §1: infraestructura Python del compilador Synapse
+# cumple Manual 8 §4: toolchain de construcción
 """
 Generación de código C para estructuras de control de flujo.
 Cada función recibe (ctx, nodo) siguiendo el patrón Composición + Contexto.

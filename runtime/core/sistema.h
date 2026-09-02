@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §1: sistema runtime
 // runtime/core/sistema.h — std.sistema: helpers de ruta/string
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Manual 6 §6.1 (path traversal protection); consumido por std/sistema.syn,

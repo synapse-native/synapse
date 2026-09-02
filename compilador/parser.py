@@ -1,3 +1,5 @@
+# cumple Manual 1 §1: infraestructura Python del compilador Synapse
+# cumple Manual 8 §4: toolchain de construcción
 # parser.py — orquestador del parser Synapse
 #
 # Las implementaciones por dominio sintactico viven en los mixins.

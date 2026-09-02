@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §2: web runtime
 // runtime/core/web.h — HTTP server module declarations
 // Manual 3 §12.1: lib/web.syq
 

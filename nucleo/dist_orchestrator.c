@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: orquestador de distribucion
+// cumple Manual 8 §4: toolchain
 // dist_orchestrator.c — Orquestador de Entrenamiento Distribuido
 // =================================================================
 // Gestiona la asignación dinámica de workers, partición de datasets

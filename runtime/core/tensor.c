@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: tensor runtime
 // synapse_rt_tensor.c — Tensor math + SIMD module for Synapse runtime
 // Extracted from synapse_rt.c (std.math, std.tensor, std.simd, std.mem).
 // Deuda D-9(d): segundo corte del monolito synapse_rt.c (patron io.c,

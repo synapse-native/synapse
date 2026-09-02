@@ -1,3 +1,5 @@
+// cumple Manual 1 §5: runtime principal Synapse
+// cumple Manual 8 §4.1: compilador nativo S2
 // synapse_rt.h — Public API del runtime Synapse (modular)
 #ifndef SYNAPSE_RT_H
 #define SYNAPSE_RT_H

@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §9: fuzzing
 // runtime/core/fuzz.h — Public API of runtime/core/fuzz.c
 // Extraido de synapse_rt.c (deuda D-9(d), corte 6 tras debug.c R41).
 // Fuzzing Distribuido Multi-Nodo (M10.4): coordinador/agentes, envio de
