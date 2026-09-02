@@ -32,4 +32,3 @@ La Fase 11 del ROADMAP exige generar y firmar los artefactos de release v8.1.0-i
 - `tests/integration/test_release_matrix.py`: **23/23 PASSED** (platforms, checksums, SBOM, workflow triggers)
 - `tests/security/test_slsa_sbom.py`: **37/37 PASSED** (SPDX, SHA-256, Ed25519, SLSA attestation)
 - `python auditoria/verificar_alineacion.py`: **0 brechas**
-- Log: `logs/fase11_release.log`

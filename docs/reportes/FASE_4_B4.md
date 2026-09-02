@@ -42,7 +42,7 @@
 ## 3. VALIDACIÓN
 
 - **`gcc -O2 -c -Wall -Wextra`** de `concurrency.c`: rc=0 sin warnings.
-- **Bootstrap S2==S3 byte-a-byte: True** — 3 etapas rc=0, SHA256 `6c0fd986…` (Manual 9 §9.7). Logs: `logs/build_stage1_r51_s1.log`/`_s2`/`_s3`.
+- **Bootstrap S2==S3 byte-a-byte: True** — 3 etapas rc=0, SHA256 `6c0fd986…` (Manual 9 §9.7).
 - **Probes e2e** (S1 + nativo): `test_lanzar_fibras` (FIBRAS_OK + WORKER_OK), `test_lanzar_mixto` (PITIDO_OK×2 + SALUDO_OK — alineación del contador), `test_lanzar_estres` (ESTRES_OK, 100 fibras), `e2e_concurrencia` (1,2,3).
 - **Regresión integración**: `test_fibras.py` + `test_canales_fibras.py` + `test_fibras_espera.py` + `test_lanzar_fibras.py` → **9 passed**.
 - **Regresión HM (stage1 nativo)**: `test_fase2_nativa_hm.py -k "f37 or f313 or r14 or r15"` → **16 passed** (envío/move R14, lanzar R15, escuchar F3-7 ×4, cluster F3-13 ×2).

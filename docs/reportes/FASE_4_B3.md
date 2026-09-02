@@ -42,7 +42,7 @@ El cambio es **aditivo sobre F4.2**: no toca `lanzar`/`esperar()` (pthread), ni 
 - **Probe C**: **30/30 ejecuciones estables** (tanda sin pausas; `timeout 30` por corrida).
 - **Regresión integración (enlazan el runtime)**: `test_fibras.py` (F4.1) + `test_canales_fibras.py` (F4.2) + `test_fibras_espera.py` (F4.3) + `test_end_to_end.py` → **31 passed, 2 skipped**.
 - **Regresión compilador (canales/codegen)**: `test_cobertura_d5.py` → **15/15**.
-- **Bootstrap S2==S3 byte-a-byte: True** — 1.124.603 bytes, SHA256 `bf81a348…`, 3 etapas rc=0 (Manual 9 §9.7). Log: `logs/build_stage1_r50.log`.
+- **Bootstrap S2==S3 byte-a-byte: True** — 1.124.603 bytes, SHA256 `bf81a348…`, 3 etapas rc=0 (Manual 9 §9.7).
 - **Verificador de alineación**: 0 brechas.
 
 ## 5. HALLAZGOS

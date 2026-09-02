@@ -54,7 +54,7 @@ El fixture `_auto_compilar_objetos_runtime` compilaba los `.o` derivados (F3-15)
 - **Regresión compilador (canales/codegen)**: `test_cobertura_d5.py -k canal` 1/1; `test_fase2_nativa_hm.py -k "canal or R14 or escuchar"` **9/9** (codegen S1/nativo de `canal()`/`<-`/`->` + runtime, paridad R14).
 - **Regresión integración (enlazan el runtime)**: end_to_end + ownership + borrowing + match + contracts + lifetimes + memory_snapshots + time_travel → **68 passed, 2 skipped**.
 - **F4.1 (fibras)**: `integration/test_fibras.py` **2/2** (scheduler intacto).
-- **Bootstrap S2==S3 byte-a-byte: True** — 1.124.018 bytes, SHA256 `750f42e6…`, 3 etapas rc=0 (Manual 9 §9.7). Log: `logs/build_stage1_r49.log`.
+- **Bootstrap S2==S3 byte-a-byte: True** — 1.124.018 bytes, SHA256 `750f42e6…`, 3 etapas rc=0 (Manual 9 §9.7).
 - **Verificador de alineación**: 0 brechas.
 
 ## 5. HALLAZGOS

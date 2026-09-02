@@ -75,7 +75,7 @@ _(Sin hallazgos de nivel crítico confirmados. Las dos desviaciones de seguridad
 - **M1 §1.1 (`--check`):** `pipeline.py:673-675` retorna tras análisis semántico sin generar código C/IR/WAT — cumple "validación rápida sin generar código".
 - **M1 §3.1 / §7.1 (determinismo alfabético):** `compilador/generator/generator.py` emite funciones/stubs con `sorted(...)` (líneas 329, 363, 1216) — cumple orden alfabético.
 - **M6 §5.3 (AEAD por mensaje en tráfico de sesión):** `cluster.c:164-187` usa `randombytes` + `crypto_secretbox` con nonce de 24 B por mensaje y layout `[nonce24][mac16][ct]` — cumple.
-- **M8 (LSP):** `nucleo/lsp.syn` / `nucleo/lsp_v3.c` implementan framing `Content-Length:` + JSON-RPC 2.0 — cumple.
+- **M8 (LSP):** `nucleo/lsp.syn` implementa framing `Content-Length:` + JSON-RPC 2.0 — cumple.
 - **M8 (debugger time-travel):** `runtime/core/debug.c:334` emite cabecera `TRACE v1` — cumple.
 - **M9 §4 (firma Ed25519 de release):** `runtime/core/axon.c:341-386` + `runtime/core/cripto.c:63-82` verifican firma Ed25519 del paquete — cumple.
 
