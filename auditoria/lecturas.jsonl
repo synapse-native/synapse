@@ -337,3 +337,6 @@
 {"fecha": "2026-09-01", "archivos": ["runtime/core/sistema.c"], "cita": "Manual 5 §1", "puntos": "Helpers de ruta y string del runtime: path traversal protection normalizacion de rutas"}
 {"fecha": "2026-09-01", "archivos": ["runtime/core/string_utils.c"], "cita": "Manual 5 §1", "puntos": "Utilidades de string del runtime: comparacion concatenacion formato conversion de tipos"}
 {"fecha": "2026-09-01", "archivos": ["examples/synapse/00_hola_mundo/hola.syn"], "cita": "Manual 1 §1", "puntos": "Ejemplo basico hola mundo en Synapse: importar std.io funcion principal escribir_linea"}
+{"fecha": "2026-09-01", "archivos": ["nucleo/generador/nodos_flujo.syn"], "cita": "Manual 1 S3.1", "puntos": "OpBinaria text detection for sub-OpBinaria with LlamadaFuncion in gen_visitar_log"}
+{"fecha": "2026-09-01", "archivos": ["nucleo/generator.syn nucleo/generador/expr_eval.syn"], "cita": "Manual 2 S4.1 / Manual 1 S3.1", "puntos": "OpBinaria fallback parenthesization fix: snprintf change from %s%s%s to (%s%s%s) for parity with S1 Python emit_expressions.py"}
+{"fecha": "2026-09-01", "archivos": ["test_battle.syn test_concat_debug.syn test_concat_parity.syn test_quick.syn test_semi.syn test_stress_concat.syn"], "cita": "Manual 1 S3.1", "puntos": "Synapse test files: codigo fuente Synapse con operaciones aritmeticas, concatenacion, funciones, control de flujo"}

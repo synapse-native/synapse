@@ -95,6 +95,7 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "compilador/*": ["Manual 1"],
   "librerias/*": ["Manual 1"],
   "nucleo/*": ["Manual 2"],
+  "test_*.syn": ["Manual 1 §3.1"],
   "*.c": ["Manual 1"],
   "*.h": ["Manual 1"],
   "*.py": ["Manual 1"]
