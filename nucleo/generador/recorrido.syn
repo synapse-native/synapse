@@ -1,5 +1,5 @@
 #lang: es
-﻿// cumple Manual 1 5: generador de código
+// cumple Manual 1 5: generador de código
 # cumple Manual 8 4.1: compilador nativo S2
 // ============================================================
 // recorrido.syn - recorrido top-level del AST (orden alfabetico + dispatch)

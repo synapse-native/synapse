@@ -1,5 +1,5 @@
 #lang: es
-﻿// cumple Manual 4 6: biblioteca estándar
+// cumple Manual 4 6: biblioteca estándar
 # =============================================================================
 # std/wasm.syn — Synapse WebAssembly WAT Backend Bindings (M12.1.2)
 #

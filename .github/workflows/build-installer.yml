@@ -93,21 +93,12 @@ jobs:
       # El instalador empaqueta dist\bin\synapse.exe; el link es el de ME-R1
       # (runtime modular completo: Manual 3 S3.1, Manual 9 S9.1).
       # -------------------------------------------------------------------------
-      - name: Setup MinGW (ME-R6)
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-          static: 0
-
-      - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
+      - name: Bootstrap y generar binario modular dist\bin\synapse.exe (ME-R6 + cumple Manual 1 §1.2.1)
         shell: cmd
         run: |
-          python main.py nucleo/principal.syn
-          if not exist dist\bin mkdir dist\bin
-          gcc -O2 -static -o dist\bin\synapse.exe ^
-            synapse_unity.c synapse_rt.c runtime/core/memory.c runtime/core/concurrency.c axon/tweetnacl.c ^
-            -I. -lws2_32 -lm
+          python main.py nucleo/principal.syn --output dist/bin/synapse.exe
           if not exist dist\bin\synapse.exe (echo FAIL: dist\bin\synapse.exe no generado & exit /b 1)
+          certutil -hashfile dist\bin\synapse.exe SHA256
 
       # -------------------------------------------------------------------------
       # 5. Preparar estructura de archivos para instalador

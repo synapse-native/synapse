@@ -1,5 +1,5 @@
 #lang: es
-﻿// cumple Manual 1 4: puente AST
+// cumple Manual 1 4: puente AST
 # cumple Manual 8 4.1: compilador nativo S2
 // ============================================================================
 // FASE A (A3.1): PUENTE plano->tipado (AST plano NodoAST[] -> struct Programa)

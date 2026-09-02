@@ -1,5 +1,5 @@
 #lang: es
-﻿// cumple Manual 1 3: parser
+// cumple Manual 1 3: parser
 # cumple Manual 8 4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): declaraciones top-level extraidas de
 // nucleo/parser.syn (estructura/constante/importar_c/externo/declaracion_tipo/
