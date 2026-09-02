@@ -23,7 +23,7 @@ permissions:
 
 env:
   SYNAPSE_VERSION: "8.1.0-industrial"
-  INNO_SETUP_VERSION: "6.2.2"
+  INNO_SETUP_VERSION: "6.7.1"
 
 jobs:
   build-installer:

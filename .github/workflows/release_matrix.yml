@@ -181,14 +181,14 @@ jobs:
           fi
 
           # Runtime base
-          ${CC} -c synapse_rt.c -o synapse_rt.o ${RT_LDFLAGS} -O2
-          ${CC} -c axon/tweetnacl.c -o tweetnacl.o -lm -O2
+          ${CC} -c synapse_rt.c -o synapse_rt.o ${RT_LDFLAGS} -O2 -I.
+          ${CC} -c axon/tweetnacl.c -o tweetnacl.o -lm -O2 -I.
 
           # Runtime modular (Manual 3 §3.1 — runtime/core/*.c)
           for f in runtime/core/*.c; do
             MODULE="$(basename "$f" .c)"
             echo "Compilando runtime/core/${MODULE}.c..."
-            ${CC} -c "$f" -o "runtime_${MODULE}.o" -I. -O2
+            ${CC} -c "$f" -o "runtime_${MODULE}.o" -I. -Iruntime/core -O2
           done
 
           ls -la *.o 2>&1 || true
@@ -436,7 +436,7 @@ jobs:
         run: |
           ARTIFACT="${{ steps.build.outputs.artifact_name }}"
           ERRORS=0
-          
+
           # Check binary exists and is valid
           if [ -f "${ARTIFACT}" ]; then
             SIZE=$(stat --format=%s "${ARTIFACT}" 2>/dev/null || python -c "import os; print(os.path.getsize('${ARTIFACT}'))")
@@ -448,7 +448,7 @@ jobs:
             echo "[FAIL] Binary not found"
             ERRORS=$((ERRORS+1))
           fi
-          
+
           # Check SHA-256 file
           if [ -f "${ARTIFACT}.sha256" ]; then
             echo "[OK] SHA-256 file: ${ARTIFACT}.sha256"
@@ -457,7 +457,7 @@ jobs:
             echo "[FAIL] SHA-256 file not found"
             ERRORS=$((ERRORS+1))
           fi
-          
+
           # Check SBOM
           if [ -f "${ARTIFACT}.spdx.json" ]; then
             echo "[OK] SBOM file: ${ARTIFACT}.spdx.json"
@@ -465,7 +465,7 @@ jobs:
             echo "[FAIL] SBOM file not found"
             ERRORS=$((ERRORS+1))
           fi
-          
+
           if [ "${ERRORS}" -gt 0 ]; then
             echo "::error::${ERRORS} validation error(s)"
             exit 1
@@ -485,7 +485,7 @@ jobs:
           else
             echo "[WARN] Ed25519 signature not found (non-critical if no signing key in CI)"
           fi
-          
+
           if [ "${ERRORS}" -gt 0 ]; then
             echo "::warning::${ERRORS} validation warning(s) — continuing"
           fi
