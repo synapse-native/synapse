@@ -1,4 +1,7 @@
-"""Simplest possible test - read all stdout synchronously."""
+"""Simplest possible test - read all stdout synchronously.
+
+Manual 8 §1.2 — LSP initialize/initialized/shutdown
+"""
 import subprocess
 import sys
 import json

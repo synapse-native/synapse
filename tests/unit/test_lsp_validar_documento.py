@@ -1,4 +1,7 @@
-"""Test validar_documento directly."""
+"""Test validar_documento directly.
+
+Manual 8 §1.2 — LSP diagnostic validation
+"""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
