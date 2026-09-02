@@ -101,13 +101,24 @@ jobs:
       # El instalador empaqueta dist\bin\synapse.exe; el link es el de ME-R1
       # (runtime modular completo: Manual 3 S3.1, Manual 9 S9.1).
       # -------------------------------------------------------------------------
-      - name: Setup MinGW (ME-R6)
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-          static: 0
+       - name: Setup MinGW (ME-R6)
+         uses: egor-tensin/setup-mingw@v2
+         with:
+           platform: x64
+           static: 0
 
-      - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
+       - name: Setup Rust toolchain (for darwin_arm64)
+         uses: dtolnay/setup-rust@v1
+         with:
+           rust-version: "1.75"
+
+       - name: Setup ARM64 toolchain (for linux_arm64)
+         uses: actions/setup-clang@v4
+         with:
+           target: arm64
+           os: linux
+
+       - name: Bootstrap y link estatico a dist\bin\synapse.exe (ME-R6)
         shell: cmd
         run: |
           python main.py nucleo/principal.syn
