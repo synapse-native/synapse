@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-> Última actualización: **2026-09-01T14:00Z** (FASE 30 COMPLETADA)
+> Última actualización: **2026-09-02T20:31Z** (FASE 30 COMPLETADA — cleanup working tree)
 
 ---
 
@@ -20,7 +20,9 @@ Estado:            F30 COMPLETADA — Todos los MEs GREEN
 Commit fase:       de901bb (ME_30_T8: Docs/Packaging)
 Próximo ME:        FASE 31 (próxima fase del roadmap)
 Próximo paso:      Verificar FASE 31 en ROADMAP.md
-Últimos commits:    de901bb (ME_30_T8: Docs/Packaging)
+Últimos commits:    d64a07e (fix(ci): normalizar line-endings CRLF→LF + limpiar artefactos)
+                     8c0cdc4 (Prepare release v8.1.0-industrial: cross-compile workflow)
+                     de901bb (ME_30_T8: Docs/Packaging)
                     f3e5ad3 (ME_30_T7: Auto-actualización)
                     5c22529 (ME_30_T6: Tests de smoke)
                     b1390ba (ME_30_T5: Verificación Ed25519)
@@ -41,12 +43,15 @@ Próximo paso:      Verificar FASE 31 en ROADMAP.md
 | `e5e9b58` | ME_30_T3: Instalador Linux | install.sh con detección de distribución, 6 tests GREEN |
 | `5775c5a` | ME_30_T2: Instalador Windows | synapse.iss con componentes, 6 tests GREEN |
 | `b9aa55f` | ME_30_T1: Estructura instaladores | Directorios instaladores/{windows,linux,macos,common}, 5 tests GREEN |
+| `d64a07e` | fix(ci): normalizar line-endings + limpiar artefactos | CRLF→LF en 87 archivos, `// cumple Manual`→`# cumple Manual`, 2 stray files borrados, release_matrix.yml Create Release step
 
 ### Deudas / Hallazgos críticos activos
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
 - **test_binding_typescript:** GREEN (ME_29_T2 completado) — bindings TypeScript implementados en opensyn/bindings_generator.py.
 - **test_gestion_modelos:** GREEN (ME_29_T3_mod completado) — test modificado para verificar funcionalidad implementada en installer.syn.
-- **test_latencia_meta:** RED esperado — requiere llama-server activo en :8088 (benchmark real).
+  - **test_latencia_meta:** RED esperado — requiere llama-server activo en :8088 (benchmark real).
+- **H-CS1 (REGISTRADO):** Config `core.autocrlf=true` (global) conflictuaba con `.gitattributes` (`* text=auto eol=lf`), causando CRLF en working tree en Windows. Fix: `git config --local core.autocrlf false` (commit `d64a07e`). Los archivos `.syn` en working tree quedan con LF.
+- **H-CS2 (REGISTRADO):** 2 artefactos accidentales de release v8.1.0-industrial: (1) filename `"e create v8.1.0-industrial --draftgh release create..."` = output de `less` paginador capturado; (2) `tests/unit/tokens.syn` = formato YAML no-Synapse no referenciado. Borrados en commit `d64a07e`.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
