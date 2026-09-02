@@ -214,7 +214,7 @@ fuente de verdad; los nombres del manual se corrigen aquí hacia la práctica ra
 | `lib/ffi.syq` | No existe | Marshaling en `syquex/ffi_marshaling.syq` + `lib/runtime_bindings.syq`. |
 | `lib/gui.syq` | No existe | Pendiente (bindings GTK no implementados). |
 | `std/os.syn` | No implementado | Pendiente Fase 29; detección HW hoy en `runtime/core/detect_hardware.c` (FFI). |
-| `opensyn/installer.syn` | No existe | Instalador en `.github/workflows/build-installer.yml` + `instalador_synapse.iss` (Inno Setup/PowerShell). |
+| `opensyn/installer.syn` | No existe | Instalador en `.github/workflows/build-installer.yml` + `instaladores/windows/synapse.iss` (Inno Setup/PowerShell). |
 | `opensyn/transpiler.syn` | Renombrado | `opensyn/transpiler.syq`. |
 | `opensyn/synapse_rag.syn` | No existe | Pipeline RAG en C: `nucleo/synapse_rag.c` + `opensyn/router.syn`. |
 | `examples/synapse/01_basico.syn` | Renombrado | `examples/synapse/00_hola_mundo/main.syn`. |

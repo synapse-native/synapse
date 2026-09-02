@@ -25,11 +25,11 @@ def test_directorio_instaladores_existe():
 
 
 def test_directorio_windows_existe():
-    """instalador_synapse.iss debe existir en la raíz para Windows (Inno Setup)."""
-    ruta = os.path.join(RAIZ, 'instalador_synapse.iss')
+    """instaladores/windows/synapse.iss debe existir para Windows (Inno Setup)."""
+    ruta = os.path.join(RAIZ, 'instaladores/windows/synapse.iss')
     if not os.path.exists(ruta):
         pytest.fail(
-            "RED TDD ME_30_T1: instalador_synapse.iss no existe "
+            "RED TDD ME_30_T1: instaladores/windows/synapse.iss no existe "
             "(Manual 9 §4.1). Script Inno Setup para Windows."
         )
     assert os.path.isfile(ruta)

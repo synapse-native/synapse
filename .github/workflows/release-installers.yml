@@ -55,7 +55,7 @@ jobs:
       - name: Create Inno Setup installer
         uses: jurplel/innosetup-action@v3
         with:
-          script: instalador_synapse.iss
+          script: instaladores/windows/synapse.iss
 
       - name: Generate SHA-256 checksum
         shell: bash

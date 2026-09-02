@@ -137,7 +137,7 @@ jobs:
       # -------------------------------------------------------------------------
       - name: Build Installer (ISCC)
         run: |
-          iscc instalador_synapse.iss
+          iscc instaladores/windows/synapse.iss
         shell: cmd
 
       # -------------------------------------------------------------------------
@@ -235,7 +235,7 @@ jobs:
       - name: Verify critical source files
         run: |
           # Verificar estructura mínima para instalador
-          test -f instalador_synapse.iss || { echo "FALTA instalador_synapse.iss"; exit 1; }
+          test -f instaladores/windows/synapse.iss || { echo "FALTA instaladores/windows/synapse.iss"; exit 1; }
           test -f nucleo/ai_orchestrator.c || { echo "FALTA nucleo/ai_orchestrator.c"; exit 1; }
           test -f nucleo/llama_client.c || { echo "FALTA nucleo/llama_client.c"; exit 1; }
           test -f nucleo/ai_orchestrator.h || { echo "FALTA nucleo/ai_orchestrator.h"; exit 1; }
@@ -247,10 +247,10 @@ jobs:
       - name: Verify .iss syntax (basic)
         run: |
           # Verificar secciones críticas en .iss
-          grep -q "\[Setup\]" instalador_synapse.iss
-          grep -q "\[Files\]" instalador_synapse.iss
-          grep -q "\[Components\]" instalador_synapse.iss
-          grep -q "\[Run\]" instalador_synapse.iss
-          grep -q "ai_orchestrator" instalador_synapse.iss
-          grep -q "llama_client" instalador_synapse.iss
+          grep -q "\[Setup\]" instaladores/windows/synapse.iss
+          grep -q "\[Files\]" instaladores/windows/synapse.iss
+          grep -q "\[Components\]" instaladores/windows/synapse.iss
+          grep -q "\[Run\]" instaladores/windows/synapse.iss
+          grep -q "ai_orchestrator" instaladores/windows/synapse.iss
+          grep -q "llama_client" instaladores/windows/synapse.iss
           echo "Sintaxis .iss básica válida ✓"
