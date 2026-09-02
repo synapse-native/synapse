@@ -1,6 +1,5 @@
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
-// cumple Manual 6 §5.3 (ejemplo hello-world del otro agente, paridad handshake)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
 
@@ -17,7 +16,7 @@
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; uint8_t es_externo; } CadenaSegura;
+typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 §4.1
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 
@@ -250,6 +249,10 @@ extern void* rc_alloc(size_t tamano, void (*dtor)(void*));
 extern void rc_decrementar(void* ptr);
 extern void* arc_alloc(size_t tamano, void (*dtor)(void*));
 extern void arc_decrementar(void* ptr);
+extern void* _syn_rc_crear(void* data, void (*dtor)(void*));
+extern void _syn_rc_decrement(void* p);
+extern void* _syn_arc_crear(void* data, void (*dtor)(void*));
+extern void _syn_arc_decrement(void* ptr);
 extern WeakRef rc_weak_ref(void* ptr);
 extern void rc_weak_release(WeakRef* w);
 
@@ -360,6 +363,7 @@ int _G_scope_depth;
 int _G_scope_vars_depth[256];
 char _G_scope_vars_names[256][64];
 int _G_scope_vars_total;
+int _G_scope_vars_kind[256];  // D-1.2: 0=texto,1=rc,2=arc,3=debil
 int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions
 char _G_native_structs[256][64];
 int _G_native_structs_count;
