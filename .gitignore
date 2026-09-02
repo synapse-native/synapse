@@ -25,7 +25,6 @@ htmlcov/
 
 # CLASE D: C generado intermedio (no fuente)
 synapse_unity.c
-synapse_llvm.c
 _*.c
 _*.c.o
 _*.h
