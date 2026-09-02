@@ -11,6 +11,7 @@
   // cualquier include del TU (SUSv3).
   #define _XOPEN_SOURCE 700
   #include <ucontext.h>
+  #include <unistd.h>
 #endif
 
 #include "synapse_rt_types.h"

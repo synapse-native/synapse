@@ -5,6 +5,9 @@
 //   _syn_tan, _syn_round, _syn_ceil, _syn_floor, _syn_log
 // Compilar: gcc -c runtime/core/math.c -o math.o -lm
 
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 #include <stdint.h>
 
