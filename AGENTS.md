@@ -2,7 +2,7 @@
 
 > Este archivo se inyecta automáticamente en cada sesión de agente sobre este
 > repositorio. Es el prompt de inicio canónico: no duplicar reglas aquí que
-> vivan en `docs/GUIA_DE_GOBERNANZA.md`; este archivo delega y ordena la
+> vivan en `docs/gobernancia/GUIA_DE_GOBERNANZA.md`; este archivo delega y ordena la
 > ejecución.
 
 Eres un ingeniero de software del ecosistema Synapse + Syquex + OpenSyn,
@@ -12,9 +12,9 @@ trabajando en este repositorio con opencode (Windows).
 
 1. `docs/manuales/MANUAL 1-9.md` + `docs/manuales/ANEXO-MANUALES.md`
 2. `ROADMAP.md`
-3. `docs/GUIA_DE_GOBERNANZA.md`
+3. `docs/gobernancia/GUIA_DE_GOBERNANZA.md`
 4. `MEMORIA_PROYECTO.md` (bitácora viva)
-5. `docs/METODO_TRABAJO.md` (Método de Trabajo Seguro — MTS, mecanismo
+5. `docs/gobernancia/METODO_TRABAJO.md` (Método de Trabajo Seguro — MTS, mecanismo
    anti-olvido: citas grep-chequeables del manual en el plan y en el código)
 
 ## SECUENCIA DE ARRANQUE (obligatoria, en orden, antes de escribir código)
@@ -22,7 +22,7 @@ trabajando en este repositorio con opencode (Windows).
 1. Lee `MEMORIA_PROYECTO.md` (secciones 1 y 2). Deriva TU MISIÓN de la línea
    "Fase del roadmap": fase actual y micro-entregable en curso. NO inventes
    una misión global.
-2. Lee `docs/GUIA_DE_GOBERNANZA.md` (reglas infringibles + protocolo de entrega).
+2. Lee `docs/gobernancia/GUIA_DE_GOBERNANZA.md` (reglas infringibles + protocolo de entrega).
 3. Ejecuta `git status --short` y `git log --oneline -5`. Puede haber OTRO
    agente trabajando: no toques ni reviertas cambios ajenos; coordínate vía
    memoria/bitácora.
@@ -44,7 +44,7 @@ trabajando en este repositorio con opencode (Windows).
 - Cero deuda sin seguimiento (resolver o registrar con resolución asignada);
   código muerto se elimina; módulos >1200 líneas requieren registro D-9.
 - Contratos requiere/garantiza en TODA función pública nueva (Manual 2 §12).
-- Método de Trabajo Seguro (MTS, `docs/METODO_TRABAJO.md`): el plan de cada ME
+- Método de Trabajo Seguro (MTS, `docs/gobernancia/METODO_TRABAJO.md`): el plan de cada ME
   cita el requisito literal del manual (`requisito:`/`texto:`/`implementacion:`/
   `oraculo:`) y TODO archivo de producción modificado lleva un comentario
   `// cumple Manual X §Y` (grep-chequeable). El gate `auditoria/contrastar.py`
@@ -55,7 +55,7 @@ trabajando en este repositorio con opencode (Windows).
 ## CICLO POR MICRO-ENTREGABLE
 
 1. Plan breve citando Manual X, Sección Y (qué requisito implementa cada cambio).
-   Si usas MTS (`docs/METODO_TRABAJO.md`), el plan `docs/plan_ME_<id>.md` usa el
+   Si usas MTS (`docs/gobernancia/METODO_TRABAJO.md`), el plan `docs/plan_ME_<id>.md` usa el
    bloque estricto `requisito:`/`texto:`/`implementacion:`/`oraculo:`.
 2. Codifica. Valida mentalmente contra las reglas de sintaxis de Synapse. Cada
    archivo de producción modificado lleva `// cumple Manual X §Y`.
