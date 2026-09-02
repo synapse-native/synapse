@@ -882,8 +882,9 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "Tensor relu(Tensor a)",
             "Tensor reserva(int tamano)",
             "void libera(Tensor bloque)",
-            "Tensor suma(Tensor a, Tensor b)",
-            "Tensor producto(Tensor a, Tensor b)",
+            # H-R90-13b: 'suma'/'producto' Runtime Tensor NO se declaran como prototipo
+            # global — funciones de usuario con esos nombres definen su propia versión.
+            # Usa suma_tensor/producto_punto en su lugar.
             "int64_t texto_a_entero(CadenaSegura str)",
             "double texto_a_decimal(CadenaSegura str)",
             "CadenaSegura decimal_a_texto(double n)",
@@ -1219,7 +1220,8 @@ class GeneradorC:
         # F1.2d: incluir funciones envueltas en @export (sus llamadas necesitan
         # prototipo cuando el llamador se emite antes que la definición).
         funciones = sorted(
-            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS]
+            [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)
+             and (s.nombre not in ctx._RUNTIME_BUILTINS or s.nombre in ctx._funciones_usuario)]
             + [s.funcion for s in ctx.programa.sentencias
                if isinstance(s, DeclaracionExport) and isinstance(s.funcion, DefinicionFuncion)],
             key=lambda f: f.nombre
@@ -1268,9 +1270,10 @@ class GeneradorC:
             ctx.inc_indent()
             ctx.write_line("(void)argc; (void)argv;")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
+            ctx.write_line("_principal_impl();")
+            ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("synapse_esperar_fibras();")
-            ctx.write_line("pool_destroy();")
             ctx.write_line("return 0;")
             ctx.dec_indent()
             ctx.write_line("}")
@@ -1280,8 +1283,12 @@ class GeneradorC:
         if ctx.is_no_std():
             ctx.write_line("int main(void) {")
             ctx.inc_indent()
-            ctx.write_line(f"{principal}();")
-            ctx.write_line("return 0;")
+            ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
+            ctx.write_line(f"int64_t _ret = {principal}();")
+            ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
+            ctx.write_line("synapse_esperar_hilos();")
+            ctx.write_line("synapse_esperar_fibras();")
+            ctx.write_line("return (int)_ret;")
             ctx.dec_indent()
             ctx.write_line("}")
         else:
@@ -1298,9 +1305,9 @@ class GeneradorC:
             c_principal = '_principal_impl' if principal == 'principal' else principal
             if ret_tipo in ('nulo', 'void'):
                 ctx.write_line(f"{c_principal}();")
+                ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
-                ctx.write_line("pool_destroy();")
                 ctx.write_line("return 0;")
             else:
                 # F3-7: el main DEBE esperar a los hilos/fibras (listeners y
@@ -1308,12 +1315,12 @@ class GeneradorC:
                 # mataba el proceso sin esperar. F4.4: además de los pthreads
                 # residuales (synapse_esperar_hilos) espera a las FIBRAS M:N
                 # (synapse_esperar_fibras). Paridad con el nativo.
-                # Manual 2 §5 e2e: exit code 0 en éxito (el output va por stdout).
-                ctx.write_line(f"{c_principal}();")
+                # Manual 2 §5 e2e: el exit code del proceso = retorno de principal().
+                ctx.write_line(f"int64_t _ret = {c_principal}();")
+                ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
                 ctx.write_line("synapse_esperar_hilos();")
                 ctx.write_line("synapse_esperar_fibras();")
-                ctx.write_line("pool_destroy();")
-                ctx.write_line("return 0;")
+                ctx.write_line("return (int)_ret;")
             ctx.dec_indent()
             ctx.write_line("}")
 
@@ -1428,7 +1435,7 @@ class GeneradorC:
         # se pasan self POR PUNTERO (struct X* self) para que las mutaciones
         # de campos persistan en el llamador (Manual 6 §1.3).
         for s in ctx.programa.sentencias:
-            if isinstance(s, DefinicionFuncion) and s.nombre not in ctx._RUNTIME_BUILTINS:
+            if isinstance(s, DefinicionFuncion) and (s.nombre not in ctx._RUNTIME_BUILTINS or s.nombre in ctx._funciones_usuario):
                 if (s.parametros
                     and s.parametros[0].nombre == 'self'
                     and s.parametros[0].tipo in ctx._estructuras):

@@ -53,11 +53,16 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             return ctx._variables[nombre]
         if nombre in ctx._const_types:
             return ctx._const_types[nombre]
-        # Builtin lookup
-        if nombre in ctx._BUILTINS:
-            return ctx._BUILTINS[nombre]
+        # H-R90-13b: funciones de usuario tienen prioridad sobre builtins
+        # (fix: 'suma'/'producto' builtins de tensor no deben enmascarar
+        # funciones definidas por el usuario con mismo nombre, Manual 2 §4.1)
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
+        if nombre in ctx._funciones_usuario:
+            return ctx._funciones_usuario[nombre].tipo_retorno
+        # Builtin lookup (fallback solo si no es función de usuario)
+        if nombre in ctx._BUILTINS:
+            return ctx._BUILTINS[nombre]
         return 'int'
 
     if isinstance(nodo, ExprTensor):
@@ -144,14 +149,12 @@ def tipo_de_expr(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
             if inner.startswith('rc ') or inner.startswith('arc '):
                 inner = inner.split(' ', 1)[1]
             return f'débil {inner}'
-        if nombre in ctx._BUILTINS:
-            return ctx._BUILTINS[nombre]
         if nombre in ctx._func_return_types:
             return ctx._func_return_types[nombre]
-        # H-R90-11: resolver retorno de funciones definidas localmente
-        # (definición usuario, no builtin). Manual 3 §3: -> tipo_retorno.
         if nombre in ctx._funciones_usuario:
             return ctx._funciones_usuario[nombre].tipo_retorno
+        if nombre in ctx._BUILTINS:
+            return ctx._BUILTINS[nombre]
         # Struct constructor call
         if nombre in ctx._estructuras:
             return nombre

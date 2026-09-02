@@ -2546,6 +2546,7 @@ int generar(struct Programa programa, CadenaSegura ruta) {
     _G_emit("char** _g_argv=argv;");
     _G_emit("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);");
     _G_emit("principal();");
+    _G_emit("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)");
     _G_emit("synapse_esperar_hilos();");
     _G_emit("return 0;");
     _G_indent--;

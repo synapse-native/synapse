@@ -313,8 +313,6 @@ extern Tensor producto_punto(Tensor a, Tensor b);
 extern Tensor relu(Tensor a);
 extern Tensor reserva(int tamano);
 extern void libera(Tensor bloque);
-extern Tensor suma(Tensor a, Tensor b);
-extern Tensor producto(Tensor a, Tensor b);
 extern int64_t texto_a_entero(CadenaSegura str);
 extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
@@ -526,13 +524,18 @@ void salir(int codigo) { exit(codigo); }
 
 static inline int risky_call(void) { return 0; }
 CadenaSegura _validar_ruta_segura(CadenaSegura ruta);
+Canal abrir(CadenaSegura ruta, CadenaSegura modo);
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica);
 int64_t ejecutar_comando(CadenaSegura cmd);
 int64_t eliminar_archivo(CadenaSegura ruta);
+void escribir(CadenaSegura texto);
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido);
+void escribir_linea(CadenaSegura texto);
 int existe_archivo(CadenaSegura ruta);
+CadenaSegura leer(Canal c);
 CadenaSegura leer_archivo(CadenaSegura ruta);
 CadenaSegura leer_bytes(int64_t cantidad);
+CadenaSegura leer_linea(void);
 CadenaSegura obtener_env(CadenaSegura nombre);
 CadenaSegura sha256_texto(CadenaSegura datos);
 
@@ -578,6 +581,22 @@ CadenaSegura _validar_ruta_segura(CadenaSegura ruta) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
+Canal abrir(CadenaSegura ruta, CadenaSegura modo) {
+    CadenaSegura ruta_segura = {0};
+    _syn_texto_liberar(ruta_segura);
+    ruta_segura = _validar_ruta_segura(ruta);
+    if ((str_eq(ruta_segura, (CadenaSegura){ .longitud = (int)strlen(""), .datos = "" }) == 1)) {
+        Canal _resultado_ = 0LL;
+        _syn_texto_liberar(ruta_segura);
+        _syn_texto_liberar(ruta);
+        _syn_texto_liberar(modo);
+        return _resultado_;
+          /* [Lifetime Scope: exit depth=1] */
+    }
+    return _syn_abrir(ruta_segura, modo);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
 int64_t ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegura clave_publica) {
     _syn_texto_liberar(mensaje);
     _syn_texto_liberar(firma);
@@ -606,6 +625,12 @@ int64_t eliminar_archivo(CadenaSegura ruta) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
+void escribir(CadenaSegura texto) {
+    _syn_escribir(texto);
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(texto);
+}
+
 int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
     CadenaSegura ruta_segura = {0};
     _syn_texto_liberar(ruta_segura);
@@ -621,6 +646,12 @@ int64_t escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
       /* [Lifetime Scope: exit depth=0] */
 }
 
+void escribir_linea(CadenaSegura texto) {
+    _syn_escribir_linea(texto);
+      /* [Lifetime Scope: exit depth=0] */
+    _syn_texto_liberar(texto);
+}
+
 int existe_archivo(CadenaSegura ruta) {
     CadenaSegura ruta_segura = {0};
     _syn_texto_liberar(ruta_segura);
@@ -632,6 +663,12 @@ int existe_archivo(CadenaSegura ruta) {
           /* [Lifetime Scope: exit depth=1] */
     }
     return (_syn_existe_archivo(ruta_segura) == 1LL);
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura leer(Canal c) {
+    CadenaSegura _resultado_ = _syn_leer(c);
+    return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
 
@@ -651,6 +688,12 @@ CadenaSegura leer_archivo(CadenaSegura ruta) {
 
 CadenaSegura leer_bytes(int64_t cantidad) {
     CadenaSegura _resultado_ = _syn_leer_bytes(cantidad);
+    return _resultado_;
+      /* [Lifetime Scope: exit depth=0] */
+}
+
+CadenaSegura leer_linea(void) {
+    CadenaSegura _resultado_ = _syn_leer_linea();
     return _resultado_;
       /* [Lifetime Scope: exit depth=0] */
 }
@@ -678,8 +721,8 @@ int main(int argc, char** argv) {
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     _principal_impl();
+    pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)
     synapse_esperar_hilos();
     synapse_esperar_fibras();
-    pool_destroy();
     return 0;
 }

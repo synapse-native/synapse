@@ -451,8 +451,9 @@ def visitar_funcion(ctx: GeneratorContext, nodo: DefinicionFuncion):
     if nodo.nombre in _BUILTIN_EMITTER_MAP:
         _BUILTIN_EMITTER_MAP[nodo.nombre](ctx, nodo)
         return
-    # Skip runtime builtins (linked from synapse_rt.o)
-    if nodo.nombre in ctx._RUNTIME_BUILTINS:
+    # Skip runtime builtins (linked from synapse_rt.o), pero SOBREESCRIBEN funciones
+    # de usuario (H-R90-13b: `suma`/`producto` builtins no enmascaran defs usuario)
+    if nodo.nombre in ctx._RUNTIME_BUILTINS and nodo.nombre not in ctx._funciones_usuario:
         return
 
     ctx._in_function_scope = True

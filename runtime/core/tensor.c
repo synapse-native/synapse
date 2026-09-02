@@ -608,12 +608,15 @@ void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala) {
     }
 }
 #endif
-// --- std.math (alias) ---
-Tensor suma(Tensor a, Tensor b) {
+// --- std.math (alias de compatibilidad, H-R90-13b) ---
+// cumple Manual 1 §1.1 (regla 7): runtime usa nombres en inglés, no colisionan
+// con funciones de usuario. 'suma'/'producto' son wrappers inline (no exportan
+// símbolo) para evitar multiple definition con defs usuario (Manual 6 §4.1 ABI).
+static inline Tensor suma(Tensor a, Tensor b) {
     return suma_tensor(a, b);
 }
 
-Tensor producto(Tensor a, Tensor b) {
+static inline Tensor producto(Tensor a, Tensor b) {
     return producto_punto(a, b);
 }
 

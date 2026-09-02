@@ -35,9 +35,11 @@ void _syn_simd_rmsnorm(Tensor salida, Tensor entrada, Tensor peso_normalizacion,
 void _syn_simd_silu(Tensor salida, Tensor entrada);
 void _syn_simd_softmax_escalado(Tensor tensor, float factor_escala);
 
-// std.math (alias) / std.mem
-Tensor suma(Tensor a, Tensor b);
-Tensor producto(Tensor a, Tensor b);
+// std.math / std.mem — H-R90-13b: 'suma'/'producto' NO declarados como
+// prototipo global para evitar conflicto con funciones de usuario.
+// Usar suma_tensor/producto_punto directamente.
+Tensor suma_tensor(Tensor a, Tensor b);
+Tensor producto_punto(Tensor a, Tensor b);
 Tensor reserva(int tamano);
 void libera(Tensor bloque);
 
