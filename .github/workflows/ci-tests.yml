@@ -414,7 +414,7 @@ jobs:
             case "$f" in
               _*) continue ;;   # regla 12: artefacto/instrumentacion temporal
             esac
-            if ! grep -Eq 'cumple[[:space:]]+Manual[[:space:]]+[0-9]+[[:space:]]*§|requiere:|garantiza:' "$f"; then
+            if ! grep -Eq 'cumple[[:space:]]+Manual[[:space:]]+[0-9]+|(requiere|garantiza):' "$f"; then
               echo "  ❌ Archivo de produccion nuevo sin trazabilidad: $f" >&2
               echo "    Agrega '// cumple Manual X §Y' (o '# cumple...' en Python) o requiere:/garantiza:." >&2
               FAIL=1
