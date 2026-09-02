@@ -1,3 +1,4 @@
+﻿// cumple Manual 4 §6: biblioteca estándar
 #lang: es
 // std.sync — Primitivas de sincronización de bajo nivel (Manual 5 §5)
 // Integrante de la Biblioteca Estandar de Synapse.

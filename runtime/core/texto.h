@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: texto runtime
 // runtime/core/texto.h — Text module declarations for Syquex standard library
 // Manual 3 §12.1: lib/texto.syq
 

@@ -1,8 +1,8 @@
-﻿// axon_rt.c â€” Axon package manager runtime
+﻿// axon_rt.c — Axon package manager runtime
 //
 // Fase 6.1: TOML, TAR, SHA-256, Ed25519, SemVer, lock.
-// Manual 8 Â§4.3-4.4 (gestor de paquetes Axon); Manual 6 Â§6.1 (path
-// traversal protection en extracciÃ³n TAR).
+// Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §6.1 (path
+// traversal protection en extracción TAR).
 //
 // This file contains the Axon-specific functions. Shared runtime
 // functions (TOML parse, SHA-256, TAR, HTTP, lock, Ed25519 verify)
@@ -13,6 +13,9 @@
 // Compilar: gcc -c axon/axon_rt.c -o axon_rt.o -I. -Iruntime/core
 // Linkear: gcc programa.c synapse_rt.o synapse_rt_memory.o
 //          synapse_rt_concurrency.o axon_rt.o tweetnacl.o -o programa -lpthread
+//
+// cumple Manual 8 §4.3-4.4: gestor de paquetes Axon
+// cumple Manual 6 §6.1: path traversal protection en extracción TAR
 
 #include "synapse_rt_types.h"
 #include "axon/tweetnacl.h"

@@ -1,3 +1,4 @@
+ï»¿// cumple Manual 6 Â§5: axon runtime
 // runtime/core/axon.h â€” Axon: HTTP download + TAR extraction + SHA-256 Lock
 // D-9(d) corte 11: extraÃ­do de synapse_rt.c (modularizaciÃ³n, patrÃ³n toml.c R64)
 // Manual 6 Â§6.1 (path traversal protection en extracciÃ³n TAR); regla 13 + canon D-9(d).
@@ -19,9 +20,9 @@ int _syn_axon_escribir_lock(const char* paquete, const char* version, const char
 
 #endif /* SYNAPSE_AXON_H */
 
-// R84 — Serialización binaria de valores (Manual 6 §5.2; tabla Manual 5 §6.3)
-// Nombres del manual: serializar_valor / deserializar_valor (convención _syn_axon_).
-// ESTRUCTURA (0x08) no soportada por la API genérica (sin esquema en manuales).
+// R84 ï¿½ Serializaciï¿½n binaria de valores (Manual 6 ï¿½5.2; tabla Manual 5 ï¿½6.3)
+// Nombres del manual: serializar_valor / deserializar_valor (convenciï¿½n _syn_axon_).
+// ESTRUCTURA (0x08) no soportada por la API genï¿½rica (sin esquema en manuales).
 #define AXON_T_ENTERO8   0x00
 #define AXON_T_ENTERO16  0x01
 #define AXON_T_ENTERO32  0x02

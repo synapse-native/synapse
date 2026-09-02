@@ -6,6 +6,9 @@
 #
 # Referencias: Manual 1 §5 (Generador → LLVM IR), §6 (Backend LLVM)
 #              Manual 8 §4.2 (--target llvm)
+#
+# cumple Manual 1 §5: generador LLVM IR
+# cumple Manual 8 §4.2: backend LLVM
 # =============================================================================
 from typing import List, Optional
 from compilador.ast_nodes import (

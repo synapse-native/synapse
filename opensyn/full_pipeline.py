@@ -1,3 +1,4 @@
+﻿# cumple Manual 4 §1: pipeline completo OpenSyn
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """

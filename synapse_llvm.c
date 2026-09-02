@@ -1,3 +1,5 @@
+﻿// cumple Manual 1 §5: backend LLVM
+// cumple Manual 8 §4.2: target LLVM
 // =============================================================================
 // synapse_llvm.c — LLVM IR text emitter (M12.1.1)
 //

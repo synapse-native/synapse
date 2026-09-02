@@ -9,6 +9,10 @@
 # Referencias: Manual 1 §5 (Generador → WAT), §6 (Backend WASM)
 #              Manual 4 §6.6 (Arenas de componente WASM)
 #              Manual 8 §4.2 (--target wasm)
+#
+# cumple Manual 1 §5: generador WAT
+# cumple Manual 4 §6.6: arenas de componente WASM
+# cumple Manual 8 §4.2: backend WASM
 # =============================================================================
 from typing import List, Optional
 from compilador.ast_nodes import (

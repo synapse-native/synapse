@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: tiempo runtime
 // runtime/core/tiempo.h — Time module declarations for Syquex standard library
 // Manual 3 §12.1: lib/tiempo.syq
 

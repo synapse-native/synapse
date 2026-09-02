@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §9: fuzzing
 // runtime/core/fuzz.c — Fuzzing Distribuido Multi-Nodo (M10.4):
 // coordinador/agentes, envio de casos, procesamiento de paquetes SYNFUZZ,
 // reporte de resultados y estadisticas.

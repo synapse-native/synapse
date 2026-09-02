@@ -1,3 +1,4 @@
+﻿// cumple Manual 6 §3: math runtime
 // runtime/core/math.h — Math module declarations for Syquex standard library
 // Manual 3 §12.1: lib/math.syq
 

@@ -1,3 +1,4 @@
+﻿// cumple Manual 4 §2: FFI marshaling
 // runtime/core/ffi_marshaling.h
 // FASE 24.B — Marshaling automático de tipos para FFI
 // Manual 4 §7: FFI Marshaling y Zero-Copy
