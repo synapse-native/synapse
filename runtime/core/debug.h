@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §8: debug runtime
+﻿// cumple Manual 6 8: debug runtime
 // synapse_rt_debug.h — Public API of runtime/core/debug.c
 // Extraido de synapse_rt.c (deuda D-9(d), corte 5 tras cluster.c R40).
 #ifndef SYNAPSE_RT_DEBUG_H

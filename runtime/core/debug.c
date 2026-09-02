@@ -1,5 +1,5 @@
-// cumple Manual 6 §8: debug runtime
-// runtime/core/debug.c — Debug/Trace module (M9.0-M9.4): time-travel debug
+// cumple Manual 6 8: debug runtime
+// runtime/core/debug.c Â— Debug/Trace module (M9.0-M9.4): time-travel debug
 // (trace session base, deterministic recording, reversible breakpoints,
 // memory snapshots & diff) + distributed multi-node debugging (M9.4).
 // Extracted from synapse_rt.c (D-9(d) corte 5, patron cluster.c R40).
@@ -30,9 +30,9 @@
 #endif
 
 // ============================================================
-// Debug / Trace System — Time-Travel Debugging Support
+// Debug / Trace System Â— Time-Travel Debugging Support
 // ============================================================// (Tipos TraceEventTag/TraceEvent/TraceSession + TRACE_MAX_EVENTS/TRACE_DIR
-//  movidos a runtime/core/debug.h en D-9(d) corte 5 — los usan los prototipos.)
+//  movidos a runtime/core/debug.h en D-9(d) corte 5 Â— los usan los prototipos.)
 
 
 
@@ -422,7 +422,7 @@ TraceSession _syn_debug_obtener_sesion(void) {
 
 // =========================================================================
 
-// M9.1 — Deterministic Execution Recording (rr-style Time-Travel Debug)
+// M9.1 Â— Deterministic Execution Recording (rr-style Time-Travel Debug)
 
 // =========================================================================
 
@@ -888,7 +888,7 @@ int tr_total_eventos(void) {
 
 // =========================================================================
 
-// M9.2 — Reversible Breakpoints & Historical Snapshot Inspection
+// M9.2 Â— Reversible Breakpoints & Historical Snapshot Inspection
 
 // =========================================================================
 
@@ -1498,7 +1498,7 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 
 // =========================================================================
 
-// M9.3 — Memory Snapshots & Historical State Diff
+// M9.3 Â— Memory Snapshots & Historical State Diff
 
 // =========================================================================
 
@@ -1518,11 +1518,11 @@ int rp_buscar_cambio_variable(CadenaSegura nombre, int valor) {
 
 // Diff format (prefix identifies change type):
 
-//     +name|tipo|val          — added in B
+//     +name|tipo|val          Â— added in B
 
-//     -name|tipo|val          — removed in B
+//     -name|tipo|val          Â— removed in B
 
-//     ~name|tipo_a|val_a|tipo_b|val_b  — changed
+//     ~name|tipo_a|val_a|tipo_b|val_b  Â— changed
 
 // =========================================================================
 
@@ -2064,15 +2064,15 @@ CadenaSegura ms_snapshot_contiene(CadenaSegura snapshot, CadenaSegura nombre) {
 
 // ============================================================
 
-// M9.4 — Distributed Multi-Node Debugging
+// M9.4 Â— Distributed Multi-Node Debugging
 
 // ============================================================
 
-// Extiende tr_* / rp_* / ms_* para operación en clúster.
+// Extiende tr_* / rp_* / ms_* para operaciÃ³n en clÃºster.
 
-// Permite agregación remota de trazas, breakpoints distribuidos
+// Permite agregaciÃ³n remota de trazas, breakpoints distribuidos
 
-// y correlación cronológica entre nodos del clúster M8.x.
+// y correlaciÃ³n cronolÃ³gica entre nodos del clÃºster M8.x.
 
 // ============================================================
 
@@ -2122,7 +2122,7 @@ static pthread_mutex_t _dd_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // --- Inicializar subsistema de debug distribuido ---
 
-// nodo_id: identificador único de este nodo en el clúster
+// nodo_id: identificador Ãºnico de este nodo en el clÃºster
 
 int dd_inicializar(int nodo_id) {
 
@@ -2222,7 +2222,7 @@ int dd_registrar_nodo_remoto(int nodo_id, CadenaSegura ip, int puerto) {
 
 // --- Serializar y enviar traza local a nodo remoto ---
 
-// Envía los últimos num_eventos eventos de la traza local al nodo remoto
+// EnvÃ­a los Ãºltimos num_eventos eventos de la traza local al nodo remoto
 
 // Formato: "SYNDBG:TRACE:origen_id:num_eventos:evt1|evt2|..."
 
@@ -2284,7 +2284,7 @@ int dd_enviar_traza_remota(CadenaSegura ip, int puerto, int num_eventos) {
 
 // de eventos remotos del nodo correspondiente.
 
-// Retorna 0 si se procesó, -1 si no es un paquete debug válido
+// Retorna 0 si se procesÃ³, -1 si no es un paquete debug vÃ¡lido
 
 int dd_recibir_traza_remota(CadenaSegura paquete) {
 
@@ -2430,7 +2430,7 @@ int dd_recibir_traza_remota(CadenaSegura paquete) {
 
 // --- Sincronizar trazas con todos los nodos remotos registrados ---
 
-// Envía la traza local a cada nodo remoto
+// EnvÃ­a la traza local a cada nodo remoto
 
 int dd_sincronizar_trazas(int num_eventos) {
 
@@ -2478,9 +2478,9 @@ int dd_sincronizar_trazas(int num_eventos) {
 
 // --- Buscar evento en trazas remotas por tag ---
 
-// Busca en todos los buffers remotos el último evento con el tag especificado
+// Busca en todos los buffers remotos el Ãºltimo evento con el tag especificado
 
-// Retorna "nodo_id:evento" o vacío si no se encuentra
+// Retorna "nodo_id:evento" o vacÃ­o si no se encuentra
 
 CadenaSegura dd_buscar_evento_remoto(int tag, int desde_secuencia) {
 
@@ -2548,7 +2548,7 @@ CadenaSegura dd_buscar_evento_remoto(int tag, int desde_secuencia) {
 
 // --- RPC: Establecer breakpoint remoto ---
 
-// Envía comando SYNDBG:BP a nodo remoto
+// EnvÃ­a comando SYNDBG:BP a nodo remoto
 
 int dd_breakpoint_remoto(CadenaSegura ip, int puerto, int tipo, CadenaSegura patron, int valor_int) {
 
@@ -2574,7 +2574,7 @@ int dd_breakpoint_remoto(CadenaSegura ip, int puerto, int tipo, CadenaSegura pat
 
 // --- RPC: Inspeccionar variable en nodo remoto ---
 
-// Envía comando SYNDBG:INSPECT y retorna el resultado (simulado)
+// EnvÃ­a comando SYNDBG:INSPECT y retorna el resultado (simulado)
 
 CadenaSegura dd_inspeccionar_remoto(CadenaSegura ip, int puerto, CadenaSegura nombre_variable) {
 
@@ -2682,7 +2682,7 @@ int dd_total_eventos_remotos(void) {
 
 
 
-// --- Número de nodos remotos registrados ---
+// --- NÃºmero de nodos remotos registrados ---
 
 int dd_nodos_remotos_registrados(void) {
 
@@ -2710,7 +2710,7 @@ int dd_nodo_local_id(void) {
 
 
 
-// --- Información del subsistema de debug distribuido ---
+// --- InformaciÃ³n del subsistema de debug distribuido ---
 
 // Retorna "local_id:num_remotos:total_eventos_remotos:ultima_sincro"
 

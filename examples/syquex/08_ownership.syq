@@ -1,6 +1,6 @@
 #lang: es
 // 08_ownership.syq — Ownership y borrowing
-// cumple Manual 2 §9: Ownership & Borrowing
+// cumple Manual 2 9: Ownership & Borrowing
 
 importar std.io
 

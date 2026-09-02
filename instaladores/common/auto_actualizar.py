@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# cumple Manual 9 §4.1 — Auto-actualización de instaladores
+# cumple Manual 9 4.1 — Auto-actualización de instaladores
 """
 instaladores/common/auto_actualizar.py — Sistema de auto-actualización.
 Manual 9 §4.1: Verificación y actualización de versiones.

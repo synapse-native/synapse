@@ -10,7 +10,7 @@ tr_grabar_error, tr_buscar_evento, tr_obtener_evento, tr_reproducir_hasta,
 tr_indice_ultimo_error, tr_total_eventos).
 
 TDD (ME_27_T4): compila y ejecuta test_time_travel.c contra runtime/core/debug.c.
-cumple Manual 8 §5.2
+cumple Manual 8 5.2
 """
 import os
 import subprocess

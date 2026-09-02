@@ -693,10 +693,10 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("#endif")
         asm("    }")
         asm("    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rt_dir, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\\axon\\\\tweetnacl.c\\\"\", 4095 - strlen(_cmd));")
-        // cumple Manual 3 §12.1: db.c depende de sqlite3_*; vendor/sqlite3.c debe enlazarse
+        // cumple Manual 3 12.1: db.c depende de sqlite3_*; vendor/sqlite3.c debe enlazarse
         asm("    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rt_dir, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\\vendor\\\\sqlite3\\\\sqlite3.c\\\"\", 4095 - strlen(_cmd));")
         asm("    strncat(_cmd, _ia_part, 4095 - strlen(_cmd));")
-        // cumple Manual 5 §6.2: federated.c para std.federated
+        // cumple Manual 5 6.2: federated.c para std.federated
         asm("    strncat(_cmd, \" \\\"\", 4095 - strlen(_cmd)); strncat(_cmd, _rt_dir, 4095 - strlen(_cmd)); strncat(_cmd, \"\\\\nucleo\\\\federated.c\\\"\", 4095 - strlen(_cmd));")
         asm("    char _cmd_tail[1600]; snprintf(_cmd_tail, 1600, \" -o \\\"%s\\\" -lpthread -lm -lws2_32 -Wl,--allow-multiple-definition\", salida.datos);")
         asm("    strncat(_cmd, _cmd_tail, 4095 - strlen(_cmd));")

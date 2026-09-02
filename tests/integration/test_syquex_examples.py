@@ -4,7 +4,7 @@ tests/integration/test_syquex_examples.py — Verificación de ejemplos Syquex (
 Manual 3 §3.
 
 Compila cada archivo .syq en examples/syquex/ y tests/fixtures/ y verifica compilación.
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import glob
 import os

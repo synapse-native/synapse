@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: cache de compilación
+﻿// cumple Manual 6 3: cache de compilación
 // runtime/core/cache.c — nucleo/cache.syn backing: helpers TOML del caché
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Texto byte-idéntico al original (CRLF preservado).
@@ -40,4 +40,4 @@ struct NodoToml actualizar_indice(struct NodoToml doc, struct CacheEntry entry) 
     // Minimal stub: returns doc unchanged
     (void)entry;
     return doc;
-}
+}

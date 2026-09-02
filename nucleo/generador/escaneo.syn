@@ -9,8 +9,8 @@
 // asm se mueven TEXTUALMENTE (misma indentacion) a funciones que
 // generar() invoca en el mismo orden -> el C generado no cambia.
 //
-// cumple Manual 1 §5: generador de código
-// cumple Manual 8 §4.1: compilador nativo S2
+// cumple Manual 1 5: generador de código
+// cumple Manual 8 4.1: compilador nativo S2
 
 // ----------------------------------------------------------
 // gen_escanear_estructuras - (bloque extraido de generar())

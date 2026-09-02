@@ -1,5 +1,5 @@
-# cumple Manual 1 §1: infraestructura Python del compilador Synapse
-# cumple Manual 8 §4: toolchain de construcción
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 #!/usr/bin/env python3
 """
 _rebuild_generator.py — Reconstruye nucleo/generator.syn desde los submódulos

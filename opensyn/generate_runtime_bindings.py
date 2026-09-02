@@ -1,4 +1,4 @@
-﻿# cumple Manual 4 §3: generador de bindings de runtime
+﻿# cumple Manual 4 3: generador de bindings de runtime
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """

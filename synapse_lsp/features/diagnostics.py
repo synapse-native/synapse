@@ -7,7 +7,7 @@ from synapse_lsp.transport import _enviar_notificacion
 
 _CODIGOS_OWNERSHIP = frozenset({
     "ERR_SEM_VAR_MOVIDA",
-    "ERR_MEM_USE_AFTER_MOVE",  # cumple Manual 2 §9: canonico de uso tras move
+    "ERR_MEM_USE_AFTER_MOVE",  # cumple Manual 2 9: canonico de uso tras move
     "ERR_SEM_ACCESO_MEMORIA_MOVIDA",
     "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR",
 })

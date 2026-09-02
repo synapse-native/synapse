@@ -2,7 +2,7 @@
 """
 tests/opensyn/test_os_syn_hw.py — std/os.syn expone deteccion de hardware.
 Manual 9 §5.7 / F29. TDD GREEN (ME_29_T4).
-cumple Manual 9 §5.7
+cumple Manual 9 5.7
 """
 import os
 import subprocess

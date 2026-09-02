@@ -3,7 +3,7 @@
 tests/integration/test_syquex_cert_2.py — Syquex certificado v1.0: semantica y traduccion.
 Manual 3 (certificacion). TDD (ME_28_T2): valida que el analisis semantico Syquex
 (inferencia de tipos, contratos, alcance, error algebraico) funciona correctamente.
-cumple Manual 3 §5/§6/§8
+cumple Manual 3 5/§6/§8
 """
 import os
 import subprocess

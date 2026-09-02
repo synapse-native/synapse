@@ -1,3 +1,4 @@
+// cumple Manual 4 6: biblioteca estandar
 #lang: es
 // std.io — Entrada/Salida estándar (consola y archivos)
 // Integrante de la Biblioteca Estandar de Synapse.

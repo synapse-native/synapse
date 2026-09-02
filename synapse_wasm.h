@@ -1,5 +1,5 @@
-﻿// cumple Manual 1 §5: backend WASM
-// cumple Manual 8 §4.2: target WASM
+﻿// cumple Manual 1 5: backend WASM
+// cumple Manual 8 4.2: target WASM
 // =============================================================================
 // synapse_wasm.h — WebAssembly WAT text emitter API (M12.1.2)
 //

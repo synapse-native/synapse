@@ -1,4 +1,4 @@
-# cumple Manual 7 §2.3
+# cumple Manual 7 2.3
 from synapse_lsp.server import (
     _manejar_completado, _manejar_hover, _manejar_definicion,
 )

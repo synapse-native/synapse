@@ -1,6 +1,6 @@
 #lang: es
 // 06_concurrencia.syq — Canal básico
-// cumple Manual 5 §3: Canales
+// cumple Manual 5 3: Canales
 // Nota: Canales tipados requiere implementación pendiente
 
 importar std.io

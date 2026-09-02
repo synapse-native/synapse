@@ -1,6 +1,6 @@
 #lang: es
 // 04_resultado.syq — Manejo de errores con condicionales
-// cumple Manual 2 §8.3: Tipos Algebraicos de Datos
+// cumple Manual 2 8.3: Tipos Algebraicos de Datos
 // Nota: Resultado<T,E> con coincidir requiere codegen ADT pendiente (D-2)
 
 importar std.io

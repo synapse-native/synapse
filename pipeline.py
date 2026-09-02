@@ -136,7 +136,7 @@ def _compilar_objeto_cacheado(compiler: str, opt_flags: str, base_flags: str,
                               extra_flags: str = "") -> Optional[str]:
     """Compila un .o desde fuente SOLO si cambió su fuente o los flags.
 
-    cumple Manual 1 §4 (cache.syn: "Sistema de caché incremental SHA-256" / runtime
+    cumple Manual 1 4 (cache.syn: "Sistema de caché incremental SHA-256" / runtime
     modularizado) y Manual 9 §9 (caché local en `~/.synapse/cache/`, NO en directorios
     de build del repositorio). Manual 1 §6 (Regla de hierro: no romper el bootstrap —
     el .o cacheado es idéntico al recién compilado porque la clave incluye fuente+flags).
@@ -796,7 +796,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
             else:
                 platform_flags += " -Wl,--stack,8388608"
 
-        # cumple Manual 9 §5.7: detect_hardware.c usa DXGI/COM para VRAM real (A2)
+        # cumple Manual 9 5.7: detect_hardware.c usa DXGI/COM para VRAM real (A2)
         linker_net = "-lws2_32 -lole32 -ldxgi -luuid" if sys.platform == "win32" else ""
         env_gcc_flags = os.environ.get('SYNAPSE_GCC_FLAGS', '')
         no_std_flags = "-ffreestanding -fno-builtin" if ast.is_no_std else ""
@@ -812,7 +812,7 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
                 return 1
             for qo in _compilar_quantum_objetos(compiler, base_flags, gcc_opt):
                 rt_objs += f' "{qo}"'
-            # cumple Manual 5 §6.2: módulo federated para std.federated
+            # cumple Manual 5 6.2: módulo federated para std.federated
             for fed_src in _RT_FEDERATED_FUENTES:
                 fed_nombre = os.path.splitext(os.path.basename(fed_src))[0]
                 o = _compilar_objeto_cacheado(compiler, gcc_opt, base_flags, fed_src, fed_nombre)

@@ -606,7 +606,7 @@ class Lexer:
                 while i < len(texto) and (texto[i].isalnum() or texto[i] == '_'):
                     i += 1
                 palabra = texto[inicio:i]
-                # cumple Manual 2 §2: después de DOT, tratar como identificador
+                # cumple Manual 2 2: después de DOT, tratar como identificador
                 # (no keyword) para soportar acceso a campos como p.y, p.x, etc.
                 # Si la palabra es un keyword seguida de '=' (asignación, no '=='),
                 # también tratarla como identificador (e.g. 'y = 5' donde 'y' es

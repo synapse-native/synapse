@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §2: HTTP runtime
+﻿// cumple Manual 6 2: HTTP runtime
 // runtime/core/http.c — std.http: HTTP Server (minimalista, síncrono, single-thread)
 // D-9(d) corte 10: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Texto byte-idéntico al original (CRLF preservado).

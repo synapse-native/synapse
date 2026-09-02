@@ -1,11 +1,11 @@
 #lang: es
 # opensyn/installer.syn - Instalador OpenSyn
 # Manual 7 §2.3, Manual 9 §5.2-5.4
-# cumple Manual 7 §2.3
-# cumple Manual 9 §5.2
-# cumple Manual 9 §5.3
-# cumple Manual 9 §5.4
-# cumple Manual 2 §12 (contratos requiere/garantiza)
+# cumple Manual 7 2.3
+# cumple Manual 9 5.2
+# cumple Manual 9 5.3
+# cumple Manual 9 5.4
+# cumple Manual 2 12 (contratos requiere/garantiza)
 
 estructura HardwareInfo:
     ram_total: entero
@@ -114,7 +114,7 @@ funcion seleccionar_capas_gpu(vram: entero) -> entero:
         sino:
             retornar 35
 
-# cumple Manual 9 §5.3
+# cumple Manual 9 5.3
 funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     requiere:
         longitud(info.nombre) > 0
@@ -139,7 +139,7 @@ funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
         retornar err("Checksum incorrecto")
     retornar ok(ruta)
 
-# cumple Manual 9 §5.4 — principal: orquesta instalación completa
+# cumple Manual 9 5.4 — principal: orquesta instalación completa
 funcion principal() -> nulo:
     let hw: HardwareInfo = detectar_hardware()
     let hilos: entero = seleccionar_hilos(hw.cpu_nucleos)
@@ -156,7 +156,7 @@ funcion principal() -> nulo:
     let cfg: ConfigInfo = generar_config(hw, ".opensyn/models/" + modelo.nombre + ".gguf")
     escribir_config(cfg)
 
-# cumple Manual 9 §5.3 — instalar_modelo: descarga y verifica modelo según HW
+# cumple Manual 9 5.3 — instalar_modelo: descarga y verifica modelo según HW
 funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
     requiere:
         hw.vram_total >= 0
@@ -166,7 +166,7 @@ funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
     escribir_linea("Modelo seleccionado: " + modelo.nombre)
     retornar descargar_modelo(modelo)
 
-# cumple Manual 9 §5.4 — ConfigInfo: configuración para llama-server
+# cumple Manual 9 5.4 — ConfigInfo: configuración para llama-server
 estructura ConfigInfo:
     nombre_modelo: texto
     ruta_modelo: texto
@@ -177,7 +177,7 @@ estructura ConfigInfo:
     host: texto
     timeout: entero
 
-# cumple Manual 9 §5.4 — generar_config: produce ConfigInfo basada en HW
+# cumple Manual 9 5.4 — generar_config: produce ConfigInfo basada en HW
 funcion generar_config(hw: HardwareInfo, ruta_modelo: texto) -> ConfigInfo:
     requiere:
         longitud(ruta_modelo) > 0
@@ -197,7 +197,7 @@ funcion generar_config(hw: HardwareInfo, ruta_modelo: texto) -> ConfigInfo:
     cfg.timeout = 30
     retornar cfg
 
-# cumple Manual 9 §5.4 — escribir_config: escribe ~/.opensyn/config.toml
+# cumple Manual 9 5.4 — escribir_config: escribe ~/.opensyn/config.toml
 funcion escribir_config(config: ConfigInfo) -> logico:
     requiere:
         longitud(config.ruta_modelo) > 0

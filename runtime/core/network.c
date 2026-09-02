@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §2: network runtime
+﻿// cumple Manual 6 2: network runtime
 // runtime/core/network.c — std.net: Socket helpers (TCP client)
 // D-9(d): extracted from synapse_rt.c (modularization, patrón tensor.c R39)
 // Texto byte-idéntico al original (CRLF preservado).

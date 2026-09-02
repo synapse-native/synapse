@@ -577,7 +577,7 @@ def _emitir_error_defines(ctx: GeneratorContext):
             "ERR_SEM_ESTRUCTURA_NO_DEFINIDA": 20,
             "ERR_SEM_CAMPO_NO_EXISTE": 21,
             "ERR_SEM_VAR_MOVIDA": 22,
-            "ERR_MEM_USE_AFTER_MOVE": 23,  # cumple Manual 2 §9 (canonico; era ACCESO_MEMORIA_MOVIDA=23)
+            "ERR_MEM_USE_AFTER_MOVE": 23,  # cumple Manual 2 9 (canonico; era ACCESO_MEMORIA_MOVIDA=23)
             "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR": 24,
             "ERR_MANIFEST_NOT_FOUND": 25,
             "ERR_MODULE_STD_NOT_FOUND": 26,
@@ -650,7 +650,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("#include <stddef.h>")
     ctx.write_line("")
     ctx.write_line(
-        "typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 §4.1"
+        "typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 4.1"
     )
     ctx.write_line("")
     # A2.4 (paridad con synapse_rt_types.h:14 / generator.c:2501): el runtime
@@ -1590,7 +1590,7 @@ class GeneradorC:
                 ctx.write_line("char _G_scope_vars_names[256][64];")
                 ctx.write_line("int _G_scope_vars_total;")
                 ctx.write_line("int _G_scope_vars_kind[256];  // D-1.2: 0=texto,1=rc,2=arc,3=debil")
-                # cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
+                # cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
                 ctx.write_line("int _G_safe_mode;  // M22.5: --safe flag for lifetime assertions")
                 ctx.write_line("")
                 # ME-B4: nombres de estructuras (definiciones para constructores nativos)

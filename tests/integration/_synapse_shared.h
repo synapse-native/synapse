@@ -24,7 +24,7 @@ extern char _G_fn_ret_tipo_c[64];  // F5-1
 #include <dirent.h>
 #endif
 
-typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 §4.1
+typedef struct { int longitud; const char* datos; } CadenaSegura;  // cumple Manual 2 4.1
 
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
 

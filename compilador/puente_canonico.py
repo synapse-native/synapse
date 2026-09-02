@@ -65,7 +65,7 @@ NOMBRE_NODO = {
 # - FUSIONADOS: manejados inline dentro de otro nodo (ej. CONTRATO en FUNCION)
 # - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
 # - PENDIENTE_BACKEND: feature futura del roadmap
-# cumple Manual 3 §11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
+# cumple Manual 3 11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
 NO_SOPORTADOS = {
     54: "INTENTO (backend pendiente, hallazgo H-R90-1)",
     55: "LISTA_LIT (backend Fase 24 lib/lista)",

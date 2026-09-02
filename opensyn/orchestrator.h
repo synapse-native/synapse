@@ -1,8 +1,8 @@
 /*
  * opensyn/orchestrator.h - Orquestador de ciclo de vida de llama-server
  * Manual 7 §2.1: Gestion del ciclo de vida del servidor de inferencia
- * cumple Manual 7 §2.1
- * cumple Manual 7 §2.2
+ * cumple Manual 7 2.1
+ * cumple Manual 7 2.2
  */
 #ifndef ORCHESTRATOR_H
 #define ORCHESTRATOR_H

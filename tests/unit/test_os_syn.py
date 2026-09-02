@@ -3,7 +3,7 @@ Cumple Manual 9 §5.7: std.os con funciones memoria_total, memoria_libre,
 vram_total, cpu_nucleos, arquitectura.
 Oráculo: detect_hardware.c compila y exporta las 5 funciones C.
 """
-# cumple Manual 9 §5.7, Manual 7 §2.3
+# cumple Manual 9 5.7, Manual 7 §2.3
 
 import os
 import subprocess

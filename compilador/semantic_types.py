@@ -71,7 +71,7 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
                 )
                 return None
             if self.tabla.esta_movido(nodo.nombre):
-                # cumple Manual 2 §9: uso de variable invalidada por move previo -> ERR_MEM_USE_AFTER_MOVE
+                # cumple Manual 2 9: uso de variable invalidada por move previo -> ERR_MEM_USE_AFTER_MOVE
                 self.diag.reportar(
                     ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
                     self._token(nodo.linea, nodo.columna),
@@ -334,7 +334,7 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             n_params = len(def_func.parametros)
             n_args = len(nodo.argumentos)
             n_default = sum(1 for p in def_func.parametros if p.valor_default is not None)
-            # cumple Manual 2 §12: concat es variadic (>=2 args)
+            # cumple Manual 2 12: concat es variadic (>=2 args)
             es_variadic = (nodo.nombre == 'concat' and n_args >= 2)
             if not es_variadic and (n_args < n_params - n_default or n_args > n_params):
                 self.diag.reportar(
@@ -358,7 +358,7 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             for arg, param in zip(nodo.argumentos, def_func.parametros):
                 if param.es_transferencia and isinstance(arg, Identificador):
                     if self.tabla.esta_movido(arg.nombre):
-                        # cumple Manual 2 §9: uso de variable ya movida (doble move / use-after-move) -> ERR_MEM_USE_AFTER_MOVE
+                        # cumple Manual 2 9: uso de variable ya movida (doble move / use-after-move) -> ERR_MEM_USE_AFTER_MOVE
                         self.diag.reportar(
                             ErrorCodes.ERR_MEM_USE_AFTER_MOVE,
                             self._token(arg.linea, arg.columna),
@@ -375,7 +375,7 @@ class AnalizadorSemanticoTypes(AnalizadorSemanticoScope):
             n_params = len(tipos_esperados)
             idx_defaults = _BUILTIN_PARAMS_DEFAULT.get(nodo.nombre, [])
             n_min = n_params - len(idx_defaults)
-            # cumple Manual 2 §12: concat es variadic (>=2 args)
+            # cumple Manual 2 12: concat es variadic (>=2 args)
             es_variadic = (nodo.nombre == 'concat' and n_args >= 2)
             if not es_variadic and (n_args < n_min or n_args > n_params):
                 self.diag.reportar(

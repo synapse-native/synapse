@@ -1,5 +1,5 @@
 // runtime/core/detect_hardware.c — Detección de hardware del sistema
-// cumple Manual 9 §5.7: implementación de _syn_memoria_total, _syn_memoria_libre,
+// cumple Manual 9 5.7: implementación de _syn_memoria_total, _syn_memoria_libre,
 //   _syn_vram_total, _syn_cpu_nucleos, _syn_arquitectura
 
 #include "detect_hardware.h"

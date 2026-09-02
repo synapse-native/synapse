@@ -1,5 +1,5 @@
-// cumple Manual 1 §5: pipeline RAG
-// cumple Manual 8 §4: toolchain
+// cumple Manual 1 5: pipeline RAG
+// cumple Manual 8 4: toolchain
 // synapse_rag.c — Pipeline RAG quirúrgico para extracción de contexto AST e indexación semántica
 // v2.0: Añadido: AST chunking, embedding storage, cosine similarity search, n_ctx negotiation dinámica
 // Parte del núcleo Synapse LSP nativo — C99

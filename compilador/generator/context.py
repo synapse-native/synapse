@@ -56,7 +56,7 @@ MAPA_TIPOS_C: Dict[str, str] = {
     'booleano': 'int', 'logico': 'int', 'Booleano': 'int', 'Logico': 'int',
     'void': 'void', 'char': 'char',
     'double': 'double', 'puntero': 'void*', 'Puntero': 'void*', 'void*': 'void*',
-    # cumple Manual 1 §3.1: mapeos reversos de tipos C — cuando tipo_de_expr
+    # cumple Manual 1 3.1: mapeos reversos de tipos C — cuando tipo_de_expr
     # (ExprAccesoCampo) retorna un tipo C ya traducido, traducir_tipo_c no debe
     # caer al fallback 'struct {tipo}'. Los tipos C son idempotentes.
     'int64_t': 'int64_t', 'int32_t': 'int32_t', 'uint8_t': 'uint8_t',

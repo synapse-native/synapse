@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §6: criptografía
+﻿// cumple Manual 6 6: criptografía
 // runtime/core/cripto.c — std.cripto: SHA-256 + Ed25519
 // D-9(d) corte 8: extraído de synapse_rt.c (lines 122-182 y 523-646)
 // Manual 8: std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)
@@ -80,7 +80,8 @@ int _syn_ed25519_verificar(CadenaSegura mensaje, CadenaSegura firma, CadenaSegur
     free(sm);
     free(m_buf);
     return rc;
-}
+}
+
 // ============================================================
 // std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)
 #include "axon/tweetnacl.h"// --- SHA-256 (sin cambios) ---
@@ -204,4 +205,5 @@ CadenaSegura _syn_sha256_texto(CadenaSegura datos) {
     if (!data) return (CadenaSegura){ .longitud = 0, .datos = "" };
     memcpy(data, hex, 65);
     return (CadenaSegura){ .longitud = 64, .datos = data };
-}
+}
+

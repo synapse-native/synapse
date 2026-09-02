@@ -2,7 +2,7 @@
 """
 tests/integration/test_debugger_timetravel.py — Debugger time-travel con snapshots y breakpoints reversibles.
 Manual 8 §5.2/§5.3/§5.4. TDD (ME_27_T4): compila y ejecuta los C tests del debugger.
-cumple Manual 8 §5.2/§5.3/§5.4
+cumple Manual 8 5.2/§5.3/§5.4
 """
 import os
 import subprocess

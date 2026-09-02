@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: tiempo runtime
+﻿// cumple Manual 6 3: tiempo runtime
 // runtime/core/tiempo.c — Time module for Syquex standard library
 // Manual 3 §12.1: lib/tiempo.syq — Fechas y tiempos
 // Compilar: gcc -c runtime/core/tiempo.c -o tiempo.o

@@ -1,6 +1,6 @@
 #lang: es
 // test_os_hw.syq — Verifica que std/os.syn compila y expone API de hardware
-// cumple Manual 9 §5.7
+// cumple Manual 9 5.7
 // Nota: importar no soportado aún; test compila std/os.syn directamente
 
 funcion memoria_total() -> entero:

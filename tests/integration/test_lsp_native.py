@@ -5,7 +5,7 @@ Manual 8 §1.2 (initialize/shutdown y capacidades) y Manual 8 §1.4
 y verifica las respuestas del protocolo (oráculo conductual, no sniff).
 Usa envio batch + wait() para evitar bloqueos de pipe en Windows.
 """
-# cumple Manual 8 §1.2, §1.4: tests de protocolo LSP
+# cumple Manual 8 1.2, §1.4: tests de protocolo LSP
 
 import subprocess
 import json
@@ -136,7 +136,7 @@ def test_lsp_diagnostics_syntax_error():
         "method": "initialized",
         "params": {},
     })
-    # cumple Manual 8 §1.4: didOpen con codigo sin #lang -> ERR_LANG_MISSING
+    # cumple Manual 8 1.4: didOpen con codigo sin #lang -> ERR_LANG_MISSING
     _enviar_mensaje(proc.stdin, {
         "jsonrpc": "2.0",
         "method": "textDocument/didOpen",
@@ -207,7 +207,7 @@ def test_lsp_diagnostics_clean():
         "params": {},
     })
 
-    # cumple Manual 8 §1.4: didOpen con codigo valido -> 0 diagnosticos
+    # cumple Manual 8 1.4: didOpen con codigo valido -> 0 diagnosticos
     codigo_valido = (
         '#lang: es\n'
         'funcion principal() -> entero:\n'

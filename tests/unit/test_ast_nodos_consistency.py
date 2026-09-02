@@ -1,4 +1,4 @@
-# cumple Manual 2 §4
+# cumple Manual 2 4
 """
 test_ast_nodos_consistency.py — D-9(e): verificación cross-language
 de que runtime/core/ast_nodos.h coincide 1:1 con nucleo/parser_constantes.syn.

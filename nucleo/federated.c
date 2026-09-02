@@ -1,5 +1,5 @@
-// cumple Manual 1 §5: aprendizaje federado
-// cumple Manual 8 §4: toolchain
+// cumple Manual 1 5: aprendizaje federado
+// cumple Manual 8 4: toolchain
 // federated.c — Runtime de Aprendizaje Federado (FedAvg + Ed25519 + cluster)
 // ======================================================================
 // Implementa el algoritmo de promediado federado (Federated Averaging)

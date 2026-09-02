@@ -1,4 +1,4 @@
-# cumple Manual 2 §4
+# cumple Manual 2 4
 import pytest
 from compilador.ast_nodes import Programa
 from compilador.generator import GeneradorC

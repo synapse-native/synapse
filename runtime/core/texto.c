@@ -17,7 +17,7 @@
 #define SPLIT_MAX 256
 #define SPLIT_STR_MAX 4096
 
-// cumple Manual 5 §3: mutex protege estado estático split contra data races
+// cumple Manual 5 3: mutex protege estado estático split contra data races
 static pthread_mutex_t _split_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static char* _split_store[SPLIT_MAX][SPLIT_STR_MAX];

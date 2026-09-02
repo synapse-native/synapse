@@ -412,7 +412,7 @@ int cluster_enviar_hello(const char* ip, int puerto,
 // --- Generate 32-byte random nonce as 64-char hex ---
 CadenaSegura cluster_generar_nonce(void) {
     unsigned char raw[32];
-    // cumple Manual 6 §5.3: el nonce del HELLO debe ser CSPRNG (32 bytes); rand()
+    // cumple Manual 6 5.3: el nonce del HELLO debe ser CSPRNG (32 bytes); rand()
     // no es criptografico. Se usa randombytes (cripto.c: CryptGenRandom/getrandom/urandom).
     randombytes(raw, 32);
     char hex[65];
@@ -425,7 +425,7 @@ CadenaSegura cluster_generar_nonce(void) {
 }
 
 // --- Helper: decode hex string to raw bytes ---
-// cumple Manual 6 §5.3: decodificación hex para formato binario HELLO
+// cumple Manual 6 5.3: decodificación hex para formato binario HELLO
 static void _hex_a_bytes(const char* hex, unsigned char* out, int n) {
     for (int i = 0; i < n; i++) {
         unsigned int b;
@@ -441,7 +441,7 @@ static void _bytes_a_hex(const unsigned char* in, char* out, int n) {
 }
 
 // --- Send signed HELLO handshake message ---
-// cumple Manual 6 §5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
+// cumple Manual 6 5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
 // Prefijo "HELLO:" (6 bytes) para identificación del tipo de mensaje.
 int cluster_enviar_hello_firmado(const char* ip, int puerto,
                                   CadenaSegura id_origen,
@@ -504,7 +504,7 @@ static CadenaSegura cluster_deserializar_texto(const char* buf, int len) {
 }
 
 // --- Process incoming HELLO handshake and respond with HELLO_RESP ---
-// cumple Manual 6 §5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
+// cumple Manual 6 5.3: formato binario [nonce 32B][pubkey 32B][firma 64B]
 // Formato HELLO: "HELLO:" + 128 bytes binarios
 // Formato HELLO_RESP: "HELLO_RESP:" + 128 bytes binarios
 static int _cluster_procesar_hello_entrante(const char* buf, int n,

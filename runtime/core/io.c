@@ -17,7 +17,7 @@
 // Thread-safe console I/O
 // ============================================================
 
-// cumple Manual 5 §3: pthread_once para inicialización thread-safe
+// cumple Manual 5 3: pthread_once para inicialización thread-safe
 static pthread_once_t _syn_stdout_binary_once = PTHREAD_ONCE_INIT;
 static pthread_once_t _syn_stdin_binary_once = PTHREAD_ONCE_INIT;
 
@@ -27,7 +27,7 @@ static void _syn_ensure_stdout_binary_init(void) {
 #endif
 }
 
-// cumple Manual 8 §1.2: stdin en modo binario para LSP (evita traducción \r\n)
+// cumple Manual 8 1.2: stdin en modo binario para LSP (evita traducción \r\n)
 static void _syn_ensure_stdin_binary_init(void) {
 #ifdef _WIN32
     _setmode(_fileno(stdin), _O_BINARY);
@@ -60,7 +60,7 @@ void escribir_linea(CadenaSegura contenido) {
     pthread_mutex_unlock(&io_mutex);
 }
 
-// cumple Manual 5 §3: mutex protege _buf estático contra data races
+// cumple Manual 5 3: mutex protege _buf estático contra data races
 static pthread_mutex_t _leer_linea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 CadenaSegura leer_linea(void) {

@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#define INITGUID  // cumple Manual 9 §5.7: define GUIDs de DXGI (MinGW los necesita)
+#define INITGUID  // cumple Manual 9 5.7: define GUIDs de DXGI (MinGW los necesita)
 #include <windows.h>
 #include <dxgi.h>
 #else
@@ -15,7 +15,7 @@
 #endif
 
 #ifdef _WIN32
-// cumple Manual 9 §5.7: VRAM total de la GPU en bytes (0 si no hay GPU).
+// cumple Manual 9 5.7: VRAM total de la GPU en bytes (0 si no hay GPU).
 // DXGI DedicatedVideoMemory es la fuente correcta; WinSAT GraphicsScore y
 // GetDeviceCaps no reportan VRAM real (hallazgo A2 de R_AUDIT_DESV).
 static int64_t _hw_vram_bytes_dxgi(void) {
@@ -70,7 +70,7 @@ int synapse_detectar_hardware(HwProfile* perfil) {
     if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = perfil->cpu_logicos / 2;
     if (perfil->cpu_fisicos < 1) perfil->cpu_fisicos = 1;
 
-    // cumple Manual 9 §5.7: VRAM via DXGI DedicatedVideoMemory
+    // cumple Manual 9 5.7: VRAM via DXGI DedicatedVideoMemory
     // WinSAT GraphicsScore era un WEI score (1-9.9), NO VRAM en MB.
     // GetDeviceCaps(hdc,120) es indocumentado y devuelve 0.
     // DXGI provee DedicatedVideoMemory (bytes) del adaptador dedicado.
@@ -135,7 +135,7 @@ int synapse_detectar_hardware(HwProfile* perfil) {
 }
 
 int64_t detect_vram_total(void) {
-    // cumple Manual 9 §5.7 / ANEXO: VRAM total de la GPU en bytes (0 si no hay GPU).
+    // cumple Manual 9 5.7 / ANEXO: VRAM total de la GPU en bytes (0 si no hay GPU).
 #ifdef _WIN32
     return _hw_vram_bytes_dxgi();
 #else

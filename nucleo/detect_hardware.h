@@ -1,6 +1,6 @@
 #ifndef DETECT_HARDWARE_H
 #define DETECT_HARDWARE_H
-// cumple Manual 9 §5.7 (detección de hardware/GPU del otro agente)
+// cumple Manual 9 5.7 (detección de hardware/GPU del otro agente)
 
 #include <stdint.h>
 

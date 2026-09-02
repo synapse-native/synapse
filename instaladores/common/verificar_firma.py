@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# cumple Manual 9 §4.1 — Verificación Ed25519 de binarios
+# cumple Manual 9 4.1 — Verificación Ed25519 de binarios
 """
 instaladores/common/verificar_firma.py — Verificación Ed25519 de binarios.
 Manual 9 §4.1: Verificación de integridad de binarios para distribución.

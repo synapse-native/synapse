@@ -674,7 +674,7 @@ funcion analizar_expr(est: AnalizadorSemanticoEst, idx: entero) -> nulo:
         inseguro:
             asm("{ int* _phi=(int*)est->asignaciones_campos_campo.datos; uintptr_t _bp=(uintptr_t)(unsigned)est->nodos[idx].ptr_str; if(_phi){ _bp|=((uintptr_t)(unsigned)_phi[idx])<<32; } const char* _v=(const char*)_bp; if(_v){ CadenaSegura _cs={.longitud=(int)strlen(_v),.datos=_v}; nombre=_cs; } }")
         si nombre != "":
-            si tabla_esta_movido(est, nombre):  // cumple Manual 2 §9: uso tras move -> ERR_MEM_USE_AFTER_MOVE
+            si tabla_esta_movido(est, nombre):  // cumple Manual 2 9: uso tras move -> ERR_MEM_USE_AFTER_MOVE
                 inseguro:
                     asm("{ char _mm[256]; snprintf(_mm,256,\"Uso ilegal de variable ya movida '%s' (E-504)\", nombre.datos); CadenaSegura _msg={.longitud=(int)strlen(_mm),.datos=_mm}; sem_error(est,ERR_MEM_USE_AFTER_MOVE,idx,_msg); }")
         retornar

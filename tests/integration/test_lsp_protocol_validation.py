@@ -3,7 +3,7 @@ Cumple MTO | Manual 8 §1.2 | Content-Length presente, positivo, con tope.
 Cumple Manual 2 §5.3 | contratos debug-only; validación explícita en todos los builds.
 Tests verifican que el LSP retorne ERRORES REALES, no solo que no crashee.
 """
-# cumple Manual 8 §1.2, Manual 2 §5.3
+# cumple Manual 8 1.2, Manual 2 §5.3
 
 import subprocess
 import json

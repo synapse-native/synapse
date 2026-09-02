@@ -1,5 +1,5 @@
-# cumple Manual 1 §1: infraestructura Python del compilador Synapse
-# cumple Manual 8 §4: toolchain de construcción
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 from typing import List, Optional, Dict, Tuple
 
 from compilador.ast_nodes import (

@@ -14,7 +14,7 @@ pytest.skip.
 Anti-sniff (Manual 7 §2.3): se verifican CONTRATOS de la API ya declarada
 (declaración de función en el header fuente), no texto en artefacto generado.
 
-cumple Manual 7 §7.2 (benchmark de latencia)
+cumple Manual 7 7.2 (benchmark de latencia)
 """
 import os
 import re

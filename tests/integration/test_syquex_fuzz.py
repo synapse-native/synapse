@@ -11,7 +11,7 @@ Verifica que el pipeline Syquex NUNCA crashee con entradas invalidas:
   - Cadenas sin cerrar
 
 El compilador debe retornar rc=0 o rc=1, nunca crash (rc<0 o unhandled exception).
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import os
 import random

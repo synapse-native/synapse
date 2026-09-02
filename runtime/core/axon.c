@@ -156,7 +156,7 @@ int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir) {
         typeflag = block[156];
         memcpy(prefix, block + 345, 155); prefix[155] = 0;
 
-        // --- cumple Manual 6 §6.1: typeflags peligrosos rechazados ---
+        // --- cumple Manual 6 6.1: typeflags peligrosos rechazados ---
         // L (GNU long name) / K (GNU long link): el siguiente bloque contiene
         // el nombre real -> bypass del chequeo de path traversal actual.
         // 1 (hard link) / 2 (symlink): pueden apuntar fuera de salida_dir.
@@ -463,4 +463,4 @@ int _syn_axon_escribir_lock(const char* paquete, const char* version, const char
     fclose(f);
     fprintf(stderr, "[Axon] Lock actualizado: %s v%s\n", paquete, version);
     return 0;
-}
+}

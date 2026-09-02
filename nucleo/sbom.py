@@ -1,5 +1,5 @@
-# cumple Manual 1 §1: infraestructura Python del compilador Synapse
-# cumple Manual 8 §4: toolchain de construcción
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 """
 nucleo/sbom.py — Generación de SBOM (Software Bill of Materials) estándar SPDX 2.3
 

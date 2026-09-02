@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: string utils
+﻿// cumple Manual 6 3: string utils
 // runtime/core/string_utils.h — NEW string utility declarations
 // Manual 8 §1.7: leer_bytes, escapar_json, a_texto
 

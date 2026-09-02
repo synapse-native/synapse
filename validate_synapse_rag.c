@@ -1,5 +1,5 @@
 // validate_synapse_rag.c — Harness de validación del pipeline RAG para CI
-// cumple Manual 9 §1: harness de validación runtime
+// cumple Manual 9 1: harness de validación runtime
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

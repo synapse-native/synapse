@@ -455,7 +455,7 @@ CadenaSegura _syn_recibir_como_texto(int fd, int tamano) {
 }
 
 void _syn_texto_liberar(CadenaSegura s) {
-    if (s.datos) pool_free((void*)s.datos);  // cumple Manual 2 §4.1 + §9.1: todo CadenaSegura es pool_alloc, RAII libera con pool_free
+    if (s.datos) pool_free((void*)s.datos);  // cumple Manual 2 4.1 + §9.1: todo CadenaSegura es pool_alloc, RAII libera con pool_free
 }
 
 // ============================================================
@@ -977,7 +977,7 @@ int64_t tr_vi(int n) {
     return (int64_t)g_ast_base[n].valor_int;
 }
 
-// cumple Manual 4 §5.2; Manual 2 §4.3; D-1 (Fase 23): primitivas rc/arc.
+// cumple Manual 4 5.2; Manual 2 §4.3; D-1 (Fase 23): primitivas rc/arc.
 // El compilador mapea rc<T>/arc<T> a void* = puntero al header SynRc/SynArc.
 typedef struct {
     _Atomic long refcount;

@@ -2,7 +2,7 @@
 Cumple MTO OBL-M2-02 | Manual 2 §12 | Contratos requiere/garantiza observables.
 Todos los tests verifican que cada función pública en std/ tenga contratos.
 """
-# cumple Manual 2 §12 (OBL-M2-02)
+# cumple Manual 2 12 (OBL-M2-02)
 
 import os
 import pytest

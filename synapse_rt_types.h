@@ -11,7 +11,7 @@
 #include <pthread.h>
 
 // --- Core type definitions (deben coincidir exactamente con las emitidas por el generador) ---
-// cumple Manual 2 §4.1: CadenaSegura = 16 bytes exactos (int longitud + pad4 + const char* datos).
+// cumple Manual 2 4.1: CadenaSegura = 16 bytes exactos (int longitud + pad4 + const char* datos).
 // Sin campo es_externo: toda devolucion usa pool_alloc y el RAII libera con pool_free (Manual 2 §9.1).
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
@@ -284,26 +284,26 @@ struct ParJson {
 };
 
 struct NodoJson {
-    int64_t tipo;           // cumple Manual 2 §4.1: entero = int64_t
-    int64_t valor_bool;     // cumple Manual 2 §4.1: entero = int64_t
-    double valor_num;       // cumple Manual 2 §4.1: decimal = double
+    int64_t tipo;           // cumple Manual 2 4.1: entero = int64_t
+    int64_t valor_bool;     // cumple Manual 2 4.1: entero = int64_t
+    double valor_num;       // cumple Manual 2 4.1: decimal = double
     CadenaSegura valor_str;
     NodoJson* arreglo_hijos;
     ParJson* objeto_pares;
-    int64_t longitud;       // cumple Manual 2 §4.1: entero = int64_t
+    int64_t longitud;       // cumple Manual 2 4.1: entero = int64_t
 };
 
 // --- Dynamic array helpers for JSON ---
 typedef struct {
     NodoJson* items;
-    int64_t count;          // cumple Manual 2 §4.1: entero = int64_t
-    int64_t cap;            // cumple Manual 2 §4.1: entero = int64_t
+    int64_t count;          // cumple Manual 2 4.1: entero = int64_t
+    int64_t cap;            // cumple Manual 2 4.1: entero = int64_t
 } NodoArr;
 
 typedef struct {
     ParJson* items;
-    int64_t count;          // cumple Manual 2 §4.1: entero = int64_t
-    int64_t cap;            // cumple Manual 2 §4.1: entero = int64_t
+    int64_t count;          // cumple Manual 2 4.1: entero = int64_t
+    int64_t cap;            // cumple Manual 2 4.1: entero = int64_t
 } ParArr;
 
 // --- Watchdog types (debug mode) ---

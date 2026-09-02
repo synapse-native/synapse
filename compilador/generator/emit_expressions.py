@@ -2,7 +2,7 @@
 Generación de código C para expresiones y tipos.
 Contiene expr_a_c, tipo_de_expr, I/O builtins, log, formato.
 Los emisores de tensores están en emit_tensors.py.
-// cumple Manual 2 §3 (tipos primitivos y struct por nombre)
+// cumple Manual 2 3 (tipos primitivos y struct por nombre)
 """
 
 from typing import Optional
@@ -286,7 +286,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         return "nulo"
 
     if isinstance(nodo, LiteralCadena):
-        # cumple Manual 2 §2: escape completo de cadena_literal
+        # cumple Manual 2 2: escape completo de cadena_literal
         # 1. Backslash primero (evita doble-escape)
         # 2. Comillas dobles
         # 3. \n, \r, \t (escapes cortos)
@@ -531,7 +531,7 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
                 return f"((({s}).longitud>=({pref}).longitud&&strncmp(({s}).datos,({pref}).datos,({pref}).longitud)==0)?1:0)"
             return "0"
 
-        # cumple Manual 2 §12: concat variadic → anidar llamadas binarias
+        # cumple Manual 2 12: concat variadic → anidar llamadas binarias
         if nombre == 'concat' and len(args) >= 3:
             result = args[-1]
             for i in range(len(args) - 2, -1, -1):

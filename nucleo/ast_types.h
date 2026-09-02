@@ -1,5 +1,5 @@
-// cumple Manual 2 §4: tipos AST
-// cumple Manual 8 §4: toolchain
+// cumple Manual 2 4: tipos AST
+// cumple Manual 8 4: toolchain
 // ast_types.h — Tipos de estructuras del AST orientado a objetos (Synapse)
 // Generado a partir de hola.c. NO modificar manualmente.
 #ifndef AST_TYPES_H

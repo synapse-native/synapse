@@ -42,7 +42,7 @@ static CadenaSegura _p_input;
 static int _p_pos;
 
 void _json_init(CadenaSegura s) {
-    // cumple Manual 4 §2.1: el input se copia a un buffer estatico (_p_input_buf).
+    // cumple Manual 4 2.1: el input se copia a un buffer estatico (_p_input_buf).
     // El llamador (Synapse RAII) puede liberar el buffer original al pasarlo a
     // desde_texto (move semantics), y el pool reusaria esa region durante el
     // parseo (corrompiendo _p_input). Un buffer estatico nunca se libera ni se
@@ -163,7 +163,7 @@ static void _skip_ws() {
 }
 #endif
 
-// cumple Manual 4 §2.1: las cadenas del parse se COPIAN al pool, desacoplando
+// cumple Manual 4 2.1: las cadenas del parse se COPIAN al pool, desacoplando
 // el arbol NodoJson del buffer de entrada (que Synapse RAII libera via pool_free).
 // Sin esto, msg.valor_str.datos queda colgado tras liberar `body` (use-after-free).
 static CadenaSegura _json_str_copy(const char* p, int len) {
@@ -268,7 +268,7 @@ static float _parse_number_value() {
 // Forward declaration
 static NodoJson _parse_value();
 
-/* cumple Manual 4 §2.1: parse stack para preservar punteros ParArr en recursión. */
+/* cumple Manual 4 2.1: parse stack para preservar punteros ParArr en recursión. */
 /* FIX: parse-stack to preserve ParArr pointers across recursive _parse_value() calls.
  * The local variable `pares` lives on the stack; the compiler may reuse the same
  * stack slot when _parse_value() → _parse_object() recurses, clobbering the parent's
@@ -283,7 +283,7 @@ static NodoJson _parse_object() {
     _advance();
     _skip_ws();
     if (_peek() == '}') { _advance(); return n; }
-    /* cumple Manual 4 §2.1: malloc evita bug de reuso de slabs en pool_alloc. */
+    /* cumple Manual 4 2.1: malloc evita bug de reuso de slabs en pool_alloc. */
     /* FIX: use malloc for ParArr to avoid pool slab reuse bug returning same addr */
     ParArr* pares = (ParArr*)malloc(sizeof(ParArr));
     if (pares) { memset(pares, 0, sizeof(ParArr)); } else { static ParArr _fb; pares = &_fb; }
@@ -337,7 +337,7 @@ static NodoJson _parse_array() {
     _advance();
     _skip_ws();
     if (_peek() == ']') { _advance(); return n; }
-    /* cumple Manual 4 §2.1: malloc evita stack slot reuse en recursión. */
+    /* cumple Manual 4 2.1: malloc evita stack slot reuse en recursión. */
     /* FIX: allocate NodoArr on pool to avoid stack slot reuse during recursion */
     NodoArr* arr = (NodoArr*)malloc(sizeof(NodoArr));
     if (arr) { memset(arr, 0, sizeof(NodoArr)); } else { static NodoArr _fb; arr = &_fb; }
@@ -564,13 +564,13 @@ static void _serializar_nodo(NodoJson nodo) {
     }
 }
 
-// cumple Manual 4 §2.1 + H-SEC-1/ME-SEC-1: no devolver el buffer estático
+// cumple Manual 4 2.1 + H-SEC-1/ME-SEC-1: no devolver el buffer estático
 // _ser_buf (compartido, no thread/fiber-safe, use-after-overwrite). Se copia
 // a pool_alloc para que el llamador (Synapse RAII) lo libere con pool_free.
 CadenaSegura _json_a_texto(NodoJson nodo) {
     _ser_pos = 0;
     _serializar_nodo(nodo);
-    // cumple Manual 4 §2.1: retornar error si excede 64KB, no truncar
+    // cumple Manual 4 2.1: retornar error si excede 64KB, no truncar
     if (_ser_pos >= _SER_BUF_SIZE - 1) {
         return (CadenaSegura){ .longitud = 0, .datos = "" };
     }

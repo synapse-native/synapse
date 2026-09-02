@@ -1,5 +1,5 @@
-// cumple Manual 1 §5: generador unificado del compilador
-// cumple Manual 8 §4.1: compilador nativo S2
+// cumple Manual 1 5: generador unificado del compilador
+// cumple Manual 8 4.1: compilador nativo S2
 // Parser state (file scope)
 #define MAX_TOKS 16384
 typedef struct { int tipo; int linea; int col; char val[256]; } _P_Token;

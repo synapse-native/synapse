@@ -645,7 +645,7 @@ funcion handle_definition(id: entero, uri: texto, doc: texto, params: texto) -> 
 // ============================================================
 
 funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
-    // cumple Manual 8 §1.4: textDocument/codeAction — sugiere correcciones rápidas
+    // cumple Manual 8 1.4: textDocument/codeAction — sugiere correcciones rápidas
     requiere:
         id >= 0
     garantiza:
@@ -706,13 +706,13 @@ funcion handle_code_action(id: entero, doc: texto, params: texto) -> nulo:
             tiene_retornar = 1
         si tiene_retornar == 0:
             // Sugerir agregar retornar 0
-            let edit = "{\"title\":\"Agregar retornar 0\",\"kind\":\"quickfix\",\"diagnostics\":[],\"edit\":{\"changes\":{}}}" 
+            let edit = "{\"title\":\"Agregar retornar 0\",\"kind\":\"quickfix\",\"diagnostics\":[],\"edit\":{\"changes\":{}}}"
             enviar_respuesta(construir_respuesta(id, "[" + edit + "]"))
             retornar
     enviar_respuesta(construir_respuesta(id, "[]"))
 
 funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
-    // cumple Manual 8 §1.4: textDocument/formatting — formatea código según reglas de estilo
+    // cumple Manual 8 1.4: textDocument/formatting — formatea código según reglas de estilo
     requiere:
         id >= 0
     garantiza:
@@ -767,7 +767,7 @@ funcion handle_formatting(id: entero, doc: texto, params: texto) -> nulo:
     enviar_respuesta(construir_respuesta(id, "[" + edit + "]"))
 
 funcion handle_signature_help(id: entero, doc: texto, params: texto) -> nulo:
-    // cumple Manual 8 §1.4: textDocument/signatureHelp — muestra firma de función mientras se escribe
+    // cumple Manual 8 1.4: textDocument/signatureHelp — muestra firma de función mientras se escribe
     requiere:
         id >= 0
     garantiza:
@@ -893,7 +893,7 @@ funcion handle_unknown(id: entero) -> nulo:
         verdadero
     enviar_respuesta(construir_error(id, -32601, "Method not found"))
 
-// cumple Manual 8 §2.3: synapse/aiStatus — estado de IA local
+// cumple Manual 8 2.3: synapse/aiStatus — estado de IA local
 funcion handle_ai_status(id: entero) -> nulo:
     requiere:
         id >= 0
@@ -901,7 +901,7 @@ funcion handle_ai_status(id: entero) -> nulo:
         verdadero
     enviar_respuesta(construir_respuesta(id, "{\"loaded\":false,\"model\":null,\"memory\":\"N/A\",\"status\":\"not_loaded\"}"))
 
-// cumple Manual 8 §2.3: synapse/aiTranspile — transpila Python a Syquex
+// cumple Manual 8 2.3: synapse/aiTranspile — transpila Python a Syquex
 funcion handle_ai_transpile(id: entero, params: texto) -> nulo:
     requiere:
         id >= 0
@@ -909,7 +909,7 @@ funcion handle_ai_transpile(id: entero, params: texto) -> nulo:
         verdadero
     enviar_respuesta(construir_respuesta(id, "{\"transpiled\":true,\"language\":\"syquex\"}"))
 
-// cumple Manual 8 §2.3: synapse/aiBindings — genera bindings C a Syquex
+// cumple Manual 8 2.3: synapse/aiBindings — genera bindings C a Syquex
 funcion handle_ai_bindings(id: entero, params: texto) -> nulo:
     requiere:
         id >= 0
@@ -917,7 +917,7 @@ funcion handle_ai_bindings(id: entero, params: texto) -> nulo:
         verdadero
     enviar_respuesta(construir_respuesta(id, "{\"generated\":true,\"language\":\"syquex\"}"))
 
-// cumple Manual 8 §2.3: synapse/aiComplete — genera código basado en contexto
+// cumple Manual 8 2.3: synapse/aiComplete — genera código basado en contexto
 funcion handle_ai_complete(id: entero, params: texto) -> nulo:
     requiere:
         id >= 0
@@ -925,7 +925,7 @@ funcion handle_ai_complete(id: entero, params: texto) -> nulo:
         verdadero
     enviar_respuesta(construir_respuesta(id, "{\"completions\":[]}"))
 
-// cumple Manual 8 §2.3: synapse/aiFix — sugiere correcciones para errores
+// cumple Manual 8 2.3: synapse/aiFix — sugiere correcciones para errores
 funcion handle_ai_fix(id: entero, params: texto) -> nulo:
     requiere:
         id >= 0
@@ -984,13 +984,13 @@ funcion principal() -> entero:
             si id_fin > id_pos:
                 id_val = extraer_entero(subcadena(body, id_pos, id_fin - id_pos))
 
-        // cumple Manual 8 §1.2: dispatch via strstr_f sobre body raw
+        // cumple Manual 8 1.2: dispatch via strstr_f sobre body raw
         // (evita use-after-free: cmp_texto libera args; method_str no needed)
         let msg = desde_texto(body)
         let params_nodo = obtener_campo(msg, "params")
         let params_str = strcpy_f(_json_a_texto(params_nodo))
 
-        // cumple Manual 8 §1.2: dispatch via strstr_f sobre body raw
+        // cumple Manual 8 1.2: dispatch via strstr_f sobre body raw
         // (evita use-after-free: cmp_texto libera method_str en 1ra llamada)
         si strstr_f(body, "\"initialize\"") >= 0:
             handle_initialize(id_val)
@@ -1031,7 +1031,7 @@ funcion principal() -> entero:
             handle_signature_help(id_val, doc, params_str)
         si strstr_f(body, "\"workspace/didChangeConfiguration\"") >= 0:
             handle_did_change_configuration(params_str)
-        // cumple Manual 8 §2.3: comandos IA
+        // cumple Manual 8 2.3: comandos IA
         si strstr_f(body, "\"synapse/aiStatus\"") >= 0:
             handle_ai_status(id_val)
         si strstr_f(body, "\"synapse/aiTranspile\"") >= 0:

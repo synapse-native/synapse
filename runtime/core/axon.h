@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §5: axon runtime
+﻿// cumple Manual 6 5: axon runtime
 // runtime/core/axon.h — Axon: HTTP download + TAR extraction + SHA-256 Lock
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Manual 6 §6.1 (path traversal protection en extracción TAR); regla 13 + canon D-9(d).

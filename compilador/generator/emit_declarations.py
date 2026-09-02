@@ -1,5 +1,5 @@
-# cumple Manual 1 §1: infraestructura Python del compilador Synapse
-# cumple Manual 8 §4: toolchain de construcción
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 """
 Generación de código C para declaraciones: funciones, structs, variables,
 declaraciones externas, asignaciones de campo, envío de canales, etc.

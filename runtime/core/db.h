@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §4: base de datos
+﻿// cumple Manual 6 4: base de datos
 // runtime/core/db.h — Database (SQLite) module declarations
 // Manual 3 §12.1: lib/db.syq
 

@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: mapa hash
+﻿// cumple Manual 6 3: mapa hash
 // runtime/core/mapa.c — Simple hash map for Syquex lib/mapa.syq
 // Manual 3 §5.2: Mapa<K,V> — diccionario hash
 // Implementación simple: array de pares con lineal probing

@@ -3,8 +3,8 @@
 tests/opensyn/test_model_mgmt.py — OpenSyn gestiona modelos (descargar/cachear).
 Manual 7 §7 / Manual 9 §5.3: descarga y verificación SHA-256 de modelos.
 F29 (gestion de modelos). TDD MTO (ME_29_T3_mod): verifica funcionalidad implementada.
-cumple Manual 7 §7
-cumple Manual 9 §5.3
+cumple Manual 7 7
+cumple Manual 9 5.3
 """
 import os
 import re

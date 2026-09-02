@@ -3,7 +3,7 @@
 tests/integration/test_syquex_cert_3.py — Syquex certificado v1.0: integracion e2e.
 Manual 3 (certificacion). TDD (ME_28_T3): valida el pipeline completo Syquex
 (.syq → frontend → puente → codegen S1 → gcc → ejecutable) end-to-end.
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import os
 import subprocess

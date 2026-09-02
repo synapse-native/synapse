@@ -6,7 +6,7 @@ Manual 3 (certificacion).
 Mide tiempos de compilacion y ejecucion de Syquex vs Python para verificar
 que Syquex es competitivo en rendimiento (roadmap F28: "10-50x mas rapido que Python").
 
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import os
 import subprocess

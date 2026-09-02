@@ -1,4 +1,4 @@
-﻿// cumple Manual 4 §6: biblioteca estándar
+﻿// cumple Manual 4 6: biblioteca estándar
 #lang: es
 // std.concurrencia — Primitivas de concurrencia (fibras M:N + canales tipados)
 // Integrante de la Biblioteca Estandar de Synapse (Manual 1, layout de std:

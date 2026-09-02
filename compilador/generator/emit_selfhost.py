@@ -1,5 +1,5 @@
-# cumple Manual 1 §1: infraestructura Python del compilador Synapse
-# cumple Manual 8 §4: toolchain de construcción
+# cumple Manual 1 1: infraestructura Python del compilador Synapse
+# cumple Manual 8 4: toolchain de construcción
 """
 Generacion de codigo C auto-hospedado (tokenizer, parser, code generator).
 Funciones migradas del original generator.py con adaptacion al patron

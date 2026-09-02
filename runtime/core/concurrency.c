@@ -1,4 +1,4 @@
-// cumple Manual 6 §7: runtime de concurrencia
+// cumple Manual 6 7: runtime de concurrencia
 // synapse_rt_concurrency.c �?" Concurrency module for Synapse runtime
 // Extracted from synapse_rt.c: channels, thread tracker (thread-safe console
 // I/O moved to runtime/core/io.c, F3-1)

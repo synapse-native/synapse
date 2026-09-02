@@ -1,7 +1,7 @@
 #lang: es
 // std.federated — Runtime de Aprendizaje Federado (FedAvg)
 // Integrante de la Biblioteca Estandar de Synapse.
-// cumple Manual 1 §4: módulo de la biblioteca estándar Synapse (std/federated.syn)
+// cumple Manual 1 4: módulo de la biblioteca estándar Synapse (std/federated.syn)
 //
 // Arquitectura:
 //   - FedAvg: promediado ponderado de gradientes sobre red de nodos (M8.x)

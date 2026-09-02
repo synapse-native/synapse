@@ -189,7 +189,7 @@ void lsp_doc_store(CadenaSegura s) {
 }
 
 CadenaSegura lsp_doc_get(void) {
-    // cumple Manual 2 §9.1: devolver copia pool_alloc para que el RAII de Synapse
+    // cumple Manual 2 9.1: devolver copia pool_alloc para que el RAII de Synapse
     // la libere con pool_free (anteriormente malloc + es_externo=1 para evitar crash).
     if (_G_lsp_doc_len <= 0) return (CadenaSegura){0, ""};
     char* dup = (char*)pool_alloc((size_t)(_G_lsp_doc_len + 1));

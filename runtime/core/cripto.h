@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §6: criptografía
+﻿// cumple Manual 6 6: criptografía
 // runtime/core/cripto.h — std.cripto: SHA-256 + Ed25519 API
 // D-9(d) corte 8: extraído de synapse_rt.c (SHA-256 core + Ed25519 + randombytes stub)
 // Manual 8: std.cripto — SHA-256 (FIPS 180-4) + Ed25519 (TweetNaCl)

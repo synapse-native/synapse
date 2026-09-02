@@ -1,6 +1,6 @@
 // runtime/core/modelo.h — Public types for modelo.c (ME-SEC-3: testable interface)
-// cumple Manual 7 §3: metadatos GGUF con strtol+endptr
-// cumple Manual 2 §12: contratos requiere/garantiza expuestos
+// cumple Manual 7 3: metadatos GGUF con strtol+endptr
+// cumple Manual 2 12: contratos requiere/garantiza expuestos
 #ifndef MODELO_H
 #define MODELO_H
 

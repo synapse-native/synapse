@@ -21,7 +21,7 @@ int str_eq(CadenaSegura a, CadenaSegura b) {
     return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
 }
 
-// cumple Manual 2 §9.1: concat usa pool_alloc (no malloc), RAII libera con pool_free
+// cumple Manual 2 9.1: concat usa pool_alloc (no malloc), RAII libera con pool_free
 CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     int _tl = a.longitud + b.longitud;
     char* _buf = (char*)pool_alloc((size_t)(_tl + 1));
@@ -94,4 +94,4 @@ CadenaSegura _syn_obtener_cwd(void) {
 int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
     if (ruta.longitud < dir.longitud) return 0;
     return memcmp(ruta.datos, dir.datos, (size_t)dir.longitud) == 0;
-}
+}

@@ -1,4 +1,4 @@
-# cumple Manual 3 §12.1
+# cumple Manual 3 12.1
 """
 test_fuzz.py — Tests de fuzzing F11 (Documento Maestro Parte VII) + M10.3
 

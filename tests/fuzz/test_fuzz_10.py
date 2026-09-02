@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# cumple Manual 3 §12.1
+# cumple Manual 3 12.1
 """
 test_fuzz_10.py — Tests avanzados de fuzzing con comportamiento REAL.
 

@@ -1,6 +1,6 @@
 #lang: es
 // 07_memoria.syq — Gestión de memoria básica
-// cumple Manual 4 §2: Arena allocator
+// cumple Manual 4 2: Arena allocator
 
 importar std.io
 

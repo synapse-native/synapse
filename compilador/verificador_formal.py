@@ -246,7 +246,7 @@ def _es_expresion_contrato_interna(expr: Optional[Nodo]) -> bool:
         return False
     if isinstance(expr, (LiteralNumero, LiteralDecimal, LiteralBooleano, LiteralNulo, LiteralCadena, Identificador)):
         return True
-    # cumple Manual 2 §5.1: acceso a campos (ej. resultado.tipo) permitido en contratos
+    # cumple Manual 2 5.1: acceso a campos (ej. resultado.tipo) permitido en contratos
     if isinstance(expr, ExprAccesoCampo):
         return True
     if isinstance(expr, OpBinaria):

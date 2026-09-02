@@ -212,7 +212,7 @@ funcion gen_abrir_bloque_c(est: GeneradorCEst) -> nulo:
 // ----------------------------------------------------------
 // gen_cerrar_bloque_c
 // Emite ")" + newline + liberacion RAII en este ambito.
-// cumple Manual 4 §5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
+// cumple Manual 4 5.2; Manual 4 §3.2; Manual 4 §3.3; D-1.2
 // (cleanup block: decremento rc/arc/débil o _syn_texto_liberar al cierre de scope)
 // NOTA: La indentacion la gestiona el visitante llamante.
 // ----------------------------------------------------------

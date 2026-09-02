@@ -2,7 +2,7 @@
 """
 tests/integration/test_cli_run_debug.py — CLI tiene subcomandos run/debug/opensyn.
 Manual 8 §4.2/§5/§7. TDD (ME_27_T5): compila y ejecuta cli.py con los nuevos subcomandos.
-cumple Manual 8 §4.1/§3.4/§7
+cumple Manual 8 4.1/§3.4/§7
 """
 import os
 import subprocess

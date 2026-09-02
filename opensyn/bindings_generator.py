@@ -1,4 +1,4 @@
-﻿# cumple Manual 4 §2: bindings FFI
+﻿# cumple Manual 4 2: bindings FFI
 """
 opensyn/bindings_generator.py — Generador de bindings Syquex desde cabeceras C
 

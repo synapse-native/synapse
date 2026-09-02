@@ -1,7 +1,7 @@
 """Tests TDD para ME-SEC-1: _json_a_texto sin buffer estatico.
 Cumple MTO | Manual 4 §2.1 | Buffer propio que el llamador libera.
 """
-# cumple Manual 4 §2.1 (ME-SEC-1)
+# cumple Manual 4 2.1 (ME-SEC-1)
 
 import os
 import subprocess

@@ -1,5 +1,5 @@
-// cumple Manual 1 §5: orquestador AI nativo
-// cumple Manual 8 §4: toolchain
+// cumple Manual 1 5: orquestador AI nativo
+// cumple Manual 8 4: toolchain
 // ai_orchestrator.c — Implementación del orquestador llama-server.exe
 // Windows: CreateProcess + TerminateProcess
 // POSIX: fork/exec + kill

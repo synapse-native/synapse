@@ -10,7 +10,7 @@ Comando:
 
 Manual 7 §1: OpenSyn — Transpilación Python → Syquex
 """
-# cumple Manual 7 §2.3; Manual 7 §7 — transpilacion Python->Syquex con mapeo de tipos real
+# cumple Manual 7 2.3; Manual 7 §7 — transpilacion Python->Syquex con mapeo de tipos real
 import re
 import sys
 import os
@@ -100,7 +100,7 @@ def _convertir_funcion_def_con_retorno(match):
         return f"funcion {nombre}() -> {tipo_ret}:"
     params = [p.strip() for p in params_str.split(',')]
     # Strip original type annotations from parameters
-    # cumple Manual 7 §2.3; Manual 7 §7 — cada parametro conserva su tipo mapeado
+    # cumple Manual 7 2.3; Manual 7 §7 — cada parametro conserva su tipo mapeado
     params_limpios = []
     for p in params:
         if ':' in p:
@@ -166,7 +166,7 @@ def _envolver_escribir_linea(linea: str) -> str:
             return match.group(0)
         # Envolver con entero_a_texto()
         return f'escribir_linea(entero_a_texto({args}))'
-    
+
     resultado = re.sub(r'escribir_linea\(([^)]+)\)', reemplazar_escribir, linea)
     return resultado
 
@@ -177,7 +177,7 @@ def transpilar_linea(linea: str) -> str:
 
     # Reemplazar print() → escribir_linea()
     resultado = resultado.replace("print(", "escribir_linea(")
-    
+
     # Envolver argumentos de escribir_linea() con entero_a_texto() si no son strings
     resultado = _envolver_escribir_linea(resultado)
 
@@ -202,20 +202,20 @@ def transpilar_linea(linea: str) -> str:
     resultado = re.sub(r'\bexcept\b', 'atrapar', resultado)
     resultado = re.sub(r'\braise\b', 'lanzar', resultado)
     resultado = re.sub(r'\bimport\b', 'importar', resultado)
-    
+
     # Convertir anotaciones de tipo Python → Syquex en campos de estructura
     # Patrón: "nombre: tipo" donde tipo es int/float/str/bool
     resultado = re.sub(r':\s*int\b', ': entero', resultado)
     resultado = re.sub(r':\s*float\b', ': decimal', resultado)
     resultado = re.sub(r':\s*str\b', ': texto', resultado)
     resultado = re.sub(r':\s*bool\b', ': booleano', resultado)
-    
+
     # def nombre(params): -> funcion nombre(params: entero) -> entero:
     resultado = re.sub(r'^def\s+(\w+)\(([^)]*)\)\s*:',
                        _convertir_funcion_def, resultado, flags=re.MULTILINE)
     resultado = re.sub(r'^def\s+(\w+)\(([^)]*)\)\s*->\s*(\w+)\s*:',
                        _convertir_funcion_def_con_retorno, resultado, flags=re.MULTILINE)
-    
+
     # for x in range(n) -> para x = 0 mientras x < n: ... x = x + 1
     # Se maneja en transpilar_bloque() por ser multi-línea
 
@@ -228,24 +228,24 @@ def transpilar_linea(linea: str) -> str:
 
 def transpilar_bloque(codigo: str) -> str:
     """Transpila un bloque completo de Python a Syquex.
-    
+
     Preserva la indentación original para mantener la estructura de funciones.
     Convierte for x in range(n) a para x = 0 mientras x < n: ... x = x + 1
     """
     lineas = codigo.split("\n")
     resultado = []
     i = 0
-    
+
     while i < len(lineas):
         linea = lineas[i]
         stripped = linea.lstrip()
         indent = linea[:len(linea) - len(stripped)]
-        
+
         if stripped == "":
             resultado.append("")
             i += 1
             continue
-        
+
         # Detectar for x in range(n)
         match_for = re.match(r'^for\s+(\w+)\s+in\s+range\((\d+)\)\s*:', stripped)
         if match_for:
@@ -271,7 +271,7 @@ def transpilar_bloque(codigo: str) -> str:
             # Agregar incremento al final del cuerpo
             resultado.append(f"{indent}    {var_name} = {var_name} + 1")
             continue
-        
+
         linea_tr = transpilar_linea(stripped)
         resultado.append(indent + linea_tr)
         i += 1
@@ -281,36 +281,36 @@ def transpilar_bloque(codigo: str) -> str:
 
 def _envolver_en_principal(codigo_syq: str) -> str:
     """Envuelve código de nivel superior en funcion principal() -> entero:.
-    
+
     Detecta si hay código fuera de funciones y lo envuelve automáticamente.
     Usa la indentación para determinar si una línea está dentro de una función.
     """
     lineas = codigo_syq.split("\n")
-    
+
     # Buscar si ya existe una funcion principal
     tiene_principal = any("funcion principal" in l for l in lineas)
     if tiene_principal:
         return codigo_syq
-    
+
     # Separar código de nivel superior de código dentro de funciones
     lineas_fuera = []
     lineas_nuevas = []
     indent_funcion_actual = -1  # -1 = fuera de función
-    
+
     for l in lineas:
         stripped = l.strip()
         indent = len(l) - len(l.lstrip()) if stripped else 0
-        
+
         # Detectar inicio de función
         if stripped.startswith("funcion ") or stripped.startswith("estructura "):
             indent_funcion_actual = indent
             lineas_nuevas.append(l)
             continue
-        
+
         # Detectar fin de función (indentación <= indent de función)
         if indent_funcion_actual >= 0 and stripped != "" and indent <= indent_funcion_actual:
             indent_funcion_actual = -1
-        
+
         if indent_funcion_actual >= 0:
             # Dentro de una función
             lineas_nuevas.append(l)
@@ -321,10 +321,10 @@ def _envolver_en_principal(codigo_syq: str) -> str:
         else:
             # Código de nivel superior — mover a función principal
             lineas_fuera.append(l)
-    
+
     if not lineas_fuera:
         return codigo_syq
-    
+
     # Agregar función principal al final
     lineas_nuevas.append("")
     lineas_nuevas.append("funcion principal() -> entero:")
@@ -332,21 +332,21 @@ def _envolver_en_principal(codigo_syq: str) -> str:
         # Mantener indentación relativa
         lineas_nuevas.append("    " + l.strip())
     lineas_nuevas.append("    retornar 0")
-    
+
     # Renombrar funcion main() a _main_py() para evitar conflicto con C main()
     #Debe hacerse DESPUÉS de agregar lineas_fuera
     resultado = "\n".join(lineas_nuevas)
     resultado = resultado.replace('funcion main()', 'funcion _main_py()')
     # Renombrar llamadas main() -> _main_py() en líneas de llamada
     resultado = re.sub(r'^(\s+)main\(\)', r'\1_main_py()', resultado, flags=re.MULTILINE)
-    
+
     return resultado
 
 
 def transpilar_codigo_python(codigo_python: str) -> str:
     """Función principal de transpilación: Python → Syquex."""
     resultado = transpilar_bloque(codigo_python)
-    
+
     # Envolver código de nivel superior en funcion principal()
     resultado = _envolver_en_principal(resultado)
 
@@ -356,11 +356,11 @@ def transpilar_codigo_python(codigo_python: str) -> str:
         imports_necesarios.append("importar std.io")
     if "entero_a_texto" in resultado:
         imports_necesarios.append("externo funcion entero_a_texto(n: entero) -> texto")
-    
+
     # Agregar directiva #lang: es si no existe
     if not resultado.startswith("#lang:"):
         resultado = "#lang: es\n\n" + resultado
-    
+
     # Agregar imports después de #lang
     if imports_necesarios:
         imports_str = "\n".join(imports_necesarios)
@@ -371,11 +371,11 @@ def transpilar_codigo_python(codigo_python: str) -> str:
 
 def transpilar_archivo(ruta_python: str, ruta_syq: Optional[str] = None) -> str:
     """Transpila un archivo Python completo a Syquex.
-    
+
     Args:
         ruta_python: Ruta al archivo Python de entrada
         ruta_syq: Ruta opcional donde guardar el resultado .syq
-    
+
     Returns:
         Código Syquex generado
     """
@@ -386,12 +386,12 @@ def transpilar_archivo(ruta_python: str, ruta_syq: Optional[str] = None) -> str:
         resultado = ""
     else:
         resultado = transpilar_codigo_python(contenido)
-    
+
     # Si se especifica ruta de salida, escribir el archivo
     if ruta_syq is not None:
         with open(ruta_syq, "w", encoding="utf-8") as f:
             f.write(resultado)
-    
+
     return resultado
 
 

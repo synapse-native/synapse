@@ -1,5 +1,5 @@
-﻿// cumple Manual 1 §5: generador de código
-// cumple Manual 8 §4.1: compilador nativo S2
+﻿// cumple Manual 1 5: generador de código
+// cumple Manual 8 4.1: compilador nativo S2
 // ==========================================================
 // frontend_nativo — wrapper del frontend NATIVO (único frontend
 // desde A4). El espejo embebido frontend_p.syn (_P_*) fue

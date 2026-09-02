@@ -2,8 +2,8 @@
 """
 tests/opensyn/test_installer.py — opensyn/installer.syn implementa instalacion.
 Manual 7 §2.3 / Manual 9 §5.2-5.4 / F29. TDD GREEN (ME_29_T5).
-cumple Manual 7 §2.3
-cumple Manual 8 §1.2 (entry point: main.py no pipeline.py)
+cumple Manual 7 2.3
+cumple Manual 8 1.2 (entry point: main.py no pipeline.py)
 """
 import os
 import subprocess
@@ -21,7 +21,7 @@ def _compilar_syq(nombre):
     fuente = os.path.join(RAIZ, nombre)
     nombre_base = os.path.basename(nombre).rsplit('.', 1)[0] + '.exe'
     out = os.path.join(RAIZ, 'tests', 'fixtures', nombre_base)
-    # cumple Manual 8 §1.2: entry point es main.py (cli.py delega a pipeline.ejecutar_compilador)
+    # cumple Manual 8 1.2: entry point es main.py (cli.py delega a pipeline.ejecutar_compilador)
     # pipeline.py no tiene __main__ → debe usarse main.py como entry point
     cmd = [sys.executable, 'main.py', fuente, '--output', out]
     proc = subprocess.run(

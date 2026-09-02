@@ -1,5 +1,5 @@
-// cumple Manual 1 §2: lexer del compilador
-// cumple Manual 8 §4.1: compilador nativo S2
+// cumple Manual 1 2: lexer del compilador
+// cumple Manual 8 4.1: compilador nativo S2
 // salida_metal.c - Generado por Synapse Compilador
 // Lenguaje: Synapse v1.0 (#lang: es)
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"

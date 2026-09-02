@@ -1,19 +1,19 @@
-// cumple Manual 4 §5: validación de componentes
-# opensyn/validation_loop.syn — Bucle de corrección automática (M7 §6.3)
-# Implementa el bucle de hasta 3 intentos para corregir código generado que no compila.
+// cumple Manual 4 5: validaciÃ³n de componentes
+# opensyn/validation_loop.syn Â— Bucle de correcciÃ³n automÃ¡tica (M7 Â§6.3)
+# Implementa el bucle de hasta 3 intentos para corregir cÃ³digo generado que no compila.
 
 importar std.io
 importar std.texto
 
 // ============================================================
-// Constantes del bucle de validación
+// Constantes del bucle de validaciÃ³n
 // ============================================================
 
 constante MAX_INTENTOS = 3
 constante RUTA_FEEDBACK = "~/.opensyn/feedback.jsonl"
 
 // ============================================================
-// Estructura de error de compilación
+// Estructura de error de compilaciÃ³n
 // ============================================================
 
 estructura ErrorCompilacion:
@@ -23,7 +23,7 @@ estructura ErrorCompilacion:
     archivo: texto
 
 // ============================================================
-// Estructura de resultado de validación
+// Estructura de resultado de validaciÃ³n
 // ============================================================
 
 estructura ResultadoValidacion:
@@ -32,7 +32,7 @@ estructura ResultadoValidacion:
     intentos_realizados: entero
 
 // ============================================================
-// Función para validar código con --check (M7 §6.3)
+// FunciÃ³n para validar cÃ³digo con --check (M7 Â§6.3)
 // ============================================================
 
 funcion validar_codigo_con_check(codigo: texto, idioma: texto) -> Resultado<ErrorCompilacion, nulo>:
@@ -56,19 +56,19 @@ funcion validar_codigo_con_check(codigo: texto, idioma: texto) -> Resultado<Erro
         retornar ok(error)
 
 // ============================================================
-// Función para reconstruir prompt con error (M7 §6.3)
+// FunciÃ³n para reconstruir prompt con error (M7 Â§6.3)
 // ============================================================
 
 funcion reconstruir_prompt_con_error(prompt_original: texto, error: ErrorCompilacion) -> texto:
-    let mensaje_error = "El código anterior tiene el siguiente error: " + error.mensaje
-    let ubicacion = " (línea " + entero_a_texto(error.linea) + ", columna " + entero_a_texto(error.columna) + ")"
-    let instruccion_correccion = ". Por favor, corrígelo."
+    let mensaje_error = "El cÃ³digo anterior tiene el siguiente error: " + error.mensaje
+    let ubicacion = " (lÃ­nea " + entero_a_texto(error.linea) + ", columna " + entero_a_texto(error.columna) + ")"
+    let instruccion_correccion = ". Por favor, corrÃ­gelo."
 
     let prompt_correccion = prompt_original + "\n\n" + mensaje_error + ubicacion + instruccion_correccion
     retornar prompt_correccion
 
 // ============================================================
-// Función para guardar feedback humano (M7 §6.3)
+// FunciÃ³n para guardar feedback humano (M7 Â§6.3)
 // ============================================================
 
 funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> booleano:
@@ -85,7 +85,7 @@ funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> boolean
     retornar resultado.es_ok
 
 // ============================================================
-// Función principal del bucle de validación (M7 §6.3)
+// FunciÃ³n principal del bucle de validaciÃ³n (M7 Â§6.3)
 // ============================================================
 
 funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<texto, texto>:
@@ -93,18 +93,18 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<text
     let error_actual = nulo
     let intentos = 0
 
-    // Intento 1: Generación inicial
+    // Intento 1: GeneraciÃ³n inicial
     let codigo_generado = generar_codigo(prompt_inicial)
     codigo_actual = codigo_generado
 
-    // Validar código
+    // Validar cÃ³digo
     let resultado_validacion = validar_codigo_con_check(codigo_generado, idioma)
 
     si resultado_validacion.es_ok:
-        // El código compila
+        // El cÃ³digo compila
         retornar ok(codigo_generado)
 
-    // Código con error, iniciar bucle de corrección
+    // CÃ³digo con error, iniciar bucle de correcciÃ³n
     error_actual = resultado_validacion.valor
     intentos = 1
 
@@ -113,7 +113,7 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<text
         // Reconstruir prompt con error
         let prompt_correccion = reconstruir_prompt_con_error(prompt_inicial, error_actual)
 
-        // Generar nuevo código
+        // Generar nuevo cÃ³digo
         let nuevo_codigo = generar_codigo(prompt_correccion)
         codigo_actual = nuevo_codigo
 
@@ -121,7 +121,7 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<text
         let nueva_validacion = validar_codigo_con_check(nuevo_codigo, idioma)
 
         si nueva_validacion.es_ok:
-            // Éxito
+            // Ã‰xito
             retornar ok(codigo_actual)
 
         // Preparar siguiente intento
@@ -129,8 +129,8 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<text
         intentos = intentos + 1
 
     // Fallo definitivo (3 intentos fallidos)
-    let mensaje_fallo = "No se pudo generar código válido automáticamente. " +
-                       "Intenta ajustar la instrucción o corrige manualmente. " +
+    let mensaje_fallo = "No se pudo generar cÃ³digo vÃ¡lido automÃ¡ticamente. " +
+                       "Intenta ajustar la instrucciÃ³n o corrige manualmente. " +
                        "Errores: " + error_actual.mensaje
 
     // Guardar feedback para mejora futura
@@ -139,41 +139,41 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<text
     retornar err(mensaje_fallo)
 
 // ============================================================
-// Funciones auxiliares (stub para implementación completa)
+// Funciones auxiliares (stub para implementaciÃ³n completa)
 // ============================================================
 
 funcion ejecutar_comando(comando: texto) -> Resultado<{codigo_salida: entero, salida_error: texto}, texto>:
-    // Stub: en implementación real, ejecutar comando del sistema
+    // Stub: en implementaciÃ³n real, ejecutar comando del sistema
     retornar ok({codigo_salida: 0, salida_error: ""})
 
 funcion escribir_archivo(ruta: texto, contenido: texto) -> booleano:
-    // Stub: en implementación real, escribir a archivo
+    // Stub: en implementaciÃ³n real, escribir a archivo
     retornar verdadero
 
 funcion eliminar_archivo(ruta: texto) -> booleano:
-    // Stub: en implementación real, eliminar archivo
+    // Stub: en implementaciÃ³n real, eliminar archivo
     retornar verdadero
 
 funcion crear_directorio_si_no_existe(ruta: texto) -> booleano:
-    // Stub: en implementación real, crear directorio
+    // Stub: en implementaciÃ³n real, crear directorio
     retornar verdadero
 
 funcion agregar_a_archivo(ruta: texto, contenido: texto) -> Resultado<nulo, texto>:
-    // Stub: en implementación real, agregar contenido al archivo
+    // Stub: en implementaciÃ³n real, agregar contenido al archivo
     retornar ok(nulo)
 
 funcion parsear_error_compilacion(salida_error: texto) -> ErrorCompilacion:
-    // Stub: en implementación real, parsear salida del compilador
+    // Stub: en implementaciÃ³n real, parsear salida del compilador
     retornar ErrorCompilacion(linea: 0, columna: 0, mensaje: salida_error, archivo: "")
 
 funcion escape_json(texto: texto) -> texto:
-    // Stub: en implementación real, escape de caracteres especiales JSON
+    // Stub: en implementaciÃ³n real, escape de caracteres especiales JSON
     retornar texto
 
 funcion generar_codigo(prompt: texto) -> texto:
-    // Stub: en implementación real, llamar a OpenSyn para generar código
+    // Stub: en implementaciÃ³n real, llamar a OpenSyn para generar cÃ³digo
     retornar ""
 
 funcion entero_a_texto(numero: entero) -> texto:
-    // Stub: en implementación real, convertir entero a texto
+    // Stub: en implementaciÃ³n real, convertir entero a texto
     retornar "0"

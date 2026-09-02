@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: cache de compilación
+﻿// cumple Manual 6 3: cache de compilación
 // runtime/core/cache.h — nucleo/cache.syn backing: tipos de caché + helpers TOML
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Caché de Compilación Incremental (Manual 5 §11): tipos + externs de nucleo/cache.syn.

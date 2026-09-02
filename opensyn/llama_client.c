@@ -1,7 +1,7 @@
 /*
  * opensyn/llama_client.c - Cliente HTTP para llama-server
  * Manual 7 §2.2: Envio de prompts a /completion con timeouts y reintentos
- * cumple Manual 7 §2.2
+ * cumple Manual 7 2.2
  */
 #include "llama_client.h"
 #include <stdio.h>

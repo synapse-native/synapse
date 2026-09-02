@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "runtime/core/modelo.h"  // ME-SEC-3: tipos públicos para testing
-#include "runtime/core/axon.h"  // cumple Manual 7 §2.5/9 §5.3: _syn_http_get_archivo, _syn_sha256_archivo
+#include "runtime/core/axon.h"  // cumple Manual 7 2.5/9 §5.3: _syn_http_get_archivo, _syn_sha256_archivo
 #ifdef _WIN32
   #include <windows.h>
   #include <direct.h>
@@ -699,7 +699,7 @@ int _syn_vocab_tamano(void* datos_internos) {
             char* end = NULL;
             long v = strtol(idata->metadatos[i].valor, &end, 10);
             return (end && *end == '\0') ? (int)v : 0;
-            // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
+            // cumple Manual 7 3: metadatos GGUF parseados con strtol+endptr
         }
     }
     return 0;
@@ -767,7 +767,7 @@ int _syn_eliminar_archivo(CadenaSegura ruta) {
     return r;
 }
 
-/* cumple Manual 9 §5.4: escribe contenido a un archivo (config.toml) */
+/* cumple Manual 9 5.4: escribe contenido a un archivo (config.toml) */
 int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
     if (ruta.datos == NULL || ruta.longitud <= 0) return -1;
     char* path = (char*)malloc((size_t)(ruta.longitud + 1));
@@ -789,7 +789,7 @@ int _syn_escribir_archivo(CadenaSegura ruta, CadenaSegura contenido) {
 }
 
 /*
- * cumple Manual 7 §2.5 / Manual 9 §5.3: funciones para modelo de descarga.
+ * cumple Manual 7 2.5 / Manual 9 §5.3: funciones para modelo de descarga.
  * _syn_home retorna el directorio home del usuario (~/.
  * _syn_sha256_archivo delegado a axon.c (existe ya).
  * _syn_descargar: descarga URL a destino, verifica hash SHA-256.
@@ -872,7 +872,7 @@ static int _meta_entero(void* datos_internos, const char* clave) {
             char* end = NULL;
             long v = strtol(idata->metadatos[i].valor, &end, 10);
             return (end && *end == '\0') ? (int)v : 0;
-            // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
+            // cumple Manual 7 3: metadatos GGUF parseados con strtol+endptr
         }
     }
     return 0;
@@ -887,7 +887,7 @@ static float _meta_decimal(void* datos_internos, const char* clave, float por_de
             char* end = NULL;
             double v = strtod(idata->metadatos[i].valor, &end);
             return (end && *end == '\0') ? (float)v : por_defecto;
-            // cumple Manual 7 §3: metadatos GGUF parseados con strtod+endptr
+            // cumple Manual 7 3: metadatos GGUF parseados con strtod+endptr
         }
     }
     return por_defecto;
@@ -1033,10 +1033,10 @@ static BpeContext* _bpe_crear_desde_gguf(void* datos_internos) {
         if (id->metadatos[i].clave && id->metadatos[i].valor) {
             if (strcmp(id->metadatos[i].clave, "tokenizer.ggml.bos_id") == 0)
                 { char* _e = NULL; long _v = strtol(id->metadatos[i].valor, &_e, 10); bpe->bos_id = (_e && *_e == '\0') ? (int)_v : 1; }
-                // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
+                // cumple Manual 7 3: metadatos GGUF parseados con strtol+endptr
             else if (strcmp(id->metadatos[i].clave, "tokenizer.ggml.eos_id") == 0)
                 { char* _e = NULL; long _v = strtol(id->metadatos[i].valor, &_e, 10); bpe->eos_id = (_e && *_e == '\0') ? (int)_v : 2; }
-                // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
+                // cumple Manual 7 3: metadatos GGUF parseados con strtol+endptr
         }
     }
 
@@ -1914,7 +1914,7 @@ static int _json_extract_int(const char* json, const char* key) {
     char* end = NULL;
     long v = strtol(start, &end, 10);
     return (end && *end == '\0') ? (int)v : 0;
-    // cumple Manual 7 §3: metadatos GGUF parseados con strtol+endptr
+    // cumple Manual 7 3: metadatos GGUF parseados con strtol+endptr
 }
 
 // Compile Synapse source code and store result in cached state.

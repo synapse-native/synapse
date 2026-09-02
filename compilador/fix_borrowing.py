@@ -7,7 +7,7 @@ Este script se ejecuta DESPUÉS de la compilación S1 para corregir la capa C.
 Deuda pendiente: el compilador S1 debe soportar syntax `&texto` (borrowing)
 para que la corrección sea automática y no requiera post-procesamiento.
 
-cumple Manual 2 §11: borrowing — funciones de solo lectura no destruyen sus argumentos
+cumple Manual 2 11: borrowing — funciones de solo lectura no destruyen sus argumentos
 """
 import re
 import sys

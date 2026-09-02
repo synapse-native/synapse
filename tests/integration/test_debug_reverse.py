@@ -10,7 +10,7 @@ rp_ir_a_pre_error, rp_inspeccionar_variable, rp_pila_llamadas,
 rp_buscar_cambio_variable).
 
 TDD (ME_27_T4): compila y ejecuta test_reversible_debug.c contra runtime/core/debug.c.
-cumple Manual 8 §5.3
+cumple Manual 8 5.3
 """
 import os
 import subprocess

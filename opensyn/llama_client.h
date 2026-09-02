@@ -1,7 +1,7 @@
 /*
  * opensyn/llama_client.h - Cliente HTTP para llama-server
  * Manual 7 §2.2
- * cumple Manual 7 §2.2
+ * cumple Manual 7 2.2
  */
 #ifndef LLAMA_CLIENT_H
 #define LLAMA_CLIENT_H

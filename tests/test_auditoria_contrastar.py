@@ -42,7 +42,7 @@ def test_cubre_req_prefijo():
 
 
 def test_citas_archivo():
-    src = "// cumple Manual 8 §1.2\nfuncion x() {}\n# cumple Manual 2 §8.2\n"
+    src = "// cumple Manual 8 1.2\nfuncion x() {}\n# cumple Manual 2 8.2\n"
     p = os.path.join(tempfile.gettempdir(), "t_citas_contrastar.syn")
     with open(p, "w", encoding="utf-8") as f:
         f.write(src)

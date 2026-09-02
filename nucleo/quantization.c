@@ -1,5 +1,5 @@
-// cumple Manual 1 §5: cuantizacion de modelos
-// cumple Manual 8 §4: toolchain
+// cumple Manual 1 5: cuantizacion de modelos
+// cumple Manual 8 4: toolchain
 // quantization.c — Cuantización de modelos GGUF (FP32/FP16 → INT8/INT4)
 // =========================================================================
 // Implementa la transformación de pesos de alta precisión a formatos

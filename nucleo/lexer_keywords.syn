@@ -1,5 +1,5 @@
-﻿// cumple Manual 1 §2: lexer
-// cumple Manual 8 §4.1: compilador nativo S2
+﻿// cumple Manual 1 2: lexer
+// cumple Manual 8 4.1: compilador nativo S2
 #lang: es
 
 // ============================================================

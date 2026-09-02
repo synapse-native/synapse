@@ -3,7 +3,7 @@
 tests/integration/test_syquex_cert_1.py — Syquex certificado v1.0: conformidad de frontend (Hito 7).
 Manual 3 §3 (certificacion). TDD (ME_28_T1): valida que el frontend Syquex
 (lexer → parser → AST → puente → codegen S1) produce código C válido que compila y ejecuta.
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import os
 import subprocess

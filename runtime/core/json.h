@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: JSON parsing
+﻿// cumple Manual 6 3: JSON parsing
 // runtime/core/json.h — std.json: Deterministic JSON Parser API
 // D-9(d) corte 7: extraído de synapse_rt.c (lines 72-461, byte-identical)
 // Manual 5 §7: std.json (Deserializador Determinista, arquitectura simdjson-style)

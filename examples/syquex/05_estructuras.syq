@@ -1,6 +1,6 @@
 #lang: es
 // 05_estructuras.syq — Structs básicos
-// cumple Manual 2 §2: estructuras
+// cumple Manual 2 2: estructuras
 
 importar std.io
 

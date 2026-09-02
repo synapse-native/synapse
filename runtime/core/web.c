@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §2: web runtime
+﻿// cumple Manual 6 2: web runtime
 // runtime/core/web.c — HTTP server module for Syquex
 // Manual 3 §12.1: lib/web.syq
 // Servidor HTTP básico con winsock2 (Windows) / sockets (POSIX)

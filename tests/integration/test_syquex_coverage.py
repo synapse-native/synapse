@@ -4,7 +4,7 @@ tests/integration/test_syquex_coverage.py — Análisis de cobertura Syquex (FAS
 Manual 3 §3.
 
 Ejecuta pytest-cov una sola vez y valida cobertura de módulos core.
-cumple Manual 3 §3
+cumple Manual 3 3
 """
 import os
 import subprocess

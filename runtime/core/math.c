@@ -1,4 +1,4 @@
-﻿// cumple Manual 6 §3: math runtime
+﻿// cumple Manual 6 3: math runtime
 // runtime/core/math.c — Math module for Syquex standard library
 // Manual 3 §12.1: lib/math.syq — Matemáticas y estadísticas
 // Implements externs: _syn_potencia, _syn_sqrt, _syn_sen, _syn_cos,
