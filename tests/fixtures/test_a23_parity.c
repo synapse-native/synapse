@@ -313,8 +313,6 @@ extern Tensor producto_punto(Tensor a, Tensor b);
 extern Tensor relu(Tensor a);
 extern Tensor reserva(int tamano);
 extern void libera(Tensor bloque);
-extern Tensor suma(Tensor a, Tensor b);
-extern Tensor producto(Tensor a, Tensor b);
 extern int64_t texto_a_entero(CadenaSegura str);
 extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
@@ -557,8 +555,8 @@ int main(int argc, char** argv) {
     _g_argv = argv;
     pool_init(POOL_BLOQUES, TAMANO_BLOQUE);
     _principal_impl();
+    pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)
     synapse_esperar_hilos();
     synapse_esperar_fibras();
-    pool_destroy();
     return 0;
 }
