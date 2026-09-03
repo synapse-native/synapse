@@ -16,7 +16,7 @@
 // PATH TRAVERSAL PROTECTION — std.sistema helpers
 // ============================================================
 
-int str_eq(CadenaSegura a, CadenaSegura b) {
+int64_t str_eq(CadenaSegura a, CadenaSegura b) {
     if (a.longitud != b.longitud) return 0;
     return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
 }

@@ -889,7 +889,7 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "double texto_a_decimal(CadenaSegura str)",
             "CadenaSegura decimal_a_texto(double n)",
             "CadenaSegura entero_a_texto(int64_t n)",
-            "int str_eq(CadenaSegura a, CadenaSegura b)",
+            "int64_t str_eq(CadenaSegura a, CadenaSegura b)",
             "CadenaSegura concat(CadenaSegura a, CadenaSegura b)",
             "void synapse_lanzar_hilo(void* (*fn)(void*), void* arg)",
             "void synapse_esperar_hilos(void)",

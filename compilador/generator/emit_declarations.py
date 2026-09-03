@@ -622,6 +622,9 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
+        # Fix: Canal es struct, no int — 0 debe ser {0} (Manual 4 §6)
+        if ret_tipo_c == "Canal" and ret_expr.strip() in ("0", "0LL", "0ll"):
+            ret_expr = "{0}"
         ctx.write_line(f"{ret_tipo_c} _resultado_ = {ret_expr};")
         # Garantiza asserts deshabilitados en S1 (redundantes con runtime)
         ctx._garantizas_actuales = []
@@ -639,9 +642,16 @@ def visitar_retornar(ctx: GeneratorContext, nodo: SentenciaRetornar):
         ret_tipo_syn = ctx._current_func_return_type  # Use declared return type
         ret_tipo_c = ctx.traducir_tipo_c(ret_tipo_syn)  # C type for output
         ret_expr = expr_a_c(ctx, nodo.expr)
+        # Fix: Canal struct no se puede retornar como 0LL
+        if ret_tipo_c == "Canal" and ret_expr.strip() in ("0", "0LL", "0ll"):
+            ret_expr = "(Canal){0}"
         if nodo.es_transferencia:
             temp = f"_ret_{nodo.linea or 0}"
-            ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
+            # Fix Canal en transferencia también
+            if ret_tipo_c == "Canal" and ret_expr.strip() == "(Canal){0}":
+                ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
+            else:
+                ctx.write_line(f"{ret_tipo_c} {temp} = {ret_expr};")
             ctx.emit_all_destructors(exclude_var=excl)
             ctx.write_line(f"return ->{temp};")
         else:

@@ -8,7 +8,7 @@
 
 #include "synapse_rt_types.h"
 
-int str_eq(CadenaSegura a, CadenaSegura b);
+int64_t str_eq(CadenaSegura a, CadenaSegura b);
 CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
 CadenaSegura _syn_obtener_cwd(void);
