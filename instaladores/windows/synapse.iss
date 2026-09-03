@@ -125,7 +125,7 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 ; cumple Manual 9 §2.5: post-install hooks
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden waituntilterminated; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
 Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Instalando OpenSyn..."; Flags: runminimized waituntilterminated
-Filename: "code"; Parameters: "--install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')) and VSCodeInPath(); Description: "Instalar extensión VS Code"; Flags: runminimized waituntilterminated postinstall
+Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extensión VS Code"; Flags: runhidden waituntilterminated postinstall
 
 [Registry]
 ; cumple Manual 9 §2.5: PATH en HKCU
@@ -141,18 +141,21 @@ var
 {------------------------------------------------------------------------------}
 { FUNCIÓN AUXILIAR: Instalación de extensión VS Code (Manual 9 §2.5) }
 {------------------------------------------------------------------------------}
+
 function FindVSCodePath(): String;
-var
-  ExitCode: Longint;
 begin
   Result := '';
-  // Buscar code.exe en PATH usando Exec
-  if Exec('where', 'code', '', 0, ewWaitUntilTerminated, ExitCode) then
-    Result := 'code';
+  // Buscar code.exe en rutas comunes (no dependemos de 'where' que no captura output)
+  if FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe')) then
+    Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
+  if Result = '' then
+    Result := ExpandConstant('{autopf}\Microsoft VS Code\Code.exe');
   if Result = '' then begin
-    if FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe')) then
+    // Buscar en ruta de usuario de VS Code
+    Result := ExpandConstant('{localappdata}\Microsoft\vscode\Code.exe');
+    if not FileExists(Result) then
       Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
-    if Result = '' then
+    if not FileExists(Result) then
       Result := ExpandConstant('{autopf}\Microsoft VS Code\Code.exe');
   end;
 end;
@@ -165,19 +168,6 @@ end;
 {------------------------------------------------------------------------------}
 { CARGA DE LICENCIA BILINGÜE (Manual 9 §2.5) }
 {------------------------------------------------------------------------------}
-procedure InitializeWizard();
-var
-  LicensePath: String;
-  LicenseText: AnsiString;
-begin
-  if ActiveLanguage = 'spanish' then
-    LicensePath := ExpandConstant('{src}\..\..\LICENSE.es')
-  else
-    LicensePath := ExpandConstant('{src}\..\..\LICENSE');
-  if LoadStringFromFile(LicensePath, LicenseText) then
-    WizardForm.LicenseMemo.Lines.Text := String(LicenseText);
-end;
-
 procedure InstallVSCodeExtension();
 var
   VSCodePath, VSIXPath, Params: String;
