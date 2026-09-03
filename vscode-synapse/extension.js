@@ -60,10 +60,24 @@ const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/re
 // ---------------------------------------------------------------------------
 
 async function _asegurar_binario_lsp(salida) {
+    // Minimum file size for synapse_lsp.exe (too small = wrong binary, e.g. old lsp_v3)
+    const MIN_LSP_SIZE = 1_500_000; // ~1.5 MB
+
+    function _validar_binario(candidate, label) {
+        try {
+            const stat = fs.statSync(candidate);
+            if (stat.size < MIN_LSP_SIZE) {
+                salida.appendLine(`[Synapse] ${label} demasiado pequeño (${stat.size} bytes < ${MIN_LSP_SIZE}), descartando`);
+                return false;
+            }
+            return true;
+        } catch { return false; }
+    }
+
     // 1. Buscar en rutas de instalación estándar (Program Files, C:\Synapse, LocalAppData)
     for (const dir of SYNAPSE_INSTALL_DIRS) {
         const lspCandidate = path.join(dir, 'bin', 'synapse_lsp.exe');
-        if (fs.existsSync(lspCandidate)) {
+        if (fs.existsSync(lspCandidate) && _validar_binario(lspCandidate, lspCandidate)) {
             salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${lspCandidate}`);
             return lspCandidate;
         }
@@ -79,7 +93,7 @@ async function _asegurar_binario_lsp(salida) {
     for (const entry of pathEntries) {
         for (const exe of ['synapse_lsp.exe', 'synapse.exe', 'synapse']) {
             const candidate = path.join(entry, exe);
-            if (fs.existsSync(candidate)) {
+            if (fs.existsSync(candidate) && (exe !== 'synapse_lsp.exe' || _validar_binario(candidate, exe))) {
                 salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
                 return candidate;
             }
@@ -90,12 +104,13 @@ async function _asegurar_binario_lsp(salida) {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath;
     if (workspaceRoot) {
         const candidates = [
+            path.join(workspaceRoot, 'dist', 'bin', 'synapse_lsp.exe'),
             path.join(workspaceRoot, 'test_lsp_bin.exe'),
             path.join(workspaceRoot, 'nucleo', 'lsp_test.exe'),
             path.join(workspaceRoot, 'build', 'bin', 'synapse_lsp.exe'),
         ];
         for (const c of candidates) {
-            if (fs.existsSync(c)) {
+            if (fs.existsSync(c) && _validar_binario(c, path.basename(c))) {
                 salida.appendLine(`[Synapse] Binario LSP encontrado en workspace: ${c}`);
                 return c;
             }
