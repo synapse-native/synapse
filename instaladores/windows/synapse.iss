@@ -123,6 +123,9 @@ Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.h"; DestDir: "{app}/src"; Co
 Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.c"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\nucleo\llama_client.h"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\nucleo\llama_client.c"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
+; Licencias embebidas para InitializeWizard bilingüe (no dependen de {src} en runtime)
+Source: "{#SourcePath}\..\..\LICENSE"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "{#SourcePath}\..\..\LICENSE.es"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Components: synapse
@@ -135,7 +138,7 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 ; Flags: nowait para instalacion silenciosa no-bloqueante
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
 Filename: "{app}\bin\{#MyAppExeName}"; Parameters: """{app}\opensyn\installer.syn"""; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); Description: "Configurar OpenSyn (hardware)"; Flags: runhidden nowait postinstall; StatusMsg: "Configurando OpenSyn..."
-Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extension VS Code"; Flags: runhidden nowait postinstall
+; VS Code se instala solo vía CurStepChanged.InstallVSCodeExtension (no abre ventana)
 
 [Registry]
 ; cumple Manual 9 §2.5: PATH en HKCU (con ChangesEnvironment=yes difunde WM_SETTINGCHANGE)
@@ -399,16 +402,32 @@ var
   LicenseFile: String;
   LicenseText: AnsiString;
 begin
-  // Manual 9 §2.5: licencia bilingüe según idioma elegido (LICENSE vs LICENSE.es)
-  if ActiveLanguage = 'spanish' then
-    LicenseFile := ExpandConstant('{src}\..\..\LICENSE.es')
-  else
-    LicenseFile := ExpandConstant('{src}\..\..\LICENSE');
-  if FileExists(LicenseFile) then begin
-    if LoadStringFromFile(LicenseFile, LicenseText) then begin
-      WizardForm.LicenseMemo.Lines.Text := LicenseText;
+  // Manual 9 §2.5: licencia bilingüe embebida vía ExtractTemporaryFile
+  try
+    if ActiveLanguage = 'spanish' then begin
+      ExtractTemporaryFile('LICENSE.es');
+      LicenseFile := ExpandConstant('{tmp}\LICENSE.es');
+    end else begin
+      ExtractTemporaryFile('LICENSE');
+      LicenseFile := ExpandConstant('{tmp}\LICENSE');
     end;
+    if FileExists(LicenseFile) then begin
+      if LoadStringFromFile(LicenseFile, LicenseText) then begin
+        WizardForm.LicenseMemo.Lines.Text := LicenseText;
+      end;
+    end;
+  except
+    Log('InitializeWizard: no se pudo cargar licencia bilingüe');
   end;
+  // Mensaje final claro para UX: qué se instaló y que hacer después
+  WizardForm.FinishedLabel.Caption :=
+    'Synapse se instaló correctamente.' + #13#10#13#10 +
+    '• Synapse (compilador) + Syquex (lib) + OpenSyn (IA) según tu selección' + #13#10 +
+    '• VS Code extension instalada (si la marcaste)' + #13#10 +
+    '• PATH actualizado: abre una NUEVA terminal y escribe "synapse" o "opensyn status"' + #13#10#13#10 +
+    'Si elegiste OpenSyn, se descargó el modelo recomendado para tu VRAM.' + #13#10 +
+    'Reinicia VS Code si lo tenías abierto.';
+  WizardForm.FinishedHeadingLabel.Caption := '¡Instalación completada!';
 end;
 
 {------------------------------------------------------------------------------}
