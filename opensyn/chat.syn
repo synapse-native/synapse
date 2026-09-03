@@ -1,0 +1,67 @@
+#lang: es
+// opensyn/chat.syn — Agente IA conversacional (Manual 7 §6)
+// cumple Manual 7 §6: Instalacion y configuracion de OpenSyn
+// cumple Manual 7 §8: Ejemplo completo de flujo de IA
+// Funciona como agente local equivalente a OpenCode/Kilo
+
+importar std.oraculo
+importar std.sistema
+importar std.io
+importar std.procesos
+
+estructura MensajeChat:
+    rol: texto
+    contenido: texto
+
+funcion leer_contexto_workspace(ruta: texto) -> lista_texto:
+    archivos = []
+    intentar:
+        entradas = listar_directorio(ruta, recursivo=verdadero)
+        para cada entrada en entradas:
+            si entrada.es_archivo y entrada.extension in [".syn", ".syq", ".c", ".py", ".md"]:
+                contenido = leer_archivo(entrada.ruta)
+                archivos.aniadir(entrada.ruta + ":\n" + contenido)
+    except:
+        // Ignorar errores de lectura
+    retornar archivos
+
+funcion loop_chat(modelo: texto, args: lista_texto):
+    escribir_linea("=== OpenSyn Agent (modelo: " + modelo + ") ===")
+    escribir_linea("Escribe 'salir' para terminar, 'archivos' para ver contexto")
+    escribir_linea("")
+
+    contexto = leer_contexto_workspace(".")
+    mensajes = []
+
+    mientras verdadero:
+        prompt = leer_linea("> ")
+
+        si prompt == "": continuar
+
+        si prompt == "salir":
+            escribir_linea("Hasta luego!")
+            romper
+
+        si prompt == "archivos":
+            para cada f en contexto:
+                escribir_linea("  " + f.ruta)
+            continuar
+
+        // Enviar prompt + contexto al oraculo local
+        respuesta = oraculo_consultar(prompt, contexto, modelo)
+        escribir_linea(respuesta)
+
+// cumple Manual 7 §6: punto de entrada con deteccion de modelo
+funcion main_chat(args: lista_texto):
+    modelo = "llama-3.2-1b-instruct.Q4_K_M.gguf"
+    si args.tamano > 0:
+        modelo = args[0]
+
+    // Verificar modelo disponible
+    si no archivo_existe(modelo):
+        escribir_linea("Modelo no encontrado: " + modelo)
+        escribir_linea("Use: opensyn download-model")
+        retornar 1
+
+    loop_chat(modelo, args)
+    retornar 0

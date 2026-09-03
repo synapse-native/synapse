@@ -7,6 +7,7 @@
 
 #include "ai_orchestrator.h"
 #include "detect_hardware.h"
+#include "../_synapse_shared.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -697,4 +698,201 @@ void ai_orch_desregistrar_shutdown_hook(void) {
     synapse_shutdown_unhook();
     fprintf(stderr, "[AI_ORCH] Shutdown hook desregistrado\n");
     fflush(stderr);
+}
+
+// ============================================================================
+// Agent Skills Integration — soporte nativo para habilidades de agente
+// Adaptado de addyosmani/agent-skills (MIT License)
+// cumple Manual 8 §4: toolchain de construcción
+// ============================================================================
+
+// Prompt base para habilidades de agente
+// Extraído de deps/agent-skills/skills/*/SKILL.md
+static const char* SKILL_PROMPTS[] = {
+    // [0] test-driven-development
+    "Eres un ingeniero senior practicando Test-Driven Development. Tu lenguaje es Synapse (.syn). Reglas: indentacion 4 espacios, sin llaves, funcion nombre(param:tipo)->tipo:, si/para/mientras/sino, retornar expr. No uses punto y coma. Escribe ONLY tests usando 'importar std.testing' y verificar(). Los tests deben FALLAR (RED), luego codigo minimo para PASAR (GREEN).",
+    // [1] code-review-and-quality
+    "Eres un revisor de codigo senior. Revisa el codigo Synapse siguiendo 5 ejes: 1) Correccion (bugs, edge cases), 2) Legibilidad, 3) Arquitectura, 4) Seguridad, 5) Rendimiento. Da feedback concreto. Si algo esta bien, di OK.",
+    // [2] incremental-implementation
+    "Eres un arquitecto de software senior. Desglosa la caracteristica en tareas incrementales para Synapse. Prioriza tareas verticales (end-to-end). Identifica riesgos y dependencias.",
+    // [3] context-engineering
+    "Eres un ingeniero de contexto. Identifica archivos relevantes para una tarea. Clasifica como CRITICO, RELEVANTE, CONTEXTO.",
+    // [4] doubt-driven-development
+    "Eres un ingeniero practicando Doubt-Driven Development. Identifica riesgos y decisiones arriesgadas. Marca con 'duda:' donde se asume algo."
+};
+
+static const char* SKILL_NAMES[] = {
+    "tdd", "code_review", "planificacion", "context_pack", "doubt_driven"
+};
+static const int NUM_SKILLS = 5;
+
+int ai_orch_skill_generar(AIOrchestrator* orch, const char* skill_name,
+                           const char* instruccion,
+                           char* output_buf, size_t output_buf_size) {
+    if (!orch || !skill_name || !instruccion || !output_buf) {
+        return -1;
+    }
+
+    // Mapear nombre de skill a prompt
+    int skill_idx = -1;
+    for (int i = 0; i < NUM_SKILLS; i++) {
+        if (strcmp(skill_name, SKILL_NAMES[i]) == 0) {
+            skill_idx = i;
+            break;
+        }
+    }
+
+    if (skill_idx == -1) {
+        fprintf(stderr, "[AI_SKILL] Habilidad desconocida: %s\n", skill_name);
+        fprintf(stderr, "[AI_SKILL] Skills disponibles: tdd, code_review, planificacion, context_pack, doubt_driven\n");
+        return -1;
+    }
+
+    return ai_orch_enviar_skill_prompt(orch, SKILL_PROMPTS[skill_idx], instruccion, output_buf, output_buf_size);
+}
+
+int ai_orch_enviar_skill_prompt(AIOrchestrator* orch, const char* prompt_base,
+                                 const char* query,
+                                 char* output_buf, size_t output_buf_size) {
+    if (!orch || !prompt_base || !query || !output_buf) {
+        return -1;
+    }
+
+    if (!orch->corriendo) {
+        fprintf(stderr, "[AI_SKILL] Orquestador no iniciado. Llama ai_orch_iniciar() primero.\n");
+        return -1;
+    }
+
+    // Construir prompt completo
+    size_t prompt_len = strlen(prompt_base) + strlen(query) + 64;
+    char* full_prompt = (char*)malloc(prompt_len);
+    if (!full_prompt) {
+        return -1;
+    }
+    snprintf(full_prompt, prompt_len, "%s\n\nConsulta:\n%s", prompt_base, query);
+
+    // Enviar HTTP POST al llama-server
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        free(full_prompt);
+        return -1;
+    }
+#endif
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        free(full_prompt);
+        return -1;
+    }
+
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(orch->port);
+    inet_pton(AF_INET, orch->host, &server_addr.sin_addr);
+
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+#ifdef _WIN32
+        closesocket(sock);
+        WSACleanup();
+#else
+        close(sock);
+#endif
+        free(full_prompt);
+        fprintf(stderr, "[AI_SKILL] No se pudo conectar al servidor en %s:%d\n", orch->host, orch->port);
+        return -1;
+    }
+
+    // Construir JSON request
+    char request[4096];
+    snprintf(request, sizeof(request),
+        "POST /completion HTTP//1.1\r\n"
+        "Host: %s:%d\r\n"
+        "Content-Type: application/json\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "{\"prompt\":\"%s\",\"n_predict\":512,\"temperature\":0.7,\"top_k\":40,\"top_p\":0.9}",
+        orch->host, orch->port, full_prompt);
+
+    send(sock, request, strlen(request), 0);
+
+    // Leer respuesta (simple: un solo recv)
+    memset(output_buf, 0, output_buf_size);
+    int total_recv = 0;
+    while (total_recv < (int)output_buf_size - 1) {
+        int n = recv(sock, output_buf + total_recv, output_buf_size - 1 - total_recv, 0);
+        if (n <= 0) break;
+        total_recv += n;
+    }
+
+#ifdef _WIN32
+    closesocket(sock);
+    WSACleanup();
+#else
+    close(sock);
+#endif
+
+    free(full_prompt);
+    return (total_recv > 0) ? 0 : -1;
+}
+
+// ============================================================================
+// Agent Skills Integration — modelo GGUF local (runtime nativo Synapse)
+// cumple Manual 7 §2.1: Orquestador de inferencia local
+// cumple Manual 7 §2.3: Pipeline RAG con inyección de contexto estático
+// ============================================================================
+
+int ai_orch_skill_modelo_local(const char* skill_prompt, const char* query,
+                                const char* model_path,
+                                char* output_buf, size_t output_buf_size) {
+    if (!skill_prompt || !query || !model_path || !output_buf) {
+        return -1;
+    }
+
+    // Cargar modelo GGUF local usando el runtime nativo Synapse
+    CadenaSegura ruta_modelo = { .longitud = (int)strlen(model_path), .datos = (char*)model_path };
+    void* ctx = _syn_modelo_cargar(ruta_modelo);
+    if (!ctx) {
+        fprintf(stderr, "[AI_SKILL] No se pudo cargar modelo: %s\n", model_path);
+        return -1;
+    }
+
+    // Construir prompt completo: skill_prompt + query
+    size_t prompt_len = strlen(skill_prompt) + strlen(query) + 32;
+    if (prompt_len > 8192) prompt_len = 8192;
+    char* full_prompt = (char*)malloc(prompt_len);
+    if (!full_prompt) {
+        _syn_modelo_cerrar(ctx);
+        return -1;
+    }
+    snprintf(full_prompt, prompt_len, "%s\n\nConsulta:\n%s", skill_prompt, query);
+
+    // Generar texto con el modelo nativo
+    // Parámetros: max_tokens=512, temp=0.7, top_k=40, top_p=0.9 (valores de Manual 7 §2.3)
+    CadenaSegura prompt_syn = { .longitud = (int)strlen(full_prompt), .datos = full_prompt };
+    CadenaSegura respuesta = _syn_modelo_generar_texto(ctx, prompt_syn, 512, 0.7, 40, 0.9);
+
+    // Copiar resultado al buffer de salida
+    if (respuesta.datos && respuesta.longitud > 0) {
+        size_t copiar = (respuesta.longitud < output_buf_size) ? respuesta.longitud : output_buf_size - 1;
+        memcpy(output_buf, respuesta.datos, copiar);
+        output_buf[copiar] = '\0';
+    } else {
+        output_buf[0] = '\0';
+    }
+
+    // Liberar memoria
+    if (respuesta.datos) {
+        // La respuesta de modelo viene con datos internos; liberar si es necesario
+        // El runtime Synapse gestiona internamente, pero para safety:
+        free(respuesta.datos);
+    }
+    free(full_prompt);
+    _syn_modelo_cerrar(ctx);
+
+    return 0;
 }

@@ -117,6 +117,37 @@ void synapse_shutdown_hook(void);
 // Desregistra el hook de shutdown (para pruebas)
 void synapse_shutdown_unhook(void);
 
+// ============================================================================
+// Agent Skills Integration — soporte nativo para habilidades de agente
+// Adaptado de addyosmani/agent-skills (MIT License)
+// ============================================================================
+
+// Inicia el proceso de generación con una habilidad específica
+// skill_name: "tdd", "code_review", "planificacion", "context_pack", "doubt_driven"
+// instruccion: texto con la tarea o código a procesar
+// Retorna 0 en éxito, -1 en error
+int ai_orch_skill_generar(AIOrchestrator* orch, const char* skill_name, const char* instruccion, char* output_buf, size_t output_buf_size);
+
+// Envía un prompt al servidor llama con la habilidad especificada
+// prompt_base: el SYSTEM_PROMPT de la habilidad
+// query: la instrucción o código del usuario
+// Retorna 0 en éxito, -1 en error
+int ai_orch_enviar_skill_prompt(AIOrchestrator* orch, const char* prompt_base, const char* query, char* output_buf, size_t output_buf_size);
+
+// Genera texto usando un modelo GGUF local (runtime nativo Synapse)
+// A diferencia de ai_orch_enviar_skill_prompt, usa el modelo cargado directamente
+// por _syn_modelo_cargar, sin necesidad de llama-server.exe externo
+// skill_prompt: el SYSTEM_PROMPT de la habilidad (de std/agent_skills.syn)
+// query: la instrucción o código del usuario
+// model_path: ruta al archivo .gguf
+// output_buf: buffer para el resultado
+// output_buf_size: tamaño del buffer
+// Retorna 0 en éxito, -1 en error
+// cumple Manual 7 §6: integracion de agent-skills con runtime nativo
+int ai_orch_skill_modelo_local(const char* skill_prompt, const char* query,
+                                const char* model_path,
+                                char* output_buf, size_t output_buf_size);
+
 #ifdef __cplusplus
 }
 #endif

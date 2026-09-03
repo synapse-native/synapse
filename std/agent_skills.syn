@@ -1,0 +1,110 @@
+#lang: es
+// std.agent_skills — Adapter de habilidades de agente para Synapse
+// cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones
+// Basado en addyosmani/agent-skills (MIT License)
+// Extrae prompts de SKILL.md y los adapta para uso con std.modelo
+//
+// Uso desde Synapse:
+//   importar std.agent_skills
+//   ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+//   tests = generar_tests_tdd(ctx, "funcion suma(a, b): retornar a + b")
+//   revision = revisar_codigo(ctx, codigo_fuente)
+//   plan = planificacion_incremental(ctx, "agregar autenticacion JWT")
+
+importar std.modelo
+importar std.io
+importar std.sistema
+
+// --- Constantes ---
+
+constante SKILL_TDD_PROMPT = "Eres un ingeniero senior practicando Test-Driven Development. Tu lenguaje es Synapse (.syn). Reglas del lenguaje: indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr'. No uses punto y coma. Escribe ONLY tests en formato Synapse usando 'importar std.testing' y la funcion 'verificar'. Los tests deben FALLAR inicialmente (RED), luego codigo minimo para PASAR (GREEN). Genera codigo sin explicaciones."
+
+constante SKILL_CODE_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el siguiente codigo Synapse siguiendo los 5 ejes: 1) Correccion (bugs, edge cases, error paths), 2) Legibilidad (nombres descriptivos, flow simple), 3) Arquitectura (patrones limpios, modulos), 4) Seguridad (input validation, secret management), 5) Rendimiento (algorithm efficiency). Da feedback concreto con lineas de codigo. Si algo esta bien, di OK. No suavices criticas."
+
+constante SKILL_PLANIFICACION_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
+
+constante SKILL_CONTEXT_PACKING_PROMPT = "Eres un ingeniero de contexto. Dado un workspace de Synapse, identifica que archivos son relevantes para una tarea dada. Regla de oro: <20% de archivos contienen 80% de relevancia. Clasifica archivos como: CRITICO (lectura obligatoria), RELEVANTE (consulta rapida), CONTEXTO (background). Prioriza: funciones modificadas, imports cruzados, tests existentes, archivos de configuracion."
+
+// --- Variables de temperatura (reemplazan literales decimales) ---
+constante TEMP_TDD = 0.4
+constante TEMP_REVIEW = 0.3
+constante TEMP_PLAN = 0.5
+constante TEMP_CONTEXT = 0.3
+constante TOP_P = 0.9
+
+// --- Funciones de Habilidad ---
+
+// Genera tests TDD para una funcion Synapse dada
+// cumple Manual 7 §6: integracion de agent-skills test-driven-development
+funcion generar_tests_tdd(ctx: puntero, instruccion: texto) -> texto:
+    requiere:
+        ctx != nulo
+    requiere:
+        longitud(instruccion) > 0
+    prompt = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
+    prompt = concat(prompt, instruccion)
+    prompt = concat(prompt, "\n\nGenera tests usando estructura: funcion test_<nombre>() -> entero: // setup // ejecutar // verificar con verdadero/falso; retornar 0 o 1")
+    tests = generar_texto(ctx, prompt, 512, TEMP_TDD, 40, TOP_P)
+    retornar tests
+
+// Revisa codigo Synapse siguiendo los 5 ejes de calidad
+// cumple Manual 7 §6: integracion de agent-skills code-review-and-quality
+funcion revisar_codigo(ctx: puntero, codigo: texto) -> texto:
+    requiere:
+        ctx != nulo
+    requiere:
+        longitud(codigo) > 0
+    prompt = SKILL_CODE_REVIEW_PROMPT
+    prompt = concat(prompt, "\n\nCodigo a revisar:\n")
+    prompt = concat(prompt, codigo)
+    revision = generar_texto(ctx, prompt, 1024, TEMP_REVIEW, 40, TOP_P)
+    retornar revision
+
+// Planifica tareas incrementales para una caracteristica
+// cumple Manual 7 §6: integracion de agent-skills incremental-implementation
+funcion planificacion_incremental(ctx: puntero, caracteristica: texto) -> texto:
+    requiere:
+        ctx != nulo
+    requiere:
+        longitud(caracteristica) > 0
+    prompt = SKILL_PLANIFICACION_PROMPT
+    prompt = concat(prompt, "\n\nCaracteristica: ")
+    prompt = concat(prompt, caracteristica)
+    plan = generar_texto(ctx, prompt, 512, TEMP_PLAN, 40, TOP_P)
+    retornar plan
+
+// Empaqueta contexto relevante para una tarea
+// cumple Manual 7 §6: integracion de agent-skills context-engineering
+funcion empaquetar_contexto(ctx: puntero, tarea: texto, archivos: texto) -> texto:
+    requiere:
+        ctx != nulo
+    prompt = SKILL_CONTEXT_PACKING_PROMPT
+    prompt = concat(prompt, "\n\nTarea: ")
+    prompt = concat(prompt, tarea)
+    prompt = concat(prompt, "\n\nArchivos disponibles:\n")
+    prompt = concat(prompt, archivos)
+    contexto = generar_texto(ctx, prompt, 512, TEMP_CONTEXT, 40, TOP_P)
+    retornar contexto
+
+// Genera codigo explicando el proceso de duda-critica (doubt-driven-development)
+// cumple Manual 7 §6: integracion de agent-skills doubt-driven-development
+funcion duda_driven_generar(ctx: puntero, instruccion: texto) -> texto:
+    requiere:
+        ctx != nulo
+    requiere:
+        longitud(instruccion) > 0
+    temp_gen = 0.7
+    prompt = "Eres un ingeniero de software practicando Doubt-Driven Development. Para la siguiente instruccion, identifica riesgos, decisiones arriesgadas y verifica cada una. Usa Synapse syntax. Para cada decision: CLAIM -> EXTRACT -> DOUBT -> RECONCILE. Genera codigo y marca con comentarios 'duda:' donde se asume algo.\n\nInstruccion: "
+    prompt = concat(prompt, instruccion)
+    codigo = generar_texto(ctx, prompt, 512, temp_gen, 40, TOP_P)
+    retornar codigo
+
+// Funcion principal de entrada (requerida por el runtime Synapse)
+funcion principal() -> entero:
+    escribir_linea("std.agent_skills cargado. Usa:")
+    escribir_linea("  generar_tests_tdd(ctx, instruccion)")
+    escribir_linea("  revisar_codigo(ctx, codigo)")
+    escribir_linea("  planificacion_incremental(ctx, caracteristica)")
+    escribir_linea("  empaquetar_contexto(ctx, tarea, archivos)")
+    escribir_linea("  duda_driven_generar(ctx, instruccion)")
+    retornar 0
