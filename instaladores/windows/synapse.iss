@@ -24,7 +24,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\Synapse
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile={#SourcePath}..\..\LICENSE
+LicenseFile={#SourcePath}\..\..\LICENSE
 OutputDir={#SourcePath}\..\..\dist
 OutputBaseFilename=Synapse-{#MyAppVersion}-Windows-x64
 Compression=lzma2
@@ -33,6 +33,9 @@ PrivilegesRequired=admin
  ArchitecturesInstallIn64BitMode=x64
  ArchitecturesAllowed=x64
 WizardStyle=modern
+WizardImageFile={#SourcePath}\..\..\Logo-Synapse_wizard.bmp
+WizardSmallImageFile={#SourcePath}\..\..\Logo-Syquex_wizard.bmp
+SetupIconFile={#SourcePath}\..\..\Logo-Synapse.ico
 UninstallDisplayIcon={app}\bin\{#MyAppExeName}
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 VersionInfoVersion=8.1.0.0
@@ -48,6 +51,8 @@ english.welcome_title=Welcome to Synapse Language Installer
 english.welcome_subtitle=Installs Synapse compiler, runtime, and standard library.
 english.setup_type_full=Ecosistema completo (Synapse + Syquex + OpenSyn)
 english.setup_type_minimal=Solo Synapse (lenguaje de sistemas)
+english.setup_type_synapse_only=Solo Synapse (compilador, runtime, std)
+english.setup_type_syquex_only=Solo Syquex (lenguaje de alto nivel)
 english.setup_type_synapse=Synapse (compilador, runtime, std)
 english.setup_type_syquex=Syquex (lenguaje de alto nivel)
 english.setup_type_opensyn=OpenSyn (asistente IA local)
@@ -60,6 +65,8 @@ spanish.welcome_title=Bienvenido al instalador de Synapse Language
 spanish.welcome_subtitle=Instala el compilador, runtime y biblioteca estándar de Synapse.
 spanish.setup_type_full=Ecosistema completo (Synapse + Syquex + OpenSyn)
 spanish.setup_type_minimal=Solo Synapse (lenguaje de sistemas)
+spanish.setup_type_synapse_only=Solo Synapse (compilador, runtime, std)
+spanish.setup_type_syquex_only=Solo Syquex (lenguaje de alto nivel)
 spanish.setup_type_synapse=Synapse (compilador, runtime, std)
 spanish.setup_type_syquex=Syquex (lenguaje de alto nivel)
 spanish.setup_type_opensyn=OpenSyn (asistente IA local)
@@ -68,15 +75,18 @@ spanish.installing=Instalando...
 spanish.finish_title=Instalación completada
 spanish.finish_subtitle=Synapse Language se ha instalado correctamente.
 
+
 [Types]
-; cumple Manual 9 §2.5: tipos full/minimal (descripción bilingüe)
+; cumple Manual 9 §2.5: tipos de instalación configurables
 Name: "full"; Description: "{cm:setup_type_full}"
 Name: "minimal"; Description: "{cm:setup_type_minimal}"
+Name: "synapse_only"; Description: "{cm:setup_type_synapse_only}"
+Name: "syquex_only"; Description: "{cm:setup_type_syquex_only}"
 
 [Components]
 ; cumple Manual 9 §2.5: componentes alineados al manual
-Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full minimal; Flags: fixed
-Name: "syquex"; Description: "{cm:setup_type_syquex}"; Types: full
+Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full minimal synapse_only; Flags: fixed
+Name: "syquex"; Description: "{cm:setup_type_syquex}"; Types: full syquex_only
 Name: "opensyn"; Description: "{cm:setup_type_opensyn}"; Types: full
 Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full minimal
 
@@ -114,8 +124,8 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 [Run]
 ; cumple Manual 9 §2.5: post-install hooks
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden waituntilterminated; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
-Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; StatusMsg: "Instalando OpenSyn..."
-Filename: "code"; Parameters: "--install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; StatusMsg: "Instalando extensión VS Code..."
+Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Instalando OpenSyn..."; Flags: runminimized waituntilterminated
+Filename: "code"; Parameters: "--install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')) and VSCodeInPath(); Description: "Instalar extensión VS Code"; Flags: runminimized waituntilterminated postinstall
 
 [Registry]
 ; cumple Manual 9 §2.5: PATH en HKCU
@@ -127,6 +137,66 @@ var
   DownloadPage: TWizardPage;
   ProgressBar: TNewProgressBar;
   StatusLabel: TNewStaticText;
+
+{------------------------------------------------------------------------------}
+{ FUNCIÓN AUXILIAR: Instalación de extensión VS Code (Manual 9 §2.5) }
+{------------------------------------------------------------------------------}
+function FindVSCodePath(): String;
+var
+  ExitCode: Longint;
+begin
+  Result := '';
+  // Buscar code.exe en PATH usando Exec
+  if Exec('where', 'code', '', 0, ewWaitUntilTerminated, ExitCode) then
+    Result := 'code';
+  if Result = '' then begin
+    if FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe')) then
+      Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
+    if Result = '' then
+      Result := ExpandConstant('{autopf}\Microsoft VS Code\Code.exe');
+  end;
+end;
+
+function VSCodeInPath(): Boolean;
+begin
+  Result := (FindVSCodePath() <> '');
+end;
+
+{------------------------------------------------------------------------------}
+{ CARGA DE LICENCIA BILINGÜE (Manual 9 §2.5) }
+{------------------------------------------------------------------------------}
+procedure InitializeWizard();
+var
+  LicensePath: String;
+  LicenseText: AnsiString;
+begin
+  if ActiveLanguage = 'spanish' then
+    LicensePath := ExpandConstant('{src}\..\..\LICENSE.es')
+  else
+    LicensePath := ExpandConstant('{src}\..\..\LICENSE');
+  if LoadStringFromFile(LicensePath, LicenseText) then
+    WizardForm.LicenseMemo.Lines.Text := String(LicenseText);
+end;
+
+procedure InstallVSCodeExtension();
+var
+  VSCodePath, VSIXPath, Params: String;
+  ExitCode: Longint;
+begin
+  VSIXPath := ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix');
+  if not FileExists(VSIXPath) then begin
+    Log('VSIX no encontrado, saltando instalación de extensión');
+    Exit;
+  end;
+  VSCodePath := FindVSCodePath();
+  if VSCodePath = '' then begin
+    MsgBox('VS Code no se encontró en PATH. Instale la extensión manualmente:' + #13#10 +
+           '  code --install-extension "synapse-8.1.0-industrial.vsix"', mbInformation, MB_OK);
+    Exit;
+  end;
+  Params := '--install-extension "' + VSIXPath + '"';
+  Exec(VSCodePath, Params, '', 0, ewWaitUntilTerminated, ExitCode);
+end;
 
 {------------------------------------------------------------------------------}
 { FUNCIÓN AUXILIAR: Detección de VRAM via WMI }
@@ -144,7 +214,6 @@ end;
 function InitializeSetup(): Boolean;
 begin
   Result := True;
-  // Detección de VRAM mediante WMI para recomendar modelo OpenSyn
   VRAM_MB := GetVRAMViaWMI();
   Log(Format('Setup iniciado. VRAM detectada: %d MB', [VRAM_MB]));
 end;
@@ -297,3 +366,4 @@ vram_warning=Su GPU tiene %d MB de VRAM. El modelo requiere al menos 4 GB.
 download_failed=Error descargando %s. Verifique su conexión.
 verify_checksum=Verificando integridad del archivo...
 install_completed=Instalación completada. Ejecute 'synapse' desde terminal.
+

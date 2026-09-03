@@ -412,3 +412,4 @@
 {"fecha": "2026-08-30", "archivos": ["nucleo/detect_hardware.c", "tests/integration/test_detect_hardware.py", "docs/plan_ME_detect_hardware.md"], "cita": "Manual 9 §5.7", "puntos": "detect_hardware: deteccion RAM/VRAM/CPU + sugerencia de config (tier/modelo/ctx/threads/ngl) para OpenSyn; DXGI DedicatedVideoMemory como fuente de VRAM."}
 {"fecha": "2026-08-30", "archivos": ["tests/integration/test_cobertura_d5.py", "docs/plan_ME_test_fixes.md"], "cita": "Manual 2 §4.2", "puntos": "tests TDD usan pytest.fail RED TDD (ME_xx_Tx) para features no implementadas; símbolo verificable por grep."}
 >>>>>>> Stashed changes
+{"fecha": "2026-09-02", "archivos": ["docs/manuales/MANUAL 9.md"], "cita": "Manual 9 §2.5", "puntos": "§2.5: Instalador unificado debe soportar componentes seleccionables (synapse, syquex, opensyn, vscode); licencia bilingual"}
