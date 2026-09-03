@@ -52,7 +52,7 @@ const SYNAPSE_INSTALL_DIRS = [
     'C:\\Synapse',
     path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Synapse'),
 ];
-const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIRS[0], 'bin', 'synapse.exe');
+const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIRS[0], 'bin', 'synapse_lsp.exe');
 const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip';
 
 // ---------------------------------------------------------------------------
@@ -62,22 +62,22 @@ const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/re
 async function _asegurar_binario_lsp(salida) {
     // 1. Buscar en rutas de instalación estándar (Program Files, C:\Synapse, LocalAppData)
     for (const dir of SYNAPSE_INSTALL_DIRS) {
-        const candidate = path.join(dir, 'bin', 'synapse.exe');
-        if (fs.existsSync(candidate)) {
-            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${candidate}`);
-            return candidate;
-        }
         const lspCandidate = path.join(dir, 'bin', 'synapse_lsp.exe');
         if (fs.existsSync(lspCandidate)) {
             salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${lspCandidate}`);
             return lspCandidate;
         }
+        const candidate = path.join(dir, 'bin', 'synapse.exe');
+        if (fs.existsSync(candidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación (fallback synapse.exe): ${candidate}`);
+            return candidate;
+        }
     }
 
-    // 2. Buscar en PATH del sistema (synapse.exe y synapse_lsp.exe)
+    // 2. Buscar en PATH del sistema (synapse_lsp.exe primero, luego synapse.exe)
     const pathEntries = process.env.PATH?.split(';') || [];
     for (const entry of pathEntries) {
-        for (const exe of ['synapse.exe', 'synapse_lsp.exe', 'synapse']) {
+        for (const exe of ['synapse_lsp.exe', 'synapse.exe', 'synapse']) {
             const candidate = path.join(entry, exe);
             if (fs.existsSync(candidate)) {
                 salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
@@ -159,13 +159,16 @@ async function _instalar_synapse_automatico(salida) {
                     Write-Host "ADVERTENCIA: install.ps1 no encontrado, saltando post-instalacion"
                 }
                 
-                # Verificar que el binario existe (synapse.exe, no synapse_lsp.exe)
-                $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse.exe"
+                # Verificar que el binario LSP existe
+                $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse_lsp.exe"
+                if (!(Test-Path $LspPath)) {
+                    $LspPath = Join-Path "${SYNAPSE_INSTALL_DIR}" "bin\\synapse.exe"
+                }
                 if (Test-Path $LspPath) {
                     Write-Host "INSTALL_OK"
                     exit 0
                 } else {
-                    Write-Host "ERROR: synapse.exe no encontrado tras extraccion"
+                    Write-Host "ERROR: synapse_lsp.exe no encontrado tras extraccion"
                     exit 1
                 }
             } catch {
@@ -304,8 +307,9 @@ async function _detectar_hardware(salida) {
 function _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult) {
     const cfg = vscode.workspace.getConfiguration('synapse');
 
-    // Construir args de línea de comandos para el LSP
-    const args = ['--lsp'];
+    // cumple Manual 8 §1.2: synapse_lsp.exe es LSP standalone (sin --lsp), synapse.exe requiere --lsp
+    const isLspStandalone = lspBinaryPath && lspBinaryPath.toLowerCase().includes('synapse_lsp');
+    const args = isLspStandalone ? [] : ['--lsp'];
     if (detectResult && !detectResult.ai_enabled) {
         args.push('--ai-enabled=false');
     }
@@ -325,22 +329,19 @@ function _crear_opciones_servidor(raizSynapse, lspBinaryPath, detectResult) {
             options: {
                 cwd: raizSynapse,
                 env: { ...process.env },
-                stdio: 'pipe',
             },
-            transport: 0,
         };
     }
 
     // Usar la ruta validada (instalación o auto-descubierta)
+    // No transport: vscode-languageclient usa stdio por defecto (Content-Length framing)
     return {
         command: lspBinaryPath,
         args: args,
         options: {
             cwd: raizSynapse,
             env: { ...process.env },
-            stdio: 'pipe',
         },
-        transport: 0,
     };
 }
 
