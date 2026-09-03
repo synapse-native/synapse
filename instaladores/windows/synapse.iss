@@ -21,7 +21,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={pf}\Synapse
+DefaultDirName={autopf}\Synapse
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile={#SourcePath}\..\..\LICENSE
@@ -30,8 +30,8 @@ OutputBaseFilename=Synapse-{#MyAppVersion}-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin
- ArchitecturesInstallIn64BitMode=x64
- ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64compatible
 WizardStyle=modern
 WizardImageFile={#SourcePath}\..\..\Logo-Synapse_wizard.bmp
 WizardSmallImageFile={#SourcePath}\..\..\Logo-Syquex_wizard.bmp
@@ -108,8 +108,8 @@ Source: "{#SourcePath}\..\..\librerias\*"; DestDir: "{app}/lib"; Components: syq
 Source: "{#SourcePath}\..\..\opensyn\*"; DestDir: "{app}/opensyn"; Components: opensyn; Flags: ignoreversion recursesubdirs
 ; Nota: el repo usa vscode-synapse/ (no vscode/) — Manual 9 §2.2 muestra vscode/ como nombre instalado
 Source: "{#SourcePath}\..\..\vscode-synapse\synapse-{#MyAppVersion}.vsix"; DestDir: "{app}/vscode"; Components: vscode; Flags: ignoreversion skipifsourcedoesntexist
-; cumple Manual 9 §2.5: MinGW toolchain provisioning script
-Source: "{#SourcePath}\..\scripts\install.ps1"; DestDir: "{app}"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
+; cumple Manual 9 §2.5: MinGW toolchain provisioning script (scripts/install.ps1 existe — provisioning real)
+Source: "{#SourcePath}\scripts\install.ps1"; DestDir: "{app}"; Components: synapse; Flags: ignoreversion
 ; cumple Manual 9 §2.5: OpenSyn orquestador (nucleo/ai_orchestrador.c contiene synapse_shutdown_hook)
 Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.h"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\nucleo\ai_orchestrator.c"; DestDir: "{app}/src"; Components: opensyn; Flags: ignoreversion skipifsourcedoesntexist
@@ -123,9 +123,10 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 
 [Run]
 ; cumple Manual 9 §2.5: post-install hooks
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden waituntilterminated; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
-Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Instalando OpenSyn..."; Flags: runminimized waituntilterminated
-Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extensión VS Code"; Flags: runhidden waituntilterminated postinstall
+; Flags: nowait para instalacion silenciosa no-bloqueante
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
+Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Instalando OpenSyn..."; Flags: runminimized nowait
+Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extension VS Code"; Flags: runhidden nowait postinstall
 
 [Registry]
 ; cumple Manual 9 §2.5: PATH en HKCU
@@ -304,12 +305,12 @@ begin
   Result := True;
   case CurPageID of
     wpSelectComponents: begin
-      if IsComponentSelected('opensyn') then begin
+      if WizardIsComponentSelected('opensyn') then begin
         CreateDownloadPage();
       end;
     end;
     wpReady: begin
-      if IsComponentSelected('opensyn') then begin
+      if WizardIsComponentSelected('opensyn') then begin
         if VRAM_MB < 4096 then begin
           if MsgBox('ADVERTENCIA: Su GPU tiene ' + IntToStr(VRAM_MB) + ' MB de VRAM. ' +
             'El modelo requiere al menos 4 GB. ¿Desea continuar de todos modos?',
@@ -324,7 +325,7 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if (CurPageID = wpReady) and IsComponentSelected('opensyn') then begin
+  if (CurPageID = wpReady) and WizardIsComponentSelected('opensyn') then begin
     try
       DownloadAIComponents();
     except

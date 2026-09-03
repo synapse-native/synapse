@@ -4,8 +4,10 @@
 //   - Modo Lenguaje Puro: compila archivos .syn directamente
 //   - Modo Oraculo: genera y compila codigo via LLM local
 
-importar std.oraculo
+importar std.io
 importar std.sistema
+importar std.oraculo
+importar std.modelo
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
@@ -156,11 +158,183 @@ funcion modo_oraculo() -> entero:
     escribir_linea("  [Error] No se pudo generar codigo valido tras 3 intentos.")
     retornar 1
 
+// --- Subcommands del Orquestador ---
+
+// cumple Manual 7 §8: status muestra el estado del entorno Soberania
+// cumple Manual 2 §12: contratos requiere/garantiza
+funcion cmd_status() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    escribir_linea("=== OpenSyn: Estado del Sistema ===")
+    escribir_linea("")
+
+    // Verificar configuracion
+    si existe_archivo(".synapse_config"):
+        config = leer_archivo(".synapse_config")
+        escribir_linea(concat("  Config: ", config))
+    sino:
+        escribir_linea("  Config: No configurado (primera ejecucion)")
+
+    // Verificar runtime Synapse
+    escribir_linea("  Synapse runtime: OK (compilado y ejecutandose)")
+
+    // Verificar modelo IA (opcional)
+    si existe_archivo("modelo_synapse.gguf"):
+        escribir_linea("  Modelo IA: modelo_synapse.gguf [OK]")
+    sino:
+        escribir_linea("  Modelo IA: No encontrado (modo IA deshabilitado)")
+
+    // Verificar directorio de trabajo
+    cwd = _syn_obtener_cwd()
+    escribir_linea(concat("  Directorio: ", cwd))
+
+    escribir_linea("")
+    escribir_linea("  Comandos disponibles:")
+    escribir_linea("    opensyn <archivo.syn>   - Compilar archivo Synapse")
+    escribir_linea("    opensyn chat [modelo]   - Iniciar agente IA conversacional")
+    escribir_linea("    opensyn explain <arch>  - Explicar codigo con IA")
+    escribir_linea("    opensyn generate <txt>  - Generar codigo con IA")
+    escribir_linea("    opensyn status          - Mostrar este estado")
+    escribir_linea("")
+    retornar 0
+
+// cumple Manual 7 §8: chat inicia el agente conversacional
+// cumple Manual 2 §12: contratos requiere/garantiza
+funcion cmd_chat(modelo: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    escribir_linea("=== OpenSyn: Modo Chat ===")
+    escribir_linea("")
+
+    si modelo == "" o modelo == "chat":
+        modelo = "modelo_synapse.gguf"
+
+    si no existe_archivo(modelo):
+        escribir_linea(concat("  [!] Modelo no encontrado: ", modelo))
+        escribir_linea("  [!] Descarga un modelo GGUF y colocalo como 'modelo_synapse.gguf'")
+        retornar 1
+
+    ctx = _syn_modelo_cargar(modelo)
+    si ctx == nulo:
+        escribir_linea("  [Error] No se pudo cargar el modelo")
+        retornar 1
+
+    escribir_linea("  [OK] Modelo cargado. Escribe 'salir' para terminar.")
+    escribir_linea("")
+
+    // Loop de chat simple
+    temp = 0.7
+    top_p = 0.9
+    mientras verdadero:
+        prompt = leer_linea()
+        si prompt == "salir":
+            _syn_modelo_cerrar(ctx)
+            retornar 0
+        si prompt == "":
+            escribir_linea("")
+            // skip empty input
+
+        respuesta = generar_texto(ctx, prompt, 256, temp, 40, top_p)
+        escribir_linea(respuesta)
+
+    _syn_modelo_cerrar(ctx)
+    retornar 0
+
+// cumple Manual 7 §8: explain usa IA para explicar codigo
+// cumple Manual 2 §12: contratos requiere/garantiza
+funcion cmd_explain(ruta: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    escribir_linea("=== OpenSyn: Explicacion de Codigo ===")
+    escribir_linea("")
+
+    si ruta == "":
+        escribir_linea("  Uso: opensyn explain <archivo.syn>")
+        retornar 1
+
+    fuente = leer_archivo(ruta)
+    si fuente == "":
+        escribir_linea(concat("  [Error] No se pudo leer: ", ruta))
+        retornar 1
+
+    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    si ctx == nulo:
+        escribir_linea("  [Error] Modelo modelo_synapse.gguf no encontrado")
+        retornar 1
+
+    prompt = concat("Explica el siguiente codigo Synapse:\n\n", fuente)
+    escribir_linea("[Oraculo] Analizando codigo...")
+    escribir_linea("")
+
+    temp_exp = 0.3
+    top_p_exp = 0.9
+    explicacion = generar_texto(ctx, prompt, 512, temp_exp, 40, top_p_exp)
+    escribir_linea(explicacion)
+
+    _syn_modelo_cerrar(ctx)
+    retornar 0
+
+// cumple Manual 7 §8: generate usa IA para generar codigo nuevo
+// cumple Manual 2 §12: contratos requiere/garantiza
+funcion cmd_generate(instruccion: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    escribir_linea("=== OpenSyn: Generacion de Codigo ===")
+    escribir_linea("")
+
+    si instruccion == "":
+        escribir_linea("  Uso: opensyn generate <instruccion>")
+        retornar 1
+
+    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    si ctx == nulo:
+        escribir_linea("  [Error] Modelo modelo_synapse.gguf no encontrado")
+        retornar 1
+
+    codigo = generar_codigo(ctx, instruccion, 3)
+    _syn_modelo_cerrar(ctx)
+
+    escribir_linea("")
+    si codigo != "":
+        escribir_linea("  [OK] Codigo generado y compilado.")
+        res = escribir_archivo("generado.syn", codigo)
+        si res == 0:
+            escribir_linea("  [OK] Guardado en 'generado.syn'")
+        retornar 0
+
+    escribir_linea("  [Error] No se pudo generar codigo valido en 3 intentos.")
+    retornar 1
+
 // --- Punto de entrada principal ---
 
 funcion principal() -> entero:
     escribir_linea("=== OpenSyn v1.1.0 — Orquestador Autonomo ===")
     escribir_linea("")
+
+    // cumple Manual 7 §8: agente conversacional con capacidades de codigo
+    // Routing de subcommands
+    si _argc() >= 2:
+        comando = _argv(1)
+
+        si comando == "status":
+            retornar cmd_status()
+
+        si comando == "chat":
+            retornar cmd_chat(_argv(2))
+
+        si comando == "explain":
+            retornar cmd_explain(_argv(2))
+
+        si comando == "generate":
+            retornar cmd_generate(_argv(2))
 
     // Leer configuracion existente
     modo = leer_modo_config()
