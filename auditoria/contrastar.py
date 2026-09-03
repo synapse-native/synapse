@@ -166,16 +166,22 @@ def main():
         sys.exit(1)
     print("✅ verificar_alineacion.py no reportó brechas.")
 
-    # 4. Verificación ME
+    # 4. Verificación ME — cada requisito debe estar marcado individualmente
     verif_file = args.plan.replace("plan_ME_", "verificacion_ME_")
     if os.path.exists(verif_file):
         with open(verif_file, "r", encoding="utf-8") as f:
             v_content = f.read()
             for r in reqs:
-                if "CUMPLE" not in v_content and "NO CUMPLE" not in v_content:
+                pat = re.compile(
+                    rf"Manual\s+{re.escape(r['manual'])}\s+§\s*{re.escape(r['seccion'])}"
+                    r"\s+.*?(CUMPLE|NO CUMPLE)",
+                    re.IGNORECASE,
+                )
+                if not pat.search(v_content):
                     print(f"❌ Error: En {verif_file} el requisito Manual {r['manual']} "
                           f"§{r['seccion']} no está marcado como CUMPLE o NO CUMPLE.")
                     sys.exit(1)
+                print(f"  ✅ Manual {r['manual']} §{r['seccion']}: verificado")
         print(f"✅ {verif_file} verificado correctamente.")
     else:
         print(f"⚠️ Nota: No se encontró {verif_file} para verificar CUMPLE/NO CUMPLE, omitiendo paso.")
