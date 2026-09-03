@@ -46,8 +46,13 @@ function _cargar_languageclient() {
 // Constantes de rutas de instalación
 // ---------------------------------------------------------------------------
 
-const SYNAPSE_INSTALL_DIR = 'C:\\Synapse';
-const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIR, 'bin', 'synapse.exe');
+const SYNAPSE_INSTALL_DIRS = [
+    'C:\\Program Files\\Synapse',
+    'C:\\Program Files (x86)\\Synapse',
+    'C:\\Synapse',
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Synapse'),
+];
+const SYNAPSE_LSP_PATH = path.join(SYNAPSE_INSTALL_DIRS[0], 'bin', 'synapse.exe');
 const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/releases/download/v1.5.0/synapse-v1.5.0-windows-x64.zip';
 
 // ---------------------------------------------------------------------------
@@ -55,19 +60,29 @@ const SYNAPSE_INSTALLER_URL = 'https://github.com/gedeon1972-svg/synapse-lang/re
 // ---------------------------------------------------------------------------
 
 async function _asegurar_binario_lsp(salida) {
-    // 1. Buscar en la ruta de instalación estándar (configurada por install.ps1)
-    if (fs.existsSync(SYNAPSE_LSP_PATH)) {
-        salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${SYNAPSE_LSP_PATH}`);
-        return SYNAPSE_LSP_PATH;
+    // 1. Buscar en rutas de instalación estándar (Program Files, C:\Synapse, LocalAppData)
+    for (const dir of SYNAPSE_INSTALL_DIRS) {
+        const candidate = path.join(dir, 'bin', 'synapse.exe');
+        if (fs.existsSync(candidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${candidate}`);
+            return candidate;
+        }
+        const lspCandidate = path.join(dir, 'bin', 'synapse_lsp.exe');
+        if (fs.existsSync(lspCandidate)) {
+            salida.appendLine(`[Synapse] Binario LSP encontrado en instalación: ${lspCandidate}`);
+            return lspCandidate;
+        }
     }
 
-    // 2. Buscar en PATH del sistema
+    // 2. Buscar en PATH del sistema (synapse.exe y synapse_lsp.exe)
     const pathEntries = process.env.PATH?.split(';') || [];
     for (const entry of pathEntries) {
-        const candidate = path.join(entry, 'synapse_lsp.exe');
-        if (fs.existsSync(candidate)) {
-            salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
-            return candidate;
+        for (const exe of ['synapse.exe', 'synapse_lsp.exe', 'synapse']) {
+            const candidate = path.join(entry, exe);
+            if (fs.existsSync(candidate)) {
+                salida.appendLine(`[Synapse] Binario LSP encontrado en PATH: ${candidate}`);
+                return candidate;
+            }
         }
     }
 

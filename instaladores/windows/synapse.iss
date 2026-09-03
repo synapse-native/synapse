@@ -30,9 +30,11 @@ OutputBaseFilename=Synapse-{#MyAppVersion}-Windows-x64
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 WizardStyle=modern
+ChangesEnvironment=yes
 WizardImageFile={#SourcePath}\..\..\Logo-Synapse_wizard.bmp
 WizardSmallImageFile={#SourcePath}\..\..\Logo-Syquex_wizard.bmp
 SetupIconFile={#SourcePath}\..\..\Logo-Synapse.ico
@@ -77,26 +79,27 @@ spanish.finish_subtitle=Synapse Language se ha instalado correctamente.
 
 
 [Types]
-; cumple Manual 9 §2.5: tipos de instalación configurables
+; cumple Manual 9 §2.5: tipos de instalación configurables (3 opciones + custom)
 Name: "full"; Description: "{cm:setup_type_full}"
-Name: "minimal"; Description: "{cm:setup_type_minimal}"
-Name: "synapse_only"; Description: "{cm:setup_type_synapse_only}"
+Name: "compact"; Description: "{cm:setup_type_synapse_only}"
 Name: "syquex_only"; Description: "{cm:setup_type_syquex_only}"
+Name: "custom"; Description: "Instalación personalizada"; Flags: iscustom
 
 [Components]
-; cumple Manual 9 §2.5: componentes alineados al manual
-Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full minimal synapse_only; Flags: fixed
+; cumple Manual 9 §2.5: componentes independientes — Synapse/Syquex/OpenSyn seleccionables por separado
+Name: "synapse"; Description: "{cm:setup_type_synapse}"; Types: full compact
 Name: "syquex"; Description: "{cm:setup_type_syquex}"; Types: full syquex_only
 Name: "opensyn"; Description: "{cm:setup_type_opensyn}"; Types: full
-Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full minimal
+Name: "vscode"; Description: "{cm:setup_type_vscode}"; Types: full compact
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; cumple Manual 9 §2.5: Sources binaria + runtime + std
+; cumple Manual 9 §2.5: Sources binaria + runtime + std — todo el ecosistema
 ; ME-R6: dist\bin\synapse.exe se construye en CI con el runtime modular completo (Manual 3 S3.1)
 Source: "{#SourcePath}\..\..\dist\bin\{#MyAppExeName}"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\opensyn\opensyn.bat"; DestDir: "{app}\bin"; Components: opensyn; Flags: ignoreversion
 ; LSP opcional — solo se incluye si fue construido (Flags: skipifsourcedoesntexist)
 Source: "{#SourcePath}\..\..\dist\bin\{#MyAppLspExeName}"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\dist\bin\*.dll"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
@@ -118,6 +121,7 @@ Source: "{#SourcePath}\..\..\nucleo\llama_client.c"; DestDir: "{app}/src"; Compo
 
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Components: synapse
+Name: "{group}\Synapse - Terminal"; Filename: "cmd.exe"; Parameters: "/k ""{app}\bin\synapse.exe"" --help"; WorkingDir: "{app}"; Components: synapse
 Name: "{group}\Desinstalar Synapse"; Filename: "{uninstallexe}"; Components: synapse
 Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Components: synapse
 
@@ -129,8 +133,10 @@ Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components
 Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extension VS Code"; Flags: runhidden nowait postinstall
 
 [Registry]
-; cumple Manual 9 §2.5: PATH en HKCU
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: uninsdeletevalue
+; cumple Manual 9 §2.5: PATH en HKCU (con ChangesEnvironment=yes difunde WM_SETTINGCHANGE)
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: preservestringtype uninsdeletevalue
+; Fallback HKLM para instalaciones admin (si usuario elige Todos los usuarios)
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: IsAdminInstallMode; Flags: preservestringtype uninsdeletevalue
 
 [Code]
 var
@@ -330,6 +336,17 @@ begin
       DownloadAIComponents();
     except
       Log('Error durante descarga de componentes IA');
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssPostInstall) and WizardIsComponentSelected('vscode') then begin
+    try
+      InstallVSCodeExtension();
+    except
+      Log('Error instalando extensión VS Code via CurStepChanged');
     end;
   end;
 end;

@@ -5,6 +5,17 @@
     "version": "8.1.0",
     "publisher": "synapse-lang",
     "license": "MIT",
+    "icon": "icon.png",
+    "galleryBanner": {
+        "color": "#0e1a2e",
+        "theme": "dark"
+    },
+    "homepage": "https://github.com/synapse-lang/synapse",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/synapse-lang/synapse"
+    },
+    "keywords": ["synapse", "syquex", "lsp", "systems", "concurrency", "ai", "local"],
     "engines": {
         "vscode": "^1.60.0"
     },
@@ -15,7 +26,8 @@
         "Formatters"
     ],
     "activationEvents": [
-        "onLanguage:synapse"
+        "onLanguage:synapse",
+        "onStartupFinished"
     ],
     "main": "./extension.js",
     "dependencies": {
