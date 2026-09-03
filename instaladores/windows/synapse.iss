@@ -12,7 +12,11 @@
 #define MyAppLspExeName "synapse_lsp.exe"
 
 #define LLAMA_SERVER_URL "https://github.com/ggerganov/llama.cpp/releases/download/b2885/llama-server.exe"
-#define MODEL_URL "https://huggingface.co/TheBloke/Llama-3.2-1B-Instruct-GGUF/resolve/main/llama-3.2-1b-instruct.Q4_K_M.gguf"
+#define MODEL_URL_1B "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
+#define MODEL_URL_7B "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
+#define MODEL_URL_13B "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
+#define MODEL_URL_34B "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
+#define MODEL_URL MODEL_URL_1B
 
 [Setup]
 AppName={#MyAppName}
@@ -129,7 +133,7 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 ; cumple Manual 9 §2.5: post-install hooks
 ; Flags: nowait para instalacion silenciosa no-bloqueante
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
-Filename: "{app}\bin\{#MyAppExeName}"; Parameters: "opensyn install"; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Instalando OpenSyn..."; Flags: runminimized nowait
+Filename: "{app}\bin\{#MyAppExeName}"; Parameters: """{app}\opensyn\installer.syn"""; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); StatusMsg: "Configurando OpenSyn (detección hardware)..."; Flags: runhidden waituntilterminated
 Filename: "cmd"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-{#MyAppVersion}.vsix"""; Components: vscode; Check: VSCodeInPath() and FileExists(ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix')); Description: "Instalar extension VS Code"; Flags: runhidden nowait postinstall
 
 [Registry]
@@ -196,23 +200,188 @@ begin
 end;
 
 {------------------------------------------------------------------------------}
-{ FUNCIÓN AUXILIAR: Detección de VRAM via WMI }
+{ FUNCIÓN AUXILIAR: Ejecuta PowerShell y retorna entero (0 si falla) }
 {------------------------------------------------------------------------------}
-function GetVRAMViaWMI(): Integer;
+function ExecPowerShellInt(const PSCommand: String): Integer;
+var
+  TmpFile, Cmd: String;
+  OutStr: AnsiString;
+  ExitCode: Integer;
 begin
-  // Manual 9 §2.5: OpenSyn requiere GPU con VRAM >= 4GB
-  // La detección WMI se omite si falla — se asume VRAM baja por defecto
   Result := 0;
+  TmpFile := ExpandConstant('{tmp}\hw_out.txt');
+  Cmd := '/c powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "' + PSCommand + ' > """' + TmpFile + '""" 2>nul"';
+  if Exec('cmd.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
+    if FileExists(TmpFile) then begin
+      if LoadStringFromFile(TmpFile, OutStr) then begin
+        OutStr := Trim(OutStr);
+        try
+          Result := StrToInt(OutStr);
+        except
+          Result := 0;
+        end;
+      end;
+      DeleteFile(TmpFile);
+    end;
+  end;
+end;
+
+function GetRAM_MB(): Integer;
+begin
+  // TotalPhysicalMemory en bytes -> MB
+  Result := ExecPowerShellInt('(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1MB -as [int]');
+  if Result = 0 then
+    Result := ExecPowerShellInt('(Get-WmiObject Win32_ComputerSystem).TotalPhysicalMemory / 1048576 -as [int]');
+end;
+
+function GetVRAMViaWMI(): Integer;
+var
+  V: Integer;
+begin
+  // AdapterRAM puede ser 0 en integradas; sumar todas las GPUs
+  V := ExecPowerShellInt('(Get-CimInstance Win32_VideoController | Measure-Object -Property AdapterRAM -Sum).Sum / 1048576 -as [int]');
+  if V = 0 then
+    V := ExecPowerShellInt('([math]::Round((Get-CimInstance Win32_VideoController).AdapterRAM / 1MB)) -as [int]');
+  Result := V;
+end;
+
+function GetCPUCores(): Integer;
+begin
+  Result := ExecPowerShellInt('(Get-CimInstance Win32_Processor).NumberOfCores -as [int]');
+  if Result = 0 then
+    Result := ExecPowerShellInt('(Get-CimInstance Win32_Processor).NumberOfLogicalProcessors -as [int]');
+  if Result = 0 then
+    Result := 4;
+end;
+
+function CheckForExistingGGUF(): String;
+var
+  Candidate, Home: String;
+  FindRec: TFindRec;
+begin
+  Result := '';
+  Home := ExpandConstant('{userdocs}\..\'); // fallback, usaremos USERPROFILE
+  Home := GetEnv('USERPROFILE');
+  if Home <> '' then begin
+    Candidate := Home + '\.opensyn\models';
+    if DirExists(Candidate) then begin
+      if FindFirst(Candidate + '\*.gguf', FindRec) then begin
+        try
+          repeat
+            Result := Candidate + '\' + FindRec.Name;
+            Log('GGUF existente encontrado: ' + Result);
+            Break;
+          until not FindNext(FindRec);
+        finally
+          FindClose(FindRec);
+        end;
+      end;
+    end;
+    // Ollama models
+    Candidate := Home + '\.ollama\models';
+    if (Result = '') and DirExists(Candidate) then begin
+      // cualquier subdirectorio con .gguf o blobs
+      if DirExists(Candidate) then begin
+        Log('Directorio Ollama encontrado: ' + Candidate);
+        // no retornamos gguf directo, pero marcamos como IA existente
+      end;
+    end;
+  end;
+  // También buscar en {app}\opensyn\models (instalación previa)
+  if Result = '' then begin
+    Candidate := ExpandConstant('{app}\opensyn\models');
+    if DirExists(Candidate) then begin
+      if FindFirst(Candidate + '\*.gguf', FindRec) then begin
+        try
+          Result := Candidate + '\' + FindRec.Name;
+          Log('GGUF en app encontrado: ' + Result);
+        finally
+          FindClose(FindRec);
+        end;
+      end;
+    end;
+  end;
+end;
+
+function IsOllamaInstalled(): Boolean;
+var
+  Candidates: array[0..4] of String;
+  i: Integer;
+begin
+  Result := False;
+  Candidates[0] := ExpandConstant('{autopf}\Ollama\ollama.exe');
+  Candidates[1] := ExpandConstant('{pf}\Ollama\ollama.exe');
+  Candidates[2] := ExpandConstant('{localappdata}\Programs\Ollama\ollama.exe');
+  Candidates[3] := GetEnv('USERPROFILE') + '\AppData\Local\Programs\Ollama\ollama.exe';
+  Candidates[4] := 'C:\Ollama\ollama.exe';
+  for i := 0 to 4 do begin
+    if FileExists(Candidates[i]) then begin
+      Log('Ollama detectado: ' + Candidates[i]);
+      Result := True;
+      Exit;
+    end;
+  end;
+  // where ollama en PATH
+  if FileExists(ExpandConstant('{tmp}\ollama_check.txt')) then DeleteFile(ExpandConstant('{tmp}\ollama_check.txt'));
+  // no usamos where por simplicidad, solo paths
+end;
+
+function SelectModelURL(VRAM: Integer): String;
+begin
+  if VRAM < 4096 then
+    Result := '{#MODEL_URL_1B}'
+  else if VRAM < 8192 then
+    Result := '{#MODEL_URL_7B}'
+  else if VRAM < 12288 then
+    Result := '{#MODEL_URL_13B}'
+  else
+    Result := '{#MODEL_URL_34B}';
+end;
+
+function SelectModelName(VRAM: Integer): String;
+begin
+  if VRAM < 4096 then
+    Result := 'deepseek-coder-1.3b-Q4_K_M.gguf'
+  else if VRAM < 8192 then
+    Result := 'codellama-7b-Q4_K_M.gguf'
+  else if VRAM < 12288 then
+    Result := 'codellama-13b-Q4_K_M.gguf'
+  else
+    Result := 'codellama-34b-Q4_K_M.gguf';
 end;
 
 {------------------------------------------------------------------------------}
-{ INICIALIZACIÓN: Detección de hardware (VRAM) }
+{ INICIALIZACIÓN: Detección de hardware (RAM/VRAM/CPU) — Manual 9 §5.3 }
 {------------------------------------------------------------------------------}
+var
+  RAM_MB: Integer;
+  CPU_CORES: Integer;
+  ExistingGGUF: String;
+  OllamaFound: Boolean;
+  SelectedModelURL: String;
+  SelectedModelName: String;
+
 function InitializeSetup(): Boolean;
+var
+  Msg: String;
 begin
   Result := True;
   VRAM_MB := GetVRAMViaWMI();
-  Log(Format('Setup iniciado. VRAM detectada: %d MB', [VRAM_MB]));
+  RAM_MB := GetRAM_MB();
+  CPU_CORES := GetCPUCores();
+  ExistingGGUF := CheckForExistingGGUF();
+  OllamaFound := IsOllamaInstalled();
+  SelectedModelURL := SelectModelURL(VRAM_MB);
+  SelectedModelName := SelectModelName(VRAM_MB);
+  Log(Format('Setup iniciado. RAM: %d MB VRAM: %d MB CPU cores: %d Ollama: %d GGUF: %s Modelo: %s', [RAM_MB, VRAM_MB, CPU_CORES, Integer(OllamaFound), ExistingGGUF, SelectedModelName]));
+  if WizardIsComponentSelected('opensyn') then begin
+    Msg := Format('Hardware detectado:'#13#10'  RAM: %d MB'#13#10'  VRAM: %d MB'#13#10'  CPU: %d núcleos'#13#10#13#10'Modelo recomendado: %s', [RAM_MB, VRAM_MB, CPU_CORES, SelectedModelName]);
+    if ExistingGGUF <> '' then
+      Msg := Msg + #13#10#13#10'Se encontró modelo existente:'#13#10'  ' + ExistingGGUF + #13#10'¿Desea usarlo? (Sí=usar existente, No=descargar recomendado)';
+    if OllamaFound then
+      Msg := Msg + #13#10#13#10'Se detectó Ollama instalado. OpenSyn puede conectarse a Ollama existente.';
+    // No bloqueamos, solo informativo en log; el prompt real ocurre en wpReady
+  end;
 end;
 
 {------------------------------------------------------------------------------}
@@ -261,31 +430,64 @@ end;
 procedure DownloadAIComponents();
 var
   DestServer, DestModel: String;
+  UseExisting: Boolean;
 begin
-  DestServer := ExpandConstant('{app}\opensyn\ia\llama-server.exe');
-  DestModel := ExpandConstant('{app}\opensyn\models\model.gguf');
-
-  StatusLabel.Caption := 'Descargando llama-server.exe (~15 MB)...';
-  ProgressBar.Position := 10;
-  WizardForm.Repaint;
-
-  if not DownloadFile('{#LLAMA_SERVER_URL}', DestServer) then begin
-    MsgBox('Error descargando llama-server.exe. Verifique su conexión.', mbError, MB_OK);
-    Exit;
+  // Manual 9 §5.3: si hay GGUF existente, preguntar al usuario
+  UseExisting := False;
+  if ExistingGGUF <> '' then begin
+    if MsgBox('Se encontró un modelo GGUF existente:'#13#10 + ExistingGGUF + #13#10#13#10'¿Desea usar este modelo existente?'#13#10'(Sí = usar existente y no descargar, No = descargar ' + SelectedModelName + ')', mbConfirmation, MB_YESNO) = IDYES then begin
+      Log('Usuario eligió usar GGUF existente: ' + ExistingGGUF);
+      UseExisting := True;
+      StatusLabel.Caption := 'Usando modelo existente: ' + ExtractFileName(ExistingGGUF);
+      ProgressBar.Position := 50;
+      WizardForm.Repaint;
+    end;
   end;
 
-  ProgressBar.Position := 50;
-  StatusLabel.Caption := 'Descargando modelo .gguf (~700 MB)...';
-  WizardForm.Repaint;
+  if IsOllamaInstalled() then begin
+    if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10'OpenSyn puede conectarse a Ollama (http://localhost:11434) en lugar de descargar llama-server.'#13#10#13#10'¿Desea conectar OpenSyn a Ollama existente?'#13#10'(Sí = usar Ollama, No = instalar llama-server + modelo)', mbConfirmation, MB_YESNO) = IDYES then begin
+      Log('Usuario eligió conectar a Ollama existente — se omite descarga de llama-server');
+      StatusLabel.Caption := 'Configurando para Ollama existente...';
+      ProgressBar.Position := 100;
+      WizardForm.Repaint;
+      // Crear config que apunte a Ollama
+      SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+      Exit;
+    end;
+  end;
 
-  if not DownloadFile('{#MODEL_URL}', DestModel) then begin
-    MsgBox('Error descargando modelo. Verifique su conexión y espacio en disco.', mbError, MB_OK);
-    Exit;
+  DestServer := ExpandConstant('{app}\opensyn\ia\llama-server.exe');
+  if UseExisting then
+    DestModel := ExistingGGUF
+  else
+    DestModel := ExpandConstant('{app}\opensyn\models\') + SelectedModelName;
+
+  if not UseExisting then begin
+    ForceDirectories(ExtractFileDir(DestModel));
+    StatusLabel.Caption := 'Descargando llama-server.exe (~15 MB)...';
+    ProgressBar.Position := 10;
+    WizardForm.Repaint;
+
+    if not DownloadFile('{#LLAMA_SERVER_URL}', DestServer) then begin
+      MsgBox('Error descargando llama-server.exe. Verifique su conexión.', mbError, MB_OK);
+      Exit;
+    end;
+
+    ProgressBar.Position := 50;
+    StatusLabel.Caption := 'Descargando ' + SelectedModelName + ' (~' + IntToStr(4096) + ' MB)...';
+    WizardForm.Repaint;
+
+    if not DownloadFile(SelectedModelURL, DestModel) then begin
+      MsgBox('Error descargando modelo ' + SelectedModelName + '. Verifique su conexión y espacio en disco.', mbError, MB_OK);
+      Exit;
+    end;
   end;
 
   ProgressBar.Position := 100;
   StatusLabel.Caption := 'Descargas completadas. Verificando integridad...';
   WizardForm.Repaint;
+  // Guardar selección para post-install config
+  SaveStringToFile(ExpandConstant('{app}\opensyn\install_info.txt'), 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
 end;
 
 procedure OnDownloadProgress(TotalBytes, DownloadedBytes: Int64);
