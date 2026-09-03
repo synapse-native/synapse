@@ -5661,7 +5661,44 @@
       "nombre": "cmd_status",
       "parametros": [],
       "tipo_retorno": "entero",
-      "contratos": null,
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
       "cuerpo": {
         "tipo": "Bloque",
         "sentencias": [
@@ -5972,7 +6009,44 @@
         }
       ],
       "tipo_retorno": "entero",
-      "contratos": null,
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
       "cuerpo": {
         "tipo": "Bloque",
         "sentencias": [
@@ -6367,7 +6441,44 @@
         }
       ],
       "tipo_retorno": "entero",
-      "contratos": null,
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
       "cuerpo": {
         "tipo": "Bloque",
         "sentencias": [
@@ -6690,7 +6801,44 @@
         }
       ],
       "tipo_retorno": "entero",
-      "contratos": null,
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 0
+              }
+            },
+            "operador": "||",
+            "derecha": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "resultado"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNumero",
+                "valor": 1
+              }
+            }
+          }
+        ]
+      },
       "cuerpo": {
         "tipo": "Bloque",
         "sentencias": [
