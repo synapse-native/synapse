@@ -46,6 +46,9 @@ UninstallDisplayIcon={app}\bin\{#MyAppExeName}
 AppId={{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
 VersionInfoVersion=8.1.0.0
 VersionInfoCompany={#MyAppPublisher}
+CloseApplications=no
+RestartApplications=no
+; cumple Manual 9 §2.5: no cerrar apps automaticamente (evita Abort/Retry/Ignore por opensyn.exe en uso en /SILENT)
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -135,16 +138,17 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 
 [Run]
 ; cumple Manual 9 §2.5: post-install hooks
-; Flags: nowait para instalacion silenciosa no-bloqueante
+; Flags: nowait para instalacion silenciosa no-bloqueante; runasoriginaluser para VS Code extension (no abre ventana, per-user)
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
 Filename: "{app}\bin\{#MyAppExeName}"; Parameters: """{app}\opensyn\installer.syn"""; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); Description: "Configurar OpenSyn (hardware)"; Flags: runhidden nowait postinstall; StatusMsg: "Configurando OpenSyn..."
-; VS Code se instala solo vía CurStepChanged.InstallVSCodeExtension (no abre ventana)
+Filename: "cmd.exe"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-8.1.0-industrial.vsix"" --force"; Components: vscode; StatusMsg: "Instalando extensión VS Code..."; Flags: runhidden runasoriginaluser nowait
+; cumple Manual 9 §2.5: VS Code via Run runasoriginaluser (no abre ventana, evita elevacion que causa exit 1)
 
 [Registry]
-; cumple Manual 9 §2.5: PATH en HKCU (con ChangesEnvironment=yes difunde WM_SETTINGCHANGE)
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: preservestringtype uninsdeletevalue
-; Fallback HKLM para instalaciones admin (si usuario elige Todos los usuarios)
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: IsAdminInstallMode; Flags: preservestringtype uninsdeletevalue
+; cumple Manual 9 §2.5: PATH en HKCU (preservestringtype sin uninsdeletevalue para no borrar PATH original al desinstalar)
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: preservestringtype
+; Fallback HKLM solo si admin y sin borrar en uninstall (evita corrupcion Machine Path)
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: IsAdminInstallMode; Flags: preservestringtype
 
 [Code]
 var
@@ -152,6 +156,8 @@ var
   DownloadPage: TWizardPage;
   ProgressBar: TNewProgressBar;
   StatusLabel: TNewStaticText;
+  ModelSelectPage: TInputOptionWizardPage;
+  // cumple Manual 9 §5.2: seleccion de modelo code-especifico
 
 {------------------------------------------------------------------------------}
 { FUNCIÓN AUXILIAR: Instalación de extensión VS Code (Manual 9 §2.5) }
@@ -160,32 +166,35 @@ var
 function FindVSCodePath(): String;
 begin
   Result := '';
-  // Buscar code.exe en rutas comunes (no dependemos de 'where' que no captura output)
-  if FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe')) then
+  // Prioridad: bin\code.cmd (instalacion usuario) y Code.exe — cumple Manual 9 §2.5
+  if FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\bin\code.cmd')) then
+    Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\bin\code.cmd');
+  if (Result = '') and FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe')) then
     Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
-  if Result = '' then
+  if (Result = '') and FileExists(ExpandConstant('{localappdata}\Programs\Microsoft VS Code\bin\code')) then
+    Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\bin\code');
+  if (Result = '') and FileExists(ExpandConstant('{autopf}\Microsoft VS Code\bin\code.cmd')) then
+    Result := ExpandConstant('{autopf}\Microsoft VS Code\bin\code.cmd');
+  if (Result = '') and FileExists(ExpandConstant('{autopf}\Microsoft VS Code\Code.exe')) then
     Result := ExpandConstant('{autopf}\Microsoft VS Code\Code.exe');
-  if Result = '' then begin
-    // Buscar en ruta de usuario de VS Code
+  if (Result = '') and FileExists(ExpandConstant('{commonpf}\Microsoft VS Code\bin\code.cmd')) then
+    Result := ExpandConstant('{commonpf}\Microsoft VS Code\bin\code.cmd');
+  if (Result = '') and FileExists(ExpandConstant('{localappdata}\Microsoft\vscode\Code.exe')) then
     Result := ExpandConstant('{localappdata}\Microsoft\vscode\Code.exe');
-    if not FileExists(Result) then
-      Result := ExpandConstant('{localappdata}\Programs\Microsoft VS Code\Code.exe');
-    if not FileExists(Result) then
-      Result := ExpandConstant('{autopf}\Microsoft VS Code\Code.exe');
-  end;
 end;
 
 function VSCodeInPath(): Boolean;
 begin
   Result := (FindVSCodePath() <> '');
 end;
+// cumple Manual 9 §2.5: deteccion VS Code via code.cmd y Code.exe (no abre ventana)
 
 {------------------------------------------------------------------------------}
 { CARGA DE LICENCIA BILINGÜE (Manual 9 §2.5) }
 {------------------------------------------------------------------------------}
 procedure InstallVSCodeExtension();
 var
-  VSCodePath, VSIXPath, Params: String;
+  VSCodePath, VSIXPath, CmdLine: String;
   ExitCode: Longint;
 begin
   VSIXPath := ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix');
@@ -193,15 +202,34 @@ begin
     Log('VSIX no encontrado, saltando instalación de extensión');
     Exit;
   end;
+  // cumple Manual 9 §2.5: instalar via cmd /c code --install-extension hidden (no abre ventana VS Code)
+  // Intento 1: code en PATH (code.cmd shim) — hidden
+  CmdLine := '/c code --install-extension "' + VSIXPath + '" --force >nul 2>&1';
+  if Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
+    if ExitCode = 0 then begin
+      Log('Extension instalada via code en PATH (exit 0)');
+      Exit;
+    end;
+    Log(Format('code en PATH fallo exit=%d, probando rutas absolutas', [ExitCode]));
+  end else
+    Log('Exec code en PATH fallo, probando rutas absolutas');
+  // Intento 2: rutas absolutas (solo log, no MsgBox — el [Run] runasoriginaluser ya lo instala sin elevacion)
   VSCodePath := FindVSCodePath();
   if VSCodePath = '' then begin
-    MsgBox('VS Code no se encontró en PATH. Instale la extensión manualmente:' + #13#10 +
-           '  code --install-extension "synapse-8.1.0-industrial.vsix"', mbInformation, MB_OK);
+    Log('VS Code no encontrado — se confia en [Run] runasoriginaluser para instalar extension');
     Exit;
   end;
-  Params := '--install-extension "' + VSIXPath + '"';
-  Exec(VSCodePath, Params, '', 0, ewWaitUntilTerminated, ExitCode);
+  if Pos('code.cmd', Lowercase(VSCodePath)) > 0 then begin
+    CmdLine := '/c "' + VSCodePath + '" --install-extension "' + VSIXPath + '" --force >nul 2>&1';
+    Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+  end else begin
+    CmdLine := '--install-extension "' + VSIXPath + '" --force';
+    Exec(VSCodePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+  end;
+  Log(Format('InstallVSCodeExtension via %s exit=%d (fallback Pascal, [Run] principal es runasoriginaluser)', [VSCodePath, ExitCode]));
+  // cumple Manual 9 §2.5: no MsgBox aqui — silencioso, el [Run] es el canal correcto (evita alerta y bloqueo SILENT)
 end;
+// cumple Manual 9 §2.5: extension sin abrir ventana, hidden + fallback rutas
 
 {------------------------------------------------------------------------------}
 { FUNCIÓN AUXILIAR: Ejecuta PowerShell y retorna entero (0 si falla) }
@@ -419,15 +447,7 @@ begin
   except
     Log('InitializeWizard: no se pudo cargar licencia bilingüe');
   end;
-  // Mensaje final claro para UX: qué se instaló y que hacer después
-  WizardForm.FinishedLabel.Caption :=
-    'Synapse se instaló correctamente.' + #13#10#13#10 +
-    '• Synapse (compilador) + Syquex (lib) + OpenSyn (IA) según tu selección' + #13#10 +
-    '• VS Code extension instalada (si la marcaste)' + #13#10 +
-    '• PATH actualizado: abre una NUEVA terminal y escribe "synapse" o "opensyn status"' + #13#10#13#10 +
-    'Si elegiste OpenSyn, se descargó el modelo recomendado para tu VRAM.' + #13#10 +
-    'Reinicia VS Code si lo tenías abierto.';
-  WizardForm.FinishedHeadingLabel.Caption := '¡Instalación completada!';
+  // cumple Manual 9 §2.5: solo licencia bilingüe aquí; mensaje final se setea en CurPageChanged wpFinished (evita sobre-escritura y cierre abrupto)
 end;
 
 {------------------------------------------------------------------------------}
@@ -465,12 +485,58 @@ var
 begin
   Result := False;
   try
-    ExePath := 'curl.exe';
-    CmdLine := '-L -o "' + DestPath + '" "' + URL + '"';
-    Result := Exec(ExePath, CmdLine, '', 0, ewWaitUntilTerminated, ExitCode);
+    // cumple Manual 9 §5.3: usar curl absoluto para SYSTEM (no depende de PATH)
+    if FileExists('C:\Windows\System32\curl.exe') then
+      ExePath := 'C:\Windows\System32\curl.exe'
+    else
+      ExePath := 'curl.exe';
+    CmdLine := '-L --progress-bar -o "' + DestPath + '" "' + URL + '"';
+    Log(Format('DownloadFile: %s -> %s', [URL, DestPath]));
+    Result := Exec(ExePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+    Log(Format('DownloadFile exit=%d result=%d', [ExitCode, Integer(Result)]));
+    if (ExitCode <> 0) then Result := False;
   except
+    Log('DownloadFile exception');
     Result := False;
   end;
+end;
+
+procedure CreateModelSelectPage();
+var
+  DefaultIdx: Integer;
+begin
+  // cumple Manual 9 §5.2: pagina de seleccion de modelo code-especifico (DeepSeek/CodeLlama)
+  if ModelSelectPage <> nil then Exit;
+  ModelSelectPage := CreateInputOptionPage(wpSelectComponents,
+    'Seleccionar modelo de codigo',
+    'Elige el modelo GGUF code-especifico a descargar (HuggingFace)',
+    'Modelos recomendados segun VRAM detectada (' + IntToStr(VRAM_MB) + ' MB):',
+    True, False);
+  ModelSelectPage.Add('DeepSeek Coder 1.3B Q4_K_M (~1.1 GB) - <4 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 7B Q4_K_M (~4 GB) - 4-6 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 7B Q5_K_M (~5 GB) - 6-8 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 13B Q4_K_M (~7 GB) - 8-12 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 34B Q4_K_M (~18 GB) - 12+ GB VRAM');
+  if VRAM_MB < 4096 then DefaultIdx := 0
+  else if VRAM_MB < 6144 then DefaultIdx := 1
+  else if VRAM_MB < 8192 then DefaultIdx := 2
+  else if VRAM_MB < 12288 then DefaultIdx := 3
+  else DefaultIdx := 4;
+  ModelSelectPage.SelectedValueIndex := DefaultIdx;
+  Log(Format('ModelSelectPage creada defaultIdx=%d VRAM=%d', [DefaultIdx, VRAM_MB]));
+end;
+
+procedure ApplyModelSelection();
+begin
+  if ModelSelectPage = nil then Exit;
+  case ModelSelectPage.SelectedValueIndex of
+    0: begin SelectedModelName := 'deepseek-coder-1.3b-Q4_K_M.gguf'; SelectedModelURL := '{#MODEL_URL_1B}'; end;
+    1: begin SelectedModelName := 'codellama-7b-Q4_K_M.gguf'; SelectedModelURL := '{#MODEL_URL_7B}'; end;
+    2: begin SelectedModelName := 'codellama-7b-Q5_K_M.gguf'; SelectedModelURL := 'https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q5_K_M.gguf'; end;
+    3: begin SelectedModelName := 'codellama-13b-Q4_K_M.gguf'; SelectedModelURL := '{#MODEL_URL_13B}'; end;
+    4: begin SelectedModelName := 'codellama-34b-Q4_K_M.gguf'; SelectedModelURL := '{#MODEL_URL_34B}'; end;
+  end;
+  Log(Format('Modelo seleccionado por usuario: %s -> %s', [SelectedModelName, SelectedModelURL]));
 end;
 
 procedure DownloadAIComponents();
@@ -485,9 +551,9 @@ begin
     if AppGGUF <> '' then ExistingGGUF := AppGGUF;
   end;
   if ExistingGGUF = '' then ExistingGGUF := CheckForExistingGGUF();
-  // Manual 9 §5.3: si hay GGUF existente, preguntar al usuario
+  // Manual 9 §5.3: si hay GGUF existente, preguntar solo en modo interactivo
   UseExisting := False;
-  if ExistingGGUF <> '' then begin
+  if (ExistingGGUF <> '') and (not WizardSilent) then begin
     if MsgBox('Se encontró un modelo GGUF existente:'#13#10 + ExistingGGUF + #13#10#13#10'¿Desea usar este modelo existente?'#13#10'(Sí = usar existente y no descargar, No = descargar ' + SelectedModelName + ')', mbConfirmation, MB_YESNO) = IDYES then begin
       Log('Usuario eligió usar GGUF existente: ' + ExistingGGUF);
       UseExisting := True;
@@ -495,20 +561,42 @@ begin
       ProgressBar.Position := 50;
       WizardForm.Repaint;
     end;
+  end else if ExistingGGUF <> '' then begin
+    Log('GGUF existente en modo SILENT — usando automaticamente: ' + ExistingGGUF);
+    UseExisting := True;
   end;
 
-  if IsOllamaInstalled() then begin
-    if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10'OpenSyn puede conectarse a Ollama (http://localhost:11434) en lugar de descargar llama-server.'#13#10#13#10'¿Desea conectar OpenSyn a Ollama existente?'#13#10'(Sí = usar Ollama, No = instalar llama-server + modelo)', mbConfirmation, MB_YESNO) = IDYES then begin
+  if IsOllamaInstalled() and (not WizardSilent) then begin
+    if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10'OpenSyn puede conectarse a Ollama (http://localhost:11434) en lugar de descargar llama-server.'#13#10#13#10'¿Desea conectar OpenSyn a Ollama existente?'#13#10'(Sí = conectar Ollama qwen-coder, No = descargar modelo GGUF code-especifico desde la red)', mbConfirmation, MB_YESNO) = IDYES then begin
       Log('Usuario eligió conectar a Ollama existente — se omite descarga de llama-server');
-      StatusLabel.Caption := 'Configurando para Ollama existente...';
-      ProgressBar.Position := 100;
-      WizardForm.Repaint;
-      // Crear config que apunte a Ollama
+      if ModelSelectPage <> nil then ApplyModelSelection();
       SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+      SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
+      SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
+      ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
+      SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
+      SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+      // cumple Manual 7 §8: Ollama conectado, no descargar
       Exit;
+    end else begin
+      Log('Usuario rechazó Ollama — ofrecer selección de modelo GGUF para descargar');
+      if ModelSelectPage <> nil then ApplyModelSelection();
+      // continuar a descarga del modelo seleccionado (no Exit)
     end;
+  end else if IsOllamaInstalled() then begin
+    Log('Ollama detectado en modo SILENT — configurando automaticamente para Ollama');
+    SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+    SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
+    SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
+    ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
+    SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
+    SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+    Exit;
   end;
 
+  // Si usuario rechazó Ollama/GGUF, aplicar selección de modelo de la pagina
+  if (not UseExisting) and (ModelSelectPage <> nil) and (not IsOllamaInstalled() or (WizardSilent = False)) then
+    ApplyModelSelection();
   DestServer := ExpandConstant('{app}\opensyn\ia\llama-server.exe');
   if UseExisting then
     DestModel := ExistingGGUF
@@ -517,30 +605,39 @@ begin
 
   if not UseExisting then begin
     ForceDirectories(ExtractFileDir(DestModel));
+    ForceDirectories(ExtractFileDir(DestServer));
     StatusLabel.Caption := 'Descargando llama-server.exe (~15 MB)...';
     ProgressBar.Position := 10;
     WizardForm.Repaint;
-
+    Log(Format('Iniciando descarga llama-server: %s', ['{#LLAMA_SERVER_URL}']));
     if not DownloadFile('{#LLAMA_SERVER_URL}', DestServer) then begin
-      MsgBox('Error descargando llama-server.exe. Verifique su conexión.', mbError, MB_OK);
+      if not WizardSilent then MsgBox('Error descargando llama-server.exe. Verifique su conexión.'#13#10'URL: {#LLAMA_SERVER_URL}', mbError, MB_OK);
+      Log('ERROR: DownloadFile llama-server fallo');
       Exit;
     end;
 
     ProgressBar.Position := 50;
     StatusLabel.Caption := 'Descargando ' + SelectedModelName + ' (~' + IntToStr(4096) + ' MB)...';
     WizardForm.Repaint;
-
+    Log(Format('Iniciando descarga modelo: %s -> %s', [SelectedModelURL, DestModel]));
     if not DownloadFile(SelectedModelURL, DestModel) then begin
-      MsgBox('Error descargando modelo ' + SelectedModelName + '. Verifique su conexión y espacio en disco.', mbError, MB_OK);
+      if not WizardSilent then MsgBox('Error descargando modelo ' + SelectedModelName + '. Verifique su conexión y espacio en disco.'#13#10'URL: ' + SelectedModelURL, mbError, MB_OK);
+      Log('ERROR: DownloadFile modelo fallo: ' + SelectedModelURL);
       Exit;
     end;
+    Log('Descargas completadas OK: ' + DestModel);
   end;
 
   ProgressBar.Position := 100;
   StatusLabel.Caption := 'Descargas completadas. Verificando integridad...';
   WizardForm.Repaint;
-  // Guardar selección para post-install config
+  // Guardar selección para post-install config y pre-configurar modo oraculo para que opensyn abra chat directo
   SaveStringToFile(ExpandConstant('{app}\opensyn\install_info.txt'), 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
+  SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
+  SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
+  SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
+  ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
+  SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\install_info.txt', 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
 end;
 
 procedure OnDownloadProgress(TotalBytes, DownloadedBytes: Int64);
@@ -567,11 +664,12 @@ begin
   case CurPageID of
     wpSelectComponents: begin
       if WizardIsComponentSelected('opensyn') then begin
+        CreateModelSelectPage();
         CreateDownloadPage();
       end;
     end;
     wpReady: begin
-      if WizardIsComponentSelected('opensyn') then begin
+      if WizardIsComponentSelected('opensyn') and (not WizardSilent) then begin
         if VRAM_MB < 4096 then begin
           if MsgBox('ADVERTENCIA: Su GPU tiene ' + IntToStr(VRAM_MB) + ' MB de VRAM. ' +
             'El modelo requiere al menos 4 GB. ¿Desea continuar de todos modos?',
@@ -579,6 +677,8 @@ begin
             Result := False;
           end;
         end;
+      end else if WizardIsComponentSelected('opensyn') then begin
+        Log(Format('SILENT: VRAM %d MB <4GB pero continuando sin prompt', [VRAM_MB]));
       end;
     end;
   end;
@@ -593,18 +693,36 @@ begin
       Log('Error durante descarga de componentes IA');
     end;
   end;
+  // cumple Manual 9 §2.5: feedback final no abrupto — mensaje claro en Finished page (wpFinished permanece hasta que usuario pulse Finalizar)
+  if CurPageID = wpFinished then begin
+    try
+      WizardForm.FinishedHeadingLabel.Caption := '¡Instalación completada!';
+      WizardForm.FinishedLabel.Caption :=
+        'Synapse se instaló correctamente.' + #13#10#13#10 +
+        '• Synapse (compilador) + Syquex (lib) + OpenSyn (IA) según tu selección' + #13#10 +
+        '• VS Code: extensión instalada si la marcaste (sin abrir ventana nueva)' + #13#10 +
+        '• PATH actualizado: abre una NUEVA terminal y escribe "synapse" o "opensyn"' + #13#10 +
+        '  Si VS Code estaba abierto, reinícialo para ver "synapse" en su terminal integrada.' + #13#10#13#10 +
+        'Si elegiste OpenSyn, se descargó el modelo recomendado para tu VRAM.' + #13#10 +
+        'Para probar: synapse --version  |  opensyn status  |  code --list-extensions | findstr synapse';
+      WizardForm.FinishedLabel.AutoSize := False;
+      WizardForm.FinishedLabel.Height := 140;
+      WizardForm.FinishedLabel.WordWrap := True;
+    except
+      Log('CurPageChanged wpFinished: error seteando mensaje final');
+    end;
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if (CurStep = ssPostInstall) and WizardIsComponentSelected('vscode') then begin
-    try
-      InstallVSCodeExtension();
-    except
-      Log('Error instalando extensión VS Code via CurStepChanged');
-    end;
+  // cumple Manual 9 §2.5: extension ya se instala via [Run] runasoriginaluser (no duplicar aqui para evitar doble alerta y elevacion)
+  // Se deja solo log opcional, sin Exec que falla como admin
+  if CurStep = ssPostInstall then begin
+    Log('CurStepChanged ssPostInstall — extension delegada a [Run] runasoriginaluser');
   end;
 end;
+// cumple Manual 9 §2.5: Finished page con feedback persistente, no cierre abrupto + extension via Run
 
 {------------------------------------------------------------------------------}
 { VERIFICACIÓN PREVIA: Espacio en disco }
@@ -620,13 +738,5 @@ function InitializeUninstall(): Boolean;
 begin
   Result := True;
 end;
-
-[CustomMessages]
-core_only_desc=Synapse Core (Ligero - Solo Lenguaje, MinGW y VSIX)
-opensyn_full_desc=OpenSyn (Completo - Lenguaje + IA Local Autónoma)
-ai_engine_desc=Motor IA Local (llama-server.exe + modelo .gguf + orquestador C)
-vram_warning=Su GPU tiene %d MB de VRAM. El modelo requiere al menos 4 GB.
-download_failed=Error descargando %s. Verifique su conexión.
-verify_checksum=Verificando integridad del archivo...
-install_completed=Instalación completada. Ejecute 'synapse' desde terminal.
+// cumple Manual 9 §2.5: mensajes duplicados eliminados — CustomMessages ya definido arriba
 

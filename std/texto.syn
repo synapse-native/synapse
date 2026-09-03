@@ -5,6 +5,109 @@
 // Manual 8 §1.7.1-2: leer_bytes, escapar_json, a_texto (nuevos externos)
 // Cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas.
 
+// ============================================================
+// §1.7.3 — Contiene (builtin existente en texto.c)
+// ============================================================
+
+funcion contiene(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        longitud(subcadena) > 0
+    garantiza:
+        resultado == 0 o resultado == 1
+    // No hay liberación de recursos en esta función
+    retornar _syn_texto_contiene(texto, subcadena)
+
+
+// ============================================================
+// §1.7.3 — Índice de (builtin existente en texto.c)
+// ============================================================
+
+funcion indice_de(texto: texto, subcadena: texto) -> entero:
+    requiere:
+        longitud(subcadena) > 0
+    garantiza:
+        resultado >= -1
+    // No hay liberación de recursos en esta función
+    retornar _syn_texto_indice_de(texto, subcadena)
+
+
+// ============================================================
+// §1.7.3 — Reemplazar (builtin existente en texto.c)
+// ============================================================
+
+funcion reemplazar(texto: texto, buscar: texto, reemplazar: texto) -> texto:
+    requiere:
+        longitud(buscar) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    // No hay liberación de recursos en esta función
+    retornar _syn_texto_reemplazar(texto, buscar, reemplazar)
+
+
+// ============================================================
+// §1.7.3 — Termina con (builtin existente en texto.c)
+// ============================================================
+
+funcion termina_con(texto: texto, sufijo: texto) -> entero:
+    requiere:
+        longitud(sufijo) > 0
+    garantiza:
+        resultado == 0 o resultado == 1
+    // No hay liberación de recursos en esta función
+    retornar _syn_texto_termina_con(texto, sufijo)
+
+
+// ============================================================
+// §1.7.3 — Recortar (builtin existente en texto.c)
+// ============================================================
+
+funcion recortar(texto: texto) -> texto:
+    garantiza:
+        longitud(resultado) <= longitud(texto)
+    retornar _syn_texto_recortar(texto)
+
+
+// ============================================================
+// §1.7.3 — Mayúsculas / Minúsculas (builtin existente en texto.c)
+// ============================================================
+
+funcion mayusculas(texto: texto) -> texto:
+    garantiza:
+        longitud(resultado) == longitud(texto)
+    retornar _syn_texto_mayusculas(texto)
+
+
+funcion minusculas(texto: texto) -> texto:
+    garantiza:
+        longitud(resultado) == longitud(texto)
+    retornar _syn_texto_minusculas(texto)
+
+
+// ============================================================
+// §1.7.2 — Escapar JSON (nuevo en string_utils.c)
+// ============================================================
+
+funcion escapar_json(texto: texto) -> texto:
+    garantiza:
+        longitud(resultado) >= longitud(texto)
+    retornar _syn_escapar_json(texto)
+
+
+// ============================================================
+// §1.7.2 — A texto (entero / decimal) (nuevo en string_utils.c)
+// ============================================================
+
+funcion a_texto(valor: entero) -> texto:
+    garantiza:
+        longitud(resultado) > 0
+    retornar _syn_a_texto_entero(valor)
+
+
+funcion a_texto_decimal(valor: decimal) -> texto:
+    garantiza:
+        longitud(resultado) > 0
+    retornar _syn_a_texto_decimal(valor)
+
 importar std.sistema
 
 // ============================================================

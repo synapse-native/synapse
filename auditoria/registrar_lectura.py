@@ -76,7 +76,10 @@ def es_produccion(ruta):
 
 
 def archivos_cambiados():
-    """Archivos modificados/agregados vs HEAD (tracked + untracked)."""
+    """Archivos modificados/agregados vs HEAD (solo tracked: staged + unstaged).
+
+    Excluye archivos untracked (??) que no forman parte del commit.
+    """
     out = set()
     try:
         res = subprocess.run(
@@ -87,6 +90,8 @@ def archivos_cambiados():
             if len(linea) < 4:
                 continue
             estado, ruta = linea[:2], linea[3:].strip()
+            if estado == "??":
+                continue  # untracked: no forma parte del commit
             if estado.startswith("D"):
                 continue  # borrados no requieren lectura
             if " -> " in ruta:

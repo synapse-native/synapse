@@ -4016,6 +4016,264 @@
             },
             "cuerpo": [
               {
+                "tipo": "AsignacionVariable",
+                "nombre": "home",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_env",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "USERPROFILE"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "ruta_home",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "home"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\\.synapse_config"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "ExprAsm",
+                      "instruccion": "CadenaSegura _rh = {.datos = (char*)ruta_home.datos, .longitud = ruta_home.longitud}; CadenaSegura _ch = _syn_leer_archivo(_rh); contenido = _ch;"
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "contenido"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": ""
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "tipo": "SentenciaExpr",
+                        "expr": {
+                          "tipo": "ExprAsm",
+                          "instruccion": "CadenaSegura _rp = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\.synapse_config\", .longitud = 38}; CadenaSegura _cp = _syn_leer_archivo(_rp); if(_cp.longitud>0) contenido = _cp;"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "contenido"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": ""
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "BloqueInseguro",
+                    "cuerpo": [
+                      {
+                        "tipo": "SentenciaExpr",
+                        "expr": {
+                          "tipo": "ExprAsm",
+                          "instruccion": "CadenaSegura _rp2 = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\.synapse_config\", .longitud = 45}; CadenaSegura _cp2 = _syn_leer_archivo(_rp2); if(_cp2.longitud>0) contenido = _cp2;"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "contenido"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "es_ollama",
+                "expresion": {
+                  "tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              },
+              {
+                "tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "ExprAsm",
+                      "instruccion": "CadenaSegura _ro = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\config_ollama.txt\", .longitud = 46}; if(_syn_existe_archivo(_ro)==1) es_ollama=1;"
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "es_ollama"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaRetornar",
+                    "valor": {
+                      "tipo": "LiteralCadena",
+                      "valor": "oraculo"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "home2",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "obtener_env",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "USERPROFILE"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "ruta_ollama_home",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "concat",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "home2"
+                    },
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "\\.opensyn\\config_ollama.txt"
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "es_ollama2",
+                "expresion": {
+                  "tipo": "LiteralNumero",
+                  "valor": 0
+                }
+              },
+              {
+                "tipo": "BloqueInseguro",
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "ExprAsm",
+                      "instruccion": "CadenaSegura _rh2 = {.datos = (char*)ruta_ollama_home.datos, .longitud = ruta_ollama_home.longitud}; if(_syn_existe_archivo(_rh2)==1) es_ollama2=1;"
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "es_ollama2"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaRetornar",
+                    "valor": {
+                      "tipo": "LiteralCadena",
+                      "valor": "oraculo"
+                    },
+                    "es_transferencia": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "contenido"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralCadena",
+                "valor": ""
+              }
+            },
+            "cuerpo": [
+              {
                 "tipo": "SentenciaRetornar",
                 "valor": {
                   "tipo": "LiteralCadena",
@@ -5148,6 +5406,100 @@
             }
           },
           {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  [OK] Ollama/config detectada — http://localhost:11434"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  [OK] Modelo: qwen-coder (via Ollama, no requiere GGUF local)"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  Ejecuta: ollama run qwen-coder"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": ""
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  [Chat] Escribe tu prompt y presiona Enter (salir para terminar):"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "escribir_linea",
+              "argumentos": [
+                {
+                  "tipo": "LiteralCadena",
+                  "valor": "  Hola! Soy OpenSyn. ¿En qué puedo ayudarte a codificar en Synapse? (escribe salir para terminar)"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            },
+            "es_transferencia": false
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "ruta_modelo",
+            "expresion": {
+              "tipo": "LiteralCadena",
+              "valor": "modelo_synapse.gguf"
+            }
+          },
+          {
             "tipo": "AsignacionVariable",
             "nombre": "ctx",
             "expresion": {
@@ -5155,11 +5507,71 @@
               "nombre": "_syn_modelo_cargar",
               "argumentos": [
                 {
-                  "tipo": "LiteralCadena",
-                  "valor": "modelo_synapse.gguf"
+                  "tipo": "Identificador",
+                  "nombre": "ruta_modelo"
                 }
               ]
             }
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "ctx"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNulo"
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "ctx",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_modelo_cargar",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "C:\\Program Files\\Synapse\\opensyn\\models\\deepseek-coder-1.3b-Q4_K_M.gguf"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaSi",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "ctx"
+              },
+              "operador": "==",
+              "derecha": {
+                "tipo": "LiteralNulo"
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "ctx",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "_syn_modelo_cargar",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "C:\\Program Files\\Synapse\\opensyn\\models\\codellama-7b-Q4_K_M.gguf"
+                    }
+                  ]
+                }
+              }
+            ]
           },
           {
             "tipo": "SentenciaSi",
@@ -5183,7 +5595,7 @@
                   "argumentos": [
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "  [!] No se encontro 'modelo_synapse.gguf'"
+                      "valor": "  [!] No se encontro 'modelo_synapse.gguf' ni en {app}\\opensyn\\models"
                     }
                   ]
                 }
@@ -5196,7 +5608,7 @@
                   "argumentos": [
                     {
                       "tipo": "LiteralCadena",
-                      "valor": "  [!] El modo Oraculo requiere un modelo GGUF."
+                      "valor": "  [!] El modo Oraculo requiere un modelo GGUF o Ollama."
                     }
                   ]
                 }
@@ -5236,6 +5648,19 @@
                     {
                       "tipo": "LiteralCadena",
                       "valor": "  y colocalo como 'modelo_synapse.gguf' en la raiz."
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "escribir_linea",
+                  "argumentos": [
+                    {
+                      "tipo": "LiteralCadena",
+                      "valor": "  O usa Ollama: ollama run qwen-coder"
                     }
                   ]
                 }

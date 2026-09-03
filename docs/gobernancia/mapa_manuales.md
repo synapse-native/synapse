@@ -98,7 +98,8 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "test_*.syn": ["Manual 1 §3.1"],
   "*.c": ["Manual 1"],
   "*.h": ["Manual 1"],
-  "*.py": ["Manual 1"]
+  "*.py": ["Manual 1"],
+  "*.syq": ["Manual 8 §1.7.3"]
 }
 ```
 

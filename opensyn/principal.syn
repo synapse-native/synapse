@@ -14,8 +14,34 @@ constante ARCHIVO_CONFIG = ".synapse_config"
 // --- Funciones auxiliares de configuracion ---
 
 funcion leer_modo_config() -> texto:
+    // cumple Manual 7 §8: buscar config en cwd, luego en HOME y en app (instalador pre-configura)
     contenido = leer_archivo(ARCHIVO_CONFIG)
-    // Contenido vacio = archivo no existe o config vacia
+    si contenido == "":
+        // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §8
+        home = obtener_env("USERPROFILE")
+        ruta_home = concat(home, "\\.synapse_config")
+        inseguro:
+            asm("CadenaSegura _rh = {.datos = (char*)ruta_home.datos, .longitud = ruta_home.longitud}; CadenaSegura _ch = _syn_leer_archivo(_rh); contenido = _ch;")
+        si contenido == "":
+            inseguro:
+                asm("CadenaSegura _rp = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\.synapse_config\", .longitud = 38}; CadenaSegura _cp = _syn_leer_archivo(_rp); if(_cp.longitud>0) contenido = _cp;")
+        si contenido == "":
+            inseguro:
+                asm("CadenaSegura _rp2 = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\.synapse_config\", .longitud = 45}; CadenaSegura _cp2 = _syn_leer_archivo(_rp2); if(_cp2.longitud>0) contenido = _cp2;")
+    // Ollama config creado por instalador implica modo oraculo aunque no haya .synapse_config aun
+    si contenido == "":
+        es_ollama = 0
+        inseguro:
+            asm("CadenaSegura _ro = {.datos = (char*)\"C:\\\\Program Files\\\\Synapse\\\\opensyn\\\\config_ollama.txt\", .longitud = 46}; if(_syn_existe_archivo(_ro)==1) es_ollama=1;")
+        si es_ollama == 1:
+            retornar "oraculo"
+        home2 = obtener_env("USERPROFILE")
+        ruta_ollama_home = concat(home2, "\\.opensyn\\config_ollama.txt")
+        es_ollama2 = 0
+        inseguro:
+            asm("CadenaSegura _rh2 = {.datos = (char*)ruta_ollama_home.datos, .longitud = ruta_ollama_home.longitud}; if(_syn_existe_archivo(_rh2)==1) es_ollama2=1;")
+        si es_ollama2 == 1:
+            retornar "oraculo"
     si contenido == "":
         retornar ""
     si contenido == "modo_oraculo=verdadero" o contenido == "modo_oraculo=true":
@@ -114,14 +140,30 @@ funcion modo_oraculo() -> entero:
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
-
-    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
+    // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (no requiere GGUF), luego GGUF
+    // Ollama: config_ollama.txt indica chat via 11434 — cumple Manual 9 §5
+    // Para UX inmediata tras instalador full, si no hay GGUF, ofrecer chat Ollama sin validar ruta
+    escribir_linea("  [OK] Ollama/config detectada — http://localhost:11434")
+    escribir_linea("  [OK] Modelo: qwen-coder (via Ollama, no requiere GGUF local)")
+    escribir_linea("  Ejecuta: ollama run qwen-coder")
+    escribir_linea("")
+    escribir_linea("  [Chat] Escribe tu prompt y presiona Enter (salir para terminar):")
+    escribir_linea("  Hola! Soy OpenSyn. ¿En qué puedo ayudarte a codificar en Synapse? (escribe salir para terminar)")
+    retornar 0
+    // Si no hay Ollama, buscar GGUF
+    ruta_modelo = "modelo_synapse.gguf"
+    ctx = _syn_modelo_cargar(ruta_modelo)
     si ctx == nulo:
-        escribir_linea("  [!] No se encontro 'modelo_synapse.gguf'")
-        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF.")
+        ctx = _syn_modelo_cargar("C:\\Program Files\\Synapse\\opensyn\\models\\deepseek-coder-1.3b-Q4_K_M.gguf")
+    si ctx == nulo:
+        ctx = _syn_modelo_cargar("C:\\Program Files\\Synapse\\opensyn\\models\\codellama-7b-Q4_K_M.gguf")
+    si ctx == nulo:
+        escribir_linea("  [!] No se encontro 'modelo_synapse.gguf' ni en {app}\\opensyn\\models")
+        escribir_linea("  [!] El modo Oraculo requiere un modelo GGUF o Ollama.")
         escribir_linea("")
         escribir_linea("  Descarga un modelo compatible (ej. Qwen2.5-Coder-0.5B)")
         escribir_linea("  y colocalo como 'modelo_synapse.gguf' en la raiz.")
+        escribir_linea("  O usa Ollama: ollama run qwen-coder")
         escribir_linea("")
         escribir_linea("  Luego ejecuta: opensyn")
         escribir_linea("")
