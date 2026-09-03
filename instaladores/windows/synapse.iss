@@ -215,6 +215,9 @@ begin
     if FileExists(TmpFile) then begin
       if LoadStringFromFile(TmpFile, OutStr) then begin
         OutStr := Trim(OutStr);
+        // PowerShell puede retornar float (ej. 16234.5) — tomar parte entera
+        if Pos('.', OutStr) > 0 then OutStr := Copy(OutStr, 1, Pos('.', OutStr)-1);
+        if Pos(',', OutStr) > 0 then OutStr := Copy(OutStr, 1, Pos(',', OutStr)-1);
         try
           Result := StrToInt(OutStr);
         except
@@ -260,7 +263,6 @@ var
   FindRec: TFindRec;
 begin
   Result := '';
-  Home := ExpandConstant('{userdocs}\..\'); // fallback, usaremos USERPROFILE
   Home := GetEnv('USERPROFILE');
   if Home <> '' then begin
     Candidate := Home + '\.opensyn\models';
@@ -287,8 +289,16 @@ begin
       end;
     end;
   end;
-  // También buscar en {app}\opensyn\models (instalación previa)
-  if Result = '' then begin
+  // Nota: {app} no disponible en InitializeSetup, se chequea luego en DownloadAIComponents
+end;
+
+function CheckForExistingGGUFInApp(): String;
+var
+  Candidate: String;
+  FindRec: TFindRec;
+begin
+  Result := '';
+  try
     Candidate := ExpandConstant('{app}\opensyn\models');
     if DirExists(Candidate) then begin
       if FindFirst(Candidate + '\*.gguf', FindRec) then begin
@@ -300,6 +310,8 @@ begin
         end;
       end;
     end;
+  except
+    Log('CheckForExistingGGUFInApp: {app} aún no inicializado');
   end;
 end;
 
@@ -362,25 +374,39 @@ var
   SelectedModelName: String;
 
 function InitializeSetup(): Boolean;
-var
-  Msg: String;
 begin
   Result := True;
-  VRAM_MB := GetVRAMViaWMI();
-  RAM_MB := GetRAM_MB();
-  CPU_CORES := GetCPUCores();
-  ExistingGGUF := CheckForExistingGGUF();
-  OllamaFound := IsOllamaInstalled();
-  SelectedModelURL := SelectModelURL(VRAM_MB);
-  SelectedModelName := SelectModelName(VRAM_MB);
-  Log(Format('Setup iniciado. RAM: %d MB VRAM: %d MB CPU cores: %d Ollama: %d GGUF: %s Modelo: %s', [RAM_MB, VRAM_MB, CPU_CORES, Integer(OllamaFound), ExistingGGUF, SelectedModelName]));
-  if WizardIsComponentSelected('opensyn') then begin
-    Msg := Format('Hardware detectado:'#13#10'  RAM: %d MB'#13#10'  VRAM: %d MB'#13#10'  CPU: %d núcleos'#13#10#13#10'Modelo recomendado: %s', [RAM_MB, VRAM_MB, CPU_CORES, SelectedModelName]);
-    if ExistingGGUF <> '' then
-      Msg := Msg + #13#10#13#10'Se encontró modelo existente:'#13#10'  ' + ExistingGGUF + #13#10'¿Desea usarlo? (Sí=usar existente, No=descargar recomendado)';
-    if OllamaFound then
-      Msg := Msg + #13#10#13#10'Se detectó Ollama instalado. OpenSyn puede conectarse a Ollama existente.';
-    // No bloqueamos, solo informativo en log; el prompt real ocurre en wpReady
+  try
+    VRAM_MB := GetVRAMViaWMI();
+    RAM_MB := GetRAM_MB();
+    CPU_CORES := GetCPUCores();
+    ExistingGGUF := CheckForExistingGGUF();
+    OllamaFound := IsOllamaInstalled();
+    SelectedModelURL := SelectModelURL(VRAM_MB);
+    SelectedModelName := SelectModelName(VRAM_MB);
+    Log(Format('Setup iniciado. RAM: %d MB VRAM: %d MB CPU cores: %d Ollama: %d GGUF: %s Modelo: %s', [RAM_MB, VRAM_MB, CPU_CORES, Integer(OllamaFound), ExistingGGUF, SelectedModelName]));
+  except
+    Log('InitializeSetup: error en detección hardware, usando valores por defecto');
+    VRAM_MB := 0; RAM_MB := 4096; CPU_CORES := 4;
+    SelectedModelURL := SelectModelURL(0);
+    SelectedModelName := SelectModelName(0);
+  end;
+end;
+
+procedure InitializeWizard();
+var
+  LicenseFile: String;
+  LicenseText: AnsiString;
+begin
+  // Manual 9 §2.5: licencia bilingüe según idioma elegido (LICENSE vs LICENSE.es)
+  if ActiveLanguage = 'spanish' then
+    LicenseFile := ExpandConstant('{src}\..\..\LICENSE.es')
+  else
+    LicenseFile := ExpandConstant('{src}\..\..\LICENSE');
+  if FileExists(LicenseFile) then begin
+    if LoadStringFromFile(LicenseFile, LicenseText) then begin
+      WizardForm.LicenseMemo.Lines.Text := LicenseText;
+    end;
   end;
 end;
 
@@ -431,7 +457,14 @@ procedure DownloadAIComponents();
 var
   DestServer, DestModel: String;
   UseExisting: Boolean;
+  AppGGUF: String;
 begin
+  // Manual 9 §5.3: re-chequear GGUF en {app} (no disponible en InitializeSetup) y en perfil
+  if ExistingGGUF = '' then begin
+    AppGGUF := CheckForExistingGGUFInApp();
+    if AppGGUF <> '' then ExistingGGUF := AppGGUF;
+  end;
+  if ExistingGGUF = '' then ExistingGGUF := CheckForExistingGGUF();
   // Manual 9 §5.3: si hay GGUF existente, preguntar al usuario
   UseExisting := False;
   if ExistingGGUF <> '' then begin
