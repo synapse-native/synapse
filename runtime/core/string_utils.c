@@ -8,6 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "synapse_rt_types.h"
+#ifdef _WIN32
+#include <windows.h>
+extern HANDLE _syn_get_cached_stdin(void);
+#endif
 
 // ============================================================
 // §1.7.1 — leer_bytes (lectura binaria de stdin)
@@ -18,6 +22,27 @@ CadenaSegura _syn_leer_bytes(int64_t cantidad) {
     char* buf = (char*)pool_alloc((size_t)(cantidad + 1));
     if (!buf) return (CadenaSegura){0, ""};
 
+#ifdef _WIN32
+    {
+        HANDLE hstdin = _syn_get_cached_stdin();
+        if (hstdin == NULL || hstdin == INVALID_HANDLE_VALUE) {
+            pool_free(buf);
+            return (CadenaSegura){0, ""};
+        }
+        int64_t leidos = 0;
+        while (leidos < cantidad) {
+            DWORD _leidos = 0;
+            DWORD _req = (DWORD)(cantidad - leidos);
+            if (_req > 4096) _req = 4096;
+            BOOL ok = ReadFile(hstdin, buf + leidos, _req, &_leidos, NULL);
+            if (!ok || _leidos == 0) {
+                pool_free(buf);
+                return (CadenaSegura){0, ""};
+            }
+            leidos += (int64_t)_leidos;
+        }
+    }
+#else
     int64_t leidos = 0;
     while (leidos < cantidad) {
         size_t n = fread(buf + leidos, 1, (size_t)(cantidad - leidos), stdin);
@@ -27,6 +52,7 @@ CadenaSegura _syn_leer_bytes(int64_t cantidad) {
         }
         leidos += (int64_t)n;
     }
+#endif
     buf[cantidad] = '\0';
     return (CadenaSegura){.longitud = (int)cantidad, .datos = buf};
 }

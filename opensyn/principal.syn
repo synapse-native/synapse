@@ -8,8 +8,13 @@ importar std.io
 importar std.sistema
 importar std.oraculo
 importar std.modelo
+importar std.texto
 
 constante ARCHIVO_CONFIG = ".synapse_config"
+
+// --- Cliente Ollama local (runtime/core/ollama.c) ---
+// cumple Manual 7 §8: consulta al oraculo local via HTTP (11434)
+externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
 
 // --- Funciones auxiliares de configuracion ---
 
@@ -134,23 +139,105 @@ funcion modo_compilador() -> entero:
     escribir_linea("")
     retornar 1
 
+// --- Configuracion Ollama (config_ollama.txt que escribe el instalador) ---
+
+funcion leer_archivo_sin_validar(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    contenido = ""
+    inseguro:
+        asm("CadenaSegura _rl = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _cl = _syn_leer_archivo(_rl); if(_cl.longitud>0) contenido = _cl;")
+    retornar contenido
+
+funcion leer_config_ollama() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    // cumple Manual 9 §5: el instalador escribe config_ollama.txt con ollama=1 + model=
+    // leer_archivo() valida la ruta contra cwd y rechaza relativas; leer absoluta via asm.
+    contenido = ""
+    cwd_act = _syn_obtener_cwd()
+    si cwd_act != "":
+        ruta_cwd = concat(cwd_act, "/config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_cwd)
+    si contenido == "":
+        home = obtener_env("USERPROFILE")
+        ruta_home = concat(home, "\\.opensyn\\config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_home)
+    si contenido == "":
+        ruta_app = "C:\\Program Files\\Synapse\\opensyn\\config_ollama.txt"
+        contenido = leer_archivo_sin_validar(ruta_app)
+    retornar contenido
+
+funcion obtener_modelo_config(config: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    si config == "":
+        retornar ""
+    idx = strstr_f(config, "model=")
+    si idx < 0:
+        retornar ""
+    inicio = idx + 6
+    total = strlen_s(config)
+    fin = inicio
+    mientras fin < total:
+        letra = subcadena(config, fin, 1)
+        si letra == "\r" o letra == "\n":
+            romper
+        fin = fin + 1
+    si fin <= inicio:
+        retornar ""
+    retornar subcadena(config, inicio, fin - inicio)
+
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
-    // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (no requiere GGUF), luego GGUF
-    // Ollama: config_ollama.txt indica chat via 11434 — cumple Manual 9 §5
-    // Para UX inmediata tras instalador full, si no hay GGUF, ofrecer chat Ollama sin validar ruta
-    escribir_linea("  [OK] Ollama/config detectada — http://localhost:11434")
-    escribir_linea("  [OK] Modelo: qwen-coder (via Ollama, no requiere GGUF local)")
-    escribir_linea("  Ejecuta: ollama run qwen-coder")
+    // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (config_ollama.txt del
+    // instalador, http://localhost:11434); GGUF local como respaldo.
+    config = leer_config_ollama()
+    si config != "":
+        // Chat interactivo real con Ollama (no es un placeholder)
+        modelo = obtener_modelo_config(config)
+        si modelo == "":
+            modelo = "qwen-coder"
+        escribir_linea("  [OK] Ollama detectada — http://localhost:11434")
+        escribir_linea(concat("  [OK] Modelo: ", modelo))
+        escribir_linea("")
+        escribir_linea("  [Chat] Escribe tu prompt y presiona Enter (salir para terminar):")
+        escribir_linea("")
+        escribir_linea(concat("  Hola! Soy OpenSyn. ¿En qué puedo ayudarte a codificar en Synapse? (modelo: ", concat(modelo, ")")))
+        escribir_linea("")
+        mientras verdadero:
+            escribir_linea("  Tu> ")
+            prompt = leer_linea()
+            si prompt == "salir" o prompt == "exit":
+                escribir_linea("")
+                escribir_linea("  Hasta luego!")
+                escribir_linea("")
+                retornar 0
+            si prompt == "":
+                siguiente
+            respuesta = _syn_ollama_consultar(modelo, prompt, "127.0.0.1", 11434, 1024)
+            si respuesta == "":
+                escribir_linea("  [Error] No hubo respuesta de Ollama. Verifica que este activo:")
+                escribir_linea("    ollama serve")
+            sino:
+                escribir_linea("")
+                escribir_linea(concat("  OpenSyn> ", respuesta))
+            escribir_linea("")
+        retornar 0
+
+    // --- Sin configuracion Ollama: buscar modelo GGUF local ---
+    escribir_linea("  [*] Ollama no detectado; buscando modelo GGUF local...")
     escribir_linea("")
-    escribir_linea("  [Chat] Escribe tu prompt y presiona Enter (salir para terminar):")
-    escribir_linea("  Hola! Soy OpenSyn. ¿En qué puedo ayudarte a codificar en Synapse? (escribe salir para terminar)")
-    retornar 0
-    // Si no hay Ollama, buscar GGUF
     ruta_modelo = "modelo_synapse.gguf"
     ctx = _syn_modelo_cargar(ruta_modelo)
     si ctx == nulo:

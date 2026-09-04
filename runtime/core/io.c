@@ -11,6 +11,7 @@
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#include <windows.h>
 #endif
 
 // ============================================================
@@ -21,9 +22,24 @@
 static pthread_once_t _syn_stdout_binary_once = PTHREAD_ONCE_INIT;
 static pthread_once_t _syn_stdin_binary_once = PTHREAD_ONCE_INIT;
 
+#ifdef _WIN32
+// Detecta si un HANDLE es consola real (GetConsoleMode falla en pipes/archivos).
+// Los textos Synapse/OpenSyn son UTF-8; la consola Windows usa CP850/CP437 por
+// defecto y muestra mojibake (┬┐/├®). Se alinea la consola a CP_UTF8 SOLO cuando
+// hay consola real: con pipes (LSP) GetConsoleMode falla y no se toca nada.
+static int _syn_es_consola_handle(HANDLE h) {
+    DWORD modo = 0;
+    return h != NULL && h != INVALID_HANDLE_VALUE && GetConsoleMode(h, &modo) != 0;
+}
+#endif
+
 static void _syn_ensure_stdout_binary_init(void) {
 #ifdef _WIN32
     _setmode(_fileno(stdout), _O_BINARY);
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (_syn_es_consola_handle(h)) {
+        SetConsoleOutputCP(65001);  // cumple Manual 9 2.5: UTF-8 en consola
+    }
 #endif
 }
 
@@ -34,6 +50,17 @@ static void _syn_ensure_stdin_binary_init(void) {
 #endif
 }
 
+#ifdef _WIN32
+// Consola interactiva (chat OpenSyn, menus): modo TEXTO del CRT (traduce CRLF y
+// devuelve la linea al pulsar Enter con echo/edicion) + codepage UTF-8 de entrada.
+// No aplica a pipes: el LSP usa ReadFile directo (Manual 8 1.2).
+static pthread_once_t _syn_stdin_consola_once = PTHREAD_ONCE_INIT;
+static void _syn_ensure_stdin_consola_init(void) {
+    _setmode(_fileno(stdin), _O_TEXT);
+    SetConsoleCP(65001);  // cumple Manual 9 2.5: entrada UTF-8
+}
+#endif
+
 static void _syn_ensure_stdout_binary(void) {
     pthread_once(&_syn_stdout_binary_once, _syn_ensure_stdout_binary_init);
 }
@@ -43,6 +70,24 @@ static void _syn_ensure_stdin_binary(void) {
 }
 
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef _WIN32
+// Cache stdin handle at process start — GetStdHandle can return
+// INVALID_HANDLE_VALUE after CRT initialization corrupts it.
+// Use _get_osfhandle(0) which is more reliable with pipes.
+static HANDLE _syn_stdin_handle = NULL;
+static pthread_once_t _syn_stdin_handle_once = PTHREAD_ONCE_INIT;
+static void _syn_cache_stdin_handle(void) {
+    _syn_stdin_handle = (HANDLE)_get_osfhandle(0);
+    if (_syn_stdin_handle == INVALID_HANDLE_VALUE || _syn_stdin_handle == NULL) {
+        _syn_stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+    }
+}
+static HANDLE _syn_get_stdin_handle(void) {
+    pthread_once(&_syn_stdin_handle_once, _syn_cache_stdin_handle);
+    return _syn_stdin_handle;
+}
+#endif
 
 void escribir(CadenaSegura contenido) {
     _syn_ensure_stdout_binary();
@@ -63,21 +108,15 @@ void escribir_linea(CadenaSegura contenido) {
 // cumple Manual 5 3: mutex protege _buf estático contra data races
 static pthread_mutex_t _leer_linea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Forward declaration — implementación real en _syn_leer_linea (ReadFile Windows)
+CadenaSegura _syn_leer_linea(void);
+
+// leer_linea() — wrapper público que delega a _syn_leer_linea (la implementación real).
+// lsp_v3.c también define leer_linea() como wrapper que llama a _syn_leer_linea.
+// Con --allow-multiple-definition el linker toma la primera definición,
+// pero ambas llegan a _syn_leer_linea → ReadFile (Windows) o fgets (otros).
 CadenaSegura leer_linea(void) {
-    static char _buf[4096];
-    _syn_ensure_stdin_binary();
-    pthread_mutex_lock(&_leer_linea_mutex);
-    if (fgets(_buf, 4096, stdin)) {
-        int _len = (int)strlen(_buf);
-        if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
-        char* _dup = (char*)malloc(_len + 1);
-        if (!_dup) { pthread_mutex_unlock(&_leer_linea_mutex); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
-        memcpy(_dup, _buf, _len + 1);
-        pthread_mutex_unlock(&_leer_linea_mutex);
-        return (CadenaSegura){ .longitud = _len, .datos = _dup };
-    }
-    pthread_mutex_unlock(&_leer_linea_mutex);
-    return (CadenaSegura){ .longitud = 0, .datos = "" };
+    return _syn_leer_linea();
 }
 
 // ============================================================
@@ -87,7 +126,106 @@ CadenaSegura leer_linea(void) {
 
 void _syn_escribir(CadenaSegura texto) { escribir(texto); }
 void _syn_escribir_linea(CadenaSegura texto) { escribir_linea(texto); }
-CadenaSegura _syn_leer_linea(void) { return leer_linea(); }
+
+#ifdef _WIN32
+// Export cached stdin handle for use by string_utils.c _syn_leer_bytes
+HANDLE _syn_get_cached_stdin(void) { return _syn_get_stdin_handle(); }
+#endif
+
+// _syn_leer_linea contiene la implementación real.
+// lsp_v3.c define su propio `leer_linea` wrapper que llama a _syn_leer_linea.
+// io.c también define `leer_linea` que llama a _syn_leer_linea.
+// El linker con --allow-multiple-definition toma la primera definición de
+// `leer_linea` (la del LSP wrapper). Ambas llegan a _syn_leer_linea.
+CadenaSegura _syn_leer_linea(void) {
+    static char _buf[4096];
+    pthread_mutex_lock(&_leer_linea_mutex);
+#ifdef _WIN32
+    {
+        HANDLE hstdin = _syn_get_stdin_handle();
+        if (_syn_es_consola_handle(hstdin)) {
+            // Consola interactiva (chat/OpenSyn, menus): CRT en modo texto con
+            // codepage UTF-8. El ReadFile byte-a-byte es solo para pipes (LSP).
+            pthread_once(&_syn_stdin_consola_once, _syn_ensure_stdin_consola_init);
+            if (fgets(_buf, 4096, stdin)) {
+                int _len = (int)strlen(_buf);
+                if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
+                if (_len > 0 && _buf[_len - 1] == '\r') { _buf[_len - 1] = '\0'; _len--; }
+                if (_len == 0) {
+                    pthread_mutex_unlock(&_leer_linea_mutex);
+                    return (CadenaSegura){ .longitud = 0, .datos = "" };
+                }
+                // cumple Manual 2 9.1: pool_alloc (RAII libera con pool_free)
+                char* _dup = (char*)pool_alloc((size_t)(_len + 1));
+                if (!_dup) { pthread_mutex_unlock(&_leer_linea_mutex); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+                memcpy(_dup, _buf, _len + 1);
+                pthread_mutex_unlock(&_leer_linea_mutex);
+                return (CadenaSegura){ .longitud = _len, .datos = _dup };
+            }
+            pthread_mutex_unlock(&_leer_linea_mutex);
+            return (CadenaSegura){ .longitud = 0, .datos = "" };
+        }
+        // cumple Manual 8 1.2: ReadFile directo para pipes de subprocess en Windows
+        // fgets() falla con pipes de Python porque _setmode+_get_osfhandle corrompe
+        // el handle. GetStdHandle(STD_INPUT_HANDLE) bypassa el CRT completamente.
+        if (hstdin == NULL || hstdin == INVALID_HANDLE_VALUE) {
+            pthread_mutex_unlock(&_leer_linea_mutex);
+            return (CadenaSegura){ .longitud = 0, .datos = "" };
+        }
+        int _pos = 0;
+        while (_pos < 4095) {
+            DWORD _leidos = 0;
+            BOOL ok = ReadFile(hstdin, _buf + _pos, 1, &_leidos, NULL);
+            if (!ok || _leidos == 0) {
+                if (_pos == 0) {
+                    pthread_mutex_unlock(&_leer_linea_mutex);
+                    return (CadenaSegura){ .longitud = 0, .datos = "" };
+                }
+                break;
+            }
+            if (_buf[_pos] == '\n') {
+                _pos++;
+                break;
+            }
+            _pos++;
+        }
+        _buf[_pos] = '\0';
+        int _len = _pos;
+        if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
+        if (_len > 0 && _buf[_len - 1] == '\r') { _buf[_len - 1] = '\0'; _len--; }
+        if (_len == 0) {
+            // cumple Manual 2 9.1: pool_alloc, no literal ni malloc ajeno
+            char* _empty = (char*)pool_alloc(1);
+            if (_empty) _empty[0] = '\0';
+            pthread_mutex_unlock(&_leer_linea_mutex);
+            return (CadenaSegura){ .longitud = 0, .datos = _empty ? _empty : "" };
+        }
+        char* _dup = (char*)pool_alloc((size_t)(_len + 1));
+        if (!_dup) { pthread_mutex_unlock(&_leer_linea_mutex); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+        memcpy(_dup, _buf, _len + 1);
+        pthread_mutex_unlock(&_leer_linea_mutex);
+        return (CadenaSegura){ .longitud = _len, .datos = _dup };
+    }
+#else
+    if (fgets(_buf, 4096, stdin)) {
+        int _len = (int)strlen(_buf);
+        if (_len > 0 && _buf[_len - 1] == '\n') { _buf[_len - 1] = '\0'; _len--; }
+        if (_len > 0 && _buf[_len - 1] == '\r') { _buf[_len - 1] = '\0'; _len--; }
+        if (_len == 0) {
+            pthread_mutex_unlock(&_leer_linea_mutex);
+            return (CadenaSegura){ .longitud = 0, .datos = "" };
+        }
+        // cumple Manual 2 9.1: pool_alloc (RAII libera con pool_free)
+        char* _dup = (char*)pool_alloc((size_t)(_len + 1));
+        if (!_dup) { pthread_mutex_unlock(&_leer_linea_mutex); return (CadenaSegura){ .longitud = 0, .datos = "" }; }
+        memcpy(_dup, _buf, _len + 1);
+        pthread_mutex_unlock(&_leer_linea_mutex);
+        return (CadenaSegura){ .longitud = _len, .datos = _dup };
+    }
+    pthread_mutex_unlock(&_leer_linea_mutex);
+    return (CadenaSegura){ .longitud = 0, .datos = "" };
+#endif
+}
 
 // ============================================================
 // File I/O (lectura/escritura de archivos)

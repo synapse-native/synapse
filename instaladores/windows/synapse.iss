@@ -116,7 +116,7 @@ Source: "{#SourcePath}\..\..\runtime\*"; DestDir: "{app}/bin/runtime"; Component
 Source: "{#SourcePath}\..\..\std\*"; DestDir: "{app}/std"; Components: synapse; Flags: ignoreversion recursesubdirs
 ; Nota: el repo usa librerias/ (no lib/) — Manual 9 §2.2 muestra lib/ como nombre instalado
 Source: "{#SourcePath}\..\..\librerias\*"; DestDir: "{app}/lib"; Components: syquex; Flags: ignoreversion recursesubdirs
-Source: "{#SourcePath}\..\..\opensyn\*"; DestDir: "{app}/opensyn"; Components: opensyn; Flags: ignoreversion recursesubdirs
+Source: "{#SourcePath}\..\..\opensyn\*"; DestDir: "{app}/opensyn"; Components: opensyn; Flags: ignoreversion recursesubdirs; Excludes: "*.c,*.o,*.exe,*.py,*.h,*.pyc,*.syn.json,__pycache__"
 ; Nota: el repo usa vscode-synapse/ (no vscode/) — Manual 9 §2.2 muestra vscode/ como nombre instalado
 Source: "{#SourcePath}\..\..\vscode-synapse\synapse-{#MyAppVersion}.vsix"; DestDir: "{app}/vscode"; Components: vscode; Flags: ignoreversion skipifsourcedoesntexist
 ; cumple Manual 9 §2.5: MinGW toolchain provisioning script (scripts/install.ps1 existe — provisioning real)
@@ -132,7 +132,7 @@ Source: "{#SourcePath}\..\..\LICENSE.es"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Components: synapse
-Name: "{group}\Synapse - Terminal"; Filename: "cmd.exe"; Parameters: "/k ""{app}\bin\synapse.exe"" --help"; WorkingDir: "{app}"; Components: synapse
+Name: "{group}\Synapse - Terminal"; Filename: "cmd.exe"; Parameters: "/k ""{app}\bin\synapse.exe"""; WorkingDir: "{app}"; Components: synapse
 Name: "{group}\Desinstalar Synapse"; Filename: "{uninstallexe}"; Components: synapse
 Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; Components: synapse
 
@@ -140,15 +140,15 @@ Name: "{autodesktop}\Synapse Language"; Filename: "{app}\bin\{#MyAppExeName}"; W
 ; cumple Manual 9 §2.5: post-install hooks
 ; Flags: nowait para instalacion silenciosa no-bloqueante; runasoriginaluser para VS Code extension (no abre ventana, per-user)
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\install.ps1"""; Description: "Provisionar MinGW Toolchain"; Flags: runhidden nowait; Components: synapse; StatusMsg: "Configurando MinGW Toolchain..."
-Filename: "{app}\bin\{#MyAppExeName}"; Parameters: """{app}\opensyn\installer.syn"""; Components: opensyn; Check: FileExists(ExpandConstant('{app}\opensyn\installer.syn')); Description: "Configurar OpenSyn (hardware)"; Flags: runhidden nowait postinstall; StatusMsg: "Configurando OpenSyn..."
+; [fix-31] Paso [Run] OpenSyn eliminado: synapse.exe solo COMPILA installer.syn (nunca lo ejecuta) y fallaba en silencio (~240 ms, sin GCC en cwd). La configuracion de OpenSyn la realiza el wizard en [Code] DownloadAIComponents (Manual 9 §5.2-5.3) y opensyn.exe lee la config ya instalada.
 Filename: "cmd.exe"; Parameters: "/c code --install-extension ""{app}\vscode\synapse-8.1.0-industrial.vsix"" --force"; Components: vscode; StatusMsg: "Instalando extensión VS Code..."; Flags: runhidden runasoriginaluser nowait
 ; cumple Manual 9 §2.5: VS Code via Run runasoriginaluser (no abre ventana, evita elevacion que causa exit 1)
 
 [Registry]
 ; cumple Manual 9 §2.5: PATH en HKCU (preservestringtype sin uninsdeletevalue para no borrar PATH original al desinstalar)
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: preservestringtype
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Components: synapse; Flags: preservestringtype; Check: NotSynapseInUserPath
 ; Fallback HKLM solo si admin y sin borrar en uninstall (evita corrupcion Machine Path)
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: IsAdminInstallMode; Flags: preservestringtype
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}\bin"; Check: IsAdminInstallMode and NotSynapseInMachinePath; Flags: preservestringtype
 
 [Code]
 var
@@ -570,12 +570,12 @@ begin
     if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10'OpenSyn puede conectarse a Ollama (http://localhost:11434) en lugar de descargar llama-server.'#13#10#13#10'¿Desea conectar OpenSyn a Ollama existente?'#13#10'(Sí = conectar Ollama qwen-coder, No = descargar modelo GGUF code-especifico desde la red)', mbConfirmation, MB_YESNO) = IDYES then begin
       Log('Usuario eligió conectar a Ollama existente — se omite descarga de llama-server');
       if ModelSelectPage <> nil then ApplyModelSelection();
-      SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+      SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=qwen-coder', False);
       SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
       SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
       ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
       SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
-      SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+      SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=qwen-coder', False);
       // cumple Manual 7 §8: Ollama conectado, no descargar
       Exit;
     end else begin
@@ -585,12 +585,12 @@ begin
     end;
   end else if IsOllamaInstalled() then begin
     Log('Ollama detectado en modo SILENT — configurando automaticamente para Ollama');
-    SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+    SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=qwen-coder', False);
     SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
     SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
     ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
     SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
-    SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+    SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=qwen-coder', False);
     Exit;
   end;
 
@@ -670,7 +670,7 @@ begin
     end;
     wpReady: begin
       if WizardIsComponentSelected('opensyn') and (not WizardSilent) then begin
-        if VRAM_MB < 4096 then begin
+        if (VRAM_MB > 0) and (VRAM_MB < 4096) then begin
           if MsgBox('ADVERTENCIA: Su GPU tiene ' + IntToStr(VRAM_MB) + ' MB de VRAM. ' +
             'El modelo requiere al menos 4 GB. ¿Desea continuar de todos modos?',
             mbConfirmation, MB_YESNO) = IDNO then begin
@@ -739,4 +739,31 @@ begin
   Result := True;
 end;
 // cumple Manual 9 §2.5: mensajes duplicados eliminados — CustomMessages ya definido arriba
+
+{------------------------------------------------------------------------------}
+{ FUNCIONES AUXILIARES: PATH sin duplicados al reinstalar (Manual 9 §2.5) }
+{------------------------------------------------------------------------------}
+function SynapsePathContieneAppBin(const Valor: String): Boolean;
+begin
+  // {app}\bin ya presente en el PATH (cualquier install previa) => no volver a anexar
+  Result := Pos(Lowercase(ExpandConstant('{app}\bin')), Lowercase(Valor)) > 0;
+end;
+
+function NotSynapseInUserPath(): Boolean;
+var
+  S: String;
+begin
+  Result := True;
+  if RegQueryStringValue(HKCU, 'Environment', 'Path', S) then
+    Result := not SynapsePathContieneAppBin(S);
+end;
+
+function NotSynapseInMachinePath(): Boolean;
+var
+  S: String;
+begin
+  Result := True;
+  if RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', S) then
+    Result := not SynapsePathContieneAppBin(S);
+end;
 

@@ -317,7 +317,7 @@ extern int64_t texto_a_entero(CadenaSegura str);
 extern double texto_a_decimal(CadenaSegura str);
 extern CadenaSegura decimal_a_texto(double n);
 extern CadenaSegura entero_a_texto(int64_t n);
-extern int str_eq(CadenaSegura a, CadenaSegura b);
+extern int64_t str_eq(CadenaSegura a, CadenaSegura b);
 extern CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 extern void synapse_lanzar_hilo(void* (*fn)(void*), void* arg);
 extern void synapse_esperar_hilos(void);

@@ -984,64 +984,115 @@ funcion principal() -> entero:
             si id_fin > id_pos:
                 id_val = extraer_entero(subcadena(body, id_pos, id_fin - id_pos))
 
-        // cumple Manual 8 1.2: dispatch via strstr_f sobre body raw
-        // (evita use-after-free: cmp_texto libera args; method_str no needed)
+        // cumple Manual 8 1.2: extract method BEFORE desde_texto frees body.
+        // Tolerante a espacios: clientes JSON pueden emitir "method":"x" (VS Code)
+        // o "method": "x" (python json.dumps); buscar clave, luego ':', espacios y '"'
+        let method_name = ""
+        let method_idx = strstr_f(body, "\"method\"")
+        si method_idx >= 0:
+            let value_pos = method_idx + 8
+            // saltar hasta el separador ':'
+            mientras value_pos < body_len:
+                let c = subcadena(body, value_pos, 1)
+                si cmp_texto(c, ":") == 0:
+                    romper
+                value_pos = value_pos + 1
+            value_pos = value_pos + 1
+            // saltar espacios/blancos tras ':'
+            mientras value_pos < body_len:
+                let c = subcadena(body, value_pos, 1)
+                si cmp_texto(c, " ") != 0:
+                    si cmp_texto(c, "\t") != 0:
+                        romper
+                value_pos = value_pos + 1
+            // value_pos debe apuntar a la comilla inicial del valor
+            si value_pos < body_len:
+                let c = subcadena(body, value_pos, 1)
+                si cmp_texto(c, "\"") == 0:
+                    let value_start = value_pos + 1
+                    let value_end = value_start
+                    mientras value_end < body_len:
+                        let c2 = subcadena(body, value_end, 1)
+                        si cmp_texto(c2, "\"") == 0:
+                            romper
+                        value_end = value_end + 1
+                    si value_end > value_start:
+                        method_name = subcadena(body, value_start, value_end - value_start)
+
+        // cumple Manual 8 1.2: parse JSON (frees body)
+
         let msg = desde_texto(body)
         let params_nodo = obtener_campo(msg, "params")
         let params_str = strcpy_f(_json_a_texto(params_nodo))
 
-        // cumple Manual 8 1.2: dispatch via strstr_f sobre body raw
-        // (evita use-after-free: cmp_texto libera method_str en 1ra llamada)
-        si strstr_f(body, "\"initialize\"") >= 0:
+        // cumple Manual 8 1.2: dispatch via extracted method name (no use-after-free)
+        si cmp_texto(method_name, "initialize") == 0:
             handle_initialize(id_val)
-        si strstr_f(body, "\"shutdown\"") >= 0:
-            handle_shutdown(id_val)
-        si strstr_f(body, "\"exit\"") >= 0:
-            si id_val >= 0:
-                handle_unknown(id_val)
-        si strstr_f(body, "\"textDocument/didOpen\"") >= 0:
-            uri_actual = strcpy_f(extraer_uri(params_str))
-            lsp_doc_store(extraer_texto_doc(params_str))
-            let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
-            enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
-        si strstr_f(body, "\"textDocument/didChange\"") >= 0:
-            lsp_doc_store(extraer_texto_doc(params_str))
-        si strstr_f(body, "\"textDocument/didClose\"") >= 0:
-            lsp_doc_clear()
-            uri_actual = ""
-            let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
-            enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
-        si strstr_f(body, "\"textDocument/hover\"") >= 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_hover(id_val, doc, params_str)
-        si strstr_f(body, "\"textDocument/completion\"") >= 0:
-            let items = lsp_build_completion_items()
-            enviar_respuesta(construir_respuesta(id_val, "{\"isIncomplete\":false,\"items\":" + items + "}"))
-        si strstr_f(body, "\"textDocument/definition\"") >= 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_definition(id_val, uri_actual, doc, params_str)
-        si strstr_f(body, "\"textDocument/codeAction\"") >= 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_code_action(id_val, doc, params_str)
-        si strstr_f(body, "\"textDocument/formatting\"") >= 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_formatting(id_val, doc, params_str)
-        si strstr_f(body, "\"textDocument/signatureHelp\"") >= 0:
-            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
-            handle_signature_help(id_val, doc, params_str)
-        si strstr_f(body, "\"workspace/didChangeConfiguration\"") >= 0:
-            handle_did_change_configuration(params_str)
-        // cumple Manual 8 2.3: comandos IA
-        si strstr_f(body, "\"synapse/aiStatus\"") >= 0:
-            handle_ai_status(id_val)
-        si strstr_f(body, "\"synapse/aiTranspile\"") >= 0:
-            handle_ai_transpile(id_val, params_str)
-        si strstr_f(body, "\"synapse/aiBindings\"") >= 0:
-            handle_ai_bindings(id_val, params_str)
-        si strstr_f(body, "\"synapse/aiComplete\"") >= 0:
-            handle_ai_complete(id_val, params_str)
-        si strstr_f(body, "\"synapse/aiFix\"") >= 0:
-            handle_ai_fix(id_val, params_str)
+        sino:
+            si cmp_texto(method_name, "shutdown") == 0:
+                handle_shutdown(id_val)
+            sino:
+                si cmp_texto(method_name, "exit") == 0:
+                    si id_val >= 0:
+                        handle_unknown(id_val)
+                sino:
+                    si cmp_texto(method_name, "textDocument/didOpen") == 0:
+                        uri_actual = strcpy_f(extraer_uri(params_str))
+                        lsp_doc_store(extraer_texto_doc(params_str))
+                        let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
+                        enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+                    sino:
+                        si cmp_texto(method_name, "textDocument/didChange") == 0:
+                            lsp_doc_store(extraer_texto_doc(params_str))
+                        sino:
+                            si cmp_texto(method_name, "textDocument/didClose") == 0:
+                                lsp_doc_clear()
+                                uri_actual = ""
+                                let diag = "{\"uri\":" + json_string(uri_actual) + ",\"diagnostics\":[]}"
+                                enviar_respuesta(construir_notificacion("textDocument/publishDiagnostics", diag))
+                            sino:
+                                si cmp_texto(method_name, "textDocument/hover") == 0:
+                                    let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+                                    handle_hover(id_val, doc, params_str)
+                                sino:
+                                    si cmp_texto(method_name, "textDocument/completion") == 0:
+                                        let items = lsp_build_completion_items()
+                                        enviar_respuesta(construir_respuesta(id_val, "{\"isIncomplete\":false,\"items\":" + items + "}"))
+                                    sino:
+                                        si cmp_texto(method_name, "textDocument/definition") == 0:
+                                            let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+                                            handle_definition(id_val, uri_actual, doc, params_str)
+                                        sino:
+                                            si cmp_texto(method_name, "textDocument/codeAction") == 0:
+                                                let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+                                                handle_code_action(id_val, doc, params_str)
+                                            sino:
+                                                si cmp_texto(method_name, "textDocument/formatting") == 0:
+                                                    let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+                                                    handle_formatting(id_val, doc, params_str)
+                                                sino:
+                                                    si cmp_texto(method_name, "textDocument/signatureHelp") == 0:
+                                                        let doc = reemplazar(lsp_doc_get(), "\\n", "\n")
+                                                        handle_signature_help(id_val, doc, params_str)
+                                                    sino:
+                                                        si cmp_texto(method_name, "workspace/didChangeConfiguration") == 0:
+                                                            handle_did_change_configuration(params_str)
+                                                        sino:
+                                                            // cumple Manual 8 2.3: comandos IA
+                                                            si cmp_texto(method_name, "synapse/aiStatus") == 0:
+                                                                handle_ai_status(id_val)
+                                                            sino:
+                                                                si cmp_texto(method_name, "synapse/aiTranspile") == 0:
+                                                                    handle_ai_transpile(id_val, params_str)
+                                                                sino:
+                                                                    si cmp_texto(method_name, "synapse/aiBindings") == 0:
+                                                                        handle_ai_bindings(id_val, params_str)
+                                                                    sino:
+                                                                        si cmp_texto(method_name, "synapse/aiComplete") == 0:
+                                                                            handle_ai_complete(id_val, params_str)
+                                                                        sino:
+                                                                            si cmp_texto(method_name, "synapse/aiFix") == 0:
+                                                                                handle_ai_fix(id_val, params_str)
 
         liberar_nodo(msg)
 
