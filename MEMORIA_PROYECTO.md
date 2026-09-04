@@ -7,26 +7,30 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-04** (F30-b hardening: chat OpenSyn Ollama/UTF-8 + LSP multi-mensaje + instalador 8.1.0 — commit d9c498a)
+Última actualización: **2026-09-04** (F30-b hardening: R139/R113 chat OpenSyn sin corrupción de cadenas + R140/ME_agente_opensyn — OpenSyn AGENTE con herramientas TOOL, UI estilo OpenCode/Freebuff y cliente Ollama robusto — commits ce0e291, e4d09c0)
 
 ---
 
-## 🚦 1. DASHBOARD ACTUAL
-
-```yaml
-Fase roadmap:      FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
+## 🚦 1. DASHBOARD ACTUAL```yaml
+Fase roadmap:      FASE 30-b HARDENING — OpenSyn como agente (R140/ME_agente_opensyn)
+                   Fase 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            F30 COMPLETADA — Todos los MEs GREEN
-Commit fase:       de901bb (ME_30_T8: Docs/Packaging)
-Próximo ME:        FASE 31 (próxima fase del roadmap)
-Próximo paso:      Verificar FASE 31 en ROADMAP.md
-Últimos commits:    fa3c548 (feat(installer): generar instalador Windows Manual 9 §2.5)
+Estado:            F30-b — OpenSyn agente E2E VERDE contra Ollama real (banner + contexto repo + herramientas)
+Commit fase:       e4d09c0 (feat(opensyn): agente con herramientas TOOL + UI estilo opencode + cliente Ollama robusto)
+Próximo ME:        FASE 31 (próxima fase del roadmap) / prueba del instalador como usuario real
+Próximo paso:      Prueba del instalador dist/Synapse-8.1.0-industrial-Windows-x64.exe como usuario real
+Últimos commits:    e4d09c0 (feat(opensyn): ME_agente_opensyn — herramientas TOOL + banner/❯ + ollama robusto)
+                     ce0e291 (fix(opensyn,runtime): R113 chat sin corrupción + UTF-8 + wizard instalador)
+                     d9c498a (F30-b: chat OpenSyn real (Ollama) + consola UTF-8 + LSP multi-mensaje + instalador 8.1.0)
+                     336c8a4 (docs(release): reporte R139 + fila auditoría + MEMORIA)
+                     fa3c548 (feat(installer): generar instalador Windows Manual 9 §2.5)
                      d64a07e (fix(ci): normalizar CRLF→LF + limpiar artefactos)
                      8c0cdc4 (Prepare release v8.1.0-industrial: cross-compile workflow)
                      de901bb (ME_30_T8: Docs/Packaging)
-                    f3e5ad3 (ME_30_T7: Auto-actualización)
-                    5c22529 (ME_30_T6: Tests de smoke)
-                    b1390ba (ME_30_T5: Verificación Ed25519)
+                     f3e5ad3 (ME_30_T7: Auto-actualización)
+                     5c22529 (ME_30_T6: Tests de smoke)
+                     b1390ba (ME_30_T5: Verificación Ed25519)
+
                     72f60bd (ME_30_T4: Instalador macOS)
                     e5e9b58 (ME_30_T3: Instalador Linux)
                     5775c5a (ME_30_T2: Instalador Windows)
@@ -51,6 +55,7 @@ Próximo paso:      Verificar FASE 31 en ROADMAP.md
 | `6dd0139` | docs(release): actualizar memoria y auditoría post-cleanup | Documentación post-commit cleanup |
 | `d001d74` | fix(auditoria): reparar gate de citas `cumple Manual` (§ opcional) + tests MTS | ME-Q1: CUMPLE_RE acepta § opcional → citas_archivo valida 552/588 citas (antes 34/588); test_citas_archivo VERDE. ME-Q2: tests/test_citas_formato.py. ME-Q3: MTO OBL-M2-02 §12→§5 (Manual 2 §5=contratos). Plan MTS docs/plan_ME_reparacion_control_calidad.md (contrastar --plan OK, 0 brechas). |
 | `ce0e291` | R113: chat OpenSyn estilo OpenCode/Freebuff sin corrupción de cadenas + UTF-8 consola + instalador 8.1.0 | HALLAZGO R113: el generador S1 libera parámetros texto al retornar desde bloques anidados (verificado en C generado) → helpers con alias destruían la lista de modelos del chat (use-after-free). Fix: fix_borrowing en pipeline.py aplicado a módulos C de dir_base (no solo nucleo/); helpers single-pass + copias strcpy_f; chat /modelos /model< n> /model<nombre> /ayuda /skills /tdd /revisar /plan con auto-detección y persistencia del modelo real (qwen-coder→qwen-coder:latest); io.c escribir_linea CP65001 (mojibake consola real); ollama.c _syn_ollama_modelos; synapse.iss wizard pregunta PRIMERO conectar a Ollama existente (Sí omite descargas). Verificado E2E contra Ollama real + pipes. Reporte R139. 0 brechas. |
+| `e4d09c0` | R140/ME_agente_opensyn: OpenSyn AGENTE (herramientas TOOL + contexto repo real) + UI estilo OpenCode/Freebuff + cliente Ollama robusto | HALLAZGO R140: `_ollama_leer_respuesta` leía con recv bloqueante SIN timeout → Ollama colgado congelaba el chat en "Tu>" en silencio (150 s+ sin salida). Fix ollama.c: SO_RCVTIMEO 2 s + plazo absoluto 300 s + corte temprano por Content-Length + errores distinguidos (red/plazo/corte). Además: System Prompt con contexto estático (reglas Synapse .syn + Syquex .syq/@export + AGENTS.md + carpetas raíz + git); bucle agente [TOOL] listar/leer/git (sistema.c _syn_listar_directorio/_syn_capturar_comando, solo lectura); banner ASCII retro + prompt ❯ ANSI solo consola real (io.c _syn_es_consola/_syn_ansi); estado "[*] Consultando a <modelo>…" antes de cada llamada. E2E Ollama REAL: responde con la primera línea real de AGENTS.md, stderr 0 bytes, banner 1 sola vez. MTS completo (plan R1 §1.1/R2 §2.3/R3 §8, 2 oráculos E2E, verificacion_ME). Reporte R140. 0 brechas. |
 
 ### Deudas / Hallazgos críticos activos
 - **H-F29-T5b (RESUELTO):** bug RAII preexistente en `runtime/core/sistema.c:24 concat()` con CadenaSegura retornada por FFI — usaba `malloc()` pero liberada con `pool_free()`. Fix commit `478f047`: cambiado a `pool_alloc()`. Mismo bug corregido en `_syn_sha256()`/`_syn_sha256_archivo()` (axon.c:37,63) y `_syn_home()` (modelo.c:781 — usaba `strdup()` que internamente llama `malloc`).
@@ -65,6 +70,8 @@ Próximo paso:      Verificar FASE 31 en ROADMAP.md
 - **H-F30b-4 (RESUELTO, d9c498a):** la consola Windows mostraba mojibake (┬┐/├®) porque el runtime no alineaba la consola a UTF-8. Fix: `SetConsoleOutputCP(65001)`/`SetConsoleCP(65001)` SOLO cuando stdout/stdin es consola real (GetConsoleMode OK); los pipes del LSP quedan intactos (Manual 8 §1.2).
 - **H-LSP-1 (RESUELTO, d9c498a):** el dispatch del LSP (WIP) extraía `method` asumiendo JSON compacto (`"method":"x"`, como VS Code); `json.dumps` de Python emite `"method": "x"` con espacios → `method_name` vacío → ningún request respondía (test_lsp_multimsg/workspace RED). Fix: extracción tolerante a espacios. Los tests pasaban antes solo porque apuntaban al binario viejo `nucleo/lsp_test.exe`.
 - **H-R113 (REGISTRADO, ce0e291 — deuda de compilador):** el generador S1 del pipeline modular libera los parámetros `CadenaSegura` de una función cuando un `retornar` ocurre dentro de un bloque anidado (si/mientras, depth≥1) — `_syn_texto_liberar(param)` antes del return — y también en varios retornos de nivel raíz. Consecuencia: una función .syn que recibe `texto` NO es de solo lectura por defecto; CONSUME la cadena del llamador (use-after-free silencioso sobre el pool). Manual 2 §11 prescribe borrowing; hoy se resuelve con el post-proceso `fix_borrowing` (whitelist read-only) + regla empírica para helpers .syn: single-pass, retornos solo en depth 0, y el llamador pasa copias `strcpy_f` de cadenas vivas. No se corrige el generador (fuera de alcance); registrar como deuda para el compilador S1.
+- **H-R140 (REGISTRADO, e4d09c0 — cliente HTTP sin plazo):** `_ollama_leer_respuesta` (runtime/core/ollama.c) usaba `recv()` bloqueante sin timeout ni plazo absoluto: si Ollama aceptaba la conexión y se colgaba (llama-server caído a mitad de generación, doble instancia, carga lenta del modelo), opensyn quedaba congelado en "Tu>" en silencio indefinido. Fix: `SO_RCVTIMEO` 2 s + plazo absoluto de 300 s por request (carga en frío + generación) + corte temprano cuando `Content-Length` queda satisfecho; código de resultado que distingue error de red (-1), plazo agotado (-2) y corte a mitad de cuerpo (-3), traducido por `_syn_ollama_consultar` a un mensaje claro. Lección: todo cliente de red del runtime debe tener plazo absoluto + timeout de grano fino; el chat imprime "[*] Consultando a <modelo>…" antes de cada llamada bloqueante para que la carga del modelo sea visible.
+- **ME-agente-herramientas (CALIDAD, pendiente opcional):** con qwen-coder el modelo a veces responde directamente (con el contexto ya inyectado) en lugar de pedir [TOOL] — aceptable porque la inyección estática cubre la mayoría de preguntas del repo; refuerzo con few-shot de [TOOL] en el System Prompt queda como mejora opcional de prompts.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
