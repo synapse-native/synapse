@@ -1,0 +1,28 @@
+// =============================================================================
+// service.syq — Configuración del servicio con el compilador migrado
+// Refuerza Manual 8 §1.7.3: contenga, indice_de, reemplazar (builtins existentes)
+// =============================================================================
+
+// Servicio principal del compilador
+servicio compilador {
+    nombre: "compilador"
+    tipo: "compilador"
+
+    // Compilador migrado al Core de Syquex
+    compilador: "syquex/syquex.syn"
+
+    // Configuración de la ABI
+    abi: "core_syquex"
+
+    // Requisitos según Manual 8 §1.7.3
+    requisitos: [
+        "cumple Manual 8 §1.7.3: contenga, indice_de, reemplazar (builtins existentes)",
+        "cumple Manual 2 §12: contratos requiere/garantiza en todas las funciones públicas"
+    ]
+
+    // Dependencias
+    depende: []
+
+    // Verificación de compatibilidad
+    compatibilidad: "core_syquex"
+}

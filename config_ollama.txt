@@ -1,0 +1,2 @@
+ollama=1
+model=qwen-coder
