@@ -20,7 +20,7 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 
 ## M2 — Tipos, contratos e inferencia HM
 - OBL-M2-01 | Manual 2 §4.2 | Inferencia HM identidad `identidad(x: T) -> T` | unit | GREEN
-- OBL-M2-02 | Manual 2 §12 | Contratos `requiere`/`garantiza` observables en runtime | unit | GREEN
+- OBL-M2-02 | Manual 2 §5 | Contratos `requiere`/`garantiza` observables en runtime | unit | GREEN
 - OBL-M2-03 | Manual 2 §8.2 | Tipos ADT anidados en firmas | unit | GREEN
 
 ## M3 — Syquex (frontend / F28 certificación)

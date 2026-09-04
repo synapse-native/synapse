@@ -46,7 +46,7 @@ def get_modified_production_files():
 # ---------------------------------------------------------------------------
 REQ_BLOCK = re.compile(r"(?:requisito:\s*)?Manual\s+(\d+)\s+§\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 ORACULO_RE = re.compile(r"oraculo:\s*(\S+)", re.IGNORECASE)
-CUMPLE_RE = re.compile(r"cumple\s+Manual\s+(\d+)\s+§\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+CUMPLE_RE = re.compile(r"cumple\s+Manual\s+(\d+)\s*(?:§\s*)?(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 
 def parsear_plan(plan_content):
