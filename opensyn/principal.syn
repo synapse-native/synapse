@@ -15,6 +15,17 @@ constante ARCHIVO_CONFIG = ".synapse_config"
 // --- Cliente Ollama local (runtime/core/ollama.c) ---
 // cumple Manual 7 §8: consulta al oraculo local via HTTP (11434)
 externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
+// cumple Manual 7 §8: lista los modelos instalados en Ollama (GET /api/tags)
+externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
+
+// --- Prompts de habilidades (skills) del chat ---
+// Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
+// ratificada H-*: los manuales no documentan skills). Cumple Manual 7 §6.
+constante SKILL_TDD_PROMPT = "Eres un ingeniero senior practicando Test-Driven Development. Tu lenguaje es Synapse (.syn). Reglas del lenguaje: indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr'. No uses punto y coma. Escribe ONLY tests en formato Synapse usando 'importar std.testing' y la funcion 'verificar'. Los tests deben FALLAR inicialmente (RED), luego codigo minimo para PASAR (GREEN). Genera codigo sin explicaciones."
+
+constante SKILL_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el siguiente codigo Synapse siguiendo los 5 ejes: 1) Correccion (bugs, edge cases, error paths), 2) Legibilidad (nombres descriptivos, flow simple), 3) Arquitectura (patrones limpios, modulos), 4) Seguridad (input validation, secret management), 5) Rendimiento (algorithm efficiency). Da feedback concreto con lineas de codigo. Si algo esta bien, di OK. No suavices criticas."
+
+constante SKILL_PLAN_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
 
 // --- Funciones auxiliares de configuracion ---
 
@@ -194,6 +205,252 @@ funcion obtener_modelo_config(config: texto) -> texto:
         retornar ""
     retornar subcadena(config, inicio, fin - inicio)
 
+// --- Helpers del chat Ollama (estilo OpenCode/Freebuff) ---
+// cumple Manual 7 §8: lista de modelos instalados vía GET /api/tags
+
+funcion contar_modelos(lista: texto) -> entero:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // cada nombre de _syn_ollama_modelos termina en '\n' -> contar '\n'
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    total = strlen_s(lista)
+    n = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            n = n + 1
+        i = i + 1
+    retornar n
+
+funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    total = strlen_s(lista)
+    seg = 0
+    inicio = 0
+    i = 0
+    encontrado = ""
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            si seg == n - 1:
+                encontrado = subcadena(lista, inicio, i - inicio)
+                romper
+            seg = seg + 1
+            inicio = i + 1
+        i = i + 1
+    retornar encontrado
+
+funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    total = strlen_s(lista)
+    hallado = 0
+    inicio = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            nombre = subcadena(lista, inicio, i - inicio)
+            si nombre == buscar:
+                hallado = 1
+                romper
+            inicio = i + 1
+        i = i + 1
+    retornar hallado
+
+funcion mostrar_modelos(lista: texto) -> nulo:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    requiere:
+        verdadero
+    total = strlen_s(lista)
+    num = 0
+    inicio = 0
+    i = 0
+    mientras i < total:
+        caracter = subcadena(lista, i, 1)
+        si caracter == "\n":
+            num = num + 1
+            nombre = subcadena(lista, inicio, i - inicio)
+            escribir_linea(concat(concat(concat("     ", entero_a_texto(num)), ". "), nombre))
+            inicio = i + 1
+        i = i + 1
+funcion ruta_config_ollama_existente() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    cwd_act = _syn_obtener_cwd()
+    si cwd_act != "":
+        ruta_cwd = concat(cwd_act, "/config_ollama.txt")
+        contenido = leer_archivo_sin_validar(ruta_cwd)
+        si contenido != "":
+            retornar ruta_cwd
+    home = obtener_env("USERPROFILE")
+    ruta_home = concat(home, "/.opensyn/config_ollama.txt")
+    contenido_home = leer_archivo_sin_validar(ruta_home)
+    si contenido_home != "":
+        retornar ruta_home
+    retornar ""
+
+funcion escribir_archivo_sin_validar(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    res = -1
+    inseguro:
+        asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; res = _syn_escribir_archivo(_esr, _esc);")
+    retornar res
+
+funcion guardar_modelo_config(modelo: texto) -> entero:
+    requiere:
+        longitud(modelo) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    ruta = ruta_config_ollama_existente()
+    si ruta == "":
+        home = obtener_env("USERPROFILE")
+        ruta = concat(home, "/.opensyn/config_ollama.txt")
+    contenido = concat("ollama=1", "\n")
+    contenido = concat(concat(contenido, "model="), modelo)
+    retornar escribir_archivo_sin_validar(ruta, contenido)
+
+// Elige el modelo activo: el configurado si está instalado; si no, el primero
+// instalado (auto-detección del modelo real descargado por el usuario).
+funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // Elige el modelo activo: el configurado si esta instalado; si no, adopta y
+    // PERSISTE el primero instalado (auto-deteccion del modelo real del usuario).
+    // Un unico recorrido de `modelos` calcula presencia + primer nombre.
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    base = ""
+    si modelo_config != "":
+        base = subcadena(modelo_config, 0, strlen_s(modelo_config))
+    si base == "":
+        base = subcadena("qwen-coder", 0, 10)
+    total = strlen_s(modelos)
+    primero = ""
+    presente = 0
+    inicio = 0
+    i = 0
+    num = 0
+    mientras i < total:
+        caracter = subcadena(modelos, i, 1)
+        si caracter == "\n":
+            nombre = subcadena(modelos, inicio, i - inicio)
+            si num == 0:
+                primero = subcadena(nombre, 0, strlen_s(nombre))
+            si nombre == base:
+                presente = 1
+            num = num + 1
+            inicio = i + 1
+        i = i + 1
+    elegido = base
+    si total > 0:
+        si presente == 0:
+            si primero != "":
+                escribir_linea(concat(concat(concat("  [*] Modelo configurado '", base), "' no instalado; usando el primero disponible: "), primero))
+                guardar_modelo_config(subcadena(primero, 0, strlen_s(primero)))
+                elegido = subcadena(primero, 0, strlen_s(primero))
+    retornar subcadena(elegido, 0, strlen_s(elegido))
+funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
+    // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
+    // cadenas al retornar (el generador libera los parametros texto), por lo
+    // que el llamador pasa copias strcpy_f y este helper hace UN solo
+    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
+    // /model <n> o /model <nombre>: devuelve el nuevo modelo (copia fresca) y
+    // persiste la preferencia; devuelve "" si no existe. Un unico recorrido.
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    res = ""
+    arg = ""
+    si prompt == "/model":
+        arg = ""
+    sino:
+        arg = recortar(subcadena(prompt, 7, strlen_s(prompt) - 7))
+    si arg != "":
+        numero = atoi_f(arg)
+        pedido = ""
+        si numero <= 0:
+            pedido = subcadena(arg, 0, strlen_s(arg))
+        total = strlen_s(modelos)
+        seg = 0
+        inicio = 0
+        i = 0
+        nombre_pos = ""
+        nombre_match = ""
+        mientras i < total:
+            caracter = subcadena(modelos, i, 1)
+            si caracter == "\n":
+                nombre = subcadena(modelos, inicio, i - inicio)
+                si numero > 0:
+                    si seg == numero - 1:
+                        nombre_pos = subcadena(nombre, 0, strlen_s(nombre))
+                sino:
+                    si nombre == pedido:
+                        nombre_match = subcadena(nombre, 0, strlen_s(nombre))
+                seg = seg + 1
+                inicio = i + 1
+            i = i + 1
+        nuevo = ""
+        si numero > 0:
+            nuevo = nombre_pos
+        sino:
+            nuevo = nombre_match
+        si nuevo != "":
+            guardar_modelo_config(subcadena(nuevo, 0, strlen_s(nuevo)))
+            res = subcadena(nuevo, 0, strlen_s(nuevo))
+    retornar res
+
+funcion mostrar_ayuda() -> nulo:
+    requiere:
+        verdadero
+    escribir_linea("  Comandos del chat:")
+    escribir_linea("    /modelos           - lista los modelos instalados en Ollama")
+    escribir_linea("    /model <nombre|n>  - cambia de modelo (por nombre o numero)")
+    escribir_linea("    /tdd <tarea>       - genera tests TDD para una funcion")
+    escribir_linea("    /revisar <codigo>  - revision de codigo en 5 ejes")
+    escribir_linea("    /plan <feat>       - desglosa una caracteristica en tareas")
+    escribir_linea("    /skills            - lista las habilidades disponibles")
+    escribir_linea("    salir              - termina la sesion")
+    escribir_linea("")
+
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
@@ -204,16 +461,24 @@ funcion modo_oraculo() -> entero:
     // instalador, http://localhost:11434); GGUF local como respaldo.
     config = leer_config_ollama()
     si config != "":
-        // Chat interactivo real con Ollama (no es un placeholder)
-        modelo = obtener_modelo_config(config)
-        si modelo == "":
-            modelo = "qwen-coder"
-        escribir_linea("  [OK] Ollama detectada — http://localhost:11434")
-        escribir_linea(concat("  [OK] Modelo: ", modelo))
+        // Chat interactivo real con Ollama, estilo OpenCode/Freebuff:
+        // auto-detección del modelo instalado + comandos /model /modelos /ayuda
+        // + skills (/tdd /revisar /plan). cumple Manual 7 §8 + Manual 9 §5.
+        escribir_linea("  [OK] Conectando a Ollama… http://localhost:11434")
+        modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+        si modelos == "":
+            escribir_linea("  [*] No se pudo listar modelos (Ollama apagado?).")
+            escribir_linea("  [*] Verifica: ollama serve  — o usa /modelos mas tarde.")
+            escribir_linea("")
+        modelo_base = obtener_modelo_config(config)
+        modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
+        escribir_linea(concat("  [OK] Modelo activo: ", modelo))
+        total_mod = contar_modelos(strcpy_f(modelos))
+        si total_mod > 0:
+            escribir_linea(concat(concat("  [OK] Modelos instalados (", entero_a_texto(total_mod)), "):"))
+            mostrar_modelos(strcpy_f(modelos))
         escribir_linea("")
-        escribir_linea("  [Chat] Escribe tu prompt y presiona Enter (salir para terminar):")
-        escribir_linea("")
-        escribir_linea(concat("  Hola! Soy OpenSyn. ¿En qué puedo ayudarte a codificar en Synapse? (modelo: ", concat(modelo, ")")))
+        escribir_linea("  [Chat] Escribe tu prompt (ayuda: /ayuda · salir para terminar):")
         escribir_linea("")
         mientras verdadero:
             escribir_linea("  Tu> ")
@@ -225,6 +490,78 @@ funcion modo_oraculo() -> entero:
                 retornar 0
             si prompt == "":
                 siguiente
+            // --- Comandos del chat ---
+            si prompt == "/ayuda" o prompt == "ayuda":
+                mostrar_ayuda()
+                siguiente
+            si prompt == "/modelos" o prompt == "modelos":
+                total_act = contar_modelos(strcpy_f(modelos))
+                si total_act == 0:
+                    escribir_linea("  [!] Sin modelos detectados. Ejecuta: ollama serve")
+                sino:
+                    escribir_linea("  Modelos instalados:")
+                    mostrar_modelos(strcpy_f(modelos))
+                    escribir_linea(concat("  Activo: ", modelo))
+                siguiente
+            si prompt == "/model" o strstr_f(prompt, "/model ") == 0:
+                nuevo_modelo = manejar_modelo(strcpy_f(prompt), strcpy_f(modelos))
+                si nuevo_modelo == "":
+                    escribir_linea("  [!] Modelo no disponible. Usa /modelos para ver los instalados.")
+                sino:
+                    modelo = nuevo_modelo
+                    escribir_linea(concat("  [OK] Modelo activo ahora: ", modelo))
+                    escribir_linea("  [OK] Preferencia guardada en config_ollama.txt")
+                siguiente
+            si prompt == "/skills":
+                escribir_linea("  Habilidades disponibles:")
+                escribir_linea("    /tdd <tarea>      - genera tests TDD para una funcion")
+                escribir_linea("    /revisar <codigo> - revision de codigo en 5 ejes")
+                escribir_linea("    /plan <feat>      - desglosa una caracteristica en tareas")
+                escribir_linea("    /ayuda            - todos los comandos")
+                siguiente
+            si prompt == "/tdd" o strstr_f(prompt, "/tdd ") == 0:
+                tarea = subcadena(prompt, 5, strlen_s(prompt) - 5)
+                si tarea == "":
+                    escribir_linea("  Uso: /tdd <descripcion de la funcion a testear>")
+                sino:
+                    prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
+                    prompt_skill = concat(prompt_skill, tarea)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            si prompt == "/revisar" o strstr_f(prompt, "/revisar ") == 0:
+                codigo_a_revisar = subcadena(prompt, 9, strlen_s(prompt) - 9)
+                si codigo_a_revisar == "":
+                    escribir_linea("  Uso: /revisar <codigo a revisar>")
+                sino:
+                    prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
+                    prompt_skill = concat(prompt_skill, codigo_a_revisar)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            si prompt == "/plan" o strstr_f(prompt, "/plan ") == 0:
+                feat = subcadena(prompt, 6, strlen_s(prompt) - 6)
+                si feat == "":
+                    escribir_linea("  Uso: /plan <caracteristica a desglosar>")
+                sino:
+                    prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
+                    prompt_skill = concat(prompt_skill, feat)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    si respuesta_skill == "":
+                        escribir_linea("  [Error] No hubo respuesta de Ollama.")
+                    sino:
+                        escribir_linea("")
+                        escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            // --- Prompt normal al modelo ---
             respuesta = _syn_ollama_consultar(modelo, prompt, "127.0.0.1", 11434, 1024)
             si respuesta == "":
                 escribir_linea("  [Error] No hubo respuesta de Ollama. Verifica que este activo:")

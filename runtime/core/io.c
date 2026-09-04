@@ -98,6 +98,7 @@ void escribir(CadenaSegura contenido) {
 }
 
 void escribir_linea(CadenaSegura contenido) {
+    _syn_ensure_stdout_binary();  // cumple Manual 9 2.5: CP65001 también al imprimir por línea
     pthread_mutex_lock(&io_mutex);
     fwrite(contenido.datos, 1, contenido.longitud, stdout);
     fwrite("\n", 1, 1, stdout);

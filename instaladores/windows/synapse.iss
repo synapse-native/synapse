@@ -157,6 +157,8 @@ var
   ProgressBar: TNewProgressBar;
   StatusLabel: TNewStaticText;
   ModelSelectPage: TInputOptionWizardPage;
+  OllamaExePath: String;
+  OllamaConnectMode: Boolean;
   // cumple Manual 9 §5.2: seleccion de modelo code-especifico
 
 {------------------------------------------------------------------------------}
@@ -360,6 +362,7 @@ begin
   Candidates[4] := 'C:\Ollama\ollama.exe';
   for i := 0 to 4 do begin
     if FileExists(Candidates[i]) then begin
+      OllamaExePath := Candidates[i];
       Log('Ollama detectado: ' + Candidates[i]);
       Result := True;
       Exit;
@@ -369,6 +372,55 @@ begin
   if FileExists(ExpandConstant('{tmp}\ollama_check.txt')) then DeleteFile(ExpandConstant('{tmp}\ollama_check.txt'));
   // no usamos where por simplicidad, solo paths
 end;
+
+// Ejecuta 'ollama list' y devuelve el nombre del primer modelo instalado (o '').
+function OllamaPrimerModelo(): String;
+var
+  TmpFile, Cmd, Linea, Nombre, Txt: String;
+  TxtA: AnsiString;
+  ExitCode: Integer;
+  P: Integer;
+begin
+  Result := '';
+  if OllamaExePath = '' then Exit;
+  TmpFile := ExpandConstant('{tmp}\ollama_list.txt');
+  if FileExists(TmpFile) then DeleteFile(TmpFile);
+  Cmd := '/c ""' + OllamaExePath + '" list > "' + TmpFile + '""';
+  if not Exec('cmd.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then Exit;
+  if not FileExists(TmpFile) then Exit;
+  if LoadStringFromFile(TmpFile, TxtA) then begin
+    Txt := TxtA;
+    repeat
+      P := Pos(#13#10, Txt);
+      if P > 0 then begin
+        Linea := Copy(Txt, 1, P - 1);
+        Txt := Copy(Txt, P + 2, MaxInt);
+      end else begin
+        Linea := Txt;
+        Txt := '';
+      end;
+      Linea := Trim(Linea);
+      if Linea <> '' then begin
+        // Saltar el encabezado (NAME) y tomar la primera columna
+        if Pos('NAME', Linea) <> 1 then begin
+          P := Pos(' ', Linea);
+          if P = 0 then P := Pos(#9, Linea);
+          if P > 0 then Nombre := Copy(Linea, 1, P - 1)
+          else Nombre := Linea;
+          Nombre := Trim(Nombre);
+          // quitar el sufijo :latest (Ollama acepta ambos; limpio es mejor)
+          if Pos(':latest', Nombre) > 0 then
+            Nombre := Copy(Nombre, 1, Pos(':latest', Nombre) - 1);
+          if Nombre <> '' then begin
+            Result := Nombre;
+            Exit;
+          end;
+        end;
+      end;
+    until Txt = '';
+  end;
+end;
+
 
 function SelectModelURL(VRAM: Integer): String;
 begin
@@ -541,10 +593,27 @@ end;
 
 procedure DownloadAIComponents();
 var
-  DestServer, DestModel: String;
+  DestServer, DestModel, ModeloOllama: String;
   UseExisting: Boolean;
   AppGGUF: String;
 begin
+  // [fix-31] Conectar al Ollama existente (elegido en wpSelectComponents, o modo
+  // silencioso con Ollama detectado): se configura con el primer modelo instalado
+  // y se omite TODA descarga (llama-server + modelo GGUF).
+  if OllamaConnectMode or (WizardSilent and OllamaFound) then begin
+    OllamaConnectMode := True;
+    ModeloOllama := OllamaPrimerModelo();
+    if ModeloOllama = '' then ModeloOllama := 'qwen-coder';
+    Log('Conectando a Ollama existente - modelo: ' + ModeloOllama);
+    ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
+    SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
+    SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + ModeloOllama, False);
+    SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
+    SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
+    SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + ModeloOllama, False);
+    Exit;  // cumple Manual 7 §8: Ollama conectado, no descargar
+  end;
+
   // Manual 9 §5.3: re-chequear GGUF en {app} (no disponible en InitializeSetup) y en perfil
   if ExistingGGUF = '' then begin
     AppGGUF := CheckForExistingGGUFInApp();
@@ -562,40 +631,12 @@ begin
       WizardForm.Repaint;
     end;
   end else if ExistingGGUF <> '' then begin
-    Log('GGUF existente en modo SILENT — usando automaticamente: ' + ExistingGGUF);
+    Log('GGUF existente en modo SILENT - usando automaticamente: ' + ExistingGGUF);
     UseExisting := True;
   end;
 
-  if IsOllamaInstalled() and (not WizardSilent) then begin
-    if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10'OpenSyn puede conectarse a Ollama (http://localhost:11434) en lugar de descargar llama-server.'#13#10#13#10'¿Desea conectar OpenSyn a Ollama existente?'#13#10'(Sí = conectar Ollama qwen-coder, No = descargar modelo GGUF code-especifico desde la red)', mbConfirmation, MB_YESNO) = IDYES then begin
-      Log('Usuario eligió conectar a Ollama existente — se omite descarga de llama-server');
-      if ModelSelectPage <> nil then ApplyModelSelection();
-      SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=qwen-coder', False);
-      SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
-      SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
-      ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
-      SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
-      SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=qwen-coder', False);
-      // cumple Manual 7 §8: Ollama conectado, no descargar
-      Exit;
-    end else begin
-      Log('Usuario rechazó Ollama — ofrecer selección de modelo GGUF para descargar');
-      if ModelSelectPage <> nil then ApplyModelSelection();
-      // continuar a descarga del modelo seleccionado (no Exit)
-    end;
-  end else if IsOllamaInstalled() then begin
-    Log('Ollama detectado en modo SILENT — configurando automaticamente para Ollama');
-    SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=qwen-coder', False);
-    SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
-    SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
-    ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
-    SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
-    SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=qwen-coder', False);
-    Exit;
-  end;
-
-  // Si usuario rechazó Ollama/GGUF, aplicar selección de modelo de la pagina
-  if (not UseExisting) and (ModelSelectPage <> nil) and (not IsOllamaInstalled() or (WizardSilent = False)) then
+  // Si usuario rechazó Ollama/GGUF, aplicar la seleccion de modelo de la pagina
+  if (not UseExisting) and (ModelSelectPage <> nil) then
     ApplyModelSelection();
   DestServer := ExpandConstant('{app}\opensyn\ia\llama-server.exe');
   if UseExisting then
@@ -631,7 +672,7 @@ begin
   ProgressBar.Position := 100;
   StatusLabel.Caption := 'Descargas completadas. Verificando integridad...';
   WizardForm.Repaint;
-  // Guardar selección para post-install config y pre-configurar modo oraculo para que opensyn abra chat directo
+  // Guardar seleccion para post-install config y pre-configurar modo oraculo
   SaveStringToFile(ExpandConstant('{app}\opensyn\install_info.txt'), 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
   SaveStringToFile(ExpandConstant('{app}\opensyn\.synapse_config'), 'modo_oraculo=verdadero', False);
   SaveStringToFile(ExpandConstant('{app}\.synapse_config'), 'modo_oraculo=verdadero', False);
@@ -639,6 +680,7 @@ begin
   ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
   SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\install_info.txt', 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
 end;
+
 
 procedure OnDownloadProgress(TotalBytes, DownloadedBytes: Int64);
 var
@@ -663,14 +705,40 @@ begin
   Result := True;
   case CurPageID of
     wpSelectComponents: begin
+      // [fix-31] Orden correcto: PRIMERO preguntar si conectar a un modelo ya
+      // instalado (Ollama). Solo si NO se conecta (o no hay Ollama) se ofrece
+      // elegir/descargar el modelo GGUF que mejor se adapta al PC.
       if WizardIsComponentSelected('opensyn') then begin
-        CreateModelSelectPage();
-        CreateDownloadPage();
+        OllamaConnectMode := False;
+        if OllamaFound and (not WizardSilent) then begin
+          if MsgBox('Se detectó Ollama instalado en este sistema.'#13#10 +
+            'OpenSyn puede conectarse al/los modelos que ya tienes descargados ' +
+            '(http://localhost:11434) - sin descargar nada.'#13#10#13#10 +
+            '¿Desea conectar OpenSyn a tu Ollama existente?'#13#10 +
+            '(Sí = conectar y omitir descargas. No = elegir y descargar el modelo ' +
+            'GGUF que mejor se adapte a tu PC)', mbConfirmation, MB_YESNO) = IDYES then begin
+            OllamaConnectMode := True;
+            Log('Usuario eligió conectar a su Ollama existente - se omite selección/descarga de modelo');
+            // No se crean ModelSelectPage ni DownloadPage (se salta la descarga)
+          end else begin
+            OllamaConnectMode := False;
+            Log('Usuario rechazó Ollama - mostrar selección de modelo GGUF para descargar');
+            CreateModelSelectPage();
+            CreateDownloadPage();
+          end;
+        end else begin
+          // Sin Ollama o modo silencioso: crear paginas. En modo silencioso no
+          // se muestran, pero garantizan DownloadPage/StatusLabel no nil para la
+          // descarga automatica (comportamiento previo). En modo interactivo sin
+          // Ollama el usuario elige el modelo GGUF en la pagina.
+          CreateModelSelectPage();
+          CreateDownloadPage();
+        end;
       end;
     end;
     wpReady: begin
       if WizardIsComponentSelected('opensyn') and (not WizardSilent) then begin
-        if (VRAM_MB > 0) and (VRAM_MB < 4096) then begin
+        if (VRAM_MB > 0) and (VRAM_MB < 4096) and (not OllamaConnectMode) then begin
           if MsgBox('ADVERTENCIA: Su GPU tiene ' + IntToStr(VRAM_MB) + ' MB de VRAM. ' +
             'El modelo requiere al menos 4 GB. ¿Desea continuar de todos modos?',
             mbConfirmation, MB_YESNO) = IDNO then begin
@@ -683,6 +751,7 @@ begin
     end;
   end;
 end;
+
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
@@ -703,7 +772,7 @@ begin
         '• VS Code: extensión instalada si la marcaste (sin abrir ventana nueva)' + #13#10 +
         '• PATH actualizado: abre una NUEVA terminal y escribe "synapse" o "opensyn"' + #13#10 +
         '  Si VS Code estaba abierto, reinícialo para ver "synapse" en su terminal integrada.' + #13#10#13#10 +
-        'Si elegiste OpenSyn, se descargó el modelo recomendado para tu VRAM.' + #13#10 +
+        'OpenSyn: conectado a tu Ollama local, o modelo GGUF descargado según tu elección.' + #13#10 +
         'Para probar: synapse --version  |  opensyn status  |  code --list-extensions | findstr synapse';
       WizardForm.FinishedLabel.AutoSize := False;
       WizardForm.FinishedLabel.Height := 140;

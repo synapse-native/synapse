@@ -868,9 +868,16 @@ def ejecutar_compilador(ruta_archivo: str, mostrar_tokens: bool = False,
 
         # Paso 2b: fix_borrowing — elimina _syn_texto_liberar de funciones de solo lectura
         # Manual 2 §11: borrowing — funciones de solo lectura no destruyen sus argumentos.
+        # R105/R113: el fix debe aplicarse a los modulos generados AQUI (dir_base), no solo
+        # a nucleo/_texto.c. Si no, los binarios opensyn/syquex (que generan sus modulos en
+        # el dir_base, no en nucleo/) usan wrappers strlen_s/strstr_f/strchr_f que LIBERAN sus
+        # argumentos y corrompen cadenas vivas del llamador (use-after-free silencioso).
         try:
-            from compilador.fix_borrowing import fix_nucleo_files
-            fixed = fix_nucleo_files()
+            from compilador.fix_borrowing import fix_file
+            fixed = 0
+            for ruta_mod_c in modulos_c:
+                if fix_file(ruta_mod_c):
+                    fixed += 1
             if fixed > 0:
                 print(f"[MODULAR] fix_borrowing: {fixed} archivos corregidos")
         except Exception as e:
