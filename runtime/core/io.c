@@ -12,6 +12,8 @@
 #include <io.h>
 #include <fcntl.h>
 #include <windows.h>
+#else
+#include <unistd.h>
 #endif
 
 // ============================================================
@@ -39,8 +41,59 @@ static void _syn_ensure_stdout_binary_init(void) {
     HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
     if (_syn_es_consola_handle(h)) {
         SetConsoleOutputCP(65001);  // cumple Manual 9 2.5: UTF-8 en consola
+        // cumple Manual 9 2.5: habilita secuencias ANSI (banner/colores estilo
+        // OpenCode/Freebuff) SOLO en consola real; los pipes quedan sin escapes.
+        DWORD modo = 0;
+        if (GetConsoleMode(h, &modo)) {
+            SetConsoleMode(h, modo | 0x0004 /* ENABLE_VIRTUAL_TERMINAL_PROCESSING */);
+        }
     }
+#else
+    // POSIX: hereda el TTY; no hace falta nada (ANSI nativo).
 #endif
+}
+
+// ============================================================
+// Consola real + colores ANSI (estilo OpenCode/Freebuff)
+// cumple Manual 7 8: banner y prompt del chat interactivo local.
+// cumple Manual 7 2.3: el System Prompt del agente se presenta en consola
+// real con ANSI (banner/prompt ❯) y sin escapes en pipes; _syn_es_consola y
+// _syn_ansi son las guardas de presentación del prompt del agente (R2).
+// ============================================================
+
+// cumple Manual 9 2.5: _syn_es_consola devuelve 1 si stdout es consola real
+// (no pipe/archivo). El chat solo emite escapes ANSI en consola real para no
+// ensuciar pipes (LSP/tests) — mismas guardas que el CP65001.
+int64_t _syn_es_consola(void) {
+#ifdef _WIN32
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    return _syn_es_consola_handle(h) ? 1 : 0;
+#else
+    return isatty(fileno(stdout)) ? 1 : 0;
+#endif
+}
+
+// cumple Manual 9 2.5: _syn_ansi(sgr) devuelve "\x1b[<sgr>m". sgr=0 resetea;
+// 31..37 colores (rojo..blanco); +100 = negrita (ej. 136 -> "\x1b[1;36m").
+// Retorna pool_alloc (RAII, Manual 2 9.1). Vacía si sgr inválido.
+CadenaSegura _syn_ansi(int64_t sgr) {
+    CadenaSegura vacio = { .longitud = 0, .datos = "" };
+    int code = (int)sgr;
+    int bold = 0;
+    if (code > 100) { bold = 1; code -= 100; }
+    if (code != 0 && (code < 30 || code > 37)) return vacio;
+    char buf[16];
+    int largo;
+    if (bold) {
+        largo = snprintf(buf, sizeof(buf), "\x1b[1;%dm", code);
+    } else {
+        largo = snprintf(buf, sizeof(buf), "\x1b[%dm", code);
+    }
+    if (largo <= 0) return vacio;
+    char* pool = (char*)pool_alloc((size_t)largo + 1);
+    if (!pool) return vacio;
+    memcpy(pool, buf, (size_t)largo + 1);
+    return (CadenaSegura){ .longitud = largo, .datos = pool };
 }
 
 // cumple Manual 8 1.2: stdin en modo binario para LSP (evita traducción \r\n)
@@ -68,6 +121,7 @@ static void _syn_ensure_stdout_binary(void) {
 static void _syn_ensure_stdin_binary(void) {
     pthread_once(&_syn_stdin_binary_once, _syn_ensure_stdin_binary_init);
 }
+
 
 pthread_mutex_t io_mutex = PTHREAD_MUTEX_INITIALIZER;
 

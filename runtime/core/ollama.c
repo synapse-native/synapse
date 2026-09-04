@@ -10,6 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+  #include <windows.h>   // GetTickCount64 para el plazo de lectura
+#else
+  #include <time.h>      // clock_gettime(CLOCK_MONOTONIC)
+  #include <errno.h>     // EAGAIN/EWOULDBLOCK
+#endif
 
 // ============================================================
 // Utilidades internas (malloc; liberadas dentro de esta unidad)
@@ -108,12 +114,106 @@ static char* _ollama_desescapar(const char* s, int len, int* out_len) {
     return out;
 }
 
-// Lee toda la respuesta HTTP (hasta cierre de conexión) en un buffer malloc.
+// ============================================================
+// Lectura robusta de la respuesta HTTP (Manual 7 §8, calidad industrial)
+// ============================================================
+
+// Reloj monotónico en milisegundos (para plazo absoluto de lectura).
+static long long _ollama_ahora_ms(void) {
+#ifdef _WIN32
+    return (long long)GetTickCount64();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (long long)ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
+#endif
+}
+
+// Timeout de bloqueo por recv (2 s): permite detectar servidor colgado sin
+// esperar el cierre TCP. Windows usa DWORD ms; POSIX struct timeval.
+static void _ollama_conf_timeout(int fd) {
+#ifdef _WIN32
+    DWORD ms = 2000;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&ms, sizeof(ms));
+#else
+    struct timeval tv;
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+}
+
+// ¿El último recv falló por timeout (servidor vivo pero sin datos)?
+static int _ollama_es_timeout(void) {
+#ifdef _WIN32
+    int e = WSAGetLastError();
+    return (e == WSAETIMEDOUT);
+#else
+    return (errno == EAGAIN || errno == EWOULDBLOCK);
+#endif
+}
+
+// Busca "\r\n\r\n" (fin de cabeceras HTTP) en buf[0..len).
+// Devuelve el índice del primer byte del cuerpo, o -1 si aún no llegó.
+static int _ollama_fin_cabeceras(const char* buf, int len) {
+    for (int i = 0; i + 3 < len; i++) {
+        if (buf[i] == '\r' && buf[i + 1] == '\n' &&
+            buf[i + 2] == '\r' && buf[i + 3] == '\n')
+            return i + 4;
+    }
+    return -1;
+}
+
+// Lee el entero de una cabecera HTTP (p.ej. "Content-Length: 123" o
+// "content-length: 123"). Devuelve -1 si la cabecera no está presente.
+static long long _ollama_cabecera_int(const char* buf, int len, const char* nombre) {
+    int nl = (int)strlen(nombre);
+    for (int i = 0; i + nl < len; i++) {
+        int igual = 1;
+        for (int j = 0; j < nl; j++) {
+            char a = buf[i + j];
+            char b = nombre[j];
+            if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
+            if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+            if (a != b) { igual = 0; break; }
+        }
+        if (!igual) continue;
+        int k = i + nl;
+        while (k < len && buf[k] == ' ') k++;
+        if (k >= len || buf[k] != ':') continue;
+        k++;
+        while (k < len && (buf[k] == ' ' || buf[k] == '\t')) k++;
+        long long v = 0;
+        int digitos = 0;
+        while (k < len && buf[k] >= '0' && buf[k] <= '9') {
+            v = v * 10 + (buf[k] - '0');
+            k++;
+            digitos++;
+        }
+        if (digitos > 0) return v;
+        return -1;
+    }
+    return -1;
+}
+
+// Lee toda la respuesta HTTP en un buffer malloc con PLAZO ABSOLUTO: nunca
+// bloquea más de _OLLAMA_PLAZO_MS incluso si Ollama se cuelga a mitad de
+// respuesta. Corta en cuanto recibió el cuerpo completo (Content-Length) o el
+// servidor cerró la conexión (Connection: close, como pedimos en la request).
+// *out_len: >0 longitud leída; -1 error de conexión; -2 plazo agotado
+// (servidor sin respuesta); -3 conexión cerrada antes del cuerpo completo.
+#define _OLLAMA_PLAZO_MS 300000LL   // 5 min: carga del modelo en frío + generación
 static char* _ollama_leer_respuesta(int fd, int* out_len) {
+    if (out_len) *out_len = -1;
+    _ollama_conf_timeout(fd);
+    long long inicio = _ollama_ahora_ms();
     int cap = 65536;
     int len = 0;
     char* buf = (char*)malloc((size_t)cap);
     if (!buf) return NULL;
+    int fin_cab = -1;          // índice del cuerpo tras \r\n\r\n
+    long long contenido = -1;  // Content-Length (si la envía Ollama)
+    int estado = 1;            // 1 ok / -1 error / -2 plazo / -3 incompleta
     for (;;) {
         if (len + 16384 >= cap) {
             cap *= 2;
@@ -122,12 +222,41 @@ static char* _ollama_leer_respuesta(int fd, int* out_len) {
             buf = nn;
         }
         int n = _syn_recibir(fd, buf + len, cap - len - 1);
-        if (n <= 0) break;
-        len += n;
-        if (len > 32 * 1024 * 1024) break;  // tope de seguridad
+        if (n > 0) {
+            len += n;
+            if (len > 32 * 1024 * 1024) break;  // tope de seguridad
+            if (fin_cab < 0) {
+                fin_cab = _ollama_fin_cabeceras(buf, len);
+                if (fin_cab >= 0)
+                    contenido = _ollama_cabecera_int(buf, fin_cab, "content-length");
+            }
+            // Cuerpo completo ya recibido (cuando el servidor da Content-Length)
+            if (fin_cab >= 0 && contenido >= 0 && len >= fin_cab + (int)contenido) {
+                estado = 1;
+                break;
+            }
+        } else if (n == 0) {
+            // Cierre limpio del servidor (Connection: close): respuesta completa
+            // si ya llegaron cabeceras; incompleta si cortó en medio del cuerpo.
+            if (fin_cab >= 0 && contenido >= 0 && len < fin_cab + (int)contenido)
+                estado = -3;
+            else if (fin_cab < 0 && len == 0)
+                estado = -1;
+            break;
+        } else {
+            if (_ollama_es_timeout()) {
+                if (_ollama_ahora_ms() - inicio >= _OLLAMA_PLAZO_MS) {
+                    estado = -2;  // servidor colgado: no envió nada en el plazo
+                    break;
+                }
+                continue;  // sigue esperando (carga del modelo puede tardar)
+            }
+            estado = -1;  // error de socket real
+            break;
+        }
     }
     buf[len] = '\0';
-    if (out_len) *out_len = len;
+    if (out_len) *out_len = (estado > 0) ? len : estado;
     return buf;
 }
 
@@ -246,6 +375,23 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
                 resultado = _ollama_campo(resp, "error");
             }
             free(resp);
+        } else {
+            // Sin respuesta: distinguir plazo agotado de error para que el chat
+            // muestre un mensaje claro y NO se quede colgado en silencio.
+            const char* msg = NULL;
+            if (rlen == -2)
+                msg = "Ollama no respondio a tiempo (puede estar cargando el modelo o colgado). Verifica: ollama serve";
+            else if (rlen == -3)
+                msg = "Ollama corto la conexion a mitad de respuesta. Reintenta la consulta.";
+            else
+                msg = "No se pudo leer la respuesta de Ollama. Verifica que este activo: ollama serve";
+            int largo = (int)strlen(msg);
+            char* pool = (char*)pool_alloc((size_t)largo + 1);
+            if (pool) {
+                memcpy(pool, msg, (size_t)largo);
+                pool[largo] = '\0';
+                resultado = (CadenaSegura){ .longitud = largo, .datos = pool };
+            }
         }
     }
     _syn_cerrar_socket(fd);

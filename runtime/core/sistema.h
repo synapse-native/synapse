@@ -13,5 +13,9 @@ CadenaSegura concat(CadenaSegura a, CadenaSegura b);
 CadenaSegura _syn_normalizar_ruta(CadenaSegura ruta);
 CadenaSegura _syn_obtener_cwd(void);
 int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir);
+// cumple Manual 7 2.3 (R2): herramientas de lectura local del agente —
+// listar directorio y capturar salida de comandos de solo-lectura.
+CadenaSegura _syn_listar_directorio(CadenaSegura ruta);
+CadenaSegura _syn_capturar_comando(CadenaSegura cmd);
 
 #endif /* SYNAPSE_SISTEMA_H */

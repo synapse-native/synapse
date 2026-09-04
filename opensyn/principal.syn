@@ -17,6 +17,25 @@ constante ARCHIVO_CONFIG = ".synapse_config"
 externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
 // cumple Manual 7 §8: lista los modelos instalados en Ollama (GET /api/tags)
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
+// --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
+externo funcion _syn_listar_directorio(ruta: texto) -> texto
+externo funcion _syn_capturar_comando(cmd: texto) -> texto
+// --- Consola real + ANSI (Manual 9 §2.5: banner/prompt estilo OpenCode) ---
+externo funcion _syn_es_consola() -> entero
+externo funcion _syn_ansi(sgr: entero) -> texto
+// --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
+// cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
+// color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
+constante BANNER_L1 = "   ██████╗   ██████╗   ███████╗  ███╗   ██╗  ███████╗  ██╗   ██╗  ███╗   ██╗"
+constante BANNER_L2 = "  ██╔═══██╗  ██╔══██╗  ██╔════╝  ████╗  ██║  ██╔════╝  ╚██╗ ██╔╝  ████╗  ██║"
+constante BANNER_L3 = "  ██║   ██║  ██████╔╝  █████╗    ██╔██╗ ██║  ███████╗   ╚████╔╝   ██╔██╗ ██║"
+constante BANNER_L4 = "  ██║   ██║  ██╔═══╝   ██╔══╝    ██║╚██╗██║  ╚════██║    ╚═══╝    ██║╚██╗██║"
+constante BANNER_L5 = "  ╚██████╔╝  ██║       ██║       ██║ ╚████║  ███████║    ██╗      ██║ ╚████║"
+constante BANNER_L6 = "   ╚═════╝   ╚═╝       ╚═╝       ╚═╝  ╚═══╝  ╚══════╝    ╚═╝      ╚═╝  ╚═══╝"
+
+// --- System prompt del agente (Manual 7 1.1 + 2.3) ---
+// Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
+constante AGENTE_SISTEMA = "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos."
 
 // --- Prompts de habilidades (skills) del chat ---
 // Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
@@ -444,6 +463,7 @@ funcion mostrar_ayuda() -> nulo:
     escribir_linea("  Comandos del chat:")
     escribir_linea("    /modelos           - lista los modelos instalados en Ollama")
     escribir_linea("    /model <nombre|n>  - cambia de modelo (por nombre o numero)")
+    escribir_linea("    <pregunta>         - el agente lee el repo y responde con contexto")
     escribir_linea("    /tdd <tarea>       - genera tests TDD para una funcion")
     escribir_linea("    /revisar <codigo>  - revision de codigo en 5 ejes")
     escribir_linea("    /plan <feat>       - desglosa una caracteristica en tareas")
@@ -451,9 +471,161 @@ funcion mostrar_ayuda() -> nulo:
     escribir_linea("    salir              - termina la sesion")
     escribir_linea("")
 
+// ============================================================
+// Presentacion estilo OpenCode/Freebuff + herramientas del agente
+// cumple Manual 7 1.1 (OpenSyn asistente local) y Manual 9 2.5 (consola UTF-8)
+// ============================================================
+
+// Banner ASCII retro: 6 lineas + version. Color cian SOLO en consola real.
+funcion mostrar_banner() -> nulo:
+    requiere:
+        verdadero
+    consola = _syn_es_consola()
+    si consola == 1:
+        escribir(_syn_ansi(36))
+    escribir_linea(BANNER_L1)
+    escribir_linea(BANNER_L2)
+    escribir_linea(BANNER_L3)
+    escribir_linea(BANNER_L4)
+    escribir_linea(BANNER_L5)
+    escribir_linea(BANNER_L6)
+    si consola == 1:
+        escribir(_syn_ansi(0))
+    escribir_linea("")
+    escribir_linea("  OpenSyn v1.1.0 — Orquestador Autonomo (IA local)")
+    escribir_linea("")
+
+// Imprime una linea en color (sgr) si hay consola real; plana si es pipe.
+// Consume texto: el llamador pasa copias strcpy_f o literales (R113).
+funcion pintar_linea(texto: texto, sgr: entero) -> nulo:
+    requiere:
+        verdadero
+    si _syn_es_consola() == 1:
+        escribir_linea(concat(concat(_syn_ansi(sgr), texto), _syn_ansi(0)))
+    sino:
+        escribir_linea(strcpy_f(texto))
+
+// ============================================================
+// Agente con contexto del repositorio (Manual 7 2.3: RAG local)
+// ============================================================
+
+// Construye el contexto estatico: cwd, listado raiz, estado git y AGENTS.md.
+// R113: helpers single-pass; retorno unico al final (depth 0); no libera
+// buffers ajenos (solo lee cwd_act, que es copia del llamador).
+funcion construir_contexto(cwd_act: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    parte = concat("Directorio de trabajo: ", cwd_act)
+    lista = _syn_listar_directorio(cwd_act)
+    si lista != "":
+        parte = concat(parte, "\nContenido de la raiz del repo:\n")
+        parte = concat(parte, lista)
+    git = _syn_capturar_comando("git status --short")
+    si git != "":
+        parte = concat(parte, "\nEstado git:\n")
+        parte = concat(parte, git)
+    ruta_agents = concat(cwd_act, "/AGENTS.md")
+    agents = _syn_leer_archivo(ruta_agents)
+    si agents != "":
+        parte = concat(parte, "\nAGENTS.md (extracto):\n")
+        parte = concat(parte, agents)
+    retornar parte
+
+// Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta (solo lectura).
+// listar [ruta] (cwd si vacia) | leer <ruta> | git status|log.
+// R113: un unico retornar al final (depth 0); todas las ramas asignan 'res'.
+funcion ejecutar_tool(linea: texto, cwd_act: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git <arg>"
+    total = strlen_s(linea)
+    inicio = 5
+    fin = inicio
+    mientras fin < total:
+        caracter = subcadena(linea, fin, 1)
+        si caracter == " " o caracter == "\n" o caracter == "\r":
+            romper
+        fin = fin + 1
+    si fin > inicio:
+        nombre = subcadena(linea, inicio, fin - inicio)
+        arg = subcadena(linea, fin, total - fin)
+        si nombre == "listar":
+            ruta = arg
+            si ruta == "":
+                ruta = cwd_act
+            si strstr_f(ruta, "..") >= 0 o strstr_f(ruta, ":") >= 0:
+                res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+            sino:
+                listado = _syn_listar_directorio(ruta)
+                si listado == "":
+                    res = "[TOOL_RESULT] (directorio vacio o sin acceso)"
+                sino:
+                    res = concat("[TOOL_RESULT] ", listado)
+        si nombre == "leer":
+            si arg == "":
+                res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
+            sino:
+                si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0:
+                    res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+                sino:
+                    ruta = concat(cwd_act, "/")
+                    ruta = concat(ruta, arg)
+                    contenido = _syn_leer_archivo(ruta)
+                    si contenido == "":
+                        res = "[TOOL_RESULT] (archivo vacio o no legible)"
+                    sino:
+                        res = concat("[TOOL_RESULT] ", contenido)
+        si nombre == "git":
+            si arg == "" o arg == "status":
+                res = concat("[TOOL_RESULT] ", _syn_capturar_comando("git status --short"))
+            sino:
+                si arg == "log":
+                    res = concat("[TOOL_RESULT] ", _syn_capturar_comando("git log --oneline -8"))
+                sino:
+                    res = "[TOOL_ERROR] comando git no permitido (usa: git status|git log)"
+    retornar res
+
+// Bucle del agente: contexto estatico + hasta 5 iteraciones de herramientas.
+// El modelo responde una linea "TOOL ..." para pedir contexto o la respuesta
+// final. R113: retorno unico al final; copias strcpy_f en los call sites.
+funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    cwd_act = _syn_obtener_cwd()
+    ctx = construir_contexto(strcpy_f(cwd_act))
+    sys = "Eres OpenSyn, el asistente de IA local del ecosistema Synapse. Conoces nativamente Synapse y Syquex (inyeccion de contexto estatico, Manual 7 1.1). Reglas de Synapse (.syn): indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr', contratos 'requiere/garantiza'; no uses punto y coma. Reglas de Syquex (.syq): lenguaje hermano de alto nivel que comparte el AST canonico unificado con Synapse; usa identacion; soporta 'delegar' y exportacion FFI con '@export' para que funciones Synapse sean visibles desde otros lenguajes (Manual 2). Para responder sobre este repositorio usa el CONTEXTO incluido abajo y, si necesitas mas datos, responde SOLO con una linea: 'TOOL listar <ruta>' (vacia = raiz), 'TOOL leer <ruta>', 'TOOL git status' o 'TOOL git log'. Cuando ya tengas lo necesario responde al usuario de forma natural y concisa.\n\n[CONTEXTO DEL REPOSITORIO]\n"
+    sys = concat(sys, ctx)
+    sys = concat(sys, "\n\n[USUARIO]\n")
+    sys = concat(sys, prompt_usuario)
+    respuesta_final = ""
+    iteracion = 0
+    mientras iteracion < 5:
+        respuesta = _syn_ollama_consultar(modelo, sys, "127.0.0.1", 11434, 2048)
+        si respuesta == "":
+            respuesta_final = ""
+            romper
+        limpia = recortar(strcpy_f(respuesta))
+        si strstr_f(limpia, "TOOL ") == 0:
+            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act))
+            sys = concat(sys, "\n")
+            sys = concat(sys, salida)
+            sys = concat(sys, "\n[Continua: usa otra linea TOOL si necesitas mas contexto, o responde directamente.]")
+            iteracion = iteracion + 1
+        sino:
+            respuesta_final = strcpy_f(limpia)
+            romper
+    retornar respuesta_final
+
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // el banner ya se mostro en principal() (Manual 7 1.1); aqui solo el encabezado
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
@@ -481,7 +653,13 @@ funcion modo_oraculo() -> entero:
         escribir_linea("  [Chat] Escribe tu prompt (ayuda: /ayuda · salir para terminar):")
         escribir_linea("")
         mientras verdadero:
-            escribir_linea("  Tu> ")
+            // prompt estilo OpenCode/Freebuff: marcador "❯" verde en consola real
+            si _syn_es_consola() == 1:
+                escribir(_syn_ansi(32))
+                escribir("  \u276f ")
+                escribir(_syn_ansi(0))
+            sino:
+                escribir_linea("  Tu> ")
             prompt = leer_linea()
             si prompt == "salir" o prompt == "exit":
                 escribir_linea("")
@@ -526,6 +704,7 @@ funcion modo_oraculo() -> entero:
                 sino:
                     prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
                     prompt_skill = concat(prompt_skill, tarea)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
@@ -540,6 +719,7 @@ funcion modo_oraculo() -> entero:
                 sino:
                     prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
                     prompt_skill = concat(prompt_skill, codigo_a_revisar)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
@@ -554,6 +734,7 @@ funcion modo_oraculo() -> entero:
                 sino:
                     prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
                     prompt_skill = concat(prompt_skill, feat)
+                    escribir_linea(concat("  [*] Consultando a ", modelo))
                     respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
@@ -561,14 +742,21 @@ funcion modo_oraculo() -> entero:
                         escribir_linea("")
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
                 siguiente
-            // --- Prompt normal al modelo ---
-            respuesta = _syn_ollama_consultar(modelo, prompt, "127.0.0.1", 11434, 1024)
+            // --- Prompt normal: agente con contexto del repositorio ---
+            // cumple Manual 7 2.3: inyecta contexto estatico y permite herramientas TOOL
+            escribir_linea(concat("  [*] Consultando a ", modelo))
+            respuesta = consultar_agente(strcpy_f(modelo), strcpy_f(prompt))
             si respuesta == "":
                 escribir_linea("  [Error] No hubo respuesta de Ollama. Verifica que este activo:")
                 escribir_linea("    ollama serve")
             sino:
                 escribir_linea("")
-                escribir_linea(concat("  OpenSyn> ", respuesta))
+                si _syn_es_consola() == 1:
+                    escribir(_syn_ansi(36))
+                escribir("  OpenSyn> ")
+                si _syn_es_consola() == 1:
+                    escribir(_syn_ansi(0))
+                escribir_linea(strcpy_f(respuesta))
             escribir_linea("")
         retornar 0
 
@@ -782,8 +970,8 @@ funcion cmd_generate(instruccion: texto) -> entero:
 // --- Punto de entrada principal ---
 
 funcion principal() -> entero:
-    escribir_linea("=== OpenSyn v1.1.0 — Orquestador Autonomo ===")
-    escribir_linea("")
+    // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
+    mostrar_banner()
 
     // cumple Manual 7 §8: agente conversacional con capacidades de codigo
     // Routing de subcommands
