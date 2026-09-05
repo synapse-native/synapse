@@ -23,15 +23,34 @@ externo funcion _syn_capturar_comando(cmd: texto) -> texto
 // --- Consola real + ANSI (Manual 9 §2.5: banner/prompt estilo OpenCode) ---
 externo funcion _syn_es_consola() -> entero
 externo funcion _syn_ansi(sgr: entero) -> texto
+// --- TUI pantalla completa (Manual 7 1.1/8 + Manual 9 2.5) ---
+externo funcion _syn_tui_iniciar() -> entero
+externo funcion _syn_tui_finalizar() -> entero
+externo funcion _syn_tui_repintar(modelo: texto) -> nulo
+externo funcion _syn_tui_mensaje(rol: entero, texto: texto) -> entero
+externo funcion _syn_tui_asistente_continuar(texto: texto) -> nulo
+externo funcion _syn_tui_mensaje_pop() -> nulo
+externo funcion _syn_tui_entrada_texto() -> texto
+externo funcion _syn_tui_entrada_poner(texto: texto) -> nulo
+externo funcion _syn_tui_entrada_borrar() -> nulo
+externo funcion _syn_tui_evento() -> entero
+externo funcion _syn_tui_menu(titulo: texto, items: texto) -> texto
+// --- Streaming del chat (Manual 7 §8): token a token ---
+externo funcion _syn_ollama_stream_iniciar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> puntero
+externo funcion _syn_ollama_stream_leer(sesion: puntero) -> texto
+externo funcion _syn_ollama_stream_estado(sesion: puntero) -> entero
+externo funcion _syn_ollama_stream_error(sesion: puntero) -> texto
+externo funcion _syn_ollama_stream_cerrar(sesion: puntero) -> nulo
 // --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
 // cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
 // color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
-constante BANNER_L1 = "   ██████╗   ██████╗   ███████╗  ███╗   ██╗  ███████╗  ██╗   ██╗  ███╗   ██╗"
-constante BANNER_L2 = "  ██╔═══██╗  ██╔══██╗  ██╔════╝  ████╗  ██║  ██╔════╝  ╚██╗ ██╔╝  ████╗  ██║"
-constante BANNER_L3 = "  ██║   ██║  ██████╔╝  █████╗    ██╔██╗ ██║  ███████╗   ╚████╔╝   ██╔██╗ ██║"
-constante BANNER_L4 = "  ██║   ██║  ██╔═══╝   ██╔══╝    ██║╚██╗██║  ╚════██║    ╚═══╝    ██║╚██╗██║"
-constante BANNER_L5 = "  ╚██████╔╝  ██║       ██║       ██║ ╚████║  ███████║    ██╗      ██║ ╚████║"
-constante BANNER_L6 = "   ╚═════╝   ╚═╝       ╚═╝       ╚═╝  ╚═══╝  ╚══════╝    ╚═╝      ╚═╝  ╚═══╝"
+constante BANNER_L1 = "   █████   █████     █████             ██████                    "
+constante BANNER_L2 = "  █     █  █    ██  █     █  ██████   █        █     █  ██████   "
+constante BANNER_L3 = "  █     █  █    ██  ███████  █     █  █        █     █  █     █  "
+constante BANNER_L4 = "  █     █  █████    █        █     █   █████    █   █   █     █  "
+constante BANNER_L5 = "  █     █  █        █        █     █        █    ███    █     █  "
+constante BANNER_L6 = "  █     █  █        █     █  █     █        █     █     █     █  "
+constante BANNER_L7 = "   █████   █         █████   █     █  ██████   ███      █     █  "
 
 // --- System prompt del agente (Manual 7 1.1 + 2.3) ---
 // Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
@@ -489,6 +508,7 @@ funcion mostrar_banner() -> nulo:
     escribir_linea(BANNER_L4)
     escribir_linea(BANNER_L5)
     escribir_linea(BANNER_L6)
+    escribir_linea(BANNER_L7)
     si consola == 1:
         escribir(_syn_ansi(0))
     escribir_linea("")
@@ -599,7 +619,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
         longitud(resultado) >= 0
     cwd_act = _syn_obtener_cwd()
     ctx = construir_contexto(strcpy_f(cwd_act))
-    sys = "Eres OpenSyn, el asistente de IA local del ecosistema Synapse. Conoces nativamente Synapse y Syquex (inyeccion de contexto estatico, Manual 7 1.1). Reglas de Synapse (.syn): indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr', contratos 'requiere/garantiza'; no uses punto y coma. Reglas de Syquex (.syq): lenguaje hermano de alto nivel que comparte el AST canonico unificado con Synapse; usa identacion; soporta 'delegar' y exportacion FFI con '@export' para que funciones Synapse sean visibles desde otros lenguajes (Manual 2). Para responder sobre este repositorio usa el CONTEXTO incluido abajo y, si necesitas mas datos, responde SOLO con una linea: 'TOOL listar <ruta>' (vacia = raiz), 'TOOL leer <ruta>', 'TOOL git status' o 'TOOL git log'. Cuando ya tengas lo necesario responde al usuario de forma natural y concisa.\n\n[CONTEXTO DEL REPOSITORIO]\n"
+    sys = strcpy_f(AGENTE_SYS_BASE)
     sys = concat(sys, ctx)
     sys = concat(sys, "\n\n[USUARIO]\n")
     sys = concat(sys, prompt_usuario)
@@ -622,9 +642,301 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
             romper
     retornar respuesta_final
 
+// ============================================================
+// Chat TUI pantalla completa (Manual 7 1.1 + 8, Manual 9 2.5)
+// Estilo OpenCode/Freebuff: panel de actividad arriba, caja de
+// entrada abajo, comandos "/" con menú y streaming del modelo.
+// ============================================================
+
+// System prompt del agente (base; se le concatena el contexto del repo).
+constante AGENTE_SYS_BASE = "Eres OpenSyn, el asistente de IA local del ecosistema Synapse. Conoces nativamente Synapse y Syquex (inyeccion de contexto estatico, Manual 7 1.1). Reglas de Synapse (.syn): indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr', contratos 'requiere/garantiza'; no uses punto y coma. Reglas de Syquex (.syq): lenguaje hermano de alto nivel que comparte el AST canonico unificado con Synapse; usa identacion; soporta 'delegar' y exportacion FFI con '@export' para que funciones Synapse sean visibles desde otros lenguajes (Manual 2). Para responder sobre este repositorio usa el CONTEXTO incluido abajo y, si necesitas mas datos, responde SOLO con una linea: 'TOOL listar <ruta>' (vacia = raiz), 'TOOL leer <ruta>', 'TOOL git status' o 'TOOL git log'. Cuando ya tengas lo necesario responde al usuario de su idioma, concreto y sin inventar archivos.\n\n[CONTEXTO DEL REPOSITORIO]\n"
+
+// Elementos del menu de comandos (el menu filtra mientras se escribe).
+constante MENU_COMANDOS = "/model\n/modelos\n/tdd\n/revisar\n/plan\n/skills\n/ayuda\n/salir"
+
+// Trunca un texto a n bytes visibles (evita paneles gigantes con el
+// resultado de una herramienta). R113: no libera buffers ajenos.
+funcion tui_acotar(t: texto, n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    largo = strlen_s(t)
+    si largo <= n:
+        retornar strcpy_f(t)
+    retornar concat(subcadena(strcpy_f(t), 0, n), "…")
+
+// Una consulta con streaming: pinta el texto conforme llega (rol 1) y
+// devuelve el texto completo acumulado ("" si error; el error ya se ve).
+funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
+    requiere:
+        longitud(modelo) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    texto_acum = ""
+    sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 11434, 2048)
+    si sesion == nulo:
+        _syn_tui_mensaje(3, "No se pudo conectar con Ollama. Verifica: ollama serve")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar ""
+    mientras verdadero:
+        ch = _syn_ollama_stream_leer(sesion)
+        si ch == "":
+            romper
+        texto_acum = concat(texto_acum, strcpy_f(ch))
+        _syn_tui_asistente_continuar(strcpy_f(ch))
+        _syn_tui_repintar(strcpy_f(modelo))
+    si _syn_ollama_stream_estado(sesion) == 1:
+        _syn_tui_mensaje_pop()
+        detalle = _syn_ollama_stream_error(sesion)
+        si detalle == "":
+            _syn_tui_mensaje(3, "Ollama no respondio (error de streaming).")
+        sino:
+            _syn_tui_mensaje(3, strcpy_f(detalle))
+        _syn_tui_repintar(strcpy_f(modelo))
+    _syn_ollama_stream_cerrar(sesion)
+    retornar texto_acum
+
+// Muestra la lista de modelos instalados como eventos del panel (rol 2).
+funcion tui_listar_modelos(modelos: texto, modelo: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    total = contar_modelos(strcpy_f(modelos))
+    si total == 0:
+        _syn_tui_mensaje(2, "Sin modelos detectados. Ejecuta: ollama serve")
+        retornar
+    _syn_tui_mensaje(2, "Modelos instalados:")
+    n = 1
+    mientras n <= total:
+        nombre = modelo_en_posicion(strcpy_f(modelos), n)
+        _syn_tui_mensaje(2, concat(concat(concat("  ", entero_a_texto(n)), ". "), strcpy_f(nombre)))
+        n = n + 1
+    _syn_tui_mensaje(2, concat("Activo: ", strcpy_f(modelo)))
+
+// Ejecuta una skill (/tdd /revisar /plan) con streaming en el panel.
+funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto) -> nulo:
+    requiere:
+        verdadero
+    _syn_tui_mensaje(2, concat(concat("Ejecutando ", strcpy_f(etiqueta)), "…"))
+    _syn_tui_repintar(strcpy_f(modelo))
+    r = consulta_stream(strcpy_f(modelo), strcpy_f(prompt_skill))
+    si r == "":
+        _syn_tui_mensaje(2, "Sin respuesta de la skill (revisa Ollama).")
+        _syn_tui_repintar(strcpy_f(modelo))
+
+// Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
+funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    _syn_tui_mensaje(0, concat("❯ ", strcpy_f(pregunta)))
+    sys = concat(strcpy_f(AGENTE_SYS_BASE), construir_contexto(strcpy_f(cwd_act)))
+    sys = concat(sys, "\n\n[USUARIO]\n")
+    sys = concat(sys, strcpy_f(pregunta))
+    iteracion = 0
+    mientras iteracion < 6:
+        _syn_tui_mensaje(2, "Consultando…")
+        _syn_tui_repintar(strcpy_f(modelo))
+        resp = consulta_stream(strcpy_f(modelo), strcpy_f(sys))
+        si resp == "":
+            retornar
+        limpia = recortar(strcpy_f(resp))
+        si strstr_f(limpia, "TOOL ") == 0:
+            // El modelo pide una herramienta: su texto era la petición, no
+            // la respuesta final; se quita y se muestra como evento.
+            _syn_tui_mensaje_pop()
+            pedido = tui_acotar(strcpy_f(limpia), 90)
+            _syn_tui_mensaje(2, concat("· ", strcpy_f(pedido)))
+            _syn_tui_repintar(strcpy_f(modelo))
+            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act))
+            resumen = tui_acotar(strcpy_f(salida), 1200)
+            _syn_tui_mensaje(2, strcpy_f(resumen))
+            _syn_tui_repintar(strcpy_f(modelo))
+            sys = concat(sys, "\n\n[TOOL_RESULT]\n")
+            sys = concat(sys, strcpy_f(resumen))
+            sys = concat(sys, "\n[Continua: otra linea TOOL o responde directamente.]")
+            iteracion = iteracion + 1
+        sino:
+            _syn_tui_repintar(strcpy_f(modelo))
+            retornar
+    _syn_tui_mensaje(3, "Limite de iteraciones de herramienta alcanzado.")
+    _syn_tui_repintar(strcpy_f(modelo))
+
+// Despacha un comando (tecleado o elegido en el menu "/").
+// Devuelve: "!salir", "!ok", o el NUEVO modelo activo si cambió.
+funcion tui_comando(entrada: texto, modelo: texto, modelos: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    si entrada == "salir" o entrada == "exit" o entrada == "/salir":
+        retornar "!salir"
+    si entrada == "/ayuda":
+        _syn_tui_mensaje(2, "Comandos:")
+        _syn_tui_mensaje(2, "  /model    — cambia de modelo (menu de instalados)")
+        _syn_tui_mensaje(2, "  /modelos  — lista los modelos instalados")
+        _syn_tui_mensaje(2, "  /tdd      — genera tests TDD para una funcion")
+        _syn_tui_mensaje(2, "  /revisar  — revision de codigo en 5 ejes")
+        _syn_tui_mensaje(2, "  /plan     — desglosa una caracteristica en tareas")
+        _syn_tui_mensaje(2, "  /skills   — habilidades disponibles")
+        _syn_tui_mensaje(2, "  /ayuda    — esta ayuda")
+        _syn_tui_mensaje(2, "  salir     — termina la sesion")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!ok"
+    si entrada == "/skills":
+        _syn_tui_mensaje(2, "Habilidades: /tdd · /revisar · /plan  (usa / para el menu)")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!ok"
+    si entrada == "/modelos":
+        tui_listar_modelos(strcpy_f(modelos), strcpy_f(modelo))
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!ok"
+    si entrada == "/model" o strstr_f(entrada, "/model ") == 0:
+        _syn_tui_mensaje(2, "Modelos instalados (elige con ↑↓ y Enter):")
+        _syn_tui_repintar(strcpy_f(modelo))
+        elegido = _syn_tui_menu("Modelos instalados", strcpy_f(modelos))
+        si elegido == "":
+            _syn_tui_mensaje(2, "Cambio de modelo cancelado.")
+            _syn_tui_repintar(strcpy_f(modelo))
+            retornar "!ok"
+        guardar_modelo_config(strcpy_f(elegido))
+        _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(elegido)))
+        _syn_tui_repintar(strcpy_f(elegido))
+        retornar strcpy_f(elegido)
+    si entrada == "/tdd" o strstr_f(entrada, "/tdd ") == 0:
+        tarea = ""
+        si strstr_f(entrada, "/tdd ") == 0:
+            tarea = subcadena(strcpy_f(entrada), 5, strlen_s(entrada) - 5)
+        si tarea == "":
+            _syn_tui_entrada_poner("/tdd ")
+            _syn_tui_mensaje(2, "Escribe la funcion a testear tras /tdd y pulsa Enter")
+            _syn_tui_repintar(strcpy_f(modelo))
+            retornar "!ok"
+        prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
+        prompt_skill = concat(prompt_skill, strcpy_f(tarea))
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/tdd")
+        retornar "!ok"
+    si entrada == "/revisar" o strstr_f(entrada, "/revisar ") == 0:
+        codigo_r = ""
+        si strstr_f(entrada, "/revisar ") == 0:
+            codigo_r = subcadena(strcpy_f(entrada), 9, strlen_s(entrada) - 9)
+        si codigo_r == "":
+            _syn_tui_entrada_poner("/revisar ")
+            _syn_tui_mensaje(2, "Escribe el codigo a revisar tras /revisar y pulsa Enter")
+            _syn_tui_repintar(strcpy_f(modelo))
+            retornar "!ok"
+        prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
+        prompt_skill = concat(prompt_skill, strcpy_f(codigo_r))
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/revisar")
+        retornar "!ok"
+    si entrada == "/plan" o strstr_f(entrada, "/plan ") == 0:
+        feat = ""
+        si strstr_f(entrada, "/plan ") == 0:
+            feat = subcadena(strcpy_f(entrada), 6, strlen_s(entrada) - 6)
+        si feat == "":
+            _syn_tui_entrada_poner("/plan ")
+            _syn_tui_mensaje(2, "Escribe la caracteristica a desglosar tras /plan y pulsa Enter")
+            _syn_tui_repintar(strcpy_f(modelo))
+            retornar "!ok"
+        prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
+        prompt_skill = concat(prompt_skill, strcpy_f(feat))
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/plan")
+        retornar "!ok"
+    // Comando desconocido: abre el menu de comandos.
+    r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
+    si r == "":
+        _syn_tui_mensaje(2, "Comando cancelado. Escribe / para el menu de comandos.")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!ok"
+    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos))
+
+// Bucle principal de la TUI (estilo OpenCode/Freebuff).
+funcion chat_tui() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    config = leer_config_ollama()
+    modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+    modelo_base = obtener_modelo_config(config)
+    modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
+    total_mod = contar_modelos(strcpy_f(modelos))
+    cwd_act = _syn_obtener_cwd()
+    // Escena inicial: banner + estado del entorno.
+    _syn_tui_mensaje(4, BANNER_L1)
+    _syn_tui_mensaje(4, BANNER_L2)
+    _syn_tui_mensaje(4, BANNER_L3)
+    _syn_tui_mensaje(4, BANNER_L4)
+    _syn_tui_mensaje(4, BANNER_L5)
+    _syn_tui_mensaje(4, BANNER_L6)
+    _syn_tui_mensaje(4, BANNER_L7)
+    _syn_tui_mensaje(2, "OpenSyn v1.1.0 — Orquestador Autonomo (IA local)")
+    _syn_tui_mensaje(2, "Chat local con Ollama en http://localhost:11434")
+    si total_mod > 0:
+        _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(modelo)))
+    sino:
+        _syn_tui_mensaje(3, "Sin modelos instalados. Ejecuta: ollama pull <modelo>")
+    _syn_tui_mensaje(2, "Escribe tu consulta · / abre el menu de comandos · Ctrl+C sale")
+    _syn_tui_repintar(strcpy_f(modelo))
+    mientras verdadero:
+        evento = _syn_tui_evento()
+        si evento == 1:
+            entrada = _syn_tui_entrada_texto()
+            _syn_tui_entrada_borrar()
+            _syn_tui_repintar(strcpy_f(modelo))
+            si entrada == "":
+                siguiente
+            si strstr_f(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
+                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos))
+                si res == "!salir":
+                    _syn_tui_finalizar()
+                    retornar 0
+                si res != "!ok" y res != "":
+                    modelo = res
+                    _syn_tui_repintar(strcpy_f(modelo))
+                siguiente
+            tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act))
+            _syn_tui_repintar(strcpy_f(modelo))
+            siguiente
+        si evento == 2:
+            // Esc: limpiar la caja
+            _syn_tui_entrada_borrar()
+            _syn_tui_repintar(strcpy_f(modelo))
+            siguiente
+        si evento == 10:
+            // Ctrl+C: terminar
+            _syn_tui_finalizar()
+            retornar 0
+        // Cualquier otra tecla (incl. carácter insertado): repintar y, si el
+        // usuario tecleo "/" solo, abrir el menu de comandos.
+        _syn_tui_repintar(strcpy_f(modelo))
+        t = _syn_tui_entrada_texto()
+        si t == "/":
+            _syn_tui_entrada_borrar()
+            _syn_tui_repintar(strcpy_f(modelo))
+            r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
+            si r != "":
+                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos))
+                si res2 == "!salir":
+                    _syn_tui_finalizar()
+                    retornar 0
+                si res2 != "!ok" y res2 != "":
+                    modelo = res2
+            _syn_tui_repintar(strcpy_f(modelo))
+
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // Ruta TUI pantalla completa (estilo OpenCode/Freebuff): en consola real
+    // (o con OPENSN_TUI_TEST=1 en pipes, para los oraculos E2E) la TUI toma la
+    // pantalla; si no hay consola se sigue con el modo linea clasico.
+    // cumple Manual 7 1.1 + Manual 9 2.5.
+    si _syn_tui_iniciar() == 0:
+        rc_tui = chat_tui()
+        retornar rc_tui
     // el banner ya se mostro en principal() (Manual 7 1.1); aqui solo el encabezado
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
@@ -815,7 +1127,7 @@ funcion modo_oraculo() -> entero:
 // --- Subcommands del Orquestador ---
 
 // cumple Manual 7 §8: status muestra el estado del entorno Soberania
-// cumple Manual 2 §12: contratos requiere/garantiza
+// cumple Manual 2 §5: contratos requiere/garantiza
 funcion cmd_status() -> entero:
     requiere:
         verdadero
@@ -855,7 +1167,7 @@ funcion cmd_status() -> entero:
     retornar 0
 
 // cumple Manual 7 §8: chat inicia el agente conversacional
-// cumple Manual 2 §12: contratos requiere/garantiza
+// cumple Manual 2 §5: contratos requiere/garantiza
 funcion cmd_chat(modelo: texto) -> entero:
     requiere:
         verdadero
@@ -899,7 +1211,7 @@ funcion cmd_chat(modelo: texto) -> entero:
     retornar 0
 
 // cumple Manual 7 §8: explain usa IA para explicar codigo
-// cumple Manual 2 §12: contratos requiere/garantiza
+// cumple Manual 2 §5: contratos requiere/garantiza
 funcion cmd_explain(ruta: texto) -> entero:
     requiere:
         verdadero
@@ -935,7 +1247,7 @@ funcion cmd_explain(ruta: texto) -> entero:
     retornar 0
 
 // cumple Manual 7 §8: generate usa IA para generar codigo nuevo
-// cumple Manual 2 §12: contratos requiere/garantiza
+// cumple Manual 2 §5: contratos requiere/garantiza
 funcion cmd_generate(instruccion: texto) -> entero:
     requiere:
         verdadero
