@@ -4,7 +4,7 @@ FASE: 30-b / R142 (hardening F30 + UX parity OpenCode/Freebuff)
 ID: ME_opensyn_historial_autocomplete
 ESTADO: completado (oráculo tests/e2e_oracle_opensyn_historial.py GREEN +
 tests/e2e_oracle_opensyn_autocomplete.py GREEN; verificación en
-docs/verificacion_ME_opensyn_historial_autocomplete.md; cierre en docs/reportes/R141.md)
+docs/verificacion_ME_opensyn_historial_autocomplete.md; cierre en docs/reportes/R142.md)
 
 ## Resumen del micro-entregable
 
