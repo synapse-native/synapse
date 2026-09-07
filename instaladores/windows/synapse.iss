@@ -1,4 +1,4 @@
-; synapse.iss — Instalador Maestro Modular para Windows (Inno Setup 6+)
+﻿; synapse.iss — Instalador Maestro Modular para Windows (Inno Setup 6+)
 ; cumple Manual 9 §2.5: Configuración de Inno Setup (Windows)
 ; cumple Manual 9 §2.2: Estructura del instalador
 ; cumple Manual 9 §4.1: GitHub Releases (artefactos .exe + .sig + .sha256 + SBOM + SLSA L3)
@@ -11,12 +11,20 @@
 #define MyAppExeName "synapse.exe"
 #define MyAppLspExeName "synapse_lsp.exe"
 
-#define LLAMA_SERVER_URL "https://github.com/ggerganov/llama.cpp/releases/download/b2885/llama-server.exe"
+#define LLAMA_SERVER_URL "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-win-cpu-x64.zip"
 #define MODEL_URL_1B "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
 #define MODEL_URL_7B "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
 #define MODEL_URL_13B "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
 #define MODEL_URL_34B "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
 #define MODEL_URL MODEL_URL_1B
+
+; SHA256 hashes para verificación de integridad (actualizar al cambiar versiones)
+#define LLAMA_SERVER_SHA256 "4599e502b374196d24600ea9b03c842a448c853116a15b55e8ba502bdc727b3f"
+#define MODEL_SHA256_1B "TODO_ACTUALIZAR_AL_COMPILAR"
+#define MODEL_SHA256_7B_Q4 "TODO_ACTUALIZAR_AL_COMPILAR"
+#define MODEL_SHA256_7B_Q5 "TODO_ACTUALIZAR_AL_COMPILAR"
+#define MODEL_SHA256_13B "TODO_ACTUALIZAR_AL_COMPILAR"
+#define MODEL_SHA256_34B "TODO_ACTUALIZAR_AL_COMPILAR"
 
 [Setup]
 AppName={#MyAppName}
@@ -160,6 +168,12 @@ var
   OllamaExePath: String;
   OllamaConnectMode: Boolean;
   // cumple Manual 9 §5.2: seleccion de modelo code-especifico
+  LlamaServerSHA256: String;
+  ModelSHA256_1B: String;
+  ModelSHA256_7B_Q4: String;
+  ModelSHA256_7B_Q5: String;
+  ModelSHA256_13B: String;
+  ModelSHA256_34B: String;
 
 {------------------------------------------------------------------------------}
 { FUNCIÓN AUXILIAR: Instalación de extensión VS Code (Manual 9 §2.5) }
@@ -197,7 +211,7 @@ end;
 procedure InstallVSCodeExtension();
 var
   VSCodePath, VSIXPath, CmdLine: String;
-  ExitCode: Longint;
+  CmdResultCode: Integer;
 begin
   VSIXPath := ExpandConstant('{app}\vscode\synapse-{#MyAppVersion}.vsix');
   if not FileExists(VSIXPath) then begin
@@ -207,12 +221,12 @@ begin
   // cumple Manual 9 §2.5: instalar via cmd /c code --install-extension hidden (no abre ventana VS Code)
   // Intento 1: code en PATH (code.cmd shim) — hidden
   CmdLine := '/c code --install-extension "' + VSIXPath + '" --force >nul 2>&1';
-  if Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
-    if ExitCode = 0 then begin
+  if Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, CmdResultCode) then begin
+    if CmdResultCode = 0 then begin
       Log('Extension instalada via code en PATH (exit 0)');
       Exit;
     end;
-    Log(Format('code en PATH fallo exit=%d, probando rutas absolutas', [ExitCode]));
+    Log(Format('code en PATH fallo exit=%d, probando rutas absolutas', [CmdResultCode]));
   end else
     Log('Exec code en PATH fallo, probando rutas absolutas');
   // Intento 2: rutas absolutas (solo log, no MsgBox — el [Run] runasoriginaluser ya lo instala sin elevacion)
@@ -223,12 +237,12 @@ begin
   end;
   if Pos('code.cmd', Lowercase(VSCodePath)) > 0 then begin
     CmdLine := '/c "' + VSCodePath + '" --install-extension "' + VSIXPath + '" --force >nul 2>&1';
-    Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+    Exec('cmd.exe', CmdLine, '', SW_HIDE, ewWaitUntilTerminated, CmdResultCode);
   end else begin
     CmdLine := '--install-extension "' + VSIXPath + '" --force';
-    Exec(VSCodePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+    Exec(VSCodePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, CmdResultCode);
   end;
-  Log(Format('InstallVSCodeExtension via %s exit=%d (fallback Pascal, [Run] principal es runasoriginaluser)', [VSCodePath, ExitCode]));
+  Log(Format('InstallVSCodeExtension via %s exit=%d (fallback Pascal, [Run] principal es runasoriginaluser)', [VSCodePath, CmdResultCode]));
   // cumple Manual 9 §2.5: no MsgBox aqui — silencioso, el [Run] es el canal correcto (evita alerta y bloqueo SILENT)
 end;
 // cumple Manual 9 §2.5: extension sin abrir ventana, hidden + fallback rutas
@@ -279,6 +293,12 @@ begin
   V := ExecPowerShellInt('(Get-CimInstance Win32_VideoController | Measure-Object -Property AdapterRAM -Sum).Sum / 1048576 -as [int]');
   if V = 0 then
     V := ExecPowerShellInt('([math]::Round((Get-CimInstance Win32_VideoController).AdapterRAM / 1MB)) -as [int]');
+  // Fallback adicional: wmic (más compatible en algunas versiones)
+  if V = 0 then begin
+    V := ExecPowerShellInt('wmic path win32_VideoController get AdapterRAM /format:list | findstr "AdapterRAM=" | findstr /v "AdapterRAM=$" | sort /R | findstr /r "^AdapterRAM=" | find /c ":"');
+    if V = 0 then
+      V := ExecPowerShellInt('wmic path win32_VideoController get AdapterRAM /format:list | findstr "AdapterRAM=" | findstr /v "AdapterRAM=$" | sort /R | for /f "tokens=2 delims==" %a in (''more'') do echo %a');
+  end;
   Result := V;
 end;
 
@@ -468,6 +488,15 @@ begin
     OllamaFound := IsOllamaInstalled();
     SelectedModelURL := SelectModelURL(VRAM_MB);
     SelectedModelName := SelectModelName(VRAM_MB);
+    
+    // Cargar SHA256 desde defines (se actualizan en build)
+    LlamaServerSHA256 := '{#LLAMA_SERVER_SHA256}';
+    ModelSHA256_1B := '{#MODEL_SHA256_1B}';
+    ModelSHA256_7B_Q4 := '{#MODEL_SHA256_7B_Q4}';
+    ModelSHA256_7B_Q5 := '{#MODEL_SHA256_7B_Q5}';
+    ModelSHA256_13B := '{#MODEL_SHA256_13B}';
+    ModelSHA256_34B := '{#MODEL_SHA256_34B}';
+    
     Log(Format('Setup iniciado. RAM: %d MB VRAM: %d MB CPU cores: %d Ollama: %d GGUF: %s Modelo: %s', [RAM_MB, VRAM_MB, CPU_CORES, Integer(OllamaFound), ExistingGGUF, SelectedModelName]));
   except
     Log('InitializeSetup: error en detección hardware, usando valores por defecto');
@@ -530,10 +559,72 @@ begin
   ProgressBar.Position := 0;
 end;
 
-function DownloadFile(const URL, DestPath: String): Boolean;
+// Calcula SHA256 de un archivo usando certutil (más confiable que PowerShell en Windows)
+function CalcSHA256(const FilePath: String): String;
 var
-  CmdLine, ExePath: String;
-  ExitCode: Longint;
+  TmpFile, Cmd: String;
+  OutStr: AnsiString;
+  ExitCode: Integer;
+  Lines: TArrayOfString;
+  Line: String;
+  HashFound: Boolean;
+  i: Integer;
+  IsHex: Boolean;
+  C: Char;
+  PosIdx: Integer;
+  Start: Integer;
+  NextLineStart: Integer;
+begin
+  Result := '';
+  TmpFile := ExpandConstant('{tmp}\sha256_out.txt');
+  if FileExists(TmpFile) then DeleteFile(TmpFile);
+  // Usar certutil que es nativo de Windows y más confiable
+  Cmd := '/c certutil -hashfile "' + FilePath + '" SHA256 > "' + TmpFile + '" 2>nul';
+  if Exec('cmd.exe', Cmd, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
+    if (ExitCode = 0) and FileExists(TmpFile) and LoadStringFromFile(TmpFile, OutStr) then begin
+      // certutil output format: "SHA256 hash of file.exe:\n<hex>\nCertUtil: -hashfile command completed successfully."
+      // Extraer solo el hash (línea entre el header y el footer); quitar CR a mano
+      // (compatibilidad Inno 6.0: sin StringReplace/StringChangeEx con cadena vacía)
+      while Pos(#13, OutStr) > 0 do Delete(OutStr, Pos(#13, OutStr), 1);
+      SetArrayLength(Lines, 0);
+      Start := 1;
+      while Start <= Length(OutStr) do begin
+        // Pos con 3 args no existe en Inno 6.0: buscar #10 desde Start con Copy
+        NextLineStart := Pos(#10, Copy(OutStr, Start, Length(OutStr) - Start + 1));
+        if NextLineStart = 0 then NextLineStart := Length(OutStr) + 1
+        else NextLineStart := NextLineStart + Start - 1;
+        Line := Trim(Copy(OutStr, Start, NextLineStart - Start));
+        if (Length(Line) = 64) then begin
+          IsHex := True;
+          for i := 1 to 64 do begin
+            C := Line[i];
+            if not ((C >= '0') and (C <= '9') or (C >= 'a') and (C <= 'f') or (C >= 'A') and (C <= 'F')) then begin
+              IsHex := False;
+              Break;
+            end;
+          end;
+          if IsHex then begin
+            Result := Lowercase(Line);
+            Break;
+          end;
+        end;
+        Start := NextLineStart + 1;
+      end;
+      DeleteFile(TmpFile);
+    end;
+  end;
+end;
+
+// Descarga archivo con verificación SHA256 opcional y soporte resume (-C -)
+// URL: URL de descarga
+// DestPath: ruta final del archivo
+// ExpectedSHA256: hash esperado (vacío = no verificar)
+// Resume: true para habilitar -C - (continuar descarga parcial)
+function DownloadFile(const URL, DestPath, ExpectedSHA256: String; Resume: Boolean): Boolean;
+var
+  CmdLine, ExePath, TmpPath: String;
+  ExitCode: Integer;
+  ActualSHA256: String;
 begin
   Result := False;
   try
@@ -542,13 +633,52 @@ begin
       ExePath := 'C:\Windows\System32\curl.exe'
     else
       ExePath := 'curl.exe';
-    CmdLine := '-L --progress-bar -o "' + DestPath + '" "' + URL + '"';
-    Log(Format('DownloadFile: %s -> %s', [URL, DestPath]));
+
+    // Descargar a archivo temporal primero (para verificación SHA256 atómica)
+    TmpPath := DestPath + '.tmp';
+
+    // Construir comando curl con soporte resume
+    CmdLine := '-L --progress-bar';
+    if Resume then
+      CmdLine := CmdLine + ' -C -';
+    CmdLine := CmdLine + ' -o "' + TmpPath + '" "' + URL + '"';
+
+    Log(Format('DownloadFile: %s -> %s (resume=%d, sha256=%s)', [URL, DestPath, Integer(Resume), ExpectedSHA256]));
     Result := Exec(ExePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
     Log(Format('DownloadFile exit=%d result=%d', [ExitCode, Integer(Result)]));
-    if (ExitCode <> 0) then Result := False;
+
+    if (ExitCode <> 0) or (not Result) then begin
+      if FileExists(TmpPath) then DeleteFile(TmpPath);
+      Result := False;
+    end else begin
+      // Verificar SHA256 si se proporcionó
+      if ExpectedSHA256 <> '' then begin
+        ActualSHA256 := CalcSHA256(TmpPath);
+        if Lowercase(ActualSHA256) <> Lowercase(ExpectedSHA256) then begin
+          Log(Format('SHA256 mismatch: expected=%s got=%s', [ExpectedSHA256, ActualSHA256]));
+          if FileExists(TmpPath) then DeleteFile(TmpPath);
+          Result := False;
+        end;
+      end;
+
+      if Result then begin
+        // Movimiento atómico: renombrar tmp -> destino final
+        if FileExists(DestPath) then DeleteFile(DestPath);
+        if not RenameFile(TmpPath, DestPath) then begin
+          // Fallback: copy + delete si rename falla (cross-volume)
+          if FileCopy(TmpPath, DestPath, False) then
+            DeleteFile(TmpPath)
+          else begin
+            Log('Error moviendo archivo descargado a destino final');
+            if FileExists(TmpPath) then DeleteFile(TmpPath);
+            Result := False;
+          end;
+        end;
+      end;
+    end;
   except
     Log('DownloadFile exception');
+    if FileExists(TmpPath) then DeleteFile(TmpPath);
     Result := False;
   end;
 end;
@@ -564,11 +694,12 @@ begin
     'Elige el modelo GGUF code-especifico a descargar (HuggingFace)',
     'Modelos recomendados segun VRAM detectada (' + IntToStr(VRAM_MB) + ' MB):',
     True, False);
+  // Tamaños reales de modelos GGUF Q4_K_M/Q5_K_M (HuggingFace TheBloke)
   ModelSelectPage.Add('DeepSeek Coder 1.3B Q4_K_M (~1.1 GB) - <4 GB VRAM');
-  ModelSelectPage.Add('CodeLlama 7B Q4_K_M (~4 GB) - 4-6 GB VRAM');
-  ModelSelectPage.Add('CodeLlama 7B Q5_K_M (~5 GB) - 6-8 GB VRAM');
-  ModelSelectPage.Add('CodeLlama 13B Q4_K_M (~7 GB) - 8-12 GB VRAM');
-  ModelSelectPage.Add('CodeLlama 34B Q4_K_M (~18 GB) - 12+ GB VRAM');
+  ModelSelectPage.Add('CodeLlama 7B Q4_K_M (~3.8 GB) - 4-6 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 7B Q5_K_M (~4.7 GB) - 6-8 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 13B Q4_K_M (~7.2 GB) - 8-12 GB VRAM');
+  ModelSelectPage.Add('CodeLlama 34B Q4_K_M (~18.8 GB) - 12+ GB VRAM');
   if VRAM_MB < 4096 then DefaultIdx := 0
   else if VRAM_MB < 6144 then DefaultIdx := 1
   else if VRAM_MB < 8192 then DefaultIdx := 2
@@ -591,11 +722,78 @@ begin
   Log(Format('Modelo seleccionado por usuario: %s -> %s', [SelectedModelName, SelectedModelURL]));
 end;
 
+function ExtractLlamaServerFromZip(const ZipPath, DestPath: String): Boolean;
+var
+  TempDir: String;
+  Cmd: String;
+  ExitCode: Integer;
+  LlamaExe: String;
+  FindRec: TFindRec;
+begin
+  Result := False;
+  TempDir := ExpandConstant('{tmp}\llama_extract');
+  try
+    // Crear directorio temporal
+    ForceDirectories(TempDir);
+    
+    // Extraer ZIP usando PowerShell
+    Cmd := Format('powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path ''%s'' -DestinationPath ''%s'' -Force"', [ZipPath, TempDir]);
+    ExitCode := 0;
+    if Exec('cmd.exe', '/c ' + Cmd, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+    begin
+      if ExitCode = 0 then
+      begin
+        // Buscar llama-server.exe en el directorio extraído
+        LlamaExe := TempDir + '\llama-server.exe';
+        if not FileExists(LlamaExe) then
+        begin
+          // Buscar en subdirectorios
+          if FindFirst(TempDir + '\**\llama-server.exe', FindRec) then
+          begin
+            try
+              LlamaExe := TempDir + '\' + FindRec.Name;
+              while (LlamaExe = TempDir + '\llama-server.exe') and FindNext(FindRec) do ;
+            finally
+              FindClose(FindRec);
+            end;
+          end;
+        end;
+        
+        if FileExists(LlamaExe) then
+        begin
+          if FileExists(DestPath) then DeleteFile(DestPath);
+          if FileCopy(LlamaExe, DestPath, False) then
+          begin
+            Result := True;
+            Log('llama-server.exe extraído correctamente a: ' + DestPath);
+          end
+          else
+            Log('Error copiando llama-server.exe a destino');
+        end
+        else
+          Log('No se encontró llama-server.exe en el ZIP');
+      end
+      else
+        Log('Error extrayendo ZIP: exit code ' + IntToStr(ExitCode));
+    end
+    else
+      Log('Error extrayendo ZIP: exit code ' + IntToStr(ExitCode));
+  except
+    Log('Excepción extrayendo llama-server.exe del ZIP');
+  end;
+  // Limpiar directorio temporal
+  if DirExists(TempDir) then
+    DelTree(TempDir, True, True, True);
+end;
+
 procedure DownloadAIComponents();
 var
   DestServer, DestModel, ModeloOllama: String;
   UseExisting: Boolean;
   AppGGUF: String;
+  ModelSHA256: String;
+  ZipPath: String;
+  ActualSHA256: String;
 begin
   // [fix-31] Conectar al Ollama existente (elegido en wpSelectComponents, o modo
   // silencioso con Ollama detectado): se configura con el primer modelo instalado
@@ -647,22 +845,53 @@ begin
   if not UseExisting then begin
     ForceDirectories(ExtractFileDir(DestModel));
     ForceDirectories(ExtractFileDir(DestServer));
-    StatusLabel.Caption := 'Descargando llama-server.exe (~15 MB)...';
+    StatusLabel.Caption := 'Descargando llama-server...';
     ProgressBar.Position := 10;
     WizardForm.Repaint;
-    Log(Format('Iniciando descarga llama-server: %s', ['{#LLAMA_SERVER_URL}']));
-    if not DownloadFile('{#LLAMA_SERVER_URL}', DestServer) then begin
-      if not WizardSilent then MsgBox('Error descargando llama-server.exe. Verifique su conexión.'#13#10'URL: {#LLAMA_SERVER_URL}', mbError, MB_OK);
-      Log('ERROR: DownloadFile llama-server fallo');
+    Log(Format('Iniciando descarga llama-server: %s (SHA256: %s)', ['{#LLAMA_SERVER_URL}', LlamaServerSHA256]));
+    
+    // Descargar ZIP a archivo temporal (SIN verificación SHA256, la haremos al ejecutable extraído)
+    ZipPath := ExpandConstant('{tmp}\llama-server.zip');
+    if not DownloadFile('{#LLAMA_SERVER_URL}', ZipPath, '', True) then begin
+      if not WizardSilent then MsgBox('Error descargando llama-server. Verifique su conexión.'#13#10'URL: {#LLAMA_SERVER_URL}', mbError, MB_OK);
+      Log('ERROR: DownloadFile llama-server ZIP fallo');
       Exit;
     end;
-
+    
+    // Extraer llama-server.exe del ZIP
+    if not ExtractLlamaServerFromZip(ZipPath, DestServer) then begin
+      if not WizardSilent then MsgBox('Error extrayendo llama-server.exe del ZIP.'#13#10'URL: {#LLAMA_SERVER_URL}', mbError, MB_OK);
+      Log('ERROR: ExtractLlamaServerFromZip fallo');
+      if FileExists(ZipPath) then DeleteFile(ZipPath);
+      Exit;
+    end;
+    
+    // Verificar SHA256 del ejecutable extraído
+    ActualSHA256 := CalcSHA256(DestServer);
+    if Lowercase(ActualSHA256) <> Lowercase(LlamaServerSHA256) then begin
+      Log(Format('SHA256 mismatch llama-server.exe: expected=%s got=%s', [LlamaServerSHA256, ActualSHA256]));
+      if not WizardSilent then MsgBox('Error verificando llama-server.exe (SHA256 no coincide).'#13#10'URL: {#LLAMA_SERVER_URL}', mbError, MB_OK);
+      Log('ERROR: SHA256 mismatch llama-server.exe');
+      Exit;
+    end;
+    Log('llama-server.exe SHA256 verificado correctamente');
+    
+    if FileExists(ZipPath) then DeleteFile(ZipPath);
+    
     ProgressBar.Position := 50;
-    StatusLabel.Caption := 'Descargando ' + SelectedModelName + ' (~' + IntToStr(4096) + ' MB)...';
+    StatusLabel.Caption := 'Descargando ' + SelectedModelName + '...';
     WizardForm.Repaint;
-    Log(Format('Iniciando descarga modelo: %s -> %s', [SelectedModelURL, DestModel]));
-    if not DownloadFile(SelectedModelURL, DestModel) then begin
-      if not WizardSilent then MsgBox('Error descargando modelo ' + SelectedModelName + '. Verifique su conexión y espacio en disco.'#13#10'URL: ' + SelectedModelURL, mbError, MB_OK);
+    // Determinar SHA256 según modelo seleccionado
+    case ModelSelectPage.SelectedValueIndex of
+      0: ModelSHA256 := ModelSHA256_1B;
+      1: ModelSHA256 := ModelSHA256_7B_Q4;
+      2: ModelSHA256 := ModelSHA256_7B_Q5;
+      3: ModelSHA256 := ModelSHA256_13B;
+      4: ModelSHA256 := ModelSHA256_34B;
+    end;
+    Log(Format('Iniciando descarga modelo: %s (SHA256: %s) -> %s', [SelectedModelURL, ModelSHA256, DestModel]));
+    if not DownloadFile(SelectedModelURL, DestModel, ModelSHA256, True) then begin
+      if not WizardSilent then MsgBox('Error descargando modelo ' + SelectedModelName + ' (verificación SHA256 falló). Verifique su conexión y espacio en disco.'#13#10'URL: ' + SelectedModelURL, mbError, MB_OK);
       Log('ERROR: DownloadFile modelo fallo: ' + SelectedModelURL);
       Exit;
     end;
@@ -835,4 +1064,5 @@ begin
   if RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', S) then
     Result := not SynapsePathContieneAppBin(S);
 end;
+
 

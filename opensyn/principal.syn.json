@@ -5643,6 +5643,47 @@
     },
     {
       "tipo": "DeclaracionExterna",
+      "nombre": "_syn_tui_dirty",
+      "parametros": [],
+      "tipo_retorno": "entero",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
+      "nombre": "_syn_tui_historial_cargar",
+      "parametros": [],
+      "tipo_retorno": "nulo",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
+      "nombre": "_syn_tui_historial_guardar",
+      "parametros": [],
+      "tipo_retorno": "nulo",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
+      "nombre": "_syn_tui_historial_anadir",
+      "parametros": [
+        {
+          "nombre": "texto",
+          "tipo": "texto",
+          "es_transferencia": false
+        }
+      ],
+      "tipo_retorno": "nulo",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
+      "nombre": "_syn_tui_completar",
+      "parametros": [],
+      "tipo_retorno": "nulo",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
       "nombre": "_syn_ollama_stream_iniciar",
       "parametros": [
         {
@@ -16190,25 +16231,6 @@
                     }
                   },
                   {
-                    "tipo": "SentenciaExpr",
-                    "expr": {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "_syn_tui_repintar",
-                      "argumentos": [
-                        {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "strcpy_f",
-                          "argumentos": [
-                            {
-                              "tipo": "Identificador",
-                              "nombre": "modelo"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  {
                     "tipo": "SentenciaSi",
                     "condicion": {
                       "tipo": "ExpresionArit",
@@ -16227,6 +16249,25 @@
                         "tipo": "SentenciaSiguiente"
                       }
                     ]
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_tui_historial_anadir",
+                      "argumentos": [
+                        {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "strcpy_f",
+                          "argumentos": [
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "entrada"
+                            }
+                          ]
+                        }
+                      ]
+                    }
                   },
                   {
                     "tipo": "SentenciaSi",
@@ -16427,6 +16468,25 @@
                     "tipo": "SentenciaExpr",
                     "expr": {
                       "tipo": "LlamadaFuncion",
+                      "nombre": "_syn_tui_repintar",
+                      "argumentos": [
+                        {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "strcpy_f",
+                          "argumentos": [
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "modelo"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
+                      "tipo": "LlamadaFuncion",
                       "nombre": "tui_agente",
                       "argumentos": [
                         {
@@ -16567,23 +16627,41 @@
                 ]
               },
               {
-                "tipo": "SentenciaExpr",
-                "expr": {
-                  "tipo": "LlamadaFuncion",
-                  "nombre": "_syn_tui_repintar",
-                  "argumentos": [
-                    {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "_syn_tui_dirty",
+                    "argumentos": []
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaExpr",
+                    "expr": {
                       "tipo": "LlamadaFuncion",
-                      "nombre": "strcpy_f",
+                      "nombre": "_syn_tui_repintar",
                       "argumentos": [
                         {
-                          "tipo": "Identificador",
-                          "nombre": "modelo"
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "strcpy_f",
+                          "argumentos": [
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "modelo"
+                            }
+                          ]
                         }
                       ]
                     }
-                  ]
-                }
+                  }
+                ]
               },
               {
                 "tipo": "AsignacionVariable",
@@ -16860,6 +16938,14 @@
                 "es_transferencia": false
               }
             ]
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "mostrar_banner",
+              "argumentos": []
+            }
           },
           {
             "tipo": "SentenciaExpr",
@@ -20976,183 +21062,6 @@
         "tipo": "Bloque",
         "sentencias": [
           {
-            "tipo": "SentenciaExpr",
-            "expr": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "mostrar_banner",
-              "argumentos": []
-            }
-          },
-          {
-            "tipo": "SentenciaSi",
-            "condicion": {
-              "tipo": "ExpresionArit",
-              "izquierda": {
-                "tipo": "LlamadaFuncion",
-                "nombre": "_argc",
-                "argumentos": []
-              },
-              "operador": ">=",
-              "derecha": {
-                "tipo": "LiteralNumero",
-                "valor": 2
-              }
-            },
-            "cuerpo": [
-              {
-                "tipo": "AsignacionVariable",
-                "nombre": "comando",
-                "expresion": {
-                  "tipo": "LlamadaFuncion",
-                  "nombre": "_argv",
-                  "argumentos": [
-                    {
-                      "tipo": "LiteralNumero",
-                      "valor": 1
-                    }
-                  ]
-                }
-              },
-              {
-                "tipo": "SentenciaSi",
-                "condicion": {
-                  "tipo": "ExpresionArit",
-                  "izquierda": {
-                    "tipo": "Identificador",
-                    "nombre": "comando"
-                  },
-                  "operador": "==",
-                  "derecha": {
-                    "tipo": "LiteralCadena",
-                    "valor": "status"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "tipo": "SentenciaRetornar",
-                    "valor": {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "cmd_status",
-                      "argumentos": []
-                    },
-                    "es_transferencia": false
-                  }
-                ]
-              },
-              {
-                "tipo": "SentenciaSi",
-                "condicion": {
-                  "tipo": "ExpresionArit",
-                  "izquierda": {
-                    "tipo": "Identificador",
-                    "nombre": "comando"
-                  },
-                  "operador": "==",
-                  "derecha": {
-                    "tipo": "LiteralCadena",
-                    "valor": "chat"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "tipo": "SentenciaRetornar",
-                    "valor": {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "cmd_chat",
-                      "argumentos": [
-                        {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "_argv",
-                          "argumentos": [
-                            {
-                              "tipo": "LiteralNumero",
-                              "valor": 2
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ]
-              },
-              {
-                "tipo": "SentenciaSi",
-                "condicion": {
-                  "tipo": "ExpresionArit",
-                  "izquierda": {
-                    "tipo": "Identificador",
-                    "nombre": "comando"
-                  },
-                  "operador": "==",
-                  "derecha": {
-                    "tipo": "LiteralCadena",
-                    "valor": "explain"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "tipo": "SentenciaRetornar",
-                    "valor": {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "cmd_explain",
-                      "argumentos": [
-                        {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "_argv",
-                          "argumentos": [
-                            {
-                              "tipo": "LiteralNumero",
-                              "valor": 2
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ]
-              },
-              {
-                "tipo": "SentenciaSi",
-                "condicion": {
-                  "tipo": "ExpresionArit",
-                  "izquierda": {
-                    "tipo": "Identificador",
-                    "nombre": "comando"
-                  },
-                  "operador": "==",
-                  "derecha": {
-                    "tipo": "LiteralCadena",
-                    "valor": "generate"
-                  }
-                },
-                "cuerpo": [
-                  {
-                    "tipo": "SentenciaRetornar",
-                    "valor": {
-                      "tipo": "LlamadaFuncion",
-                      "nombre": "cmd_generate",
-                      "argumentos": [
-                        {
-                          "tipo": "LlamadaFuncion",
-                          "nombre": "_argv",
-                          "argumentos": [
-                            {
-                              "tipo": "LiteralNumero",
-                              "valor": 2
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    "es_transferencia": false
-                  }
-                ]
-              }
-            ]
-          },
-          {
             "tipo": "AsignacionVariable",
             "nombre": "modo",
             "expresion": {
@@ -21176,6 +21085,14 @@
               }
             },
             "cuerpo": [
+              {
+                "tipo": "SentenciaExpr",
+                "expr": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "mostrar_banner",
+                  "argumentos": []
+                }
+              },
               {
                 "tipo": "AsignacionVariable",
                 "nombre": "opcion",
@@ -21416,6 +21333,14 @@
                 "es_transferencia": false
               }
             ]
+          },
+          {
+            "tipo": "SentenciaExpr",
+            "expr": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "mostrar_banner",
+              "argumentos": []
+            }
           },
           {
             "tipo": "SentenciaExpr",

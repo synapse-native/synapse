@@ -35,6 +35,12 @@ externo funcion _syn_tui_entrada_poner(texto: texto) -> nulo
 externo funcion _syn_tui_entrada_borrar() -> nulo
 externo funcion _syn_tui_evento() -> entero
 externo funcion _syn_tui_menu(titulo: texto, items: texto) -> texto
+externo funcion _syn_tui_dirty() -> entero
+// --- Historial persistente + Autocompletado (Manual 7 1.1/8) ---
+externo funcion _syn_tui_historial_cargar() -> nulo
+externo funcion _syn_tui_historial_guardar() -> nulo
+externo funcion _syn_tui_historial_anadir(texto: texto) -> nulo
+externo funcion _syn_tui_completar() -> nulo
 // --- Streaming del chat (Manual 7 §8): token a token ---
 externo funcion _syn_ollama_stream_iniciar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> puntero
 externo funcion _syn_ollama_stream_leer(sesion: puntero) -> texto
@@ -886,9 +892,10 @@ funcion chat_tui() -> entero:
         si evento == 1:
             entrada = _syn_tui_entrada_texto()
             _syn_tui_entrada_borrar()
-            _syn_tui_repintar(strcpy_f(modelo))
             si entrada == "":
                 siguiente
+            // Añadir al historial persistente
+            _syn_tui_historial_anadir(strcpy_f(entrada))
             si strstr_f(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
                 res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos))
                 si res == "!salir":
@@ -898,6 +905,8 @@ funcion chat_tui() -> entero:
                     modelo = res
                     _syn_tui_repintar(strcpy_f(modelo))
                 siguiente
+            // Repintar solo si NO es comando de salida (evita flash antes de salir)
+            _syn_tui_repintar(strcpy_f(modelo))
             tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act))
             _syn_tui_repintar(strcpy_f(modelo))
             siguiente
@@ -910,9 +919,12 @@ funcion chat_tui() -> entero:
             // Ctrl+C: terminar
             _syn_tui_finalizar()
             retornar 0
-        // Cualquier otra tecla (incl. carácter insertado): repintar y, si el
-        // usuario tecleo "/" solo, abrir el menu de comandos.
-        _syn_tui_repintar(strcpy_f(modelo))
+        // Evento 0 = carácter insertado: NO repintar aquí (el cursor se actualiza
+        // en la siguiente iteración o al procesar Enter/Esc). Evita flickering.
+        // Solo repintar si hay alertas pendientes (_syn_tui_dirty).
+        si _syn_tui_dirty() == 1:
+            _syn_tui_repintar(strcpy_f(modelo))
+        // Detectar "/" solo en la entrada para abrir menú de comandos (estilo OpenCode)
         t = _syn_tui_entrada_texto()
         si t == "/":
             _syn_tui_entrada_borrar()
@@ -937,7 +949,10 @@ funcion modo_oraculo() -> entero:
     si _syn_tui_iniciar() == 0:
         rc_tui = chat_tui()
         retornar rc_tui
-    // el banner ya se mostro en principal() (Manual 7 1.1); aqui solo el encabezado
+    // Modo linea (pipe/test sin consola): mostrar aqui el banner ASCII retro,
+    // ya que en este flujo chat_tui()/TUI no lo pinto. En consola real la TUI
+    // lo muestra en el panel, asi el banner aparece una sola vez (Manual 7 1.1).
+    mostrar_banner()
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
@@ -1282,31 +1297,13 @@ funcion cmd_generate(instruccion: texto) -> entero:
 // --- Punto de entrada principal ---
 
 funcion principal() -> entero:
-    // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
-    mostrar_banner()
-
-    // cumple Manual 7 §8: agente conversacional con capacidades de codigo
-    // Routing de subcommands
-    si _argc() >= 2:
-        comando = _argv(1)
-
-        si comando == "status":
-            retornar cmd_status()
-
-        si comando == "chat":
-            retornar cmd_chat(_argv(2))
-
-        si comando == "explain":
-            retornar cmd_explain(_argv(2))
-
-        si comando == "generate":
-            retornar cmd_generate(_argv(2))
-
     // Leer configuracion existente
     modo = leer_modo_config()
 
     si modo == "":
-        // Primera ejecucion: mostrar menu de bienvenida
+        // Primera ejecucion: mostrar menu de bienvenida + banner
+        // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
+        mostrar_banner()
         opcion = mostrar_menu_bienvenida()
 
         si opcion == "2":
@@ -1325,12 +1322,16 @@ funcion principal() -> entero:
         retornar modo_compilador()
 
     si modo == "oraculo":
+        // El banner se muestra en chat_tui() via TUI (pantalla alternativa)
+        // No imprimir aqui para evitar duplicado y mojibake en consola real
         escribir_linea("  [OK] Modo: Oraculo (IA Local)")
         escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
         escribir_linea("")
         retornar modo_oraculo()
 
     // modo == "compilador"
+    // cumple Manual 7 1.1: banner ASCII retro al iniciar (estilo OpenCode/Freebuff)
+    mostrar_banner()
     escribir_linea("  [OK] Modo: Lenguaje Puro")
     escribir_linea("  [OK] Para cambiar: elimina .synapse_config y re-ejecuta")
     escribir_linea("")

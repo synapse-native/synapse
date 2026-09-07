@@ -118,6 +118,13 @@ nul
 # CLASE S: Dependencias Node.js
 node_modules/
 
+# CLASE T: Vendor de skills de agente (deps/agent-skills v0.6.8, MIT — pin d2c37ef;
+# origen https://github.com/addyosmani/agent-skills; base adaptada en std/agent_skills.syn
+# para las skills /tdd /revisar /plan /skills de OpenSyn, Manual 7 §6). Archivos
+# internos del proyecto upstream que NO son fuente de Synapse:
+deps/agent-skills/evals/
+deps/agent-skills/.kilo/
+
 # CLASE Q: Archivos binarios LSP
 test_lsp_bin.oculto
 test_lsp_bin
