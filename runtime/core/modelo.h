@@ -1,5 +1,7 @@
 // runtime/core/modelo.h — Public types for modelo.c (ME-SEC-3: testable interface)
 // cumple Manual 7 3: metadatos GGUF con strtol+endptr
+// cumple Manual 7 §3.1: soporte de modelos GGUF (cuantizados) para inferencia local.
+// cumple Manual 7 §3.3: cuantización — cache F32 perezoso acelera la inferencia.
 // cumple Manual 2 12: contratos requiere/garantiza expuestos
 #ifndef MODELO_H
 #define MODELO_H
@@ -16,6 +18,7 @@ typedef struct {
     uint64_t dimensiones[4];
     int tipo;
     uint64_t offset;
+    float* cache_f32;  // ME_opensyn_ia: des-cuantizacion perezosa a F32 (NULL = pendiente)
 } TensorInfo;
 
 typedef struct EntradaHash {
@@ -33,6 +36,10 @@ typedef struct {
     int tipo_elemento;
     int cantidad;
     uint64_t data_pos;
+    // ME_opensyn_ia: cache de posicion para lecturas secuenciales O(n) total
+    // (antes cada acceso re-caminaba desde data_pos -> O(n^2) al cargar vocab).
+    int cache_indice;
+    uint64_t cache_pos;
 } ArrayMetaEntry;
 
 typedef struct InternalData {

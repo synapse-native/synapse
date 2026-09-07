@@ -310,6 +310,8 @@ GGUF_Contexto _syn_gguf_abrir(CadenaSegura ruta) {
                         idata->arrays[idata->cantidad_arrays].tipo_elemento = (int)elem_type;
                         idata->arrays[idata->cantidad_arrays].cantidad = (int)arr_len;
                         idata->arrays[idata->cantidad_arrays].data_pos = pos;
+                        idata->arrays[idata->cantidad_arrays].cache_indice = -1;
+                        idata->arrays[idata->cantidad_arrays].cache_pos = pos;
                         idata->cantidad_arrays++;
                     }
                     for (uint64_t j = 0; j < arr_len; j++) {
@@ -420,6 +422,7 @@ error:
         if (idata->tensores) {
             for (int i = 0; i < idata->cantidad_tensores; i++) {
                 free(idata->tensores[i].nombre);
+                free(idata->tensores[i].cache_f32);  // ME_opensyn_ia: cache des-cuantizada
             }
             free(idata->tensores);
         }
@@ -454,6 +457,7 @@ void _syn_gguf_cerrar_contex(GGUF_Contexto ctx) {
         if (idata->tensores) {
             for (int i = 0; i < idata->cantidad_tensores; i++) {
                 free(idata->tensores[i].nombre);
+                free(idata->tensores[i].cache_f32);  // ME_opensyn_ia: cache des-cuantizada
             }
             free(idata->tensores);
         }
@@ -490,6 +494,55 @@ static ArrayMetaEntry* _gguf_buscar_arreglo(void* datos_internos, const char* cl
     return NULL;
 }
 
+// --- ME_opensyn_ia: acceso secuencial O(n) a los arrays del GGUF ---
+// Los arrays de metadatos (vocab, merges) tienen miles de elementos; cada
+// acceso re-caminaba desde data_pos -> O(n^2). cache_indice/cache_pos
+// recuerdan la posicion del ultimo elemento leido (avance O(1) amortizado).
+
+static int _gguf_arr_tamano_elemento(int tipo_elemento) {
+    switch (tipo_elemento) {
+        case 0: case 1: case 7: return 1;
+        case 2: case 3: return 2;
+        case 4: case 5: case 6: return 4;
+        case 10: case 11: case 12: return 8;
+        case 8: return -1; // string: tamano variable
+        default: return -2;
+    }
+}
+
+// Salta n elementos desde *pos. Devuelve 0 OK, -1 fuera de rango.
+static int _gguf_arr_saltar(const InternalData* idata, const ArrayMetaEntry* arr, uint64_t* pos, int n) {
+    const unsigned char* base = (const unsigned char*)idata->mmap_ptr;
+    for (int k = 0; k < n; k++) {
+        if ((int64_t)(*pos + 8) > idata->tamano_mmap) return -1;
+        if (arr->tipo_elemento == 8) {
+            uint64_t l = *(const uint64_t*)(base + *pos);
+            if ((int64_t)(*pos + 8 + l) > idata->tamano_mmap) return -1;
+            *pos += 8 + l;
+        } else {
+            int sz = _gguf_arr_tamano_elemento(arr->tipo_elemento);
+            if (sz <= 0) return -1;
+            *pos += (uint64_t)sz;
+        }
+    }
+    return 0;
+}
+
+// Devuelve la posicion del inicio del elemento `indice`, o (uint64_t)-1 si error.
+static uint64_t _gguf_arr_posicion(InternalData* idata, ArrayMetaEntry* arr, int indice) {
+    uint64_t pos;
+    if (arr->cache_indice >= 0 && indice >= arr->cache_indice) {
+        pos = arr->cache_pos;
+        if (_gguf_arr_saltar(idata, arr, &pos, indice - arr->cache_indice) != 0) return (uint64_t)-1;
+    } else {
+        pos = arr->data_pos;
+        if (_gguf_arr_saltar(idata, arr, &pos, indice) != 0) return (uint64_t)-1;
+    }
+    arr->cache_indice = indice;
+    arr->cache_pos = pos;
+    return pos;
+}
+
 static int _gguf_leer_elemento_string(const unsigned char* base, int64_t size, uint64_t* pos, char** out, int max_len) {
     if ((int64_t)(*pos + 8) > size) return -1;
     uint64_t slen = *(const uint64_t*)(base + *pos);
@@ -523,14 +576,8 @@ CadenaSegura _syn_gguf_arreglo_string(void* datos_internos, const char* clave, i
     if (!arr || arr->tipo_elemento != 8 || indice < 0 || indice >= arr->cantidad) return result;
     InternalData* idata = (InternalData*)datos_internos;
     const unsigned char* base = (const unsigned char*)idata->mmap_ptr;
-    uint64_t pos = arr->data_pos;
-    for (int i = 0; i < indice; i++) {
-        uint64_t e_size = 0;
-        if ((int64_t)(pos + 8) > idata->tamano_mmap) return result;
-        e_size = 8 + *(const uint64_t*)(base + pos);
-        if ((int64_t)(pos + e_size) > idata->tamano_mmap) return result;
-        pos += e_size;
-    }
+    uint64_t pos = _gguf_arr_posicion(idata, arr, indice);
+    if (pos == (uint64_t)-1) return result;
     char* out = NULL;
     int len = _gguf_leer_elemento_string(base, idata->tamano_mmap, &pos, &out, 0);
     if (len < 0) return result;
@@ -545,9 +592,8 @@ float _syn_gguf_arreglo_float(void* datos_internos, const char* clave, int indic
     if (arr->tipo_elemento != 6) return 0.0f; // FLOAT32
     InternalData* idata = (InternalData*)datos_internos;
     const unsigned char* base = (const unsigned char*)idata->mmap_ptr;
-    uint64_t pos = arr->data_pos;
-    const int elem_size = 4;
-    pos += (uint64_t)indice * elem_size;
+    uint64_t pos = _gguf_arr_posicion(idata, arr, indice);
+    if (pos == (uint64_t)-1) return 0.0f;
     if ((int64_t)(pos + 4) > idata->tamano_mmap) return 0.0f;
     return *(const float*)(base + pos);
 }
@@ -557,16 +603,10 @@ int _syn_gguf_arreglo_int(void* datos_internos, const char* clave, int indice) {
     if (!arr || indice < 0 || indice >= arr->cantidad) return 0;
     InternalData* idata = (InternalData*)datos_internos;
     const unsigned char* base = (const unsigned char*)idata->mmap_ptr;
-    uint64_t pos = arr->data_pos;
-    int elem_size = 0;
-    switch (arr->tipo_elemento) {
-        case 0: case 1: case 7: elem_size = 1; break;
-        case 2: case 3: elem_size = 2; break;
-        case 4: case 5: case 6: elem_size = 4; break;
-        case 10: case 11: case 12: elem_size = 8; break;
-        default: return 0;
-    }
-    pos += (uint64_t)indice * elem_size;
+    uint64_t pos = _gguf_arr_posicion(idata, arr, indice);
+    if (pos == (uint64_t)-1) return 0;
+    int elem_size = _gguf_arr_tamano_elemento(arr->tipo_elemento);
+    if (elem_size <= 0) return 0;
     if ((int64_t)(pos + elem_size) > idata->tamano_mmap) return 0;
     switch (arr->tipo_elemento) {
         case 0: case 7: return (int)base[pos];
@@ -580,6 +620,148 @@ int _syn_gguf_arreglo_int(void* datos_internos, const char* clave, int indice) {
         case 11: return (int)(*(const int64_t*)(base + pos));
         case 12: return (int)(*(const float*)(base + pos)); // float16 treated as 32 in GGUF
         default: return 0;
+    }
+}
+
+// --- ME_opensyn_ia (opcion A): des-cuantizacion GGUF estandar a F32 ---
+// El motor infiere sobre float* (F32). Los GGUFs reales vienen cuantizados en
+// bloques de 32 (ggml): estos conversores exactos materializan el tensor a F32
+// la primera vez que se solicita y se cachean en TensorInfo.cache_f32.
+// Formatos soportados: F16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 (bloque 32, exactos).
+// cumple Manual 7 §3.3: cuantización para reducir tamaño y acelerar inferencia.
+// cumple Manual 7 §8: verificación de límites contra tamano_mmap.
+
+static float _fp16_a_f32(uint16_t h) {
+    uint32_t sign = ((uint32_t)h & 0x8000u) << 16;
+    uint32_t expo = ((uint32_t)h & 0x7C00u) >> 10;
+    uint32_t mant = (uint32_t)h & 0x03FFu;
+    uint32_t f32;
+    if (expo == 0) {
+        if (mant == 0) { f32 = sign; }
+        else {
+            expo = 127 - 15 + 1;
+            while ((mant & 0x0400u) == 0) { mant <<= 1; expo--; }
+            mant &= 0x03FFu;
+            f32 = sign | (expo << 23) | (mant << 13);
+        }
+    } else if (expo == 0x1F) {
+        f32 = sign | 0x7F800000u | (mant << 13);
+    } else {
+        f32 = sign | ((expo - 15 + 127) << 23) | (mant << 13);
+    }
+    float out;
+    memcpy(&out, &f32, sizeof(out));
+    return out;
+}
+
+static int64_t _gguf_nelem(const TensorInfo* ti) {
+    int64_t n = 1;
+    for (int d = 0; d < ti->n_dimensiones && d < 4; d++) n *= (int64_t)ti->dimensiones[d];
+    return n;
+}
+
+static const unsigned char* _gguf_src_tensor(const InternalData* idata, const TensorInfo* ti) {
+    return (const unsigned char*)idata->mmap_ptr + idata->tensor_data_base_offset + ti->offset;
+}
+
+static int _gguf_fuera_de_rango(const InternalData* idata, const TensorInfo* ti, uint64_t bytes) {
+    uint64_t fin = idata->tensor_data_base_offset + ti->offset + bytes;
+    return fin > (uint64_t)idata->tamano_mmap;
+}
+
+// Devuelve un buffer F32 (malloc) con el tensor des-cuantizado, o NULL.
+static float* _gguf_decuantizar_f32(const InternalData* idata, const TensorInfo* ti) {
+    int64_t nelem = _gguf_nelem(ti);
+    if (nelem <= 0 || nelem > (int64_t)INT32_MAX) return NULL;
+    const unsigned char* src = _gguf_src_tensor(idata, ti);
+    float* out = (float*)malloc((size_t)nelem * sizeof(float));
+    if (!out) return NULL;
+    if (nelem % 32 != 0 && ti->tipo != GGML_TYPE_F16) { free(out); return NULL; }
+    int nb = (int)(nelem / 32);
+    switch (ti->tipo) {
+        case GGML_TYPE_F16: {
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nelem * 2)) { free(out); return NULL; }
+            for (int64_t i = 0; i < nelem; i++) out[i] = _fp16_a_f32(((const uint16_t*)src)[i]);
+            return out;
+        }
+        case GGML_TYPE_Q8_0: {  // bloque 32: [fp16 d][32 x int8] = 34 B
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nb * 34)) { free(out); return NULL; }
+            for (int b = 0; b < nb; b++) {
+                const unsigned char* q = src + (size_t)b * 34;
+                float d = _fp16_a_f32(*(const uint16_t*)q);
+                const int8_t* vals = (const int8_t*)(q + 2);
+                float* o = out + (size_t)b * 32;
+                for (int i = 0; i < 32; i++) o[i] = (float)vals[i] * d;
+            }
+            return out;
+        }
+        case GGML_TYPE_Q4_0: {  // bloque 32: [fp16 d][16 x nibble(int4) c/ sesgo -8] = 18 B
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nb * 18)) { free(out); return NULL; }
+            for (int b = 0; b < nb; b++) {
+                const unsigned char* q = src + (size_t)b * 18;
+                float d = _fp16_a_f32(*(const uint16_t*)q);
+                const unsigned char* qs = q + 2;
+                float* o = out + (size_t)b * 32;
+                for (int i = 0; i < 16; i++) {
+                    int lo = qs[i] & 0x0F, hi = (qs[i] >> 4) & 0x0F;
+                    o[2 * i]     = (float)((lo >= 8) ? lo - 16 : lo) * d;
+                    o[2 * i + 1] = (float)((hi >= 8) ? hi - 16 : hi) * d;
+                }
+            }
+            return out;
+        }
+        case GGML_TYPE_Q4_1: {  // bloque 32: [fp16 d][fp16 m][16 x nibble(int4) unsigned] = 20 B
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nb * 20)) { free(out); return NULL; }
+            for (int b = 0; b < nb; b++) {
+                const unsigned char* q = src + (size_t)b * 20;
+                float d = _fp16_a_f32(*(const uint16_t*)q);
+                float m = _fp16_a_f32(*(const uint16_t*)(q + 2));
+                const unsigned char* qs = q + 4;
+                float* o = out + (size_t)b * 32;
+                for (int i = 0; i < 16; i++) {
+                    int lo = qs[i] & 0x0F, hi = (qs[i] >> 4) & 0x0F;
+                    o[2 * i]     = m + (float)lo * d;
+                    o[2 * i + 1] = m + (float)hi * d;
+                }
+            }
+            return out;
+        }
+        case GGML_TYPE_Q5_0: {  // bloque 32: [fp16 d][4 x qh(bit e <- elem e)][16 x nibble] = 22 B
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nb * 22)) { free(out); return NULL; }
+            for (int b = 0; b < nb; b++) {
+                const unsigned char* q = src + (size_t)b * 22;
+                float d = _fp16_a_f32(*(const uint16_t*)q);
+                const unsigned char* qh = q + 2;
+                const unsigned char* qs = q + 6;
+                float* o = out + (size_t)b * 32;
+                for (int e = 0; e < 32; e++) {
+                    int low = (qs[e / 2] >> (4 * (e & 1))) & 0x0F;
+                    int high = (qh[e / 8] >> (e & 7)) & 1;
+                    o[e] = (float)((low | (high << 4)) - 16) * d;
+                }
+            }
+            return out;
+        }
+        case GGML_TYPE_Q5_1: {  // bloque 32: [fp16 d][fp16 m][4 x qh][16 x nibble] = 24 B
+            if (_gguf_fuera_de_rango(idata, ti, (uint64_t)nb * 24)) { free(out); return NULL; }
+            for (int b = 0; b < nb; b++) {
+                const unsigned char* q = src + (size_t)b * 24;
+                float d = _fp16_a_f32(*(const uint16_t*)q);
+                float m = _fp16_a_f32(*(const uint16_t*)(q + 2));
+                const unsigned char* qh = q + 4;
+                const unsigned char* qs = q + 8;
+                float* o = out + (size_t)b * 32;
+                for (int e = 0; e < 32; e++) {
+                    int low = (qs[e / 2] >> (4 * (e & 1))) & 0x0F;
+                    int high = (qh[e / 8] >> (e & 7)) & 1;
+                    o[e] = m + (float)(low | (high << 4)) * d;
+                }
+            }
+            return out;
+        }
+        default:
+            free(out);
+            return NULL;
     }
 }
 
@@ -604,18 +786,34 @@ Tensor _syn_gguf_obtener_tensor(void* datos_internos, CadenaSegura nombre) {
         TensorInfo* ti = &idata->tensores[entry->indice_tensor];
         if (strcmp(name_str, ti->nombre) == 0) {
             free(name_str);
-            // Validate type: only F32 supported
-            if (ti->tipo != GGML_TYPE_F32) {
-                fprintf(stderr, "ESCAPA_DEL_ALCANCE: Tipo de tensor no soportado "
-                        "(tipo=%d, solo F32=0 soportado en esta version)\n", ti->tipo);
-                return t;
-            }
+            // ME_opensyn_ia: orden de dimensiones GGUF/llama.cpp. El archivo
+            // guarda ne[] con ne[0] = dimension contigua (columnas) y la
+            // externa al final (filas). Antes se leian invertidas: w_k daba
+            // columnas=128 (kv_heads*head_dim) en vez de 896 -> matmul OOB.
             if (ti->n_dimensiones >= 2) {
-                t.filas = (int)ti->dimensiones[ti->n_dimensiones - 2];
-                t.columnas = (int)ti->dimensiones[ti->n_dimensiones - 1];
+                t.filas = (int)ti->dimensiones[ti->n_dimensiones - 1];
+                t.columnas = (int)ti->dimensiones[0];
             } else if (ti->n_dimensiones == 1) {
                 t.filas = 1;
                 t.columnas = (int)ti->dimensiones[0];
+            }
+            if (ti->tipo != GGML_TYPE_F32) {
+                // ME_opensyn_ia (opcion A): des-cuantizacion perezosa con cache.
+                // La primera lectura materializa el tensor a F32 (heap) y lo
+                // reutiliza; se libera al cerrar el contexto. es_mapeado=1
+                // mantiene el contrato de los tensores mmap (el motor nunca los
+                // libera; las ops con ownership solo liberan si es_mapeado==0).
+                if (!ti->cache_f32) {
+                    ti->cache_f32 = _gguf_decuantizar_f32(idata, ti);
+                    if (!ti->cache_f32) {
+                        fprintf(stderr, "ESCAPA_DEL_ALCANCE: Tipo de tensor no soportado "
+                                "(tipo=%d)\n", ti->tipo);
+                        return t;
+                    }
+                }
+                t.datos = ti->cache_f32;
+                t.es_mapeado = 1;
+                return t;
             }
             t.datos = (float*)((unsigned char*)idata->mmap_ptr + idata->tensor_data_base_offset + ti->offset);
             t.es_mapeado = 1;
@@ -889,16 +1087,103 @@ typedef struct BpeContext {
     int vocab_size;
     char** tokens;          // [vocab_size] token strings
     int num_merges;
-    BpeMerge* merges;       // merge rules (sorted by first,second for bsearch)
+    BpeMerge* merges;       // merge rules (rank = indice de la lista)
     int bos_id;
     int eos_id;
+    // ME_opensyn_ia: mapa byte->token (fallback GPT-2) y tabla hash par->rank
+    int byte_a_token[256];
+    int* tabla_pares;
+    int tabla_pares_tam;
 } BpeContext;
 
-static int _bpe_merge_cmp(const void* a, const void* b) {
-    const BpeMerge* ma = (const BpeMerge*)a;
-    const BpeMerge* mb = (const BpeMerge*)b;
-    if (ma->first != mb->first) return ma->first - mb->first;
-    return ma->second - mb->second;
+// --- ME_opensyn_ia: mapeo GPT-2 byte-level BPE (paridad llama.cpp/HF) ---
+// El vocab guarda cada byte como 1 char unicode: identidad para 33..126,
+// 161..172 y 174..255; el resto (0..32, 127..160, 173) -> U+0100+n en orden
+// de byte. Sin estas tablas el encode de espacios/UTF-8 y el decode producen
+// basura (la pieza del espacio es U+0120 y sin el mapeo inverso saldria como
+// dos bytes ilegibles en vez de un espacio).
+static uint8_t _gpt2_u2b[0x180];   // codepoint -> byte (0xFF = no es fallback)
+static uint32_t _gpt2_b2u[256];    // byte -> codepoint
+static int _gpt2_listo = 0;
+
+static void _gpt2_construir_tablas(void) {
+    if (_gpt2_listo) return;
+    memset(_gpt2_u2b, 0xFF, sizeof(_gpt2_u2b));
+    int n = 0;
+    for (int b = 0; b < 256; b++) {
+        int ident = (b >= 33 && b <= 126) || (b >= 161 && b <= 172) || (b >= 174);
+        if (ident) {
+            _gpt2_u2b[b] = (uint8_t)b;
+            _gpt2_b2u[b] = (uint32_t)b;
+        } else {
+            _gpt2_u2b[0x100 + n] = (uint8_t)b;
+            _gpt2_b2u[b] = 0x100u + (uint32_t)n;
+            n++;
+        }
+    }
+    _gpt2_listo = 1;
+}
+
+// Byte de un codepoint de pieza, o -1 si no es fallback GPT-2.
+static int _gpt2_char_a_byte(uint32_t cp) {
+    if (!_gpt2_listo) _gpt2_construir_tablas();
+    if (cp >= 0x180) return -1;
+    if (cp < 0x100) return (_gpt2_u2b[cp] == (uint8_t)cp) ? (int)cp : -1;
+    return (_gpt2_u2b[cp] != 0xFF) ? (int)_gpt2_u2b[cp] : -1;
+}
+
+// Decodifica 1 UTF-8; devuelve el codepoint y bytes avanzados (o -1).
+static int32_t _utf8_cp(const unsigned char* s, int len, int* adv) {
+    if (len <= 0) return -1;
+    unsigned char c0 = s[0];
+    if (c0 < 0x80) { *adv = 1; return (int32_t)c0; }
+    if ((c0 & 0xE0) == 0xC0 && len >= 2) { *adv = 2; return ((c0 & 0x1Fu) << 6) | (s[1] & 0x3Fu); }
+    if ((c0 & 0xF0) == 0xE0 && len >= 3) { *adv = 3; return ((c0 & 0x0Fu) << 12) | ((s[1] & 0x3Fu) << 6) | (s[2] & 0x3Fu); }
+    if ((c0 & 0xF8) == 0xF0 && len >= 4) { *adv = 4; return ((c0 & 0x07u) << 18) | ((s[1] & 0x3Fu) << 12) | ((s[2] & 0x3Fu) << 6) | (s[3] & 0x3Fu); }
+    *adv = 1;
+    return -1;
+}
+
+static int _utf8_emitir(uint32_t cp, char* out) {
+    if (cp < 0x80) { out[0] = (char)cp; return 1; }
+    if (cp < 0x800) { out[0] = (char)(0xC0 | (cp >> 6)); out[1] = (char)(0x80 | (cp & 0x3F)); return 2; }
+    if (cp < 0x10000) { out[0] = (char)(0xE0 | (cp >> 12)); out[1] = (char)(0x80 | ((cp >> 6) & 0x3F)); out[2] = (char)(0x80 | (cp & 0x3F)); return 3; }
+    out[0] = (char)(0xF0 | (cp >> 18)); out[1] = (char)(0x80 | ((cp >> 12) & 0x3F)); out[2] = (char)(0x80 | ((cp >> 6) & 0x3F)); out[3] = (char)(0x80 | (cp & 0x3F)); return 4;
+}
+
+// Decode: pieza (chars mapeados) -> bytes reales (malloc, NUL-terminado).
+static char* _pieza_a_bytes(const char* pieza, int len, int* out_len) {
+    char* out = (char*)malloc((size_t)(len * 2 + 8));
+    if (!out) return NULL;
+    int n = 0;
+    const unsigned char* p = (const unsigned char*)pieza;
+    int i = 0;
+    while (i < len) {
+        int adv = 0;
+        int32_t cp = _utf8_cp(p + i, len - i, &adv);
+        if (cp < 0) { out[n++] = (char)p[i]; i++; continue; }
+        int b = _gpt2_char_a_byte((uint32_t)cp);
+        if (b >= 0) { out[n++] = (char)b; }
+        else { n += _utf8_emitir((uint32_t)cp, out + n); }
+        i += adv;
+    }
+    out[n] = '\0';
+    *out_len = n;
+    return out;
+}
+
+// Indice ordenado (texto, id) para resolver merges por texto exacto.
+typedef struct { const char* s; int id; } TokIdx;
+static int _tokidx_cmp(const void* a, const void* b) {
+    const TokIdx* ta = (const TokIdx*)a;
+    const TokIdx* tb = (const TokIdx*)b;
+    return strcmp(ta->s, tb->s);
+}
+// Devuelve el id del token cuyo texto == clave, o -1.
+static int _tokidx_buscar(const TokIdx* idx, int nidx, const char* clave) {
+    TokIdx key = { clave, 0 };
+    const TokIdx* r = (const TokIdx*)bsearch(&key, idx, (size_t)nidx, sizeof(TokIdx), _tokidx_cmp);
+    return r ? r->id : -1;
 }
 
 // Load tokenizer data from GGUF arrays into a BpeContext
@@ -945,66 +1230,109 @@ static BpeContext* _bpe_crear_desde_gguf(void* datos_internos) {
         }
     }
 
+    // Mapa byte -> token id (piezas de 1 char del fallback GPT-2). Requerido
+    // por el encoder byte-level (espacios y UTF-8). Los 256 bytes deberian
+    // estar cubiertos en un vocab GPT-2 completo.
+    if (!_gpt2_listo) _gpt2_construir_tablas();
+    memset(bpe->byte_a_token, 0xFF, sizeof(bpe->byte_a_token));
+    int cubiertos = 0;
+    for (int j = 0; j < vs; j++) {
+        if (!bpe->tokens[j]) continue;
+        int tlen = (int)strlen(bpe->tokens[j]);
+        if (tlen > 0 && tlen <= 4) {
+            int adv = 0;
+            int32_t cp = _utf8_cp((const unsigned char*)bpe->tokens[j], tlen, &adv);
+            if (cp >= 0 && adv == tlen) {
+                int b = _gpt2_char_a_byte((uint32_t)cp);
+                if (b >= 0 && bpe->byte_a_token[b] < 0) { bpe->byte_a_token[b] = j; cubiertos++; }
+            }
+        }
+    }
+    if (cubiertos < 256) {
+        fprintf(stderr, "AVISO: el vocab cubre %d/256 bytes como piezas de 1 char\n", cubiertos);
+    }
+
     // Read merges
     int n_merges = _syn_gguf_arreglo_cantidad(datos_internos, "tokenizer.ggml.merges");
     if (n_merges > 0) {
         bpe->num_merges = n_merges;
         bpe->merges = (BpeMerge*)calloc((size_t)n_merges, sizeof(BpeMerge));
+        for (int i = 0; i < n_merges; i++) {
+            bpe->merges[i].first = -1;
+            bpe->merges[i].second = -1;
+            bpe->merges[i].result = -1;
+        }
 
+        // Resolucion por TEXTO EXACTO: la pieza resultado de un merge (la
+        // concatenacion first+second) existe en el vocab; su id NO se puede
+        // inferir por posicion (la version anterior adivinaba vs-n_merges+i,
+        // produciendo ids rotos y tokenizacion inconsistente).
+        TokIdx* idx = (TokIdx*)malloc((size_t)vs * sizeof(TokIdx));
+        int nidx = 0;
+        if (idx) {
+            for (int j = 0; j < vs; j++) {
+                if (bpe->tokens[j]) { idx[nidx].s = bpe->tokens[j]; idx[nidx].id = j; nidx++; }
+            }
+            qsort(idx, (size_t)nidx, sizeof(TokIdx), _tokidx_cmp);
+        }
+
+        int resueltos = 0;
         for (int i = 0; i < n_merges; i++) {
             CadenaSegura ms = _syn_gguf_arreglo_string(datos_internos, "tokenizer.ggml.merges", i);
             if (!ms.datos) continue;
 
             char* merge_str = (char*)ms.datos;
             char* space = strchr(merge_str, ' ');
-            if (!space) { free(merge_str); continue; }
-
+            if (!space || !idx) { free(merge_str); continue; }
+            *space = '\0';
+            const char* first = merge_str;
+            const char* second = space + 1;
             int first_len = (int)(space - merge_str);
             int second_len = ms.longitud - first_len - 1;
-            char* second_start = space + 1;
 
-            int first_id = -1, second_id = -1;
-            for (int j = 0; j < vs; j++) {
-                if (!bpe->tokens[j]) continue;
-                int tlen = (int)strlen(bpe->tokens[j]);
-                if (first_id < 0 && tlen == first_len && strncmp(bpe->tokens[j], merge_str, first_len) == 0) {
-                    first_id = j;
+            int f_id = _tokidx_buscar(idx, nidx, first);
+            int s_id = _tokidx_buscar(idx, nidx, second);
+            if (f_id >= 0 && s_id >= 0) {
+                bpe->merges[i].first = f_id;
+                bpe->merges[i].second = s_id;
+                char* concat = (char*)malloc((size_t)(first_len + second_len + 1));
+                if (concat) {
+                    memcpy(concat, first, (size_t)first_len);
+                    memcpy(concat + first_len, second, (size_t)second_len);
+                    concat[first_len + second_len] = '\0';
+                    bpe->merges[i].result = _tokidx_buscar(idx, nidx, concat);
+                    free(concat);
                 }
-                if (second_id < 0 && tlen == second_len && strncmp(bpe->tokens[j], second_start, second_len) == 0) {
-                    second_id = j;
-                }
-                if (first_id >= 0 && second_id >= 0) break;
-            }
-
-            if (first_id >= 0 && second_id >= 0) {
-                bpe->merges[i].first = first_id;
-                bpe->merges[i].second = second_id;
+                if (bpe->merges[i].result >= 0) resueltos++;
             }
             free(merge_str);
         }
-
-        // Determine result token IDs: the merge at index i corresponds to token ID
-        // which is the first token whose text is equal to the merge result.
-        // In standard BPE, merges are ordered, and the result ID is base_vocab + i.
-        // We need to figure out the base vocab size (tokens not produced by merges).
-        // Simplest: result ID = index in token list that is not a base character.
-        // Actually: we scan tokens from 0..vs-1, and for each merge i, we look for
-        // a token whose text contains the concatenation of the two parts.
-        // But this is complex. For simplicity, we assume result = base_vocab + i,
-        // where base_vocab is the first token index not in {bytes 0..255} or similar.
-
-        // More robust: find the first token ID that is not used as a base byte token.
-        // For GPT-2 BPE, bytes 0-255 are the base, so merges produce tokens 256+.
-        // For SentencePiece, the base might be all single-character tokens.
-        // We'll set result = vs - n_merges + i for now (common pattern).
-        int base_tokens = vs - n_merges;
-        if (base_tokens < 0) base_tokens = 256; // fallback
-        for (int i = 0; i < n_merges; i++) {
-            bpe->merges[i].result = base_tokens + i;
+        free(idx);
+        if (resueltos < n_merges) {
+            fprintf(stderr, "AVISO: %d/%d merges resueltos por texto\n", resueltos, n_merges);
         }
 
-        // Sort merges by (first, second) for binary search
-        qsort(bpe->merges, (size_t)n_merges, sizeof(BpeMerge), _bpe_merge_cmp);
+        // Tabla hash par->rank para fusion O(1) durante el encode (el rank de
+        // cada regla es su indice en la lista, orden BPE estandar).
+        int tam = 16;
+        while (tam < n_merges * 2) tam <<= 1;
+        bpe->tabla_pares = (int*)malloc((size_t)tam * sizeof(int));
+        if (bpe->tabla_pares) {
+            for (int k = 0; k < tam; k++) bpe->tabla_pares[k] = -1;
+            bpe->tabla_pares_tam = tam;
+            for (int i = 0; i < n_merges; i++) {
+                if (bpe->merges[i].first < 0 || bpe->merges[i].second < 0 || bpe->merges[i].result < 0) continue;
+                uint32_t h = (uint32_t)((bpe->merges[i].first * 2654435761u) ^ (uint32_t)(bpe->merges[i].second * 40503u));
+                int pos = (int)(h & (uint32_t)(tam - 1));
+                while (bpe->tabla_pares[pos] >= 0) {
+                    int oc = bpe->tabla_pares[pos];
+                    if (bpe->merges[oc].first == bpe->merges[i].first &&
+                        bpe->merges[oc].second == bpe->merges[i].second) break; // duplicado: ya el de menor rank
+                    pos = (pos + 1) & (tam - 1);
+                }
+                if (bpe->tabla_pares[pos] < 0) bpe->tabla_pares[pos] = i;
+            }
+        }
     }
 
     // Read BOS/EOS from metadata
@@ -1031,6 +1359,7 @@ static void _bpe_liberar(BpeContext* bpe) {
         free(bpe->tokens);
     }
     free(bpe->merges);
+    free(bpe->tabla_pares);
     free(bpe);
 }
 
@@ -1042,167 +1371,105 @@ static void _bpe_liberar(BpeContext* bpe) {
 // Linear scan: find merge with smallest rank for a pair
 // Returns result token ID or -1 if not mergeable
 // Sets *out_rank to the merge rank (index in merge list)
+// Fusion O(1): busca el par en la tabla hash (rank = indice en la lista).
 static int _bpe_mejor_fusion(BpeContext* bpe, int first, int second, int* out_rank) {
     if (out_rank) *out_rank = -1;
-    int best_rank = bpe->num_merges; // larger than any real rank
-    int best_result = -1;
-    for (int i = 0; i < bpe->num_merges; i++) {
+    if (!bpe->tabla_pares || bpe->tabla_pares_tam <= 0) return -1;
+    uint32_t h = (uint32_t)((first * 2654435761u) ^ (uint32_t)(second * 40503u));
+    int pos = (int)(h & (uint32_t)(bpe->tabla_pares_tam - 1));
+    int sondas = 0;
+    while (bpe->tabla_pares[pos] >= 0) {
+        int i = bpe->tabla_pares[pos];
         if (bpe->merges[i].first == first && bpe->merges[i].second == second) {
-            // Check if this merge has a better (smaller) rank
-            // Rank is implicitly the index i in standard BPE
-            if (i < best_rank) {
-                best_rank = i;
-                best_result = bpe->merges[i].result;
-            }
+            if (out_rank) *out_rank = i;
+            return bpe->merges[i].result;
         }
+        if (++sondas > bpe->tabla_pares_tam) break;
+        pos = (pos + 1) & (bpe->tabla_pares_tam - 1);
     }
-    if (out_rank) *out_rank = (best_result >= 0) ? best_rank : -1;
-    return best_result;
+    return -1;
 }
 
 // BPE-encode a single word (text with length len)
 // Returns malloc'd array of token IDs; *out_len set to number of tokens
-static int* _bpe_codificar_palabra(BpeContext* bpe, const char* text, int len, int* out_len) {
-    *out_len = 0;
-    if (len <= 0) return NULL;
-
-    int syms[BPE_MAX_SYMBOLS];
-    int n_syms = 0;
-
-    // Phase 1: map characters to base token IDs
-    // Try direct byte lookup first (tokens 0-255 for byte-level BPE)
-    for (int i = 0; i < len && n_syms < BPE_MAX_SYMBOLS; i++) {
-        unsigned char byte = (unsigned char)text[i];
-        if (byte < (unsigned int)bpe->vocab_size && bpe->tokens[byte]) {
-            const char* tok_str = bpe->tokens[byte];
-            if ((int)strlen(tok_str) == 1 && (unsigned char)tok_str[0] == byte) {
-                syms[n_syms++] = byte;
-                continue;
-            }
-        }
-        char ch[2] = { text[i], '\0' };
-        int found = 0;
-        for (int j = 0; j < bpe->vocab_size; j++) {
-            if (bpe->tokens[j] && strcmp(bpe->tokens[j], ch) == 0) {
-                syms[n_syms++] = j;
-                found = 1;
-                break;
-            }
-        }
-        if (!found) {
-            syms[n_syms++] = 0; // UNK fallback
-        }
-    }
-    if (n_syms == 0) { *out_len = 0; return NULL; }
-
-    // Phase 2: iteratively apply BPE merges (find pair with smallest rank each time)
-    while (n_syms > 1) {
-        int best_pos = -1;
-        int best_rank = bpe->num_merges;
-        int best_result = -1;
-
-        for (int i = 0; i < n_syms - 1; i++) {
-            int rank = -1;
-            int r = _bpe_mejor_fusion(bpe, syms[i], syms[i+1], &rank);
-            if (r >= 0 && rank >= 0 && rank < best_rank) {
-                best_rank = rank;
-                best_result = r;
-                best_pos = i;
-            }
-        }
-
-        if (best_pos < 0) break;
-
-        int new_syms[BPE_MAX_SYMBOLS];
-        int new_n = 0;
-        for (int i = 0; i < n_syms; ) {
-            if (i == best_pos) {
-                new_syms[new_n++] = best_result;
-                i += 2;
-            } else {
-                new_syms[new_n++] = syms[i];
-                i++;
-            }
-        }
-        n_syms = new_n;
-        memcpy(syms, new_syms, (size_t)n_syms * sizeof(int));
-    }
-
-    int* result = (int*)malloc((size_t)n_syms * sizeof(int));
-    if (!result) { *out_len = 0; return NULL; }
-    memcpy(result, syms, (size_t)n_syms * sizeof(int));
-    *out_len = n_syms;
-    return result;
-}
-
-// Split text into words (by whitespace) and BPE-encode each
-// Returns malloc'd array of all token IDs; *out_len set
-static int* _bpe_codificar_texto(BpeContext* bpe, const char* text, int len, int* out_len) {
+// ME_opensyn_ia: encode BPE byte-level sobre un flujo de bytes completo.
+// Reemplaza a _bpe_codificar_palabra: el mapeo fase 1 es byte -> token
+// (fallback GPT-2), sin pre-tokenizacion por clases ASCII (que dividia el
+// UTF-8 y rompia el espaciado GPT-2), y la fusion aplica a TODO el texto.
+static int* _bpe_codificar_bytes_global(BpeContext* bpe, const char* text, int len, int* out_len) {
     *out_len = 0;
     if (!bpe || !text || len <= 0) return NULL;
 
-    // Simple pre-tokenize: split on whitespace
-    // Collect all token IDs in a dynamic array
-    int capacity = 64;
-    int* all_ids = (int*)malloc((size_t)capacity * sizeof(int));
-    int total = 0;
-
-    int i = 0;
-    while (i < len) {
-        // Skip whitespace
-        while (i < len && (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r')) i++;
-        if (i >= len) break;
-
-        // Find word end
-        int start = i;
-        while (i < len && text[i] != ' ' && text[i] != '\t' && text[i] != '\n' && text[i] != '\r') i++;
-
-        // Also split on punctuation (GPT-2 style)
-        // For each contiguous segment of the same "type" (letter, digit, punct)
-        int wpos = start;
-        while (wpos < i) {
-            int wstart = wpos;
-            char first_c = text[wpos];
-            int is_letter = (first_c >= 'a' && first_c <= 'z') || (first_c >= 'A' && first_c <= 'Z');
-            int is_digit = (first_c >= '0' && first_c <= '9');
-            int is_punct = !is_letter && !is_digit && first_c != ' ';
-
-            // GPT-2 additionally prepends space to non-first words
-            // For simplicity, encode directly
-            wpos++;
-            while (wpos < i) {
-                char c = text[wpos];
-                int c_letter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-                int c_digit = (c >= '0' && c <= '9');
-                int c_punct = !c_letter && !c_digit && c != ' ';
-                if (is_letter && c_letter) { wpos++; continue; }
-                if (is_digit && c_digit) { wpos++; continue; }
-                if (is_punct && c_punct) { wpos++; continue; }
-                break;
+    // Phase 1: simbolos = token de cada byte (fallback GPT-2).
+    int cap = len + 32;
+    int* syms = (int*)malloc((size_t)cap * sizeof(int));
+    if (!syms) return NULL;
+    int n = 0;
+    for (int i = 0; i < len; i++) {
+        unsigned char b = (unsigned char)text[i];
+        int t = bpe->byte_a_token[b];
+        if (t < 0) {
+            // Sin pieza de 1 char para el byte: busqueda legacy por texto.
+            char ch[2] = { (char)b, '\0' };
+            for (int j = 0; j < bpe->vocab_size && t < 0; j++) {
+                if (bpe->tokens[j] && strcmp(bpe->tokens[j], ch) == 0) t = j;
             }
+            if (t < 0) t = 0;  // UNK
+        }
+        if (n >= cap) {
+            cap *= 2;
+            int* tmp = (int*)realloc(syms, (size_t)cap * sizeof(int));
+            if (!tmp) { free(syms); return NULL; }
+            syms = tmp;
+        }
+        syms[n++] = t;
+    }
+    if (n == 0) { free(syms); return NULL; }
 
-            int word_len = wpos - wstart;
-            int n_ids = 0;
-            int* ids = _bpe_codificar_palabra(bpe, text + wstart, word_len, &n_ids);
-            if (ids) {
-                // Extend all_ids
-                if (total + n_ids > capacity) {
-                    capacity = (total + n_ids) * 2;
-                    int* tmp = (int*)realloc(all_ids, (size_t)capacity * sizeof(int));
-                    if (!tmp) { free(ids); free(all_ids); *out_len = 0; return NULL; }
-                    all_ids = tmp;
-                }
-                memcpy(all_ids + total, ids, (size_t)n_ids * sizeof(int));
-                total += n_ids;
-                free(ids);
+    // Phase 2: fusionar TODAS las ocurrencias del par con menor rank
+    // (algoritmo BPE estandar, paridad llama.cpp), hasta no poder fusionar.
+    while (n > 1) {
+        int mejor_first = -1, mejor_second = -1;
+        int best_rank = bpe->num_merges;
+        int best_result = -1;
+        for (int i = 0; i < n - 1; i++) {
+            int rank = -1;
+            int r = _bpe_mejor_fusion(bpe, syms[i], syms[i + 1], &rank);
+            if (r >= 0 && rank >= 0 && rank < best_rank) {
+                best_rank = rank;
+                best_result = r;
+                mejor_first = syms[i];
+                mejor_second = syms[i + 1];
             }
         }
+        if (best_result < 0) break;
+        int w = 0;
+        for (int i = 0; i < n; ) {
+            if (i + 1 < n && syms[i] == mejor_first && syms[i + 1] == mejor_second) {
+                syms[w++] = best_result;
+                i += 2;
+            } else {
+                syms[w++] = syms[i];
+                i++;
+            }
+        }
+        n = w;
+        if (n <= 0) break;
     }
 
-    if (total == 0) { free(all_ids); *out_len = 0; return NULL; }
+    int* result = (int*)malloc((size_t)n * sizeof(int));
+    if (!result) { free(syms); return NULL; }
+    memcpy(result, syms, (size_t)n * sizeof(int));
+    free(syms);
+    *out_len = n;
+    return result;
+}
 
-    *out_len = total;
-    return all_ids;
+// ME_opensyn_ia: el texto completo se codifica como un flujo de bytes.
+// Los merges con prefijo de espacio (piezas U+0120..) aplican por ranking
+// global; los saltos de linea/puntuacion quedan como bytes.
+static int* _bpe_codificar_texto(BpeContext* bpe, const char* text, int len, int* out_len) {
+    return _bpe_codificar_bytes_global(bpe, text, len, out_len);
 }
 
 // --- ModeloContexto (inference state) ---
@@ -1297,7 +1564,10 @@ static void _mc_destruir(ModeloContexto* mc) {
     if (mc->datos_internos) {
         InternalData* id = (InternalData*)mc->datos_internos;
         if (id->tensores) {
-            for (int i = 0; i < id->cantidad_tensores; i++) free(id->tensores[i].nombre);
+            for (int i = 0; i < id->cantidad_tensores; i++) {
+                free(id->tensores[i].nombre);
+                free(id->tensores[i].cache_f32);  // ME_opensyn_ia: cache des-cuantizada
+            }
             free(id->tensores);
         }
         for (int i = 0; i < HASH_TAM; i++) {
@@ -1525,17 +1795,25 @@ static void _filtro_top_k(float* logits, int vs, int k) {
     for (int i = 0; i < vs; i++) if (logits[i] < thr) logits[i] = -1e30f;
 }
 
+typedef struct { float v; int i; } _ParValor;
+static int _cmp_par_desc(const void* a, const void* b) {
+    const _ParValor* pa = (const _ParValor*)a;
+    const _ParValor* pb = (const _ParValor*)b;
+    return (pa->v > pb->v) ? -1 : (pa->v < pb->v) ? 1 : 0;
+}
+
 static void _filtro_top_p(float* logits, int vs, float p) {
     if (p <= 0.0f || p >= 1.0f || vs <= 0) return;
-    typedef struct { float v; int i; } PV;
-    PV* pa = (PV*)malloc((size_t)vs * sizeof(PV));
+    // ME_opensyn_ia: antes ordenaba con seleccion O(vs^2) -> 2.3e10 ops por
+    // token con vocab 151k (~30 s/token). Ahora qsort O(vs log vs).
+    _ParValor* pa = (_ParValor*)malloc((size_t)vs * sizeof(_ParValor));
     if (!pa) return;
     for (int i = 0; i < vs; i++) { pa[i].v = logits[i]; pa[i].i = i; }
-    for (int i = 0; i < vs-1; i++) for (int j = i+1; j < vs; j++) if (pa[j].v > pa[i].v) { PV t = pa[i]; pa[i] = pa[j]; pa[j] = t; }
+    qsort(pa, (size_t)vs, sizeof(_ParValor), _cmp_par_desc);
     float mx = pa[0].v, se = 0;
     for (int i = 0; i < vs; i++) { float e = expf(pa[i].v - mx); pa[i].v = e; se += e; }
     float cum = 0; int cut = vs;
-    for (int i = 0; i < vs; i++) { cum += pa[i].v / se; if (cum > p) { cut = i+1; break; } }
+    for (int i = 0; i < vs; i++) { cum += pa[i].v / se; if (cum > p) { cut = i + 1; break; } }
     for (int i = cut; i < vs; i++) logits[pa[i].i] = -1e30f;
     free(pa);
 }
@@ -1569,13 +1847,20 @@ void* _syn_modelo_cargar(CadenaSegura ruta) {
     snprintf(mk, sizeof(mk), "%s.rope.freq_base", ap);           mc->rope_theta = _meta_decimal(id, mk, 10000.0f);
     snprintf(mk, sizeof(mk), "%s.context_length", ap);           mc->max_seq_len = _meta_entero(id, mk);
     if (mc->max_seq_len <= 0 || mc->max_seq_len > MODELO_MAX_SEQ_LEN) mc->max_seq_len = MODELO_MAX_SEQ_LEN;
-    mc->vocab_size = _syn_vocab_tamano(id);
+    // Vocabulario: primero el array real de GGUF (tokenizer.ggml.tokens,
+    // formato llama.cpp/Qwen); respaldo al escalar legacy "vocab_size".
+    // (Antes solo leía el escalar → 0 con GGUFs reales → rechazo del modelo.)
+    // cumple Manual 7 §3.1: soporte de modelos GGUF (cuantizados) locales.
+    int vs_vocab = _syn_gguf_arreglo_cantidad(id, "tokenizer.ggml.tokens");
+    if (vs_vocab <= 0) vs_vocab = _syn_vocab_tamano(id);
+    mc->vocab_size = vs_vocab;
     mc->head_dim = mc->n_embd / mc->n_heads;
 
     if (mc->n_layers <= 0 || mc->n_heads <= 0 || mc->n_embd <= 0 || mc->n_ff <= 0 || mc->vocab_size <= 0 ||
         mc->n_embd > MODELO_MAX_EMBD || mc->n_ff > MODELO_MAX_FF ||
         mc->n_heads > MODELO_MAX_HEADS || mc->head_dim > 128 || mc->n_layers > MODELO_MAX_LAYERS) {
-        fprintf(stderr, "ESCAPA_DEL_ALCANCE: Parametros de modelo invalidos o demasiado grandes\n");
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: Parametros invalidos: arch=%s layers=%d embd=%d heads=%d kv=%d ff=%d vocab=%d hd=%d maxseq=%d (MAX layers=%d embd=%d ff=%d heads=%d)\n",
+                mc->arch_name, mc->n_layers, mc->n_embd, mc->n_heads, mc->n_kv_heads, mc->n_ff, mc->vocab_size, mc->head_dim, mc->max_seq_len, MODELO_MAX_LAYERS, MODELO_MAX_EMBD, MODELO_MAX_FF, MODELO_MAX_HEADS);
         _mc_destruir(mc); return NULL;
     }
     if (_kvc_inicializar(mc) != 0) { _mc_destruir(mc); fprintf(stderr, "ESCAPA_DEL_ALCANCE: Error KV cache\n"); return NULL; }
@@ -1601,6 +1886,13 @@ Tensor _syn_modelo_evaluar(void* ctx, int token_id) {
     return logits;
 }
 
+// Muestreo desde un buffer de logits (top_k/top_p/temperatura). Consume lc.
+static int _muestrear_logits(float* lc, int vs, float temperature, int top_k, float top_p) {
+    if (top_k > 0) _filtro_top_k(lc, vs, top_k);
+    if (top_p > 0.0f && top_p < 1.0f) _filtro_top_p(lc, vs, top_p);
+    return _sample_multinomial(lc, vs, temperature);
+}
+
 int _syn_modelo_generar(void* ctx, int token_id, float temperature, int top_k, float top_p) {
     if (!ctx) return -1;
     Tensor logits = _syn_modelo_evaluar(ctx, token_id);
@@ -1610,9 +1902,7 @@ int _syn_modelo_generar(void* ctx, int token_id, float temperature, int top_k, f
     if (!lc) { free(logits.datos); return -1; }
     memcpy(lc, logits.datos, (size_t)vs * sizeof(float));
     free(logits.datos);
-    if (top_k > 0) _filtro_top_k(lc, vs, top_k);
-    if (top_p > 0.0f && top_p < 1.0f) _filtro_top_p(lc, vs, top_p);
-    int tok = _sample_multinomial(lc, vs, temperature);
+    int tok = _muestrear_logits(lc, vs, temperature, top_k, top_p);
     free(lc);
     return tok;
 }
@@ -1686,9 +1976,15 @@ void _syn_modelo_reiniciar(void* ctx) {
 CadenaSegura _syn_modelo_decodificar_token(void* ctx, int token_id) {
     if (!ctx) return (CadenaSegura){0, ""};
     ModeloContexto* mc = (ModeloContexto*)ctx;
-    // Prefer BPE token table
+    // Prefer BPE token table: las piezas guardan los bytes como chars
+    // mapeados GPT-2 (U+0120 = espacio...); hay que volver a bytes reales.
     if (mc->bpe && token_id >= 0 && token_id < mc->bpe->vocab_size && mc->bpe->tokens[token_id]) {
-        return (CadenaSegura){.longitud = (int)strlen(mc->bpe->tokens[token_id]), .datos = strdup(mc->bpe->tokens[token_id])};
+        const char* pieza = mc->bpe->tokens[token_id];
+        int plen = (int)strlen(pieza);
+        int blen = 0;
+        char* bytes = _pieza_a_bytes(pieza, plen, &blen);
+        if (bytes) return (CadenaSegura){ .longitud = blen, .datos = bytes };
+        return (CadenaSegura){0, ""};
     }
     return _syn_decodificar_token(mc->datos_internos, token_id);
 }
@@ -1753,14 +2049,17 @@ CadenaSegura _syn_modelo_generar_texto(void* ctx, CadenaSegura prompt, int max_t
     int n_prompt = _syn_modelo_codificar_contar(ctx, prompt);
     if (n_prompt <= 0) return (CadenaSegura){0, NULL};
 
-    // Prompt processing: feed each token
+    // Prompt processing: feed each token; conservamos los logits del ultimo
+    // token del prompt para muestrear el PRIMER token generado (sin volver a
+    // evaluar un token extra que desfasa posiciones del KV cache).
     _syn_modelo_reiniciar(ctx);
+    Tensor ult_logits = { .datos = NULL, .columnas = 0 };
     for (int i = 0; i < n_prompt; i++) {
         int tok = _syn_modelo_codificar_obtener(ctx, i);
         if (tok < 0) break;
-        Tensor logits = _syn_modelo_evaluar(ctx, tok);
-        if (!logits.datos) break;
-        free(logits.datos);
+        if (ult_logits.datos) free(ult_logits.datos);
+        ult_logits = _syn_modelo_evaluar(ctx, tok);
+        if (!ult_logits.datos) { ult_logits.datos = NULL; break; }
     }
 
     // Auto-regressive generation
@@ -1773,8 +2072,22 @@ CadenaSegura _syn_modelo_generar_texto(void* ctx, CadenaSegura prompt, int max_t
     out_buf[0] = '\0';
 
     for (int i = 0; i < max_tokens; i++) {
-        last_tok = _syn_modelo_generar(ctx, last_tok, temperature, top_k, top_p);
-        if (last_tok < 0 || last_tok == mc->bpe->eos_id) break;
+        if (i == 0 && ult_logits.datos) {
+            int vs = (int)ult_logits.columnas;
+            float* lc = (float*)malloc((size_t)vs * sizeof(float));
+            if (lc) {
+                memcpy(lc, ult_logits.datos, (size_t)vs * sizeof(float));
+                last_tok = _muestrear_logits(lc, vs, temperature, top_k, top_p);
+                free(lc);
+            } else {
+                last_tok = -1;
+            }
+            free(ult_logits.datos);
+            ult_logits.datos = NULL;
+        } else {
+            last_tok = _syn_modelo_generar(ctx, last_tok, temperature, top_k, top_p);
+        }
+        if (last_tok < 0 || last_tok == mc->bpe->eos_id || last_tok == mc->bpe->bos_id) break;
 
         // Decode token
         CadenaSegura tok_str = _syn_modelo_decodificar_token(ctx, last_tok);
@@ -1799,6 +2112,14 @@ CadenaSegura _syn_modelo_generar_texto(void* ctx, CadenaSegura prompt, int max_t
         free((void*)tok_str.datos);
     }
 
+    // Recorte de marcadores de fin de turno que escapen como piezas sueltas
+    // (tokens agregados tipo added; no detienen el bucle por no ser == eos_id).
+    {
+        char* fin = strstr(out_buf, "<|im_end|>");
+        if (fin) { *fin = '\0'; out_len = (int)(fin - out_buf); }
+        fin = strstr(out_buf, "<|endoftext|>");
+        if (fin) { *fin = '\0'; out_len = (int)(fin - out_buf); }
+    }
     if (out_len == 0) { free(out_buf); return (CadenaSegura){0, NULL}; }
     return (CadenaSegura){ .longitud = out_len, .datos = out_buf };
 }

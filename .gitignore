@@ -11,6 +11,7 @@
 *.so
 *.dylib
 *.wasm
+*.gguf
 
 # CLASE C: Objetos compilados
 *.o
@@ -37,6 +38,7 @@ tests/fixtures/tmp_*.syn
 # CLASE D1: C generado al lado de .syn fuente (ej: hola.syn → hola.c)
 examples/**/*.c
 tests/fixtures/*.c
+tests/fixtures/*/*.c
 std/**/*.c
 opensyn/*.c
 
