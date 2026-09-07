@@ -12,19 +12,21 @@
 #define MyAppLspExeName "synapse_lsp.exe"
 
 #define LLAMA_SERVER_URL "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-win-cpu-x64.zip"
-#define MODEL_URL_1B "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
+#define MODEL_URL_1B "https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
 #define MODEL_URL_7B "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
 #define MODEL_URL_13B "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
 #define MODEL_URL_34B "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
 #define MODEL_URL MODEL_URL_1B
 
 ; SHA256 hashes para verificación de integridad (actualizar al cambiar versiones)
-#define LLAMA_SERVER_SHA256 "4599e502b374196d24600ea9b03c842a448c853116a15b55e8ba502bdc727b3f"
-#define MODEL_SHA256_1B "TODO_ACTUALIZAR_AL_COMPILAR"
-#define MODEL_SHA256_7B_Q4 "TODO_ACTUALIZAR_AL_COMPILAR"
-#define MODEL_SHA256_7B_Q5 "TODO_ACTUALIZAR_AL_COMPILAR"
-#define MODEL_SHA256_13B "TODO_ACTUALIZAR_AL_COMPILAR"
-#define MODEL_SHA256_34B "TODO_ACTUALIZAR_AL_COMPILAR"
+; SHA256 del llama-server.exe EXTRAIDO del zip b10819 (no del zip: el instalador verifica el exe)
+#define LLAMA_SERVER_SHA256 "149bb866b6cbcac177579e6e8693e0225c59b94a0f384ed562f9ec48f15a8cd3"
+; hashes reales = LFS oid de HuggingFace (SHA256 del contenido); llama-server = SHA256 del exe EXTRAIDO (no del zip)
+#define MODEL_SHA256_1B "04cebb6fafa40ae628cf6bfeb76032ec792852f54020c559ad0a56b9f2839118"
+#define MODEL_SHA256_7B_Q4 "c3866cb985de17d398c2d7e85bb8a9c717a76bb997dce0e72a0cb169063e6d17"
+#define MODEL_SHA256_7B_Q5 "f4222b2c639e3f5adee3cf2391f02fb0ee1307e5ef5a48399affb5f3802dd857"
+#define MODEL_SHA256_13B "b889f38ea793b823756e0eb9d3b60a5c5061c2df2d99b6f2fdb7c28328f043ce"
+#define MODEL_SHA256_34B "26e7ece4d609b8515b4f72543b555692dc6ca2ff2bee336a6a1f4f2c97978cee"
 
 [Setup]
 AppName={#MyAppName}
@@ -121,6 +123,24 @@ Source: "{#SourcePath}\..\..\dist\bin\{#MyAppLspExeName}"; DestDir: "{app}\bin";
 Source: "{#SourcePath}\..\..\dist\bin\*.dll"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
 ; cumple Manual 9 §2.2: runtime/ contiene memory, concurrency, io, etc.
 Source: "{#SourcePath}\..\..\runtime\*"; DestDir: "{app}/bin/runtime"; Components: synapse; Flags: ignoreversion recursesubdirs
+; cumple Manual 9 §2.5: fuentes de enlace del compilador nativo — principal.syn resuelve
+; _rt_dir = dir del exe y enlaza desde fuente (ME-R5): synapse_rt.c + synapse_unity.c
+; (autogenerado en cwd), axon/tweetnacl.c, vendor/sqlite3/sqlite3.c, nucleo/federated.c
+; y headers de inclusión (synapse_rt_types.h requerido por runtime/core/*.h).
+Source: "{#SourcePath}\..\..\synapse_rt.c"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\synapse_rt.h"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
+; cumple Manual 9 §2.5: header de memoria del runtime — runtime/core/{fuzz,memory}.c
+Source: "{#SourcePath}\..\..\synapse_rt_memory.h"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
+; cumple Manual 9 §2.5: headers de librerias embebidas resueltos por -I<_rt_dir>
+; (principal.syn:664) — runtime/core/*.c incluye librerias/embedded_libs.h
+Source: "{#SourcePath}\..\..\librerias\*"; DestDir: "{app}\bin\librerias"; Components: synapse; Flags: ignoreversion recursesubdirs
+Source: "{#SourcePath}\..\..\synapse_rt_types.h"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\axon\tweetnacl.c"; DestDir: "{app}\bin\axon"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\axon\tweetnacl.h"; DestDir: "{app}\bin\axon"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\vendor\sqlite3\sqlite3.c"; DestDir: "{app}\bin\vendor\sqlite3"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\vendor\sqlite3\sqlite3.h"; DestDir: "{app}\bin\vendor\sqlite3"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\nucleo\federated.c"; DestDir: "{app}\bin\nucleo"; Components: synapse; Flags: ignoreversion
+Source: "{#SourcePath}\..\..\nucleo\federated.h"; DestDir: "{app}\bin\nucleo"; Components: synapse; Flags: ignoreversion
 Source: "{#SourcePath}\..\..\std\*"; DestDir: "{app}/std"; Components: synapse; Flags: ignoreversion recursesubdirs
 ; Nota: el repo usa librerias/ (no lib/) — Manual 9 §2.2 muestra lib/ como nombre instalado
 Source: "{#SourcePath}\..\..\librerias\*"; DestDir: "{app}/lib"; Components: syquex; Flags: ignoreversion recursesubdirs
@@ -638,7 +658,8 @@ begin
     TmpPath := DestPath + '.tmp';
 
     // Construir comando curl con soporte resume
-    CmdLine := '-L --progress-bar';
+    // cumple Manual 9 §5.3: --fail evita guardar paginas de error HTTP (504/404) como artefacto con exit 0
+    CmdLine := '-L --progress-bar --fail --connect-timeout 30';
     if Resume then
       CmdLine := CmdLine + ' -C -';
     CmdLine := CmdLine + ' -o "' + TmpPath + '" "' + URL + '"';
@@ -727,8 +748,9 @@ var
   TempDir: String;
   Cmd: String;
   ExitCode: Integer;
-  LlamaExe: String;
+  DestDir: String;
   FindRec: TFindRec;
+  Copiados: Integer;
 begin
   Result := False;
   TempDir := ExpandConstant('{tmp}\llama_extract');
@@ -743,35 +765,39 @@ begin
     begin
       if ExitCode = 0 then
       begin
-        // Buscar llama-server.exe en el directorio extraído
-        LlamaExe := TempDir + '\llama-server.exe';
-        if not FileExists(LlamaExe) then
+        // cumple Manual 9 §5.3: el ZIP trae launcher + DLLs (llama-server-impl.dll, ggml*.dll,
+        // libomp.dll); copiar TODOS los archivos a ia\, no solo el exe, o el launcher no podra
+        // cargar sus DLLs al iniciarse. El ZIP de llama.cpp es plano (sin subdirectorios).
+        if not FileExists(TempDir + '\llama-server.exe') then
+          Log('No se encontró llama-server.exe en la raíz del ZIP')
+        else
         begin
-          // Buscar en subdirectorios
-          if FindFirst(TempDir + '\**\llama-server.exe', FindRec) then
+          DestDir := ExtractFileDir(DestPath);
+          ForceDirectories(DestDir);
+          Copiados := 0;
+          if FindFirst(TempDir + '\*', FindRec) then
           begin
             try
-              LlamaExe := TempDir + '\' + FindRec.Name;
-              while (LlamaExe = TempDir + '\llama-server.exe') and FindNext(FindRec) do ;
+              repeat
+                if (FindRec.Name <> '.') and (FindRec.Name <> '..') and
+                   ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) = 0) then
+                begin
+                  if FileCopy(TempDir + '\' + FindRec.Name, DestDir + '\' + FindRec.Name, False) then
+                    Copiados := Copiados + 1
+                  else
+                    Log('Error copiando ' + FindRec.Name + ' a ' + DestDir);
+                end;
+              until not FindNext(FindRec);
             finally
               FindClose(FindRec);
             end;
           end;
-        end;
-        
-        if FileExists(LlamaExe) then
-        begin
-          if FileExists(DestPath) then DeleteFile(DestPath);
-          if FileCopy(LlamaExe, DestPath, False) then
-          begin
-            Result := True;
-            Log('llama-server.exe extraído correctamente a: ' + DestPath);
-          end
+          Result := FileExists(DestPath);
+          if Result then
+            Log('llama-server.exe + DLLs extraidos correctamente a: ' + DestDir + ' (' + IntToStr(Copiados) + ' archivos)')
           else
-            Log('Error copiando llama-server.exe a destino');
-        end
-        else
-          Log('No se encontró llama-server.exe en el ZIP');
+            Log('Error: faltan archivos tras copiar ' + IntToStr(Copiados) + ' archivos a ' + DestDir);
+        end;
       end
       else
         Log('Error extrayendo ZIP: exit code ' + IntToStr(ExitCode));
