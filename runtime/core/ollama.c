@@ -1,8 +1,9 @@
-// runtime/core/ollama.c — Cliente HTTP mínimo para Ollama (chat local)
-// OpenSyn Modo Oraculo (Manual 7 §8): POST /api/chat (stream:false) a
-// http://host:puerto (default 127.0.0.1:11434). Sin telemetría: todo local.
-// Retorna CadenaSegura pool_alloc (cumple Manual 2 §9.1: RAII libera con
-// pool_free); vacía en error de red o si Ollama no responde contenido.
+// runtime/core/ollama.c — Cliente HTTP dual: Ollama + OpenAI-compatible (llama-server)
+// OpenSyn Modo Oraculo (Manual 7 §8): soporta dos backends de IA:
+//   1) Ollama API: POST /api/chat, GET /api/tags (puerto 11434)
+//   2) OpenAI API: POST /v1/chat/completions, GET /v1/models (llama-server)
+// Detección automática: intenta Ollama primero, si falla usa OpenAI.
+// Sin telemetría: todo local. Retorna CadenaSegura pool_alloc.
 // Consumido por opensyn/principal.syn vía externo _syn_ollama_consultar.
 
 #include "synapse_rt_types.h"
@@ -299,117 +300,14 @@ static CadenaSegura _ollama_campo(const char* buf, const char* clave) {
 // ============================================================
 // API pública (externo de .syn: opensyn/principal.syn)
 // ============================================================
-
-// cumple Manual 7 8: consulta al oraculo local Ollama con el prompt del usuario.
-// Si la respuesta trae "content" (mensaje del asistente) la devuelve; si trae
-// "error" (p.ej. modelo no descargado) devuelve ese texto para mostrarlo.
-CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
-                                   CadenaSegura host, int64_t puerto,
-                                   int64_t max_tokens) {
-    CadenaSegura vacio = { .longitud = 0, .datos = "" };
-    if (modelo.datos == NULL || modelo.longitud <= 0 || prompt.datos == NULL) {
-        return vacio;
-    }
-
-    char hostbuf[128];
-    const char* hip = "127.0.0.1";
-    if (host.datos && host.longitud > 0 && host.longitud < 127) {
-        memcpy(hostbuf, host.datos, (size_t)host.longitud);
-        hostbuf[host.longitud] = '\0';
-        if (strcmp(hostbuf, "localhost") == 0) strcpy(hostbuf, "127.0.0.1");
-        hip = hostbuf;
-    }
-    int pt = (int)((puerto <= 0 || puerto > 65535) ? 11434 : puerto);
-    int mt = (int)((max_tokens <= 0) ? 1024 : max_tokens);
-
-    char* ms = (char*)malloc((size_t)modelo.longitud + 1);
-    char* ps = (char*)malloc((size_t)prompt.longitud + 1);
-    if (!ms || !ps) { if (ms) free(ms); if (ps) free(ps); return vacio; }
-    memcpy(ms, modelo.datos, (size_t)modelo.longitud);
-    ms[modelo.longitud] = '\0';
-    memcpy(ps, prompt.datos, (size_t)prompt.longitud);
-    ps[prompt.longitud] = '\0';
-
-    int mjlen = 0, pjlen = 0;
-    char* mjs = _ollama_esc_json(ms, (int)modelo.longitud, &mjlen);
-    char* pjs = _ollama_esc_json(ps, (int)prompt.longitud, &pjlen);
-    free(ms);
-    free(ps);
-    if (!mjs || !pjs) { if (mjs) free(mjs); if (pjs) free(pjs); return vacio; }
-
-    // Marco fijo del JSON (~97 B) + valores escapados + digitos del entero
-    int cap_body = mjlen + pjlen + 160;
-    char* body = (char*)malloc((size_t)cap_body);
-    if (!body) { free(mjs); free(pjs); return vacio; }
-    int bl = snprintf(body, (size_t)cap_body,
-        "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-        "\"stream\":false,\"options\":{\"num_predict\":%d}}",
-        mjs, pjs, mt);
-    free(mjs);
-    free(pjs);
-    if (bl <= 0 || bl >= cap_body) { free(body); return vacio; }
-
-    char cab[256];
-    int hl = snprintf(cab, sizeof(cab),
-        "POST /api/chat HTTP/1.1\r\n"
-        "Host: %s:%d\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %d\r\n"
-        "Connection: close\r\n\r\n",
-        hip, pt, bl);
-
-    CadenaSegura resultado = vacio;
-    _syn_iniciar_red();
-    int fd = _syn_socket();
-    if (fd < 0) { free(body); return vacio; }
-    if (_syn_conectar(fd, hip, pt) == 0) {
-        _syn_enviar(fd, cab, hl);
-        _syn_enviar(fd, body, bl);
-        int rlen = 0;
-        char* resp = _ollama_leer_respuesta(fd, &rlen);
-        if (resp) {
-            // Mensaje del asistente, o texto de error de Ollama si lo hubo.
-            // _ollama_campo devuelve literal "" (no allocado) cuando no existe.
-            resultado = _ollama_campo(resp, "content");
-            if (resultado.longitud == 0) {
-                resultado = _ollama_campo(resp, "error");
-            }
-            free(resp);
-        } else {
-            // Sin respuesta: distinguir plazo agotado de error para que el chat
-            // muestre un mensaje claro y NO se quede colgado en silencio.
-            const char* msg = NULL;
-            if (rlen == -2)
-                msg = "Ollama no respondio a tiempo (puede estar cargando el modelo o colgado). Verifica: ollama serve";
-            else if (rlen == -3)
-                msg = "Ollama corto la conexion a mitad de respuesta. Reintenta la consulta.";
-            else
-                msg = "No se pudo leer la respuesta de Ollama. Verifica que este activo: ollama serve";
-            int largo = (int)strlen(msg);
-            char* pool = (char*)pool_alloc((size_t)largo + 1);
-            if (pool) {
-                memcpy(pool, msg, (size_t)largo);
-                pool[largo] = '\0';
-                resultado = (CadenaSegura){ .longitud = largo, .datos = pool };
-            }
-        }
-    }
-    _syn_cerrar_socket(fd);
-    free(body);
-    return resultado;
-}
+// NOTA: Las funciones _syn_ollama_consultar y _syn_ollama_modelos están
+// implementadas más abajo en la sección "API unificada" para soportar
+// tanto Ollama como OpenAI-compatible (llama-server).
 
 // ============================================================
-// GET /api/tags — modelos instalados (lista separada por '\n')
+// Helper para extraer nombres de modelos Ollama (/api/tags)
 // ============================================================
-
-// cumple Manual 7 8: lista los modelos instalados en Ollama vía GET /api/tags.
-// Devuelve CadenaSegura pool_alloc con los nombres separados por '\n' (sin
-// escapar: nombres de modelo no contienen comillas ni backslashes). Vacía si
-// no hay conexión con el servidor o no hay modelos. Consumida por
-// opensyn/principal.syn vía externo _syn_ollama_modelos (/model, /modelos).
 static char* _ollama_extraer_nombres(const char* base, int* out_len) {
-    // Primer paso: contar longitud total acumulada (nombres + separadores)
     long total = 0;
     int n = 0;
     const char* p = base;
@@ -428,7 +326,7 @@ static char* _ollama_extraer_nombres(const char* base, int* out_len) {
         }
         long largo = fin - ini;
         if (largo > 0) {
-            total += largo + 1;  // +1 separador '\n'
+            total += largo + 1;
             n++;
         }
         p = fin + 1;
@@ -436,7 +334,6 @@ static char* _ollama_extraer_nombres(const char* base, int* out_len) {
     if (n == 0) return NULL;
     char* acc = (char*)malloc((size_t)total + 1);
     if (!acc) return NULL;
-    // Segundo paso: copiar nombres separados por '\n'
     long used = 0;
     p = base;
     while ((p = strstr(p, "\"name\"")) != NULL) {
@@ -465,6 +362,227 @@ static char* _ollama_extraer_nombres(const char* base, int* out_len) {
     return acc;
 }
 
+// ============================================================
+// OpenAI-compatible API (llama-server /v1/models, /v1/chat/completions)
+// ============================================================
+// Cuando Ollama no está disponible, OpenSyn usa directamente llama-server
+// que implementa la API OpenAI-compatible. cumple Manual 7 §8.
+
+// Extrae nombres de modelos de la respuesta OpenAI /v1/models
+// Formato: {"data":[{"id":"model_name",...},...]}
+// IMPORTANTE: desescapea los nombres (JSON trae \\ para \)
+static char* _openai_extraer_nombres(const char* base, int* out_len) {
+    long total = 0;
+    int n = 0;
+    const char* p = base;
+    while ((p = strstr(p, "\"id\"")) != NULL) {
+        const char* q = p + 4;
+        while (*q && *q != ':') q++;
+        if (!*q) break;
+        q++;
+        while (*q == ' ' || *q == '\t') q++;
+        if (*q != '"') { p = q + 1; continue; }
+        const char* ini = q + 1;
+        const char* fin = ini;
+        while (*fin && *fin != '"') {
+            if (*fin == '\\') fin++;
+            if (*fin) fin++;
+        }
+        long largo = fin - ini;
+        if (largo > 0) {
+            total += largo + 1;
+            n++;
+        }
+        p = fin + 1;
+    }
+    if (n == 0) return NULL;
+    char* acc = (char*)malloc((size_t)total + 1);
+    if (!acc) return NULL;
+    long used = 0;
+    p = base;
+    while ((p = strstr(p, "\"id\"")) != NULL) {
+        const char* q = p + 4;
+        while (*q && *q != ':') q++;
+        if (!*q) break;
+        q++;
+        while (*q == ' ' || *q == '\t') q++;
+        if (*q != '"') { p = q + 1; continue; }
+        const char* ini = q + 1;
+        const char* fin = ini;
+        while (*fin && *fin != '"') {
+            if (*fin == '\\') fin++;
+            if (*fin) fin++;
+        }
+        long largo = fin - ini;
+        if (largo > 0) {
+            int deslen = 0;
+            char* des = _ollama_desescapar(ini, (int)largo, &deslen);
+            if (des && deslen > 0) {
+                memcpy(acc + used, des, (size_t)deslen);
+                used += deslen;
+                free(des);
+            } else {
+                memcpy(acc + used, ini, (size_t)largo);
+                used += largo;
+            }
+            acc[used++] = '\n';
+        }
+        p = fin + 1;
+    }
+    acc[used] = '\0';
+    if (out_len) *out_len = (int)used;
+    return acc;
+}
+
+// GET /v1/models — modelos instalados en llama-server
+static CadenaSegura _openai_modelos(const char* hip, int pt) {
+    CadenaSegura vacio = { .longitud = 0, .datos = "" };
+    char cab[256];
+    int hl = snprintf(cab, sizeof(cab),
+        "GET /v1/models HTTP/1.1\r\n"
+        "Host: %s:%d\r\n"
+        "Connection: close\r\n\r\n",
+        hip, pt);
+
+    _syn_iniciar_red();
+    int fd = _syn_socket();
+    if (fd < 0) return vacio;
+    CadenaSegura resultado = vacio;
+    if (_syn_conectar(fd, hip, pt) == 0) {
+        _syn_enviar(fd, cab, hl);
+        int rlen = 0;
+        char* resp = _ollama_leer_respuesta(fd, &rlen);
+        if (resp) {
+            const char* cuerpo = strstr(resp, "\r\n\r\n");
+            const char* base = cuerpo ? cuerpo + 4 : resp;
+            int nlen = 0;
+            char* nombres = _openai_extraer_nombres(base, &nlen);
+            if (nombres && nlen > 0) {
+                char* pool = (char*)pool_alloc((size_t)nlen + 1);
+                if (pool) {
+                    memcpy(pool, nombres, (size_t)nlen);
+                    pool[nlen] = '\0';
+                    resultado = (CadenaSegura){ .longitud = nlen, .datos = pool };
+                }
+            }
+            if (nombres) free(nombres);
+            free(resp);
+        }
+    }
+    _syn_cerrar_socket(fd);
+    return resultado;
+}
+
+// POST /v1/chat/completions — consulta OpenAI-compatible (llama-server)
+// Parser robusto: busca "message" → "content" dentro de "choices"[0]
+static CadenaSegura _openai_consultar(const char* modelo, const char* prompt,
+                                       const char* hip, int pt, int max_tokens) {
+    CadenaSegura vacio = { .longitud = 0, .datos = "" };
+    int mjlen = 0, pjlen = 0;
+    char* mjs = _ollama_esc_json(modelo, (int)strlen(modelo), &mjlen);
+    char* pjs = _ollama_esc_json(prompt, (int)strlen(prompt), &pjlen);
+    if (!mjs || !pjs) { if (mjs) free(mjs); if (pjs) free(pjs); return vacio; }
+
+    int cap_body = mjlen + pjlen + 160;
+    char* body = (char*)malloc((size_t)cap_body);
+    if (!body) { free(mjs); free(pjs); return vacio; }
+    int bl = snprintf(body, (size_t)cap_body,
+        "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
+        "\"max_tokens\":%d,\"temperature\":0}",
+        mjs, pjs, max_tokens);
+    free(mjs);
+    free(pjs);
+    if (bl <= 0 || bl >= cap_body) { free(body); return vacio; }
+
+    char cab[256];
+    int hl = snprintf(cab, sizeof(cab),
+        "POST /v1/chat/completions HTTP/1.1\r\n"
+        "Host: %s:%d\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n\r\n",
+        hip, pt, bl);
+
+    CadenaSegura resultado = vacio;
+    _syn_iniciar_red();
+    int fd = _syn_socket();
+    if (fd < 0) { free(body); return vacio; }
+    if (_syn_conectar(fd, hip, pt) == 0) {
+        _syn_enviar(fd, cab, hl);
+        _syn_enviar(fd, body, bl);
+        int rlen = 0;
+        char* resp = _ollama_leer_respuesta(fd, &rlen);
+        if (resp) {
+            // OpenAI: {"choices":[{"message":{"role":"assistant","content":"..."}}]}
+            const char* cuerpo = strstr(resp, "\r\n\r\n");
+            const char* base = cuerpo ? cuerpo + 4 : resp;
+
+            // Buscar "content" dentro de "message"
+            const char* msg_marker = strstr(base, "\"message\"");
+            if (msg_marker) {
+                const char* content_marker = strstr(msg_marker, "\"content\"");
+                if (content_marker) {
+                    const char* q = content_marker + 9;
+                    while (*q && *q != ':') q++;
+                    if (*q) {
+                        q++;
+                        while (*q == ' ' || *q == '\t') q++;
+                        if (*q == '"') {
+                            const char* ini = q + 1;
+                            const char* fin = ini;
+                            while (*fin && *fin != '"') {
+                                if (*fin == '\\') fin++;
+                                if (*fin) fin++;
+                            }
+                            int largo = (int)(fin - ini);
+                            if (largo > 0) {
+                                int deslen = 0;
+                                char* des = _ollama_desescapar(ini, largo, &deslen);
+                                if (des) {
+                                    char* pool = (char*)pool_alloc((size_t)deslen + 1);
+                                    if (pool) {
+                                        memcpy(pool, des, (size_t)deslen);
+                                        pool[deslen] = '\0';
+                                        resultado = (CadenaSegura){ .longitud = deslen, .datos = pool };
+                                    }
+                                    free(des);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (resultado.longitud == 0) {
+                resultado = _ollama_campo(resp, "error");
+            }
+            free(resp);
+        } else {
+            const char* msg = NULL;
+            if (rlen == -2)
+                msg = "llama-server no respondio a tiempo (modelo cargando?).";
+            else if (rlen == -3)
+                msg = "llama-server corto la conexion a mitad de respuesta.";
+            else
+                msg = "No se pudo leer la respuesta de llama-server.";
+            int largo = (int)strlen(msg);
+            char* pool = (char*)pool_alloc((size_t)largo + 1);
+            if (pool) {
+                memcpy(pool, msg, (size_t)largo);
+                pool[largo] = '\0';
+                resultado = (CadenaSegura){ .longitud = largo, .datos = pool };
+            }
+        }
+    }
+    _syn_cerrar_socket(fd);
+    free(body);
+    return resultado;
+}
+
+// ============================================================
+// API unificada: OpenAI primero, luego Ollama como fallback
+// ============================================================
+
+// Intenta OpenAI (/v1/models), si falla intenta Ollama (/api/tags)
 CadenaSegura _syn_ollama_modelos(CadenaSegura host, int64_t puerto) {
     CadenaSegura vacio = { .longitud = 0, .datos = "" };
     char hostbuf[128];
@@ -477,6 +595,11 @@ CadenaSegura _syn_ollama_modelos(CadenaSegura host, int64_t puerto) {
     }
     int pt = (int)((puerto <= 0 || puerto > 65535) ? 11434 : puerto);
 
+    // Intentar OpenAI primero (llama-server)
+    CadenaSegura resultado = _openai_modelos(hip, pt);
+    if (resultado.longitud > 0) return resultado;
+
+    // Fallback a Ollama
     char cab[256];
     int hl = snprintf(cab, sizeof(cab),
         "GET /api/tags HTTP/1.1\r\n"
@@ -487,7 +610,6 @@ CadenaSegura _syn_ollama_modelos(CadenaSegura host, int64_t puerto) {
     _syn_iniciar_red();
     int fd = _syn_socket();
     if (fd < 0) return vacio;
-    CadenaSegura resultado = vacio;
     if (_syn_conectar(fd, hip, pt) == 0) {
         _syn_enviar(fd, cab, hl);
         int rlen = 0;
@@ -510,6 +632,104 @@ CadenaSegura _syn_ollama_modelos(CadenaSegura host, int64_t puerto) {
         }
     }
     _syn_cerrar_socket(fd);
+    return resultado;
+}
+
+// Intenta OpenAI (/v1/chat/completions), si falla intenta Ollama (/api/chat)
+CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
+                                   CadenaSegura host, int64_t puerto,
+                                   int64_t max_tokens) {
+    CadenaSegura vacio = { .longitud = 0, .datos = "" };
+    if (modelo.datos == NULL || modelo.longitud <= 0 || prompt.datos == NULL) {
+        return vacio;
+    }
+
+    char hostbuf[128];
+    const char* hip = "127.0.0.1";
+    if (host.datos && host.longitud > 0 && host.longitud < 127) {
+        memcpy(hostbuf, host.datos, (size_t)host.longitud);
+        hostbuf[host.longitud] = '\0';
+        if (strcmp(hostbuf, "localhost") == 0) strcpy(hostbuf, "127.0.0.1");
+        hip = hostbuf;
+    }
+    int pt = (int)((puerto <= 0 || puerto > 65535) ? 11434 : puerto);
+    int mt = (int)((max_tokens <= 0) ? 512 : max_tokens);
+
+    // Copiar modelo y prompt a strings C
+    char* ms = (char*)malloc((size_t)modelo.longitud + 1);
+    char* ps = (char*)malloc((size_t)prompt.longitud + 1);
+    if (!ms || !ps) { if (ms) free(ms); if (ps) free(ps); return vacio; }
+    memcpy(ms, modelo.datos, (size_t)modelo.longitud);
+    ms[modelo.longitud] = '\0';
+    memcpy(ps, prompt.datos, (size_t)prompt.longitud);
+    ps[prompt.longitud] = '\0';
+
+    // Truncar prompt si excede la ventana de contexto del modelo
+    // (deepseek-1.3b = 2048 tokens ≈ ~4000 bytes). Preservamos los ultimos
+    // chars donde está el mensaje del usuario.
+    int ps_len = (int)prompt.longitud;
+    if (ps_len > 4000) {
+        int keep = 3500;
+        int skip = ps_len - keep;
+        memmove(ps, ps + skip, (size_t)keep);
+        ps_len = keep;
+    }
+    ps[ps_len] = '\0';
+
+    // Intentar OpenAI primero (llama-server)
+    CadenaSegura resultado = _openai_consultar(ms, ps, hip, pt, mt);
+    if (resultado.longitud > 0) {
+        free(ms);
+        free(ps);
+        return resultado;
+    }
+
+    // Fallback a Ollama
+    int mjlen = 0, pjlen = 0;
+    char* mjs = _ollama_esc_json(ms, (int)modelo.longitud, &mjlen);
+    char* pjs = _ollama_esc_json(ps, ps_len, &pjlen);
+    if (!mjs || !pjs) { free(ms); free(ps); if (mjs) free(mjs); if (pjs) free(pjs); return vacio; }
+
+    int cap_body = mjlen + pjlen + 160;
+    char* body = (char*)malloc((size_t)cap_body);
+    if (!body) { free(mjs); free(pjs); free(ms); free(ps); return vacio; }
+    int bl = snprintf(body, (size_t)cap_body,
+        "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
+        "\"stream\":false,\"options\":{\"num_predict\":%d}}",
+        mjs, pjs, mt);
+    free(mjs);
+    free(pjs);
+    if (bl <= 0 || bl >= cap_body) { free(body); free(ms); free(ps); return vacio; }
+
+    char cab[256];
+    int hl = snprintf(cab, sizeof(cab),
+        "POST /api/chat HTTP/1.1\r\n"
+        "Host: %s:%d\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n\r\n",
+        hip, pt, bl);
+
+    _syn_iniciar_red();
+    int fd = _syn_socket();
+    if (fd < 0) { free(body); free(ms); free(ps); return vacio; }
+    if (_syn_conectar(fd, hip, pt) == 0) {
+        _syn_enviar(fd, cab, hl);
+        _syn_enviar(fd, body, bl);
+        int rlen = 0;
+        char* resp = _ollama_leer_respuesta(fd, &rlen);
+        if (resp) {
+            resultado = _ollama_campo(resp, "content");
+            if (resultado.longitud == 0) {
+                resultado = _ollama_campo(resp, "error");
+            }
+            free(resp);
+        }
+    }
+    _syn_cerrar_socket(fd);
+    free(body);
+    free(ms);
+    free(ps);
     return resultado;
 }
 

@@ -159,6 +159,12 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
     else:
         old_tipo = ctx._variables.get(nodo.nombre)
         if old_tipo and ctx._tipo_tiene_destructor(old_tipo):
+            # FIX R144c: Evaluar la expresión en un temporal ANTES de liberar
+            # el valor viejo. Sin esto, `sys = concat(sys, ctx)` primero
+            # libera sys y luego concat lee memoria liberada (use-after-free).
+            ctx._contador_tmp += 1
+            tmp_name = f"_syn_tmp_{nodo.nombre}_{ctx._contador_tmp}"
+            ctx.write_line(f"{tipo_c} {tmp_name} = {val};")
             dtor, arg, guard = ctx._destructor_para_tipo(old_tipo, nodo.nombre)
             if dtor:
                 if guard:
@@ -166,14 +172,16 @@ def visitar_asignacion(ctx: GeneratorContext, nodo: AsignacionVariable):
                 else:
                     ctx.write_line(f"{dtor}({arg});")
             ctx.unregister_var(nodo.nombre)
-        if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
-            ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
-        if _es_canal_concurrencia(tipo_syn):
-            ctx._canal_vars_concurrencia.add(nodo.nombre)
-        elif ctx._tipo_tiene_destructor(tipo_syn):
-            if ctx._scope_stack:
-                ctx._scope_stack[-1][nodo.nombre] = tipo_syn
-        ctx.write_line(f"{nodo.nombre} = {val};")
+            ctx.write_line(f"{nodo.nombre} = {tmp_name};")
+        else:
+            if nodo.nombre in ctx._tensor_vars and tipo_syn == 'Tensor':
+                ctx.write_line(f"{ctx.syn_free(f'{nodo.nombre}.datos')};")
+            if _es_canal_concurrencia(tipo_syn):
+                ctx._canal_vars_concurrencia.add(nodo.nombre)
+            elif ctx._tipo_tiene_destructor(tipo_syn):
+                if ctx._scope_stack:
+                    ctx._scope_stack[-1][nodo.nombre] = tipo_syn
+            ctx.write_line(f"{nodo.nombre} = {val};")
 
 
 # ================================================================

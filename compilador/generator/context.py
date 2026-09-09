@@ -292,6 +292,7 @@ class GeneratorContext:
         self._strings_heap: set = set()
         self._contador_thread = 0
         self._contador_listener = 0
+        self._contador_tmp = 0  # R144c: unique temp vars for RAII fix
 
         # Struct + function tracking
         self._estructuras: Dict[str, dict] = {}
