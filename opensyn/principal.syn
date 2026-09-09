@@ -71,6 +71,120 @@ constante SKILL_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el sig
 
 constante SKILL_PLAN_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
 
+// --- Auto-inicio de llama-server (cumple Manual 7 §8) ---
+// Si el usuario ejecuta opensyn.exe directamente (no via opensyn.bat),
+// llama-server no esta corriendo. Detectamos y lo iniciamos automaticamente.
+// Usa solo funciones del runtime (no Windows API directa).
+
+funcion obtener_dir_exe() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    // Usar PowerShell para obtener el directorio del exe actual
+    dir = _syn_capturar_comando("powershell -NoProfile -Command \"Split-Path -Parent $MyInvocation.MyCommand.Path\"")
+    si dir == "":
+        dir = _syn_obtener_cwd()
+    retornar dir
+
+funcion llama_server_corriendo() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    // Verificar si el puerto 11434 esta escuchando
+    salida = _syn_capturar_comando("netstat -an")
+    si salida == "":
+        retornar 0
+    // Buscar patrones de LISTENING en puerto 11434
+    total = strlen_s(salida)
+    i = 0
+    mientras i < total - 13:
+        caracter = subcadena(salida, i, 1)
+        si caracter == ":":
+            sig = subcadena(salida, i + 1, 5)
+            si sig == "11434":
+                resto = subcadena(salida, i + 6, 9)
+                si subcadena(resto, 0, 8) == "LISTENIN":
+                    retornar 1
+        i = i + 1
+    retornar 0
+
+funcion iniciar_llama_server() -> nulo:
+    requiere:
+        verdadero
+    si llama_server_corriendo() == 1:
+        retornar
+    dir = obtener_dir_exe()
+    si dir == "":
+        retornar
+    // Verificar que llama-server.exe existe
+    ruta_server = concat(dir, "\\ia\\llama-server.exe")
+    existe = existe_archivo(ruta_server)
+    si no existe:
+        ruta_server2 = concat(dir, "ia\\llama-server.exe")
+        existe = existe_archivo(ruta_server2)
+        si no existe:
+            retornar
+        ruta_server = ruta_server2
+    // Buscar modelo GGUF en models/ o ia/
+    modelo_ruta = ""
+    dir_models = concat(dir, "\\models")
+    listado = _syn_listar_directorio(dir_models)
+    si listado == "":
+        dir_models = concat(dir, "models")
+        listado = _syn_listar_directorio(dir_models)
+    si listado != "":
+        total = strlen_s(listado)
+        i = 0
+        mientras i < total - 4:
+            caracter = subcadena(listado, i, 1)
+            si caracter == ".":
+                sufijo = subcadena(listado, i, 4)
+                si sufijo == ".gguf":
+                    // Encontrar inicio del nombre del archivo
+                    inicio = i
+                    mientras inicio > 0:
+                        c_anterior = subcadena(listado, inicio - 1, 1)
+                        si c_anterior == "\n" o c_anterior == "\r" o c_anterior == " ":
+                            romper
+                        inicio = inicio - 1
+                    largo = i + 4 - inicio
+                    modelo_ruta = concat(concat(dir_models, "\\"), subcadena(listado, inicio, largo))
+                    romper
+            i = i + 1
+    si modelo_ruta == "":
+        dir_ia = concat(dir, "\\ia")
+        listado2 = _syn_listar_directorio(dir_ia)
+        si listado2 == "":
+            dir_ia = concat(dir, "ia")
+            listado2 = _syn_listar_directorio(dir_ia)
+        si listado2 != "":
+            total2 = strlen_s(listado2)
+            i2 = 0
+            mientras i2 < total2 - 4:
+                caracter2 = subcadena(listado2, i2, 1)
+                si caracter2 == ".":
+                    sufijo2 = subcadena(listado2, i2, 4)
+                    si sufijo2 == ".gguf":
+                        inicio2 = i2
+                        mientras inicio2 > 0:
+                            c_ant2 = subcadena(listado2, inicio2 - 1, 1)
+                            si c_ant2 == "\n" o c_ant2 == "\r" o c_ant2 == " ":
+                                romper
+                            inicio2 = inicio2 - 1
+                        largo2 = i2 + 4 - inicio2
+                        modelo_ruta = concat(concat(dir_ia, "\\"), subcadena(listado2, inicio2, largo2))
+                        romper
+                i2 = i2 + 1
+    si modelo_ruta == "":
+        retornar
+    // Iniciar llama-server en background usando start
+    cmd_start = concat(concat(concat(concat("start \"llama-server\" /B \"", ruta_server), "\" --model \""), modelo_ruta), "\" --port 11434 --host 127.0.0.1 --ctx-size 2048 --n-gpu-layers 0")
+    _syn_capturar_comando(cmd_start)
+    // Esperar usando ping como delay (3 segundos)
+    _syn_capturar_comando("ping -n 4 127.0.0.1 >nul 2>&1")
+
 // --- Funciones auxiliares de configuracion ---
 
 funcion leer_modo_config() -> texto:
@@ -543,20 +657,11 @@ funcion construir_contexto(cwd_act: texto) -> texto:
         verdadero
     garantiza:
         longitud(resultado) >= 0
-    parte = concat("Directorio de trabajo: ", cwd_act)
+    parte = concat("Dir: ", cwd_act)
     lista = _syn_listar_directorio(cwd_act)
     si lista != "":
-        parte = concat(parte, "\nContenido de la raiz del repo:\n")
+        parte = concat(parte, "\n")
         parte = concat(parte, lista)
-    git = _syn_capturar_comando("git status --short")
-    si git != "":
-        parte = concat(parte, "\nEstado git:\n")
-        parte = concat(parte, git)
-    ruta_agents = concat(cwd_act, "/AGENTS.md")
-    agents = _syn_leer_archivo(ruta_agents)
-    si agents != "":
-        parte = concat(parte, "\nAGENTS.md (extracto):\n")
-        parte = concat(parte, agents)
     retornar parte
 
 // Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta (solo lectura).
@@ -654,8 +759,8 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
 // entrada abajo, comandos "/" con menú y streaming del modelo.
 // ============================================================
 
-// System prompt del agente (base; se le concatena el contexto del repo).
-constante AGENTE_SYS_BASE = "Eres OpenSyn, el asistente de IA local del ecosistema Synapse. Conoces nativamente Synapse y Syquex (inyeccion de contexto estatico, Manual 7 1.1). Reglas de Synapse (.syn): indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr', contratos 'requiere/garantiza'; no uses punto y coma. Reglas de Syquex (.syq): lenguaje hermano de alto nivel que comparte el AST canonico unificado con Synapse; usa identacion; soporta 'delegar' y exportacion FFI con '@export' para que funciones Synapse sean visibles desde otros lenguajes (Manual 2). Para responder sobre este repositorio usa el CONTEXTO incluido abajo y, si necesitas mas datos, responde SOLO con una linea: 'TOOL listar <ruta>' (vacia = raiz), 'TOOL leer <ruta>', 'TOOL git status' o 'TOOL git log'. Cuando ya tengas lo necesario responde al usuario de su idioma, concreto y sin inventar archivos.\n\n[CONTEXTO DEL REPOSITORIO]\n"
+// System prompt del agente (optimizado para modelos pequenos, 2048 ctx).
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. Si necesitas mas contexto responde: TOOL listar <ruta> o TOOL leer <ruta>. Responde en el idioma del usuario, sin inventar archivos.\n\n[CONTEXTO]\n"
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
 constante MENU_COMANDOS = "/model\n/modelos\n/tdd\n/revisar\n/plan\n/skills\n/ayuda\n/salir"
@@ -942,6 +1047,8 @@ funcion chat_tui() -> entero:
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
+    // cumple Manual 7 §8: auto-iniciar llama-server si no esta corriendo
+    iniciar_llama_server()
     // Ruta TUI pantalla completa (estilo OpenCode/Freebuff): en consola real
     // (o con OPENSN_TUI_TEST=1 en pipes, para los oraculos E2E) la TUI toma la
     // pantalla; si no hay consola se sigue con el modo linea clasico.
@@ -956,6 +1063,8 @@ funcion modo_oraculo() -> entero:
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
+    // cumple Manual 7 §8: auto-iniciar llama-server si no esta corriendo
+    iniciar_llama_server()
     // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (config_ollama.txt del
     // instalador, http://localhost:11434); GGUF local como respaldo.
     config = leer_config_ollama()

@@ -64,27 +64,27 @@ funcion seleccionar_modelo(vram: entero) -> ModeloInfo:
         resultado.tamano_aprox > 0
     let m: ModeloInfo
     si vram < 4096:
-        m.nombre = "deepseek-coder-1.3b-q4_k_m"
-        m.url = "https://huggingface.co/TheBloke/deepseek-coder-1.3B-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
-        m.sha256 = ""
-        m.tamano_aprox = 1073741824
+        m.nombre = "deepseek-coder-1.3b-Q4_K_M"
+        m.url = "https://huggingface.co/TheBloke/deepseek-coder-1.3B-instruct-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf"
+        m.sha256 = "04cebb6fafa40ae628cf6bfeb76032ec792852f54020c559ad0a56b9f2839118"
+        m.tamano_aprox = 873582624
     sino:
         si vram < 8192:
-            m.nombre = "codellama-7b-q4_k_m"
+            m.nombre = "codellama-7b-Q4_K_M"
             m.url = "https://huggingface.co/TheBloke/CodeLlama-7B-GGUF/resolve/main/codellama-7b.Q4_K_M.gguf"
-            m.sha256 = ""
-            m.tamano_aprox = 4294967296
+            m.sha256 = "c3866cb985de17d398c2d7e85bb8a9c717a76bb997dce0e72a0cb169063e6d17"
+            m.tamano_aprox = 4080957440
         sino:
             si vram < 12288:
-                m.nombre = "codellama-13b-q4_k_m"
+                m.nombre = "codellama-13b-Q4_K_M"
                 m.url = "https://huggingface.co/TheBloke/CodeLlama-13B-GGUF/resolve/main/codellama-13b.Q4_K_M.gguf"
-                m.sha256 = ""
-                m.tamano_aprox = 7516192768
+                m.sha256 = "b889f38ea793b823756e0eb9d3b60a5c5061c2df2d99b6f2fdb7c28328f043ce"
+                m.tamano_aprox = 7864320000
             sino:
-                m.nombre = "codellama-34b-q4_k_m"
+                m.nombre = "codellama-34b-Q4_K_M"
                 m.url = "https://huggingface.co/TheBloke/CodeLlama-34B-GGUF/resolve/main/codellama-34b.Q4_K_M.gguf"
-                m.sha256 = ""
-                m.tamano_aprox = 19327352832
+                m.sha256 = "26e7ece4d609b8515b4f72543b555692dc6ca2ff2bee336a6a1f4f2c97978cee"
+                m.tamano_aprox = 20218215424
     retornar m
 
 funcion seleccionar_hilos(nucleos: entero) -> entero:
@@ -150,11 +150,45 @@ funcion principal() -> nulo:
     escribir_linea(entero_a_texto(hilos))
     escribir_linea(entero_a_texto(capas))
     let modelo: ModeloInfo = seleccionar_modelo(hw.vram_total)
-    escribir_linea("Modelo seleccionado: " + modelo.nombre)
     escribir_linea("Modelo:")
-    escribir_linea("descargando desde: " + modelo.url)
-    let cfg: ConfigInfo = generar_config(hw, ".opensyn/models/" + modelo.nombre + ".gguf")
+    escribir_linea("Modelo seleccionado: " + modelo.nombre)
+    let ruta_modelo: texto = _syn_home() + "/.opensyn/models/" + modelo.nombre + ".gguf"
+    # cumple Manual 9 §5.3: descargar y verificar modelo
+    let ruta_descarga: texto = _syn_home() + "/.opensyn/models/" + modelo.nombre + ".gguf"
+    si _syn_existe_archivo(ruta_descarga):
+        let hash: texto = _syn_sha256_archivo(ruta_descarga)
+        si hash == modelo.sha256:
+            escribir_linea("Modelo ya descargado y verificado")
+        sino:
+            escribir_linea("Hash incorrecto, re-descargando...")
+            _syn_eliminar_archivo(ruta_descarga)
+            si _syn_descargar(modelo.url, ruta_descarga):
+                let hash2: texto = _syn_sha256_archivo(ruta_descarga)
+                si hash2 != modelo.sha256:
+                    _syn_eliminar_archivo(ruta_descarga)
+                    escribir_linea("Error: checksum incorrecto tras descarga")
+                    retornar
+            sino:
+                escribir_linea("Error al descargar el modelo")
+                retornar
+    sino:
+        escribir_linea("Descargando modelo (" + entero_a_texto(modelo.tamano_aprox / 1073741824) + " GB)...")
+        si no _syn_descargar(modelo.url, ruta_descarga):
+            escribir_linea("Error al descargar el modelo")
+            retornar
+        let hash3: texto = _syn_sha256_archivo(ruta_descarga)
+        si hash3 != modelo.sha256:
+            _syn_eliminar_archivo(ruta_descarga)
+            escribir_linea("Error: checksum incorrecto")
+            retornar
+    # cumple Manual 9 §5.4: generar configuracion para llama-server
+    let cfg: ConfigInfo = generar_config(hw, modelo, ruta_descarga)
     escribir_config(cfg)
+    # cumple Manual 9 §5: escribir config_ollama.txt para OpenSyn
+    let config_ollama_ruta: texto = _syn_home() + "/.opensyn/config_ollama.txt"
+    let config_ollama_contenido: texto = "ollama=1\nmodel=" + modelo.nombre
+    _syn_escribir_archivo(config_ollama_ruta, config_ollama_contenido)
+    escribir_linea("Configuracion Ollama escrita en " + config_ollama_ruta)
 
 # cumple Manual 9 5.3 — instalar_modelo: descarga y verifica modelo según HW
 funcion instalar_modelo(hw: HardwareInfo) -> Resultado<texto, texto>:
@@ -178,21 +212,22 @@ estructura ConfigInfo:
     timeout: entero
 
 # cumple Manual 9 5.4 — generar_config: produce ConfigInfo basada en HW
-funcion generar_config(hw: HardwareInfo, ruta_modelo: texto) -> ConfigInfo:
+funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto) -> ConfigInfo:
     requiere:
         longitud(ruta_modelo) > 0
+        longitud(modelo.nombre) > 0
     garantiza:
         longitud(resultado.ruta_modelo) > 0
         resultado.n_ctx > 0
         resultado.n_threads >= 2
         resultado.puerto > 0
     let cfg: ConfigInfo
-    cfg.nombre_modelo = "codellama-7b-Q4_K_M"
+    cfg.nombre_modelo = modelo.nombre
     cfg.ruta_modelo = ruta_modelo
-    cfg.n_ctx = 4096
+    cfg.n_ctx = 2048
     cfg.n_threads = seleccionar_hilos(hw.cpu_nucleos)
     cfg.n_gpu_layers = seleccionar_capas_gpu(hw.vram_total)
-    cfg.puerto = 8088
+    cfg.puerto = 11434
     cfg.host = "127.0.0.1"
     cfg.timeout = 30
     retornar cfg

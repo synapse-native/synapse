@@ -118,6 +118,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourcePath}\..\..\dist\bin\{#MyAppExeName}"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion
 Source: "{#SourcePath}\..\..\dist\bin\opensyn.exe"; DestDir: "{app}\bin"; Components: opensyn; Flags: ignoreversion
 Source: "{#SourcePath}\..\..\opensyn\opensyn.bat"; DestDir: "{app}\bin"; Components: opensyn; Flags: ignoreversion
+; Helper de descarga con ventana de progreso propia (resuelve congelamiento de Inno Setup)
+Source: "{#SourcePath}\dl_helper.exe"; DestDir: "{app}"; Components: opensyn; Flags: ignoreversion
 ; LSP opcional — solo se incluye si fue construido (Flags: skipifsourcedoesntexist)
 Source: "{#SourcePath}\..\..\dist\bin\{#MyAppLspExeName}"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#SourcePath}\..\..\dist\bin\*.dll"; DestDir: "{app}\bin"; Components: synapse; Flags: ignoreversion skipifsourcedoesntexist
@@ -556,7 +558,7 @@ end;
 {------------------------------------------------------------------------------}
 procedure CreateDownloadPage();
 begin
-  DownloadPage := CreateCustomPage(wpReady,
+  DownloadPage := CreateCustomPage(wpInstalling,
     'Descargando Componentes IA',
     'Descargando llama-server.exe y modelo .gguf desde GitHub/HuggingFace...');
 
@@ -648,55 +650,68 @@ var
 begin
   Result := False;
   try
-    // cumple Manual 9 §5.3: usar curl absoluto para SYSTEM (no depende de PATH)
-    if FileExists('C:\Windows\System32\curl.exe') then
-      ExePath := 'C:\Windows\System32\curl.exe'
-    else
-      ExePath := 'curl.exe';
-
-    // Descargar a archivo temporal primero (para verificación SHA256 atómica)
     TmpPath := DestPath + '.tmp';
 
-    // Construir comando curl con soporte resume
-    // cumple Manual 9 §5.3: --fail evita guardar paginas de error HTTP (504/404) como artefacto con exit 0
-    CmdLine := '-L --progress-bar --fail --connect-timeout 30';
-    if Resume then
-      CmdLine := CmdLine + ' -C -';
-    CmdLine := CmdLine + ' -o "' + TmpPath + '" "' + URL + '"';
+    ExePath := ExpandConstant('{app}\dl_helper.exe');
+    if not FileExists(ExePath) then
+      ExePath := ExpandConstant('{tmp}\dl_helper.exe');
 
-    Log(Format('DownloadFile: %s -> %s (resume=%d, sha256=%s)', [URL, DestPath, Integer(Resume), ExpectedSHA256]));
-    Result := Exec(ExePath, CmdLine, '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
-    Log(Format('DownloadFile exit=%d result=%d', [ExitCode, Integer(Result)]));
+    CmdLine := '"' + URL + '" "' + TmpPath + '"';
 
-    if (ExitCode <> 0) or (not Result) then begin
+    Log(Format('DownloadFile: %s -> %s (sha256=%s)', [URL, DestPath, ExpectedSHA256]));
+    Log(Format('DownloadFile: helper=%s', [ExePath]));
+
+    if not FileExists(ExePath) then begin
+      Log('DownloadFile: dl_helper.exe no encontrado, usando curl como fallback');
+      ExePath := 'C:\Windows\System32\curl.exe';
+      CmdLine := '-L --fail --connect-timeout 30 --max-time 600 -o "' + TmpPath + '" "' + URL + '"';
+    end;
+
+    if not Exec(ExePath, CmdLine, '', SW_SHOW, ewWaitUntilTerminated, ExitCode) then begin
+      Log('DownloadFile: fallo al lanzar helper');
+      if FileExists(TmpPath) then DeleteFile(TmpPath);
+      Exit;
+    end;
+
+    Log(Format('DownloadFile: termino con exit code %d', [ExitCode]));
+
+    if ExitCode <> 0 then begin
+      Log(Format('DownloadFile: fallo con exit code %d', [ExitCode]));
       if FileExists(TmpPath) then DeleteFile(TmpPath);
       Result := False;
-    end else begin
-      // Verificar SHA256 si se proporcionó
-      if ExpectedSHA256 <> '' then begin
-        ActualSHA256 := CalcSHA256(TmpPath);
-        if Lowercase(ActualSHA256) <> Lowercase(ExpectedSHA256) then begin
-          Log(Format('SHA256 mismatch: expected=%s got=%s', [ExpectedSHA256, ActualSHA256]));
-          if FileExists(TmpPath) then DeleteFile(TmpPath);
-          Result := False;
-        end;
-      end;
+      Exit;
+    end;
 
-      if Result then begin
-        // Movimiento atómico: renombrar tmp -> destino final
-        if FileExists(DestPath) then DeleteFile(DestPath);
-        if not RenameFile(TmpPath, DestPath) then begin
-          // Fallback: copy + delete si rename falla (cross-volume)
-          if FileCopy(TmpPath, DestPath, False) then
-            DeleteFile(TmpPath)
-          else begin
-            Log('Error moviendo archivo descargado a destino final');
-            if FileExists(TmpPath) then DeleteFile(TmpPath);
-            Result := False;
-          end;
-        end;
+    if not FileExists(TmpPath) then begin
+      Log('DownloadFile: archivo temporal no existe');
+      Result := False;
+      Exit;
+    end;
+
+    Log('DownloadFile: archivo descargado');
+
+    if ExpectedSHA256 <> '' then begin
+      ActualSHA256 := CalcSHA256(TmpPath);
+      if Lowercase(ActualSHA256) <> Lowercase(ExpectedSHA256) then begin
+        Log(Format('SHA256 mismatch: expected=%s got=%s', [ExpectedSHA256, ActualSHA256]));
+        if FileExists(TmpPath) then DeleteFile(TmpPath);
+        Result := False;
+        Exit;
       end;
     end;
+
+    if FileExists(DestPath) then DeleteFile(DestPath);
+    if not RenameFile(TmpPath, DestPath) then begin
+      if FileCopy(TmpPath, DestPath, False) then
+        DeleteFile(TmpPath)
+      else begin
+        Log('Error moviendo archivo descargado a destino final');
+        if FileExists(TmpPath) then DeleteFile(TmpPath);
+        Result := False;
+        Exit;
+      end;
+    end;
+    Result := True;
   except
     Log('DownloadFile exception');
     if FileExists(TmpPath) then DeleteFile(TmpPath);
@@ -934,6 +949,10 @@ begin
   SaveStringToFile(GetEnv('USERPROFILE') + '\.synapse_config', 'modo_oraculo=verdadero', False);
   ForceDirectories(GetEnv('USERPROFILE') + '\.opensyn');
   SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\install_info.txt', 'model=' + SelectedModelName + #13#10 + 'url=' + SelectedModelURL + #13#10 + 'vram=' + IntToStr(VRAM_MB), False);
+  // cumple Manual 9 §5: escribir config_ollama.txt para que OpenSyn detecte el modelo
+  SaveStringToFile(GetEnv('USERPROFILE') + '\.opensyn\config_ollama.txt', 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+  SaveStringToFile(ExpandConstant('{app}\opensyn\config_ollama.txt'), 'ollama=1' + #13#10 + 'model=' + SelectedModelName, False);
+  Log('config_ollama.txt escrito con model=' + SelectedModelName);
 end;
 
 
@@ -1010,13 +1029,6 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  if (CurPageID = wpReady) and WizardIsComponentSelected('opensyn') then begin
-    try
-      DownloadAIComponents();
-    except
-      Log('Error durante descarga de componentes IA');
-    end;
-  end;
   // cumple Manual 9 §2.5: feedback final no abrupto — mensaje claro en Finished page (wpFinished permanece hasta que usuario pulse Finalizar)
   if CurPageID = wpFinished then begin
     try
@@ -1040,6 +1052,15 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  // cumple Manual 9 §2.5: descarga de componentes IA durante la instalación (no en CurPageChanged
+  // que bloquea la UI). CurStepChanged(ssInstall) se ejecuta después de "Instalar".
+  if (CurStep = ssInstall) and WizardIsComponentSelected('opensyn') then begin
+    try
+      DownloadAIComponents();
+    except
+      Log('Error durante descarga de componentes IA');
+    end;
+  end;
   // cumple Manual 9 §2.5: extension ya se instala via [Run] runasoriginaluser (no duplicar aqui para evitar doble alerta y elevacion)
   // Se deja solo log opcional, sin Exec que falla como admin
   if CurStep = ssPostInstall then begin
