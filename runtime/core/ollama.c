@@ -475,23 +475,61 @@ static CadenaSegura _openai_modelos(const char* hip, int pt) {
 
 // POST /v1/chat/completions — consulta OpenAI-compatible (llama-server)
 // Parser robusto: busca "message" → "content" dentro de "choices"[0]
+// Si el prompt contiene "[USUARIO]", lo separa en system + user messages.
 static CadenaSegura _openai_consultar(const char* modelo, const char* prompt,
                                        const char* hip, int pt, int max_tokens) {
     CadenaSegura vacio = { .longitud = 0, .datos = "" };
-    int mjlen = 0, pjlen = 0;
+    int mjlen = 0;
     char* mjs = _ollama_esc_json(modelo, (int)strlen(modelo), &mjlen);
-    char* pjs = _ollama_esc_json(prompt, (int)strlen(prompt), &pjlen);
-    if (!mjs || !pjs) { if (mjs) free(mjs); if (pjs) free(pjs); return vacio; }
+    if (!mjs) return vacio;
 
-    int cap_body = mjlen + pjlen + 160;
-    char* body = (char*)malloc((size_t)cap_body);
-    if (!body) { free(mjs); free(pjs); return vacio; }
-    int bl = snprintf(body, (size_t)cap_body,
-        "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-        "\"max_tokens\":%d,\"temperature\":0}",
-        mjs, pjs, max_tokens);
+    // Buscar marcador [USUARIO] para separar system/user
+    const char* marcador = strstr(prompt, "[USUARIO]");
+    const char* sys_ini = prompt;
+    int sys_len = marcador ? (int)(marcador - prompt) : 0;
+    const char* usr_ini = marcador ? marcador + 9 : prompt;
+    // Saltar newline inmediato despues de [USUARIO]
+    while (*usr_ini == '\n') usr_ini++;
+    int usr_len = (int)strlen(usr_ini);
+
+    // Truncar system prompt si es muy largo (preservar最後os 3500 bytes)
+    if (sys_len > 3500) {
+        int skip = sys_len - 3500;
+        sys_ini += skip;
+        sys_len = 3500;
+    }
+
+    int sjlen = 0, ujlen = 0;
+    char* sjs = sys_len > 0 ? _ollama_esc_json(sys_ini, sys_len, &sjlen) : NULL;
+    char* ujs = _ollama_esc_json(usr_ini, usr_len, &ujlen);
+    if (!ujs) { free(mjs); if (sjs) free(sjs); return vacio; }
+
+    // Construir JSON con system+user o solo user
+    int cap_body;
+    char* body;
+    int bl;
+    if (sjs && sys_len > 0) {
+        cap_body = mjlen + sjlen + ujlen + 200;
+        body = (char*)malloc((size_t)cap_body);
+        if (!body) { free(mjs); free(sjs); free(ujs); return vacio; }
+        bl = snprintf(body, (size_t)cap_body,
+            "{\"model\":\"%s\",\"messages\":["
+            "{\"role\":\"system\",\"content\":\"%s\"},"
+            "{\"role\":\"user\",\"content\":\"%s\"}"
+            "],\"max_tokens\":%d,\"temperature\":0}",
+            mjs, sjs, ujs, max_tokens);
+        free(sjs);
+    } else {
+        cap_body = mjlen + ujlen + 160;
+        body = (char*)malloc((size_t)cap_body);
+        if (!body) { free(mjs); free(ujs); return vacio; }
+        bl = snprintf(body, (size_t)cap_body,
+            "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
+            "\"max_tokens\":%d,\"temperature\":0}",
+            mjs, ujs, max_tokens);
+    }
     free(mjs);
-    free(pjs);
+    free(ujs);
     if (bl <= 0 || bl >= cap_body) { free(body); return vacio; }
 
     char cab[256];
@@ -654,6 +692,7 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
     }
     int pt = (int)((puerto <= 0 || puerto > 65535) ? 11434 : puerto);
     int mt = (int)((max_tokens <= 0) ? 512 : max_tokens);
+    if (mt > 512) mt = 512;  // limitar generacion en CPU (evita timeouts)
 
     // Copiar modelo y prompt a strings C
     char* ms = (char*)malloc((size_t)modelo.longitud + 1);
@@ -684,21 +723,56 @@ CadenaSegura _syn_ollama_consultar(CadenaSegura modelo, CadenaSegura prompt,
         return resultado;
     }
 
-    // Fallback a Ollama
-    int mjlen = 0, pjlen = 0;
+    // Fallback a Ollama — separar system/user por [USUARIO]
+    int mjlen = 0;
     char* mjs = _ollama_esc_json(ms, (int)modelo.longitud, &mjlen);
-    char* pjs = _ollama_esc_json(ps, ps_len, &pjlen);
-    if (!mjs || !pjs) { free(ms); free(ps); if (mjs) free(mjs); if (pjs) free(pjs); return vacio; }
+    if (!mjs) { free(ms); free(ps); return vacio; }
 
-    int cap_body = mjlen + pjlen + 160;
-    char* body = (char*)malloc((size_t)cap_body);
-    if (!body) { free(mjs); free(pjs); free(ms); free(ps); return vacio; }
-    int bl = snprintf(body, (size_t)cap_body,
-        "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-        "\"stream\":false,\"options\":{\"num_predict\":%d}}",
-        mjs, pjs, mt);
+    const char* marcador = strstr(ps, "[USUARIO]");
+    char* sjs = NULL; int sjlen = 0;
+    char* ujs = NULL; int ujlen = 0;
+    const char* usr_ini;
+    int usr_len;
+    if (marcador) {
+        int sys_len = (int)(marcador - ps);
+        usr_ini = marcador + 9;
+        while (*usr_ini == '\n') usr_ini++;
+        usr_len = (int)strlen(usr_ini);
+        if (sys_len > 3500) { ps += (sys_len - 3500); sys_len = 3500; }
+        sjs = _ollama_esc_json(ps, sys_len, &sjlen);
+        ujs = _ollama_esc_json(usr_ini, usr_len, &ujlen);
+    } else {
+        usr_ini = ps;
+        usr_len = ps_len;
+        ujs = _ollama_esc_json(ps, ps_len, &ujlen);
+    }
+    if (!ujs) { free(mjs); if (sjs) free(sjs); free(ms); free(ps); return vacio; }
+
+    int cap_body;
+    char* body;
+    int bl;
+    if (sjs && sjlen > 0) {
+        cap_body = mjlen + sjlen + ujlen + 200;
+        body = (char*)malloc((size_t)cap_body);
+        if (!body) { free(mjs); free(sjs); free(ujs); free(ms); free(ps); return vacio; }
+        bl = snprintf(body, (size_t)cap_body,
+            "{\"model\":\"%s\",\"messages\":["
+            "{\"role\":\"system\",\"content\":\"%s\"},"
+            "{\"role\":\"user\",\"content\":\"%s\"}"
+            "],\"stream\":false,\"options\":{\"num_predict\":%d}}",
+            mjs, sjs, ujs, mt);
+        free(sjs);
+    } else {
+        cap_body = mjlen + ujlen + 160;
+        body = (char*)malloc((size_t)cap_body);
+        if (!body) { free(mjs); free(ujs); free(ms); free(ps); return vacio; }
+        bl = snprintf(body, (size_t)cap_body,
+            "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
+            "\"stream\":false,\"options\":{\"num_predict\":%d}}",
+            mjs, ujs, mt);
+    }
     free(mjs);
-    free(pjs);
+    free(ujs);
     if (bl <= 0 || bl >= cap_body) { free(body); free(ms); free(ps); return vacio; }
 
     char cab[256];
