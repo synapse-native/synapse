@@ -50,13 +50,12 @@ externo funcion _syn_ollama_stream_cerrar(sesion: puntero) -> nulo
 // --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
 // cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
 // color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
-constante BANNER_L1 = "   █████   █████     █████             ██████                    "
-constante BANNER_L2 = "  █     █  █    ██  █     █  ██████   █        █     █  ██████   "
-constante BANNER_L3 = "  █     █  █    ██  ███████  █     █  █        █     █  █     █  "
-constante BANNER_L4 = "  █     █  █████    █        █     █   █████    █   █   █     █  "
-constante BANNER_L5 = "  █     █  █        █        █     █        █    ███    █     █  "
-constante BANNER_L6 = "  █     █  █        █     █  █     █        █     █     █     █  "
-constante BANNER_L7 = "   █████   █         █████   █     █  ██████   ███      █     █  "
+constante BANNER_L1 = "   ___                    ____              "
+constante BANNER_L2 = "  / _ \\ _ __   ___ _ __  / ___|  ___ _ __ __ _ "
+constante BANNER_L3 = " | | | | '_ \\ / _ \\ '_ \\| |  _ / __| '__/ _` |"
+constante BANNER_L4 = " | |_| | |_) |  __/ | | | |_| | (__| | | (_| |"
+constante BANNER_L5 = "  \\___/| .__/ \\___|_| |_|\\____|\\___|_|  \\__,_|"
+constante BANNER_L6 = "       |_|                                      "
 
 // --- System prompt del agente (Manual 7 1.1 + 2.3) ---
 // Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
@@ -628,7 +627,6 @@ funcion mostrar_banner() -> nulo:
     escribir_linea(BANNER_L4)
     escribir_linea(BANNER_L5)
     escribir_linea(BANNER_L6)
-    escribir_linea(BANNER_L7)
     si consola == 1:
         escribir(_syn_ansi(0))
     escribir_linea("")
@@ -983,8 +981,6 @@ funcion chat_tui() -> entero:
     _syn_tui_mensaje(4, BANNER_L4)
     _syn_tui_mensaje(4, BANNER_L5)
     _syn_tui_mensaje(4, BANNER_L6)
-    _syn_tui_mensaje(4, BANNER_L7)
-    _syn_tui_mensaje(2, "OpenSyn v1.1.0 — Orquestador Autonomo (IA local)")
     _syn_tui_mensaje(2, "Chat local con Ollama en http://localhost:11434")
     si total_mod > 0:
         _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(modelo)))

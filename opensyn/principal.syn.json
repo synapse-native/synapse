@@ -5772,7 +5772,7 @@
       "nombre": "BANNER_L1",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "   █████   █████     █████             ██████                    "
+        "valor": "   ___                    ____              "
       }
     },
     {
@@ -5780,7 +5780,7 @@
       "nombre": "BANNER_L2",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "  █     █  █    ██  █     █  ██████   █        █     █  ██████   "
+        "valor": "  / _ \\ _ __   ___ _ __  / ___|  ___ _ __ __ _ "
       }
     },
     {
@@ -5788,7 +5788,7 @@
       "nombre": "BANNER_L3",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "  █     █  █    ██  ███████  █     █  █        █     █  █     █  "
+        "valor": " | | | | '_ \\ / _ \\ '_ \\| |  _ / __| '__/ _` |"
       }
     },
     {
@@ -5796,7 +5796,7 @@
       "nombre": "BANNER_L4",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "  █     █  █████    █        █     █   █████    █   █   █     █  "
+        "valor": " | |_| | |_) |  __/ | | | |_| | (__| | | (_| |"
       }
     },
     {
@@ -5804,7 +5804,7 @@
       "nombre": "BANNER_L5",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "  █     █  █        █        █     █        █    ███    █     █  "
+        "valor": "  \\___/| .__/ \\___|_| |_|\\____|\\___|_|  \\__,_|"
       }
     },
     {
@@ -5812,15 +5812,7 @@
       "nombre": "BANNER_L6",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "  █     █  █        █     █  █     █        █     █     █     █  "
-      }
-    },
-    {
-      "tipo": "",
-      "nombre": "BANNER_L7",
-      "valor": {
-        "tipo": "LiteralCadena",
-        "valor": "   █████   █         █████   █     █  ██████   ███      █     █  "
+        "valor": "       |_|                                      "
       }
     },
     {
@@ -12362,19 +12354,6 @@
             }
           },
           {
-            "tipo": "SentenciaExpr",
-            "expr": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "escribir_linea",
-              "argumentos": [
-                {
-                  "tipo": "Identificador",
-                  "nombre": "BANNER_L7"
-                }
-              ]
-            }
-          },
-          {
             "tipo": "SentenciaSi",
             "condicion": {
               "tipo": "ExpresionArit",
@@ -17427,40 +17406,6 @@
                 {
                   "tipo": "Identificador",
                   "nombre": "BANNER_L6"
-                }
-              ]
-            }
-          },
-          {
-            "tipo": "SentenciaExpr",
-            "expr": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "_syn_tui_mensaje",
-              "argumentos": [
-                {
-                  "tipo": "LiteralNumero",
-                  "valor": 4
-                },
-                {
-                  "tipo": "Identificador",
-                  "nombre": "BANNER_L7"
-                }
-              ]
-            }
-          },
-          {
-            "tipo": "SentenciaExpr",
-            "expr": {
-              "tipo": "LlamadaFuncion",
-              "nombre": "_syn_tui_mensaje",
-              "argumentos": [
-                {
-                  "tipo": "LiteralNumero",
-                  "valor": 2
-                },
-                {
-                  "tipo": "LiteralCadena",
-                  "valor": "OpenSyn v1.1.0 — Orquestador Autonomo (IA local)"
                 }
               ]
             }
