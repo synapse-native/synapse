@@ -15,15 +15,20 @@
 Fase roadmap:      FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            R145 — WIP del agente anterior terminado: cliente OpenAI-compatible
-                   robusto en ollama.c (system/user, errores HTTP, SSE, límites) + banner
-                   figlet (decisión del Arquitecto; oráculo banner desalineado H-R145-1).
-Commit fase:       bdb615c (R145) sobre be5d0af/7949d26/a85e469 (R144c)
-Próximo ME:        Resolver H-R145-1 (oráculo banner: actualizar con aprobación del
-                   Arquitecto o revertir banner) o FASE 31 del roadmap
-Próximo paso:      Probar chat contra llama-server real; cerrar H-R144-3 (modelos.toml
-                   real) y H-R144-2/5 (detección hardware, upgrade silencioso)
-Últimos commits:    db4ccf9 (fix(instalador): fuentes de enlace + hash reales + extracción completa llama-server)
+Estado:            R146 — prueba interactiva real en VS Code con instalación
+                   completa: aiExplain implementado en el LSP (Manual 8 §2.3),
+                   contexto del agente determinista (H-R146-1 resuelto),
+                   instalador completo reinstalado con binarios idénticos.
+Commit fase:       df8ff5f (R146) sobre dd0d90b/4a7e77d (R145b) y bdb615c (R145)
+Próximo ME:        Cerrar H-R145-5 (timeout del oráculo historial, requiere
+                   aprobación) o FASE 31 del roadmap
+Próximo paso:      Prueba interactiva manual del usuario en VS Code (extension
+                   ya instalada y LSP con aiExplain operativo)
+Últimos commits:    df8ff5f (fix(opensyn): H-R146-1 contexto determinista + aiExplain LSP)
+                    dd0d90b (docs(release): cerrar H-R145-1..4 en MEMORIA + fila auditoría R145b)
+                    4a7e77d (fix(opensyn): H-R145-1 cerrado — parser SSE y stops ChatML)
+                    bdb615c (fix(opensyn): R145 terminar WIP cliente OpenAI + banner figlet)
+                    db4ccf9 (fix(instalador): fuentes de enlace + hash reales + extracción completa llama-server)
                      a13332b (feat(opensyn): TUI pantalla completa + historial/Tab + vendor skills + instalador SHA256)
                      ce0e291 (fix(opensyn,runtime): R113 chat sin corrupción + UTF-8 + wizard instalador)
                      d9c498a (F30-b: chat OpenSyn real (Ollama) + consola UTF-8 + LSP multi-mensaje + instalador 8.1.0)
@@ -64,6 +69,7 @@ Próximo paso:      Probar chat contra llama-server real; cerrar H-R144-3 (model
 | `a13332b` | R141/R142: OpenSyn TUI pantalla completa (banner de PÍXELES "OpenSyn", panel+caja de entrada con ❯, streaming NDJSON _syn_ollama_stream_*, menús modales / y /model con flechas, fallback pipe OPENSN_TUI_TEST=1) + historial persistente ~/.opensyn/history.jsonl (FIFO 1000, ↑↓) + autocompletado Tab (comandos / y rutas, doble Tab = menú). Vendor deps/agent-skills v0.6.8 MIT (pin d2c37ef, base de std/agent_skills.syn para /tdd /revisar /plan /skills). Instalador: SHA256 de llama-server/modelos (update_hashes.ps1 sin duplicaciones). Oráculos historial/autocomplete GREEN, E2E pipes limpia (rc=0, stderr 0), pytest 38 passed. Reportes R141/R142. |
 | `db4ccf9` | R144/R144b: test instalador como usuario real — 3 bloqueantes corregidos en synapse.iss/update_hashes.ps1: (1) faltaban fuentes/headers de enlace en bin\ → compilador instalado no compilaba; (2) hash de modelos placeholder + hash ZIP-vs-exe de llama-server + URL 1B 401 + curl sin --fail → descarga IA imposible; (3) extracción copiaba solo el launcher sin sus 50 DLLs → motor IA no arrancaba. E2E v6b: compilación OK, IA local sirviendo completions, oráculos instalados en verde, PATH sin duplicados. Reporte R144. |
 | `bdb615c` | R145: terminar WIP cliente OpenAI-compatible + banner figlet | ollama.c: streaming /v1/chat/completions con system/user ([USUARIO]), errores HTTP ≥400 propagados, cortes [DONE]/finish_reason, prefijo SSE data:, bloque DEBUG con ruta local hardcodeada eliminado, fix OOB 1 byte en escape, truncado system a últimos 3500 bytes (lección R144c) en ambas rutas; principal.syn: banner figlet (decisión Arquitecto; oráculo banner RED → H-R145-1); .syn.json regenerado (R35). Oráculos historial/autocomplete/GGUF GREEN, alineación 0 brechas. |
+| `df8ff5f` | R146: prueba interactiva VS Code + instalación completa — principal.syn: filtrar_listado() excluye artefactos de build (prefijo _, .c.o/.o/.syn.json/.exe) del listado inyectado al modelo; TOOL listar y contexto estático devuelven UNA línea compacta acotada a 2400 chars (H-R146-1: el modelo 1.3B repetía el listado en bucle y el contexto cambiaba en cada build). lsp_v3.syn: synapse/aiExplain implementado (Manual 8 §2.3; antes -32601 y el comando de VS Code quedaba colgado), registrado en MODULOS_D9.md (1256 L, regla 13). Oracle banner: prompt natural ("nombra 3" confundía al modelo, determinista con temp 0). Instalador 8.1.0 reinstalado TYPE=full con binarios byte-idénticos (sha256). Oráculos banner GREEN x2 (~90 s)/autocomplete/GGUF GREEN, LSP 33 passed, alineación 0 brechas. |
 | `7d2edbc` | R143/ME_opensyn_ia_gguf: motor GGUF local endurecido — vocab desde el array real tokenizer.ggml.tokens (antes solo escalar → 0 con GGUFs reales → rechazo), cache de posición O(n) para arrays, límites contra tamano_mmap, cache perezoso F32 (F16/Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 exactos), dims GGUF ne[0]=contigua (w_k OOB corregido), top_p qsort O(vs log vs). Oráculo E2E determinista NUEVO GREEN: GGUF sintético (vocab 11, merges, token_embd Q8_0) → driver .syn compilado con S1 → carga+ingesta 5 tokens+generación "abababababababab" (temp=0)+cierre limpio. H-GGUF-2 INVARIANTE: output.weight debe tener n_vocab filas (LM head itera vocab del tokenizer). Reporte R143. |
 
 ### Deudas / Hallazgos críticos activos
@@ -100,6 +106,8 @@ Próximo paso:      Probar chat contra llama-server real; cerrar H-R144-3 (model
 - **Lección R145:** (1) el cache `~/.synapse/cache/runtime_obj/*.o` puede enmascarar ediciones de runtime/core/*.c — invalidar el .o y recompilar tras editar (patrón "exe stale"); (2) los WIP heredados pueden contener decisiones NO ratificadas (banner) que revierten planes completados — contrastar contra el plan/la bitácora antes de continuar; (3) el smoke de opensyn reescribe config_ollama.txt (auto-persistencia R139) — restaurarlo antes de commitear.
 
 - **Lección R145b (E2E contra servidor real):** (1) en streaming OpenAI, "finish_reason":null aparece en TODOS los chunks — jamás usarlo como terminador sin verificar el valor; (2) los GGUF sin chat template reproducen el template como texto (ChatML <|im_end|>) → enviar stop sequences siempre (patrón cliente robusto); (3) los oráculos E2E de chat con timeout fijo (60 s) quedan obsoletos cuando el chat FUNCIONA: cada prompt es una llamada real al modelo — diseñar oráculos con prompts que no disparen consultas o con timeout proporcional.
+- **H-R146-1 (RESUELTO, df8ff5f):** el contexto inyectado al modelo no era determinista — el listado de la raíz incluía artefactos de build que cambian en cada compilación (_*.c/_*.o/synapse_bootstrap.exe generados por S1 en la raíz) y el modelo 1.3B repetía el listado multilinea en bucle agotando max_tokens (las respuestas variaban según la basura del momento). Fix: filtrar_listado() en principal.syn excluye artefactos por convención del repo (prefijo _, .c.o/.o/.syn.json/.exe) y comprime a UNA línea acotada a 2400 chars, aplicado a TOOL listar y al contexto estático. Respuestas deterministas y con contenido real verificado x2.
+- **Lección R146 (producto instalado = producto validado):** (1) al corregir binarios, reconstruir el instalador y reinstalar de inmediato — y verificar sha256 de lo instalado contra lo validado — para que la prueba interactiva del usuario ejerza el mismo binario que pasaron los oráculos; (2) los prompts de los oráculos no deben contener números literales ("nombra 3"): un modelo pequeño los copy-pastea como respuesta literal (determinista con temperature:0); (3) los artefactos que el propio build genera en la raíz contaminan cualquier listado inyectado a un agente — filtrar por convención, no limpiar a mano.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
