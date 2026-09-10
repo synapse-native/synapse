@@ -3,9 +3,28 @@ REM opensyn.bat — Wrapper para comando opensyn (Manual 9 §2.5, Manual 7 §6)
 REM Arranca llama-server automaticamente si no esta corriendo.
 setlocal EnableDelayedExpansion
 
-set SYNAPSE_BIN=%~dp0
-set IA_DIR=%SYNAPSE_BIN%ia
-set MODELS_DIR=%SYNAPSE_BIN%models
+REM SYNAPSE_HOME = raiz de instalacion (padre de opensyn/ o bin/)
+set SYNAPSE_HOME=%~dp0..
+set OPENSYN_DIR=%~dp0
+set BIN_DIR=%SYNAPSE_HOME%\bin
+set IA_DIR=%OPENSYN_DIR%ia
+set MODELS_DIR=%OPENSYN_DIR%models
+
+REM Buscar opensyn.exe en bin/ o en el directorio actual
+set OPENSYN_EXE=
+if exist "%BIN_DIR%\opensyn.exe" (
+    set "OPENSYN_EXE=%BIN_DIR%\opensyn.exe"
+) else if exist "%OPENSYN_DIR%opensyn.exe" (
+    set "OPENSYN_EXE=%OPENSYN_DIR%opensyn.exe"
+) else (
+    where opensyn >nul 2>&1
+    if not errorlevel 1 (
+        opensyn.exe %*
+        exit /b %errorlevel%
+    )
+    echo [ERROR] opensyn.exe no encontrado
+    exit /b 1
+)
 
 REM Verificar si llama-server ya esta corriendo en puerto 11434
 netstat -an 2>nul | findstr ":11434 " | findstr "LISTENING" >nul 2>&1
@@ -13,7 +32,7 @@ if not errorlevel 1 (
     goto :run_opensyn
 )
 
-REM Buscar modelo GGUF en models/
+REM Buscar modelo GGUF en models/ o ia/
 set MODEL_PATH=
 for %%f in ("%MODELS_DIR%\*.gguf") do (
     set MODEL_PATH=%%f
@@ -52,20 +71,4 @@ set /a WAIT+=1
 goto :wait_loop
 
 :run_opensyn
-if exist "%SYNAPSE_BIN%opensyn.exe" (
-    "%SYNAPSE_BIN%opensyn.exe" %*
-) else if exist "%SYNAPSE_BIN%synapse.exe" (
-    "%SYNAPSE_BIN%synapse.exe" "%~dp0..\opensyn\principal.syn" %*
-) else (
-    where opensyn >nul 2>&1
-    if not errorlevel 1 (
-        opensyn.exe %*
-        exit /b %errorlevel%
-    )
-    where synapse >nul 2>&1
-    if errorlevel 1 (
-        echo [ERROR] synapse.exe no encontrado en PATH
-        exit /b 1
-    )
-    synapse.exe "%~dp0..\opensyn\principal.syn" %*
-)
+"%OPENSYN_EXE%" %*
