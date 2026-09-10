@@ -7,7 +7,7 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-08** (R144c: fix use-after-free RAII en compilador + optimización prompt para deepseek-1.3b)
+Última actualización: **2026-09-10** (R145: terminar WIP cliente OpenAI-compatible en ollama.c + banner figlet)
 
 ---
 
@@ -15,13 +15,14 @@
 Fase roadmap:      FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            R144c — fix use-after-free RAII en compilador (prompt limpio) + optimización
-                   system prompt para deepseek-1.3b. Chat funcional con llama-server OpenAI API.
-Commit fase:       db4ccf9 (R144b instalador) sobre a13332b/7d2edbc (F30-b)
-Próximo ME:        FASE 31 (próxima fase del roadmap) o follow-ups H-R144-2/3/5
-Próximo paso:      Decidir FASE 31 en ROADMAP.md (hoy termina en FASE 30) o cerrar
-                   hallazgos del instalador (detección hardware -1, modelos.toml real,
-                   upgrade silencioso sin llama-server)
+Estado:            R145 — WIP del agente anterior terminado: cliente OpenAI-compatible
+                   robusto en ollama.c (system/user, errores HTTP, SSE, límites) + banner
+                   figlet (decisión del Arquitecto; oráculo banner desalineado H-R145-1).
+Commit fase:       bdb615c (R145) sobre be5d0af/7949d26/a85e469 (R144c)
+Próximo ME:        Resolver H-R145-1 (oráculo banner: actualizar con aprobación del
+                   Arquitecto o revertir banner) o FASE 31 del roadmap
+Próximo paso:      Probar chat contra llama-server real; cerrar H-R144-3 (modelos.toml
+                   real) y H-R144-2/5 (detección hardware, upgrade silencioso)
 Últimos commits:    db4ccf9 (fix(instalador): fuentes de enlace + hash reales + extracción completa llama-server)
                      a13332b (feat(opensyn): TUI pantalla completa + historial/Tab + vendor skills + instalador SHA256)
                      ce0e291 (fix(opensyn,runtime): R113 chat sin corrupción + UTF-8 + wizard instalador)
@@ -62,6 +63,7 @@ Próximo paso:      Decidir FASE 31 en ROADMAP.md (hoy termina en FASE 30) o cer
 | `e4d09c0` | R140/ME_agente_opensyn: OpenSyn AGENTE (herramientas TOOL + contexto repo real) + UI estilo OpenCode/Freebuff + cliente Ollama robusto | HALLAZGO R140: `_ollama_leer_respuesta` leía con recv bloqueante SIN timeout → Ollama colgado congelaba el chat en "Tu>" en silencio (150 s+ sin salida). Fix ollama.c: SO_RCVTIMEO 2 s + plazo absoluto 300 s + corte temprano por Content-Length + errores distinguidos (red/plazo/corte). Además: System Prompt con contexto estático (reglas Synapse .syn + Syquex .syq/@export + AGENTS.md + carpetas raíz + git); bucle agente [TOOL] listar/leer/git (sistema.c _syn_listar_directorio/_syn_capturar_comando, solo lectura); banner ASCII retro + prompt ❯ ANSI solo consola real (io.c _syn_es_consola/_syn_ansi); estado "[*] Consultando a <modelo>…" antes de cada llamada. E2E Ollama REAL: responde con la primera línea real de AGENTS.md, stderr 0 bytes, banner 1 sola vez. MTS completo (plan R1 §1.1/R2 §2.3/R3 §8, 2 oráculos E2E, verificacion_ME). Reporte R140. 0 brechas. |
 | `a13332b` | R141/R142: OpenSyn TUI pantalla completa (banner de PÍXELES "OpenSyn", panel+caja de entrada con ❯, streaming NDJSON _syn_ollama_stream_*, menús modales / y /model con flechas, fallback pipe OPENSN_TUI_TEST=1) + historial persistente ~/.opensyn/history.jsonl (FIFO 1000, ↑↓) + autocompletado Tab (comandos / y rutas, doble Tab = menú). Vendor deps/agent-skills v0.6.8 MIT (pin d2c37ef, base de std/agent_skills.syn para /tdd /revisar /plan /skills). Instalador: SHA256 de llama-server/modelos (update_hashes.ps1 sin duplicaciones). Oráculos historial/autocomplete GREEN, E2E pipes limpia (rc=0, stderr 0), pytest 38 passed. Reportes R141/R142. |
 | `db4ccf9` | R144/R144b: test instalador como usuario real — 3 bloqueantes corregidos en synapse.iss/update_hashes.ps1: (1) faltaban fuentes/headers de enlace en bin\ → compilador instalado no compilaba; (2) hash de modelos placeholder + hash ZIP-vs-exe de llama-server + URL 1B 401 + curl sin --fail → descarga IA imposible; (3) extracción copiaba solo el launcher sin sus 50 DLLs → motor IA no arrancaba. E2E v6b: compilación OK, IA local sirviendo completions, oráculos instalados en verde, PATH sin duplicados. Reporte R144. |
+| `bdb615c` | R145: terminar WIP cliente OpenAI-compatible + banner figlet | ollama.c: streaming /v1/chat/completions con system/user ([USUARIO]), errores HTTP ≥400 propagados, cortes [DONE]/finish_reason, prefijo SSE data:, bloque DEBUG con ruta local hardcodeada eliminado, fix OOB 1 byte en escape, truncado system a últimos 3500 bytes (lección R144c) en ambas rutas; principal.syn: banner figlet (decisión Arquitecto; oráculo banner RED → H-R145-1); .syn.json regenerado (R35). Oráculos historial/autocomplete/GGUF GREEN, alineación 0 brechas. |
 | `7d2edbc` | R143/ME_opensyn_ia_gguf: motor GGUF local endurecido — vocab desde el array real tokenizer.ggml.tokens (antes solo escalar → 0 con GGUFs reales → rechazo), cache de posición O(n) para arrays, límites contra tamano_mmap, cache perezoso F32 (F16/Q4_0/Q4_1/Q5_0/Q5_1/Q8_0 exactos), dims GGUF ne[0]=contigua (w_k OOB corregido), top_p qsort O(vs log vs). Oráculo E2E determinista NUEVO GREEN: GGUF sintético (vocab 11, merges, token_embd Q8_0) → driver .syn compilado con S1 → carga+ingesta 5 tokens+generación "abababababababab" (temp=0)+cierre limpio. H-GGUF-2 INVARIANTE: output.weight debe tener n_vocab filas (LM head itera vocab del tokenizer). Reporte R143. |
 
 ### Deudas / Hallazgos críticos activos
@@ -89,6 +91,10 @@ Próximo paso:      Decidir FASE 31 en ROADMAP.md (hoy termina en FASE 30) o cer
 - **H-GGUF-2 (INVARIANTE REGISTRADO, 7d2edbc):** `_syn_modelo_evaluar_token` dimensiona logits con `mc->vocab_size` (tokens del tokenizer) pero el LM head itera `output.weight` con stride n_embd — si output.weight tiene menos filas que el vocab del tokenizer la lectura sale del mmap (logits corruptos → generación vacía). Con GGUFs reales tokenizer==output por diseño, así que no se manifiesta en producción; INVARIANTE: output.weight debe tener n_vocab filas. Detectado por el oráculo sintético (vocab 11 vs output 8).
 - **H-GGUF-1 / H-HIST-1 / H-HIST-2 (RESUELTOS, a13332b y 7d2edbc):** merges BPE exigen la pieza resultado en el vocab (resolución por texto exacto); " salir" con espacios se recorta antes de filtrar; Tab/flechas en modo pipe Windows con semántica idéntica a POSIX. Detalle en verificacion_ME_opensyn_ia_gguf.md y verificacion_ME_opensyn_historial_autocomplete.md.
 - **Entorno de esta máquina (nota operativa):** Ollama NO instalado — los oráculos de contenido (banner chequeo 2, agente) requieren Ollama vivo con modelo descargado; en esta máquina pasan los chequeos que no dependen de él (banner ASCII, historial, autocomplete, GGUF sintético, pytest 38). Los print con ↑↓/❯ requieren PYTHONIOENCODING=utf-8 en consola cp1252 (patrón conocido).
+
+- **H-R145-1 (REGISTRADO, bdb615c):** `tests/e2e_oracle_opensyn_banner.py` valida el banner de bloques ████ ratificado en R141 (plan ME_opensyn_tui); el Arquitecto decidió en sesión 2026-09-10 mantener el banner figlet del WIP SIN tocar el oráculo → chequeo 1 del oráculo RED contra dist/bin/opensyn.exe reconstruido. RESOLUCIÓN ASIGNADA: actualizar el oráculo SOLO con aprobación explícita del Arquitecto (tests inmutables) o revertir el banner. No dejar el test validando una versión vieja del binario.
+- **H-R145-2 (REGISTRADO, bdb615c):** chequeo 2 del oráculo banner (agente nombra archivos reales del repo) requiere Ollama vivo con modelo descargado; no instalado en esta máquina (patrón conocido).
+- **Lección R145:** (1) el cache `~/.synapse/cache/runtime_obj/*.o` puede enmascarar ediciones de runtime/core/*.c — invalidar el .o y recompilar tras editar (patrón "exe stale"); (2) los WIP heredados pueden contener decisiones NO ratificadas (banner) que revierten planes completados — contrastar contra el plan/la bitácora antes de continuar; (3) el smoke de opensyn reescribe config_ollama.txt (auto-persistencia R139) — restaurarlo antes de commitear.
 
 ### Archivos de interés rápido
 - `auditoria/registrar_lectura.py` — Gate de lectura previa (obligatorio antes de commit)
