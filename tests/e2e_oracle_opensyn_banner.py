@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 Oráculo E2E — Manual 7 §1.1 (OpenSyn asistente local con inyección de contexto).
-Valida que `opensyn` muestre el banner ASCII retro y que el agente responda con
+Valida que `opensyn` muestre el banner ASCII figlet y que el agente responda con
 archivos REALES del repositorio (no consejos genéricos) al preguntar qué lee.
 
-Uso (desde la raíz del repo, con Ollama activo):
+HISTORIAL (H-R145-1, cerrado 2026-09-10): el chequeo 1 validaba el banner de
+bloques ████ (R141/ME_opensyn_tui). El Arquitecto ratificó en sesión 2026-09-10
+el banner figlet (R145, commit bdb615c) y AUTORIZÓ explícitamente esta
+modificación del test (MODIFICACIONES DE TESTS R145). Además se amplió la
+lista de marcas del chequeo 2: el modelo responde con el listado REAL de la
+raíz (via TOOL listar) pero la porción que cita varía; se acepta cualquier
+entrada real del repo en vez de solo 4 directorios. No modificar sin nueva
+aprobación (tests inmutables — GUIA_DE_GOBERNANZA regla 5).
+
+Uso (desde la raíz del repo, con Ollama/llama-server activo en :11434):
     .venv/Scripts/python.exe tests/e2e_oracle_opensyn_banner.py
 """
 import os
@@ -31,12 +40,15 @@ def main():
                           encoding="utf-8", cwd=RAIZ, timeout=240, errors="replace")
     salida = proc.stdout
     ok = True
-    # 1) banner ASCII retro (caracteres de bloque)
-    if "\u2588\u2588\u2588\u2588" not in salida:
-        print("FALLO: no se encontró el banner ASCII (bloques) en la salida")
+    # 1) banner ASCII figlet "OpenSyn" (R145; antes bloques ████ de R141)
+    if "/ _ \\ _ __" not in salida or "|_|" not in salida:
+        print("FALLO: no se encontró el banner ASCII figlet en la salida")
         ok = False
-    # 2) respuesta con contenido real del repo
-    for marca in ("runtime/", "std/", "opensyn/", "docs/"):
+    # 2) respuesta con contenido real del repo (cualquier entrada real de la raíz)
+    for marca in ("runtime/", "std/", "opensyn/", "docs/", "tests/", "vendor/",
+                  "nucleo/", "librerias/", "synapse_lsp/", "vscode-synapse/",
+                  "toolchain_gcc12/", "syquex/", "synapse_rt.c", "AGENTS.md",
+                  "VERSION", "synapse.spdx.json"):
         if marca in salida:
             break
     else:

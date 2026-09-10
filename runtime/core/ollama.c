@@ -511,23 +511,25 @@ static CadenaSegura _openai_consultar(const char* modelo, const char* prompt,
     char* body;
     int bl;
     if (sjs && sys_len > 0) {
-        cap_body = mjlen + sjlen + ujlen + 200;
+        cap_body = mjlen + sjlen + ujlen + 280;
         body = (char*)malloc((size_t)cap_body);
         if (!body) { free(mjs); free(sjs); free(ujs); return vacio; }
         bl = snprintf(body, (size_t)cap_body,
             "{\"model\":\"%s\",\"messages\":["
             "{\"role\":\"system\",\"content\":\"%s\"},"
             "{\"role\":\"user\",\"content\":\"%s\"}"
-            "],\"max_tokens\":%d,\"temperature\":0}",
+            "],\"max_tokens\":%d,\"temperature\":0,"
+            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
             mjs, sjs, ujs, max_tokens);
         free(sjs);
     } else {
-        cap_body = mjlen + ujlen + 160;
+        cap_body = mjlen + ujlen + 240;
         body = (char*)malloc((size_t)cap_body);
         if (!body) { free(mjs); free(ujs); return vacio; }
         bl = snprintf(body, (size_t)cap_body,
             "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-            "\"max_tokens\":%d,\"temperature\":0}",
+            "\"max_tokens\":%d,\"temperature\":0,"
+            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
             mjs, ujs, max_tokens);
     }
     free(mjs);
@@ -1041,36 +1043,54 @@ static int _oll_linea_json(const char* linea, int largo, char** out, int* out_le
         }
         return 3;
     }
-    // ¿done? (Ollama: "done":true, OpenAI: "finish_reason")
-    if (strstr(linea, "\"done\":true")) return 2;
-    if (strstr(linea, "\"finish_reason\"")) return 2;
-    // data: [DONE] (OpenAI streaming terminator)
-    if (strstr(linea, "[DONE]")) return 2;
-    // Buscar contenido: Ollama "content":"..." o OpenAI "delta":{"content":"..."}
+    // Buscar contenido PRIMERO (el chunk final de llama.cpp puede traer
+    // content y finish_reason:"stop" en la MISMA línea — H-R145-3):
+    // Ollama "content":"..." o OpenAI "delta":{"content":"..."}.
+    // "reasoning_content":"..." NO hace match (no hay '"' antes de content).
     const char* p = strstr(linea, "\"content\":\"");
-    if (!p) {
-        // Intentar formato OpenAI: buscar "delta":{"content":"..."}
-        p = strstr(linea, "\"delta\":{");
-        if (p) {
-            const char* dc = strstr(p, "\"content\":\"");
-            if (dc) p = dc;
-            else return 0;
-        } else return 0;
+    const char* ini = NULL;
+    if (p) {
+        ini = p + 11;
+    } else {
+        const char* dl_delta = strstr(linea, "\"delta\":{");
+        if (dl_delta) {
+            const char* dc = strstr(dl_delta, "\"content\":\"");
+            if (dc) ini = dc + 11;
+        }
     }
-    const char* ini = p + 11;
-    const char* fin = ini;
-    while (*fin && *fin != '"') {
-        if (*fin == '\\') fin++;
-        if (*fin) fin++;
+    if (ini) {
+        const char* fin = ini;
+        while (*fin && *fin != '"') {
+            if (*fin == '\\') fin++;
+            if (*fin) fin++;
+        }
+        int largo2 = (int)(fin - ini);
+        if (largo2 > 0) {
+            int dl = 0;
+            char* d = _ollama_desescapar(ini, largo2, &dl);
+            if (d) {
+                *out = d;
+                *out_len = dl;
+                return 1;
+            }
+        }
     }
-    int largo2 = (int)(fin - ini);
-    if (largo2 <= 0) return 0;
-    int dl = 0;
-    char* d = _ollama_desescapar(ini, largo2, &dl);
-    if (!d) return 0;
-    *out = d;
-    *out_len = dl;
-    return 1;
+    // ¿done? SOLO si la línea no trajo contenido. Ollama: "done":true.
+    // OpenAI: "finish_reason" con valor NO nulo (entre comillas) — cada chunk
+    // de streaming trae "finish_reason":null, que NO marca el fin (H-R145-3).
+    if (strstr(linea, "\"done\":true")) return 2;
+    const char* fr = strstr(linea, "\"finish_reason\"");
+    if (fr) {
+        const char* q = strchr(fr, ':');
+        if (q) {
+            q++;
+            while (*q == ' ' || *q == '\t') q++;
+            if (*q == '"') return 2; // "stop"/"length"; null no lleva comillas
+        }
+    }
+    // data: [DONE] (terminador de streaming OpenAI)
+    if (strstr(linea, "[DONE]")) return 2;
+    return 0;
 }
 
 void* _syn_ollama_stream_iniciar(CadenaSegura modelo, CadenaSegura prompt,
@@ -1122,23 +1142,25 @@ void* _syn_ollama_stream_iniciar(CadenaSegura modelo, CadenaSegura prompt,
     int bl;
     const char* endpoint = "/v1/chat/completions";
     if (sjs && sjlen > 0) {
-        cap_body = mjlen + sjlen + ujlen + 200;
+        cap_body = mjlen + sjlen + ujlen + 280;
         body = (char*)malloc((size_t)cap_body);
         if (!body) { free(mjs); free(sjs); free(ujs); return NULL; }
         bl = snprintf(body, (size_t)cap_body,
             "{\"model\":\"%s\",\"messages\":["
             "{\"role\":\"system\",\"content\":\"%s\"},"
             "{\"role\":\"user\",\"content\":\"%s\"}"
-            "],\"stream\":true,\"max_tokens\":%d,\"temperature\":0}",
+            "],\"stream\":true,\"max_tokens\":%d,\"temperature\":0,"
+            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
             mjs, sjs, ujs, mt);
         free(sjs);
     } else {
-        cap_body = mjlen + ujlen + 160;
+        cap_body = mjlen + ujlen + 240;
         body = (char*)malloc((size_t)cap_body);
         if (!body) { free(mjs); free(ujs); return NULL; }
         bl = snprintf(body, (size_t)cap_body,
             "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\",\"content\":\"%s\"}],"
-            "\"stream\":true,\"max_tokens\":%d,\"temperature\":0}",
+            "\"stream\":true,\"max_tokens\":%d,\"temperature\":0,"
+            "\"stop\":[\"<|im_end|>\",\"<|im_start|>\",\"<|EOT|>\"]}",
             mjs, ujs, mt);
     }
     free(mjs);
