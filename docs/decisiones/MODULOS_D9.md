@@ -8,5 +8,6 @@
 
 - nucleo/lexer.syn
 - nucleo/analizador_semantico.syn
+- nucleo/lsp_v3.syn
 - compilador/generator/generator.py
 - synapse_rt.c

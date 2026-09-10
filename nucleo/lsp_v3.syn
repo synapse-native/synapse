@@ -6,6 +6,7 @@
 importar std.io
 importar std.texto
 importar std.json
+importar std.sistema
 
 // C-level document storage (avoids Synapse RAII destruction)
 externo funcion lsp_doc_store(texto: texto) -> nulo
@@ -933,6 +934,158 @@ funcion handle_ai_fix(id: entero, params: texto) -> nulo:
         verdadero
     enviar_respuesta(construir_respuesta(id, "{\"fixes\":[]}"))
 
+// cumple Manual 8 §2.3: synapse/aiExplain — explica código con IA local.
+// El comando de paleta de la extensión VS Code (Manual 8 §2.3) invoca este
+// método; sin handler el LSP respondía -32601 y el comando se quedaba colgado.
+// Usa el backend real (Manual 7 §8): _syn_ollama_consultar sobre :11434.
+externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
+externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
+
+funcion ia_modelo_activo() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    // Modelo activo: config_ollama.txt del cwd, luego HOME\.opensyn (el
+    // instalador lo escribe allí, Manual 9 §5). Si no hay, primer modelo de
+    // /api/tags; si no hay backend, default conservador.
+    let modelo = ""
+    let cwd_act = _syn_obtener_cwd()
+    si cwd_act != "":
+        let cfg_cwd = leer_archivo_sin_validar(concat(cwd_act, "/config_ollama.txt"))
+        si cfg_cwd != "":
+            modelo = ia_modelo_de_config(cfg_cwd)
+    si modelo == "":
+        let home = obtener_env("USERPROFILE")
+        si home != "":
+            let cfg_home = leer_archivo_sin_validar(concat(home, "\\.opensyn\\config_ollama.txt"))
+            si cfg_home != "":
+                modelo = ia_modelo_de_config(cfg_home)
+    si modelo == "":
+        let modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+        si modelos != "":
+            modelo = ia_primer_modelo(modelos)
+    si modelo == "":
+        modelo = "qwen-coder"
+    retornar modelo
+
+// Lee un archivo sin validar la ruta contra cwd (necesario para leer
+// config_ollama.txt de USERPROFILE; la validacion del wrapper std rechaza
+// rutas absolutas). Patron de opensyn/principal.syn leer_archivo_sin_validar.
+funcion leer_archivo_sin_validar(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    let contenido = ""
+    inseguro:
+        asm("CadenaSegura _rl = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _cl = _syn_leer_archivo(_rl); if(_cl.longitud>0) contenido = _cl;")
+    retornar contenido
+
+// Extrae el valor de "model=" de un config_ollama.txt en memoria.
+funcion ia_modelo_de_config(config: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    let total = strlen_s(config)
+    let i = indice_de(config, "model=")
+    si i < 0:
+        retornar ""
+    let ini = i + 6
+    let fin = ini
+    mientras fin < total:
+        let c = subcadena(config, fin, 1)
+        si c == "\n" o c == "\r":
+            romper
+        fin = fin + 1
+    si fin <= ini:
+        retornar ""
+    retornar subcadena(config, ini, fin - ini)
+
+// Extrae el primer nombre de modelo de la lista /api/tags (campos "name":).
+funcion ia_primer_modelo(tags_json: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    let total = strlen_s(tags_json)
+    let i = indice_de(tags_json, "\"name\":\"")
+    si i < 0:
+        i = indice_de(tags_json, "\"name\": \"")
+    si i < 0:
+        retornar ""
+    let ini = -1
+    let j = i
+    mientras j < total:
+        si subcadena(tags_json, j, 1) == "\"":
+            si ini >= 0:
+                retornar subcadena(tags_json, ini, j - ini)
+            ini = j + 1
+        j = j + 1
+    retornar ""
+
+funcion handle_ai_explain(id: entero, params: texto) -> nulo:
+    requiere:
+        id >= 0
+    garantiza:
+        verdadero
+    // Extrae "code" del params (primer campo "code":"...") — formato que envía
+    // la extensión VS Code (extension.js synapse.aiExplain).
+    let codigo = ia_extraer_campo(params, "code")
+    si codigo == "":
+        enviar_respuesta(construir_respuesta(id, "{\"ai_available\":false,\"explanation\":\"\"}"))
+    sino:
+        let modelo = ia_modelo_activo()
+        let prompt = concat("[USUARIO]Explica brevemente este codigo Synapse (que hace, linea por linea si aplica). Responde en espanol, sin markdown:\n", strcpy_f(codigo))
+        let respuesta = _syn_ollama_consultar(strcpy_f(modelo), strcpy_f(prompt), "127.0.0.1", 11434, 512)
+        si respuesta == "":
+            enviar_respuesta(construir_respuesta(id, "{\"ai_available\":false,\"explanation\":\"\"}"))
+        sino:
+            let json_resp = "{\"ai_available\":true,\"explanation\":\"" + escapar_json(respuesta) + "\"}"
+            enviar_respuesta(construir_respuesta(id, strcpy_f(json_resp)))
+
+// Extrae el valor de cadena del campo "clave":"..." de un JSON plano.
+funcion ia_extraer_campo(json_txt: texto, clave: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    let marcador = concat("\"", strcpy_f(clave))
+    let marcador2 = concat(strcpy_f(marcador), "\":\"")
+    let i = indice_de(json_txt, strcpy_f(marcador2))
+    si i < 0:
+        let marcador3 = concat("\"", strcpy_f(clave))
+        let marcador4 = concat(strcpy_f(marcador3), "\": \"")
+        i = indice_de(json_txt, strcpy_f(marcador4))
+        si i < 0:
+            retornar ""
+        i = i + strlen_s(marcador4)
+    sino:
+        i = i + strlen_s(marcador2)
+    let total = strlen_s(json_txt)
+    let fin = i
+    mientras fin < total:
+        let c = subcadena(json_txt, fin, 1)
+        si c == "\"":
+            romper
+        sino:
+            si c == "\\":
+                fin = fin + 2
+            sino:
+                fin = fin + 1
+    si fin >= total:
+        retornar ""
+    // desescapar mínimo: \n y \" (lo demás no aparece en código typical)
+    let crudo = subcadena(json_txt, i, fin - i)
+    let r = indice_de(crudo, "\\n")
+    mientras r >= 0:
+        let antes = subcadena(crudo, 0, r)
+        let despues = subcadena(crudo, r + 2, strlen_s(crudo) - r - 2)
+        let crudo = concat(antes, concat("\n", strcpy_f(despues)))
+        let r = indice_de(strcpy_f(crudo), "\\n")
+    retornar crudo
+
 // ============================================================
 // FUNCIÓN PRINCIPAL — Bucle del LSP
 // ============================================================
@@ -1082,17 +1235,21 @@ funcion principal() -> entero:
                                                             si cmp_texto(method_name, "synapse/aiStatus") == 0:
                                                                 handle_ai_status(id_val)
                                                             sino:
-                                                                si cmp_texto(method_name, "synapse/aiTranspile") == 0:
-                                                                    handle_ai_transpile(id_val, params_str)
+                                                                // cumple Manual 8 §2.3: aiExplain invocado por la extension VS Code
+                                                                si cmp_texto(method_name, "synapse/aiExplain") == 0:
+                                                                    handle_ai_explain(id_val, params_str)
                                                                 sino:
-                                                                    si cmp_texto(method_name, "synapse/aiBindings") == 0:
-                                                                        handle_ai_bindings(id_val, params_str)
+                                                                    si cmp_texto(method_name, "synapse/aiTranspile") == 0:
+                                                                        handle_ai_transpile(id_val, params_str)
                                                                     sino:
-                                                                        si cmp_texto(method_name, "synapse/aiComplete") == 0:
-                                                                            handle_ai_complete(id_val, params_str)
+                                                                        si cmp_texto(method_name, "synapse/aiBindings") == 0:
+                                                                            handle_ai_bindings(id_val, params_str)
                                                                         sino:
-                                                                            si cmp_texto(method_name, "synapse/aiFix") == 0:
-                                                                                handle_ai_fix(id_val, params_str)
+                                                                            si cmp_texto(method_name, "synapse/aiComplete") == 0:
+                                                                                handle_ai_complete(id_val, params_str)
+                                                                            sino:
+                                                                                si cmp_texto(method_name, "synapse/aiFix") == 0:
+                                                                                    handle_ai_fix(id_val, params_str)
 
         liberar_nodo(msg)
 

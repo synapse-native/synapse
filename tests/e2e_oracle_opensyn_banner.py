@@ -10,8 +10,11 @@ el banner figlet (R145, commit bdb615c) y AUTORIZÓ explícitamente esta
 modificación del test (MODIFICACIONES DE TESTS R145). Además se amplió la
 lista de marcas del chequeo 2: el modelo responde con el listado REAL de la
 raíz (via TOOL listar) pero la porción que cita varía; se acepta cualquier
-entrada real del repo en vez de solo 4 directorios. No modificar sin nueva
-aprobación (tests inmutables — GUIA_DE_GOBERNANZA regla 5).
+entrada real del repo en vez de solo 4 directorios. R146 (2026-09-10): el
+prompt "nombra 3 reales" confunde al modelo 1.3B (responde literalmente "3",
+determinista con temperature:0); se usa formulación natural que sí dispara
+el TOOL listar. No modificar sin nueva aprobación (tests inmutables —
+GUIA_DE_GOBERNANZA regla 5).
 
 Uso (desde la raíz del repo, con Ollama/llama-server activo en :11434):
     .venv/Scripts/python.exe tests/e2e_oracle_opensyn_banner.py
@@ -35,7 +38,7 @@ def main():
     with open(os.path.join(cfg_dir, "config_ollama.txt"), "w", encoding="utf-8") as f:
         f.write("ollama=1\nmodel=qwen-coder\n")
 
-    entrada = "que archivos hay en la raiz de este repositorio? nombra 3 reales\nsalir\n"
+    entrada = "que archivos hay en la raiz de este repositorio\nsalir\n"
     proc = subprocess.run([EXE], input=entrada, capture_output=True, text=True,
                           encoding="utf-8", cwd=RAIZ, timeout=240, errors="replace")
     salida = proc.stdout

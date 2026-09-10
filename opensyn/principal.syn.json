@@ -5493,6 +5493,19 @@
     },
     {
       "tipo": "DeclaracionExterna",
+      "nombre": "_syn_texto_longitud",
+      "parametros": [
+        {
+          "nombre": "t",
+          "tipo": "texto",
+          "es_transferencia": false
+        }
+      ],
+      "tipo_retorno": "entero",
+      "kind": "funcion"
+    },
+    {
+      "tipo": "DeclaracionExterna",
       "nombre": "_syn_capturar_comando",
       "parametros": [
         {
@@ -5820,7 +5833,7 @@
       "nombre": "AGENTE_SISTEMA",
       "valor": {
         "tipo": "LiteralCadena",
-        "valor": "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos."
+        "valor": "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos. No repitas listados completos: resume y menciona solo las carpetas y archivos mas relevantes (maximo 10)."
       }
     },
     {
@@ -12548,6 +12561,466 @@
     },
     {
       "tipo": "FuncionDef",
+      "nombre": "filtrar_listado",
+      "parametros": [
+        {
+          "nombre": "lista",
+          "tipo": "texto",
+          "es_transferencia": false
+        }
+      ],
+      "tipo_retorno": "texto",
+      "contratos": {
+        "requiere": [
+          {
+            "tipo": "LiteralBooleano",
+            "valor": true
+          }
+        ],
+        "garantiza": [
+          {
+            "tipo": "ExpresionArit",
+            "izquierda": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "longitud",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "resultado"
+                }
+              ]
+            },
+            "operador": ">=",
+            "derecha": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          }
+        ]
+      },
+      "cuerpo": {
+        "tipo": "Bloque",
+        "sentencias": [
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "res",
+            "expresion": {
+              "tipo": "LiteralCadena",
+              "valor": ""
+            }
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "total",
+            "expresion": {
+              "tipo": "LlamadaFuncion",
+              "nombre": "strlen_s",
+              "argumentos": [
+                {
+                  "tipo": "Identificador",
+                  "nombre": "lista"
+                }
+              ]
+            }
+          },
+          {
+            "tipo": "AsignacionVariable",
+            "nombre": "i",
+            "expresion": {
+              "tipo": "LiteralNumero",
+              "valor": 0
+            }
+          },
+          {
+            "tipo": "SentenciaMientras",
+            "condicion": {
+              "tipo": "ExpresionArit",
+              "izquierda": {
+                "tipo": "Identificador",
+                "nombre": "i"
+              },
+              "operador": "<",
+              "derecha": {
+                "tipo": "Identificador",
+                "nombre": "total"
+              }
+            },
+            "cuerpo": [
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "fin_e",
+                "expresion": {
+                  "tipo": "Identificador",
+                  "nombre": "i"
+                }
+              },
+              {
+                "tipo": "SentenciaMientras",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fin_e"
+                  },
+                  "operador": "<",
+                  "derecha": {
+                    "tipo": "Identificador",
+                    "nombre": "total"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaSi",
+                    "condicion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "LlamadaFuncion",
+                        "nombre": "subcadena",
+                        "argumentos": [
+                          {
+                            "tipo": "Identificador",
+                            "nombre": "lista"
+                          },
+                          {
+                            "tipo": "Identificador",
+                            "nombre": "fin_e"
+                          },
+                          {
+                            "tipo": "LiteralNumero",
+                            "valor": 1
+                          }
+                        ]
+                      },
+                      "operador": "==",
+                      "derecha": {
+                        "tipo": "LiteralCadena",
+                        "valor": "\n"
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "tipo": "SentenciaRomper"
+                      }
+                    ]
+                  },
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "fin_e",
+                    "expresion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "fin_e"
+                      },
+                      "operador": "+",
+                      "derecha": {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "entrada",
+                "expresion": {
+                  "tipo": "LlamadaFuncion",
+                  "nombre": "subcadena",
+                  "argumentos": [
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "lista"
+                    },
+                    {
+                      "tipo": "Identificador",
+                      "nombre": "i"
+                    },
+                    {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "fin_e"
+                      },
+                      "operador": "-",
+                      "derecha": {
+                        "tipo": "Identificador",
+                        "nombre": "i"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "conservar",
+                "expresion": {
+                  "tipo": "LiteralNumero",
+                  "valor": 1
+                }
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "termina_con",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "entrada"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": ".c.o"
+                        }
+                      ]
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  "operador": "||",
+                  "derecha": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "termina_con",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "entrada"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": ".o"
+                        }
+                      ]
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "conservar",
+                    "expresion": {
+                      "tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "termina_con",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "entrada"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": ".syn.json"
+                        }
+                      ]
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  },
+                  "operador": "||",
+                  "derecha": {
+                    "tipo": "ExpresionArit",
+                    "izquierda": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "termina_con",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "entrada"
+                        },
+                        {
+                          "tipo": "LiteralCadena",
+                          "valor": ".exe"
+                        }
+                      ]
+                    },
+                    "operador": "==",
+                    "derecha": {
+                      "tipo": "LiteralNumero",
+                      "valor": 1
+                    }
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "conservar",
+                    "expresion": {
+                      "tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "LlamadaFuncion",
+                    "nombre": "subcadena",
+                    "argumentos": [
+                      {
+                        "tipo": "Identificador",
+                        "nombre": "entrada"
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 0
+                      },
+                      {
+                        "tipo": "LiteralNumero",
+                        "valor": 1
+                      }
+                    ]
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralCadena",
+                    "valor": "_"
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "conservar",
+                    "expresion": {
+                      "tipo": "LiteralNumero",
+                      "valor": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "SentenciaSi",
+                "condicion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "conservar"
+                  },
+                  "operador": "==",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                },
+                "cuerpo": [
+                  {
+                    "tipo": "SentenciaSi",
+                    "condicion": {
+                      "tipo": "ExpresionArit",
+                      "izquierda": {
+                        "tipo": "Identificador",
+                        "nombre": "res"
+                      },
+                      "operador": "!=",
+                      "derecha": {
+                        "tipo": "LiteralCadena",
+                        "valor": ""
+                      }
+                    },
+                    "cuerpo": [
+                      {
+                        "tipo": "AsignacionVariable",
+                        "nombre": "res",
+                        "expresion": {
+                          "tipo": "LlamadaFuncion",
+                          "nombre": "concat",
+                          "argumentos": [
+                            {
+                              "tipo": "Identificador",
+                              "nombre": "res"
+                            },
+                            {
+                              "tipo": "LiteralCadena",
+                              "valor": ", "
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "tipo": "AsignacionVariable",
+                    "nombre": "res",
+                    "expresion": {
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "concat",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "res"
+                        },
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "entrada"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "tipo": "AsignacionVariable",
+                "nombre": "i",
+                "expresion": {
+                  "tipo": "ExpresionArit",
+                  "izquierda": {
+                    "tipo": "Identificador",
+                    "nombre": "fin_e"
+                  },
+                  "operador": "+",
+                  "derecha": {
+                    "tipo": "LiteralNumero",
+                    "valor": 1
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "tipo": "SentenciaRetornar",
+            "valor": {
+              "tipo": "Identificador",
+              "nombre": "res"
+            },
+            "es_transferencia": false
+          }
+        ]
+      }
+    },
+    {
+      "tipo": "FuncionDef",
       "nombre": "construir_contexto",
       "parametros": [
         {
@@ -12665,8 +13138,14 @@
                       "nombre": "parte"
                     },
                     {
-                      "tipo": "Identificador",
-                      "nombre": "lista"
+                      "tipo": "LlamadaFuncion",
+                      "nombre": "filtrar_listado",
+                      "argumentos": [
+                        {
+                          "tipo": "Identificador",
+                          "nombre": "lista"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -13065,11 +13544,17 @@
                         "nombre": "listado",
                         "expresion": {
                           "tipo": "LlamadaFuncion",
-                          "nombre": "_syn_listar_directorio",
+                          "nombre": "filtrar_listado",
                           "argumentos": [
                             {
-                              "tipo": "Identificador",
-                              "nombre": "ruta"
+                              "tipo": "LlamadaFuncion",
+                              "nombre": "_syn_listar_directorio",
+                              "argumentos": [
+                                {
+                                  "tipo": "Identificador",
+                                  "nombre": "ruta"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -13094,11 +13579,66 @@
                             "nombre": "res",
                             "expresion": {
                               "tipo": "LiteralCadena",
-                              "valor": "[TOOL_RESULT] (directorio vacio o sin acceso)"
+                              "valor": "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
                             }
                           }
                         ],
                         "sino": [
+                          {
+                            "tipo": "SentenciaSi",
+                            "condicion": {
+                              "tipo": "ExpresionArit",
+                              "izquierda": {
+                                "tipo": "LlamadaFuncion",
+                                "nombre": "_syn_texto_longitud",
+                                "argumentos": [
+                                  {
+                                    "tipo": "Identificador",
+                                    "nombre": "listado"
+                                  }
+                                ]
+                              },
+                              "operador": ">",
+                              "derecha": {
+                                "tipo": "LiteralNumero",
+                                "valor": 2400
+                              }
+                            },
+                            "cuerpo": [
+                              {
+                                "tipo": "AsignacionVariable",
+                                "nombre": "listado",
+                                "expresion": {
+                                  "tipo": "LlamadaFuncion",
+                                  "nombre": "concat",
+                                  "argumentos": [
+                                    {
+                                      "tipo": "LlamadaFuncion",
+                                      "nombre": "subcadena",
+                                      "argumentos": [
+                                        {
+                                          "tipo": "Identificador",
+                                          "nombre": "listado"
+                                        },
+                                        {
+                                          "tipo": "LiteralNumero",
+                                          "valor": 0
+                                        },
+                                        {
+                                          "tipo": "LiteralNumero",
+                                          "valor": 2400
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tipo": "LiteralCadena",
+                                      "valor": " ... (listado truncado; usa TOOL listar <subdirectorio>)"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          },
                           {
                             "tipo": "AsignacionVariable",
                             "nombre": "res",

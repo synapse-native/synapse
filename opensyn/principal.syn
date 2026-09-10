@@ -19,6 +19,7 @@ externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto,
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
 // --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
 externo funcion _syn_listar_directorio(ruta: texto) -> texto
+externo funcion _syn_texto_longitud(t: texto) -> entero
 externo funcion _syn_capturar_comando(cmd: texto) -> texto
 // --- Consola real + ANSI (Manual 9 §2.5: banner/prompt estilo OpenCode) ---
 externo funcion _syn_es_consola() -> entero
@@ -59,7 +60,7 @@ constante BANNER_L6 = "       |_|                                      "
 
 // --- System prompt del agente (Manual 7 1.1 + 2.3) ---
 // Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
-constante AGENTE_SISTEMA = "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos."
+constante AGENTE_SISTEMA = "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos. No repitas listados completos: resume y menciona solo las carpetas y archivos mas relevantes (maximo 10)."
 
 // --- Prompts de habilidades (skills) del chat ---
 // Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
@@ -647,6 +648,40 @@ funcion pintar_linea(texto: texto, sgr: entero) -> nulo:
 // Agente con contexto del repositorio (Manual 7 2.3: RAG local)
 // ============================================================
 
+// Filtra artefactos de compilacion del listado (convencion del repo: todo
+// intermedio lleva prefijo '_' o sufijo .c.o/.o/.syn.json/.exe). Sin filtro, el
+// listado cambia en cada build y el contexto del modelo se vuelve no
+// determinista (H-R146-1). Devuelve entradas en una sola linea separada por ", ".
+// cumple Manual 7 §2.3: el contexto inyectado debe ser estable y acotado.
+funcion filtrar_listado(lista: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    res = ""
+    total = strlen_s(lista)
+    i = 0
+    mientras i < total:
+        fin_e = i
+        mientras fin_e < total:
+            si subcadena(lista, fin_e, 1) == "\n":
+                romper
+            fin_e = fin_e + 1
+        entrada = subcadena(lista, i, fin_e - i)
+        conservar = 1
+        si termina_con(entrada, ".c.o") == 1 o termina_con(entrada, ".o") == 1:
+            conservar = 0
+        si termina_con(entrada, ".syn.json") == 1 o termina_con(entrada, ".exe") == 1:
+            conservar = 0
+        si subcadena(entrada, 0, 1) == "_":
+            conservar = 0
+        si conservar == 1:
+            si res != "":
+                res = concat(res, ", ")
+            res = concat(res, entrada)
+        i = fin_e + 1
+    retornar res
+
 // Construye el contexto estatico: cwd, listado raiz, estado git y AGENTS.md.
 // R113: helpers single-pass; retorno unico al final (depth 0); no libera
 // buffers ajenos (solo lee cwd_act, que es copia del llamador).
@@ -659,7 +694,7 @@ funcion construir_contexto(cwd_act: texto) -> texto:
     lista = _syn_listar_directorio(cwd_act)
     si lista != "":
         parte = concat(parte, "\n")
-        parte = concat(parte, lista)
+        parte = concat(parte, filtrar_listado(lista))
     retornar parte
 
 // Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta (solo lectura).
@@ -689,11 +724,16 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto) -> texto:
             si strstr_f(ruta, "..") >= 0 o strstr_f(ruta, ":") >= 0:
                 res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
             sino:
-                listado = _syn_listar_directorio(ruta)
-                si listado == "":
-                    res = "[TOOL_RESULT] (directorio vacio o sin acceso)"
-                sino:
-                    res = concat("[TOOL_RESULT] ", listado)
+                // cumple Manual 7 §2.3: el listado entra al contexto del
+                    // modelo; filtrado + acotado para no agotar tokens con
+                    // artefactos de build ni directorios grandes (H-R146-1).
+                    listado = filtrar_listado(_syn_listar_directorio(ruta))
+                    si listado == "":
+                        res = "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
+                    sino:
+                        si _syn_texto_longitud(listado) > 2400:
+                            listado = concat(subcadena(listado, 0, 2400), " ... (listado truncado; usa TOOL listar <subdirectorio>)")
+                        res = concat("[TOOL_RESULT] ", listado)
         si nombre == "leer":
             si arg == "":
                 res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
