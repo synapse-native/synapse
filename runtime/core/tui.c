@@ -961,7 +961,7 @@ static void _ajustar_linea(int msg, const char* txt, int off, int largo,
 static void _reconstruir_filas(int ancho) {
     _nfilas = 0;
     if (ancho < 8) ancho = 8;
-    int wlinea = ancho - 1;
+    int wlinea = ancho - 2;  // -2 para borde color + espacio
     if (wlinea < 2) wlinea = 2;
     for (int m = 0; m < _nmsgs && _nfilas < ROW_MAX; m++) {
         const char* t = _msgs[m].texto ? _msgs[m].texto : "";
@@ -1003,22 +1003,29 @@ static void _reconstruir_filas(int ancho) {
 static void _dibujar_fila(int pantalla, const _Fila* f, int ancho) {
     _syn_tui_pos(pantalla, 1);
     if (f->rol < 0) {
-        // separador entre mensajes: línea tenue
+        // separador entre mensajes: línea tenue con color
         _sgr(90);
-        _out("\xe2\x80\xa4");
+        _out("  ");
+        for (int x = 2; x < ancho && x < 40; x++) _out("\xe2\x94\x80");
         _sgr(0);
         _out("\x1b[K");
         return;
     }
     int color = 37;
+    int border_color = 90;
+    const char* border_ch = "\xe2\x80\xa4";  // · (default)
     switch (f->rol) {
-        case 0: color = 97; break;          // usuario: blanco brillante
-        case 1: color = 97; break;          // asistente: blanco brillante
-        case 2: color = 90; break;          // sistema/actividad: gris tenue
-        case 3: color = 91; break;          // error: rojo
-        case 4: color = 36; break;          // banner: cian
+        case 0: color = 95; border_color = 95; border_ch = "\xe2\x96\x8f"; break;  // usuario: magenta brillante, ▏
+        case 1: color = 94; border_color = 94; border_ch = "\xe2\x96\x8f"; break;  // asistente: azul brillante, ▏
+        case 2: color = 90; border_color = 90; border_ch = "\xe2\x80\xa2"; break;  // sistema: gris, ·
+        case 3: color = 91; border_color = 91; border_ch = "\xe2\x9c\x97"; break;  // error: rojo, ✗
+        case 4: color = 96; border_color = 96; border_ch = "\xe2\x9c\x93"; break;  // banner: cian, ✓
         default: color = 37; break;
     }
+    // Borde izquierdo coloreado (estilo OpenCode)
+    _sgr(border_color);
+    _out(border_ch);
+    _out(" ");
     _sgr(color);
     const char* txt = _msgs[f->msg].texto ? _msgs[f->msg].texto : "";
     if (f->largo > 0) _outn(txt + f->off, f->largo);
@@ -1034,11 +1041,12 @@ static void _repintar_todo(CadenaSegura modelo) {
 
     _out("\x1b[2J\x1b[H");
 
-    // ---- Encabezado (fila 1) ----
+    // ---- Encabezado (fila 1): estilo OpenCode ----
     _syn_tui_pos(1, 1);
-    _out("\x1b[1;36m  OpenSyn \x1b[0m\x1b[90m\xe2\x80\xa2 \x1b[0m");
+    _out("\x1b[1;94m  \xe2\x96\xb6 OpenSyn \x1b[0m");
+    _out("\x1b[90m \xe2\x94\x82 \x1b[0m");
     if (modelo.longitud > 0 && modelo.datos) {
-        _sgr(90);
+        _sgr(95);
         _outn(modelo.datos, modelo.longitud);
         _sgr(0);
     }
@@ -1061,10 +1069,10 @@ static void _repintar_todo(CadenaSegura modelo) {
         fila++;
     }
 
-    // ---- Separador sobre la caja de entrada ----
+    // ---- Separador sobre la caja de entrada (doble línea estilo OpenCode) ----
     int fila_sep = alto - 3;
     _syn_tui_pos(fila_sep, 1);
-    _sgr(90);
+    _sgr(94);
     for (int x = 1; x < ancho; x++) _out("\xe2\x94\x80");
     _sgr(0);
     _out("\x1b[K");
@@ -1072,7 +1080,7 @@ static void _repintar_todo(CadenaSegura modelo) {
     // ---- Caja de entrada ----
     int fila_ent = alto - 2;
     _syn_tui_pos(fila_ent, 1);
-    _out("\x1b[1;32m  \xe2\x9d\xaf \x1b[0m");
+    _out("\x1b[1;95m  \xe2\x9d\xaf \x1b[0m");
     _entrada_asegurar();
     const char* e = _entrada ? _entrada : "";
     int plen = 4;   // columnas del prefijo "  ❯ "
@@ -1111,10 +1119,22 @@ static void _repintar_todo(CadenaSegura modelo) {
     if (despues_ini < _elen) _outn(e + despues_ini, _elen - despues_ini);
     _out("\x1b[K");
 
-    // ---- Pie (ayuda) ----
+    // ---- Pie (status bar estilo OpenCode) ----
     _syn_tui_pos(alto, 1);
     _sgr(90);
-    _out("  / menu  \xe2\x80\xa2  \xe2\x86\x91\xe2\x86\x93 seleccionar  \xe2\x80\xa2  Esc limpiar  \xe2\x80\xa2  Ctrl+C salir");
+    _out("  \xe2\x96\xb6 /menu");
+    _sgr(0);
+    _out("\x1b[90m  \xe2\x94\x82  \x1b[0m");
+    _sgr(90);
+    _out("\xe2\x86\x91\xe2\x86\x93 navegar");
+    _sgr(0);
+    _out("\x1b[90m  \xe2\x94\x82  \x1b[0m");
+    _sgr(90);
+    _out("Tab autocompletar");
+    _sgr(0);
+    _out("\x1b[90m  \xe2\x94\x82  \x1b[0m");
+    _sgr(90);
+    _out("Ctrl+C salir");
     _sgr(0);
     _out("\x1b[K");
 
