@@ -42,6 +42,10 @@ externo funcion _syn_tui_historial_cargar() -> nulo
 externo funcion _syn_tui_historial_guardar() -> nulo
 externo funcion _syn_tui_historial_anadir(texto: texto) -> nulo
 externo funcion _syn_tui_completar() -> nulo
+// Spinner/status dinámico (Manual 7 §8, pulido OpenCode): animación mientras
+// el modelo genera + tokens/contexto en la barra inferior.
+externo funcion _syn_tui_pensando(activar: entero, etiqueta: texto) -> nulo
+externo funcion _syn_tui_contexto(pct: entero, tokens: entero) -> nulo
 // --- Streaming del chat (Manual 7 §8): token a token ---
 externo funcion _syn_ollama_stream_iniciar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> puntero
 externo funcion _syn_ollama_stream_leer(sesion: puntero) -> texto
@@ -60,7 +64,7 @@ constante BANNER_L6 = "       |_|                                      "
 
 // --- System prompt del agente (Manual 7 1.1 + 2.3) ---
 // Rol + reglas de sintaxis Synapse reales + protocolo textual de herramientas.
-constante AGENTE_SISTEMA = "Eres OpenSyn, el agente de codigo local del ecosistema Synapse (equivalente a OpenCode/Copilot, pero 100% local y sin telemetria). Conoces Synapse (.syn) y Syquex de forma nativa. Reglas del lenguaje Synapse: indentacion de 4 espacios; sin llaves; 'funcion nombre(param: tipo) -> tipo:'; 'si condicion:' / 'sino:' / 'mientras condicion:' / 'para i en rango:'; 'retornar expr'; contratos 'requiere:' y 'garantiza:'. Cuando la pregunta sea sobre archivos o codigo REAL de este repositorio puedes pedir contexto con UNA linea exacta: 'TOOL listar <ruta relativa o vacia para la raiz>' , 'TOOL leer <ruta relativa>' , 'TOOL git status' o 'TOOL git log'. Recibiras el resultado en la conversacion. Cuando ya tengas el contexto, responde al usuario en su idioma, concreto y sin inventar archivos. No repitas listados completos: resume y menciona solo las carpetas y archivos mas relevantes (maximo 10)."
+
 
 // --- Prompts de habilidades (skills) del chat ---
 // Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
@@ -599,6 +603,14 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
 funcion mostrar_ayuda() -> nulo:
     requiere:
         verdadero
+    // ME-1 (R1): agregar comandos de modo
+    escribir_linea("  Modos del agente (Manual 7 §1.1):")
+    escribir_linea("    /ask               - modo solo lectura (default)")
+    escribir_linea("    /plan              - modo diseño/planificación")
+    escribir_linea("    /code              - modo edición de código")
+    escribir_linea("    /debug             - modo diagnóstico")
+    escribir_linea("    /orchestrator      - modo delegación (descompone tareas)")
+    escribir_linea("")
     escribir_linea("  Comandos del chat:")
     escribir_linea("    /modelos           - lista los modelos instalados en Ollama")
     escribir_linea("    /model <nombre|n>  - cambia de modelo (por nombre o numero)")
@@ -609,6 +621,100 @@ funcion mostrar_ayuda() -> nulo:
     escribir_linea("    /skills            - lista las habilidades disponibles")
     escribir_linea("    salir              - termina la sesion")
     escribir_linea("")
+
+// ============================================================
+// Modos del agente (Manual 7 §1.1 + ME_opensyn_best R1)
+// ask=solo lectura, plan=solo escribe plan, code=edita validando,
+// debug=diagnostica, orchestrator=descompone y delega.
+// ============================================================
+
+constante MODO_ASK = 0
+constante MODO_PLAN = 1
+constante MODO_CODE = 2
+constante MODO_DEBUG = 3
+constante MODO_ORCHESTRATOR = 4
+constante MODO_DEFAULT = MODO_ASK
+
+// Tabla de permisos por modo: cada modo lista las herramientas permitidas.
+// orchestrator NO ejecuta herramientas directas, solo crea subtareas.
+funcion herramientas_permitidas(modo: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    // ask: solo lectura (listar, leer, git status/log)
+    si modo == MODO_ASK:
+        retornar "listar,leer,git"
+    // plan: solo lectura + escritura de planes (no ejecuta código)
+    si modo == MODO_PLAN:
+        retornar "listar,leer,git,plan"
+    // code: todas las herramientas incluyendo edición
+    si modo == MODO_CODE:
+        retornar "listar,leer,git,plan,editar,compilar"
+    // debug: lectura + diagnóstico
+    si modo == MODO_DEBUG:
+        retornar "listar,leer,git,diagnosticar"
+    // orchestrator: NO ejecuta herramientas, solo delega a otros modos
+    si modo == MODO_ORCHESTRATOR:
+        retornar "delegar"
+    retornar "listar,leer,git"
+
+// Verifica si una herramienta está permitida en el modo actual.
+funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado == 0 o resultado == 1
+    permitidas = herramientas_permitidas(modo)
+    // orchestrator solo delega
+    si modo == MODO_ORCHESTRATOR:
+        retornar 0
+    // Buscar la herramienta en la lista de permitidas
+    total = strlen_s(permitidas)
+    h_len = strlen_s(herramienta)
+    i = 0
+    mientras i <= total - h_len:
+        coincide = 1
+        j = 0
+        mientras j < h_len:
+            c_perm = subcadena(permitidas, i + j, 1)
+            c_herr = subcadena(herramienta, j, 1)
+            si c_perm != c_herr:
+                coincide = 0
+                romper
+            j = j + 1
+        si coincide == 1:
+            // Verificar que es límite completo (no substring)
+            antes_ok = 1
+            despues_ok = 1
+            si i > 0:
+                c_antes = subcadena(permitidas, i - 1, 1)
+                si c_antes != ",":
+                    antes_ok = 0
+            si i + h_len < total:
+                c_despues = subcadena(permitidas, i + h_len, 1)
+                si c_despues != ",":
+                    despues_ok = 0
+            si antes_ok == 1 y despues_ok == 1:
+                retornar 1
+        i = i + 1
+    retornar 0
+
+// Nombre legible del modo para mensajes
+funcion nombre_modo(modo: entero) -> texto:
+    requiere:
+        verdadero
+    si modo == MODO_ASK:
+        retornar "ASK (solo lectura)"
+    si modo == MODO_PLAN:
+        retornar "PLAN (diseño)"
+    si modo == MODO_CODE:
+        retornar "CODE (edición)"
+    si modo == MODO_DEBUG:
+        retornar "DEBUG (diagnóstico)"
+    si modo == MODO_ORCHESTRATOR:
+        retornar "ORCHESTRATOR (delegación)"
+    retornar "DESCONOCIDO"
 
 // ============================================================
 // Presentacion estilo OpenCode/Freebuff + herramientas del agente
@@ -700,7 +806,8 @@ funcion construir_contexto(cwd_act: texto) -> texto:
 // Parsea "TOOL <nombre> <argumento>" y ejecuta la herramienta (solo lectura).
 // listar [ruta] (cwd si vacia) | leer <ruta> | git status|log.
 // R113: un unico retornar al final (depth 0); todas las ramas asignan 'res'.
-funcion ejecutar_tool(linea: texto, cwd_act: texto) -> texto:
+// ME-1 (R1): verifica permisos del modo actual antes de ejecutar.
+funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
@@ -717,23 +824,27 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto) -> texto:
     si fin > inicio:
         nombre = subcadena(linea, inicio, fin - inicio)
         arg = subcadena(linea, fin, total - fin)
+        // El modelo suele pegar espacio inicial/comillas/residuos: normalizar.
+        arg = recortar(arg)
+        // ME-1 (R1): verificar permisos del modo actual
+        si herramienta_permitida(modo, nombre) == 0:
+            retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
         si nombre == "listar":
             ruta = arg
             si ruta == "":
                 ruta = cwd_act
             si strstr_f(ruta, "..") >= 0 o strstr_f(ruta, ":") >= 0:
-                res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+                // H-R146-2: nunca FAILED la herramienta de listado — un modelo
+                // pequeño puede pedir rutas raras; se degrada a la raíz del
+                // repo para que SIEMPRE llegue contexto real (Manual 7 §2.3).
+                ruta = cwd_act
+            listado = filtrar_listado(_syn_listar_directorio(ruta))
+            si listado == "":
+                res = "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
             sino:
-                // cumple Manual 7 §2.3: el listado entra al contexto del
-                    // modelo; filtrado + acotado para no agotar tokens con
-                    // artefactos de build ni directorios grandes (H-R146-1).
-                    listado = filtrar_listado(_syn_listar_directorio(ruta))
-                    si listado == "":
-                        res = "[TOOL_RESULT] (directorio vacio, sin acceso o solo artefactos de build)"
-                    sino:
-                        si _syn_texto_longitud(listado) > 2400:
-                            listado = concat(subcadena(listado, 0, 2400), " ... (listado truncado; usa TOOL listar <subdirectorio>)")
-                        res = concat("[TOOL_RESULT] ", listado)
+                si _syn_texto_longitud(listado) > 2400:
+                    listado = concat(subcadena(listado, 0, 2400), " ... (listado truncado; usa TOOL listar <subdirectorio>)")
+                res = concat("[TOOL_RESULT] ", listado)
         si nombre == "leer":
             si arg == "":
                 res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
@@ -761,7 +872,8 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto) -> texto:
 // Bucle del agente: contexto estatico + hasta 5 iteraciones de herramientas.
 // El modelo responde una linea "TOOL ..." para pedir contexto o la respuesta
 // final. R113: retorno unico al final; copias strcpy_f en los call sites.
-funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
+// ME-1 (R1): recibe modo para verificar permisos de herramientas.
+funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
@@ -781,7 +893,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
             romper
         limpia = recortar(strcpy_f(respuesta))
         si strstr_f(limpia, "TOOL ") == 0:
-            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act))
+            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act), modo)
             sys = concat(sys, "\n")
             sys = concat(sys, salida)
             sys = concat(sys, "\n[Continua: usa otra linea TOOL si necesitas mas contexto, o responde directamente.]")
@@ -798,10 +910,16 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto) -> texto:
 // ============================================================
 
 // System prompt del agente (optimizado para modelos pequenos, 2048 ctx).
-constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. Si necesitas mas contexto responde: TOOL listar <ruta> o TOOL leer <ruta>. Responde en el idioma del usuario, sin inventar archivos.\n\n[CONTEXTO]\n"
+// cumple Manual 7 §2.3: prompt del agente con REGLA imperativa de [TOOL] —
+// el modelo pequeño obedece mejor una regla directa que un ejemplo meta
+// (R147: la versión "ejemplo" lo hacía narrar en vez de actuar). Sin el
+// literal [USUARIO] dentro del texto (ollama.c parte system/user por esa
+// marca). Mantener bajo 3500 bytes: ollama.c trunca a los ÚLTIMOS 3500 (R144c).
+constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Syntax: 4 espacios, sin ;, funcion(name:type)->type, si/para/mientras, retornar. REGLA: si el usuario pregunta por archivos, carpetas, rutas o codigo REAL, tu respuesta debe ser UNA sola linea exacta: TOOL listar <ruta> (vacia = raiz del repo) o TOOL leer <ruta> o TOOL git status. No expliques nada antes. Ejemplo: usuario: 'que archivos hay en la raiz?' - tu respuesta: TOOL listar. Cuando ya recibas [TOOL_RESULT], responde en el idioma del usuario resumiendo (maximo 10), sin inventar archivos.\n\n[CONTEXTO]\n"
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
-constante MENU_COMANDOS = "/model\n/modelos\n/tdd\n/revisar\n/plan\n/skills\n/ayuda\n/salir"
+// ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
+constante MENU_COMANDOS = "/ask\n/plan\n/code\n/debug\n/orchestrator\n/model\n/modelos\n/tdd\n/revisar\n/skills\n/ayuda\n/salir"
 
 // Trunca un texto a n bytes visibles (evita paneles gigantes con el
 // resultado de una herramienta). R113: no libera buffers ajenos.
@@ -815,6 +933,18 @@ funcion tui_acotar(t: texto, n: entero) -> texto:
         retornar strcpy_f(t)
     retornar concat(subcadena(strcpy_f(t), 0, n), "…")
 
+// % del presupuesto de system prompt usado (ollama.c trunca a los últimos
+// 3500 bytes, lección R144c): indicador "ctx" de la barra inferior.
+funcion pct_contexto(sys: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    bytes = _syn_texto_longitud(sys)
+    si bytes > 3500:
+        bytes = 3500
+    retornar (bytes * 100) / 3500
+
 // Una consulta con streaming: pinta el texto conforme llega (rol 1) y
 // devuelve el texto completo acumulado ("" si error; el error ya se ve).
 funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
@@ -823,6 +953,7 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
     garantiza:
         longitud(resultado) >= 0
     texto_acum = ""
+    _syn_tui_pensando(1, "Consultando")
     sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 11434, 2048)
     si sesion == nulo:
         _syn_tui_mensaje(3, "No se pudo conectar con Ollama. Verifica: ollama serve")
@@ -835,6 +966,9 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
         texto_acum = concat(texto_acum, strcpy_f(ch))
         _syn_tui_asistente_continuar(strcpy_f(ch))
         _syn_tui_repintar(strcpy_f(modelo))
+    _syn_tui_pensando(0, "")
+    ctx_tokens = _syn_texto_longitud(texto_acum) / 4
+    _syn_tui_contexto(pct_contexto(strcpy_f(prompt)), ctx_tokens)
     si _syn_ollama_stream_estado(sesion) == 1:
         _syn_tui_mensaje_pop()
         detalle = _syn_ollama_stream_error(sesion)
@@ -876,7 +1010,8 @@ funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto) 
         _syn_tui_repintar(strcpy_f(modelo))
 
 // Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
-funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto) -> nulo:
+// ME-1 (R1): recibe modo para verificar permisos de herramientas.
+funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero) -> nulo:
     requiere:
         verdadero
     garantiza:
@@ -891,6 +1026,7 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto) -> nulo:
         _syn_tui_repintar(strcpy_f(modelo))
         resp = consulta_stream(strcpy_f(modelo), strcpy_f(sys))
         si resp == "":
+            _syn_tui_pensando(0, "")
             retornar
         limpia = recortar(strcpy_f(resp))
         si strstr_f(limpia, "TOOL ") == 0:
@@ -900,11 +1036,11 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto) -> nulo:
             pedido = tui_acotar(strcpy_f(limpia), 90)
             _syn_tui_mensaje(2, concat("· ", strcpy_f(pedido)))
             _syn_tui_repintar(strcpy_f(modelo))
-            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act))
+            salida = ejecutar_tool(strcpy_f(limpia), strcpy_f(cwd_act), modo)
             resumen = tui_acotar(strcpy_f(salida), 1200)
             _syn_tui_mensaje(2, strcpy_f(resumen))
             _syn_tui_repintar(strcpy_f(modelo))
-            sys = concat(sys, "\n\n[TOOL_RESULT]\n")
+            sys = concat(sys, "\n\n[TOOL_RESULT — contexto REAL del repo; respondé al usuario con esto, citando carpetas/archivos de la lista]\n")
             sys = concat(sys, strcpy_f(resumen))
             sys = concat(sys, "\n[Continua: otra linea TOOL o responde directamente.]")
             iteracion = iteracion + 1
@@ -915,24 +1051,55 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto) -> nulo:
     _syn_tui_repintar(strcpy_f(modelo))
 
 // Despacha un comando (tecleado o elegido en el menu "/").
-// Devuelve: "!salir", "!ok", o el NUEVO modelo activo si cambió.
-funcion tui_comando(entrada: texto, modelo: texto, modelos: texto) -> texto:
+// Devuelve: "!salir", "!ok", "!modo:N" (cambio de modo), o el NUEVO modelo activo.
+// ME-1 (R1): comandos /ask /plan /code /debug /orchestrator para cambiar de modo.
+funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
         longitud(resultado) >= 0
     si entrada == "salir" o entrada == "exit" o entrada == "/salir":
         retornar "!salir"
+    // ME-1 (R1): comandos de cambio de modo
+    si entrada == "/ask":
+        _syn_tui_mensaje(2, "Modo: ASK (solo lectura)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!modo:0"
+    si entrada == "/plan":
+        _syn_tui_mensaje(2, "Modo: PLAN (diseño)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!modo:1"
+    si entrada == "/code":
+        _syn_tui_mensaje(2, "Modo: CODE (edición)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, plan, editar, compilar")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!modo:2"
+    si entrada == "/debug":
+        _syn_tui_mensaje(2, "Modo: DEBUG (diagnóstico)")
+        _syn_tui_mensaje(2, "  Herramientas: listar, leer, git, diagnosticar")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!modo:3"
+    si entrada == "/orchestrator":
+        _syn_tui_mensaje(2, "Modo: ORCHESTRATOR (delegación)")
+        _syn_tui_mensaje(2, "  Herramientas: delegar (no ejecuta directamente)")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!modo:4"
     si entrada == "/ayuda":
         _syn_tui_mensaje(2, "Comandos:")
-        _syn_tui_mensaje(2, "  /model    — cambia de modelo (menu de instalados)")
-        _syn_tui_mensaje(2, "  /modelos  — lista los modelos instalados")
-        _syn_tui_mensaje(2, "  /tdd      — genera tests TDD para una funcion")
-        _syn_tui_mensaje(2, "  /revisar  — revision de codigo en 5 ejes")
-        _syn_tui_mensaje(2, "  /plan     — desglosa una caracteristica en tareas")
-        _syn_tui_mensaje(2, "  /skills   — habilidades disponibles")
-        _syn_tui_mensaje(2, "  /ayuda    — esta ayuda")
-        _syn_tui_mensaje(2, "  salir     — termina la sesion")
+        _syn_tui_mensaje(2, "  /ask         — modo solo lectura")
+        _syn_tui_mensaje(2, "  /plan        — modo diseño/planificación")
+        _syn_tui_mensaje(2, "  /code        — modo edición de código")
+        _syn_tui_mensaje(2, "  /debug       — modo diagnóstico")
+        _syn_tui_mensaje(2, "  /orchestrator — modo delegación (descompone tareas)")
+        _syn_tui_mensaje(2, "  /model       — cambia de modelo")
+        _syn_tui_mensaje(2, "  /modelos     — lista los modelos instalados")
+        _syn_tui_mensaje(2, "  /tdd         — genera tests TDD")
+        _syn_tui_mensaje(2, "  /revisar     — revisión de código en 5 ejes")
+        _syn_tui_mensaje(2, "  /skills      — habilidades disponibles")
+        _syn_tui_mensaje(2, "  /ayuda       — esta ayuda")
+        _syn_tui_mensaje(2, "  salir        — termina la sesión")
         _syn_tui_repintar(strcpy_f(modelo))
         retornar "!ok"
     si entrada == "/skills":
@@ -1003,6 +1170,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto) -> texto:
     retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos))
 
 // Bucle principal de la TUI (estilo OpenCode/Freebuff).
+// ME-1 (R1): variable de estado del modo (inicial: ASK, solo lectura).
 funcion chat_tui() -> entero:
     requiere:
         verdadero
@@ -1014,6 +1182,7 @@ funcion chat_tui() -> entero:
     modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
     total_mod = contar_modelos(strcpy_f(modelos))
     cwd_act = _syn_obtener_cwd()
+    modo = MODO_DEFAULT
     // Escena inicial: banner + estado del entorno.
     _syn_tui_mensaje(4, BANNER_L1)
     _syn_tui_mensaje(4, BANNER_L2)
@@ -1026,6 +1195,7 @@ funcion chat_tui() -> entero:
         _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(modelo)))
     sino:
         _syn_tui_mensaje(3, "Sin modelos instalados. Ejecuta: ollama pull <modelo>")
+    _syn_tui_mensaje(2, concat("Modo: ", nombre_modo(modo)))
     _syn_tui_mensaje(2, "Escribe tu consulta · / abre el menu de comandos · Ctrl+C sale")
     _syn_tui_repintar(strcpy_f(modelo))
     mientras verdadero:
@@ -1038,17 +1208,27 @@ funcion chat_tui() -> entero:
             // Añadir al historial persistente
             _syn_tui_historial_anadir(strcpy_f(entrada))
             si strstr_f(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
-                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos))
+                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos), modo)
                 si res == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
+                // ME-1 (R1): detectar cambio de modo
+                si strstr_f(res, "!modo:") == 0:
+                    // Extraer el número de modo después de "!modo:"
+                    num_texto = subcadena(res, 6, strlen_s(res) - 6)
+                    nuevo_modo = atoi_f(num_texto)
+                    si nuevo_modo >= MODO_ASK y nuevo_modo <= MODO_ORCHESTRATOR:
+                        modo = nuevo_modo
+                        _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
+                        _syn_tui_repintar(strcpy_f(modelo))
+                    siguiente
                 si res != "!ok" y res != "":
                     modelo = res
                     _syn_tui_repintar(strcpy_f(modelo))
                 siguiente
             // Repintar solo si NO es comando de salida (evita flash antes de salir)
             _syn_tui_repintar(strcpy_f(modelo))
-            tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act))
+            tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act), modo)
             _syn_tui_repintar(strcpy_f(modelo))
             siguiente
         si evento == 2:
@@ -1072,10 +1252,17 @@ funcion chat_tui() -> entero:
             _syn_tui_repintar(strcpy_f(modelo))
             r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
             si r != "":
-                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos))
+                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo)
                 si res2 == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
+                // ME-1 (R1): detectar cambio de modo desde menú
+                si strstr_f(res2, "!modo:") == 0:
+                    num_texto2 = subcadena(res2, 6, strlen_s(res2) - 6)
+                    nuevo_modo2 = atoi_f(num_texto2)
+                    si nuevo_modo2 >= MODO_ASK y nuevo_modo2 <= MODO_ORCHESTRATOR:
+                        modo = nuevo_modo2
+                        _syn_tui_mensaje(2, concat("Modo activo: ", nombre_modo(modo)))
                 si res2 != "!ok" y res2 != "":
                     modelo = res2
             _syn_tui_repintar(strcpy_f(modelo))
@@ -1116,11 +1303,14 @@ funcion modo_oraculo() -> entero:
             escribir_linea("")
         modelo_base = obtener_modelo_config(config)
         modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
+        // ME-1 (R1): inicializar modo en modo línea
+        modo = MODO_DEFAULT
         escribir_linea(concat("  [OK] Modelo activo: ", modelo))
         total_mod = contar_modelos(strcpy_f(modelos))
         si total_mod > 0:
             escribir_linea(concat(concat("  [OK] Modelos instalados (", entero_a_texto(total_mod)), "):"))
             mostrar_modelos(strcpy_f(modelos))
+        escribir_linea(concat("  [OK] Modo: ", nombre_modo(modo)))
         escribir_linea("")
         escribir_linea("  [Chat] Escribe tu prompt (ayuda: /ayuda · salir para terminar):")
         escribir_linea("")
@@ -1141,6 +1331,27 @@ funcion modo_oraculo() -> entero:
             si prompt == "":
                 siguiente
             // --- Comandos del chat ---
+            // ME-1 (R1): comandos de modo
+            si prompt == "/ask":
+                modo = MODO_ASK
+                escribir_linea("  [OK] Modo: ASK (solo lectura)")
+                siguiente
+            si prompt == "/plan":
+                modo = MODO_PLAN
+                escribir_linea("  [OK] Modo: PLAN (diseño)")
+                siguiente
+            si prompt == "/code":
+                modo = MODO_CODE
+                escribir_linea("  [OK] Modo: CODE (edición)")
+                siguiente
+            si prompt == "/debug":
+                modo = MODO_DEBUG
+                escribir_linea("  [OK] Modo: DEBUG (diagnóstico)")
+                siguiente
+            si prompt == "/orchestrator":
+                modo = MODO_ORCHESTRATOR
+                escribir_linea("  [OK] Modo: ORCHESTRATOR (delegación)")
+                siguiente
             si prompt == "/ayuda" o prompt == "ayuda":
                 mostrar_ayuda()
                 siguiente
@@ -1216,8 +1427,9 @@ funcion modo_oraculo() -> entero:
                 siguiente
             // --- Prompt normal: agente con contexto del repositorio ---
             // cumple Manual 7 2.3: inyecta contexto estatico y permite herramientas TOOL
+            // ME-1 (R1): pasar modo actual a consultar_agente
             escribir_linea(concat("  [*] Consultando a ", modelo))
-            respuesta = consultar_agente(strcpy_f(modelo), strcpy_f(prompt))
+            respuesta = consultar_agente(strcpy_f(modelo), strcpy_f(prompt), modo)
             si respuesta == "":
                 escribir_linea("  [Error] No hubo respuesta de Ollama. Verifica que este activo:")
                 escribir_linea("    ollama serve")

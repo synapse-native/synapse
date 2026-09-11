@@ -12,39 +12,22 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
+Fase roadmap:      FASE 30-c ME_opensyn_best — ME-1 (modos) COMPLETADO
+                   FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            R146 — prueba interactiva real en VS Code con instalación
-                   completa: aiExplain implementado en el LSP (Manual 8 §2.3),
-                   contexto del agente determinista (H-R146-1 resuelto),
-                   instalador completo reinstalado con binarios idénticos.
-Commit fase:       df8ff5f (R146) sobre dd0d90b/4a7e77d (R145b) y bdb615c (R145)
-Próximo ME:        Cerrar H-R145-5 (timeout del oráculo historial, requiere
-                   aprobación) o FASE 31 del roadmap
-Próximo paso:      Prueba interactiva manual del usuario en VS Code (extension
-                   ya instalada y LSP con aiExplain operativo)
-Últimos commits:    df8ff5f (fix(opensyn): H-R146-1 contexto determinista + aiExplain LSP)
+Estado:            R147 — ME-1 modos agente (Manual 7 §1.1): sistema de modos
+                   ASK/PLAN/CODE/DEBUG/ORCHESTRATOR con permisos por herramienta
+                   implementado en principal.syn; 0 brechas verificación.
+Commit fase:       pendiente (R147) sobre df8ff5f (R146)
+Próximo ME:        ME-2 (R2): File-finder + catálogo APIs locales en router.syn
+Próximo paso:      Commit R147 + iniciar ME-2
+Últimos commits:    pendiente (R147: modos agente ME-1)
+                    df8ff5f (fix(opensyn): H-R146-1 contexto determinista + aiExplain LSP)
                     dd0d90b (docs(release): cerrar H-R145-1..4 en MEMORIA + fila auditoría R145b)
                     4a7e77d (fix(opensyn): H-R145-1 cerrado — parser SSE y stops ChatML)
                     bdb615c (fix(opensyn): R145 terminar WIP cliente OpenAI + banner figlet)
                     db4ccf9 (fix(instalador): fuentes de enlace + hash reales + extracción completa llama-server)
-                     a13332b (feat(opensyn): TUI pantalla completa + historial/Tab + vendor skills + instalador SHA256)
-                     ce0e291 (fix(opensyn,runtime): R113 chat sin corrupción + UTF-8 + wizard instalador)
-                     d9c498a (F30-b: chat OpenSyn real (Ollama) + consola UTF-8 + LSP multi-mensaje + instalador 8.1.0)
-                     336c8a4 (docs(release): reporte R139 + fila auditoría + MEMORIA)
-                     fa3c548 (feat(installer): generar instalador Windows Manual 9 §2.5)
-                     d64a07e (fix(ci): normalizar CRLF→LF + limpiar artefactos)
-                     8c0cdc4 (Prepare release v8.1.0-industrial: cross-compile workflow)
-                     de901bb (ME_30_T8: Docs/Packaging)
-                     f3e5ad3 (ME_30_T7: Auto-actualización)
-                     5c22529 (ME_30_T6: Tests de smoke)
-                     b1390ba (ME_30_T5: Verificación Ed25519)
-
-                    72f60bd (ME_30_T4: Instalador macOS)
-                    e5e9b58 (ME_30_T3: Instalador Linux)
-                    5775c5a (ME_30_T2: Instalador Windows)
-                    b9aa55f (ME_30_T1: Estructura instaladores)
 ```
 
 ### Cambios recientes esta sesión
