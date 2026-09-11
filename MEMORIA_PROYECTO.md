@@ -19,10 +19,10 @@ Fase roadmap:      FASE 30-c ME_opensyn_best — ME-1 (modos) COMPLETADO
 Estado:            R147 — ME-1 modos agente (Manual 7 §1.1): sistema de modos
                    ASK/PLAN/CODE/DEBUG/ORCHESTRATOR con permisos por herramienta
                    implementado en principal.syn; 0 brechas verificación.
-Commit fase:       pendiente (R147) sobre df8ff5f (R146)
+Commit fase:       31b9c4f (R147) sobre df8ff5f (R146)
 Próximo ME:        ME-2 (R2): File-finder + catálogo APIs locales en router.syn
-Próximo paso:      Commit R147 + iniciar ME-2
-Últimos commits:    pendiente (R147: modos agente ME-1)
+Próximo paso:      Iniciar ME-2
+Últimos commits:    31b9c4f (feat(opensyn): R147/ME-1 modos agente Manual 7 §1.1)
                     df8ff5f (fix(opensyn): H-R146-1 contexto determinista + aiExplain LSP)
                     dd0d90b (docs(release): cerrar H-R145-1..4 en MEMORIA + fila auditoría R145b)
                     4a7e77d (fix(opensyn): H-R145-1 cerrado — parser SSE y stops ChatML)
