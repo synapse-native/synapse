@@ -527,9 +527,12 @@ funcion modo_para_tarea(tipo_tarea: entero) -> entero:
     retornar 0  // MODO_ASK
 
 // Nombre legible de un tipo de tarea.
+// cumple Manual 2 §12: toda función pública tiene contrato.
 funcion nombre_tarea(tipo: entero) -> texto:
     requiere:
-        verdadero
+        tipo >= 0 y tipo <= 4
+    garantiza:
+        longitud(resultado) > 0
     si tipo == TAREA_EXPLICAR:
         retornar "explicar"
     si tipo == TAREA_DIAGNOSTICAR:
@@ -542,8 +545,7 @@ funcion nombre_tarea(tipo: entero) -> texto:
         retornar "revisar"
     retornar "desconocido"
 
-// Orquesta una tarea: clasifica, parte en subtareas y retorna la lista
-// de modos asignados (como texto "0,2,3" separado por comas).
+// Orquesta una tarea: clasifica y retorna el modo asignado.
 // cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta."
 // Origen: Kilo Orchestrator (descompone y delega).
 funcion orquestar(tarea: texto) -> texto:
@@ -553,14 +555,13 @@ funcion orquestar(tarea: texto) -> texto:
         longitud(resultado) > 0
     tipo = clasificar_tarea(tarea)
     modo = modo_para_tarea(tipo)
-    // Por ahora: una tarea = un modo. Futuro: partir en subtareas multiples.
     resultado = entero_a_texto(modo)
     retornar resultado
 
-// Genera 3 siguientes pasos sugeridos dado el tipo de tarea y la respuesta.
+// Genera 3 siguientes pasos sugeridos dado el tipo de tarea.
 // cumple R3: "tras cada respuesta, línea siguientes: 1) ... 2) ... 3) ..."
 // Origen: freebuff (proponer 3 siguientes pasos clicables).
-funcion siguientes_pasos(tipo_tarea: entero, respuesta: texto) -> texto:
+funcion siguientes_pasos(tipo_tarea: entero) -> texto:
     requiere:
         tipo_tarea >= 0 y tipo_tarea <= 4
     garantiza:
