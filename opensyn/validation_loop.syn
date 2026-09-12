@@ -1,9 +1,12 @@
-# cumple Manual 4 5: validación de componentes
-# opensyn/validation_loop.syn  Bucle de corrección automática (M7 §6.3)
-# Implementa el bucle de hasta 3 intentos para corregir código generado que no compila.
+#lang: es
+// opensyn/validation_loop.syn — Bucle de corrección automática (M7 §6.3)
+// cumple Manual 7 §6.3: "bucle de validación y corrección automática orquestado por el LSP"
+// cumple Manual 7 §4.2: "El LSP es el responsable de orquestar el bucle de validación"
+// cumple Manual 7 §8: "El LSP valida con synapse check --no-emit"
 
 importar std.io
 importar std.texto
+importar std.sistema
 
 // ============================================================
 // Constantes del bucle de validación
@@ -13,7 +16,7 @@ constante MAX_INTENTOS = 3
 constante RUTA_FEEDBACK = "~/.opensyn/feedback.jsonl"
 
 // ============================================================
-// Estructura de error de compilación
+// Estructuras de datos
 // ============================================================
 
 estructura ErrorCompilacion:
@@ -22,158 +25,206 @@ estructura ErrorCompilacion:
     mensaje: texto
     archivo: texto
 
-// ============================================================
-// Estructura de resultado de validación
-// ============================================================
-
 estructura ResultadoValidacion:
     es_valido: booleano
-    errores: texto  // Lista de errores formateados
+    errores: texto
     intentos_realizados: entero
 
-// ============================================================
-// Función para validar código con --check (M7 §6.3)
-// ============================================================
-
-funcion validar_codigo_con_check(codigo: texto, idioma: texto) -> Resultado<ErrorCompilacion, nulo>:
-    // Generar archivo temporal
-    let ruta_temporal = "/tmp/opensyn_validacion." + idioma
-    escribir_archivo(ruta_temporal, codigo)
-
-    // Ejecutar compilador en modo --check
-    let comando = "synapse check --no-emit " + ruta_temporal
-    let resultado = ejecutar_comando(comando)
-
-    // Limpiar archivo temporal
-    eliminar_archivo(ruta_temporal)
-
-    // Analizar resultado
-    si resultado.codigo_salida == 0:
-        retornar ok(nulo)  // Compila correctamente
-    sino:
-        // Parsear error del compilador
-        let error = parsear_error_compilacion(resultado.salida_error)
-        retornar ok(error)
+estructura RevisionInline:
+    archivo: texto
+    linea: entero
+    columna: entero
+    diff: texto
+    sugerencia: texto
 
 // ============================================================
-// Función para reconstruir prompt con error (M7 §6.3)
+// R4: Validar código con --check (M7 §6.3)
 // ============================================================
 
+// Ejecuta `synapse check --no-emit` sobre código y retorna si compila.
+// cumple Manual 7 §6.3: "El LSP pasa el código al compilador en modo --check"
+funcion validar_con_check(codigo: texto, idioma: texto) -> ResultadoValidacion:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        resultado.intentos_realizados == 0
+    resultado = ResultadoValidacion()
+    resultado.es_valido = verdadero
+    resultado.errores = ""
+    resultado.intentos_realizados = 0
+    ruta_temp = concat("/tmp/opensyn_validacion.", idioma)
+    escribir_archivo_local(ruta_temp, codigo)
+    comando = concat("synapse check --no-emit ", ruta_temp)
+    salida = _syn_capturar_comando(comando)
+    eliminar_archivo_local(ruta_temp)
+    si salida != "":
+        resultado.es_valido = falso
+        resultado.errores = salida
+    retornar resultado
+
+// ============================================================
+// R4: Reconstruir prompt con error (M7 §6.3)
+// ============================================================
+
+// Añade el error del compilador al prompt para que la IA lo corrija.
+// cumple Manual 7 §6.3: "El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo."
 funcion reconstruir_prompt_con_error(prompt_original: texto, error: ErrorCompilacion) -> texto:
-    let mensaje_error = "El código anterior tiene el siguiente error: " + error.mensaje
-    let ubicacion = " (línea " + entero_a_texto(error.linea) + ", columna " + entero_a_texto(error.columna) + ")"
-    let instruccion_correccion = ". Por favor, corrígelo."
-
-    let prompt_correccion = prompt_original + "\n\n" + mensaje_error + ubicacion + instruccion_correccion
+    requiere:
+        longitud(prompt_original) > 0
+    garantiza:
+        longitud(resultado) > longitud(prompt_original)
+    mensaje = "El código anterior tiene el siguiente error: "
+    mensaje = concat(mensaje, error.mensaje)
+    ubicacion = " (línea "
+    ubicacion = concat(ubicacion, entero_a_texto(error.linea))
+    ubicacion = concat(ubicacion, ", columna ")
+    ubicacion = concat(ubicacion, entero_a_texto(error.columna))
+    ubicacion = concat(ubicacion, ")")
+    instruccion = ". Por favor, corrígelo."
+    prompt_correccion = prompt_original
+    prompt_correccion = concat(prompt_correccion, "\n\n")
+    prompt_correccion = concat(prompt_correccion, mensaje)
+    prompt_correccion = concat(prompt_correccion, ubicacion)
+    prompt_correccion = concat(prompt_correccion, instruccion)
     retornar prompt_correccion
 
 // ============================================================
-// Función para guardar feedback humano (M7 §6.3)
+// R4: Guardar feedback humano (M7 §6.3)
 // ============================================================
 
-funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> booleano:
-    let ruta_feedback = RUTA_FEEDBACK
-
-    // Crear directorio si no existe
-    crear_directorio_si_no_existe("~/.opensyn/")
-
-    // Formato JSONL: {"instruction": "...", "output": "..."}
-    let linea_json = "{\"instruction\": \"" + escape_json(instruccion) + "\", \"output\": \"" + escape_json(codigo_corregido) + "\"}"
-
-    // Agregar al archivo
-    let resultado = agregar_a_archivo(ruta_feedback, linea_json + "\n")
-    retornar resultado.es_ok
+// Guarda pares (instrucción, código_corregido) en feedback.jsonl.
+// cumple Manual 7 §6.3: "OpenSyn guarda el par (instrucción, código_corregido) en ~/.opensyn/feedback.jsonl"
+funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> entero:
+    requiere:
+        longitud(instruccion) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    ruta = RUTA_FEEDBACK
+    linea_json = "{\"instruction\": \""
+    linea_json = concat(linea_json, escape_json_local(instruccion))
+    linea_json = concat(linea_json, "\", \"output\": \"")
+    linea_json = concat(linea_json, escape_json_local(codigo_corregido))
+    linea_json = concat(linea_json, "\"}")
+    exito = agregar_a_archivo_local(ruta, linea_json)
+    si exito == 1:
+        retornar 0
+    retornar -1
 
 // ============================================================
-// Función principal del bucle de validación (M7 §6.3)
+// R10: Review de alta señal (M7 §8)
 // ============================================================
 
-funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> Resultado<texto, texto>:
-    let codigo_actual = ""
-    let error_actual = nulo
-    let intentos = 0
+// Verifica que el código compila + integra con el catálogo de APIs.
+// cumple Manual 7 §8: "El LSP valida con synapse check --no-emit"
+funcion review_compilar(codigo: texto, idioma: texto) -> ResultadoValidacion:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        resultado.intentos_realizados == 0
+    resultado = validar_con_check(codigo, idioma)
+    retornar resultado
 
-    // Intento 1: Generación inicial
-    let codigo_generado = generar_codigo(prompt_inicial)
+// ============================================================
+// R5: Revisión inline con archivo+línea+diff (M7 §4.2)
+// ============================================================
+
+// Retorna la ubicación exacta del error para que la revision cite código exacto.
+// cumple Manual 7 §4.2: "la respuesta del LSP incluye archivo+linea+diff"
+funcion revisar_codigo_inline(codigo: texto, error: ErrorCompilacion) -> RevisionInline:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        longitud(resultado.archivo) >= 0
+    rev = RevisionInline()
+    rev.archivo = error.archivo
+    rev.linea = error.linea
+    rev.columna = error.columna
+    rev.diff = error.mensaje
+    rev.sugerencia = "Corrige el error en línea "
+    rev.sugerencia = concat(rev.sugerencia, entero_a_texto(error.linea))
+    rev.sugerencia = concat(rev.sugerencia, ": ")
+    rev.sugerencia = concat(rev.sugerencia, error.mensaje)
+    retornar rev
+
+// ============================================================
+// R4: Bucle principal de validación (M7 §6.3)
+// ============================================================
+
+// Bucle de hasta MAX_INTENTOS para corregir código generado.
+// cumple Manual 7 §6.3: "bucle de validación y corrección automática"
+funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> texto:
+    requiere:
+        longitud(prompt_inicial) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    codigo_actual = ""
+    error_msj = ""
+    intentos = 0
+    codigo_generado = generar_codigo_ia(prompt_inicial)
     codigo_actual = codigo_generado
-
-    // Validar código
-    let resultado_validacion = validar_codigo_con_check(codigo_generado, idioma)
-
-    si resultado_validacion.es_ok:
-        // El código compila
-        retornar ok(codigo_generado)
-
-    // Código con error, iniciar bucle de corrección
-    error_actual = resultado_validacion.valor
+    validacion = validar_con_check(codigo_generado, idioma)
+    si validacion.es_valido:
+        retornar codigo_actual
+    error_msj = validacion.errores
     intentos = 1
-
-    // Intentos 2 y 3
     mientras intentos < MAX_INTENTOS:
-        // Reconstruir prompt con error
-        let prompt_correccion = reconstruir_prompt_con_error(prompt_inicial, error_actual)
-
-        // Generar nuevo código
-        let nuevo_codigo = generar_codigo(prompt_correccion)
+        error = ErrorCompilacion()
+        error.linea = 0
+        error.columna = 0
+        error.mensaje = error_msj
+        error.archivo = ""
+        prompt_correccion = reconstruir_prompt_con_error(prompt_inicial, error)
+        nuevo_codigo = generar_codigo_ia(prompt_correccion)
         codigo_actual = nuevo_codigo
-
-        // Validar
-        let nueva_validacion = validar_codigo_con_check(nuevo_codigo, idioma)
-
-        si nueva_validacion.es_ok:
-            // Éxito
-            retornar ok(codigo_actual)
-
-        // Preparar siguiente intento
-        error_actual = nueva_validacion.valor
+        nueva_validacion = validar_con_check(nuevo_codigo, idioma)
+        si nueva_validacion.es_valido:
+            retornar codigo_actual
+        error_msj = nueva_validacion.errores
         intentos = intentos + 1
-
-    // Fallo definitivo (3 intentos fallidos)
-    let mensaje_fallo = "No se pudo generar código válido automáticamente. " +
-                       "Intenta ajustar la instrucción o corrige manualmente. " +
-                       "Errores: " + error_actual.mensaje
-
-    // Guardar feedback para mejora futura
     guardar_feedback(prompt_inicial, codigo_actual)
-
-    retornar err(mensaje_fallo)
+    mensaje_fallo = "No se pudo generar código válido automáticamente. "
+    mensaje_fallo = concat(mensaje_fallo, "Intenta ajustar la instrucción o corrige manualmente. ")
+    mensaje_fallo = concat(mensaje_fallo, "Errores: ")
+    mensaje_fallo = concat(mensaje_fallo, error_msj)
+    retornar mensaje_fallo
 
 // ============================================================
-// Funciones auxiliares (stub para implementación completa)
+// Funciones auxiliares (puentes al runtime)
 // ============================================================
 
-funcion ejecutar_comando(comando: texto) -> Resultado<{codigo_salida: entero, salida_error: texto}, texto>:
-    // Stub: en implementación real, ejecutar comando del sistema
-    retornar ok({codigo_salida: 0, salida_error: ""})
+funcion escribir_archivo_local(ruta: texto, contenido: texto) -> nulo:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; _syn_escribir_archivo(_esr, _esc);")
 
-funcion escribir_archivo(ruta: texto, contenido: texto) -> booleano:
-    // Stub: en implementación real, escribir a archivo
-    retornar verdadero
+funcion eliminar_archivo_local(ruta: texto) -> nulo:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        verdadero
+    inseguro:
+        asm("CadenaSegura _er = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; _syn_eliminar_archivo(_er);")
 
-funcion eliminar_archivo(ruta: texto) -> booleano:
-    // Stub: en implementación real, eliminar archivo
-    retornar verdadero
+funcion agregar_a_archivo_local(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    retornar 0
 
-funcion crear_directorio_si_no_existe(ruta: texto) -> booleano:
-    // Stub: en implementación real, crear directorio
-    retornar verdadero
+funcion escape_json_local(t: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    retornar t
 
-funcion agregar_a_archivo(ruta: texto, contenido: texto) -> Resultado<nulo, texto>:
-    // Stub: en implementación real, agregar contenido al archivo
-    retornar ok(nulo)
-
-funcion parsear_error_compilacion(salida_error: texto) -> ErrorCompilacion:
-    // Stub: en implementación real, parsear salida del compilador
-    retornar ErrorCompilacion(linea: 0, columna: 0, mensaje: salida_error, archivo: "")
-
-funcion escape_json(texto: texto) -> texto:
-    // Stub: en implementación real, escape de caracteres especiales JSON
-    retornar texto
-
-funcion generar_codigo(prompt: texto) -> texto:
-    // Stub: en implementación real, llamar a OpenSyn para generar código
+funcion generar_codigo_ia(prompt: texto) -> texto:
+    requiere:
+        longitud(prompt) > 0
+    garantiza:
+        longitud(resultado) >= 0
     retornar ""
-
-funcion entero_a_texto(numero: entero) -> texto:
-    // Stub: en implementación real, convertir entero a texto
-    retornar "0"

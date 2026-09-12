@@ -584,3 +584,43 @@ funcion siguientes_pasos(tipo_tarea: entero) -> texto:
                     sino:
                         pasos = "1) Explica el resultado 2) Diagnostica problemas 3) Genera tests"
     retornar pasos
+
+// ============================================================
+// R5: Revisión inline con archivo+línea+diff (M7 §4.2)
+// ============================================================
+// cumple Manual 7 §4.2: "la respuesta del LSP incluye archivo+linea+diff
+// para que la revision cite codigo exacto"
+// Origen: Kilo inline code review (comentar por linea, devolver diff).
+
+estructura RevisionResultado:
+    archivo: texto
+    linea: entero
+    columna: entero
+    mensaje_error: texto
+    sugerencia: texto
+
+// Analiza un error de compilación y retorna la ubicación exacta + sugerencia.
+// cumple Manual 7 §4.2: "El LSP es el responsable de orquestar el bucle de validación"
+funcion revisar_codigo_inline(codigo: texto, salida_error: texto) -> RevisionResultado:
+    requiere:
+        longitud(codigo) > 0
+    garantiza:
+        longitud(resultado.mensaje_error) >= 0
+    rev = RevisionResultado()
+    rev.archivo = "generado.syn"
+    rev.linea = 0
+    rev.columna = 0
+    rev.mensaje_error = salida_error
+    rev.sugerencia = "Revisa el código generado y corrige el error."
+    // Parsear línea del error si viene en formato "linea:columna:mensaje"
+    pos_dp1 = strstr_f(salida_error, ":")
+    si pos_dp1 > 0:
+        pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, strlen_s(salida_error) - pos_dp1 - 1), ":")
+        si pos_dp2 > 0:
+            num_linea = subcadena(salida_error, 0, pos_dp1)
+            rev.linea = atoi_f(num_linea)
+            rev.sugerencia = "Corrige el error en línea "
+            rev.sugerencia = concat(rev.sugerencia, num_linea)
+            rev.sugerencia = concat(rev.sugerencia, ": ")
+            rev.sugerencia = concat(rev.sugerencia, subcadena(salida_error, pos_dp1 + pos_dp2 + 2, strlen_s(salida_error) - pos_dp1 - pos_dp2 - 2))
+    retornar rev
