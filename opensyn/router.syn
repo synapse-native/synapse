@@ -109,6 +109,7 @@ funcion file_finder(consulta: texto) -> texto:
     encontrados = ""
     mapa = obtener_mapa_keywords()
     largo_mapa = strlen_s(mapa)
+    largo_consulta = strlen_s(consulta)
     k = 0
     mientras k < largo_mapa:
         fin_entry = k
@@ -121,12 +122,35 @@ funcion file_finder(consulta: texto) -> texto:
         si pos_dp >= 0:
             kw = subcadena(entry, 0, pos_dp)
             archivo = subcadena(entry, pos_dp + 1, strlen_s(entry) - pos_dp - 1)
-            // Buscar keyword en la consulta completa (case-insensitive implícito)
-            si strstr_f(consulta, kw) >= 0:
-                si strstr_f(encontrados, archivo) < 0:
-                    si encontrados != "":
-                        encontrados = concat(encontrados, ", ")
-                    encontrados = concat(encontrados, archivo)
+            largo_kw = strlen_s(kw)
+            // Solo buscar keywords de 3+ caracteres
+            si largo_kw >= 3:
+                idx = 0
+                encontrado = 0
+                mientras idx < largo_consulta y encontrado == 0:
+                    // Saltar espacios
+                    mientras idx < largo_consulta:
+                        si subcadena(consulta, idx, 1) != " ":
+                            romper
+                        idx = idx + 1
+                    // Marcar inicio de palabra
+                    inicio = idx
+                    // Avanzar hasta fin de palabra
+                    mientras idx < largo_consulta:
+                        si subcadena(consulta, idx, 1) == " ":
+                            romper
+                        idx = idx + 1
+                    len_palabra = idx - inicio
+                    // Solo comparar palabras de >= 3 caracteres
+                    si len_palabra >= 3 y len_palabra == largo_kw:
+                        palabra = subcadena(consulta, inicio, len_palabra)
+                        si cmp_texto(palabra, kw) == 0:
+                            encontrado = 1
+                si encontrado == 1:
+                    si strstr_f(encontrados, archivo) < 0:
+                        si encontrados != "":
+                            encontrados = concat(encontrados, ", ")
+                        encontrados = concat(encontrados, archivo)
         k = fin_entry + 1
     retornar encontrados
 

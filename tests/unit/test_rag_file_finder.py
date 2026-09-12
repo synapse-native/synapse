@@ -68,15 +68,17 @@ def obtener_mapa_keywords() -> str:
 
 
 def file_finder(consulta: str) -> str:
-    """Localiza archivos relevantes por palabras clave. Replica router.syn:file_finder()."""
+    """Localiza archivos relevantes por palabras clave. Replica router.syn:file_finder().
+    Busca keywords como palabras completas (no substrings) en la consulta."""
     encontrados = ""
     mapa = obtener_mapa_keywords()
     entries = mapa.split(";")
+    palabras_consulta = [w.lower() for w in consulta.split() if len(w) >= 3]
     for entry in entries:
         if ":" not in entry:
             continue
         kw, archivo = entry.split(":", 1)
-        if kw in consulta:
+        if kw.lower() in palabras_consulta:
             if archivo not in encontrados:
                 if encontrados:
                     encontrados += ", "
@@ -159,23 +161,19 @@ class TestFileFinder:
         resultado = file_finder("escribir archivo de texto en sistema")
         assert "std/io.syn" in resultado or "std/texto.syn" in resultado
 
-    def test_keyword_corta_matchea(self):
-        """Keywords cortas como "io" matchean por substring — comportamiento conocido.
-        El file-finder es una primera aproximación; el catálogo de APIs
-        es el que realmente impide alucinaciones."""
+    def test_palabra_corta_ignorada(self):
+        """Palabras menores a 3 caracteres se ignoran."""
         resultado = file_finder("io es un modulo")
-        # "io" está en la consulta → matchea std/io.syn
-        assert "std/io.syn" in resultado
-
-    def test_keyword_no_encontrada(self):
-        """Si ninguna keyword está en la consulta, retorna vacío."""
-        # "xyz" no contiene ninguna keyword del mapa
-        resultado = file_finder("xyz xyz xyz")
+        # "io" tiene 2 chars, se ignora; "modulo" no está en el mapa
         assert resultado == ""
 
-    def test_consulta_corta(self):
-        """Consulta muy corta."""
-        resultado = file_finder("ab")
+    def test_palabra_no_encontrada(self):
+        resultado = file_finder("teletransportacion cuantica")
+        assert resultado == ""
+
+    def test_consulta_vacia(self):
+        """Consistencia: consulta vacía retorna vacío."""
+        resultado = file_finder("a")
         assert resultado == ""
 
 
