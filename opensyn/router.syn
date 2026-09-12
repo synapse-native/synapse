@@ -460,3 +460,126 @@ funcion consultar(ctx: puntero, pregunta: texto, contexto: texto, tipo_nodo: tex
 
     respuesta = procesar_consulta(ctx, consulta, contexto, tipo_nodo, "")
     retornar respuesta.texto_respuesta
+
+// ============================================================
+// ME-3 (R3): Router-orquestador que delega + 3 siguientes pasos
+// ============================================================
+// cumple Manual 7 §2.4: "El router está escrito en Synapse y actúa como
+// el cerebro de alto nivel de OpenSyn. Decide qué modelo usar y cómo
+// procesar la respuesta."
+// Origen: Kilo Orchestrator (descompone y delega) + freebuff (3 next steps).
+
+// Tipos de tarea que el orquestador puede clasificar.
+constante TAREA_EXPLICAR = 0
+constante TAREA_DIAGNOSTICAR = 1
+constante TAREA_REFACTORIZAR = 2
+constante TAREA_GENERAR = 3
+constante TAREA_REVISAR = 4
+
+// Clasifica una tarea en texto libre a un tipo constante.
+// cumple Manual 7 §2.4: el router clasifica antes de delegar.
+funcion clasificar_tarea(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        resultado >= 0 y resultado <= 4
+    tarea_lower = minusculas(tarea)
+    // Diagnóstico: buscar keywords de error/fallo/bug
+    si contiene(tarea_lower, "error") == 1 o contiene(tarea_lower, "bug") == 1:
+        retornar TAREA_DIAGNOSTICAR
+    si contiene(tarea_lower, "fallo") == 1 o contiene(tarea_lower, "diagnostica") == 1:
+        retornar TAREA_DIAGNOSTICAR
+    // Refactorización: buscar keywords de refactor/mejorar/optimizar
+    si contiene(tarea_lower, "refactor") == 1 o contiene(tarea_lower, "mejora") == 1:
+        retornar TAREA_REFACTORIZAR
+    si contiene(tarea_lower, "optimiza") == 1 o contiene(tarea_lower, "limpia") == 1:
+        retornar TAREA_REFACTORIZAR
+    // Revisión: buscar keywords de revisar/verificar/analizar
+    si contiene(tarea_lower, "revisa") == 1 o contiene(tarea_lower, "verifica") == 1:
+        retornar TAREA_REVISAR
+    si contiene(tarea_lower, "analiza") == 1 o contiene(tarea_lower, "comenta") == 1:
+        retornar TAREA_REVISAR
+    // Generación: buscar keywords de genera/crea/escribe/implementa
+    si contiene(tarea_lower, "genera") == 1 o contiene(tarea_lower, "crea") == 1:
+        retornar TAREA_GENERAR
+    si contiene(tarea_lower, "escribe") == 1 o contiene(tarea_lower, "implementa") == 1:
+        retornar TAREA_GENERAR
+    // Default: explicación
+    retornar TAREA_EXPLICAR
+
+// Retorna el modo (MODO_*) asociado a un tipo de tarea.
+// cumple Manual 7 §1.1: orchestrator asigna cada subtarea a un modo de R1.
+funcion modo_para_tarea(tipo_tarea: entero) -> entero:
+    requiere:
+        tipo_tarea >= 0 y tipo_tarea <= 4
+    garantiza:
+        resultado >= 0 y resultado <= 4
+    si tipo_tarea == TAREA_EXPLICAR:
+        retornar 0  // MODO_ASK
+    si tipo_tarea == TAREA_DIAGNOSTICAR:
+        retornar 3  // MODO_DEBUG
+    si tipo_tarea == TAREA_REFACTORIZAR:
+        retornar 2  // MODO_CODE
+    si tipo_tarea == TAREA_GENERAR:
+        retornar 2  // MODO_CODE
+    si tipo_tarea == TAREA_REVISAR:
+        retornar 0  // MODO_ASK (solo lectura)
+    retornar 0  // MODO_ASK
+
+// Nombre legible de un tipo de tarea.
+funcion nombre_tarea(tipo: entero) -> texto:
+    requiere:
+        verdadero
+    si tipo == TAREA_EXPLICAR:
+        retornar "explicar"
+    si tipo == TAREA_DIAGNOSTICAR:
+        retornar "diagnosticar"
+    si tipo == TAREA_REFACTORIZAR:
+        retornar "refactorizar"
+    si tipo == TAREA_GENERAR:
+        retornar "generar"
+    si tipo == TAREA_REVISAR:
+        retornar "revisar"
+    retornar "desconocido"
+
+// Orquesta una tarea: clasifica, parte en subtareas y retorna la lista
+// de modos asignados (como texto "0,2,3" separado por comas).
+// cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta."
+// Origen: Kilo Orchestrator (descompone y delega).
+funcion orquestar(tarea: texto) -> texto:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        longitud(resultado) > 0
+    tipo = clasificar_tarea(tarea)
+    modo = modo_para_tarea(tipo)
+    // Por ahora: una tarea = un modo. Futuro: partir en subtareas multiples.
+    resultado = entero_a_texto(modo)
+    retornar resultado
+
+// Genera 3 siguientes pasos sugeridos dado el tipo de tarea y la respuesta.
+// cumple R3: "tras cada respuesta, línea siguientes: 1) ... 2) ... 3) ..."
+// Origen: freebuff (proponer 3 siguientes pasos clicables).
+funcion siguientes_pasos(tipo_tarea: entero, respuesta: texto) -> texto:
+    requiere:
+        tipo_tarea >= 0 y tipo_tarea <= 4
+    garantiza:
+        longitud(resultado) > 0
+    pasos = ""
+    si tipo_tarea == TAREA_EXPLICAR:
+        pasos = "1) Diagnostica posibles problemas 2) Refactoriza el codigo explicado 3) Genera tests para el codigo"
+    sino:
+        si tipo_tarea == TAREA_DIAGNOSTICAR:
+            pasos = "1) Implementa la correccion sugerida 2) Revisa la solucion propuesta 3) Genera tests que validen la correccion"
+        sino:
+            si tipo_tarea == TAREA_REFACTORIZAR:
+                pasos = "1) Revisa los cambios propuestos 2) Ejecuta los tests para verificar 3) Genera documentacion del refactor"
+            sino:
+                si tipo_tarea == TAREA_GENERAR:
+                    pasos = "1) Revisa el codigo generado 2) Ejecuta los tests 3) Diagnostica posibles errores"
+                sino:
+                    si tipo_tarea == TAREA_REVISAR:
+                        pasos = "1) Implementa las correcciones sugeridas 2) Ejecuta los tests 3) Refactoriza el codigo revisado"
+                    sino:
+                        pasos = "1) Explica el resultado 2) Diagnostica problemas 3) Genera tests"
+    retornar pasos

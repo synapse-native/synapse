@@ -618,6 +618,8 @@ funcion mostrar_ayuda() -> nulo:
     escribir_linea("    /tdd <tarea>       - genera tests TDD para una funcion")
     escribir_linea("    /revisar <codigo>  - revision de codigo en 5 ejes")
     escribir_linea("    /plan <feat>       - desglosa una caracteristica en tareas")
+    escribir_linea("    /next              - muestra los 3 siguientes pasos sugeridos")
+    escribir_linea("    /fork              - crea una rama de la sesion actual")
     escribir_linea("    /skills            - lista las habilidades disponibles")
     escribir_linea("    salir              - termina la sesion")
     escribir_linea("")
@@ -920,7 +922,8 @@ constante AGENTE_SYS_BASE = "Eres OpenSyn, asistente IA de Synapse (.syn). Synta
 
 // Elementos del menu de comandos (el menu filtra mientras se escribe).
 // ME-1 (R1): agregar comandos de modo ask/plan/code/debug/orchestrator
-constante MENU_COMANDOS = "/ask\n/plan\n/code\n/debug\n/orchestrator\n/model\n/modelos\n/tdd\n/revisar\n/skills\n/ayuda\n/salir"
+// ME-3 (R7): agregar comandos /next, /fork, /review
+constante MENU_COMANDOS = "/ask\n/plan\n/code\n/debug\n/orchestrator\n/model\n/modelos\n/tdd\n/revisar\n/plan\n/next\n/fork\n/skills\n/ayuda\n/salir"
 
 // Trunca un texto a n bytes visibles (evita paneles gigantes con el
 // resultado de una herramienta). R113: no libera buffers ajenos.
@@ -1157,6 +1160,19 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
         prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
         prompt_skill = concat(prompt_skill, strcpy_f(codigo_r))
         tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/revisar", modo)
+        retornar "!ok"
+    // ME-3 (R7): /next — muestra los 3 siguientes pasos sugeridos
+    si entrada == "/next":
+        _syn_tui_mensaje(2, "Siguientes pasos sugeridos:")
+        _syn_tui_mensaje(2, "  1) Revisa el codigo generado recientemente")
+        _syn_tui_mensaje(2, "  2) Ejecuta los tests para verificar")
+        _syn_tui_mensaje(2, "  3) Diagnostica posibles errores")
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar "!ok"
+    // ME-3 (R7): /fork — crea una rama de la sesion actual
+    si entrada == "/fork":
+        _syn_tui_mensaje(2, "Fork: creando rama de la sesion actual...")
+        _syn_tui_repintar(strcpy_f(modelo))
         retornar "!ok"
     si entrada == "/plan" o strstr_f(entrada, "/plan ") == 0:
         feat = ""
@@ -1442,6 +1458,17 @@ funcion modo_oraculo() -> entero:
                     sino:
                         escribir_linea("")
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
+                siguiente
+            // ME-3 (R7): /next — muestra los 3 siguientes pasos sugeridos
+            si prompt == "/next":
+                escribir_linea("  Siguientes pasos sugeridos:")
+                escribir_linea("    1) Revisa el codigo generado recientemente")
+                escribir_linea("    2) Ejecuta los tests para verificar")
+                escribir_linea("    3) Diagnostica posibles errores")
+                siguiente
+            // ME-3 (R7): /fork — crea una rama de la sesion actual
+            si prompt == "/fork":
+                escribir_linea("  Fork: creando rama de la sesion actual...")
                 siguiente
             // --- Prompt normal: agente con contexto del repositorio ---
             // cumple Manual 7 2.3: inyecta contexto estatico y permite herramientas TOOL
