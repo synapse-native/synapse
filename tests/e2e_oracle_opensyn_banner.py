@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Oráculo E2E — Manual 7 §1.1 (OpenSyn asistente local con inyección de contexto).
-Valida que `opensyn` muestre el banner ASCII figlet y que el agente responda con
-archivos REALES del repositorio (no consejos genéricos) al preguntar qué lee.
+Valida que `opensyn` muestre el banner ASCII figlet, que el agente responda con
+archivos REALES del repositorio y que el sistema de modos (ASK/PLAN/CODE/DEBUG/
+ORCHESTRATOR) esté presente en la ayuda.
 
 HISTORIAL (H-R145-1, cerrado 2026-09-10): el chequeo 1 validaba el banner de
 bloques ████ (R141/ME_opensyn_tui). El Arquitecto ratificó en sesión 2026-09-10
@@ -15,6 +16,8 @@ prompt "nombra 3 reales" confunde al modelo 1.3B (responde literalmente "3",
 determinista con temperature:0); se usa formulación natural que sí dispara
 el TOOL listar. No modificar sin nueva aprobación (tests inmutables —
 GUIA_DE_GOBERNANZA regla 5).
+R147 (ME-1): se agrega chequeo 4 del sistema de modos (Manual 7 §1.1):
+la salida debe contener los comandos /ask /plan /code /debug /orchestrator.
 
 Uso (desde la raíz del repo, con Ollama/llama-server activo en :11434):
     .venv/Scripts/python.exe tests/e2e_oracle_opensyn_banner.py
@@ -64,8 +67,14 @@ def main():
     if "not a git repository" in salida:
         print("FALLO: stderr de git filtró a la salida")
         ok = False
+    # 4) sistema de modos (ME-1, R147, Manual 7 §1.1)
+    modos_esperados = ["/ask", "/plan", "/code", "/debug", "/orchestrator"]
+    modos_encontrados = [m for m in modos_esperados if m in salida]
+    if len(modos_encontrados) < 3:
+        print(f"FALLO: sistema de modos no encontrado en la ayuda (solo {len(modos_encontrados)}/5)")
+        ok = False
     if ok:
-        print("OK: banner + contexto real del repositorio")
+        print("OK: banner + contexto real del repositorio + sistema de modos")
         return 0
     return 1
 

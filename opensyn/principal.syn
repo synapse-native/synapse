@@ -660,18 +660,19 @@ funcion herramientas_permitidas(modo: entero) -> texto:
     retornar "listar,leer,git"
 
 // Verifica si una herramienta está permitida en el modo actual.
+// cumple Manual 7 §1.1: cada modo define qué herramientas [TOOL] están permitidas.
 funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
     requiere:
         verdadero
     garantiza:
         resultado == 0 o resultado == 1
     permitidas = herramientas_permitidas(modo)
-    // orchestrator solo delega
-    si modo == MODO_ORCHESTRATOR:
-        retornar 0
-    // Buscar la herramienta en la lista de permitidas
+    // Buscar la herramienta en la lista de permitidas (separada por comas)
     total = strlen_s(permitidas)
     h_len = strlen_s(herramienta)
+    // Si la herramienta es vacía o más larga que la lista, no puede estar
+    si h_len == 0 o h_len > total:
+        retornar 0
     i = 0
     mientras i <= total - h_len:
         coincide = 1
@@ -684,7 +685,7 @@ funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
                 romper
             j = j + 1
         si coincide == 1:
-            // Verificar que es límite completo (no substring)
+            // Verificar que es límite completo (no substring de otra palabra)
             antes_ok = 1
             despues_ok = 1
             si i > 0:
@@ -999,9 +1000,18 @@ funcion tui_listar_modelos(modelos: texto, modelo: texto) -> nulo:
     _syn_tui_mensaje(2, concat("Activo: ", strcpy_f(modelo)))
 
 // Ejecuta una skill (/tdd /revisar /plan) con streaming en el panel.
-funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto) -> nulo:
+// cumple Manual 7 §1.1: verifica permisos del modo actual antes de ejecutar.
+funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, modo: entero) -> nulo:
     requiere:
         verdadero
+    // /tdd genera código → requiere modo CODE o superior
+    // /revisar solo lee → permitido en cualquier modo
+    // /plan genera plan → requiere modo PLAN o superior
+    herramienta_skill = etiqueta
+    si herramienta_permitida(modo, herramienta_skill) == 0:
+        _syn_tui_mensaje(3, concat(concat("[!] Skill '", strcpy_f(etiqueta)), "' no permitida en este modo. Cambia con /code o /plan."))
+        _syn_tui_repintar(strcpy_f(modelo))
+        retornar
     _syn_tui_mensaje(2, concat(concat("Ejecutando ", strcpy_f(etiqueta)), "…"))
     _syn_tui_repintar(strcpy_f(modelo))
     r = consulta_stream(strcpy_f(modelo), strcpy_f(prompt_skill))
@@ -1133,7 +1143,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
             retornar "!ok"
         prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
         prompt_skill = concat(prompt_skill, strcpy_f(tarea))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/tdd")
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/tdd", modo)
         retornar "!ok"
     si entrada == "/revisar" o strstr_f(entrada, "/revisar ") == 0:
         codigo_r = ""
@@ -1146,7 +1156,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
             retornar "!ok"
         prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
         prompt_skill = concat(prompt_skill, strcpy_f(codigo_r))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/revisar")
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/revisar", modo)
         retornar "!ok"
     si entrada == "/plan" o strstr_f(entrada, "/plan ") == 0:
         feat = ""
@@ -1159,7 +1169,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
             retornar "!ok"
         prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
         prompt_skill = concat(prompt_skill, strcpy_f(feat))
-        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/plan")
+        tui_ejecutar_skill(strcpy_f(modelo), strcpy_f(prompt_skill), "/plan", modo)
         retornar "!ok"
     // Comando desconocido: abre el menu de comandos.
     r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
@@ -1167,7 +1177,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
         _syn_tui_mensaje(2, "Comando cancelado. Escribe / para el menu de comandos.")
         _syn_tui_repintar(strcpy_f(modelo))
         retornar "!ok"
-    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos))
+    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo)
 
 // Bucle principal de la TUI (estilo OpenCode/Freebuff).
 // ME-1 (R1): variable de estado del modo (inicial: ASK, solo lectura).
@@ -1380,7 +1390,11 @@ funcion modo_oraculo() -> entero:
                 escribir_linea("    /plan <feat>      - desglosa una caracteristica en tareas")
                 escribir_linea("    /ayuda            - todos los comandos")
                 siguiente
+            // ME-1 (R1): skills verifican permisos del modo actual
             si prompt == "/tdd" o strstr_f(prompt, "/tdd ") == 0:
+                si herramienta_permitida(modo, "editar") == 0:
+                    escribir_linea("  [!] /tdd requiere modo CODE. Cambia con /code")
+                    siguiente
                 tarea = subcadena(prompt, 5, strlen_s(prompt) - 5)
                 si tarea == "":
                     escribir_linea("  Uso: /tdd <descripcion de la funcion a testear>")
@@ -1396,6 +1410,7 @@ funcion modo_oraculo() -> entero:
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
                 siguiente
             si prompt == "/revisar" o strstr_f(prompt, "/revisar ") == 0:
+                // /revisar solo lee código → permitido en cualquier modo
                 codigo_a_revisar = subcadena(prompt, 9, strlen_s(prompt) - 9)
                 si codigo_a_revisar == "":
                     escribir_linea("  Uso: /revisar <codigo a revisar>")
@@ -1411,6 +1426,9 @@ funcion modo_oraculo() -> entero:
                         escribir_linea(concat("  OpenSyn> ", respuesta_skill))
                 siguiente
             si prompt == "/plan" o strstr_f(prompt, "/plan ") == 0:
+                si herramienta_permitida(modo, "plan") == 0:
+                    escribir_linea("  [!] /plan requiere modo PLAN o superior. Cambia con /plan")
+                    siguiente
                 feat = subcadena(prompt, 6, strlen_s(prompt) - 6)
                 si feat == "":
                     escribir_linea("  Uso: /plan <caracteristica a desglosar>")

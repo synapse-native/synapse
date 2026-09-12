@@ -18,7 +18,7 @@
 // ================================================================================
 
 importar std.modelo
-importar std.conv
+importar std.texto
 
 // ============================================================
 // Constantes de enrutamiento
@@ -34,6 +34,101 @@ constante MAX_PROMPT_TOKENS = 2048
 constante TEMPERATURA_EXPLICACION = 0.3
 constante TEMPERATURA_REFACTOR = 0.5
 constante TEMPERATURA_GENERACION = 0.7
+
+// ============================================================
+// File-finder + Catálogo APIs locales (ME-2, R2, Manual 7 §2.3)
+// ============================================================
+// El file-finder localiza archivos relevantes ANTES de generar código.
+// El catálogo lista las APIs reales de std/*.syn para que el modelo
+// no invente funciones que no existen (anti-alucinación).
+// Origen: freebuff (file-picker) + Kilo (Context7 docs).
+
+// Catálogo de APIs reales de std/*.syn (generado del repo, no del modelo).
+// cumple Manual 7 §2.3: catálogo de APIs impide alucinaciones de funciones.
+funcion obtener_catalogo_api() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    catalogo = "APIs std/ (usar SOLO estas funciones): "
+    catalogo = catalogo + "std.io: abrir, leer, escribir, escribir_linea, leer_linea; "
+    catalogo = catalogo + "std.texto: contiene, indice_de, reemplazar, termina_con, recortar, mayusculas, minusculas, a_texto, cmp_texto, strlen_s, strstr_f, strcpy_f; "
+    catalogo = catalogo + "std.sistema: ejecutar_comando, escribir_archivo, leer_archivo, existe_archivo; "
+    catalogo = catalogo + "std.json: desde_texto, obtener_elemento, obtener_campo, a_texto; "
+    catalogo = catalogo + "std.os: memoria_total, memoria_libre, vram_total, cpu_nucleos; "
+    catalogo = catalogo + "std.net: iniciar_red, crear_socket, conectar, enviar_datos, recibir_datos, cerrar_socket; "
+    catalogo = catalogo + "std.http: iniciar_servidor, aceptar, leer_peticion, responder; "
+    catalogo = catalogo + "std.modelo: cargar_modelo, cerrar_modelo, generar_texto, obtener_n_ctx; "
+    catalogo = catalogo + "std.math: crear_tensor, suma_tensor, producto_punto, relu; "
+    catalogo = catalogo + "std.cripto: sha256_texto, ed25519_verificar; "
+    catalogo = catalogo + "std.tiempo: ahora_ms, dormir_ms; "
+    catalogo = catalogo + "std.testing: assert_verdadero, assert_falso, assert_igual, assert_diferente; "
+    catalogo = catalogo + "std.debug: registrar_evento, trace, iniciar_sesion, finalizar_sesion"
+    retornar catalogo
+
+// ============================================================
+// File-finder: localiza archivos relevantes ANTES de generar código
+// ============================================================
+// cumple Manual 7 §2.3: fase 0 OBLIGATORIA de localización.
+// Recibe la consulta del usuario y retorna una lista de archivos candidatos
+// separados por comas, ordenados por relevancia.
+
+// Palabras clave del dominio → archivos asociados (tabla estática).
+// Formato: keyword:archivo por línea, separadas por punto y coma.
+funcion obtener_mapa_keywords() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    mapa = "io:std/io.syn;escribir:std/io.syn;leer:std/io.syn;archivo:std/io.syn;"
+    mapa = mapa + "texto:std/texto.syn;cadena:std/texto.syn;reemplazar:std/texto.syn;"
+    mapa = mapa + "sistema:std/sistema.syn;comando:std/sistema.syn;ejecutar:std/sistema.syn;"
+    mapa = mapa + "json:std/json.syn;parse:std/json.syn;"
+    mapa = mapa + "os:std/os.syn;ram:std/os.syn;vram:std/os.syn;cpu:std/os.syn;"
+    mapa = mapa + "red:std/net.syn;socket:std/net.syn;conexion:std/net.syn;"
+    mapa = mapa + "http:std/http.syn;servidor:std/http.syn;puerto:std/http.syn;"
+    mapa = mapa + "modelo:std/modelo.syn;gguf:std/modelo.syn;inferencia:std/modelo.syn;"
+    mapa = mapa + "tensor:std/math.syn;matriz:std/math.syn;"
+    mapa = mapa + "cripto:std/cripto.syn;sha256:std/cripto.syn;ed25519:std/cripto.syn;"
+    mapa = mapa + "tiempo:std/tiempo.syn;reloj:std/tiempo.syn;dormir:std/tiempo.syn;"
+    mapa = mapa + "debug:std/debug.syn;traza:std/debug.syn;trace:std/debug.syn;"
+    mapa = mapa + "test:std/testing.syn;assert:std/testing.syn;"
+    mapa = mapa + "router:opensyn/router.syn;rag:opensyn/router.syn;"
+    mapa = mapa + "principal:opensyn/principal.syn;agente:opensyn/principal.syn;modo:opensyn/principal.syn;"
+    mapa = mapa + "ollama:runtime/core/ollama.c;llama:runtime/core/ollama.c;"
+    mapa = mapa + "tui:runtime/core/tui.c;terminal:runtime/core/tui.c"
+    retornar mapa
+
+// Busca archivos relevantes en el repo basándose en palabras clave de la consulta.
+// cumple Manual 7 §2.3: file-finder localiza archivos ANTES de generar código.
+funcion file_finder(consulta: texto) -> texto:
+    requiere:
+        longitud(consulta) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    encontrados = ""
+    mapa = obtener_mapa_keywords()
+    largo_mapa = strlen_s(mapa)
+    k = 0
+    mientras k < largo_mapa:
+        fin_entry = k
+        mientras fin_entry < largo_mapa:
+            si subcadena(mapa, fin_entry, 1) == ";":
+                romper
+            fin_entry = fin_entry + 1
+        entry = subcadena(mapa, k, fin_entry - k)
+        pos_dp = strstr_f(entry, ":")
+        si pos_dp >= 0:
+            kw = subcadena(entry, 0, pos_dp)
+            archivo = subcadena(entry, pos_dp + 1, strlen_s(entry) - pos_dp - 1)
+            // Buscar keyword en la consulta completa (case-insensitive implícito)
+            si strstr_f(consulta, kw) >= 0:
+                si strstr_f(encontrados, archivo) < 0:
+                    si encontrados != "":
+                        encontrados = concat(encontrados, ", ")
+                    encontrados = concat(encontrados, archivo)
+        k = fin_entry + 1
+    retornar encontrados
 
 // ============================================================
 // Tipos de consulta (constantes; el lenguaje no define alias de tipo)
@@ -153,13 +248,24 @@ funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: entero) -> entero:
 // Construcción de prompt estructurado
 // ============================================================
 
-// Construye el prompt con el nivel de contexto apropiado
+// Construye el prompt con el nivel de contexto apropiado.
+// cumple Manual 7 §2.3: file-finder + catálogo APIs anti-alucinación.
 funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> texto:
     cfg = obtener_configuracion_ruta(ruta)
 
     prompt = ""
     prompt = prompt + "Eres un asistente experto en el lenguaje Synapse.\n"
     prompt = prompt + "Responde en espanol de forma concisa y tecnica.\n\n"
+
+    // ME-2 (R2): inyectar catálogo de APIs std para impedir alucinaciones
+    prompt = prompt + obtener_catalogo_api()
+    prompt = prompt + "\n"
+
+    // ME-2 (R2): file-finder — localizar archivos relevantes ANTES de generar
+    archivos_relevantes = file_finder(consulta.texto_consulta)
+    si archivos_relevantes != "":
+        prompt = prompt + "[ARCHIVOS RELEVANTES]: " + archivos_relevantes + "\n"
+        prompt = prompt + "Lee estos archivos con TOOL leer antes de generar codigo.\n\n"
 
     // Incluir contexto del archivo
     si contexto_texto != "":
