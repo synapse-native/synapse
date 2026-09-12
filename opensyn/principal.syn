@@ -862,6 +862,15 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
         // ME-1 (R1): verificar permisos del modo actual
         si herramienta_permitida(modo, nombre) == 0:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
+        // ME-5 (R6): verificar matriz de permisos + sandbox (M7 §7.3)
+        matriz_perm = matriz_permisos_default()
+        nivel_perm = verificar_permiso_completo(matriz_perm, nombre, arg)
+        si nivel_perm == 2:
+            retornar concat("[TOOL_ERROR] herramienta '", nombre, "' denegada por sandbox (M7 §7.3)")
+        si nivel_perm == 1:
+            res_pregunta = concat("[TOOL_ASK] Se requiere confirmación para '", nombre, "'. ¿Permitir? (s/n)")
+            // En modo non-interactive, denegar por seguridad
+            retornar res_pregunta
         si nombre == "listar":
             ruta = arg
             si ruta == "":

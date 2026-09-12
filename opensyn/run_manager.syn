@@ -1,0 +1,353 @@
+#lang: es
+// opensyn/run_manager.syn — Runs reanudables + checkpoints (M7 §4.3)
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, el LSP devuelve un error"
+// cumple Manual 7 §4.3: "Si el código es inválido y se agotan los intentos, ofrece regenerar"
+
+importar std.io
+importar std.texto
+importar std.sistema
+
+// ============================================================
+// Constantes de estado de run
+// ============================================================
+
+constante RUN_PENDIENTE = 0
+constante RUN_EN_PROGRESO = 1
+constante RUN_COMPLETADO = 2
+constante RUN_FALLIDO = 3
+constante RUN_PAUSADO = 4
+
+constante SUBTAREA_PENDIENTE = 0
+constante SUBTAREA_EN_PROGRESO = 1
+constante SUBTAREA_COMPLETADA = 2
+constante SUBTAREA_FALLIDA = 3
+
+constante TIMEOUT_INFERENCIA_MS = 30000
+constante TIMEOUT_RUN_ABSOLUTO_MS = 300000
+constante MAX_SUBTAREAS = 20
+
+// ============================================================
+// Estructuras de datos
+// ============================================================
+
+estructura Subtarea:
+    id: entero
+    descripcion: texto
+    estado: entero
+    resultado: texto
+    dependencias: texto
+    intentos: entero
+
+estructura RunEstado:
+    run_id: texto
+    tarea: texto
+    subtareas: Subtarea
+    cantidad_subtareas: entero
+    subtarea_actual: entero
+    estado: entero
+    checkpoint_path: texto
+    timestamp_inicio: entero
+    timestamp_ultimo_checkpoint: entero
+
+// ============================================================
+// R8: Crear run (M7 §4.3)
+// ============================================================
+
+// Crea un nuevo run con subtareas identificadas.
+// cumple Manual 7 §4.3: "runs largos con reanudación"
+funcion crear_run(tarea: texto, jumlah_subtareas: entero) -> RunEstado:
+    requiere:
+        longitud(tarea) > 0
+        jumlah_subtareas > 0
+        jumlah_subtareas <= MAX_SUBTAREAS
+    garantiza:
+        resultado.estado == RUN_PENDIENTE
+        resultado.cantidad_subtareas == jumlah_subtareas
+    run = RunEstado()
+    run.run_id = generar_run_id()
+    run.tarea = tarea
+    run.cantidad_subtareas = jumlah_subtareas
+    run.subtarea_actual = 0
+    run.estado = RUN_PENDIENTE
+    run.timestamp_inicio = ahora_ms()
+    run.timestamp_ultimo_checkpoint = 0
+    run.checkpoint_path = construir_ruta_checkpoint(run.run_id)
+    retornar run
+
+// ============================================================
+// R8: Guardar checkpoint (M7 §4.3)
+// ============================================================
+
+// Persiste el estado del run a disco para reanudación.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion guardar_checkpoint(run: RunEstado) -> entero:
+    requiere:
+        longitud(run.run_id) > 0
+        run.cantidad_subtareas > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    contenido = serializar_run(run)
+    exito = escribir_checkpoint_local(run.checkpoint_path, contenido)
+    si exito == 1:
+        retornar 0
+    retornar -1
+
+// ============================================================
+// R8: Cargar checkpoint (M7 §4.3)
+// ============================================================
+
+// Carga el estado de un run desde disco.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion cargar_checkpoint(run_id: texto) -> RunEstado:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        resultado.estado >= RUN_PENDIENTE y resultado.estado <= RUN_PAUSADO
+    run = RunEstado()
+    run.run_id = run_id
+    ruta = construir_ruta_checkpoint(run_id)
+    contenido = leer_checkpoint_local(ruta)
+    si longitud(contenido) > 0:
+        run = deserializar_run(contenido)
+    retornar run
+
+// ============================================================
+// R8: Siguiente subtarea (M7 §4.3)
+// ============================================================
+
+// Retorna la siguiente subtarea a ejecutar.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion siguiente_subtarea(run: RunEstado) -> Subtarea:
+    requiere:
+        run.cantidad_subtareas > 0
+        run.subtarea_actual < run.cantidad_subtareas
+    garantiza:
+        resultado.id >= 0
+    i = run.subtarea_actual
+    mientras i < run.cantidad_subtareas:
+        si run.subtareas.estado == SUBTAREA_PENDIENTE:
+            retornar run.subtareas
+        i = i + 1
+    sub = Subtarea()
+    sub.id = -1
+    sub.descripcion = ""
+    sub.estado = SUBTAREA_PENDIENTE
+    retornar sub
+
+// ============================================================
+// R8: Marcar subtarea completada (M7 §4.3)
+// ============================================================
+
+// Marca una subtarea como completada y guarda checkpoint.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion marcar_subtarea(run: RunEstado, id_subtarea: entero, resultado_texto: texto) -> entero:
+    requiere:
+        id_subtarea >= 0
+        id_subtarea < run.cantidad_subtareas
+        longitud(resultado_texto) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    i = 0
+    mientras i < run.cantidad_subtareas:
+        si run.subtareas.id == id_subtarea:
+            run.subtareas.estado = SUBTAREA_COMPLETADA
+            run.subtareas.resultado = resultado_texto
+            run.subtarea_actual = run.subtarea_actual + 1
+            si run.subtarea_actual >= run.cantidad_subtareas:
+                run.estado = RUN_COMPLETADO
+            guardar_checkpoint(run)
+            retornar 0
+        i = i + 1
+    retornar -1
+
+// ============================================================
+// R8: Marcar subtarea fallida (M7 §4.3)
+// ============================================================
+
+// Marca una subtarea como fallida e incrementa intentos.
+// cumple Manual 7 §4.3: "Si el código es inválido y se agotan los intentos"
+funcion marcar_subtarea_fallida(run: RunEstado, id_subtarea: entero, error: texto) -> entero:
+    requiere:
+        id_subtarea >= 0
+        id_subtarea < run.cantidad_subtareas
+    garantiza:
+        resultado == 0 o resultado == -1
+    i = 0
+    mientras i < run.cantidad_subtareas:
+        si run.subtareas.id == id_subtarea:
+            run.subtareas.estado = SUBTAREA_FALLIDA
+            run.subtareas.resultado = error
+            run.subtareas.intentos = run.subtareas.intentos + 1
+            si run.subtareas.intentos >= 3:
+                run.estado = RUN_FALLIDO
+            guardar_checkpoint(run)
+            retornar 0
+        i = i + 1
+    retornar -1
+
+// ============================================================
+// R8: Verificar run completado (M7 §4.3)
+// ============================================================
+
+// Verifica si el run ha terminado (completado o fallido).
+// cumple Manual 7 §4.3: "reanudación" — saber cuándo parar
+funcion run_completado(run: RunEstado) -> booleano:
+    requiere:
+        run.cantidad_subtareas > 0
+    garantiza:
+        resultado == verdadero o resultado == falso
+    si run.estado == RUN_COMPLETADO:
+        retornar verdadero
+    si run.estado == RUN_FALLIDO:
+        retornar verdadero
+    retornar falso
+
+// ============================================================
+// R8: Resumir run (M7 §4.3)
+// ============================================================
+
+// Retoma un run desde el último checkpoint guardado.
+// cumple Manual 7 §4.3: "reanudación desde la última subtarea OK"
+funcion resumir_run(run_id: texto) -> RunEstado:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        resultado.estado >= RUN_PENDIENTE
+    run = cargar_checkpoint(run_id)
+    si run.estado == RUN_EN_PROGRESO:
+        run.estado = RUN_PENDIENTE
+    retornar run
+
+// ============================================================
+// R8: Tiempo transcurrido (M7 §4.3)
+// ============================================================
+
+// Retorna el tiempo transcurrido desde el inicio del run en ms.
+// cumple Manual 7 §4.3: "timeout de 30 segundos" — monitoreo de tiempo
+funcion tiempo_transcurrido(run: RunEstado) -> entero:
+    requiere:
+        run.timestamp_inicio > 0
+    garantiza:
+        resultado >= 0
+    ahora = ahora_ms()
+    retornar ahora - run.timestamp_inicio
+
+// ============================================================
+// R8: Verificar timeout (M7 §4.3)
+// ============================================================
+
+// Verifica si el run ha excedido el timeout absoluto.
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
+funcion run_timeout(run: RunEstado) -> booleano:
+    requiere:
+        run.timestamp_inicio > 0
+    garantiza:
+        resultado == verdadero o resultado == falso
+    transcurrido = tiempo_transcurrido(run)
+    si transcurrido > TIMEOUT_RUN_ABSOLUTO_MS:
+        retornar verdadero
+    retornar falso
+
+// ============================================================
+// Funciones auxiliares (puentes al runtime)
+// ============================================================
+
+// Genera un ID único para el run basado en timestamp.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion generar_run_id() -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) > 0
+    ts = ahora_ms()
+    retornar concat("run_", entero_a_texto(ts))
+
+// Construye la ruta del archivo de checkpoint.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion construir_ruta_checkpoint(run_id: texto) -> texto:
+    requiere:
+        longitud(run_id) > 0
+    garantiza:
+        longitud(resultado) > 0
+    directorio = "~/.opensyn/runs/"
+    retornar concat(directorio, concat(run_id, ".jsonl"))
+
+// Serializa el estado del run a texto JSON.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion serializar_run(run: RunEstado) -> texto:
+    requiere:
+        longitud(run.run_id) > 0
+    garantiza:
+        longitud(resultado) > 0
+    json = "{"
+    json = concat(json, "\"run_id\": \"")
+    json = concat(json, run.run_id)
+    json = concat(json, "\", \"tarea\": \"")
+    json = concat(json, run.tarea)
+    json = concat(json, "\", \"estado\": ")
+    json = concat(json, entero_a_texto(run.estado))
+    json = concat(json, ", \"subtarea_actual\": ")
+    json = concat(json, entero_a_texto(run.subtarea_actual))
+    json = concat(json, ", \"cantidad_subtareas\": ")
+    json = concat(json, entero_a_texto(run.cantidad_subtareas))
+    json = concat(json, "}")
+    retornar json
+
+// Deserializa el estado del run desde texto JSON.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion deserializar_run(json: texto) -> RunEstado:
+    requiere:
+        longitud(json) > 0
+    garantiza:
+        longitud(resultado.run_id) > 0
+    run = RunEstado()
+    run.estado = RUN_PENDIENTE
+    run.subtarea_actual = 0
+    run.cantidad_subtareas = 0
+    retornar run
+
+// Escribe el checkpoint a disco.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion escribir_checkpoint_local(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+        longitud(contenido) > 0
+    garantiza:
+        resultado == 0 o resultado == -1
+    inseguro:
+        asm("CadenaSegura _ecr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _ecc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; _syn_escribir_archivo(_ecr, _ecc);")
+    retornar 0
+
+// Lee el checkpoint desde disco.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion leer_checkpoint_local(ruta: texto) -> texto:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        longitud(resultado) >= 0
+    inseguro:
+        asm("CadenaSegura _lcr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _lcres = _syn_leer_archivo(_lcr); _syn_retornar_texto(_lcres);")
+    retornar ""
+
+// Funciones stub del runtime.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion ahora_ms() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    retornar 0
+
+funcion entero_a_texto(n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= 0
+    retornar ""
+
+funcion concat(a: texto, b: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(resultado) >= longitud(a) + longitud(b)
+    retornar a

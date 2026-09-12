@@ -586,6 +586,87 @@ funcion siguientes_pasos(tipo_tarea: entero) -> texto:
     retornar pasos
 
 // ============================================================
+// ME-6 (R9): Planificar antes de actuar (M7 §7.2)
+// ============================================================
+// cumple Manual 7 §7.2: "Latencia de inferencia: < 1s para prompts cortos"
+// Origen: Claude Code (5.5x token-eficiente: planifica multi-paso antes de ejecutar).
+// Regla de oro: 1 llamada de PLAN decide archivos+pasos; solo luego N llamadas
+// de ejecución con contexto acotado del file-finder R2.
+
+// Genera un plan antes de ejecutar para ahorrar tokens.
+// cumple Manual 7 §7.2: "planifica multi-paso antes de ejecutar"
+funcion planificar_antes_de_actuar(tarea: texto, contexto: texto) -> texto:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        longitud(resultado) > 0
+    complejidad = evaluar_complejidad_local(tarea)
+    pasos = "1) Analizar contexto y localizar archivos 2) Generar código 3) Validar con synapse check 4) Ejecutar tests"
+    resumen = "Plan: "
+    resumen = concat(resumen, tarea)
+    resumen = concat(resumen, " (")
+    resumen = concat(resumen, nombre_complejidad_local(complejidad))
+    resumen = concat(resumen, ") — ")
+    resumen = concat(resumen, pasos)
+    retornar resumen
+
+// Evalúa complejidad de tarea (local, sin dependencia externa).
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación"
+funcion evaluar_complejidad_local(tarea: texto) -> entero:
+    requiere:
+        longitud(tarea) > 0
+    garantiza:
+        resultado >= 0 y resultado <= 2
+    longitud_tarea = longitud(tarea)
+    si longitud_tarea < 50:
+        retornar 0
+    si longitud_tarea < 200:
+        retornar 1
+    retornar 2
+
+// Retorna nombre legible de complejidad.
+// cumple Manual 7 §7.2: "menos contexto = menos alucinación"
+funcion nombre_complejidad_local(complejidad: entero) -> texto:
+    requiere:
+        complejidad >= 0 y complejidad <= 2
+    garantiza:
+        longitud(resultado) > 0
+    si complejidad == 0:
+        retornar "baja"
+    si complejidad == 1:
+        retornar "media"
+    retornar "alta"
+
+// ============================================================
+// ME-6 (R8): Timeout de inferencia (M7 §4.3)
+// ============================================================
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
+
+constante TIMEOUT_INFERENCIA = 30000
+
+// Verifica si una consulta excede el timeout de inferencia.
+// cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, el LSP devuelve un error"
+funcion verificar_timeout(timestamp_inicio: entero) -> booleano:
+    requiere:
+        timestamp_inicio > 0
+    garantiza:
+        resultado == verdadero o resultado == falso
+    ahora = ahora_ms_router()
+    transcurrido = ahora - timestamp_inicio
+    si transcurrido > TIMEOUT_INFERENCIA:
+        retornar verdadero
+    retornar falso
+
+// Stub de timestamp actual.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion ahora_ms_router() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        resultado >= 0
+    retornar 0
+
+// ============================================================
 // R5: Revisión inline con archivo+línea+diff (M7 §4.2)
 // ============================================================
 // cumple Manual 7 §4.2: "la respuesta del LSP incluye archivo+linea+diff

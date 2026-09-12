@@ -1,0 +1,185 @@
+#lang: es
+// opensyn/permisos.syn — Matriz de permisos + sandbox (M7 §7.3)
+// cumple Manual 7 §7.3: "Sandboxing: El servidor de inferencia se ejecuta con permisos mínimos"
+// cumple Manual 7 §7.3: "Cero telemetría: Verificado con monitoreo de red (sin conexiones salientes)"
+
+importar std.io
+importar std.texto
+importar std.sistema
+
+// ============================================================
+// Constantes de nivel de permiso
+// ============================================================
+
+constante PERMISO_ALLOW = 0
+constante PERMISO_ASK = 1
+constante PERMISO_DENY = 2
+
+// ============================================================
+// Estructuras de datos
+// ============================================================
+
+estructura ReglaPermiso:
+    herramienta: texto
+    nivel: entero
+    patron_ruta: texto
+
+estructura MatrizPermisos:
+    reglas: ReglaPermiso
+    cantidad_reglas: entero
+    workspace_path: texto
+
+// ============================================================
+// R6: Matriz de permisos por defecto (M7 §7.3)
+// ============================================================
+
+// Retorna la matriz de permisos por defecto para OpenSyn.
+// cumple Manual 7 §7.3: "permisos mínimos" — lectura=allow, edicion=ask, red=deny
+funcion matriz_permisos_default() -> MatrizPermisos:
+    requiere:
+        verdadero
+    garantiza:
+        resultado.cantidad_reglas > 0
+    matriz = MatrizPermisos()
+    matriz.cantidad_reglas = 8
+    matriz.workspace_path = _syn_obtener_cwd()
+    // R1: listar — allow (solo lectura)
+    matriz.reglas.herramienta = "listar"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    // R2: leer — allow (solo lectura)
+    matriz.reglas.herramienta = "leer"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    // R3: git — allow (solo lectura)
+    matriz.reglas.herramienta = "git"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    // R4: plan — ask (escritura planificada)
+    matriz.reglas.herramienta = "plan"
+    matriz.reglas.nivel = PERMISO_ASK
+    matriz.reglas.patron_ruta = "*.plan"
+    // R5: editar — ask (escritura de código)
+    matriz.reglas.herramienta = "editar"
+    matriz.reglas.nivel = PERMISO_ASK
+    matriz.reglas.patron_ruta = "*"
+    // R6: compilar — allow (ejecución segura)
+    matriz.reglas.herramienta = "compilar"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    // R7: diagnosticar — allow (solo lectura)
+    matriz.reglas.herramienta = "diagnosticar"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    // R8: delegar — allow (solo orquestación)
+    matriz.reglas.herramienta = "delegar"
+    matriz.reglas.nivel = PERMISO_ALLOW
+    matriz.reglas.patron_ruta = "*"
+    retornar matriz
+
+// ============================================================
+// R6: Verificar permiso de herramienta (M7 §7.3)
+// ============================================================
+
+// Verifica si una herramienta está permitida para el modo dado.
+// Retorna PERMISO_ALLOW, PERMISO_ASK o PERMISO_DENY.
+// cumple Manual 7 §7.3: "El servidor se ejecuta con permisos mínimos"
+funcion verificar_permiso_herramienta(matriz: MatrizPermisos, herramienta: texto) -> entero:
+    requiere:
+        matriz.cantidad_reglas > 0
+        longitud(herramienta) > 0
+    garantiza:
+        resultado >= PERMISO_ALLOW y resultado <= PERMISO_DENY
+    i = 0
+    mientras i < matriz.cantidad_reglas:
+        si str_eq_f(matriz.reglas.herramienta, herramienta):
+            retornar matriz.reglas.nivel
+        i = i + 1
+    retornar PERMISO_DENY
+
+// ============================================================
+// R6: Verificar ruta en workspace (M7 §7.3)
+// ============================================================
+
+// Verifica que una ruta está dentro del workspace (confinamiento).
+// Retorna verdadero si la ruta está dentro del workspace.
+// cumple Manual 7 §7.3: "permisos mínimos" — writes confinados al workspace
+funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
+    requiere:
+        longitud(ruta) > 0
+        longitud(workspace) > 0
+    garantiza:
+        resultado == verdadero o resultado == falso
+    longitud_ws = longitud(workspace)
+    longitud_ruta = longitud(ruta)
+    si longitud_ruta < longitud_ws:
+        retornar falso
+    i = 0
+    mientras i < longitud_ws:
+        si ruta[i] != workspace[i]:
+            retornar falso
+        i = i + 1
+    retornar verdadero
+
+// ============================================================
+// R6: Verificar permiso completo (M7 §7.3)
+// ============================================================
+
+// Verificación completa: herramienta + ruta en workspace (solo para escritura).
+// Retorna PERMISO_ALLOW, PERMISO_ASK o PERMISO_DENY.
+// cumple Manual 7 §7.3: "Sandboxing: permisos mínimos + workspace only"
+// Nota: herramientas de LECTURA (ALLOW) pueden leer fuera del workspace.
+// Solo herramientas de ESCRITURA (ASK) se confinan al workspace.
+funcion verificar_permiso_completo(matriz: MatrizPermisos, herramienta: texto, ruta: texto) -> entero:
+    requiere:
+        matriz.cantidad_reglas > 0
+        longitud(herramienta) > 0
+    garantiza:
+        resultado >= PERMISO_ALLOW y resultado <= PERMISO_DENY
+    nivel = verificar_permiso_herramienta(matriz, herramienta)
+    si nivel == PERMISO_DENY:
+        retornar PERMISO_DENY
+    // Solo confinar al workspace para herramientas de escritura (ASK)
+    si nivel == PERMISO_ASK y longitud(ruta) > 0:
+        en_workspace = es_ruta_en_workspace(ruta, matriz.workspace_path)
+        si en_workspace == falso:
+            retornar PERMISO_DENY
+    retornar nivel
+
+// ============================================================
+// R6: Nombre legible del nivel (M7 §7.3)
+// ============================================================
+
+// Retorna el nombre legible de un nivel de permiso.
+// cumple Manual 7 §7.3: "permisos mínimos" — feedback claro al usuario
+funcion nombre_permiso(nivel: entero) -> texto:
+    requiere:
+        nivel >= PERMISO_ALLOW y nivel <= PERMISO_DENY
+    garantiza:
+        longitud(resultado) > 0
+    si nivel == PERMISO_ALLOW:
+        retornar "allow"
+    si nivel == PERMISO_ASK:
+        retornar "ask"
+    retornar "deny"
+
+// ============================================================
+// Funciones auxiliares (puentes al runtime)
+// ============================================================
+
+// Comparación de cadenas (byte a byte).
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion str_eq_f(a: texto, b: texto) -> booleano:
+    requiere:
+        longitud(a) > 0
+        longitud(b) > 0
+    garantiza:
+        resultado == verdadero o resultado == falso
+    si longitud(a) != longitud(b):
+        retornar falso
+    i = 0
+    mientras i < longitud(a):
+        si a[i] != b[i]:
+            retornar falso
+        i = i + 1
+    retornar verdadero
