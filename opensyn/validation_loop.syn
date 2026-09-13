@@ -52,7 +52,7 @@ funcion validar_con_check(codigo: texto, idioma: texto) -> ResultadoValidacion:
     resultado.es_valido = verdadero
     resultado.errores = ""
     resultado.intentos_realizados = 0
-    ruta_temp = concat("/tmp/opensyn_validacion.", idioma)
+    ruta_temp = concat(_syn_obtener_cwd(), "\\opensyn_validacion.tmp")
     escribir_archivo_local(ruta_temp, codigo)
     comando = concat("synapse check --no-emit ", ruta_temp)
     salida = _syn_capturar_comando(comando)
@@ -215,6 +215,14 @@ funcion agregar_a_archivo_local(ruta: texto, contenido: texto) -> entero:
         longitud(ruta) > 0
     garantiza:
         resultado == 0 o resultado == -1
+    // Leer contenido existente, anadir linea, reescribir
+    existente = ""
+    inseguro:
+        asm("CadenaSegura _aer = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _aec = _syn_leer_archivo(_aer); if(_aec.longitud>0) existente = _aec;")
+    nueva_linea = concat(contenido, "\n")
+    completo = concat(existente, nueva_linea)
+    inseguro:
+        asm("CadenaSegura _aew = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _aewc = {.datos = (char*)completo.datos, .longitud = completo.longitud}; _syn_escribir_archivo(_aew, _aewc);")
     retornar 0
 
 funcion escape_json_local(t: texto) -> texto:
@@ -222,7 +230,26 @@ funcion escape_json_local(t: texto) -> texto:
         verdadero
     garantiza:
         longitud(resultado) >= 0
-    retornar t
+    // Escapar comillas dobles para JSON seguro
+    resultado = ""
+    total = strlen_s(t)
+    i = 0
+    mientras i < total:
+        c = subcadena(t, i, 1)
+        si c == "\"":
+            resultado = concat(resultado, "\\\"")
+        sino si c == "\\":
+            resultado = concat(resultado, "\\\\")
+        sino si c == "\n":
+            resultado = concat(resultado, "\\n")
+        sino si c == "\r":
+            resultado = concat(resultado, "\\r")
+        sino si c == "\t":
+            resultado = concat(resultado, "\\t")
+        sino:
+            resultado = concat(resultado, c)
+        i = i + 1
+    retornar resultado
 
 funcion generar_codigo_ia(prompt: texto) -> texto:
     requiere:

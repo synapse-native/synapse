@@ -37,11 +37,7 @@ externo funcion _syn_tui_entrada_borrar() -> nulo
 externo funcion _syn_tui_evento() -> entero
 externo funcion _syn_tui_menu(titulo: texto, items: texto) -> texto
 externo funcion _syn_tui_dirty() -> entero
-// --- Historial persistente + Autocompletado (Manual 7 1.1/8) ---
-externo funcion _syn_tui_historial_cargar() -> nulo
-externo funcion _syn_tui_historial_guardar() -> nulo
 externo funcion _syn_tui_historial_anadir(texto: texto) -> nulo
-externo funcion _syn_tui_completar() -> nulo
 // Spinner/status dinámico (Manual 7 §8, pulido OpenCode): animación mientras
 // el modelo genera + tokens/contexto en la barra inferior.
 externo funcion _syn_tui_pensando(activar: entero, etiqueta: texto) -> nulo
@@ -891,8 +887,8 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
             si arg == "":
                 res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
             sino:
-                si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0:
-                    res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+            si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
+                res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
                 sino:
                     ruta = concat(cwd_act, "/")
                     ruta = concat(ruta, arg)
@@ -928,7 +924,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
     sys = concat(sys, prompt_usuario)
     respuesta_final = ""
     iteracion = 0
-    mientras iteracion < 5:
+    mientras iteracion < 6:
         respuesta = _syn_ollama_consultar(modelo, sys, "127.0.0.1", 11434, 2048)
         si respuesta == "":
             respuesta_final = ""
@@ -1020,6 +1016,8 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
         sino:
             _syn_tui_mensaje(3, strcpy_f(detalle))
         _syn_tui_repintar(strcpy_f(modelo))
+        _syn_ollama_stream_cerrar(sesion)
+        retornar ""
     _syn_ollama_stream_cerrar(sesion)
     retornar texto_acum
 
@@ -1371,10 +1369,6 @@ funcion chat_tui() -> entero:
 funcion modo_oraculo() -> entero:
     // cumple Manual 7 §8: auto-iniciar llama-server si no esta corriendo
     iniciar_llama_server()
-    // Ruta TUI pantalla completa (estilo OpenCode/Freebuff): en consola real
-    // (o con OPENSN_TUI_TEST=1 en pipes, para los oraculos E2E) la TUI toma la
-    // pantalla; si no hay consola se sigue con el modo linea clasico.
-    // cumple Manual 7 1.1 + Manual 9 2.5.
     si _syn_tui_iniciar() == 0:
         rc_tui = chat_tui()
         retornar rc_tui
@@ -1385,8 +1379,6 @@ funcion modo_oraculo() -> entero:
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
-    // cumple Manual 7 §8: auto-iniciar llama-server si no esta corriendo
-    iniciar_llama_server()
     // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (config_ollama.txt del
     // instalador, http://localhost:11434); GGUF local como respaldo.
     config = leer_config_ollama()
@@ -1672,125 +1664,10 @@ funcion cmd_status() -> entero:
     escribir_linea("")
     escribir_linea("  Comandos disponibles:")
     escribir_linea("    opensyn <archivo.syn>   - Compilar archivo Synapse")
-    escribir_linea("    opensyn chat [modelo]   - Iniciar agente IA conversacional")
-    escribir_linea("    opensyn explain <arch>  - Explicar codigo con IA")
-    escribir_linea("    opensyn generate <txt>  - Generar codigo con IA")
+    escribir_linea("    opensyn                 - Iniciar orquestador IA local (TUI)")
     escribir_linea("    opensyn status          - Mostrar este estado")
     escribir_linea("")
     retornar 0
-
-// cumple Manual 7 §8: chat inicia el agente conversacional
-// cumple Manual 2 §5: contratos requiere/garantiza
-funcion cmd_chat(modelo: texto) -> entero:
-    requiere:
-        verdadero
-    garantiza:
-        resultado == 0 o resultado == 1
-    escribir_linea("=== OpenSyn: Modo Chat ===")
-    escribir_linea("")
-
-    si modelo == "" o modelo == "chat":
-        modelo = "modelo_synapse.gguf"
-
-    si no existe_archivo(modelo):
-        escribir_linea(concat("  [!] Modelo no encontrado: ", modelo))
-        escribir_linea("  [!] Descarga un modelo GGUF y colocalo como 'modelo_synapse.gguf'")
-        retornar 1
-
-    ctx = _syn_modelo_cargar(modelo)
-    si ctx == nulo:
-        escribir_linea("  [Error] No se pudo cargar el modelo")
-        retornar 1
-
-    escribir_linea("  [OK] Modelo cargado. Escribe 'salir' para terminar.")
-    escribir_linea("")
-
-    // Loop de chat simple
-    temp = 0.7
-    top_p = 0.9
-    mientras verdadero:
-        prompt = leer_linea()
-        si prompt == "salir":
-            _syn_modelo_cerrar(ctx)
-            retornar 0
-        si prompt == "":
-            escribir_linea("")
-            siguiente
-
-        respuesta = generar_texto(ctx, prompt, 256, temp, 40, top_p)
-        escribir_linea(respuesta)
-
-    _syn_modelo_cerrar(ctx)
-    retornar 0
-
-// cumple Manual 7 §8: explain usa IA para explicar codigo
-// cumple Manual 2 §5: contratos requiere/garantiza
-funcion cmd_explain(ruta: texto) -> entero:
-    requiere:
-        verdadero
-    garantiza:
-        resultado == 0 o resultado == 1
-    escribir_linea("=== OpenSyn: Explicacion de Codigo ===")
-    escribir_linea("")
-
-    si ruta == "":
-        escribir_linea("  Uso: opensyn explain <archivo.syn>")
-        retornar 1
-
-    fuente = leer_archivo(ruta)
-    si fuente == "":
-        escribir_linea(concat("  [Error] No se pudo leer: ", ruta))
-        retornar 1
-
-    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
-    si ctx == nulo:
-        escribir_linea("  [Error] Modelo modelo_synapse.gguf no encontrado")
-        retornar 1
-
-    prompt = concat("Explica el siguiente codigo Synapse:\n\n", fuente)
-    escribir_linea("[Oraculo] Analizando codigo...")
-    escribir_linea("")
-
-    temp_exp = 0.3
-    top_p_exp = 0.9
-    explicacion = generar_texto(ctx, prompt, 512, temp_exp, 40, top_p_exp)
-    escribir_linea(explicacion)
-
-    _syn_modelo_cerrar(ctx)
-    retornar 0
-
-// cumple Manual 7 §8: generate usa IA para generar codigo nuevo
-// cumple Manual 2 §5: contratos requiere/garantiza
-funcion cmd_generate(instruccion: texto) -> entero:
-    requiere:
-        verdadero
-    garantiza:
-        resultado == 0 o resultado == 1
-    escribir_linea("=== OpenSyn: Generacion de Codigo ===")
-    escribir_linea("")
-
-    si instruccion == "":
-        escribir_linea("  Uso: opensyn generate <instruccion>")
-        retornar 1
-
-    ctx = _syn_modelo_cargar("modelo_synapse.gguf")
-    si ctx == nulo:
-        escribir_linea("  [Error] Modelo modelo_synapse.gguf no encontrado")
-        retornar 1
-
-    codigo = generar_codigo(ctx, instruccion, 3)
-    _syn_modelo_cerrar(ctx)
-
-    escribir_linea("")
-    si codigo != "":
-        escribir_linea("  [OK] Codigo generado y compilado.")
-        res = escribir_archivo("generado.syn", codigo)
-        si res == 0:
-            escribir_linea("  [OK] Guardado en 'generado.syn'")
-        retornar 0
-
-    escribir_linea("  [Error] No se pudo generar codigo valido en 3 intentos.")
-    retornar 1
 
 // --- Punto de entrada principal ---
 

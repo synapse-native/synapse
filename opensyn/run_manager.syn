@@ -168,6 +168,9 @@ funcion resumir_run(run_id: texto) -> RunEstado:
     run = cargar_checkpoint(run_id)
     si run.estado == RUN_EN_PROGRESO:
         run.estado = RUN_PENDIENTE
+    // Resetear timestamp al momento de reanudar para que el timeout
+    // se mida desde la reanudación, no desde la creación original.
+    run.timestamp_inicio = ahora_ms()
     retornar run
 
 // ============================================================
@@ -204,6 +207,26 @@ funcion run_timeout(run: RunEstado) -> booleano:
 // Funciones auxiliares
 // ============================================================
 
+// Reemplaza todas las ocurrencias de un caracter por otro en una cadena.
+// cumple Manual 2 §12: toda función pública tiene contrato
+funcion reemplazar_basico(t: texto, buscar: texto, reemplazo: texto) -> texto:
+    requiere:
+        longitud(buscar) == 1
+        longitud(reemplazo) == 1
+    garantiza:
+        longitud(resultado) >= 0
+    resultado = ""
+    total = longitud(t)
+    i = 0
+    mientras i < total:
+        caracter = subcadena(t, i, 1)
+        si caracter == buscar:
+            resultado = concat(resultado, reemplazo)
+        sino:
+            resultado = concat(resultado, caracter)
+        i = i + 1
+    retornar resultado
+
 // Genera un ID único para el run basado en timestamp.
 // cumple Manual 2 §12: toda función pública tiene contrato
 funcion generar_run_id() -> texto:
@@ -221,7 +244,10 @@ funcion construir_ruta_checkpoint(run_id: texto) -> texto:
         longitud(run_id) > 0
     garantiza:
         longitud(resultado) > 0
-    directorio = "~/.opensyn/runs/"
+    home = obtener_env("USERPROFILE")
+    si home == "":
+        home = _syn_obtener_cwd()
+    directorio = concat(home, "\\.opensyn\\runs\\")
     retornar concat(directorio, concat(run_id, ".jsonl"))
 
 // Serializa el estado del run a texto JSON.
@@ -231,11 +257,12 @@ funcion serializar_run(run: RunEstado) -> texto:
         longitud(run.run_id) > 0
     garantiza:
         longitud(resultado) > 0
+    tarea_limpia = reemplazar_basico(run.tarea, "\"", "\\\"")
     json = "{"
     json = concat(json, "\"run_id\": \"")
     json = concat(json, run.run_id)
     json = concat(json, "\", \"tarea\": \"")
-    json = concat(json, run.tarea)
+    json = concat(json, tarea_limpia)
     json = concat(json, "\", \"estado\": ")
     json = concat(json, entero_a_texto(run.estado))
     json = concat(json, ", \"subtarea_actual\": ")
@@ -318,7 +345,15 @@ funcion extraer_entero_json(json: texto, campo: texto) -> entero:
             j = j + 1
         si coincide == verdadero:
             inicio = i + longitud_prefijo
-            retornar atoi_f(subcadena(json, inicio, 4))
+            fin = inicio
+            mientras fin < longitud_json:
+                letra = subcadena(json, fin, 1)
+                si letra != "0" y letra != "1" y letra != "2" y letra != "3" y letra != "4" y letra != "5" y letra != "6" y letra != "7" y letra != "8" y letra != "9":
+                    romper
+                fin = fin + 1
+            si fin > inicio:
+                retornar atoi_f(subcadena(json, inicio, fin - inicio))
+            retornar 0
         i = i + 1
     retornar 0
 

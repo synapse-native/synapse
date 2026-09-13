@@ -135,11 +135,27 @@ funcion verificar_permiso_completo(matriz: MatrizPermisos, herramienta: texto, r
     nivel = verificar_permiso_herramienta(matriz, herramienta)
     si nivel == PERMISO_DENY:
         retornar PERMISO_DENY
-    // Solo confinar al workspace para herramientas de escritura (ASK)
-    si nivel == PERMISO_ASK y longitud(ruta) > 0:
-        en_workspace = es_ruta_en_workspace(ruta, matriz.workspace_path)
-        si en_workspace == falso:
-            retornar PERMISO_DENY
+    // Confinar al workspace para herramientas de escritura (ASK) y lectura
+    // con ruta explícita — previene lectura de archivos sensibles del sistema.
+    si longitud(ruta) > 0:
+        si nivel == PERMISO_ASK:
+            en_workspace = es_ruta_en_workspace(ruta, matriz.workspace_path)
+            si en_workspace == falso:
+                retornar PERMISO_DENY
+        // Para herramientas ALLOW con ruta explícita (leer, listar),
+        // verificar que no accedan a rutas del sistema fuera del workspace
+        si nivel == PERMISO_ALLOW:
+            // Permitir cwd y subdirectorios del workspace
+            en_workspace = es_ruta_en_workspace(ruta, matriz.workspace_path)
+            si en_workspace == falso:
+                // Permitir si es una ruta relativa sin prefijo de unidad
+                tiene_unidad = 0
+                si longitud(ruta) >= 2:
+                    segundo = subcadena(ruta, 1, 1)
+                    si segundo == ":":
+                        tiene_unidad = 1
+                si tiene_unidad == 1:
+                    retornar PERMISO_DENY
     retornar nivel
 
 // ============================================================

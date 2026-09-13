@@ -408,9 +408,9 @@ class TestSerializacion:
         assert extraer_entero_json(json, "no_existe") == 0
 
     def test_source_ruta_checkpoint(self):
-        """Verificar: ruta checkpoint en ~/.opensyn/runs/"""
+        """Verificar: ruta checkpoint en ~/.opensyn/runs/ o USERPROFILE"""
         rm = _leer_run_manager()
-        assert "~/.opensyn/runs/" in rm
+        assert "~/.opensyn/runs/" in rm or ".opensyn\\runs\\" in rm or "USERPROFILE" in rm
 
 
 # ================================================================
