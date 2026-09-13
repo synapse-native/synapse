@@ -38,8 +38,8 @@ funcion planificar(tarea: texto, contexto: texto) -> Plan:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        resultado.cantidad_pasos > 0
-        resultado.cantidad_pasos <= MAX_PASOS
+        _resultado_.cantidad_pasos > 0 // cumple Manual 2 §5.1
+        _resultado_.cantidad_pasos <= MAX_PASOS
     plan = Plan()
     plan.tarea = tarea
     plan.cantidad_pasos = 4
@@ -60,7 +60,7 @@ funcion evaluar_complejidad(tarea: texto) -> entero:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        resultado >= COMPLEJIDAD_BAJA y resultado <= COMPLEJIDAD_ALTA
+        _resultado_ >= COMPLEJIDAD_BAJA y _resultado_ <= COMPLEJIDAD_ALTA // cumple Manual 2 §5.1
     longitud_tarea = longitud(tarea)
     si longitud_tarea < 50:
         retornar COMPLEJIDAD_BAJA
@@ -79,7 +79,7 @@ funcion seleccionar_modelo(complejidad: entero) -> texto:
     requiere:
         complejidad >= COMPLEJIDAD_BAJA y complejidad <= COMPLEJIDAD_ALTA
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si complejidad == COMPLEJIDAD_BAJA:
         retornar "opensyn-1.3b"
     si complejidad == COMPLEJIDAD_MEDIA:
@@ -96,7 +96,7 @@ funcion validar_plan(plan: Plan) -> booleano:
     requiere:
         plan.cantidad_pasos > 0
     garantiza:
-        resultado == verdadero o resultado == falso
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
     si plan.cantidad_pasos > MAX_PASOS:
         retornar falso
     si plan.estimacion_total_tokens > 10000:
@@ -113,7 +113,7 @@ funcion estimar_costo(plan: Plan) -> entero:
     requiere:
         plan.cantidad_pasos > 0
     garantiza:
-        resultado > 0
+        _resultado_ > 0 // cumple Manual 2 §5.1
     retornar plan.estimacion_total_tokens
 
 // ============================================================
@@ -126,7 +126,7 @@ funcion nombre_complejidad(complejidad: entero) -> texto:
     requiere:
         complejidad >= COMPLEJIDAD_BAJA y complejidad <= COMPLEJIDAD_ALTA
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si complejidad == COMPLEJIDAD_BAJA:
         retornar "baja"
     si complejidad == COMPLEJIDAD_MEDIA:
@@ -143,7 +143,7 @@ funcion resumen_plan(plan: Plan) -> texto:
     requiere:
         plan.cantidad_pasos > 0
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     resumen = "Plan: "
     resumen = concat(resumen, plan.tarea)
     resumen = concat(resumen, " (")
@@ -162,14 +162,14 @@ funcion resumen_plan(plan: Plan) -> texto:
 
 funcion entero_a_texto(n: entero) -> texto:
     requiere: verdadero
-    garantiza: longitud(resultado) >= 0
+    garantiza: longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     inseguro:
         asm("char _buf[32]; int _len = snprintf(_buf, 32, \"%lld\", (long long)n); return (CadenaSegura){_len, _buf};")
     retornar ""
 
 funcion concat(a: texto, b: texto) -> texto:
     requiere: verdadero
-    garantiza: longitud(resultado) >= longitud(a) + longitud(b)
+    garantiza: longitud(_resultado_) >= longitud(a) + longitud(b) // cumple Manual 2 §5.1
     inseguro:
         asm("int _la = a.longitud; int _lb = b.longitud; char* _buf = (char*)malloc(_la + _lb + 1); memcpy(_buf, a.datos, _la); memcpy(_buf + _la, b.datos, _lb); _buf[_la + _lb] = 0; return (CadenaSegura){_la + _lb, _buf};")
     retornar a

@@ -385,7 +385,7 @@ class TestComandosNextFork:
     def test_ultimo_tipo_tarea_variable(self):
         """Verifica: variable ultimo_tipo_tarea declarada."""
         principal = _leer_principal()
-        assert "variable ultimo_tipo_tarea" in principal
+        assert "let ultimo_tipo_tarea" in principal
 
 
 class TestCitasCumpleManual:

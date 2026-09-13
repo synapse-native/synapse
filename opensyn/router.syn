@@ -1,6 +1,6 @@
 #lang: es
-# cumple Manual 1 1: infraestructura del compilador Synapse
-# cumple Manual 8 4: toolchain de construcción
+// cumple Manual 1 §1: infraestructura del compilador Synapse
+// cumple Manual 8 §4: toolchain de construcción
 // opensyn/router.syn — Enrutador determinista basado en AST para el pipeline RAG quirúrgico
 // ================================================================================
 // Propósito: Conectar el análisis semántico del AST con el motor de inferencia
@@ -50,7 +50,7 @@ funcion obtener_catalogo_api() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     catalogo = "APIs std/ (usar SOLO estas funciones): "
     // --- I/O y archivos ---
     catalogo = catalogo + "std.io: abrir, leer, cerrar_archivo, escribir, escribir_linea, leer_linea, leer_bytes; "
@@ -133,7 +133,7 @@ funcion obtener_mapa_keywords() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     mapa = "io:std/io.syn;escribir:std/io.syn;leer:std/io.syn;archivo:std/io.syn;"
     mapa = mapa + "texto:std/texto.syn;cadena:std/texto.syn;reemplazar:std/texto.syn;"
     mapa = mapa + "sistema:std/sistema.syn;comando:std/sistema.syn;ejecutar:std/sistema.syn;"
@@ -159,7 +159,7 @@ funcion file_finder(consulta: texto) -> texto:
     requiere:
         longitud(consulta) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     encontrados = ""
     mapa = obtener_mapa_keywords()
     largo_mapa = strlen_s(mapa)
@@ -250,7 +250,7 @@ funcion obtener_configuracion_ruta(ruta: entero) -> ConfiguracionRuta:
     requiere:
         ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
     garantiza:
-        resultado.max_tokens > 0
+        _resultado_.max_tokens > 0 // cumple Manual 2 §5.1
     cfg = ConfiguracionRuta()
     cfg.contexto_lineas_antes = 2
     cfg.contexto_lineas_despues = 2
@@ -307,7 +307,7 @@ funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: entero) -> entero:
         longitud(tipo_nodo) > 0
         tipo_consulta >= 0 y tipo_consulta <= 4
     garantiza:
-        resultado >= RUTA_MICRO y resultado <= RUTA_PROYECTO
+        _resultado_ >= RUTA_MICRO y _resultado_ <= RUTA_PROYECTO // cumple Manual 2 §5.1
     // Consultas de diagnóstico siempre usan contexto local o micro
     si tipo_consulta == CONSULTA_DIAGNOSTICO:
         retornar RUTA_MICRO
@@ -348,7 +348,7 @@ funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: te
         longitud(consulta.texto_consulta) > 0
         ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     cfg = obtener_configuracion_ruta(ruta)
 
     prompt = ""
@@ -425,7 +425,7 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG, contexto_texto: t
     requiere:
         longitud(consulta.texto_consulta) > 0
     garantiza:
-        longitud(resultado.texto_respuesta) >= 0
+        longitud(_resultado_.texto_respuesta) >= 0 // cumple Manual 2 §5.1
     respuesta = RespuestaRAG()
     respuesta.texto_respuesta = ""
     respuesta.confianza = 0.0
@@ -482,7 +482,7 @@ funcion consultar(ctx: puntero, pregunta: texto, contexto: texto, tipo_nodo: tex
     requiere:
         longitud(pregunta) > 0
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     consulta = ConsultaRAG()
     consulta.texto_consulta = pregunta
     consulta.tipo = CONSULTA_EXPLICAR
@@ -514,7 +514,7 @@ funcion clasificar_tarea(tarea: texto) -> entero:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        resultado >= 0 y resultado <= 4
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
     tarea_lower = minusculas(tarea)
     // Diagnóstico: buscar keywords de error/fallo/bug
     si contiene(tarea_lower, "error") == 1 o contiene(tarea_lower, "bug") == 1:
@@ -545,7 +545,7 @@ funcion modo_para_tarea(tipo_tarea: entero) -> entero:
     requiere:
         tipo_tarea >= 0 y tipo_tarea <= 4
     garantiza:
-        resultado >= 0 y resultado <= 4
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
     si tipo_tarea == TAREA_EXPLICAR:
         retornar 0  // MODO_ASK
     si tipo_tarea == TAREA_DIAGNOSTICAR:
@@ -564,7 +564,7 @@ funcion nombre_tarea(tipo: entero) -> texto:
     requiere:
         tipo >= 0 y tipo <= 4
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si tipo == TAREA_EXPLICAR:
         retornar "explicar"
     si tipo == TAREA_DIAGNOSTICAR:
@@ -584,7 +584,7 @@ funcion orquestar(tarea: texto) -> texto:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     tipo = clasificar_tarea(tarea)
     modo = modo_para_tarea(tipo)
     resultado = entero_a_texto(modo)
@@ -597,7 +597,7 @@ funcion siguientes_pasos(tipo_tarea: entero) -> texto:
     requiere:
         tipo_tarea >= 0 y tipo_tarea <= 4
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     pasos = ""
     si tipo_tarea == TAREA_EXPLICAR:
         pasos = "1) Diagnostica posibles problemas 2) Refactoriza el codigo explicado 3) Genera tests para el codigo"
@@ -631,7 +631,7 @@ funcion planificar_antes_de_actuar(tarea: texto, contexto: texto) -> texto:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     complejidad = evaluar_complejidad_local(tarea)
     pasos = "1) Analizar contexto y localizar archivos 2) Generar código 3) Validar con synapse check 4) Ejecutar tests"
     resumen = "Plan: "
@@ -648,7 +648,7 @@ funcion evaluar_complejidad_local(tarea: texto) -> entero:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        resultado >= 0 y resultado <= 2
+        _resultado_ >= 0 y _resultado_ <= 2 // cumple Manual 2 §5.1
     longitud_tarea = longitud(tarea)
     si longitud_tarea < 50:
         retornar 0
@@ -662,7 +662,7 @@ funcion nombre_complejidad_local(complejidad: entero) -> texto:
     requiere:
         complejidad >= 0 y complejidad <= 2
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si complejidad == 0:
         retornar "baja"
     si complejidad == 1:
@@ -682,7 +682,7 @@ funcion verificar_timeout(timestamp_inicio: entero) -> booleano:
     requiere:
         timestamp_inicio > 0
     garantiza:
-        resultado == verdadero o resultado == falso
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
     ahora = ahora_ms_router()
     transcurrido = ahora - timestamp_inicio
     si transcurrido > TIMEOUT_INFERENCIA:
@@ -695,7 +695,7 @@ funcion ahora_ms_router() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0 // cumple Manual 2 §5.1
     inseguro:
         asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
     retornar 0
@@ -720,7 +720,7 @@ funcion revisar_codigo_inline(codigo: texto, salida_error: texto) -> RevisionRes
     requiere:
         longitud(codigo) > 0
     garantiza:
-        longitud(resultado.mensaje_error) >= 0
+        longitud(_resultado_.mensaje_error) >= 0 // cumple Manual 2 §5.1
     rev = RevisionResultado()
     rev.archivo = "generado.syn"
     rev.linea = 0

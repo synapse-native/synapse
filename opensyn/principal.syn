@@ -80,7 +80,7 @@ funcion obtener_dir_exe() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     // Usar PowerShell para obtener el directorio del exe actual
     dir = _syn_capturar_comando("powershell -NoProfile -Command \"Split-Path -Parent $MyInvocation.MyCommand.Path\"")
     si dir == "":
@@ -91,7 +91,7 @@ funcion llama_server_corriendo() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     // Verificar si el puerto 11434 esta escuchando
     salida = _syn_capturar_comando("netstat -an")
     si salida == "":
@@ -314,7 +314,7 @@ funcion leer_archivo_sin_validar(ruta: texto) -> texto:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     contenido = ""
     inseguro:
         asm("CadenaSegura _rl = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _cl = _syn_leer_archivo(_rl); if(_cl.longitud>0) contenido = _cl;")
@@ -324,7 +324,7 @@ funcion leer_config_ollama() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     // cumple Manual 9 §5: el instalador escribe config_ollama.txt con ollama=1 + model=
     // leer_archivo() valida la ruta contra cwd y rechaza relativas; leer absoluta via asm.
     contenido = ""
@@ -345,7 +345,7 @@ funcion obtener_modelo_config(config: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     si config == "":
         retornar ""
     idx = strstr_f(config, "model=")
@@ -376,7 +376,7 @@ funcion contar_modelos(lista: texto) -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0 // cumple Manual 2 §5.1
     total = strlen_s(lista)
     n = 0
     i = 0
@@ -396,7 +396,7 @@ funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     total = strlen_s(lista)
     seg = 0
     inicio = 0
@@ -422,7 +422,7 @@ funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     total = strlen_s(lista)
     hallado = 0
     inicio = 0
@@ -462,7 +462,7 @@ funcion ruta_config_ollama_existente() -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     cwd_act = _syn_obtener_cwd()
     si cwd_act != "":
         ruta_cwd = concat(cwd_act, "/config_ollama.txt")
@@ -480,7 +480,7 @@ funcion escribir_archivo_sin_validar(ruta: texto, contenido: texto) -> entero:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        resultado == 0 o resultado == -1
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     res = -1
     inseguro:
         asm("CadenaSegura _esr = {.datos = (char*)ruta.datos, .longitud = ruta.longitud}; CadenaSegura _esc = {.datos = (char*)contenido.datos, .longitud = contenido.longitud}; res = _syn_escribir_archivo(_esr, _esc);")
@@ -490,7 +490,7 @@ funcion guardar_modelo_config(modelo: texto) -> entero:
     requiere:
         longitud(modelo) > 0
     garantiza:
-        resultado == 0 o resultado == -1
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     ruta = ruta_config_ollama_existente()
     si ruta == "":
         home = obtener_env("USERPROFILE")
@@ -513,7 +513,7 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     base = ""
     si modelo_config != "":
         base = subcadena(modelo_config, 0, strlen_s(modelo_config))
@@ -555,7 +555,7 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     res = ""
     arg = ""
     si prompt == "/model":
@@ -635,7 +635,7 @@ constante MODO_DEFAULT = MODO_ASK
 
 // ME-3 (R5): último tipo de tarea clasificado (para /next contextual).
 // Se actualiza después de cada respuesta del agente.
-variable ultimo_tipo_tarea: entero = 0
+let ultimo_tipo_tarea: entero = 0  // cumple Manual 2 §134: declaracion_variable ::= "let" IDENTIFICADOR
 
 // Clasificación ligera de tarea (para /next contextual en TUI).
 // cumple Manual 7 §2.4: el router clasifica antes de delegar.
@@ -643,7 +643,7 @@ funcion clasificar_tarea_local(tarea: texto) -> entero:
     requiere:
         longitud(tarea) > 0
     garantiza:
-        resultado >= 0 y resultado <= 4
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
     t = minusculas(tarea)
     si contiene(t, "error") == 1 o contiene(t, "bug") == 1:
         retornar 1  // DIAGNOSTICAR
@@ -669,7 +669,7 @@ funcion herramientas_permitidas(modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     // ask: solo lectura (listar, leer, git status/log)
     si modo == MODO_ASK:
         retornar "listar,leer,git"
@@ -693,7 +693,7 @@ funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     permitidas = herramientas_permitidas(modo)
     // Buscar la herramienta en la lista de permitidas (separada por comas)
     total = strlen_s(permitidas)
@@ -792,7 +792,7 @@ funcion filtrar_listado(lista: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     res = ""
     total = strlen_s(lista)
     i = 0
@@ -824,7 +824,7 @@ funcion construir_contexto(cwd_act: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     parte = concat("Dir: ", cwd_act)
     lista = _syn_listar_directorio(cwd_act)
     si lista != "":
@@ -840,7 +840,7 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git <arg>"
     total = strlen_s(linea)
     inicio = 5
@@ -915,7 +915,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     cwd_act = _syn_obtener_cwd()
     ctx = construir_contexto(strcpy_f(cwd_act))
     sys = strcpy_f(AGENTE_SYS_BASE)
@@ -966,7 +966,7 @@ funcion tui_acotar(t: texto, n: entero) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     largo = strlen_s(t)
     si largo <= n:
         retornar strcpy_f(t)
@@ -978,7 +978,7 @@ funcion pct_contexto(sys: texto) -> entero:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     bytes = _syn_texto_longitud(sys)
     si bytes > 3500:
         bytes = 3500
@@ -990,7 +990,7 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
     requiere:
         longitud(modelo) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     texto_acum = ""
     _syn_tui_pensando(1, "Consultando")
     sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 11434, 2048)
@@ -1110,7 +1110,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     si entrada == "salir" o entrada == "exit" o entrada == "/salir":
         retornar "!salir"
     // ME-1 (R1): comandos de cambio de modo
@@ -1272,7 +1272,7 @@ funcion chat_tui() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     config = leer_config_ollama()
     modelos = _syn_ollama_modelos("127.0.0.1", 11434)
     modelo_base = obtener_modelo_config(config)
@@ -1637,7 +1637,7 @@ funcion cmd_status() -> entero:
     requiere:
         verdadero
     garantiza:
-        resultado == 0 o resultado == 1
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     escribir_linea("=== OpenSyn: Estado del Sistema ===")
     escribir_linea("")
 

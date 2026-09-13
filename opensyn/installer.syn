@@ -45,9 +45,9 @@ funcion arquitectura() -> texto:
 funcion detectar_hardware() -> HardwareInfo:
     requiere:
         verdadero
-    garantiza:
-        resultado.ram_total >= 0
-        resultado.cpu_nucleos > 0
+    garantiza: // cumple Manual 2 §5.1
+        _resultado_.ram_total >= 0
+        _resultado_.cpu_nucleos > 0
     let hw: HardwareInfo
     hw.ram_total = memoria_total()
     hw.vram_total = vram_total()
@@ -59,9 +59,9 @@ funcion seleccionar_modelo(vram: entero) -> ModeloInfo:
     requiere:
         vram >= 0
     garantiza:
-        longitud(resultado.nombre) > 0
-        longitud(resultado.url) > 0
-        resultado.tamano_aprox > 0
+        longitud(_resultado_.nombre) > 0
+        longitud(_resultado_.url) > 0
+        _resultado_.tamano_aprox > 0
     let m: ModeloInfo
     si vram < 4096:
         m.nombre = "deepseek-coder-1.3b-Q4_K_M"
@@ -91,8 +91,8 @@ funcion seleccionar_hilos(nucleos: entero) -> entero:
     requiere:
         nucleos > 0
     garantiza:
-        resultado >= 2
-        resultado <= nucleos
+        _resultado_ >= 2
+        _resultado_ <= nucleos
     si nucleos <= 4:
         retornar 2
     sino:
@@ -105,7 +105,7 @@ funcion seleccionar_capas_gpu(vram: entero) -> entero:
     requiere:
         vram >= 0
     garantiza:
-        resultado >= 0
+        _resultado_ >= 0
     si vram < 4096:
         retornar 0
     sino:
@@ -114,7 +114,7 @@ funcion seleccionar_capas_gpu(vram: entero) -> entero:
         sino:
             retornar 35
 
-# cumple Manual 9 5.3
+// cumple Manual 9 5.3
 funcion descargar_modelo(info: ModeloInfo) -> Resultado<texto, texto>:
     requiere:
         longitud(info.nombre) > 0
@@ -217,10 +217,10 @@ funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto)
         longitud(ruta_modelo) > 0
         longitud(modelo.nombre) > 0
     garantiza:
-        longitud(resultado.ruta_modelo) > 0
-        resultado.n_ctx > 0
-        resultado.n_threads >= 2
-        resultado.puerto > 0
+        longitud(_resultado_.ruta_modelo) > 0
+        _resultado_.n_ctx > 0
+        _resultado_.n_threads >= 2
+        _resultado_.puerto > 0
     let cfg: ConfigInfo
     cfg.nombre_modelo = modelo.nombre
     cfg.ruta_modelo = ruta_modelo

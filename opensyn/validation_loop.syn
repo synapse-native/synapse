@@ -47,7 +47,7 @@ funcion validar_con_check(codigo: texto, idioma: texto) -> ResultadoValidacion:
     requiere:
         longitud(codigo) > 0
     garantiza:
-        resultado.intentos_realizados == 0
+        _resultado_.intentos_realizados == 0 // cumple Manual 2 §5.1
     resultado = ResultadoValidacion()
     resultado.es_valido = verdadero
     resultado.errores = ""
@@ -72,7 +72,7 @@ funcion reconstruir_prompt_con_error(prompt_original: texto, error: ErrorCompila
     requiere:
         longitud(prompt_original) > 0
     garantiza:
-        longitud(resultado) > longitud(prompt_original)
+        longitud(_resultado_) > longitud(prompt_original) // cumple Manual 2 §5.1
     mensaje = "El código anterior tiene el siguiente error: "
     mensaje = concat(mensaje, error.mensaje)
     ubicacion = " (línea "
@@ -98,7 +98,7 @@ funcion guardar_feedback(instruccion: texto, codigo_corregido: texto) -> entero:
     requiere:
         longitud(instruccion) > 0
     garantiza:
-        resultado == 0 o resultado == -1
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     ruta = RUTA_FEEDBACK
     linea_json = "{\"instruction\": \""
     linea_json = concat(linea_json, escape_json_local(instruccion))
@@ -120,7 +120,7 @@ funcion review_compilar(codigo: texto, idioma: texto) -> ResultadoValidacion:
     requiere:
         longitud(codigo) > 0
     garantiza:
-        resultado.intentos_realizados == 0
+        _resultado_.intentos_realizados == 0 // cumple Manual 2 §5.1
     resultado = validar_con_check(codigo, idioma)
     retornar resultado
 
@@ -136,7 +136,7 @@ funcion revisar_codigo_inline(codigo: texto, error: ErrorCompilacion) -> Revisio
     requiere:
         longitud(codigo) > 0
     garantiza:
-        longitud(resultado.archivo) >= 0
+        longitud(_resultado_.archivo) >= 0 // cumple Manual 2 §5.1
     rev = RevisionInline()
     rev.archivo = error.archivo
     rev.linea = error.linea
@@ -158,7 +158,7 @@ funcion bucle_validacion(prompt_inicial: texto, idioma: texto) -> texto:
     requiere:
         longitud(prompt_inicial) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     codigo_actual = ""
     error_msj = ""
     intentos = 0
@@ -214,7 +214,7 @@ funcion agregar_a_archivo_local(ruta: texto, contenido: texto) -> entero:
     requiere:
         longitud(ruta) > 0
     garantiza:
-        resultado == 0 o resultado == -1
+        _resultado_ == 0 o _resultado_ == -1 // cumple Manual 2 §5.1
     // Leer contenido existente, anadir linea, reescribir
     existente = ""
     inseguro:
@@ -229,7 +229,7 @@ funcion escape_json_local(t: texto) -> texto:
     requiere:
         verdadero
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     // Escapar comillas dobles para JSON seguro
     resultado = ""
     total = strlen_s(t)
@@ -255,5 +255,5 @@ funcion generar_codigo_ia(prompt: texto) -> texto:
     requiere:
         longitud(prompt) > 0
     garantiza:
-        longitud(resultado) >= 0
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     retornar ""

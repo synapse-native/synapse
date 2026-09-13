@@ -34,7 +34,7 @@ funcion nombre_herramienta(idx: entero) -> texto:
     requiere:
         idx >= 0 y idx < MAX_HERRAMIENTAS
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si idx == 0: retornar "listar"
     si idx == 1: retornar "leer"
     si idx == 2: retornar "git"
@@ -55,7 +55,7 @@ funcion nivel_permiso(idx: entero) -> entero:
     requiere:
         idx >= 0 y idx < MAX_HERRAMIENTAS
     garantiza:
-        resultado >= PERMISO_ALLOW y resultado <= PERMISO_DENY
+        _resultado_ >= PERMISO_ALLOW y _resultado_ <= PERMISO_DENY // cumple Manual 2 §5.1
     // listar=ALLOW, leer=ALLOW, git=ALLOW, plan=ASK, editar=ASK,
     // compilar=ALLOW, diagnosticar=ALLOW, delegar=ALLOW
     si idx == 0: retornar PERMISO_ALLOW
@@ -80,7 +80,7 @@ funcion verificar_permiso_herramienta(matriz: MatrizPermisos, herramienta: texto
         matriz.cantidades > 0
         longitud(herramienta) > 0
     garantiza:
-        resultado >= PERMISO_ALLOW y resultado <= PERMISO_DENY
+        _resultado_ >= PERMISO_ALLOW y _resultado_ <= PERMISO_DENY // cumple Manual 2 §5.1
     i = 0
     mientras i < MAX_HERRAMIENTAS:
         nombre = nombre_herramienta(i)
@@ -101,7 +101,7 @@ funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
         longitud(ruta) > 0
         longitud(workspace) > 0
     garantiza:
-        resultado == verdadero o resultado == falso
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
     longitud_ws = longitud(workspace)
     longitud_ruta = longitud(ruta)
     si longitud_ruta < longitud_ws:
@@ -131,7 +131,7 @@ funcion verificar_permiso_completo(matriz: MatrizPermisos, herramienta: texto, r
         matriz.cantidades > 0
         longitud(herramienta) > 0
     garantiza:
-        resultado >= PERMISO_ALLOW y resultado <= PERMISO_DENY
+        _resultado_ >= PERMISO_ALLOW y _resultado_ <= PERMISO_DENY // cumple Manual 2 §5.1
     nivel = verificar_permiso_herramienta(matriz, herramienta)
     si nivel == PERMISO_DENY:
         retornar PERMISO_DENY
@@ -168,7 +168,7 @@ funcion nombre_permiso(nivel: entero) -> texto:
     requiere:
         nivel >= PERMISO_ALLOW y nivel <= PERMISO_DENY
     garantiza:
-        longitud(resultado) > 0
+        longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     si nivel == PERMISO_ALLOW:
         retornar "allow"
     si nivel == PERMISO_ASK:
@@ -185,7 +185,7 @@ funcion matriz_permisos_crear() -> MatrizPermisos:
     requiere:
         verdadero
     garantiza:
-        resultado.cantidades == MAX_HERRAMIENTAS
+        _resultado_.cantidades == MAX_HERRAMIENTAS // cumple Manual 2 §5.1
     matriz = MatrizPermisos()
     matriz.cantidades = MAX_HERRAMIENTAS
     matriz.workspace_path = _syn_obtener_cwd()
@@ -202,7 +202,7 @@ funcion str_eq_f(a: texto, b: texto) -> booleano:
         longitud(a) > 0
         longitud(b) > 0
     garantiza:
-        resultado == verdadero o resultado == falso
+        _resultado_ == verdadero o _resultado_ == falso // cumple Manual 2 §5.1
     si longitud(a) != longitud(b):
         retornar falso
     i = 0
