@@ -937,7 +937,7 @@ funcion handle_ai_fix(id: entero, params: texto) -> nulo:
 // cumple Manual 8 §2.3: synapse/aiExplain — explica código con IA local.
 // El comando de paleta de la extensión VS Code (Manual 8 §2.3) invoca este
 // método; sin handler el LSP respondía -32601 y el comando se quedaba colgado.
-// Usa el backend real (Manual 7 §8): _syn_ollama_consultar sobre :11434.
+// Usa el backend real (Manual 7 §8): _syn_ollama_consultar sobre :8088.
 externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
 
@@ -962,7 +962,7 @@ funcion ia_modelo_activo() -> texto:
             si cfg_home != "":
                 modelo = ia_modelo_de_config(cfg_home)
     si modelo == "":
-        let modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+        let modelos = _syn_ollama_modelos("127.0.0.1", 8088)
         si modelos != "":
             modelo = ia_primer_modelo(modelos)
     si modelo == "":
@@ -1038,7 +1038,7 @@ funcion handle_ai_explain(id: entero, params: texto) -> nulo:
     sino:
         let modelo = ia_modelo_activo()
         let prompt = concat("[USUARIO]Explica brevemente este codigo Synapse (que hace, linea por linea si aplica). Responde en espanol, sin markdown:\n", strcpy_f(codigo))
-        let respuesta = _syn_ollama_consultar(strcpy_f(modelo), strcpy_f(prompt), "127.0.0.1", 11434, 512)
+        let respuesta = _syn_ollama_consultar(strcpy_f(modelo), strcpy_f(prompt), "127.0.0.1", 8088, 512)
         si respuesta == "":
             enviar_respuesta(construir_respuesta(id, "{\"ai_available\":false,\"explanation\":\"\"}"))
         sino:

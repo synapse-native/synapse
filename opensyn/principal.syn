@@ -13,7 +13,7 @@ importar std.texto
 constante ARCHIVO_CONFIG = ".synapse_config"
 
 // --- Cliente Ollama local (runtime/core/ollama.c) ---
-// cumple Manual 7 §8: consulta al oraculo local via HTTP (11434)
+// cumple Manual 7 §8: consulta al oraculo local via HTTP (8088)
 externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
 // cumple Manual 7 §8: lista los modelos instalados en Ollama (GET /api/tags)
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
@@ -92,19 +92,19 @@ funcion llama_server_corriendo() -> entero:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
-    // Verificar si el puerto 11434 esta escuchando
+    // Verificar si el puerto 8088 esta escuchando
     salida = _syn_capturar_comando("netstat -an")
     si salida == "":
         retornar 0
-    // Buscar patrones de LISTENING en puerto 11434
+    // Buscar patrones de LISTENING en puerto 8088
     total = strlen_s(salida)
     i = 0
-    mientras i < total - 13:
+    mientras i < total - 14:
         caracter = subcadena(salida, i, 1)
         si caracter == ":":
-            sig = subcadena(salida, i + 1, 5)
-            si sig == "11434":
-                resto = subcadena(salida, i + 6, 9)
+            sig = subcadena(salida, i + 1, 4)
+            si sig == "8088":
+                resto = subcadena(salida, i + 5, 10)
                 si subcadena(resto, 0, 8) == "LISTENIN":
                     retornar 1
         i = i + 1
@@ -180,7 +180,7 @@ funcion iniciar_llama_server() -> nulo:
     si modelo_ruta == "":
         retornar
     // Iniciar llama-server en background usando start
-    cmd_start = concat(concat(concat(concat("start \"llama-server\" /B \"", ruta_server), "\" --model \""), modelo_ruta), "\" --port 11434 --host 127.0.0.1 --ctx-size 2048 --n-gpu-layers 0")
+    cmd_start = concat(concat(concat(concat("start \"llama-server\" /B \"", ruta_server), "\" --model \""), modelo_ruta), "\" --port 8088 --host 127.0.0.1 --ctx-size 2048 --n-gpu-layers 0")
     _syn_capturar_comando(cmd_start)
     // Esperar usando ping como delay (3 segundos)
     _syn_capturar_comando("ping -n 4 127.0.0.1 >nul 2>&1")
@@ -925,7 +925,7 @@ funcion consultar_agente(modelo: texto, prompt_usuario: texto, modo: entero) -> 
     respuesta_final = ""
     iteracion = 0
     mientras iteracion < 6:
-        respuesta = _syn_ollama_consultar(modelo, sys, "127.0.0.1", 11434, 2048)
+        respuesta = _syn_ollama_consultar(modelo, sys, "127.0.0.1", 8088, 2048)
         si respuesta == "":
             respuesta_final = ""
             romper
@@ -993,7 +993,7 @@ funcion consulta_stream(modelo: texto, prompt: texto) -> texto:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     texto_acum = ""
     _syn_tui_pensando(1, "Consultando")
-    sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 11434, 2048)
+    sesion = _syn_ollama_stream_iniciar(modelo, prompt, "127.0.0.1", 8088, 2048)
     si sesion == nulo:
         _syn_tui_mensaje(3, "No se pudo conectar con Ollama. Verifica: ollama serve")
         _syn_tui_repintar(strcpy_f(modelo))
@@ -1274,7 +1274,7 @@ funcion chat_tui() -> entero:
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     config = leer_config_ollama()
-    modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+    modelos = _syn_ollama_modelos("127.0.0.1", 8088)
     modelo_base = obtener_modelo_config(config)
     modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
     total_mod = contar_modelos(strcpy_f(modelos))
@@ -1287,7 +1287,7 @@ funcion chat_tui() -> entero:
     _syn_tui_mensaje(4, BANNER_L4)
     _syn_tui_mensaje(4, BANNER_L5)
     _syn_tui_mensaje(4, BANNER_L6)
-    _syn_tui_mensaje(2, "Chat local con Ollama en http://localhost:11434")
+    _syn_tui_mensaje(2, "Chat local con Ollama en http://localhost:8088")
     si total_mod > 0:
         _syn_tui_mensaje(2, concat("Modelo activo: ", strcpy_f(modelo)))
     sino:
@@ -1380,14 +1380,14 @@ funcion modo_oraculo() -> entero:
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
     // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (config_ollama.txt del
-    // instalador, http://localhost:11434); GGUF local como respaldo.
+    // instalador, http://localhost:8088); GGUF local como respaldo.
     config = leer_config_ollama()
     si config != "":
         // Chat interactivo real con Ollama, estilo OpenCode/Freebuff:
         // auto-detección del modelo instalado + comandos /model /modelos /ayuda
         // + skills (/tdd /revisar /plan). cumple Manual 7 §8 + Manual 9 §5.
-        escribir_linea("  [OK] Conectando a Ollama… http://localhost:11434")
-        modelos = _syn_ollama_modelos("127.0.0.1", 11434)
+        escribir_linea("  [OK] Conectando a Ollama… http://localhost:8088")
+        modelos = _syn_ollama_modelos("127.0.0.1", 8088)
         si modelos == "":
             escribir_linea("  [*] No se pudo listar modelos (Ollama apagado?).")
             escribir_linea("  [*] Verifica: ollama serve  — o usa /modelos mas tarde.")
@@ -1483,7 +1483,7 @@ funcion modo_oraculo() -> entero:
                     prompt_skill = concat(SKILL_TDD_PROMPT, "\n\nFuncion a testear:\n")
                     prompt_skill = concat(prompt_skill, tarea)
                     escribir_linea(concat("  [*] Consultando a ", modelo))
-                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
                     sino:
@@ -1499,7 +1499,7 @@ funcion modo_oraculo() -> entero:
                     prompt_skill = concat(SKILL_REVIEW_PROMPT, "\n\nCodigo a revisar:\n")
                     prompt_skill = concat(prompt_skill, codigo_a_revisar)
                     escribir_linea(concat("  [*] Consultando a ", modelo))
-                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
                     sino:
@@ -1517,7 +1517,7 @@ funcion modo_oraculo() -> entero:
                     prompt_skill = concat(SKILL_PLAN_PROMPT, "\n\nCaracteristica: ")
                     prompt_skill = concat(prompt_skill, feat)
                     escribir_linea(concat("  [*] Consultando a ", modelo))
-                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 11434, 2048)
+                    respuesta_skill = _syn_ollama_consultar(modelo, prompt_skill, "127.0.0.1", 8088, 2048)
                     si respuesta_skill == "":
                         escribir_linea("  [Error] No hubo respuesta de Ollama.")
                     sino:

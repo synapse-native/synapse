@@ -227,7 +227,7 @@ funcion generar_config(hw: HardwareInfo, modelo: ModeloInfo, ruta_modelo: texto)
     cfg.n_ctx = 2048
     cfg.n_threads = seleccionar_hilos(hw.cpu_nucleos)
     cfg.n_gpu_layers = seleccionar_capas_gpu(hw.vram_total)
-    cfg.puerto = 11434
+    cfg.puerto = 8088
     cfg.host = "127.0.0.1"
     cfg.timeout = 30
     retornar cfg

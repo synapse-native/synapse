@@ -43,7 +43,7 @@ funcion _ollama_cliente_obtener() -> entero:
     inseguro:
         asm("static OllamaCliente* _ollama_cliente_global = NULL;")
         asm("if (!_ollama_cliente_global) {")
-        asm("    _ollama_cliente_global = ollama_cliente_crear(\"localhost\", 11434, \"lfm2.5-thinking:1.2b\");")
+        asm("    _ollama_cliente_global = ollama_cliente_crear(\"localhost\", 8088, \"lfm2.5-thinking:1.2b\");")
         asm("}")
         asm("return (int)(intptr_t)_ollama_cliente_global;")
 

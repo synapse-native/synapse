@@ -26,8 +26,8 @@ if exist "%BIN_DIR%\opensyn.exe" (
     exit /b 1
 )
 
-REM Verificar si llama-server ya esta corriendo en puerto 11434
-netstat -an 2>nul | findstr ":11434 " | findstr "LISTENING" >nul 2>&1
+REM Verificar si llama-server ya esta corriendo en puerto 8088
+netstat -an 2>nul | findstr ":8088 " | findstr "LISTENING" >nul 2>&1
 if not errorlevel 1 (
     goto :run_opensyn
 )
@@ -55,15 +55,15 @@ if not exist "%IA_DIR%\llama-server.exe" (
 )
 
 echo [OpenSyn] Iniciando llama-server con modelo: %MODEL_PATH%
-start "llama-server" /B "%IA_DIR%\llama-server.exe" --model "%MODEL_PATH%" --port 11434 --host 0.0.0.0 --ctx-size 2048 --n-gpu-layers 0
+start "llama-server" /B "%IA_DIR%\llama-server.exe" --model "%MODEL_PATH%" --port 8088 --host 0.0.0.0 --ctx-size 2048 --n-gpu-layers 0
 
 REM Esperar a que el servidor este listo (max 15 segundos)
 set WAIT=0
 :wait_loop
 if %WAIT% GEQ 15 goto :run_opensyn
-netstat -an 2>nul | findstr ":11434 " | findstr "LISTENING" >nul 2>&1
+netstat -an 2>nul | findstr ":8088 " | findstr "LISTENING" >nul 2>&1
 if not errorlevel 1 (
-    echo [OpenSyn] llama-server listo en puerto 11434
+    echo [OpenSyn] llama-server listo en puerto 8088
     goto :run_opensyn
 )
 timeout /t 1 /nobreak >nul
