@@ -23,11 +23,13 @@
 #include <string.h>
 #ifdef _WIN32
   #include <windows.h>
+  #include <process.h>
 #else
   #include <termios.h>
   #include <unistd.h>
   #include <sys/ioctl.h>
   #include <errno.h>
+  #include <pthread.h>
 #endif
 
 // ============================================================
@@ -54,6 +56,35 @@ static int _ecur = 0;           // índice de byte del cursor (en frontera de ca
 static int _tui_activo = 0;     // 1 mientras la TUI está iniciada
 static int _pipe_mode = 0;      // 1 = modo pipe (OPENSN_TUI_TEST) — sin consola
 static int _alerts = 0;         // mensajes que requieren repintar (flag)
+
+// ---- Estado "pensando" (spinner estilo OpenCode/Kilo, Manual 7 §8) ----
+// Hilo propio anima el renglón de estado mientras el modelo genera; solo en
+// consola real (en modo pipe contaminaría la salida de los oráculos).
+static volatile int _pensando = 0;
+static volatile long long _pens_ms = 0;   // inicio (ms monotónicos)
+#ifdef _WIN32
+static HANDLE _hilo_pens = NULL;
+#else
+static pthread_t _hilo_pens;
+static int _hilo_pens_vivo = 0;
+#endif
+static char _pens_label[64] = "Consultando";  // etiqueta del spinner
+static int _ctx_pct = 0;        // % del presupuesto de contexto usado
+static int _tokens_ultimo = 0;  // tokens (~chars/4) de la última respuesta
+
+// Exclusión mutua de salida: el spinner escribe desde su hilo mientras el
+// hilo principal repinta — sin candado, dos escrituras pueden entremezclarse
+// a mitad de secuencia ANSI y corromper el cuadro.
+#ifdef _WIN32
+static CRITICAL_SECTION _out_cs;
+static int _out_cs_ok = 0;
+static void _out_lock(void) { if (_out_cs_ok) EnterCriticalSection(&_out_cs); }
+static void _out_unlock(void) { if (_out_cs_ok) LeaveCriticalSection(&_out_cs); }
+#else
+static pthread_mutex_t _out_cs = PTHREAD_MUTEX_INITIALIZER;
+static void _out_lock(void) { pthread_mutex_lock(&_out_cs); }
+static void _out_unlock(void) { pthread_mutex_unlock(&_out_cs); }
+#endif
 
 // Buffer para modo pipe: acumula entrada hasta recibir \n
 static char _pipe_buf[ENT_MAX];
@@ -218,6 +249,10 @@ int64_t _syn_tui_iniciar(void) {
     if (!consola && !_pipe_forzado()) return -1;
     _pipe_mode = !consola;
 #ifdef _WIN32
+    if (!_out_cs_ok) {
+        InitializeCriticalSection(&_out_cs);
+        _out_cs_ok = 1;
+    }
     _hin = GetStdHandle(STD_INPUT_HANDLE);
     _hout = GetStdHandle(STD_OUTPUT_HANDLE);
     if (_pipe_mode) {
@@ -501,6 +536,101 @@ static void _entrada_cursor_der(void) {
 
 // Devuelve códigos: 0 = carácter imprimible insertado (entrada cambió),
 // 1 Enter, 2 Esc, 3 ↑, 4 ↓, 5 ←, 6 →, 7 Retroceso, 8 Supr, 9 Tab, 10 Ctrl+C.
+// ============================================================
+// Spinner "pensando" + status bar dinámico (Manual 7 §8: UX OpenCode/Kilo)
+// ============================================================
+
+// cumple Manual 7 §8: el hilo SOLO escribe su renglón reservado (alto-1); el
+// repintado completo sigue siendo exclusivo del hilo principal. Sin estado
+// compartido de mensajes — sin condiciones de carrera.
+#ifdef _WIN32
+static unsigned __stdcall _pens_hilo(void* arg) {
+#else
+static void* _pens_hilo(void* arg) {
+#endif
+    (void)arg;
+    static const char* frames = "|/-\\";
+    int i = 0;
+    while (_pensando) {
+        long long ms = _tui_ahora_ms() - _pens_ms;
+        int alto = (int)_syn_tui_alto();
+        _out_lock();
+        // El spinner OCUPA la fila del status bar (patrón OpenCode: el pie
+        // cambia a estado de actividad mientras el modelo genera).
+        _syn_tui_pos(alto, 1);
+        _out("\x1b[2K");
+        _sgr(90);
+        _out("  ");
+        _sgr(93);   // amarillo: actividad en curso
+        char f[2] = { frames[i % 4], 0 };
+        _out(f);
+        _sgr(90);
+        _out(" ");
+        _out(_pens_label);
+        _out("… ");
+        char t[32];
+        snprintf(t, sizeof(t), "%llds", (long long)(ms / 1000));
+        _out(t);
+        _sgr(0);
+        _out("\x1b[K");
+        _flush();
+        _out_unlock();
+        i++;
+#ifdef _WIN32
+        Sleep(100);
+#else
+        struct timespec ts = { 0, 100 * 1000 * 1000 };
+        nanosleep(&ts, NULL);
+#endif
+    }
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+void _syn_tui_pensando(int64_t activar, CadenaSegura etiqueta) {
+    if (activar) {
+        int n = etiqueta.longitud;
+        if (n > 0 && n < (int)sizeof(_pens_label) && etiqueta.datos) {
+            memcpy(_pens_label, etiqueta.datos, (size_t)n);
+            _pens_label[n] = '\0';
+        }
+        _pens_ms = _tui_ahora_ms();
+        if (_pensando) return;   // ya activo: solo renovó etiqueta/tiempo
+        if (!_pipe_mode && _tui_activo) {
+            _pensando = 1;
+#ifdef _WIN32
+            _hilo_pens = (HANDLE)_beginthreadex(NULL, 0, _pens_hilo, NULL, 0, NULL);
+#else
+            _hilo_pens_vivo = (pthread_create(&_hilo_pens, NULL, _pens_hilo, NULL) == 0);
+#endif
+        } else {
+            _pensando = 1;   // modo pipe: sin hilo ni animación (oráculos limpios)
+        }
+    } else {
+        _pensando = 0;
+#ifdef _WIN32
+        if (_hilo_pens) {
+            WaitForSingleObject(_hilo_pens, 500);
+            CloseHandle(_hilo_pens);
+            _hilo_pens = NULL;
+        }
+#else
+        if (_hilo_pens_vivo) {
+            pthread_join(_hilo_pens, NULL);
+            _hilo_pens_vivo = 0;
+        }
+#endif
+    }
+}
+
+void _syn_tui_contexto(int64_t pct, int64_t tokens) {
+    _ctx_pct = (pct < 0) ? 0 : (pct > 100) ? 100 : (int)pct;
+    _tokens_ultimo = (tokens < 0) ? 0 : (int)tokens;
+}
+
 int64_t _syn_tui_evento(void) {
     if (!_tui_activo) return 0;
     _alerts = 0;
@@ -1028,12 +1158,42 @@ static void _dibujar_fila(int pantalla, const _Fila* f, int ancho) {
     _out(" ");
     _sgr(color);
     const char* txt = _msgs[f->msg].texto ? _msgs[f->msg].texto : "";
-    if (f->largo > 0) _outn(txt + f->off, f->largo);
+    int dibujado = 0;
+    // Markdown-lite (rol 1 = asistente): líneas dentro de un bloque de código
+    // (que abre/cierra con ``` en el MISMO mensaje) se dibujan en caja tenue;
+    // bullets "- " se dibujan con viñeta colgante estilo OpenCode (Manual 7 §8).
+    if (f->rol == 1 && f->largo > 0) {
+        int mlen = (int)strlen(txt);
+        int i = 0, en_codigo = 0;
+        while (i < f->off && i < mlen) {
+            int eol = i;
+            while (eol < mlen && txt[eol] != '\n') eol++;
+            int ll = eol - i;
+            if (ll >= 3 && strncmp(txt + i, "```", 3) == 0) en_codigo = !en_codigo;
+            i = (eol < mlen) ? eol + 1 : mlen;
+        }
+        const char* linea = txt + f->off;
+        int ll = f->largo;
+        if (!en_codigo && ll >= 2 && linea[0] == '-' && (linea[1] == ' ' || linea[1] == 0)) {
+            _sgr(96);
+            _out("• ");
+            _sgr(color);
+            if (ll > 2) _outn(linea + 2, ll - 2);
+            dibujado = 1;
+        } else if (en_codigo) {
+            _sgr(90);
+            _out("│ ");
+            _outn(linea, ll);
+            dibujado = 1;
+        }
+    }
+    if (!dibujado && f->largo > 0) _outn(txt + f->off, f->largo);
     _sgr(0);
     _out("\x1b[K");   // borra el resto de la línea (scroll correcto)
 }
 
 static void _repintar_todo(CadenaSegura modelo) {
+    _out_lock();   // exclusión mutua con el hilo del spinner
     int alto = (int)_syn_tui_alto();
     int ancho = (int)_syn_tui_ancho();
     if (alto < 10) alto = 10;
@@ -1069,21 +1229,30 @@ static void _repintar_todo(CadenaSegura modelo) {
         fila++;
     }
 
-    // ---- Separador sobre la caja de entrada (doble línea estilo OpenCode) ----
-    int fila_sep = alto - 3;
-    _syn_tui_pos(fila_sep, 1);
+    // ---- Caja de entrada con borde redondeado (estilo OpenCode/Kilo) ----
+    int fila_top = alto - 3;
+    int fila_ent = alto - 2;
+    int fila_bot = alto - 1;
+    _syn_tui_pos(fila_top, 1);
     _sgr(94);
-    for (int x = 1; x < ancho; x++) _out("\xe2\x94\x80");
+    _out("  \xe2\x95\xad");                       // ╭
+    for (int x = 4; x < ancho; x++) _out("\xe2\x94\x80");   // ─
+    _out("\xe2\x95\xae");                       // ╮
     _sgr(0);
     _out("\x1b[K");
 
-    // ---- Caja de entrada ----
-    int fila_ent = alto - 2;
     _syn_tui_pos(fila_ent, 1);
-    _out("\x1b[1;95m  \xe2\x9d\xaf \x1b[0m");
+    _out("\x1b[1;95m  \xe2\x94\x82 \xe2\x9d\xaf \x1b[0m");   // │ ❯
     _entrada_asegurar();
     const char* e = _entrada ? _entrada : "";
-    int plen = 4;   // columnas del prefijo "  ❯ "
+    int plen = 5;   // columnas del prefijo "  │ ❯ "
+    _syn_tui_pos(fila_bot, 1);
+    _sgr(94);
+    _out("  \xe2\x95\xb0");                       // ╰
+    for (int x = 4; x < ancho; x++) _out("\xe2\x94\x80");   // ─
+    _out("\xe2\x95\xaf");                       // ╯
+    _sgr(0);
+    _out("\x1b[K");
     int disp = ancho - plen - 2;
     int p = 0;
     // parte visible antes del cursor
@@ -1119,7 +1288,7 @@ static void _repintar_todo(CadenaSegura modelo) {
     if (despues_ini < _elen) _outn(e + despues_ini, _elen - despues_ini);
     _out("\x1b[K");
 
-    // ---- Pie (status bar estilo OpenCode) ----
+    // ---- Pie (status bar dinámico estilo OpenCode/Kilo) ----
     _syn_tui_pos(alto, 1);
     _sgr(90);
     _out("  \xe2\x96\xb6 /menu");
@@ -1136,6 +1305,22 @@ static void _repintar_todo(CadenaSegura modelo) {
     _sgr(90);
     _out("Ctrl+C salir");
     _sgr(0);
+    if (_tokens_ultimo > 0) {
+        _out("\x1b[90m  \xe2\x94\x82  \x1b[0m");
+        _sgr(36);   // cian: tokens de la última respuesta
+        char tb[48];
+        snprintf(tb, sizeof(tb), "~%d tok", _tokens_ultimo);
+        _out(tb);
+        _sgr(0);
+    }
+    if (_ctx_pct > 0) {
+        _out("\x1b[90m  \xe2\x94\x82  \x1b[0m");
+        _sgr(_ctx_pct > 80 ? 91 : 92);   // verde; rojo si contexto casi lleno
+        char cb[48];
+        snprintf(cb, sizeof(cb), "ctx %d%%", _ctx_pct);
+        _out(cb);
+        _sgr(0);
+    }
     _out("\x1b[K");
 
     // ---- Deja el cursor en la caja de entrada ----
@@ -1144,6 +1329,7 @@ static void _repintar_todo(CadenaSegura modelo) {
     if (col > ancho) col = ancho;
     _syn_tui_pos(fila_ent, col);
     _flush();
+    _out_unlock();
 }
 
 // ============================================================

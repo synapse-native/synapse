@@ -130,6 +130,8 @@ funcion review_compilar(codigo: texto, idioma: texto) -> ResultadoValidacion:
 
 // Retorna la ubicación exacta del error para que la revision cite código exacto.
 // cumple Manual 7 §4.2: "la respuesta del LSP incluye archivo+linea+diff"
+// Nota: la implementación completa está en router.syn:revisar_codigo_inline()
+// Esta función es un wrapper que delega al router para evitar duplicación.
 funcion revisar_codigo_inline(codigo: texto, error: ErrorCompilacion) -> RevisionInline:
     requiere:
         longitud(codigo) > 0

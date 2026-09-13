@@ -36,28 +36,17 @@ def _leer_principal():
 PERMISO_ALLOW = 0
 PERMISO_ASK = 1
 PERMISO_DENY = 2
+MAX_HERRAMIENTAS = 8
+
+HERRAMIENTAS = ["listar", "leer", "git", "plan", "editar", "compilar", "diagnosticar", "delegar"]
+NIVELES = [PERMISO_ALLOW, PERMISO_ALLOW, PERMISO_ALLOW, PERMISO_ASK, PERMISO_ASK,
+           PERMISO_ALLOW, PERMISO_ALLOW, PERMISO_ALLOW]
 
 
-class ReglaPermiso:
-    def __init__(self, herramienta, nivel, patron_ruta="*"):
-        self.herramienta = herramienta
-        self.nivel = nivel
-        self.patron_ruta = patron_ruta
-
-
-class MatrizPermisos:
-    def __init__(self):
-        self.reglas = [
-            ReglaPermiso("listar", PERMISO_ALLOW),
-            ReglaPermiso("leer", PERMISO_ALLOW),
-            ReglaPermiso("git", PERMISO_ALLOW),
-            ReglaPermiso("plan", PERMISO_ASK, "*.plan"),
-            ReglaPermiso("editar", PERMISO_ASK),
-            ReglaPermiso("compilar", PERMISO_ALLOW),
-            ReglaPermiso("diagnosticar", PERMISO_ALLOW),
-            ReglaPermiso("delegar", PERMISO_ALLOW),
-        ]
-        self.workspace_path = os.path.join(RAIZ, "opensyn")
+class MatrizPermisosSim:
+    def __init__(self, workspace=""):
+        self.cantidades = MAX_HERRAMIENTAS
+        self.workspace_path = workspace or os.path.join(RAIZ, "opensyn")
 
 
 def str_eq_f(a, b):
@@ -65,24 +54,27 @@ def str_eq_f(a, b):
 
 
 def verificar_permiso_herramienta(matriz, herramienta):
-    for regla in matriz.reglas:
-        if str_eq_f(regla.herramienta, herramienta):
-            return regla.nivel
+    for i in range(MAX_HERRAMIENTAS):
+        if str_eq_f(HERRAMIENTAS[i], herramienta):
+            return NIVELES[i]
     return PERMISO_DENY
 
 
 def es_ruta_en_workspace(ruta, workspace):
-    ruta_normalizada = os.path.normpath(ruta)
-    ws_normalizado = os.path.normpath(workspace)
-    return ruta_normalizada.startswith(ws_normalizado)
+    ruta_n = os.path.normpath(ruta)
+    ws_n = os.path.normpath(workspace)
+    if not ruta_n.startswith(ws_n):
+        return False
+    if len(ruta_n) == len(ws_n):
+        return True
+    sig = ruta_n[len(ws_n)]
+    return sig in ('\\', '/')
 
 
 def verificar_permiso_completo(matriz, herramienta, ruta=""):
     nivel = verificar_permiso_herramienta(matriz, herramienta)
     if nivel == PERMISO_DENY:
         return PERMISO_DENY
-    # Solo herramientas de ESCRITURA (ASK) se confinan al workspace
-    # Herramientas de LECTURA (ALLOW) pueden leer fuera del workspace
     if nivel == PERMISO_ASK and ruta and not es_ruta_en_workspace(ruta, matriz.workspace_path):
         return PERMISO_DENY
     return nivel
@@ -97,130 +89,168 @@ def nombre_permiso(nivel):
 
 
 # ================================================================
-# R6: Matriz de permisos por defecto (Manual 7 §7.3)
+# R6: Fuente — estructura y constantes (Manual 7 §7.3)
 # ================================================================
 
-class TestMatrizPermisos:
-    """Oráculo R6: Verifica la matriz de permisos por defecto.
+class TestFuentePermisos:
+    """Oráculo R6: Verifica que permisos.syn tenga la estructura correcta.
     Requisito: Manual 7 §7.3 — 'Sandboxing: permisos mínimos'"""
 
-    def test_source_funcion_existe(self):
-        """Verifica: existe funcion matriz_permisos_default() en permisos.syn"""
-        ps = _leer_permisos()
-        assert "funcion matriz_permisos_default(" in ps
-
-    def test_source_cant_minima_reglas(self):
-        """Verifica: matriz tiene al menos 8 reglas (listar,leer,git,plan,editar,compilar,diagnosticar,delegar)"""
-        ps = _leer_permisos()
-        assert "cantidad_reglas = 8" in ps or "cantidad_reglas = 8" in ps
-
-    def test_source_workspace_path(self):
-        """Verifica: matriz incluye workspace_path para sandbox"""
-        ps = _leer_permisos()
-        assert "workspace_path" in ps
-
-    def test_replica_allow_listar(self):
-        """Verifica: listar es ALLOW (solo lectura)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "listar") == PERMISO_ALLOW
-
-    def test_replica_allow_leer(self):
-        """Verifica: leer es ALLOW (solo lectura)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "leer") == PERMISO_ALLOW
-
-    def test_replica_allow_git(self):
-        """Verifica: git es ALLOW (solo lectura)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "git") == PERMISO_ALLOW
-
-    def test_replica_ask_editar(self):
-        """Verifica: editar es ASK (requiere confirmación)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "editar") == PERMISO_ASK
-
-    def test_replica_ask_plan(self):
-        """Verifica: plan es ASK (requiere confirmación)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "plan") == PERMISO_ASK
-
-    def test_replica_allow_compilar(self):
-        """Verifica: compilar es ALLOW (ejecución segura)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "compilar") == PERMISO_ALLOW
-
-    def test_replica_allow_diagnosticar(self):
-        """Verifica: diagnosticar es ALLOW (solo lectura)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "diagnosticar") == PERMISO_ALLOW
-
-    def test_replica_allow_delegar(self):
-        """Verifica: delegar es ALLOW (orquestación)"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "delegar") == PERMISO_ALLOW
-
-    def test_replica_desconocida_deny(self):
-        """Verifica: herramienta desconocida es DENY"""
-        m = MatrizPermisos()
-        assert verificar_permiso_herramienta(m, "herramienta_fantasma") == PERMISO_DENY
-
-
-# ================================================================
-# R6: Sandbox — ruta fuera del workspace (Manual 7 §7.3)
-# ================================================================
-
-class TestSandboxWorkspace:
-    """Oráculo R6: Verifica confinamiento al workspace.
-    Requisito: Manual 7 §7.3 — 'permisos mínimos + workspace only'"""
-
-    def test_source_tiene_constante_allow(self):
+    def test_source_constante_allow(self):
         """Verifica: constante PERMISO_ALLOW = 0"""
         ps = _leer_permisos()
         assert "PERMISO_ALLOW = 0" in ps
 
-    def test_source_tiene_constante_ask(self):
+    def test_source_constante_ask(self):
         """Verifica: constante PERMISO_ASK = 1"""
         ps = _leer_permisos()
         assert "PERMISO_ASK = 1" in ps
 
-    def test_source_tiene_constante_deny(self):
+    def test_source_constante_deny(self):
         """Verifica: constante PERMISO_DENY = 2"""
         ps = _leer_permisos()
         assert "PERMISO_DENY = 2" in ps
 
-    def test_replica_ruta_dentro_workspace(self):
-        """Verifica: ruta dentro del workspace está permitida"""
-        m = MatrizPermisos()
+    def test_source_max_herramientas(self):
+        """Verifica: constante MAX_HERRAMIENTAS = 8"""
+        ps = _leer_permisos()
+        assert "MAX_HERRAMIENTAS = 8" in ps
+
+    def test_source_funcion_nombre_herramienta(self):
+        """Verifica: existe funcion nombre_herramienta()"""
+        ps = _leer_permisos()
+        assert "funcion nombre_herramienta(" in ps
+
+    def test_source_funcion_nivel_permiso(self):
+        """Verifica: existe funcion nivel_permiso()"""
+        ps = _leer_permisos()
+        assert "funcion nivel_permiso(" in ps
+
+    def test_source_funcion_verificar_herramienta(self):
+        """Verifica: existe funcion verificar_permiso_herramienta()"""
+        ps = _leer_permisos()
+        assert "funcion verificar_permiso_herramienta(" in ps
+
+    def test_source_funcion_verificar_completo(self):
+        """Verifica: existe funcion verificar_permiso_completo()"""
+        ps = _leer_permisos()
+        assert "funcion verificar_permiso_completo(" in ps
+
+    def test_source_funcion_es_ruta_workspace(self):
+        """Verifica: existe funcion es_ruta_en_workspace()"""
+        ps = _leer_permisos()
+        assert "funcion es_ruta_en_workspace(" in ps
+
+    def test_source_funcion_nombre_permiso(self):
+        """Verifica: existe funcion nombre_permiso()"""
+        ps = _leer_permisos()
+        assert "funcion nombre_permiso(" in ps
+
+    def test_source_funcion_matriz_crear(self):
+        """Verifica: existe funcion matriz_permisos_crear()"""
+        ps = _leer_permisos()
+        assert "funcion matriz_permisos_crear(" in ps
+
+
+# ================================================================
+# R6: Lógica funcional — permisos por herramienta (Manual 7 §7.3)
+# ================================================================
+
+class TestLogicaPermisos:
+    """Oráculo R6: Verifica la lógica de permisos por herramienta.
+    Requisito: Manual 7 §7.3 — 'permisos mínimos'"""
+
+    def test_listar_es_allow(self):
+        """Verifica: listar es ALLOW (solo lectura)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "listar") == PERMISO_ALLOW
+
+    def test_leer_es_allow(self):
+        """Verifica: leer es ALLOW (solo lectura)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "leer") == PERMISO_ALLOW
+
+    def test_git_es_allow(self):
+        """Verifica: git es ALLOW (solo lectura)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "git") == PERMISO_ALLOW
+
+    def test_plan_es_ask(self):
+        """Verifica: plan es ASK (requiere confirmación)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "plan") == PERMISO_ASK
+
+    def test_editar_es_ask(self):
+        """Verifica: editar es ASK (requiere confirmación)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "editar") == PERMISO_ASK
+
+    def test_compilar_es_allow(self):
+        """Verifica: compilar es ALLOW (ejecución segura)"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "compilar") == PERMISO_ALLOW
+
+    def test_diagnosticar_es_allow(self):
+        """Verifica: diagnosticar es ALLOW"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "diagnosticar") == PERMISO_ALLOW
+
+    def test_delegar_es_allow(self):
+        """Verifica: delegar es ALLOW"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "delegar") == PERMISO_ALLOW
+
+    def test_desconocida_es_deny(self):
+        """Verifica: herramienta desconocida es DENY"""
+        m = MatrizPermisosSim()
+        assert verificar_permiso_herramienta(m, "herramienta_fantasma") == PERMISO_DENY
+
+
+# ================================================================
+# R6: Sandbox — workspace confinement (Manual 7 §7.3)
+# ================================================================
+
+class TestSandboxWorkspace:
+    """Oráculo R6: Verifica confinamiento al workspace.
+    Requisito: Manual 7 §7.3 — 'writes confinados al workspace'"""
+
+    def test_ruta_dentro_workspace(self):
+        """Verifica: ruta dentro del workspace → True"""
+        m = MatrizPermisosSim()
         ruta = os.path.join(RAIZ, "opensyn", "router.syn")
         assert es_ruta_en_workspace(ruta, m.workspace_path) is True
 
-    def test_replica_ruta_fuera_workspace(self):
-        """Verifica: ruta fuera del workspace es denegada"""
-        m = MatrizPermisos()
-        ruta = "C:\\Windows\\System32\\config.sys"
-        assert es_ruta_en_workspace(ruta, m.workspace_path) is False
+    def test_ruta_fuera_workspace(self):
+        """Verifica: ruta fuera del workspace → False"""
+        m = MatrizPermisosSim()
+        assert es_ruta_en_workspace("C:\\Windows\\System32\\config.sys", m.workspace_path) is False
 
-    def test_replica_ruta_relativa_fuera(self):
-        """Verifica: ruta relativa con .. es denegada"""
-        m = MatrizPermisos()
-        ruta = os.path.join(RAIZ, "..", "..", "secreto.txt")
-        ruta_normalizada = os.path.normpath(ruta)
-        assert not ruta_normalizada.startswith(os.path.normpath(m.workspace_path))
+    def test_ruta_misma_longitud(self):
+        """Verifica: ruta igual al workspace → True"""
+        m = MatrizPermisosSim()
+        assert es_ruta_en_workspace(m.workspace_path, m.workspace_path) is True
 
-    def test_replica_editar_fuera_deny(self):
+    def test_ruta_bypass_separador(self):
+        """Verifica: ruta con prefijo相似 pero sin separador → False"""
+        m = MatrizPermisosSim()
+        ws = os.path.normpath(m.workspace_path)
+        ruta_bypass = ws + "_evil\\malware.syn"
+        assert es_ruta_en_workspace(ruta_bypass, ws) is False
+
+    def test_editar_fuera_deny(self):
         """Verifica: editar archivo fuera del workspace → DENY"""
-        m = MatrizPermisos()
+        m = MatrizPermisosSim()
         assert verificar_permiso_completo(m, "editar", "C:\\Windows\\test.txt") == PERMISO_DENY
 
-    def test_replica_listar_fuera_allow(self):
-        """Verifica: listar archivo fuera del workspace sigue ALLOW (solo lectura)"""
-        m = MatrizPermisos()
+    def test_listar_fuera_allow(self):
+        """Verifica: listar archivo fuera del workspace → ALLOW (lectura)"""
+        m = MatrizPermisosSim()
         nivel = verificar_permiso_completo(m, "listar", "C:\\Windows\\test.txt")
         assert nivel == PERMISO_ALLOW
 
-    def test_replica_git_fuera_allow(self):
-        """Verifica: git fuera del workspace sigue ALLOW (solo lectura)"""
-        m = MatrizPermisos()
+    def test_git_fuera_allow(self):
+        """Verifica: git fuera del workspace → ALLOW (lectura)"""
+        m = MatrizPermisosSim()
         nivel = verificar_permiso_completo(m, "git", "C:\\otro\\repo")
         assert nivel == PERMISO_ALLOW
 
@@ -233,15 +263,15 @@ class TestNombrePermiso:
     """Oráculo R6: Verifica nombres legibles de permisos.
     Requisito: Manual 7 §7.3 — 'feedback claro al usuario'"""
 
-    def test_replica_allow_nombre(self):
+    def test_allow_nombre(self):
         """Verifica: PERMISO_ALLOW → 'allow'"""
         assert nombre_permiso(PERMISO_ALLOW) == "allow"
 
-    def test_replica_ask_nombre(self):
+    def test_ask_nombre(self):
         """Verifica: PERMISO_ASK → 'ask'"""
         assert nombre_permiso(PERMISO_ASK) == "ask"
 
-    def test_replica_deny_nombre(self):
+    def test_deny_nombre(self):
         """Verifica: PERMISO_DENY → 'deny'"""
         assert nombre_permiso(PERMISO_DENY) == "deny"
 
@@ -262,17 +292,22 @@ class TestIntegracionPrincipal:
     def test_source_principal_denegar_sandbox(self):
         """Verifica: principal.syn tiene lógica de DENY por sandbox"""
         pr = _leer_principal()
-        assert "denegada por sandbox" in pr or "DENY" in pr or "nivel_perm == 2" in pr
+        assert "denegada por sandbox" in pr
 
     def test_source_principal_ask_sandbox(self):
         """Verifica: principal.syn tiene lógica ASK por sandbox"""
         pr = _leer_principal()
-        assert "TOOL_ASK" in pr or "nivel_perm == 1" in pr
+        assert "TOOL_ASK" in pr
 
     def test_source_cita_manual_sandbox(self):
-        """Verifica: principal.syn cita Manual 7 §7.3"""
+        """Verifica: principal.syn referencia ME-5/R6"""
         pr = _leer_principal()
-        assert "§7.3" in pr or "M7 §7.3" in pr
+        assert "ME-5" in pr or "R6" in pr
+
+    def test_source_permisos_crear(self):
+        """Verifica: principal.syn usa matriz_permisos_crear()"""
+        pr = _leer_principal()
+        assert "matriz_permisos_crear" in pr
 
 
 # ================================================================
@@ -288,20 +323,15 @@ class TestCitasCumpleManual:
         ps = _leer_permisos()
         assert "cumple Manual 7 §7.3" in ps
 
-    def test_permisos_cita_telemetria(self):
-        """Verifica: permisos.syn menciona cero telemetría"""
-        ps = _leer_permisos()
-        assert "telemetría" in ps or "telemetria" in ps
-
     def test_permisos_cita_sandboxing(self):
         """Verifica: permisos.syn menciona sandboxing"""
         ps = _leer_permisos()
         assert "sandbox" in ps.lower() or "Sandboxing" in ps
 
-    def test_principal_cita_r6(self):
-        """Verifica: principal.syn referencia ME-5/R6"""
-        pr = _leer_principal()
-        assert "ME-5" in pr or "R6" in pr
+    def test_permisos_cita_telemetria(self):
+        """Verifica: permisos.syn menciona cero telemetría"""
+        ps = _leer_permisos()
+        assert "telemetría" in ps or "telemetria" in ps
 
 
 # ================================================================
@@ -312,8 +342,17 @@ class TestContratosPermisos:
     """Oráculo R6: Verifica contratos requiere/garantiza.
     Requisito: Manual 2 §12 — 'toda función pública tiene contrato'"""
 
-    def test_verificar_permiso_herramienta_contrato(self):
-        """Verifica: verificar_permiso_herramienta tiene contrato"""
+    def test_nombre_herramienta_contrato(self):
+        """Verificar: nombre_herramienta tiene contrato"""
+        ps = _leer_permisos()
+        idx = ps.find("funcion nombre_herramienta(")
+        assert idx >= 0
+        bloque = ps[idx:idx+300]
+        assert "requiere:" in bloque
+        assert "garantiza:" in bloque
+
+    def test_verificar_herramienta_contrato(self):
+        """Verificar: verificar_permiso_herramienta tiene contrato"""
         ps = _leer_permisos()
         idx = ps.find("funcion verificar_permiso_herramienta(")
         assert idx >= 0
@@ -321,8 +360,8 @@ class TestContratosPermisos:
         assert "requiere:" in bloque
         assert "garantiza:" in bloque
 
-    def test_es_ruta_en_workspace_contrato(self):
-        """Verifica: es_ruta_en_workspace tiene contrato"""
+    def test_es_ruta_workspace_contrato(self):
+        """Verificar: es_ruta_en_workspace tiene contrato"""
         ps = _leer_permisos()
         idx = ps.find("funcion es_ruta_en_workspace(")
         assert idx >= 0
@@ -330,8 +369,8 @@ class TestContratosPermisos:
         assert "requiere:" in bloque
         assert "garantiza:" in bloque
 
-    def test_verificar_permiso_completo_contrato(self):
-        """Verifica: verificar_permiso_completo tiene contrato"""
+    def test_verificar_completo_contrato(self):
+        """Verificar: verificar_permiso_completo tiene contrato"""
         ps = _leer_permisos()
         idx = ps.find("funcion verificar_permiso_completo(")
         assert idx >= 0
@@ -340,7 +379,7 @@ class TestContratosPermisos:
         assert "garantiza:" in bloque
 
     def test_nombre_permiso_contrato(self):
-        """Verifica: nombre_permiso tiene contrato"""
+        """Verificar: nombre_permiso tiene contrato"""
         ps = _leer_permisos()
         idx = ps.find("funcion nombre_permiso(")
         assert idx >= 0

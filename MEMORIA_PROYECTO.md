@@ -12,22 +12,20 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      FASE 30-c ME_opensyn_best — ME-1 (modos) COMPLETADO
+Fase roadmap:      FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
                    Fase 29 COMPLETADA
-Estado:            R147 — ME-1 modos agente (Manual 7 §1.1): sistema de modos
-                   ASK/PLAN/CODE/DEBUG/ORCHESTRATOR con permisos por herramienta
-                   implementado en principal.syn; 0 brechas verificación.
-Commit fase:       31b9c4f (R147) sobre df8ff5f (R146)
-Próximo ME:        ME-2 (R2): File-finder + catálogo APIs locales en router.syn
-Próximo paso:      Iniciar ME-2
-Últimos commits:    31b9c4f (feat(opensyn): R147/ME-1 modos agente Manual 7 §1.1)
-                    df8ff5f (fix(opensyn): H-R146-1 contexto determinista + aiExplain LSP)
-                    dd0d90b (docs(release): cerrar H-R145-1..4 en MEMORIA + fila auditoría R145b)
-                    4a7e77d (fix(opensyn): H-R145-1 cerrado — parser SSE y stops ChatML)
-                    bdb615c (fix(opensyn): R145 terminar WIP cliente OpenAI + banner figlet)
-                    db4ccf9 (fix(instalador): fuentes de enlace + hash reales + extracción completa llama-server)
+Estado:            ME-5+ME-6 completados: permisos/sandbox (R6), runs reanudables (R8),
+                   plan-antes-de-actuar (R9). 316 tests GREEN, 0 brechas verificación.
+Commit fase:       fef314b (ME-5+ME-6) sobre 7824e5d (ME-4)
+Próximo ME:        Plan ME_opensyn_best completado — todos los ME definidos ejecutados
+Próximo paso:      Definir nueva fase del roadmap o app propia (FASE 32+)
+Últimos commits:    fef314b (feat(opensyn): ME-5+ME-6 permisos sandbox + runs reanudables)
+                    7824e5d (feat(opensyn): ME-4 auto-recuperacion R4+R5+R10)
+                    29b233c (fix(opensyn): ME-3 — 6 brechas corregidas, tests TDD funcionales)
+                    eee40f2 (feat(opensyn): ME-3 router-orquestador + comandos /next /fork (R3+R7))
+                    d3963ab (feat(opensyn): expandir catálogo APIs a 35 módulos std/ + tests completos)
 ```
 
 ### Cambios recientes esta sesión

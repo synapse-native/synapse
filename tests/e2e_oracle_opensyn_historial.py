@@ -4,6 +4,13 @@ Oráculo E2E — Manual 7 §1.1 (Historial persistente entre sesiones).
 Valida que OpenSyn guarde el historial en ~/.opensyn/history.jsonl y permita
 navegarlo con flechas ↑↓ en la caja de entrada.
 
+NOTA R147 (autorización explícita del Arquitecto, sesión 2026-09-10 — cierra
+H-R145-5): el timeout por ejecución sube de 60 a 240 s. Con backend IA real
+cada prompt ENVIADO dispara una llamada al modelo (test 3 = 3 llamadas,
+~105 s medidos); el timeout fijo de 60 s quedaba obsoleto cuando el chat
+pasó de fallar-rápido (parser SSE roto, R145b) a funcionar. Sin cambios de
+semántica: mismas entradas, mismas aserciones.
+
 Uso (desde la raíz del repo):
     .venv/Scripts/python.exe tests/e2e_oracle_opensyn_historial.py
 """
@@ -43,7 +50,7 @@ def run_test(exe_path):
     # En modo pipe: ESC[A = ↑, \n = Enter
     entrada = "primera entrada\nsalir\n"
     proc = subprocess.run([exe_path], input=entrada.encode(), capture_output=True,
-                          cwd=RAIZ, timeout=60, env={**os.environ, "OPENSN_TUI_TEST": "1"})
+                          cwd=RAIZ, timeout=240, env={**os.environ, "OPENSN_TUI_TEST": "1"})
     if proc.returncode != 0:
         print("FALLO Test 1: primera ejecución rc != 0")
         return 1
@@ -62,7 +69,7 @@ def run_test(exe_path):
     # Input: ESC[A (↑) + \n (Enter para enviar) + salir\n
     entrada2 = "\x1b[A\nsalir\n"
     proc2 = subprocess.run([exe_path], input=entrada2.encode(), capture_output=True,
-                           cwd=RAIZ, timeout=60, env={**os.environ, "OPENSN_TUI_TEST": "1"})
+                           cwd=RAIZ, timeout=240, env={**os.environ, "OPENSN_TUI_TEST": "1"})
     if proc2.returncode != 0:
         print("FALLO Test 2: segunda ejecución rc != 0")
         return 1
@@ -82,7 +89,7 @@ def run_test(exe_path):
     # Enviar tres entradas en una sesión
     entrada3 = "uno\n dos\n tres\n salir\n"
     proc3 = subprocess.run([exe_path], input=entrada3.encode(), capture_output=True,
-                           cwd=RAIZ, timeout=60, env={**os.environ, "OPENSN_TUI_TEST": "1"})
+                           cwd=RAIZ, timeout=240, env={**os.environ, "OPENSN_TUI_TEST": "1"})
     if proc3.returncode != 0:
         print("FALLO Test 3: ejecución múltiple rc != 0")
         return 1
@@ -96,7 +103,7 @@ def run_test(exe_path):
     # Test 4: Segunda sesión, ↑↑ debería traer "dos" luego "uno"
     entrada4 = "\x1b[A\x1b[A\nsalir\n"  # ↑, ↑, Enter, salir
     proc4 = subprocess.run([exe_path], input=entrada4.encode(), capture_output=True,
-                           cwd=RAIZ, timeout=60, env={**os.environ, "OPENSN_TUI_TEST": "1"})
+                           cwd=RAIZ, timeout=240, env={**os.environ, "OPENSN_TUI_TEST": "1"})
     if proc4.returncode != 0:
         print("FALLO Test 4: navegación múltiple rc != 0")
         return 1

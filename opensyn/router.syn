@@ -244,7 +244,13 @@ estructura ConfiguracionRuta:
 // Configuración de rutas
 // ============================================================
 
+// Retorna configuración de contexto según el nivel de ruta.
+// cumple Manual 2 §12: toda función pública tiene contrato
 funcion obtener_configuracion_ruta(ruta: entero) -> ConfiguracionRuta:
+    requiere:
+        ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
+    garantiza:
+        resultado.max_tokens > 0
     cfg = ConfiguracionRuta()
     cfg.contexto_lineas_antes = 2
     cfg.contexto_lineas_despues = 2
@@ -294,8 +300,14 @@ funcion obtener_configuracion_ruta(ruta: entero) -> ConfiguracionRuta:
 // Determinación de ruta basada en tipo de nodo AST
 // ============================================================
 
-// Analiza el tipo de nodo AST y determina el nivel de contexto necesario
+// Analiza el tipo de nodo AST y determina el nivel de contexto necesario.
+// cumple Manual 2 §12: toda función pública tiene contrato
 funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: entero) -> entero:
+    requiere:
+        longitud(tipo_nodo) > 0
+        tipo_consulta >= 0 y tipo_consulta <= 4
+    garantiza:
+        resultado >= RUTA_MICRO y resultado <= RUTA_PROYECTO
     // Consultas de diagnóstico siempre usan contexto local o micro
     si tipo_consulta == CONSULTA_DIAGNOSTICO:
         retornar RUTA_MICRO
@@ -328,7 +340,15 @@ funcion determinar_ruta(tipo_nodo: texto, tipo_consulta: entero) -> entero:
 
 // Construye el prompt con el nivel de contexto apropiado.
 // cumple Manual 7 §2.3: file-finder + catálogo APIs anti-alucinación.
+// Ensambla prompt estructurado con catálogo + file-finder + contexto.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §2.3: "El pipeline RAG construye un prompt eficiente"
 funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> texto:
+    requiere:
+        longitud(consulta.texto_consulta) > 0
+        ruta >= RUTA_MICRO y ruta <= RUTA_PROYECTO
+    garantiza:
+        longitud(resultado) > 0
     cfg = obtener_configuracion_ruta(ruta)
 
     prompt = ""
@@ -398,7 +418,14 @@ funcion construir_prompt(consulta: ConsultaRAG, ruta: entero, contexto_texto: te
 // 2. Construye prompt con contexto apropiado
 // 3. Envía al modelo local
 // 4. Retorna respuesta con metadatos de enrutamiento
+// Pipeline RAG completo: ruta → config → prompt → inferencia → respuesta.
+// cumple Manual 2 §12: toda función pública tiene contrato
+// cumple Manual 7 §2.4: "El router decide cómo procesar la respuesta"
 funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG, contexto_texto: texto, tipo_nodo: texto, diagnosticos: texto) -> RespuestaRAG:
+    requiere:
+        longitud(consulta.texto_consulta) > 0
+    garantiza:
+        longitud(resultado.texto_respuesta) >= 0
     respuesta = RespuestaRAG()
     respuesta.texto_respuesta = ""
     respuesta.confianza = 0.0
@@ -449,8 +476,13 @@ funcion procesar_consulta(ctx: puntero, consulta: ConsultaRAG, contexto_texto: t
 // Función simplificada para integración rápida
 // ============================================================
 
-// Versión simplificada: infiere automáticamente la ruta desde el tipo de nodo
+// Versión simplificada: infiere automáticamente la ruta desde el tipo de nodo.
+// cumple Manual 2 §12: toda función pública tiene contrato
 funcion consultar(ctx: puntero, pregunta: texto, contexto: texto, tipo_nodo: texto) -> texto:
+    requiere:
+        longitud(pregunta) > 0
+    garantiza:
+        longitud(resultado) > 0
     consulta = ConsultaRAG()
     consulta.texto_consulta = pregunta
     consulta.tipo = CONSULTA_EXPLICAR
@@ -664,6 +696,8 @@ funcion ahora_ms_router() -> entero:
         verdadero
     garantiza:
         resultado >= 0
+    inseguro:
+        asm("struct timespec _ts; clock_gettime(CLOCK_MONOTONIC, &_ts); return (int64_t)_ts.tv_sec * 1000 + _ts.tv_nsec / 1000000;")
     retornar 0
 
 // ============================================================

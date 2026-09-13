@@ -7,31 +7,21 @@ importar std.io
 importar std.texto
 
 // ============================================================
-// Constantes del planificador
+// Constantes
 // ============================================================
 
 constante MAX_PASOS = 10
-constante MAX_ARCHIVOS_POR_PASO = 5
 constante TOKENS_POR_PASO_ESTIMADO = 200
 constante COMPLEJIDAD_BAJA = 0
 constante COMPLEJIDAD_MEDIA = 1
 constante COMPLEJIDAD_ALTA = 2
 
 // ============================================================
-// Estructuras de datos
+// Estructuras
 // ============================================================
-
-estructura PlanPaso:
-    id: entero
-    descripcion: texto
-    archivos_afectados: texto
-    herramientas_necesarias: texto
-    estimacion_tokens: entero
-    dependencias: texto
 
 estructura Plan:
     tarea: texto
-    pasos: PlanPaso
     cantidad_pasos: entero
     complejidad: entero
     estimacion_total_tokens: entero
@@ -52,50 +42,11 @@ funcion planificar(tarea: texto, contexto: texto) -> Plan:
         resultado.cantidad_pasos <= MAX_PASOS
     plan = Plan()
     plan.tarea = tarea
-    plan.cantidad_pasos = 0
-    plan.complejidad = evaluar_complejidad(tarea)
-    plan.estimacion_total_tokens = 0
-    // Paso 1: Analizar contexto
-    paso_analisis = PlanPaso()
-    paso_analisis.id = 0
-    paso_analisis.descripcion = "Analizar contexto y localizar archivos relevantes"
-    paso_analisis.herramientas_necesarias = "listar,leer"
-    paso_analisis.estimacion_tokens = TOKENS_POR_PASO_ESTIMADO
-    plan.pasos = paso_analisis
-    plan.cantidad_pasos = 1
-    plan.estimacion_total_tokens = plan.estimacion_total_tokens + TOKENS_POR_PASO_ESTIMADO
-    // Paso 2: Generar código
-    paso_generar = PlanPaso()
-    paso_generar.id = 1
-    paso_generar.descripcion = "Generar código según el plan"
-    paso_generar.herramientas_necesarias = "editar"
-    paso_generar.estimacion_tokens = TOKENS_POR_PASO_ESTIMADO * 2
-    paso_generar.dependencias = "0"
-    plan.pasos = paso_generar
-    plan.cantidad_pasos = 2
-    plan.estimacion_total_tokens = plan.estimacion_total_tokens + paso_generar.estimacion_tokens
-    // Paso 3: Validar
-    paso_validar = PlanPaso()
-    paso_validar.id = 2
-    paso_validar.descripcion = "Validar con synapse check --no-emit"
-    paso_validar.herramientas_necesarias = "compilar"
-    paso_validar.estimacion_tokens = TOKENS_POR_PASO_ESTIMADO
-    paso_validar.dependencias = "1"
-    plan.pasos = paso_validar
-    plan.cantidad_pasos = 3
-    plan.estimacion_total_tokens = plan.estimacion_total_tokens + paso_validar.estimacion_tokens
-    // Paso 4: Testear
-    paso_testear = PlanPaso()
-    paso_testear.id = 3
-    paso_testear.descripcion = "Ejecutar tests y verificar resultado"
-    paso_testear.herramientas_necesarias = "compilar"
-    paso_testear.estimacion_tokens = TOKENS_POR_PASO_ESTIMADO
-    paso_testear.dependencias = "2"
-    plan.pasos = paso_testear
     plan.cantidad_pasos = 4
-    plan.estimacion_total_tokens = plan.estimacion_total_tokens + paso_testear.estimacion_tokens
-    // Seleccionar modelo según complejidad
-    plan.modelo_recomendado = seleccionar_modelo(plan)
+    plan.complejidad = evaluar_complejidad(tarea)
+    // 4 pasos fijos: analizar, generar, validar, testear
+    plan.estimacion_total_tokens = TOKENS_POR_PASO_ESTIMADO * 4
+    plan.modelo_recomendado = seleccionar_modelo(plan.complejidad)
     retornar plan
 
 // ============================================================
@@ -124,14 +75,14 @@ funcion evaluar_complejidad(tarea: texto) -> entero:
 // Selecciona el modelo adecuado según la complejidad del plan.
 // cumple Manual 7 §7.2: "Latencia < 1s para prompts cortos"
 // Origen: Claude Code (esfuerzo/modelo distinto por subtarea)
-funcion seleccionar_modelo(plan: Plan) -> texto:
+funcion seleccionar_modelo(complejidad: entero) -> texto:
     requiere:
-        plan.cantidad_pasos > 0
+        complejidad >= COMPLEJIDAD_BAJA y complejidad <= COMPLEJIDAD_ALTA
     garantiza:
         longitud(resultado) > 0
-    si plan.complejidad == COMPLEJIDAD_BAJA:
+    si complejidad == COMPLEJIDAD_BAJA:
         retornar "opensyn-1.3b"
-    si plan.complejidad == COMPLEJIDAD_MEDIA:
+    si complejidad == COMPLEJIDAD_MEDIA:
         retornar "opensyn-3b"
     retornar "opensyn-7b"
 
@@ -150,11 +101,6 @@ funcion validar_plan(plan: Plan) -> booleano:
         retornar falso
     si plan.estimacion_total_tokens > 10000:
         retornar falso
-    i = 0
-    mientras i < plan.cantidad_pasos:
-        si plan.pasos.estimacion_tokens <= 0:
-            retornar falso
-        i = i + 1
     retornar verdadero
 
 // ============================================================
@@ -206,23 +152,24 @@ funcion resumen_plan(plan: Plan) -> texto:
     resumen = concat(resumen, entero_a_texto(plan.cantidad_pasos))
     resumen = concat(resumen, " pasos, ~")
     resumen = concat(resumen, entero_a_texto(plan.estimacion_total_tokens))
-    resumen = concat(resumen, " tokens")
+    resumen = concat(resumen, " tokens, modelo: ")
+    resumen = concat(resumen, plan.modelo_recomendado)
     retornar resumen
 
 // ============================================================
-// Funciones auxiliares (puentes al runtime)
+// Puentes al runtime
 // ============================================================
 
 funcion entero_a_texto(n: entero) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(resultado) >= 0
+    requiere: verdadero
+    garantiza: longitud(resultado) >= 0
+    inseguro:
+        asm("char _buf[32]; int _len = snprintf(_buf, 32, \"%lld\", (long long)n); return (CadenaSegura){_len, _buf};")
     retornar ""
 
 funcion concat(a: texto, b: texto) -> texto:
-    requiere:
-        verdadero
-    garantiza:
-        longitud(resultado) >= longitud(a) + longitud(b)
+    requiere: verdadero
+    garantiza: longitud(resultado) >= longitud(a) + longitud(b)
+    inseguro:
+        asm("int _la = a.longitud; int _lb = b.longitud; char* _buf = (char*)malloc(_la + _lb + 1); memcpy(_buf, a.datos, _la); memcpy(_buf + _la, b.datos, _lb); _buf[_la + _lb] = 0; return (CadenaSegura){_la + _lb, _buf};")
     retornar a

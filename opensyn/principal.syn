@@ -863,7 +863,7 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
         si herramienta_permitida(modo, nombre) == 0:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' no permitida en modo ", nombre_modo(modo))
         // ME-5 (R6): verificar matriz de permisos + sandbox (M7 §7.3)
-        matriz_perm = matriz_permisos_default()
+        matriz_perm = matriz_permisos_crear()
         nivel_perm = verificar_permiso_completo(matriz_perm, nombre, arg)
         si nivel_perm == 2:
             retornar concat("[TOOL_ERROR] herramienta '", nombre, "' denegada por sandbox (M7 §7.3)")
@@ -1239,7 +1239,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
     // ME-3 (R7): /fork — crea una rama de la sesion actual
     si entrada == "/fork":
         fork_id = entero_a_texto(ahora_ms())
-        ruta_forks = concat(obtener_dir_home(), "/.opensyn/forks.jsonl")
+        ruta_forks = concat(_syn_obtener_cwd(), "/.opensyn/forks.jsonl")
         linea_fork = concat(concat(concat(concat("{\"ts\":", entero_a_texto(ahora_ms())), ",\"fork_id\":\""), fork_id), "\",\"padre\":\"main\"}\n")
         _syn_tui_historial_anadir(concat("[FORK] Rama creada: ", fork_id))
         _syn_tui_mensaje(2, concat("Fork creado: ", fork_id))
@@ -1715,7 +1715,7 @@ funcion cmd_chat(modelo: texto) -> entero:
             retornar 0
         si prompt == "":
             escribir_linea("")
-            // skip empty input
+            siguiente
 
         respuesta = generar_texto(ctx, prompt, 256, temp, 40, top_p)
         escribir_linea(respuesta)

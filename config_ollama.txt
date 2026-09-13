@@ -1,2 +1,2 @@
 ollama=1
-model=qwen-coder
+model=D:\OpenSynTest_Limpio\bin\models\deepseek-coder-1.3b-Q4_K_M.gguf
