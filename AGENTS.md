@@ -16,6 +16,8 @@ trabajando en este repositorio con opencode (Windows).
 4. `MEMORIA_PROYECTO.md` (bitácora viva)
 5. `docs/gobernancia/METODO_TRABAJO.md` (Método de Trabajo Seguro — MTS, mecanismo
    anti-olvido: citas grep-chequeables del manual en el plan y en el código)
+6. `docs/gobernancia/CONTROL_ALINEACION.md` (gate verificable de alineación:
+   lectura citada + expediente `docs/alineacion/<ME>.md` + oráculos ejecutados)
 
 ## SECUENCIA DE ARRANQUE (obligatoria, en orden, antes de escribir código)
 
@@ -32,6 +34,12 @@ trabajando en este repositorio con opencode (Windows).
    `python auditoria/registrar_lectura.py --registrar --archivos "<rutas>" --cita "Manual N §S" --puntos "<requisitos leídos>"`
    El pre-commit BLOQUEA commits sin esta lectura; citar secciones
    inexistentes se rechaza (fabricación).
+6. LECTURA DIRIGIDA DEL MANUAL (gate de alineación, obligatorio):
+   `python auditoria/alineacion.py --leer --me <ME>` — imprime las oraciones
+   normativas LITERALES de las secciones exigidas por
+   `docs/gobernancia/mapa_alineacion.md` y sella la lectura previa. Después de
+   codificar: `--nuevo --me <ME>` (expediente) y `--verificar --me <ME>`
+   (valida cita textual ↔ código ↔ oráculo ejecutado).
 
 ## REGLAS DURAS (texto canónico en la GUIA; resumen operativo)
 
@@ -57,12 +65,16 @@ trabajando en este repositorio con opencode (Windows).
 1. Plan breve citando Manual X, Sección Y (qué requisito implementa cada cambio).
    Si usas MTS (`docs/gobernancia/METODO_TRABAJO.md`), el plan `docs/plan_ME_<id>.md` usa el
    bloque estricto `requisito:`/`texto:`/`implementacion:`/`oraculo:`.
+   Antes de tocar código: `python auditoria/alineacion.py --leer --me <id>`
+   (lectura dirigida + sello) y `--nuevo --me <id>` (expediente con citas reales).
 2. Codifica. Valida mentalmente contra las reglas de sintaxis de Synapse. Cada
    archivo de producción modificado lleva `// cumple Manual X §Y`.
 3. Prueba y verifica:
    - `.venv\Scripts\python.exe main.py <archivo.syn>` — compila a `.exe`; ejecútalo.
    - `.venv\Scripts\python.exe -m pytest <ruta-de-tests> -v` — suite afectada + regresión.
    - `.venv\Scripts\python.exe auditoria\verificar_alineacion.py` — 0 brechas, obligatorio.
+   - `python auditoria/alineacion.py --verificar --me <id>` — cita textual ↔
+     código ↔ oráculos ejecutados (deja `auditoria/evidencia/<cambio_hash>.json`).
 3b. Gate MTS (fase 4b, obligatorio si hay `docs/plan_ME_<id>.md`):
    `python auditoria/contrastar.py --plan docs/plan_ME_<id>.md` — resuelve
    cualquier brecha antes de integrar.

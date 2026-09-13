@@ -1,8 +1,8 @@
-# MANUAL 8: HERRAMIENTAS DE DESARROLLO
+# MANUAL 8: HERRAMIENTAS DE DESARROLLO (ACTUALIZADO CON FASE 31)
 
 **Archivo:** `08_HERRAMIENTAS_DESARROLLO.md`  
 **Versión:** 8.2.0-industrial  
-**Propósito:** Especificar el conjunto de herramientas de desarrollo del ecosistema Synapse/Syquex: el servidor LSP nativo (`synapse_lsp`), la extensión para VS Code, el debugger (time‑travel y reversible), el CLI unificado (`synapse`), y la integración con OpenSyn para asistencia de IA en el editor. Este manual cubre la experiencia de desarrollo completa, desde la edición de código hasta la depuración y despliegue, incluyendo el bucle de validación y corrección automática de código generado por IA.
+**Propósito:** Especificar el conjunto de herramientas de desarrollo del ecosistema Synapse/Syquex: el servidor LSP nativo (`synapse_lsp`), la extensión para VS Code, el debugger (time‑travel y reversible), el CLI unificado (`synapse`), y la integración con OpenSyn para asistencia de IA en el editor. Este manual cubre la experiencia de desarrollo completa, desde la edición de código hasta la depuración y despliegue, incluyendo el bucle de validación y corrección automática de código generado por IA, así como la integración con las herramientas nativas de linting, formateo y testing (Fase 31).
 
 ---
 
@@ -74,6 +74,9 @@ Si el LSP no puede leer una cabecera válida (ej. `Content-Length` ausente), emi
 | `synapse/aiFix` | ✅ | Extensión: sugiere correcciones para errores. |
 | `synapse/aiTranspile` | ✅ | Extensión: transpila código Python a Syquex, o C a Synapse. |
 | `synapse/aiBindings` | ✅ | Extensión: genera bindings Syquex desde cabecera C. |
+| `synapse/aiLint` | ✅ | Extensión: ejecuta `synapse lint` sobre el código actual (Fase 31). |
+| `synapse/aiFmt` | ✅ | Extensión: ejecuta `synapse fmt` sobre el código actual (Fase 31). |
+| `synapse/aiTest` | ✅ | Extensión: ejecuta `synapse test` y muestra resultados (Fase 31). |
 
 ### 1.5. Mapeo de Coordenadas
 
@@ -246,6 +249,9 @@ La extensión registra los siguientes comandos:
 - **Synapse: Corregir errores con IA** → `synapse/aiFix`
 - **Synapse: Transpilar Python a Syquex** → `synapse/aiTranspile`
 - **Synapse: Generar bindings C → Syquex** → `synapse/aiBindings`
+- **Synapse: Lint código** → `synapse/aiLint` (Fase 31)
+- **Synapse: Formatear código** → `synapse/aiFmt` (Fase 31)
+- **Synapse: Ejecutar tests** → `synapse/aiTest` (Fase 31)
 - **Synapse: Formatear documento** → `synapse/format`
 - **Synapse: Abrir documentación** → abre la documentación local o en línea.
 
@@ -265,7 +271,10 @@ La extensión permite configurar:
   "synapse.ai.maxRetries": 3,          // Número máximo de intentos de corrección
   "synapse.debugger.enabled": true,    // Habilitar debugger
   "synapse.format.indentSize": 4,      // Tamaño de indentación
-  "synapse.format.useTabs": false      // Usar tabs (false = espacios)
+  "synapse.format.useTabs": false,     // Usar tabs (false = espacios)
+  "synapse.lint.enabled": true,        // Habilitar linting automático (Fase 31)
+  "synapse.test.junit": true,          // Generar JUnit en tests (Fase 31)
+  "synapse.test.coverage": true        // Generar cobertura en tests (Fase 31)
 }
 ```
 
@@ -406,6 +415,8 @@ El CLI unificado es el punto de entrada principal para todas las herramientas de
 | `synapse debug <subcomando>` | Comandos del debugger (load, step, reverse, snapshots). |
 | `synapse lsp` | Inicia el servidor LSP (normalmente usado por la extensión). |
 | `synapse init` | Crea un nuevo proyecto Synapse/Syquex (estructura básica). |
+| **`synapse lint`** (Fase 31) | Ejecuta el linter nativo sobre el código fuente. |
+| **`synapse fmt`** (Fase 31) | Ejecuta el formateador nativo sobre el código fuente. |
 
 ### 4.2. Flags Comunes
 
@@ -419,6 +430,11 @@ El CLI unificado es el punto de entrada principal para todas las herramientas de
 | `--verbose` | Muestra información detallada de la compilación. |
 | **`--check`** / **`--no-emit`** | **Modo de validación:** Solo verifica la sintaxis y semántica, sin generar código de salida. Útil para el bucle de corrección de OpenSyn. |
 | `--emit-ast` | Emite el AST en formato JSON (útil para depuración). |
+| **`--junit`** (Fase 31) | Genera reporte JUnit XML en `synapse test`. |
+| **`--coverage`** (Fase 31) | Genera informe de cobertura en HTML en `synapse test`. |
+| **`--json`** (Fase 31) | Genera reporte JSON en `synapse test`. |
+| **`--fix`** (Fase 31) | Corrige automáticamente errores de estilo en `synapse lint`. |
+| **`--check`** (Fase 31) | Verifica formato sin modificar archivos en `synapse fmt`. |
 
 **Ejemplos:**
 ```bash
@@ -433,6 +449,13 @@ synapse check --no-emit temp.syq
 
 # Ejecutar un programa Syquex con depuración
 synapse run --debug script.syq
+
+# Ejecutar tests con reporte JUnit y cobertura (Fase 31)
+synapse test --junit --coverage
+
+# Lint y formateo (Fase 31)
+synapse lint --fix main.syq
+synapse fmt --check src/
 
 # Ejecutar tests
 synapse test
@@ -510,6 +533,21 @@ PromptInfo rag_construir_prompt(RagContext* ctx, int n_ctx);
 
 Cuando OpenSyn genera código, el LSP lo valida automáticamente usando el compilador con el flag `--no-emit`. Si el código es válido, se muestra como sugerencia. Si no, se inicia el bucle de corrección descrito anteriormente. Este proceso asegura que el código generado por IA cumpla con las reglas del compilador antes de presentarse al usuario, reduciendo drásticamente la tasa de errores y mejorando la experiencia del desarrollador.
 
+### 5.5. Integración con Herramientas Nativas (Fase 31)
+
+OpenSyn y el LSP se integran con las herramientas nativas de la Fase 31:
+
+- **`synapse lint`:** Después de validar el código, el LSP puede ejecutar `synapse lint --check` para detectar problemas de estilo y emitirlos como advertencias en el editor.
+- **`synapse fmt`:** El LSP puede ejecutar `synapse fmt --check` para verificar el formato y sugerir correcciones.
+- **`synapse test`:** El LSP puede ejecutar `synapse test` y mostrar los resultados en el editor, permitiendo al usuario ver el estado de las pruebas sin salir del entorno de desarrollo.
+
+**Flujo extendido con herramientas nativas:**
+1. OpenSyn genera código (intento 1).
+2. El LSP valida con `synapse check --no-emit`.
+3. Si compila, el LSP ejecuta `synapse lint --check` sobre el código generado para detectar problemas de estilo.
+4. Si `synapse lint` encuentra advertencias, el LSP las muestra al usuario y puede sugerir correcciones automáticas (usando `synapse lint --fix`).
+5. El usuario puede ejecutar `synapse test` para verificar que el código generado pasa todas las pruebas.
+
 ---
 
 ## 6. PRUEBAS OBLIGATORIAS PARA ESTA ETAPA
@@ -525,34 +563,24 @@ Cuando OpenSyn genera código, el LSP lo valida automáticamente usando el compi
 | Comandos IA (aiFix) | `pytest tests/integration/test_ai_fix.py -v` | Corrección sugerida es válida |
 | Bucle de corrección (3 intentos) | `pytest tests/integration/test_ai_correction.py -v` | El código se corrige exitosamente en ≤3 intentos |
 | Flag `--check` del CLI | `pytest tests/integration/test_cli_check.py -v` | El flag funciona correctamente y no genera binario |
+| **`synapse lint`** (Fase 31) | `pytest tests/nucleo/test_lint.py -v` | 100% pass, detecta variables no utilizadas, contratos faltantes |
+| **`synapse fmt`** (Fase 31) | `pytest tests/nucleo/test_fmt.py -v` | 100% pass, formatea correctamente |
+| **`synapse test --junit`** (Fase 31) | `pytest tests/integration/test_reports.py -v` | Genera XML válido |
+| **`synapse test --coverage`** (Fase 31) | `pytest tests/integration/test_coverage.py -v` | Genera informe de cobertura |
 | Debugger (grabación) | `pytest tests/integration/test_debug_record.py -v` | Traza generada correctamente |
 | Debugger (reversión) | `pytest tests/integration/test_debug_reverse.py -v` | Retroceso funciona |
 | CLI unificado | `pytest tests/integration/test_cli.py -v` | 100% pass |
 
 ---
 
-## 7. EJEMPLO DE FLUJO DE TRABAJO COMPLETO
+## 7. EJEMPLO DE FLUJO DE TRABAJO COMPLETO (CON HERRAMIENTAS NATIVAS)
 
-**Escenario:** Un desarrollador está escribiendo una aplicación Syquex y necesita ayuda con una función, incluyendo validación automática del código generado.
+**Escenario:** Un desarrollador está escribiendo una aplicación Syquex y utiliza las herramientas nativas (Fase 31) para mejorar su código.
 
 1. **Abrir el proyecto en VS Code:** La extensión detecta el archivo `.syq` y activa el LSP.
 2. **Escribir código:** El LSP proporciona autocompletado, diagnósticos en tiempo real, y hover.
-3. **Pedir explicación:** El usuario selecciona una función y ejecuta "Synapse: Explicar código". OpenSyn genera una explicación (sin validación, ya que no hay código).
-4. **Generar código:** El usuario ejecuta "Synapse: Generar código con IA". OpenSyn genera código (intento 1). El LSP valida con `synapse check --no-emit`. Si falla, se repite hasta 3 veces. Si compila, se muestra.
-5. **Depurar:** El usuario establece un breakpoint y ejecuta `synapse run --debug app.syq`. El debugger se inicia y se detiene en el breakpoint.
-6. **Time-travel:** El usuario retrocede en la ejecución para inspeccionar el estado anterior.
-7. **Corregir error:** El usuario encuentra un error y ejecuta "Synapse: Corregir errores con IA". OpenSyn sugiere una corrección y el LSP la valida automáticamente.
-8. **Transpilar:** El usuario tiene un script Python antiguo. Ejecuta "Synapse: Transpilar Python a Syquex" y obtiene el código equivalente en Syquex.
-9. **Compilar y ejecutar:** El usuario compila la aplicación con `synapse build --release app.syq` y la ejecuta.
-
----
-
-## 8. SIGUIENTES PASOS
-
-Con las herramientas de desarrollo completas, el siguiente manual (Manual 9) se centrará en la **Instalación y Distribución** del ecosistema, incluyendo el instalador unificado y el sistema de actualización.
-
----
-
-*Este manual proporciona la especificación completa de las herramientas de desarrollo del ecosistema Synapse/Syquex, incluyendo la integración con OpenSyn y el bucle de validación automática. La implementación debe seguir estos lineamientos para garantizar una experiencia de desarrollo fluida, productiva y segura.*
-
-**Fin del Manual 8**
+3. **Lint automático:** El LSP ejecuta `synapse lint --check` en segundo plano y muestra advertencias de estilo (variables no utilizadas, funciones sin contratos).
+4. **Formateo:** El usuario ejecuta "Synapse: Formatear código" y el LSP invoca `synapse fmt`, reescribiendo el archivo según las reglas de estilo.
+5. **Generar código con IA:** El usuario ejecuta "Synapse: Generar código con IA". OpenSyn genera código (intento 1). El LSP valida con `synapse check --no-emit`. Si falla, se repite hasta 3 veces. Si compila, el LSP ejecuta `synapse lint --check` para verificar el estilo.
+6. **Ejecutar tests:** El usuario ejecuta "Synapse: Ejecutar tests". El LSP invoca `synapse test --junit --coverage`, generando reportes de tests y cobertura.
+7. **Depurar:** El usuario establece un breakpoint y ejecuta `synapse run --debug app.syq`. El debugger se inicia y se detiene en el break

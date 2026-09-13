@@ -499,3 +499,5 @@
 {"fecha": "2026-09-13", "archivos": ["opensyn/opensyn.bat"], "cita": "Manual 7 §2.1", "puntos": "script de inicio que lanza servidor de modelos en puerto configurado"}
 {"fecha": "2026-09-13", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 7 §2.1", "puntos": "cliente LSP conecta al servidor de modelos via HTTP"}
 {"fecha": "2026-09-13", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 7 §2.1", "puntos": "cliente LSP conecta al servidor de modelos via HTTP"}
+{"fecha": "2026-09-13", "archivos": ["nucleo/lsp.syn"], "cita": "Manual 8 §1", "puntos": "protocolo LSP Language Server Protocol para editores de codigo"}
+{"fecha": "2026-09-13", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 2 §2", "puntos": "gramatica formal EBNF de Synapse con declaraciones y expresiones"}

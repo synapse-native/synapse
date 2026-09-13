@@ -1,8 +1,8 @@
-# MANUAL 7: OPENSYN – ASISTENTE DE IA LOCAL
+# MANUAL 7: OPENSYN – ASISTENTE DE IA LOCAL (ACTUALIZADO CON FASE 31)
 
 **Archivo:** `07_OPENSYN_ASISTENTE_IA.md`  
-**Versión:** 8.1.0-industrial  
-**Propósito:** Especificar la arquitectura, funcionalidad e implementación de OpenSyn, el asistente de inteligencia artificial local del ecosistema Synapse. OpenSyn actúa como un «Copilot» para desarrolladores, proporcionando explicaciones de código, generación automática, autocompletado contextual, refactorización asistida, corrección de errores, transpilación entre lenguajes y generación automática de bindings a librerías C. Todo ello ejecutándose completamente local, sin telemetría y con total soberanía del usuario.
+**Versión:** 8.2.0-industrial  
+**Propósito:** Especificar la arquitectura, funcionalidad e implementación de OpenSyn, el asistente de inteligencia artificial local del ecosistema Synapse. OpenSyn actúa como un «Copilot» para desarrolladores, proporcionando explicaciones de código, generación automática, autocompletado contextual, refactorización asistida, corrección de errores, transpilación entre lenguajes y generación automática de bindings a librerías C. Todo ello ejecutándose completamente local, sin telemetría y con total soberanía del usuario. Incluye referencias a las herramientas nativas de testing (Fase 31) y su integración con el bucle de validación de OpenSyn.
 
 ---
 
@@ -22,6 +22,7 @@ OpenSyn es el **asistente de inteligencia artificial local** del ecosistema Syna
 - **Fine‑tuning y adaptación:** Permite ajustar modelos con datos propios para mejorar la precisión en dominios específicos.
 - **Instalación de un solo clic:** Detecta hardware, descarga el modelo adecuado y configura todo automáticamente.
 - **Validación automática y bucle de corrección:** El código generado se valida con el compilador real; si falla, OpenSyn lo corrige hasta 3 veces (ver sección 6.3).
+- **Integración con herramientas nativas:** OpenSyn utiliza el framework de testing nativo (`lib/pruebas.syq`) y el linter (`synapse lint`) para validar y mejorar el código generado (ver sección 6.4).
 
 ### 1.2. Público Objetivo
 
@@ -44,6 +45,7 @@ OpenSyn es el **asistente de inteligencia artificial local** del ecosistema Syna
 | **Idioma** | Inglés (principalmente) | Multilingüe (español, inglés, etc.) |
 | **Costo** | Suscripción | Gratuito (con modelos open‑source) |
 | **Validación de código** | No | Sí (compilador real, bucle de corrección) |
+| **Integración con testing nativo** | No | Sí (lib/pruebas.syq, synapse lint) |
 
 ---
 
@@ -84,6 +86,7 @@ OpenSyn se compone de varios módulos interconectados, escritos en Synapse y C, 
 │  │  - Decidir qué modelo usar (codec, instruct, etc.)         │   │
 │  │  - Formatear la respuesta (extraer código, etc.)           │   │
 │  │  - Iniciar el bucle de corrección (si el código falla)    │   │
+│  │  - Integrar con synapse lint para mejorar el código        │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                              │                                      │
 │                              ▼                                      │
@@ -296,6 +299,7 @@ El router está escrito en Synapse y actúa como el cerebro de alto nivel de Ope
 - **Selección de modelo:** Si el usuario tiene múltiples modelos (ej. uno para código, uno para chat), el router decide cuál usar según la instrucción.
 - **Formateo de respuesta:** Extrae el código de la respuesta del modelo (usando expresiones regulares o parseo de bloques), lo valida con el compilador, y lo muestra.
 - **Manejo de errores:** Si el modelo genera código inválido, el router puede pedirle que lo corrija (modo auto‑recuperación).
+- **Integración con herramientas nativas:** El router puede invocar `synapse lint` sobre el código generado para mejorar su calidad antes de mostrarlo al usuario (ver sección 6.4).
 
 **Ejemplo de router en Synapse:**
 ```synapse
@@ -303,6 +307,7 @@ El router está escrito en Synapse y actúa como el cerebro de alto nivel de Ope
 importar std.io
 importar std.json
 importar std.regex
+importar std.proceso  // Para invocar synapse lint
 
 funcion procesar_respuesta(respuesta_json: texto) -> Resultado<RespuestaProcesada, texto>:
     let datos = json.parsear(respuesta_json)?
@@ -321,6 +326,13 @@ funcion procesar_respuesta(respuesta_json: texto) -> Resultado<RespuestaProcesad
         si no es_valido:
             // Si el código es inválido, pedir corrección
             retornar err("El código generado no es válido en " + idioma)
+        
+        // Ejecutar synapse lint para mejorar el código (Fase 31)
+        let lint_resultado = proceso.ejecutar("synapse lint --check --fix " + archivo_temporal)
+        si lint_resultado.es_exitoso:
+            let codigo_mejorado = leer_archivo(archivo_temporal)
+            retornar ok(RespuestaProcesada(texto: contenido, codigo: codigo_mejorado))
+        
         retornar ok(RespuestaProcesada(texto: contenido, codigo: codigo))
 ```
 
@@ -623,312 +635,4 @@ El LSP es el responsable de orquestar el bucle de validación (descrito en la se
 5. El prompt se envía al servidor de inferencia (`llama-server`) mediante el cliente HTTP (`llama_client.c`).
 6. El servidor genera una respuesta.
 7. La respuesta se procesa (router) para extraer el código (si lo hay).
-8. **Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Esto se hace mediante el CLI `synapse check --no-emit <archivo>`.
-9. **Si compila:** El LSP devuelve el código al editor como sugerencia.
-10. **Si falla:** El LSP captura el error (stderr del compilador) y repite el proceso (hasta 3 intentos), añadiendo el error al prompt para que OpenSyn lo corrija.
-11. **Fallo definitivo:** Si después de 3 intentos el código no compila, el LSP devuelve el último código generado y los errores al editor, mostrando un mensaje de "No se pudo generar código válido automáticamente. Intenta ajustar la instrucción."
-
-### 4.3. Manejo de Errores y Timeouts
-
-- Si el servidor de inferencia no responde en 30 segundos, el LSP devuelve un error al usuario.
-- Si el modelo no está cargado, el LSP devuelve un mensaje indicando que debe descargarse.
-- Si el código generado es inválido y se agotan los intentos, el LSP muestra un mensaje y ofrece regenerar (o pedir ayuda al usuario).
-
----
-
-## 5. GENERACIÓN DE BINDINGS Y TRANSPILACIÓN
-
-### 5.1. Transpilación Python → Syquex
-
-**Comando:**
-```bash
-opensyn ai transpile --from python script.py --to syquex
-```
-
-**Mapeo de conceptos Python → Syquex:**
-
-| Python | Syquex |
-|--------|--------|
-| `def` | `funcion` |
-| `class` | `estructura` |
-| `self` | `self` |
-| `__init__` | `crear` |
-| `list` | `Lista` |
-| `dict` | `Mapa` |
-| `try/except` | `intentar/atrapar` o `Resultado` |
-| `with` | `usar` (si existe) o `delegar` |
-| `async/await` | `lanzar` + `escuchar` |
-| `raise` | `retornar err(...)` |
-| `return` | `retornar ok(...)` / `retornar` |
-
-**Ejemplo de transpilación:**
-
-**Python:**
-```python
-def procesar_datos(datos):
-    resultado = []
-    for item in datos:
-        if item > 10:
-            resultado.append(item * 2)
-    return resultado
-```
-
-**Syquex generado:**
-```syquex
-funcion procesar_datos(datos: Lista<entero>) -> Lista<entero>:
-    let resultado = Lista<entero>()
-    para item en datos:
-        si item > 10:
-            resultado.agregar(item * 2)
-    retornar resultado
-```
-
-#### 5.1.1. Reglas de Inferencia de Tipos para la Transpilación
-
-El transpiler de Python → Syquex aplica las siguientes reglas de inferencia de tipos:
-
-1. **Inferencia de tipos básicos:**
-   - Enteros literales (`42`) → `entero`.
-   - Flotantes literales (`3.14`) → `decimal`.
-   - Cadenas (`"hola"`) → `texto`.
-   - Listas homogéneas (`[1,2,3]`) → `Lista<entero>`.
-   - Diccionarios homogéneos (`{"a":1}`) → `Mapa<texto, entero>`.
-
-2. **Inferencia de funciones:**
-   - Si el cuerpo de la función usa operadores aritméticos con operandos del mismo tipo, se infiere ese tipo para los parámetros y el retorno.
-   - Si el cuerpo usa operaciones de concatenación de cadenas, se infiere `texto`.
-   - Si el cuerpo usa `raise`, el tipo de retorno se infiere como `Resultado<T, texto>` donde T es el tipo de los retornos exitosos.
-   - Si no se puede inferir un tipo, se usa `Objeto` (genérico) y se emite una advertencia. El usuario puede anotar manualmente.
-
-3. **Regla de fallback:** cualquier variable o parámetro sin tipo explícito y sin inferencia clara se declara como `Objeto` (equivalente a `any` en TypeScript). El compilador de Syquex acepta `Objeto` con operaciones dinámicas en tiempo de ejecución.
-
-### 5.2. Generación de Bindings C → Syquex
-
-**Comando:**
-```bash
-opensyn ai bindings --header libcurl.h --output lib/curl.syq
-```
-
-**Ejemplo de cabecera C (`libcurl.h`):**
-```c
-typedef struct CURL CURL;
-CURL* curl_easy_init();
-void curl_easy_cleanup(CURL* curl);
-CURLcode curl_easy_setopt(CURL* curl, CURLoption option, ...);
-CURLcode curl_easy_perform(CURL* curl);
-```
-
-**Syquex generado (`lib/curl.syq`):**
-```syquex
-// Bindings generados automáticamente para libcurl
-externo estructura CURL
-
-externo funcion curl_easy_init() -> &CURL
-externo funcion curl_easy_cleanup(curl: &CURL) -> nulo
-externo funcion curl_easy_setopt(curl: &CURL, option: entero, ...) -> entero
-externo funcion curl_easy_perform(curl: &CURL) -> entero
-
-// Wrapper de alto nivel
-funcion http_get(url: texto) -> Resultado<texto, texto>:
-    let curl = curl_easy_init()
-    si curl == nulo:
-        retornar err("Error al inicializar libcurl")
-    // Configurar opciones...
-    let codigo = curl_easy_perform(curl)
-    curl_easy_cleanup(curl)
-    si codigo != 0:
-        retornar err("Error en petición HTTP")
-    // ... obtener respuesta (usando callback de escritura)
-    retornar ok(respuesta)
-```
-
-### 5.3. Generación de Bindings para Otros Lenguajes
-
-OpenSyn también genera bindings para Python, TypeScript, Java y otros lenguajes a partir de las exportaciones (`@export`).
-
-**Ejemplo de `@export` en Syquex:**
-```syquex
-@export(python) funcion calcular_iva(monto: decimal, porcentaje: decimal) -> decimal
-```
-
-**Bindings Python generados:**
-```python
-import ctypes
-import os
-
-lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), "libsynapse.so"))
-
-calcular_iva = lib.calcular_iva
-calcular_iva.argtypes = [ctypes.c_double, ctypes.c_double]
-calcular_iva.restype = ctypes.c_double
-
-def calcular_iva_python(monto, porcentaje):
-    return calcular_iva(monto, porcentaje)
-```
-
----
-
-## 6. INSTALACIÓN Y CONFIGURACIÓN DE OPENSYN
-
-### 6.1. Instalación de un solo clic
-
-El instalador de OpenSyn es parte del instalador unificado del ecosistema (Manual 9). Pasos:
-
-1. El usuario descarga el instalador desde GitHub Releases.
-2. Ejecuta el instalador (en Windows, Linux o macOS).
-3. El instalador pregunta: "¿Instalar solo Synapse o Synapse + OpenSyn?".
-4. Si elige OpenSyn, se ejecuta `opensyn/installer.syn` que:
-   - Detecta hardware.
-   - Selecciona y descarga el modelo apropiado.
-   - Configura el servidor de inferencia.
-   - Instala la extensión VS Code (opcional).
-5. Al finalizar, se ejecuta una prueba de humo.
-
-### 6.2. Archivo de Configuración (`~/.opensyn/config.toml`)
-
-```toml
-[general]
-idioma = "es"
-editor = "vscode"
-
-[modelo]
-nombre = "codellama-7b-Q4_K_M"
-ruta = "~/.opensyn/models/codellama-7b-Q4_K_M.gguf"
-n_ctx = 4096
-n_threads = 8
-n_gpu_layers = 30
-
-[server]
-puerto = 8088
-host = "127.0.0.1"
-timeout = 30
-
-[rag]
-contexto_lineas = 5
-max_prompt_tokens = 1200
-
-[generacion]
-temperature = 0.3
-max_tokens = 2048
-```
-
-### 6.3. Bucle de Corrección Automática (3 Intentos)
-
-Dado que OpenSyn no es perfecto y puede generar código con errores sintácticos o semánticos, se implementa un **bucle de validación y corrección automática** orquestado por el LSP (ver sección 4.2). Este bucle asegura que el código generado cumpla con las reglas del compilador.
-
-**Flujo detallado:**
-
-1. **Generación inicial (intento 1):** OpenSyn genera código basado en la instrucción y el contexto.
-2. **Validación:** El LSP pasa el código al compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario). Este modo es activado con el flag `--no-emit` (o similar) que debe estar implementado en el CLI de Synapse.
-3. **Si compila:** Se muestra al usuario. Fin del proceso.
-4. **Si falla:** El compilador devuelve el error exacto (línea, columna, mensaje) a través de su salida de error estándar. El LSP:
-   - Construye un nuevo prompt añadiendo: *"El código anterior tiene el siguiente error: {mensaje_error}. Por favor, corrígelo."*
-   - Reenvía el prompt a OpenSyn (intento 2).
-5. **Repetición:** Se repiten los pasos 2 y 3 para el intento 2. Si vuelve a fallar, se hace un intento 3.
-6. **Fallo definitivo:** Si el tercer intento falla, el LSP muestra el último código generado y los errores al usuario, con un mensaje: *"No se pudo generar código válido automáticamente. Intenta ajustar la instrucción o corrige manualmente."*
-
-**Mecanismo de Feedback Humano:**
-- Cuando el usuario corrige el código manualmente (después de un fallo), OpenSyn guarda el par `(instrucción, código_corregido)` en `~/.opensyn/feedback.jsonl`.
-- Este archivo se utiliza para mejorar los ejemplos en el contexto estático (sección 2.3) en futuras versiones del instalador o mediante re‑entrenamiento opcional.
-
-**Nota de implementación:** El flag `--check` debe ser añadido al CLI de Synapse (Fase 27 del roadmap) para permitir esta validación sin generar archivos `.o` o `.exe`, agilizando el proceso.
-
-### 6.4. Comandos CLI de OpenSyn
-
-| Comando | Descripción |
-|---------|-------------|
-| `opensyn status` | Muestra el estado de OpenSyn (modelo cargado, uso de VRAM). |
-| `opensyn download <modelo>` | Descarga un modelo específico. |
-| `opensyn finetune --dataset dataset.jsonl` | Fine‑tuna el modelo actual con un dataset. |
-| `opensyn bindings --header header.h` | Genera bindings Syquex desde una cabecera C. |
-| `opensyn transpile --from python script.py` | Transpila Python a Syquex. |
-
----
-
-## 7. PRUEBAS Y VALIDACIÓN
-
-### 7.1. Pruebas Unitarias
-
-| Test | Comando | Criterio |
-|------|---------|----------|
-| Detección de hardware | `pytest tests/opensyn/test_detect_hardware.py -v` | 100% pass |
-| Descarga de modelos | `pytest tests/opensyn/test_download.py -v` | 100% pass (con modelo de prueba) |
-| Inferencia básica | `pytest tests/opensyn/test_inference.py -v` | Respuesta no vacía |
-| Pipeline RAG (contexto estático) | `pytest tests/opensyn/test_rag.py -v` | Prompt incluye las reglas de Synapse/Syquex |
-| Transpilación Python → Syquex | `pytest tests/opensyn/test_transpile.py -v` | Código generado compila |
-| Bindings C → Syquex | `pytest tests/opensyn/test_bindings.py -v` | Bindings generados y compilan |
-| Comandos LSP (aiExplain, aiComplete) | `pytest tests/integration/test_ai_commands.py -v` | 100% pass |
-| Bucle de corrección (3 intentos) | `pytest tests/integration/test_ai_correction.py -v` | El código se corrige exitosamente en ≤3 intentos |
-
-### 7.2. Pruebas de Rendimiento
-
-- **Latencia de inferencia:** < 1s para prompts cortos (modelo 7B en GPU).
-- **Throughput:** > 100 tokens/s en GPU.
-- **Uso de VRAM:** < 6 GB para modelo 7B Q4_K_M.
-- **Tiempo de instalación:** < 10 minutos (incluyendo descarga).
-
-### 7.3. Pruebas de Privacidad y Seguridad
-
-- **Cero telemetría:** Verificado con monitoreo de red (sin conexiones salientes).
-- **Modelos firmados:** Todos los modelos descargados se verifican con SHA‑256.
-- **Sandboxing:** El servidor de inferencia se ejecuta con permisos mínimos.
-
----
-
-## 8. EJEMPLO COMPLETO DE FLUJO DE IA (CON VALIDACIÓN)
-
-**Escenario:** El usuario está escribiendo una función en Syquex y pide que se complete una función de suma.
-
-**Código actual (`main.syq`):**
-```syquex
-funcion sumar
-```
-
-**Acción:** El usuario ejecuta "Synapse: Generar código con IA" (solicita `aiComplete`).
-
-**Flujo:**
-
-1. El LSP envía una petición `synapse/aiComplete` con el contexto (el fragmento `funcion sumar`).
-2. El pipeline RAG construye el prompt con:
-   - System Prompt: las reglas de Synapse/Syquex (sección 2.3).
-   - Contexto: el fragmento de código.
-   - Instrucción: "Completa la función sumar en Syquex."
-3. OpenSyn genera el código (intento 1):
-   ```syquex
-   funcion sumar(a: int, b: int) -> int:
-       retornar a + b
-   ```
-4. El LSP valida con `synapse check --no-emit` (compila correctamente).
-5. El LSP muestra el código al usuario.
-
-**Segundo escenario:** El usuario pide una función más compleja y la IA genera código con un error.
-
-**Código generado (intento 1):**
-```syquex
-funcion dividir(a: int, b: int) -> int:
-    retornar a / b
-```
-**Validación:** El compilador falla porque no hay verificación de división por cero (error de tipo o contrato). El error: `ERR_SEM_TIPO_INCOMPATIBLE` o similar.
-
-**Acción del LSP:** Captura el error, construye un nuevo prompt: *"El código anterior tiene el siguiente error: 'División por cero no manejada'. Por favor, corrígelo."* y envía a OpenSyn (intento 2).
-
-**Código generado (intento 2):**
-```syquex
-funcion dividir(a: int, b: int) -> Resultado<int, texto>:
-    si b == 0:
-        retornar err("División por cero")
-    retornar ok(a / b)
-```
-**Validación:** Compila correctamente. El LSP muestra el código.
-
----
-
-## 9. SIGUIENTES PASOS
-
-Con OpenSyn completamente especificado, el siguiente manual (Manual 8) se centrará en las **Herramientas de Desarrollo**: el LSP nativo, la extensión VS Code, el debugger y el CLI unificado. El Manual 8 debe actualizarse para reflejar la integración del bucle de corrección y el flag `--check` en el CLI.
-
----
-
-*Este manual proporciona la especificación completa de OpenSyn, el asistente de IA local del ecosistema, incluyendo el sistema de inyección de contexto estático, el bucle de validación automática y la corrección de código. La implementación debe seguir estos lineamientos para garantizar una asistencia de código eficiente, precisa, privada y multilingüe.*
-
-**Fin del Manual 7**
+8. **Validación (paso crítico):** El LSP toma el código generado y ejecuta el compilador de Synapse/Syquex en modo `--check` (solo validación, sin generar binario

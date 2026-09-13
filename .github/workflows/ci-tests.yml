@@ -479,3 +479,37 @@ jobs:
             exit 1
           fi
           echo "✅ Alineación verificada: 0 brechas"
+
+  alineacion:
+    # Gate de alineación manual<->código (docs/gobernancia/CONTROL_ALINEACION.md).
+    # Exige que el cambio traiga su EXPEDIENTE (docs/alineacion/<ME>.md) con citas
+    # textuales del manual y evidencia ejecutada (auditoria/evidencia/<hash>.json),
+    # atados a la huella de los archivos de producción de base...HEAD. Así un commit
+    # hecho con --no-verify no mergea.
+    # Modo: ALINEACION_MODO=warn (informa) por defecto; poner 'block' para bloquear.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar alineación manual<->código (alineacion.py)
+        run: |
+          python auditoria/alineacion.py --verificar \
+            --desde "${{ steps.base.outputs.ref }}" --ci --sin-oraculos \
+            --modo "${ALINEACION_MODO:-warn}"
+        env:
+          ALINEACION_MODO: ${{ vars.ALINEACION_MODO || 'warn' }}

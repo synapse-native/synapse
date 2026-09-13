@@ -181,6 +181,31 @@ else
     echo "  Sin plan_ME en este commit (gate MTS no aplica)"
 fi
 
+# --- Gate de alineación manual<->codigo (auditoria/alineacion.py) ---------
+# Control verificado: la lectura se prueba con CITAS TEXTUALES del manual y el
+# código con el comentario `cumple Manual X §Y` en la línea de evidencia.
+# Modo: incremental sobre lo staged; "warn" por defecto (no bloquea) hasta que
+# no queden brechas en el árbol. Activar bloqueo: ALINEACION_MODO=block.
+# Oráculos (se EJECUTAN, no se declaran) se corren aquí solo con
+# ALINEACION_ORACULOS=1; el CI los corre siempre.
+echo "── Gate de alineación manual↔código (auditoria/alineacion.py) ──"
+ALINEACION_MODO="${ALINEACION_MODO:-warn}"
+ALINEACION_FLAGS="--verificar --modo $ALINEACION_MODO"
+if [ "${ALINEACION_ORACULOS:-0}" != "1" ]; then
+    ALINEACION_FLAGS="$ALINEACION_FLAGS --sin-oraculos"
+fi
+if (cd "$RAIZ" && $PYTHON auditoria/alineacion.py $ALINEACION_FLAGS); then
+    echo "✅ Alineación manual↔código verificada (modo $ALINEACION_MODO)"
+else
+    echo "❌ GATE DE ALINEACIÓN — commit bloqueado" >&2
+    echo "" >&2
+    echo "  Antes de codificar:  $PYTHON auditoria/alineacion.py --leer --me <ME>" >&2
+    echo "  Expediente:          $PYTHON auditoria/alineacion.py --nuevo --me <ME>" >&2
+    echo "  Ver puntual:         $PYTHON auditoria/alineacion.py --explain" >&2
+    echo "  Documentación:       docs/gobernancia/CONTROL_ALINEACION.md" >&2
+    exit 1
+fi
+
 # --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
 echo "── Gate de lectura previa (regla 1) ──"
 if ! (cd "$RAIZ" && $PYTHON auditoria/registrar_lectura.py --verificar); then

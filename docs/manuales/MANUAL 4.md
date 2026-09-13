@@ -1,8 +1,8 @@
-# MANUAL 4: MODELO DE MEMORIA DE SYQUEX
+# MANUAL 4: MODELO DE MEMORIA DE SYQUEX (ACTUALIZADO CON FASE 31)
 
 **Archivo:** `04_MODELO_MEMORIA_SYQUEX.md`  
-**Versión:** 8.0.0-industrial  
-**Propósito:** Especificar en detalle el modelo de gestión de memoria de Syquex, que combina arenas por ámbito, conteo de referencias (RC), análisis de alcance automático, Cleanup Blocks para salidas tempranas y FFI Marshaling para interoperabilidad con C. Este manual describe cómo Syquex logra seguridad de memoria sin recolector de basura (GC) y sin la complejidad de ownership explícito de Rust, superando a Python en rendimiento y determinismo.
+**Versión:** 8.2.0-industrial  
+**Propósito:** Especificar en detalle el modelo de gestión de memoria de Syquex, que combina arenas por ámbito, conteo de referencias (RC), análisis de alcance automático, Cleanup Blocks para salidas tempranas y FFI Marshaling para interoperabilidad con C. Este manual describe cómo Syquex logra seguridad de memoria sin recolector de basura (GC) y sin la complejidad de ownership explícito de Rust, superando a Python en rendimiento y determinismo. Incluye referencias a las herramientas nativas de testing (Fase 31).
 
 ---
 
@@ -132,7 +132,7 @@ funcion procesar_peticion(req):
 
 ---
 
-## 3. CONTEJO DE REFERENCIAS (`rc<T>` Y `arc<T>`)
+## 3. CONTEO DE REFERENCIAS (`rc<T>` Y `arc<T>`)
 
 ### 3.1. Cuándo se Usa RC
 
@@ -226,9 +226,9 @@ estructura Nodo:
     siguiente: débil<Nodo>   // Referencia débil para evitar ciclo
 
 funcion crear_lista():
-    let a = rc(Nodo(1, débil(nulo)))  // débil(nulo) es una referencia débil vacía
-    let b = rc(Nodo(2, débil(a)))     // b tiene una débil a a
-    a.siguiente = débil(b)             // a tiene una débil a b
+    let a = rc(Nodo(1, debil(nulo)))  // debil(nulo) es una referencia débil vacía
+    let b = rc(Nodo(2, debil(a)))     // b tiene una débil a a
+    a.siguiente = debil(b)             // a tiene una débil a b
     // Cuando a y b salen del ámbito, sus rc se decrementan y se liberan sin fugas
 ```
 
@@ -364,7 +364,7 @@ estructura Ventana:
         self.boton = Boton("Clic", self)      // se asigna en la arena
         self.boton.onclick = funcion():
             // Captura débil para evitar ciclo
-            let ventana = débil(self)
+            let ventana = debil(self)
             ventana?.cerrar()
 
     metodo cerrar():
@@ -446,7 +446,7 @@ Cuando un callback de C captura un objeto Syquex, se usa una referencia débil. 
 externo funcion gtk_button_clicked(button: &Boton, callback: funcion(&Boton) -> nulo)
 
 funcion conectar_boton(boton: Boton):
-    let captura = débil(boton)  // captura débil
+    let captura = debil(boton)  // captura débil
     gtk_button_clicked(&boton, funcion(b):
         let b = captura.obtener()
         si b != nulo:
@@ -483,12 +483,31 @@ funcion conectar_boton(boton: Boton):
 
 ---
 
-## 10. SIGUIENTES PASOS
+## 10. REFERENCIAS A LA FASE 31 (HERRAMIENTAS NATIVAS)
 
-Con el modelo de memoria de Syquex definido, el siguiente manual (Manual 5) se centrará en la **Concurrencia y Comunicación** en el ecosistema (fibras, canales, sincronización, concurrencia distribuida).
+Las pruebas obligatorias listadas en la sección §9 de este manual se integran con el framework de testing nativo especificado en la **Fase 31** (`lib/pruebas.syq`). Las herramientas de testing nativas (Manual 31, §3) permiten ejecutar estas pruebas mediante:
+
+```bash
+# Ejecutar todas las pruebas de memoria
+synapse test --coverage --junit
+
+# Ejecutar pruebas específicas de arena
+synapse test tests/syquex/test_arena_scope.syq
+
+# Generar reporte de cobertura de memoria
+synapse test --coverage --output coverage.html
+```
+
+El linter nativo (`synapse lint`, Manual 31, §4) verifica que las funciones de gestión de memoria (`rc_alloc`, `arena_alloc`, etc.) se usen correctamente y emite advertencias si se detectan posibles fugas.
 
 ---
 
-*Este manual proporciona la especificación completa del modelo de memoria de Syquex, incluyendo arenas, conteo de referencias, análisis de alcance, Cleanup Blocks y FFI Marshaling. La implementación debe seguir fielmente estos lineamientos para garantizar la seguridad y el rendimiento.*
+## 11. SIGUIENTES PASOS
+
+Con el modelo de memoria de Syquex definido y las referencias a las herramientas nativas integradas, el siguiente manual (Manual 5) se centrará en la **Concurrencia y Comunicación** en el ecosistema (fibras, canales, sincronización, concurrencia distribuida).
+
+---
+
+*Este manual proporciona la especificación completa del modelo de memoria de Syquex, incluyendo arenas, conteo de referencias, análisis de alcance, Cleanup Blocks, FFI Marshaling y su integración con las herramientas nativas de testing (Fase 31). La implementación debe seguir fielmente estos lineamientos para garantizar la seguridad y el rendimiento.*
 
 **Fin del Manual 4**

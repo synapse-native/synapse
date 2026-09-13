@@ -1,8 +1,8 @@
-# MANUAL 9: INSTALACIÓN, EMPAQUETADO Y DISTRIBUCIÓN
+# MANUAL 9: INSTALACIÓN, EMPAQUETADO Y DISTRIBUCIÓN (ACTUALIZADO CON FASE 31)
 
 **Archivo:** `09_INSTALACION_Y_DISTRIBUCION.md`  
-**Versión:** 8.0.0-industrial  
-**Propósito:** Especificar el proceso de instalación, empaquetado y distribución del ecosistema completo Synapse + Syquex + OpenSyn. Este manual cubre la instalación de un solo clic (cero fricción), la generación de instaladores para Windows, Linux, macOS y WASM, la distribución a través de GitHub Releases y Axon Hub, el sistema de actualización automática, la verificación de firmas Ed25519 y el proceso de certificación de producción. El objetivo es que cualquier desarrollador pueda instalar el ecosistema completo en minutos, con una experiencia fluida y segura.
+**Versión:** 8.2.0-industrial  
+**Propósito:** Especificar el proceso de instalación, empaquetado y distribución del ecosistema completo Synapse + Syquex + OpenSyn. Este manual cubre la instalación de un solo clic (cero fricción), la generación de instaladores para Windows, Linux, macOS y WASM, la distribución a través de GitHub Releases y Axon Hub, el sistema de actualización automática, la verificación de firmas Ed25519 y el proceso de certificación de producción. Incluye las herramientas nativas de desarrollo (Fase 31) como parte del paquete de instalación estándar.
 
 ---
 
@@ -19,6 +19,7 @@ El ecosistema Synapse sigue los siguientes principios de distribución:
 | **Actualizaciones sencillas** | El sistema puede actualizarse a nuevas versiones con un solo comando (`synapse update`). |
 | **Offline‑first** | Los paquetes y modelos se descargan una vez y se almacenan en caché local (`~/.synapse/cache/`, `~/.opensyn/models/`). |
 | **Opt‑in para IA** | OpenSyn solo se instala si el usuario lo elige explícitamente. Nunca se activa sin consentimiento. |
+| **Herramientas nativas incluidas** | Los binarios `synapse lint`, `synapse fmt` y el framework `lib/pruebas.syq` (Fase 31) se incluyen en el paquete base y no requieren instalación adicional. |
 
 > **Nota (ubicación de la caché incremental):** Toda caché del compilador —objetos del runtime (`synapse_rt.c`, `runtime/core/*`, `axon/tweetnacl.c`, `vendor/sqlite3/sqlite3.c`, módulos cuánticos/IA) y código de usuario compilado incrementalmente— se almacena **bajo `~/.synapse/cache/`** (coherente con Manual 1 §4: `cache.syn` = "Sistema de caché incremental SHA‑256"). Los directorios de build del repositorio (`build/`, artefactos `*.o` en la raíz) son **efímeros** y se limpian en cada commit (hook "Limpiando artefactos de build"); por tanto **no** deben usarse para caches persistentes, o se pierde el beneficio entre commits. La clave de caché incluye el hash SHA‑256 de la fuente, el compilador y los flags, de modo que el `.o` cacheado es byte‑idéntico al recién compilado y no rompe el bootstrap (Manual 1 §6, Regla de hierro).
 
@@ -32,11 +33,11 @@ El proceso de empaquetado genera artefactos para las plataformas soportadas:
 
 | Plataforma | Formato | Contenido |
 |------------|---------|-----------|
-| **Windows (x86_64)** | Instalador `.exe` (Inno Setup) | `synapse.exe`, `synapse_lsp.exe`, runtime (`.dll`), bibliotecas estándar, OpenSyn (opcional), extensión VS Code (`.vsix`). |
-| **Linux (x86_64, ARM64)** | Paquete `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), AppImage | `synapse`, `synapse_lsp`, runtime (`.so`), bibliotecas estándar, OpenSyn (opcional). |
-| **macOS (ARM64, x86_64)** | `.dmg` (para distribución), `.pkg` (para instalación) | `synapse`, `synapse_lsp`, runtime (`.dylib`), bibliotecas estándar, OpenSyn (opcional). |
+| **Windows (x86_64)** | Instalador `.exe` (Inno Setup) | `synapse.exe`, `synapse_lsp.exe`, runtime (`.dll`), bibliotecas estándar, OpenSyn (opcional), extensión VS Code (`.vsix`), herramientas nativas (Fase 31). |
+| **Linux (x86_64, ARM64)** | Paquete `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), AppImage | `synapse`, `synapse_lsp`, runtime (`.so`), bibliotecas estándar, OpenSyn (opcional), herramientas nativas (Fase 31). |
+| **macOS (ARM64, x86_64)** | `.dmg` (para distribución), `.pkg` (para instalación) | `synapse`, `synapse_lsp`, runtime (`.dylib`), bibliotecas estándar, OpenSyn (opcional), herramientas nativas (Fase 31). |
 | **WASM** | `.wasm` y `.wat` | Compilador `synapse` compilado a WASM (para uso en navegador). |
-| **VS Code Extension** | `.vsix` | Extensión VS Code empaquetada. |
+| **VS Code Extension** | `.vsix` | Extensión VS Code empaquetada con soporte para comandos de linting, formateo y testing (Fase 31). |
 
 ### 2.2. Estructura del Instalador
 
@@ -67,7 +68,7 @@ El instalador unificado incluye los siguientes directorios y archivos:
 │   ├── federated.syn
 │   ├── quantum.syn
 │   └── modelo.syn
-├── lib/                           # Librería estándar de Syquex
+├── lib/                           # Librería estándar de Syquex (Fase 31)
 │   ├── io.syq
 │   ├── math.syq
 │   ├── texto.syq
@@ -79,9 +80,12 @@ El instalador unificado incluye los siguientes directorios y archivos:
 │   ├── dom.syq
 │   ├── db.syq
 │   ├── tiempo.syq
-│   ├── pruebas.syq
+│   ├── pruebas.syq                 # Framework de testing nativo (Fase 31)
 │   ├── ia.syq
 │   └── ffi.syq
+├── nucleo/                         # Herramientas nativas (Fase 31)
+│   ├── lint.syn                    # Linter nativo
+│   └── formatter.syn               # Formateador nativo
 ├── examples/                      # Ejemplos
 │   ├── synapse/
 │   │   ├── 01_basico.syn
@@ -100,14 +104,15 @@ El instalador unificado incluye los siguientes directorios y archivos:
 │   ├── 06_INTEGRACION_ECOSISTEMA.md
 │   ├── 07_OPENSYN_ASISTENTE.md
 │   ├── 08_HERRAMIENTAS_DESARROLLO.md
-│   └── 09_INSTALACION_Y_DISTRIBUCION.md
+│   ├── 09_INSTALACION_Y_DISTRIBUCION.md
+│   └── 31_HERRAMIENTAS_NATIVAS.md   # Manual de la Fase 31
 ├── opensyn/                       # Solo si se incluye OpenSyn
 │   ├── models/                    # Directorio para modelos (vacio al inicio)
 │   ├── config.toml                # Configuración por defecto
 │   ├── llama-server (o llama-server.exe)
 │   └── install.sh                 # Script de instalación de OpenSyn (opcional)
 └── vscode/
-    └── synapse-<version>.vsix
+    └── synapse-<version>.vsix     # Extensión VS Code con soporte Fase 31
 ```
 
 ### 2.3. Pipeline de Compilación (CI/CD)
@@ -119,10 +124,13 @@ El pipeline se ejecuta en GitHub Actions y sigue estos pasos:
    - Compilar el runtime y enlazar estáticamente.
    - Generar `synapse.wasm` para WebAssembly (usando emcc).
    - Generar la extensión VS Code (`.vsix`).
+   - **Nuevo (Fase 31):** Compilar `nucleo/lint.syn` y `nucleo/formatter.syn` como parte del binario `synapse`.
 
 2. **Pruebas**:
    - Ejecutar la suite de tests completa para cada target.
    - Verificar el bootstrap (diff 0 bytes entre Stage 2 y Stage 3).
+   - **Nuevo (Fase 31):** Ejecutar `synapse lint` y `synapse fmt --check` sobre el código fuente del compilador para verificar que el linter y formateador funcionan correctamente.
+   - **Nuevo (Fase 31):** Ejecutar `synapse test --junit --coverage` para generar reportes de tests y cobertura.
 
 3. **Empaquetado**:
    - **Windows:** Instalador `.exe` generado con Inno Setup.
@@ -145,6 +153,7 @@ El instalador para Unix es un script Bash que:
 4. Configura las variables de entorno (PATH).
 5. Pregunta si instalar OpenSyn.
 6. Si se elige OpenSyn, ejecuta `opensyn/install.sh` para detectar hardware y descargar el modelo.
+7. **Nuevo (Fase 31):** Verifica que `synapse lint` y `synapse fmt` están disponibles en el PATH.
 
 ```bash
 #!/bin/bash
@@ -216,6 +225,21 @@ sudo cp synapse_lsp /usr/local/bin/
 sudo cp -r runtime /usr/local/lib/synapse/
 sudo cp -r std /usr/local/lib/synapse/
 sudo cp -r lib /usr/local/lib/synapse/
+sudo cp -r nucleo /usr/local/lib/synapse/  # Incluye lint.syn y formatter.syn (Fase 31)
+
+# Verificar herramientas nativas (Fase 31)
+echo -e "${YELLOW}Verificando herramientas nativas...${NC}"
+if synapse lint --help > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ synapse lint disponible${NC}"
+else
+    echo -e "${RED}⚠️  synapse lint no disponible${NC}"
+fi
+
+if synapse fmt --help > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ synapse fmt disponible${NC}"
+else
+    echo -e "${RED}⚠️  synapse fmt no disponible${NC}"
+fi
 
 # Preguntar por OpenSyn
 read -p "¿Instalar OpenSyn? (y/n): " INSTALL_OPENSYN
@@ -226,10 +250,11 @@ if [ "$INSTALL_OPENSYN" = "y" ]; then
 fi
 
 # Limpiar
-rm -rf synapse.tar.gz synapse synapse_lsp runtime std lib opensyn
+rm -rf synapse.tar.gz synapse synapse_lsp runtime std lib nucleo opensyn
 
 echo -e "${GREEN}✅ Instalación completada.${NC}"
 echo "Ejecuta 'synapse --help' para comenzar."
+echo "Herramientas nativas disponibles: synapse lint, synapse fmt, synapse test --junit"
 ```
 
 ### 2.5. Configuración de Inno Setup (Windows)
@@ -249,7 +274,7 @@ OutputDir=.
 OutputBaseFilename=synapse-setup
 
 [Types]
-Name: "full"; Description: "Ecosistema completo (Synapse + Syquex + OpenSyn)"
+Name: "full"; Description: "Ecosistema completo (Synapse + Syquex + OpenSyn + Herramientas nativas)"
 Name: "minimal"; Description: "Solo Synapse (lenguaje de sistemas)"
 
 [Components]
@@ -257,6 +282,7 @@ Name: "synapse"; Description: "Synapse (compilador, runtime, std)"; Types: full 
 Name: "syquex"; Description: "Syquex (lenguaje de alto nivel)"; Types: full
 Name: "opensyn"; Description: "OpenSyn (asistente IA local)"; Types: full
 Name: "vscode"; Description: "Extensión VS Code"; Types: full minimal
+Name: "tools"; Description: "Herramientas nativas (lint, fmt, test)"; Types: full minimal; Flags: fixed
 
 [Files]
 Source: "bin\synapse.exe"; DestDir: "{app}\bin"; Components: synapse
@@ -264,11 +290,14 @@ Source: "bin\synapse_lsp.exe"; DestDir: "{app}\bin"; Components: synapse
 Source: "runtime\*"; DestDir: "{app}\runtime"; Components: synapse
 Source: "std\*"; DestDir: "{app}\std"; Components: synapse
 Source: "lib\*"; DestDir: "{app}\lib"; Components: syquex
+Source: "nucleo\lint.syn"; DestDir: "{app}\nucleo"; Components: tools
+Source: "nucleo\formatter.syn"; DestDir: "{app}\nucleo"; Components: tools
 Source: "opensyn\*"; DestDir: "{app}\opensyn"; Components: opensyn
 Source: "vscode\synapse-*.vsix"; DestDir: "{app}\vscode"; Components: vscode
 
 [Run]
 Filename: "{app}\bin\synapse.exe"; Parameters: "opensyn install"; Components: opensyn; StatusMsg: "Instalando OpenSyn..."
+Filename: "{app}\bin\synapse.exe"; Parameters: "lint --check"; Components: tools; StatusMsg: "Verificando herramientas nativas..."
 Filename: "code"; Parameters: "--install-extension {app}\vscode\synapse-*.vsix"; Components: vscode; StatusMsg: "Instalando extensión VS Code..."
 
 [Registry]
@@ -297,6 +326,7 @@ synapse update [--version <version>] [--check]
 4. **Backup de la versión anterior**: Guarda la versión actual en `~/.synapse/backup/`.
 5. **Instalación de la nueva versión**: Reemplaza los binarios y archivos.
 6. **Re‑instalación de OpenSyn** (si procede): Si OpenSyn está instalado, se verifica que el modelo siga siendo compatible y se re‑configura (o se actualiza).
+7. **Nuevo (Fase 31):** Verifica que las herramientas nativas (`synapse lint`, `synapse fmt`, `synapse test`) estén actualizadas y funcionen correctamente.
 
 ### 3.3. Compatibilidad Hacia Atrás
 
@@ -315,6 +345,7 @@ Los artefactos se publican en la sección **Releases** del repositorio de GitHub
 - Archivos de firma (`.sig`) y checksums (`.sha256`).
 - El SBOM (Software Bill of Materials) en formato SPDX 2.3.
 - La attestación SLSA Level 3.
+- **Nuevo (Fase 31):** Reportes de `synapse test --junit` y `synapse lint --check` generados durante el CI/CD, para verificar la calidad del código antes del lanzamiento.
 
 **Comando de creación de release** (automatizado en CI):
 
@@ -503,17 +534,24 @@ funcion arquitectura() -> texto:
 
 □ **SBOM y SLSA**: generados y firmados correctamente.
 
-□ **Documentación**: todos los manuales versionados y empaquetados.
+□ **Documentación**: todos los manuales versionados y empaquetados (incluyendo el Manual 31).
 
 □ **Instalador unificado**: probado en sistemas limpios (sin instalación previa) y funciona correctamente.
 
 □ **OpenSyn**: detección de hardware, descarga de modelo y consulta de prueba exitosas.
 
-□ **Extensión VS Code**: instalación y comandos básicos funcionan.
+□ **Extensión VS Code**: instalación y comandos básicos funcionan (incluyendo comandos de Fase 31).
 
 □ **Firmas Ed25519**: todos los artefactos distribuidos están firmados y verificados.
 
 □ **Migración de proyectos**: scripts de migración desde versiones anteriores funcionan.
+
+□ **Herramientas nativas (Fase 31)**:
+   - `synapse lint` funciona y detecta errores de estilo.
+   - `synapse fmt` formatea correctamente el código.
+   - `synapse test --junit` genera reportes JUnit válidos.
+   - `synapse test --coverage` genera informes de cobertura.
+   - `lib/pruebas.syq` está incluido y funciona correctamente.
 
 ### 6.2. Validación Cruzada en CI/CD
 
@@ -523,6 +561,9 @@ El pipeline de CI/CD ejecuta automáticamente:
 - La verificación del bootstrap (diff 0 bytes).
 - El fuzzing destructivo (500+ iteraciones).
 - Los sanitizadores (ASan, UBSan, TSan).
+- **Nuevo (Fase 31):** `synapse lint --check` sobre el código fuente del compilador para verificar que el linter funciona correctamente.
+- **Nuevo (Fase 31):** `synapse fmt --check` sobre el código fuente del compilador para verificar el formato.
+- **Nuevo (Fase 31):** `synapse test --junit --coverage` para generar reportes de tests y cobertura.
 
 ### 6.3. Sellado Criptográfico Definitivo
 
@@ -550,43 +591,5 @@ Todos estos archivos se suben junto con los artefactos a GitHub Releases.
 | SBOM y SLSA | Generación y validación de SBOM y SLSA | Archivos generados correctamente. |
 | Extensión VS Code | Instalar `.vsix` en VS Code limpio | Extensión activa, comandos funcionan. |
 | Desinstalación | Ejecutar desinstalador | Todo eliminado, PATH restaurado. |
-
----
-
-## 8. EJEMPLO DE FLUJO DE INSTALACIÓN COMPLETO
-
-**Escenario:** Usuario nuevo descarga el instalador de Synapse desde GitHub Releases.
-
-1. **Ejecuta el instalador**:
-   - Pantalla de bienvenida con opción "Synapse + Syquex + OpenSyn".
-   - El instalador detecta hardware: 16GB RAM, 8GB VRAM, CPU 8 núcleos.
-   - Recomienda modelo CodeLlama 7B Q5_K_M.
-   - El usuario acepta.
-
-2. **Descarga e instalación**:
-   - Se descargan los binarios de Synapse, Syquex y el modelo (5GB aprox.).
-   - Se instala la extensión VS Code.
-   - Se configura el PATH.
-
-3. **Prueba de humo**:
-   - Se compila `examples/synapse/01_basico.syn`.
-   - Se ejecuta el binario.
-   - Se consulta a OpenSyn con un prompt de prueba.
-
-4. **Finalización**:
-   - El instalador muestra un mensaje de éxito y la ruta de instalación.
-   - El usuario abre VS Code, crea un archivo `.syq` y comienza a programar con asistencia de OpenSyn.
-
----
-
-## 9. SIGUIENTES PASOS
-
-Con la instalación y distribución completas, el ecosistema Synapse + Syquex + OpenSyn está **completamente especificado** y listo para su implementación. El siguiente paso es la ejecución de las fases del roadmap (Fases 22-30) para materializar la especificación en código.
-
----
-
-*Este manual proporciona la especificación completa del proceso de instalación, empaquetado y distribución del ecosistema Synapse + Syquex + OpenSyn. La implementación debe seguir estos lineamientos para garantizar una experiencia de usuario fluida, segura y profesional.*
-
-**Fin del Manual 9**
-
-**Fin de los 9 Manuales del Ecosistema Synapse + Syquex + OpenSyn**
+| **Herramientas nativas (Fase 31)** | `synapse lint --check` | 0 errores de linting en el código fuente del compilador. |
+| **Herramientas nativas (Fase 31)** | `synapse fmt --check` | 0 errores de formato en el código fuente del compil
