@@ -193,13 +193,20 @@ funcion sq_declaracion(est: ParserEst) -> entero:
         lang_linea = linea
         inseguro:
             asm("token_esperar(est, T_PAREN_DER)")
-        f = sq_funcion(est)
+        // M8: @export para estructuras (Manual 3 §3 L100-101)
+        sig = token_mirar(est)
+        si sig == T_FUNCION:
+            f = sq_funcion(est)
+        sino si sig == T_ESTRUCTURA:
+            f = sq_estructura(est)
+        sino:
+            inseguro:
+                asm("fprintf(stderr, \"SQ_EXPORT esperaba funcion o estructura, token=%d\\n\", sig)")
+                asm("est->hay_error = true;")
+            retornar -1
         n = sq_nuevo(est, NODO_EXPORT, lang_linea, col)
         inseguro:
             asm("est->nodos[n].hijo_izq = f")
-        // H-R88-1 (Manual 6 §1.2 L41 export_lang): preservar el identificador de
-        // lenguaje en el payload del NODO_EXPORT; el traductor propaga ptr_str/len_str
-        // a SemNodo vía trad_copiar_payload, exponiéndolo a codegen y tests.
         sq_copiar_nombre(est, n, lang)
         inseguro:
             asm("if (lang > 0) { struct SqLexerBuffers* _b=(struct SqLexerBuffers*)sq_buffers(); int pp=est->posicion; (void)pp; }")
@@ -1074,6 +1081,27 @@ funcion sq_intentar(est: ParserEst) -> entero:
     linea = token_linea(est, est.posicion)
     col = token_columna(est, est.posicion)
     token_avanzar(est)
+    // M9: forma funcional — intentar expr atrapar expr (Manual 3 §3 L148)
+    // Detectar si es forma funcional (expresión sin NEWLINE) o bloque (con NEWLINE)
+    si token_mirar(est) != T_NUEVALINEA:
+        try_expr = parse_expresion_sq(est)
+        si token_mirar(est) == T_ATRAPAR:
+            token_avanzar(est)
+            catch_expr = parse_expresion_sq(est)
+            n = sq_nuevo(est, NODO_INTENTO, linea, col)
+            inseguro:
+                asm("est->nodos[n].hijo_izq = try_expr")
+                asm("est->nodos[n].hijo_der = catch_expr")
+            saltar_nl(est)
+            retornar n
+        sino:
+            // Forma funcional sin atrapar: intentar expr (solo wrapping)
+            n = sq_nuevo(est, NODO_INTENTO, linea, col)
+            inseguro:
+                asm("est->nodos[n].hijo_izq = try_expr")
+            saltar_nl(est)
+            retornar n
+    // Forma bloque (original)
     try_body = sq_cuerpo_bloque_sq(est, linea, col)
     var_exc = 0
     catch_body = 0
