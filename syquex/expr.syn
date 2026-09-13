@@ -494,6 +494,9 @@ funcion parse_primario_sq(est: ParserEst) -> entero:
         // los TokenID propios 75+ no están en token_es_nombre del módulo
         // compartido; se aceptan aquí como nombre contextual (patrón FASE A).
         retornar sq_id(est)
+    // C4: rc()/arc()/débil() como expresiones primarias (Manual 3 §3 L197)
+    si t == T_RC o t == T_ARC o t == T_DEBIL:
+        retornar sq_id(est)
     linea_err = token_linea(est, est.posicion)
     col_err = token_columna(est, est.posicion)
     inseguro:

@@ -90,6 +90,21 @@ funcion sq_declaracion(est: ParserEst) -> entero:
     si t == T_IMPORTAR:
         token_avanzar(est)
         nombre = sq_id(est)
+        // M6: paths punteados — importar mod.sub.mod (Manual 3 §3 L72)
+        mientras token_mirar(est) == T_PUNTO:
+            token_avanzar(est)
+            sub = sq_id(est)
+            // Concatena nombre.sub al span del nodo
+            inseguro:
+                asm("{ const char* _punto = \".\"; int _np = est->nodos[nombre].ptr_str; int _nl = est->nodos[nombre].len_str; int _sp = est->nodos[sub].ptr_str; int _sl = est->nodos[sub].len_str; int _total = _nl + 1 + _sl; char* _buf = (char*)sq_arena_alloc(_total); memcpy(_buf, (const char*)(uintptr_t)_np, _nl); _buf[_nl] = '.'; memcpy(_buf + _nl + 1, (const char*)(uintptr_t)_sp, _sl); est->nodos[nombre].ptr_str = (int)(uintptr_t)_buf; est->nodos[nombre].len_str = _total; }")
+        // M6: alias — importar mod.sub como alias (Manual 3 §3 L72)
+        si token_mirar(est) == T_IDENTIFICADOR:
+            // Verificar si el lexema es "como" (keyword contextual en import)
+            inseguro:
+                asm("{ struct SqLexerBuffers* _bi=(struct SqLexerBuffers*)sq_buffers(); struct TokenLex* _ti=(struct TokenLex*)_bi->tokens; const char* _lex=(const char*)(uintptr_t)_ti[est->posicion].valor.datos; int _len=_ti[est->posicion].valor.longitud; if (_len==4 && _lex[0]=='c' && _lex[1]=='o' && _lex[2]=='m' && _lex[3]=='o') { est->posicion++; } }")
+            alias = sq_id(est)
+            inseguro:
+                asm("est->nodos[nombre].hijo_der = alias")
         n = sq_nuevo(est, NODO_IMPORTAR, linea, col)
         sq_copiar_nombre(est, n, nombre)
         saltar_nl(est)
@@ -770,6 +785,21 @@ funcion sq_enumeracion(est: ParserEst) -> entero:
         caso_nombre = sq_id(est)
         ctor = sq_nuevo(est, NODO_CONSTRUCTOR, c_linea, c_col)
         sq_copiar_nombre(est, ctor, caso_nombre)
+        // M7: enum cases con tipos — Caso(tipo1, tipo2) (Manual 3 §3 L96)
+        si token_mirar(est) == T_PAREN_IZQ:
+            token_avanzar(est)
+            primer_tipo = sq_id(est)
+            inseguro:
+                asm("est->nodos[ctor].hijo_izq = primer_tipo")
+            ultimo_tipo = primer_tipo
+            mientras token_mirar(est) == T_COMA:
+                token_avanzar(est)
+                tipo_sig = sq_id(est)
+                inseguro:
+                    asm("est->nodos[ultimo_tipo].hermano = tipo_sig")
+                ultimo_tipo = tipo_sig
+            inseguro:
+                asm("token_esperar(est, T_PAREN_DER)")
         si casos == 0:
             casos = ctor
             ult_caso = ctor
@@ -841,6 +871,15 @@ funcion sq_sentencia(est: ParserEst) -> entero:
         e = 0
         si token_mirar(est) != T_NUEVALINEA:
             e = parse_expresion_sq(est)
+        // C3: retornar ? propaga error como Resultado (Manual 3 §3 L128)
+        si e > 0 y token_mirar(est) == T_INTERROGACION:
+            q_linea = token_linea(est, est.posicion)
+            q_col = token_columna(est, est.posicion)
+            token_avanzar(est)
+            nodo_q = sq_nuevo(est, NODO_PROPAGAR, q_linea, q_col)
+            inseguro:
+                asm("est->nodos[nodo_q].hijo_izq = e")
+            e = nodo_q
         n = sq_nuevo(est, NODO_RETORNAR, linea, col)
         inseguro:
             asm("est->nodos[n].hijo_izq = e")
