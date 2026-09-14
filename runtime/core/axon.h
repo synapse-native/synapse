@@ -18,6 +18,11 @@ void _syn_axon_limpiar_toml(void* n);
 int _syn_axon_buscar_local(const char* paquete, const char* version, char* tar_path, int tar_sz, char* extract_dir, int ext_sz);
 int _syn_axon_escribir_lock(const char* paquete, const char* version, const char* hash_sha256);
 
+// Fase 31.1: Workspace isolation (Manual 31 §2)
+int _syn_axon_workspace_cache_path(const char* ruta_proyecto, char* salida, int salida_sz);
+int _syn_axon_workspace_crear(const char* ruta_proyecto);
+int _syn_axon_workspace_resolver(const char* ruta_proyecto, const char* lock_path);
+
 #endif /* SYNAPSE_AXON_H */
 
 // R84 � Serializaci�n binaria de valores (Manual 6 �5.2; tabla Manual 5 �6.3)
