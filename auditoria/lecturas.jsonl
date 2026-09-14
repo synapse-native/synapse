@@ -524,3 +524,4 @@
 {"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 3 §12", "puntos": "biblioteca estandar de Syquex estructura de modulos importacion de lib"}
 {"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal"}
 {"fecha": "2026-09-14", "archivos": ["nucleo/lint.syn"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal evaluacion antes de instruccion y antes de retornar"}
+{"fecha": "2026-09-14", "archivos": ["nucleo/formatter.syn"], "cita": "Manual 3 §12", "puntos": "formateador nativo sobre AST unificado, formatear_programa retorna texto, reglas estilo indent 4 espacios"}
