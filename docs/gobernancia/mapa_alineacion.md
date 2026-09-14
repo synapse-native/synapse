@@ -45,6 +45,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "instaladores/windows/synapse.iss": ["Manual 9 §2.5"],
   "nucleo/lint.syn": ["Manual 3 §12"],
   "nucleo/formatter.syn": ["Manual 3 §12"],
+  "nucleo/reports.syn": ["Manual 3 §12"],
   "axon/axon_rt.c": ["Manual 8 §4.3", "Manual 6 §5"],
   "runtime/core/axon.c": ["Manual 8 §4.3", "Manual 6 §5"],
   "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1"]

@@ -525,3 +525,4 @@
 {"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal"}
 {"fecha": "2026-09-14", "archivos": ["nucleo/lint.syn"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal evaluacion antes de instruccion y antes de retornar"}
 {"fecha": "2026-09-14", "archivos": ["nucleo/formatter.syn"], "cita": "Manual 3 §12", "puntos": "formateador nativo sobre AST unificado, formatear_programa retorna texto, reglas estilo indent 4 espacios"}
+{"fecha": "2026-09-14", "archivos": ["nucleo/reports.syn"], "cita": "Manual 3 §12", "puntos": "reportes CI/CD: generar_junit XML, generar_json, generar_coverage HTML, agrupar_por_suite, calcular_resumen"}

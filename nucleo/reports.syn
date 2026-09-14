@@ -1,0 +1,211 @@
+#lang: es
+// nucleo/reports.syn — Reportes CI/CD para synapse test
+// cumple Manual 3 §12: biblioteca estándar de Syquex
+// Fase 31.5: generación de reportes JUnit XML, HTML coverage, JSON
+
+// --- Estructuras de resultados ---
+
+estructura ResultadoTest:
+    nombre: texto
+    suite: texto
+    estado: texto    // "passed", "failed", "skipped"
+    mensaje: texto
+    tiempo: decimal
+
+estructura ResultadoSuite:
+    nombre: texto
+    total: entero
+    fallos: entero
+    errores: entero
+    tiempo: decimal
+    tests: Lista<ResultadoTest>
+
+estructura ResultadoGlobal:
+    total: entero
+    pasados: entero
+    fallidos: entero
+    omitidos: entero
+    tiempo: decimal
+
+// --- Generación JUnit XML ---
+
+funcion generar_junit(resultados: Lista<ResultadoTest>) -> texto:
+    requiere:
+        longitud(resultados) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+    xml = xml + "<testsuites>\n"
+    let suites = agrupar_por_suite(resultados)
+    para suite en suites:
+        xml = xml + "  <testsuite name=\"" + suite.nombre + "\""
+        xml = xml + " tests=\"" + a_texto(suite.total) + "\""
+        xml = xml + " failures=\"" + a_texto(suite.fallos) + "\""
+        xml = xml + " errors=\"" + a_texto(suite.errores) + "\""
+        xml = xml + " time=\"" + a_texto_decimal(suite.tiempo) + "\">\n"
+        para test en suite.tests:
+            xml = xml + "    <testcase name=\"" + test.nombre + "\""
+            xml = xml + " time=\"" + a_texto_decimal(test.tiempo) + "\""
+            si test.estado == "failed":
+                xml = xml + ">\n"
+                xml = xml + "      <failure message=\"" + test.mensaje + "\"/>\n"
+                xml = xml + "    </testcase>\n"
+            si no si test.estado == "skipped":
+                xml = xml + ">\n"
+                xml = xml + "      <skipped/>\n"
+                xml = xml + "    </testcase>\n"
+            si no:
+                xml = xml + "/>\n"
+        xml = xml + "  </testsuite>\n"
+    xml = xml + "</testsuites>\n"
+    retornar xml
+
+// --- Generación JSON ---
+
+funcion generar_json(resultados: Lista<ResultadoTest>) -> texto:
+    requiere:
+        longitud(resultados) >= 0
+    garantiza:
+        longitud(_resultado_) >= 0
+    let json = "{\n"
+    json = json + "  \"tests\": [\n"
+    let primero = verdadero
+    para test en resultados:
+        si no primero:
+            json = json + ",\n"
+        json = json + "    {"
+        json = json + "\"name\": \"" + test.nombre + "\", "
+        json = json + "\"suite\": \"" + test.suite + "\", "
+        json = json + "\"status\": \"" + test.estado + "\", "
+        json = json + "\"message\": \"" + test.mensaje + "\", "
+        json = json + "\"time\": " + a_texto_decimal(test.tiempo)
+        json = json + "}"
+        primero = falso
+    json = json + "\n  ],\n"
+    let resumen = calcular_resumen(resultados)
+    json = json + "  \"summary\": {"
+    json = json + "\"total\": " + a_texto(resumen.total) + ", "
+    json = json + "\"passed\": " + a_texto(resumen.pasados) + ", "
+    json = json + "\"failed\": " + a_texto(resumen.fallidos) + ", "
+    json = json + "\"skipped\": " + a_texto(resumen.omitidos) + ", "
+    json = json + "\"time\": " + a_texto_decimal(resumen.tiempo)
+    json = json + "}\n"
+    json = json + "}\n"
+    retornar json
+
+// --- Generación HTML Coverage ---
+
+funcion generar_coverage(cubiertas: entero, total: entero) -> texto:
+    requiere:
+        total > 0
+        cubiertas >= 0
+        cubiertas <= total
+    garantiza:
+        longitud(_resultado_) >= 0
+    let porcentaje = (cubiertas / total) * 100
+    let html = "<!DOCTYPE html>\n"
+    html = html + "<html lang=\"es\">\n"
+    html = html + "<head>\n"
+    html = html + "  <meta charset=\"UTF-8\">\n"
+    html = html + "  <title>Synapse Coverage Report</title>\n"
+    html = html + "  <style>\n"
+    html = html + "    body { font-family: monospace; margin: 20px; }\n"
+    html = html + "    .passed { color: green; }\n"
+    html = html + "    .failed { color: red; }\n"
+    html = html + "    .summary { background: #f0f0f0; padding: 10px; }\n"
+    html = html + "  </style>\n"
+    html = html + "</head>\n"
+    html = html + "<body>\n"
+    html = html + "  <h1>Synapse Coverage Report</h1>\n"
+    html = html + "  <div class=\"summary\">\n"
+    html = html + "    <p>Total lines: " + a_texto(total) + "</p>\n"
+    html = html + "    <p>Covered lines: " + a_texto(cubiertas) + "</p>\n"
+    html = html + "    <p class=\"" + si porcentaje >= 80: "passed" si no: "failed" + "\">"
+    html = html + "Coverage: " + a_texto_decimal(porcentaje) + "%</p>\n"
+    html = html + "  </div>\n"
+    html = html + "</body>\n"
+    html = html + "</html>\n"
+    retornar html
+
+// --- Agrupación por suite ---
+
+funcion agrupar_por_suite(resultados: Lista<ResultadoTest>) -> Lista<ResultadoSuite>:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let suites = Lista<ResultadoSuite>()
+    let nombres = Lista<texto>()
+    para test en resultados:
+        si no contiene(nombres, test.suite):
+            agregar(nombres, test.suite)
+            let suite = ResultadoSuite(test.suite, 0, 0, 0, 0.0, Lista<ResultadoTest>())
+            agregar(suites, suite)
+    para i en 0 .. longitud(suites) - 1:
+        let suite = suites[i]
+        para test en resultados:
+            si test.suite == suite.nombre:
+                suite.total = suite.total + 1
+                si test.estado == "failed":
+                    suite.fallos = suite.fallos + 1
+                si test.estado == "error":
+                    suite.errores = suite.errores + 1
+                suite.tiempo = suite.tiempo + test.tiempo
+                agregar(suite.tests, test)
+        suites[i] = suite
+    retornar suites
+
+// --- Cálculo de resumen ---
+
+funcion calcular_resumen(resultados: Lista<ResultadoTest>) -> ResultadoGlobal:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    let total = longitud(resultados)
+    let pasados = 0
+    let fallidos = 0
+    let omitidos = 0
+    let tiempo = 0.0
+    para test en resultados:
+        si test.estado == "passed":
+            pasados = pasados + 1
+        si test.estado == "failed":
+            fallidos = fallidos + 1
+        si test.estado == "skipped":
+            omitidos = omitidos + 1
+        tiempo = tiempo + test.tiempo
+    retornar ResultadoGlobal(total, pasados, fallidos, omitidos, tiempo)
+
+// --- Utilidades ---
+
+funcion contiene(lista: Lista<texto>, valor: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    para item en lista:
+        si item == valor:
+            retornar verdadero
+    retornar falso
+
+funcion agregar(lista: Lista, valor: ) -> nulo:
+    requiere:
+        verdadero
+    garantiza:
+        verdadero
+    // Agrega valor al final de la lista
+
+funcion a_texto(valor: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    retornar "$valor"
+
+funcion a_texto_decimal(valor: decimal) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    retornar "$valor"
