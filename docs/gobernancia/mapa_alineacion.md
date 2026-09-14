@@ -42,7 +42,11 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "runtime/core/ollama.c": ["Manual 7 §2.2"],
   "runtime/core/tui.c": ["Manual 5 §1"],
   "runtime/core/lsp.c": ["Manual 8 §1"],
-  "instaladores/windows/synapse.iss": ["Manual 9 §2.5"]
+  "instaladores/windows/synapse.iss": ["Manual 9 §2.5"],
+  "nucleo/lint.syn": ["Manual 3 §12"],
+  "axon/axon_rt.c": ["Manual 8 §4.3", "Manual 6 §5"],
+  "runtime/core/axon.c": ["Manual 8 §4.3", "Manual 6 §5"],
+  "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1"]
 }
 ```
 

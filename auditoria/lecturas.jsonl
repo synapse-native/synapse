@@ -523,3 +523,4 @@
 {"fecha": "2026-09-14", "archivos": ["runtime/core/axon.h"], "cita": "Manual 5 §1", "puntos": "tipos de datos del runtime estructurasbasicas CadenaSegura tensor"}
 {"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 3 §12", "puntos": "biblioteca estandar de Syquex estructura de modulos importacion de lib"}
 {"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal"}
+{"fecha": "2026-09-14", "archivos": ["nucleo/lint.syn"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal evaluacion antes de instruccion y antes de retornar"}
