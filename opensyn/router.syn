@@ -155,12 +155,14 @@ funcion obtener_mapa_keywords() -> texto:
 
 // Busca archivos relevantes en el repo basándose en palabras clave de la consulta.
 // cumple Manual 7 §2.3: file-finder localiza archivos ANTES de generar código.
+// M15: Enhance con búsqueda AST-aware (funciones, tipos, variables)
 funcion file_finder(consulta: texto) -> texto:
     requiere:
         longitud(consulta) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     encontrados = ""
+    // Búsqueda 1: keywords del catálogo (original)
     mapa = obtener_mapa_keywords()
     largo_mapa = strlen_s(mapa)
     largo_consulta = strlen_s(consulta)
@@ -177,25 +179,20 @@ funcion file_finder(consulta: texto) -> texto:
             kw = subcadena(entry, 0, pos_dp)
             archivo = subcadena(entry, pos_dp + 1, strlen_s(entry) - pos_dp - 1)
             largo_kw = strlen_s(kw)
-            // Solo buscar keywords de 3+ caracteres
             si largo_kw >= 3:
                 idx = 0
                 encontrado = 0
                 mientras idx < largo_consulta y encontrado == 0:
-                    // Saltar espacios
                     mientras idx < largo_consulta:
                         si subcadena(consulta, idx, 1) != " ":
                             romper
                         idx = idx + 1
-                    // Marcar inicio de palabra
                     inicio = idx
-                    // Avanzar hasta fin de palabra
                     mientras idx < largo_consulta:
                         si subcadena(consulta, idx, 1) == " ":
                             romper
                         idx = idx + 1
                     len_palabra = idx - inicio
-                    // Solo comparar palabras de >= 3 caracteres
                     si len_palabra >= 3 y len_palabra == largo_kw:
                         palabra = subcadena(consulta, inicio, len_palabra)
                         si cmp_texto(palabra, kw) == 0:
@@ -206,6 +203,50 @@ funcion file_finder(consulta: texto) -> texto:
                             encontrados = concat(encontrados, ", ")
                         encontrados = concat(encontrados, archivo)
         k = fin_entry + 1
+    // Búsqueda 2: AST-aware — buscar identificadores en constructos .syn
+    // Extrae palabras de la consulta y busca "funcion X(", "estructura X",
+    // "let X:", "importar X" en archivos del proyecto
+    idx2 = 0
+    mientras idx2 < largo_consulta:
+        mientras idx2 < largo_consulta:
+            si subcadena(consulta, idx2, 1) != " ":
+                romper
+            idx2 = idx2 + 1
+        inicio2 = idx2
+        mientras idx2 < largo_consulta:
+            si subcadena(consulta, idx2, 1) == " ":
+                romper
+            idx2 = idx2 + 1
+        len_pal = idx2 - inicio2
+        si len_pal >= 4:
+            ident = subcadena(consulta, inicio2, len_pal)
+            // Buscar patrón "funcion ident(" en archivos .syn del cwd
+            patron_func = concat("funcion ", ident)
+            patron_est = concat("estructura ", ident)
+            patron_var = concat("let ", ident)
+            // Buscar en archivos comunes del proyecto
+            archivos_buscar = "opensyn/principal.syn,opensyn/router.syn,opensyn/validation_loop.syn,syquex/parser.syn,syquex/expr.syn,syquex/lexer.syn,syquex/traductor.syn"
+            pos_a = 0
+            largo_a = strlen_s(archivos_buscar)
+            mientras pos_a < largo_a:
+                fin_a = pos_a
+                mientras fin_a < largo_a:
+                    si subcadena(archivos_buscar, fin_a, 1) == ",":
+                        romper
+                    fin_a = fin_a + 1
+                arch = subcadena(archivos_buscar, pos_a, fin_a - pos_a)
+                // Leer primeras líneas del archivo y buscar patrones
+                contenido = ""
+                inseguro:
+                    asm("{ CadenaSegura _af = {.datos=(char*)arch.datos,.longitud=arch.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
+                si strlen_s(contenido) > 0:
+                    // Buscar "funcion X(" o "estructura X" o "let X:"
+                    si strstr_f(contenido, patron_func) >= 0 o strstr_f(contenido, patron_est) >= 0 o strstr_f(contenido, patron_var) >= 0:
+                        si strstr_f(encontrados, arch) < 0:
+                            si encontrados != "":
+                                encontrados = concat(encontrados, ", ")
+                            encontrados = concat(encontrados, arch)
+                pos_a = fin_a + 1
     retornar encontrados
 
 // ============================================================

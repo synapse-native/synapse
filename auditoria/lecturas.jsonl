@@ -511,3 +511,4 @@
 {"fecha": "2026-09-13", "archivos": ["synapse_rt_types.h"], "cita": "Manual 1 §3", "puntos": "tipos del runtime synapse_rt_types.h define CanalConcurrencia con campos tipo_tamano y destructor"}
 {"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §2.1", "puntos": "orchestrator lifecycle iniciar verificar detener ciclo de vida del servidor"}
 {"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 8 §4.1", "puntos": "ejecutar_fmt invoca synapse fmt --check para formateo de codigo"}
+{"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §2.3", "puntos": "file finder localiza archivos antes de generar codigo con busqueda AST aware"}
