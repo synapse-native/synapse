@@ -683,6 +683,57 @@ funcion ejecutar_lint(archivo: texto) -> texto:
     comando = concat("synapse lint --check ", archivo)
     resultado = ejecutar_comando(comando)
     retornar resultado
+
+// ============================================================
+// M12: Integración con synapse fmt (Manual 8 §4.1)
+// ============================================================
+// cumple Manual 8 §4.1: "synapse fmt formatea código según reglas de estilo"
+// synapse fmt es una herramienta Fase 31; se integra vía ejecutar_comando.
+
+funcion ejecutar_fmt(archivo: texto) -> texto:
+    requiere:
+        longitud(archivo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    comando = concat("synapse fmt --check ", archivo)
+    resultado = ejecutar_comando(comando)
+    retornar resultado
+
+// ============================================================
+// M14: Orchestrator lifecycle (Manual 7 §2.1)
+// ============================================================
+// cumple Manual 7 §2.1: "gestión del ciclo de vida del servidor de inferencia"
+// Lifecycle: iniciar → verificar → detener
+
+funcion orchestrator_iniciar_lifecycle() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    // Verificar si ya está corriendo
+    estado = orchestrator_verificar_estado()
+    si estado == 1:
+        retornar 1
+    // Iniciar llama-server
+    inseguro:
+        asm("extern int orquestrador_iniciar(void*);")
+        asm("OrchestratorConfig _cfg = {0};")
+        asm("_cfg.port = 8088;")
+        asm("_cfg.n_threads = 4;")
+        asm("_cfg.temperature = 0.3;")
+        asm("int _r = orquestrador_iniciar(&_cfg);")
+        asm("return _r;")
+    retornar 0
+
+funcion orchestrator_detener_lifecycle() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
+    inseguro:
+        asm("extern int orchestrator_apagar();")
+        asm("return orchestrator_apagar();")
+    retornar 0
 // cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
 
 constante TIMEOUT_INFERENCIA = 30000
