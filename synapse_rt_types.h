@@ -39,6 +39,7 @@ typedef struct _EsperaFibra {
 } _EsperaFibra;
 
 // --- CanalConcurrencia (Buffer circular thread-safe + sync handoff) ---
+// cumple Manual 5 §3.4: tipo_tamano y destructor para gestión de memoria
 typedef struct CanalConcurrencia {
     void** buffer;
     uint32_t capacidad;
@@ -55,6 +56,8 @@ typedef struct CanalConcurrencia {
     struct _EsperaFibra* espera_envio_tail;
     struct _EsperaFibra* espera_recepcion;  // F4.2: fibras bloqueadas recibiendo (FIFO)
     struct _EsperaFibra* espera_recepcion_tail;
+    size_t tipo_tamano;         // C5: tamaño del tipo T (Manual 5 §3.4)
+    void (*destructor)(void*);  // C6: destructor para datos (Manual 5 §3.4)
 } CanalConcurrencia;
 
 // --- Primitivas de sincronización (Manual 5 §5, F4.5) ---

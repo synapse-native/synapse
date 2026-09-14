@@ -506,3 +506,6 @@
 {"fecha": "2026-09-13", "archivos": ["opensyn/principal.syn"], "cita": "Manual 9 §6", "puntos": "flags --junit --coverage --json para reportes de compilacion"}
 {"fecha": "2026-09-13", "archivos": ["opensyn/validation_loop.syn"], "cita": "Manual 7 §4.2", "puntos": "generar_codigo_ia conectada con Ollama para bucle de validacion"}
 {"fecha": "2026-09-13", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §4.2", "puntos": "flujo de peticion de IA con validacion orquesta el bucle de validacion"}
+{"fecha": "2026-09-13", "archivos": ["synapse_rt_types.h runtime/core/concurrency.c"], "cita": "Manual 5 §3.4", "puntos": "CanalConcurrencia incluye tipo_tamano y destructor para gestion de memoria"}
+{"fecha": "2026-09-13", "archivos": ["runtime/core/concurrency.c"], "cita": "Manual 5 §3.4", "puntos": "canal_crear inicializa tipo_tamano y destructor canal_destruir invoca destructor en elementos restantes"}
+{"fecha": "2026-09-13", "archivos": ["synapse_rt_types.h"], "cita": "Manual 1 §3", "puntos": "tipos del runtime synapse_rt_types.h define CanalConcurrencia con campos tipo_tamano y destructor"}

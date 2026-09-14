@@ -116,6 +116,10 @@ CanalConcurrencia* canal_crear(uint32_t capacidad) {
     canal->espera_recepcion = NULL;
     canal->espera_recepcion_tail = NULL;
 
+    // C5-C6: campos de Manual 5 §3.4 (tipo_tamano y destructor)
+    canal->tipo_tamano = 0;
+    canal->destructor = NULL;
+
     pthread_mutex_init(&canal->mutex, NULL);
     pthread_cond_init(&canal->no_vacio, NULL);
     pthread_cond_init(&canal->no_lleno, NULL);
@@ -373,6 +377,16 @@ void canal_destruir(CanalConcurrencia* canal) {
     pthread_cond_broadcast(&canal->no_vacio);
     pthread_cond_broadcast(&canal->no_lleno);
     pthread_mutex_unlock(&canal->mutex);
+
+    // C6: invocar destructor en elementos restantes del buffer
+    if (canal->destructor && canal->buffer && !canal->es_sync) {
+        while (canal->contador > 0) {
+            void* item = canal->buffer[canal->cola];
+            canal->destructor(item);
+            canal->cola = (canal->cola + 1) % canal->capacidad;
+            canal->contador--;
+        }
+    }
 
     pthread_mutex_destroy(&canal->mutex);
     pthread_cond_destroy(&canal->no_vacio);
