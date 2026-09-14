@@ -1,8 +1,8 @@
 ﻿// axon_rt.c — Axon package manager runtime
 //
 // Fase 6.1: TOML, TAR, SHA-256, Ed25519, SemVer, lock.
-// Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §6.1 (path
-// traversal protection en extracción TAR).
+// Manual 8 §4.3-4.4 (gestor de paquetes Axon); Manual 6 §5 (axon runtime);
+// path traversal protection en extracción TAR (regla 13 + canon D-9(d)).
 //
 // This file contains the Axon-specific functions. Shared runtime
 // functions (TOML parse, SHA-256, TAR, HTTP, lock, Ed25519 verify)
@@ -14,8 +14,8 @@
 // Linkear: gcc programa.c synapse_rt.o synapse_rt_memory.o
 //          synapse_rt_concurrency.o axon_rt.o tweetnacl.o -o programa -lpthread
 //
-// cumple Manual 8 4.3-4.4: gestor de paquetes Axon
-// cumple Manual 6 6.1: path traversal protection en extracción TAR
+// cumple Manual 8 §4.3-4.4: gestor de paquetes Axon
+// cumple Manual 6 §5: axon runtime (SHA-256, lock, Ed25519)
 
 #include "synapse_rt_types.h"
 #include "axon/tweetnacl.h"
@@ -768,14 +768,16 @@ int _syn_handshake_hello_verificar(const unsigned char* hello, int hello_len,
 
 /* _syn_axon_workspace_cache_path: retorna la ruta del directorio de cache
  * para un proyecto dado. Formato: <ruta_proyecto>/.axon/cache/
- * Retorna: 0 OK, -1 error.
- * El buffer salida debe tener al menos 1024 bytes.
+ * Retorna: puntero a buffer estático (válido hasta la siguiente llamada),
+ * o NULL en error.
+ * cumple Manual 31 §2: cache por proyecto en .axon/cache/
  */
-int _syn_axon_workspace_cache_path(const char* ruta_proyecto, char* salida, int salida_sz) {
-    if (!ruta_proyecto || !salida || salida_sz < 1024) return -1;
-    int written = snprintf(salida, (size_t)salida_sz, "%s/.axon/cache/", ruta_proyecto);
-    if (written < 0 || written >= salida_sz) return -1;
-    return 0;
+const char* _syn_axon_workspace_cache_path(const char* ruta_proyecto) {
+    static char _ws_cache_buf[1024];
+    if (!ruta_proyecto) return NULL;
+    int written = snprintf(_ws_cache_buf, sizeof(_ws_cache_buf), "%s/.axon/cache/", ruta_proyecto);
+    if (written < 0 || (size_t)written >= sizeof(_ws_cache_buf)) return NULL;
+    return _ws_cache_buf;
 }
 
 /* _syn_axon_workspace_crear: crea la estructura de directorios para un
@@ -784,8 +786,8 @@ int _syn_axon_workspace_cache_path(const char* ruta_proyecto, char* salida, int 
  */
 int _syn_axon_workspace_crear(const char* ruta_proyecto) {
     if (!ruta_proyecto) return -1;
-    char cache_dir[1024];
-    if (_syn_axon_workspace_cache_path(ruta_proyecto, cache_dir, sizeof(cache_dir)) != 0) return -1;
+    const char* cache_dir = _syn_axon_workspace_cache_path(ruta_proyecto);
+    if (!cache_dir) return -1;
 
     char cmd[2048];
 #ifdef _WIN32
@@ -833,8 +835,7 @@ int _syn_axon_workspace_resolver(const char* ruta_proyecto, const char* lock_pat
     _syn_axon_workspace_crear(ruta_proyecto);
 
     // 3. Parsear lockfile y verificar cada paquete en cache local
-    char cache_dir[1024];
-    _syn_axon_workspace_cache_path(ruta_proyecto, cache_dir, sizeof(cache_dir));
+    const char* cache_dir = _syn_axon_workspace_cache_path(ruta_proyecto);
 
     int resueltos = 0;
     char* p = content;

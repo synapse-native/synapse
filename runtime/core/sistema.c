@@ -2,8 +2,8 @@
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización, patrón toml.c R64)
 // Texto byte-idéntico al original (CRLF preservado).
 //
-// Manual 6 §6.1 (path traversal protection); consumido por std/sistema.syn
-// y nucleo/lexer_keywords.syn (str_eq). Regla 13 + canon D-9(d).
+// Path traversal protection (regla 13 + canon D-9(d)); consumido por
+// std/sistema.syn y nucleo/lexer_keywords.syn (str_eq).
 
 #include "synapse_rt_types.h"
 #include "runtime/core/sistema.h"
