@@ -521,3 +521,5 @@
 {"fecha": "2026-09-14", "archivos": ["syquex/analizador_alcance.syq"], "cita": "Manual 4 §3.2", "puntos": "RcHeader ArcHeader estructuras de referencia countering y conteo de referencias debiles"}
 {"fecha": "2026-09-14", "archivos": ["axon/axon_rt.c", "runtime/core/axon.h"], "cita": "Manual 6 §5", "puntos": "axon runtime descarga extraccion TAR SHA-256 lock Ed25519 verificacion de paquetes"}
 {"fecha": "2026-09-14", "archivos": ["runtime/core/axon.h"], "cita": "Manual 5 §1", "puntos": "tipos de datos del runtime estructurasbasicas CadenaSegura tensor"}
+{"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 3 §12", "puntos": "biblioteca estandar de Syquex estructura de modulos importacion de lib"}
+{"fecha": "2026-09-14", "archivos": ["lib/pruebas.syq"], "cita": "Manual 2 §5", "puntos": "contratos logicos requiere garantiza semantica formal"}

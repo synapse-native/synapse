@@ -546,9 +546,10 @@ def verificar(archivos, desde=None, me=None, modo="block", con_oraculos=True,
                 else:
                     arch_ev = m.group("archivo").replace("\\", "/")
                     linea = int(m.group("l1"))
+                    _seccion_pat = re.escape(seccion) if seccion else r'\d'
                     patron = re.compile(
                         rf"cumple\s+Manual\s+{re.escape(manual)}\s*(?:§\s*)?"
-                        rf"{re.escape(seccion) if seccion else r'\d'}", re.I)
+                        rf"{_seccion_pat}", re.I)
                     if not (RAIZ / arch_ev).exists():
                         errores.append(f"{etiqueta}: la evidencia apunta a "
                                        f"{arch_ev}, que no existe")
