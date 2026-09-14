@@ -429,6 +429,9 @@ void canal_destruir(CanalConcurrencia* canal) {
 #define FIBRAS_MAX 16384  // Checklist 4.4 (ROADMAP L109): 10,000 fibras concurrentes + margen
 #define FIBRA_STACK_DEFAULT (64 * 1024)  // Manual 5 §2.1: 64 KB por defecto
 
+// M2: 12 campos vs manual 7 (+5 extensiones para scheduling: worker_fiber
+//     para contexto del worker, estado para F4.2, despertado para flag de
+//     wake-up, resultado para retorno, arg para argumento)
 typedef struct Fibra {
     void* stack;                // Pila de la fibra
     size_t stack_size;          // Tamaño de la pila
@@ -444,6 +447,9 @@ typedef struct Fibra {
     int despertado;             // F4.2: el waker completó la op antes del park
 } Fibra;
 
+// M4: 12 campos vs manual 7 (+4 extensiones para FIFO: cola_activa_tail y
+//     cola_espera_tail para tail pointers, proximo_id para contador de IDs,
+//     cond para despertar workers)
 typedef struct Scheduler {
     Fibra* cola_activa;         // Cola de fibras listas para ejecutar
     Fibra* cola_espera;         // Cola de fibras bloqueadas (F4.2: parqueadas)

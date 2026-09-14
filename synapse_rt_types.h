@@ -40,6 +40,9 @@ typedef struct _EsperaFibra {
 
 // --- CanalConcurrencia (Buffer circular thread-safe + sync handoff) ---
 // cumple Manual 5 §3.4: tipo_tamano y destructor para gestión de memoria
+// M3: 16 campos vs manual 11 (+5 extensiones: espera_envio/tail y
+//     espera_recepcion/tail para bloqueo fiber-aware F4.2, tipo_tamano C5,
+//     destructor C6)
 typedef struct CanalConcurrencia {
     void** buffer;
     uint32_t capacidad;
@@ -113,6 +116,8 @@ typedef struct {
 } MemoryPool;
 
 // --- Arena (Manual 4 §2.2: bump allocator, O(1) alloc/liberación) ---
+// M1: 10 campos vs manual 7 (+3 extensiones: seg_sig para expansión F9,
+//     fb_list para fallback malloc F10, es_global para arena global)
 typedef struct Arena {
     uint8_t* inicio;        // Inicio del bloque de memoria
     uint8_t* puntero;       // Puntero actual (próxima posición libre)
