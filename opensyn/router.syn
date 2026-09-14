@@ -670,8 +670,19 @@ funcion nombre_complejidad_local(complejidad: entero) -> texto:
     retornar "alta"
 
 // ============================================================
-// ME-6 (R8): Timeout de inferencia (M7 §4.3)
+// M11: Integración con synapse lint (Manual 7 §6.4)
 // ============================================================
+// cumple Manual 7 §6.4: "El LSP puede invocar synapse lint --check --fix"
+// synapse lint es una herramienta Fase 31; se integra vía ejecutar_comando.
+
+funcion ejecutar_lint(archivo: texto) -> texto:
+    requiere:
+        longitud(archivo) > 0
+    garantiza:
+        longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
+    comando = concat("synapse lint --check ", archivo)
+    resultado = ejecutar_comando(comando)
+    retornar resultado
 // cumple Manual 7 §4.3: "Si el servidor no responde en 30 segundos, error"
 
 constante TIMEOUT_INFERENCIA = 30000

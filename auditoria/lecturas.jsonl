@@ -503,3 +503,6 @@
 {"fecha": "2026-09-13", "archivos": ["nucleo/lsp_v3.syn"], "cita": "Manual 2 §2", "puntos": "gramatica formal EBNF de Synapse con declaraciones y expresiones"}
 {"fecha": "2026-09-13", "archivos": ["syquex/parser.syn"], "cita": "Manual 3 §3", "puntos": "gramatica EBNF con retornar interrogacion import paths punteados enum casos con tipos"}
 {"fecha": "2026-09-13", "archivos": ["syquex/parser.syn"], "cita": "Manual 3 §3", "puntos": "export para estructuras intentar atrapar forma funcional"}
+{"fecha": "2026-09-13", "archivos": ["opensyn/principal.syn"], "cita": "Manual 9 §6", "puntos": "flags --junit --coverage --json para reportes de compilacion"}
+{"fecha": "2026-09-13", "archivos": ["opensyn/validation_loop.syn"], "cita": "Manual 7 §4.2", "puntos": "generar_codigo_ia conectada con Ollama para bucle de validacion"}
+{"fecha": "2026-09-13", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §4.2", "puntos": "flujo de peticion de IA con validacion orquesta el bucle de validacion"}

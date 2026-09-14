@@ -8,6 +8,11 @@ importar std.io
 importar std.texto
 importar std.sistema
 
+// --- Cliente Ollama (runtime/core/ollama.c) ---
+// cumple Manual 7 §8: consultar oraculo local via HTTP (8088)
+externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
+externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
+
 // ============================================================
 // Constantes del bucle de validación
 // ============================================================
@@ -256,4 +261,35 @@ funcion generar_codigo_ia(prompt: texto) -> texto:
         longitud(prompt) > 0
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    retornar ""
+    // C12: conectar con Ollama local (Manual 7 §8)
+    modelo = "qwen2.5-coder:1.5b"
+    host = "127.0.0.1"
+    puerto = 8088
+    max_tokens = 2048
+    // Intentar leer modelo de config_ollama.txt
+    config_ruta = ""
+    cwd = _syn_obtener_cwd()
+    si cwd != "":
+        config_ruta = concat(cwd, "/config_ollama.txt")
+    config_contenido = ""
+    inseguro:
+        asm("CadenaSegura _cr = {.datos = (char*)config_ruta.datos, .longitud = config_ruta.longitud}; CadenaSegura _cc = _syn_leer_archivo(_cr); if(_cc.longitud>0) config_contenido = _cc;")
+    si config_contenido != "":
+        // Buscar linea "model=..."
+        i = 0
+        largo = strlen_s(config_contenido)
+        mientras i < largo:
+            si subcadena(config_contenido, i, 6) == "model=":
+                inicio = i + 6
+                fin = inicio
+                mientras fin < largo:
+                    si subcadena(config_contenido, fin, 1) == "\n" o subcadena(config_contenido, fin, 1) == "\r":
+                        romper
+                    fin = fin + 1
+                si fin > inicio:
+                    modelo = subcadena(config_contenido, inicio, fin - inicio)
+                romper
+            i = i + 1
+    // Consultar Ollama
+    respuesta = _syn_ollama_consultar(modelo, prompt, host, puerto, max_tokens)
+    retornar respuesta
