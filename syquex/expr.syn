@@ -291,6 +291,10 @@ funcion sq_scan_genericos(est: ParserEst) -> entero:
         // el ejemplo canónico del manual (M3 §14: 'Resultado<tensor, texto>');
         // T_ALGUN/T_NINGUNO son reservadas de la tabla M3 §4 que no deben
         // romper el escaneo léxico de genéricos.
+        // L7-decision: Manual 3 §5.4 define Resultado/Opcion como ADTs con
+        // constructores ok/err/algun/ninguno. Actualmente ok() se parsea como
+        // llamada de función (NODO_LLAMADA), no como constructor ADT.
+        // La sintaxis funciona pero sin verificación de tipos ADT.
         asm("do { int _gn = est->total_tokens; int _gp = est->posicion; if (_gp < _gn && est->tokens[_gp].tipo == T_MENOR) { int _gi = _gp + 1; int _gprof = 1; int _gok = 1; int _gcer = 0; while (_gi < _gn) { int _gt = est->tokens[_gi].tipo; if (_gt == T_MENOR) { _gprof++; } else if (_gt == T_MAYOR) { _gprof--; if (_gprof == 0) { _gi++; _gcer = 1; break; } } else if (_gt == T_FIN || _gt == T_NUEVALINEA) { _gok = 0; break; } else if (!(_gt == T_IDENTIFICADOR || _gt == T_COMA || _gt == T_LISTA || _gt == T_MAPA || _gt == T_RC || _gt == T_ARC || _gt == T_DEBIL || _gt == T_ARENA || _gt == T_CORCH_IZQ || _gt == T_CORCH_DER || _gt == T_AMPERSAND || _gt == T_FUNCION || _gt == T_CANAL || _gt == T_NULO || _gt == T_OK || _gt == T_ERR || _gt == T_TENSOR || _gt == T_ALGUN || _gt == T_NINGUNO)) { _gok = 0; break; } _gi++; } if (_gok && _gcer && _gi < _gn && est->tokens[_gi].tipo == T_PAREN_IZQ) { r = _gi - _gp; } } } while (0);")
         retornar r
     retornar 0

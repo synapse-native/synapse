@@ -850,8 +850,12 @@ funcion sq_sentencia(est: ParserEst) -> entero:
         saltar_nl(est)
         retornar n
     si t == T_ESCUCHAR:
+        // L5: Manual 3 §3 — escuchar IDENTIFICADOR ":" NEWLINE INDENT bloque DEDENT
         token_avanzar(est)
-        ch_escuchar = parse_expresion_sq(est)
+        nombre_esc = sq_id(est)
+        inseguro:
+            asm("token_esperar(est, T_DOSPUNTOS)")
+        ch_escuchar = nombre_esc
         cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
         n = sq_nuevo(est, NODO_ESCUCHAR, linea, col)
         inseguro:
@@ -867,6 +871,21 @@ funcion sq_sentencia(est: ParserEst) -> entero:
     si t == T_SIGUIENTE:
         token_avanzar(est)
         n = sq_nuevo(est, NODO_SIGUIENTE, linea, col)
+        saltar_nl(est)
+        retornar n
+    // L6: delegar = keyword alternativa para ? (Manual 6 §1.3)
+    // Produce NODO_PROPAGAR = retorno temprano con err(...)
+    si t == T_DELEGAR:
+        token_avanzar(est)
+        deleg_expr = 0
+        si token_mirar(est) != T_NUEVALINEA:
+            deleg_expr = parse_expresion_sq(est)
+        nodo_d = sq_nuevo(est, NODO_PROPAGAR, linea, col)
+        inseguro:
+            asm("est->nodos[nodo_d].hijo_izq = deleg_expr")
+        n = sq_nuevo(est, NODO_RETORNAR, linea, col)
+        inseguro:
+            asm("est->nodos[n].hijo_izq = nodo_d")
         saltar_nl(est)
         retornar n
     si t == T_RETORNAR:

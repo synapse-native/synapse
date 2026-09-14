@@ -55,7 +55,7 @@ funcion obtener_catalogo_api() -> texto:
     // --- I/O y archivos ---
     catalogo = catalogo + "std.io: abrir, leer, cerrar_archivo, escribir, escribir_linea, leer_linea, leer_bytes; "
     // --- Texto y strings ---
-    catalogo = catalogo + "std.texto: contiene, indice_de, reemplazar, termina_con, recortar, mayusculas, minusculas, escapar_json, a_texto, a_texto_decimal, cmp_texto, strlen_s, strstr_f, strchr_f, atoi_f, strcpy_f, strncpy_f; "
+    catalogo = catalogo + "std.texto: contiene, indice_de, reemplazar, termina_con, recortar, mayusculas, minusculas, escapar_json, a_texto, a_texto_decimal, cmp_texto, longitud, strstr_f, strchr_f, atoi_f, strcpy_f, strncpy_f; "
     // --- Sistema operativo ---
     catalogo = catalogo + "std.sistema: ejecutar_comando, escribir_archivo, leer_archivo, obtener_env, existe_archivo, eliminar_archivo; "
     // --- JSON ---
@@ -164,8 +164,8 @@ funcion file_finder(consulta: texto) -> texto:
     encontrados = ""
     // Búsqueda 1: keywords del catálogo (original)
     mapa = obtener_mapa_keywords()
-    largo_mapa = strlen_s(mapa)
-    largo_consulta = strlen_s(consulta)
+    largo_mapa = longitud(mapa)
+    largo_consulta = longitud(consulta)
     k = 0
     mientras k < largo_mapa:
         fin_entry = k
@@ -177,8 +177,8 @@ funcion file_finder(consulta: texto) -> texto:
         pos_dp = strstr_f(entry, ":")
         si pos_dp >= 0:
             kw = subcadena(entry, 0, pos_dp)
-            archivo = subcadena(entry, pos_dp + 1, strlen_s(entry) - pos_dp - 1)
-            largo_kw = strlen_s(kw)
+            archivo = subcadena(entry, pos_dp + 1, longitud(entry) - pos_dp - 1)
+            largo_kw = longitud(kw)
             si largo_kw >= 3:
                 idx = 0
                 encontrado = 0
@@ -227,7 +227,7 @@ funcion file_finder(consulta: texto) -> texto:
             // Buscar en archivos comunes del proyecto
             archivos_buscar = "opensyn/principal.syn,opensyn/router.syn,opensyn/validation_loop.syn,syquex/parser.syn,syquex/expr.syn,syquex/lexer.syn,syquex/traductor.syn"
             pos_a = 0
-            largo_a = strlen_s(archivos_buscar)
+            largo_a = longitud(archivos_buscar)
             mientras pos_a < largo_a:
                 fin_a = pos_a
                 mientras fin_a < largo_a:
@@ -239,7 +239,7 @@ funcion file_finder(consulta: texto) -> texto:
                 contenido = ""
                 inseguro:
                     asm("{ CadenaSegura _af = {.datos=(char*)arch.datos,.longitud=arch.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
-                si strlen_s(contenido) > 0:
+                si longitud(contenido) > 0:
                     // Buscar "funcion X(" o "estructura X" o "let X:"
                     si strstr_f(contenido, patron_func) >= 0 o strstr_f(contenido, patron_est) >= 0 o strstr_f(contenido, patron_var) >= 0:
                         si strstr_f(encontrados, arch) < 0:
@@ -833,12 +833,12 @@ funcion revisar_codigo_inline(codigo: texto, salida_error: texto) -> RevisionRes
     // Parsear línea del error si viene en formato "linea:columna:mensaje"
     pos_dp1 = strstr_f(salida_error, ":")
     si pos_dp1 > 0:
-        pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, strlen_s(salida_error) - pos_dp1 - 1), ":")
+        pos_dp2 = strstr_f(subcadena(salida_error, pos_dp1 + 1, longitud(salida_error) - pos_dp1 - 1), ":")
         si pos_dp2 > 0:
             num_linea = subcadena(salida_error, 0, pos_dp1)
             rev.linea = atoi_f(num_linea)
             rev.sugerencia = "Corrige el error en línea "
             rev.sugerencia = concat(rev.sugerencia, num_linea)
             rev.sugerencia = concat(rev.sugerencia, ": ")
-            rev.sugerencia = concat(rev.sugerencia, subcadena(salida_error, pos_dp1 + pos_dp2 + 2, strlen_s(salida_error) - pos_dp1 - pos_dp2 - 2))
+            rev.sugerencia = concat(rev.sugerencia, subcadena(salida_error, pos_dp1 + pos_dp2 + 2, longitud(salida_error) - pos_dp1 - pos_dp2 - 2))
     retornar rev

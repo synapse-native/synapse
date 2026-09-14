@@ -139,10 +139,12 @@ void arena_free(Arena* arena);
 void arena_reset(Arena* arena);
 
 // --- RC/ARC reference counting (Manual 4 §3.2, §4.2) ---
+// L1: Manual 4 §3.2 define 4 campos; version es extensión para §4.2
+//     (weak reference safety: detecta si el puntero fue destruido)
 typedef struct RcHeader {
     uint32_t ref_count;          // Conteo de referencias fuertes (no atómico)
     uint32_t weak_count;         // Conteo de referencias débiles vivas
-    uint32_t version;            // Generación: incrementada al destruir fuerte (§4.2)
+    uint32_t version;            // L1-ext: generación, incrementada al destruir (§4.2)
     void* data;                  // Datos del objeto (después del header)
     void (*destructor)(void*);   // Destructor opcional
 } RcHeader;
@@ -150,7 +152,7 @@ typedef struct RcHeader {
 typedef struct ArcHeader {
     uint32_t ref_count;          // Conteo atómico (usamos __atomic)
     uint32_t weak_count;         // Conteo atómico de débiles
-    uint32_t version;            // Generación (§4.2)
+    uint32_t version;            // L1-ext: generación (§4.2)
     void* data;
     void (*destructor)(void*);
 } ArcHeader;

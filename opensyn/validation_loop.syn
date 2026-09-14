@@ -237,7 +237,7 @@ funcion escape_json_local(t: texto) -> texto:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     // Escapar comillas dobles para JSON seguro
     resultado = ""
-    total = strlen_s(t)
+    total = longitud(t)
     i = 0
     mientras i < total:
         c = subcadena(t, i, 1)
@@ -277,7 +277,7 @@ funcion generar_codigo_ia(prompt: texto) -> texto:
     si config_contenido != "":
         // Buscar linea "model=..."
         i = 0
-        largo = strlen_s(config_contenido)
+        largo = longitud(config_contenido)
         mientras i < largo:
             si subcadena(config_contenido, i, 6) == "model=":
                 inicio = i + 6

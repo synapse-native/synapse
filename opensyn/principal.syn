@@ -97,7 +97,7 @@ funcion llama_server_corriendo() -> entero:
     si salida == "":
         retornar 0
     // Buscar patrones de LISTENING en puerto 8088
-    total = strlen_s(salida)
+    total = longitud(salida)
     i = 0
     mientras i < total - 14:
         caracter = subcadena(salida, i, 1)
@@ -135,7 +135,7 @@ funcion iniciar_llama_server() -> nulo:
         dir_models = concat(dir, "models")
         listado = _syn_listar_directorio(dir_models)
     si listado != "":
-        total = strlen_s(listado)
+        total = longitud(listado)
         i = 0
         mientras i < total - 4:
             caracter = subcadena(listado, i, 1)
@@ -160,7 +160,7 @@ funcion iniciar_llama_server() -> nulo:
             dir_ia = concat(dir, "ia")
             listado2 = _syn_listar_directorio(dir_ia)
         si listado2 != "":
-            total2 = strlen_s(listado2)
+            total2 = longitud(listado2)
             i2 = 0
             mientras i2 < total2 - 4:
                 caracter2 = subcadena(listado2, i2, 1)
@@ -384,7 +384,7 @@ funcion obtener_modelo_config(config: texto) -> texto:
     si idx < 0:
         retornar ""
     inicio = idx + 6
-    total = strlen_s(config)
+    total = longitud(config)
     fin = inicio
     mientras fin < total:
         letra = subcadena(config, fin, 1)
@@ -402,14 +402,14 @@ funcion contar_modelos(lista: texto) -> entero:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     // cada nombre de _syn_ollama_modelos termina en '\n' -> contar '\n'
     requiere:
         verdadero
     garantiza:
         _resultado_ >= 0 // cumple Manual 2 §5.1
-    total = strlen_s(lista)
+    total = longitud(lista)
     n = 0
     i = 0
     mientras i < total:
@@ -423,13 +423,13 @@ funcion modelo_en_posicion(lista: texto, n: entero) -> texto:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     requiere:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    total = strlen_s(lista)
+    total = longitud(lista)
     seg = 0
     inicio = 0
     i = 0
@@ -449,13 +449,13 @@ funcion modelo_en_lista(lista: texto, buscar: texto) -> entero:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     requiere:
         verdadero
     garantiza:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
-    total = strlen_s(lista)
+    total = longitud(lista)
     hallado = 0
     inicio = 0
     i = 0
@@ -474,11 +474,11 @@ funcion mostrar_modelos(lista: texto) -> nulo:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     requiere:
         verdadero
-    total = strlen_s(lista)
+    total = longitud(lista)
     num = 0
     inicio = 0
     i = 0
@@ -537,7 +537,7 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     // Elige el modelo activo: el configurado si esta instalado; si no, adopta y
     // PERSISTE el primero instalado (auto-deteccion del modelo real del usuario).
@@ -548,10 +548,10 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
         longitud(_resultado_) > 0 // cumple Manual 2 §5.1
     base = ""
     si modelo_config != "":
-        base = subcadena(modelo_config, 0, strlen_s(modelo_config))
+        base = subcadena(modelo_config, 0, longitud(modelo_config))
     si base == "":
         base = subcadena("qwen-coder", 0, 10)
-    total = strlen_s(modelos)
+    total = longitud(modelos)
     primero = ""
     presente = 0
     inicio = 0
@@ -562,7 +562,7 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
         si caracter == "\n":
             nombre = subcadena(modelos, inicio, i - inicio)
             si num == 0:
-                primero = subcadena(nombre, 0, strlen_s(nombre))
+                primero = subcadena(nombre, 0, longitud(nombre))
             si nombre == base:
                 presente = 1
             num = num + 1
@@ -573,14 +573,14 @@ funcion normalizar_modelo_activo(modelo_config: texto, modelos: texto) -> texto:
         si presente == 0:
             si primero != "":
                 escribir_linea(concat(concat(concat("  [*] Modelo configurado '", base), "' no instalado; usando el primero disponible: "), primero))
-                guardar_modelo_config(subcadena(primero, 0, strlen_s(primero)))
-                elegido = subcadena(primero, 0, strlen_s(primero))
-    retornar subcadena(elegido, 0, strlen_s(elegido))
+                guardar_modelo_config(subcadena(primero, 0, longitud(primero)))
+                elegido = subcadena(primero, 0, longitud(primero))
+    retornar subcadena(elegido, 0, longitud(elegido))
 funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
     // cadenas al retornar (el generador libera los parametros texto), por lo
     // que el llamador pasa copias strcpy_f y este helper hace UN solo
-    // recorrido con primitivas inline seguras (subcadena copia, strlen_s,
+    // recorrido con primitivas inline seguras (subcadena copia, longitud,
     // strchr_f, str_eq — nunca aliasa ni libera buffers ajenos).
     // /model <n> o /model <nombre>: devuelve el nuevo modelo (copia fresca) y
     // persiste la preferencia; devuelve "" si no existe. Un unico recorrido.
@@ -593,13 +593,13 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
     si prompt == "/model":
         arg = ""
     sino:
-        arg = recortar(subcadena(prompt, 7, strlen_s(prompt) - 7))
+        arg = recortar(subcadena(prompt, 7, longitud(prompt) - 7))
     si arg != "":
         numero = atoi_f(arg)
         pedido = ""
         si numero <= 0:
-            pedido = subcadena(arg, 0, strlen_s(arg))
-        total = strlen_s(modelos)
+            pedido = subcadena(arg, 0, longitud(arg))
+        total = longitud(modelos)
         seg = 0
         inicio = 0
         i = 0
@@ -611,10 +611,10 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
                 nombre = subcadena(modelos, inicio, i - inicio)
                 si numero > 0:
                     si seg == numero - 1:
-                        nombre_pos = subcadena(nombre, 0, strlen_s(nombre))
+                        nombre_pos = subcadena(nombre, 0, longitud(nombre))
                 sino:
                     si nombre == pedido:
-                        nombre_match = subcadena(nombre, 0, strlen_s(nombre))
+                        nombre_match = subcadena(nombre, 0, longitud(nombre))
                 seg = seg + 1
                 inicio = i + 1
             i = i + 1
@@ -624,8 +624,8 @@ funcion manejar_modelo(prompt: texto, modelos: texto) -> texto:
         sino:
             nuevo = nombre_match
         si nuevo != "":
-            guardar_modelo_config(subcadena(nuevo, 0, strlen_s(nuevo)))
-            res = subcadena(nuevo, 0, strlen_s(nuevo))
+            guardar_modelo_config(subcadena(nuevo, 0, longitud(nuevo)))
+            res = subcadena(nuevo, 0, longitud(nuevo))
     retornar res
 
 funcion mostrar_ayuda() -> nulo:
@@ -728,8 +728,8 @@ funcion herramienta_permitida(modo: entero, herramienta: texto) -> entero:
         _resultado_ == 0 o _resultado_ == 1 // cumple Manual 2 §5.1
     permitidas = herramientas_permitidas(modo)
     // Buscar la herramienta en la lista de permitidas (separada por comas)
-    total = strlen_s(permitidas)
-    h_len = strlen_s(herramienta)
+    total = longitud(permitidas)
+    h_len = longitud(herramienta)
     // Si la herramienta es vacía o más larga que la lista, no puede estar
     si h_len == 0 o h_len > total:
         retornar 0
@@ -826,7 +826,7 @@ funcion filtrar_listado(lista: texto) -> texto:
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     res = ""
-    total = strlen_s(lista)
+    total = longitud(lista)
     i = 0
     mientras i < total:
         fin_e = i
@@ -874,7 +874,7 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
     res = "[TOOL_ERROR] herramienta desconocida. Usa: TOOL listar|leer|git <arg>"
-    total = strlen_s(linea)
+    total = longitud(linea)
     inicio = 5
     fin = inicio
     mientras fin < total:
@@ -999,7 +999,7 @@ funcion tui_acotar(t: texto, n: entero) -> texto:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0 // cumple Manual 2 §5.1
-    largo = strlen_s(t)
+    largo = longitud(t)
     si largo <= n:
         retornar strcpy_f(t)
     retornar concat(subcadena(strcpy_f(t), 0, n), "…")
@@ -1210,7 +1210,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
     si entrada == "/tdd" o strstr_f(entrada, "/tdd ") == 0:
         tarea = ""
         si strstr_f(entrada, "/tdd ") == 0:
-            tarea = subcadena(strcpy_f(entrada), 5, strlen_s(entrada) - 5)
+            tarea = subcadena(strcpy_f(entrada), 5, longitud(entrada) - 5)
         si tarea == "":
             _syn_tui_entrada_poner("/tdd ")
             _syn_tui_mensaje(2, "Escribe la funcion a testear tras /tdd y pulsa Enter")
@@ -1223,7 +1223,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
     si entrada == "/revisar" o strstr_f(entrada, "/revisar ") == 0:
         codigo_r = ""
         si strstr_f(entrada, "/revisar ") == 0:
-            codigo_r = subcadena(strcpy_f(entrada), 9, strlen_s(entrada) - 9)
+            codigo_r = subcadena(strcpy_f(entrada), 9, longitud(entrada) - 9)
         si codigo_r == "":
             _syn_tui_entrada_poner("/revisar ")
             _syn_tui_mensaje(2, "Escribe el codigo a revisar tras /revisar y pulsa Enter")
@@ -1280,7 +1280,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
     si entrada == "/plan" o strstr_f(entrada, "/plan ") == 0:
         feat = ""
         si strstr_f(entrada, "/plan ") == 0:
-            feat = subcadena(strcpy_f(entrada), 6, strlen_s(entrada) - 6)
+            feat = subcadena(strcpy_f(entrada), 6, longitud(entrada) - 6)
         si feat == "":
             _syn_tui_entrada_poner("/plan ")
             _syn_tui_mensaje(2, "Escribe la caracteristica a desglosar tras /plan y pulsa Enter")
@@ -1344,7 +1344,7 @@ funcion chat_tui() -> entero:
                 // ME-1 (R1): detectar cambio de modo
                 si strstr_f(res, "!modo:") == 0:
                     // Extraer el número de modo después de "!modo:"
-                    num_texto = subcadena(res, 6, strlen_s(res) - 6)
+                    num_texto = subcadena(res, 6, longitud(res) - 6)
                     nuevo_modo = atoi_f(num_texto)
                     si nuevo_modo >= MODO_ASK y nuevo_modo <= MODO_ORCHESTRATOR:
                         modo = nuevo_modo
@@ -1387,7 +1387,7 @@ funcion chat_tui() -> entero:
                     retornar 0
                 // ME-1 (R1): detectar cambio de modo desde menú
                 si strstr_f(res2, "!modo:") == 0:
-                    num_texto2 = subcadena(res2, 6, strlen_s(res2) - 6)
+                    num_texto2 = subcadena(res2, 6, longitud(res2) - 6)
                     nuevo_modo2 = atoi_f(num_texto2)
                     si nuevo_modo2 >= MODO_ASK y nuevo_modo2 <= MODO_ORCHESTRATOR:
                         modo = nuevo_modo2
@@ -1508,7 +1508,7 @@ funcion modo_oraculo() -> entero:
                 si herramienta_permitida(modo, "editar") == 0:
                     escribir_linea("  [!] /tdd requiere modo CODE. Cambia con /code")
                     siguiente
-                tarea = subcadena(prompt, 5, strlen_s(prompt) - 5)
+                tarea = subcadena(prompt, 5, longitud(prompt) - 5)
                 si tarea == "":
                     escribir_linea("  Uso: /tdd <descripcion de la funcion a testear>")
                 sino:
@@ -1524,7 +1524,7 @@ funcion modo_oraculo() -> entero:
                 siguiente
             si prompt == "/revisar" o strstr_f(prompt, "/revisar ") == 0:
                 // /revisar solo lee código → permitido en cualquier modo
-                codigo_a_revisar = subcadena(prompt, 9, strlen_s(prompt) - 9)
+                codigo_a_revisar = subcadena(prompt, 9, longitud(prompt) - 9)
                 si codigo_a_revisar == "":
                     escribir_linea("  Uso: /revisar <codigo a revisar>")
                 sino:
@@ -1542,7 +1542,7 @@ funcion modo_oraculo() -> entero:
                 si herramienta_permitida(modo, "plan") == 0:
                     escribir_linea("  [!] /plan requiere modo PLAN o superior. Cambia con /plan")
                     siguiente
-                feat = subcadena(prompt, 6, strlen_s(prompt) - 6)
+                feat = subcadena(prompt, 6, longitud(prompt) - 6)
                 si feat == "":
                     escribir_linea("  Uso: /plan <caracteristica a desglosar>")
                 sino:

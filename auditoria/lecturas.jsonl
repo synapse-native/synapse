@@ -512,3 +512,10 @@
 {"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §2.1", "puntos": "orchestrator lifecycle iniciar verificar detener ciclo de vida del servidor"}
 {"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 8 §4.1", "puntos": "ejecutar_fmt invoca synapse fmt --check para formateo de codigo"}
 {"fecha": "2026-09-14", "archivos": ["opensyn/router.syn"], "cita": "Manual 7 §2.3", "puntos": "file finder localiza archivos antes de generar codigo con busqueda AST aware"}
+{"fecha": "2026-09-14", "archivos": ["opensyn/principal.syn", "opensyn/router.syn", "opensyn/validation_loop.syn"], "cita": "Manual 7 §2.3", "puntos": "pipeline RAG extrae contexto del AST y codigo fuente para construir prompts, inyeccion de contexto estatico con reglas de sintaxis"}
+{"fecha": "2026-09-14", "archivos": ["synapse_rt_types.h"], "cita": "Manual 1 §1.1", "puntos": "ecosistema Synapse plataforma unificada con Synapse bajo nivel Syquex alto nivel OpenSyn asistencia IA"}
+{"fecha": "2026-09-14", "archivos": ["syquex/parser.syn", "syquex/expr.syn"], "cita": "Manual 3 §3", "puntos": "gramatica BNF de Syquex definiciones de producciones sentencias declaraciones tipos"}
+{"fecha": "2026-09-14", "archivos": ["syquex/lexer.syn"], "cita": "Manual 3 §1", "puntos": "definicion de tokens tipos de token tabla de tokens de Syquex"}
+{"fecha": "2026-09-14", "archivos": ["syquex/lexer.syn"], "cita": "Manual 3 §4", "puntos": "tabla de palabras reservadas keywords de Syquex identificadores de tokens"}
+{"fecha": "2026-09-14", "archivos": ["syquex/analizador_alcance.syq"], "cita": "Manual 3 §5", "puntos": "tipos algebraicos de datos Resultado Opcion constructores ok err algun ninguno"}
+{"fecha": "2026-09-14", "archivos": ["syquex/analizador_alcance.syq"], "cita": "Manual 4 §3.2", "puntos": "RcHeader ArcHeader estructuras de referencia countering y conteo de referencias debiles"}

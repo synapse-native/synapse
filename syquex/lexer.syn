@@ -404,6 +404,10 @@ funcion sq_keyword(palabra: cadena, idioma: entero) -> entero:
     retornar 0
 
 // --- Detección de idioma (#lang: es|en|fr|pt) ---
+// L4-decision: Manual 3 §3 define lang_directive como producción grammar,
+// pero #lang: se consume en lexer antes de tokenización (requerido para
+// configurar idioma de keywords). No se crea NODO_LANG; el lexer
+// retorna IDIOMA_* como modo de operación. Documentado como decisión D-L4.
 funcion sq_detectar_idioma(ptr: puntero, len: entero) -> entero:
     inseguro:
         r = 0

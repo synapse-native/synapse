@@ -92,6 +92,10 @@ funcion analizar_ciclos(prog: entero) -> entero:
 funcion analizar_funcion(f: entero) -> entero:
     // Analiza una funcion: recorre su cuerpo identificando rc/arc vars,
     // marca puntos de salida (retornar, NODO_PROPAGAR) para cleanup.
+    // L8-decision: Manual 4 §5.2 requiere cleanup blocks en CFG para ?.
+    // Esta fase identifica rc/arc vars y puntos de salida, pero el traductor
+    // aún no genera código cleanup (rc_decrementar antes de propagar error).
+    // Análisis listo; emisión pendiente de implementar.
     // Retorna rc_vars vivas al final.
     _a_reset_rc_vars()
     cuerpo = tr_hder(f)
