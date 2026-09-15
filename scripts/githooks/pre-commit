@@ -48,16 +48,29 @@ else
     exit 1
 fi
 
-# --- Limpieza de artefactos de build antes del commit ---
-echo "── Limpiando artefactos de build ──"
-find "$RAIZ" -maxdepth 1 \( -name '*.o' -o -name '*.obj' -o -name 'synapse_unity.c' \
+# --- Limpieza de artefactos de build antes del commit (SOLO no rastreados) ---
+# ENDURECIMIENTO: antes hacía `find -delete` sobre TODO el árbol: un archivo
+# legítimo que coincidiera con los patrones (p.ej. test_*.txt) se borraba sin
+# preguntar. Ahora solo se eliminan archivos NO rastreados por git.
+echo "── Limpiando artefactos de build (solo no rastreados) ──"
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    if ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+        rm -f "$f" 2>/dev/null || true
+    fi
+done < <(find "$RAIZ" -maxdepth 1 \( -name '*.o' -o -name '*.obj' -o -name 'synapse_unity.c' \
     -o -name 'synapse_stage1.exe' -o -name '.coverage' -o -name 'test_*.txt' \
     -o -name 'nul' -o -name 'runtime_linked.dll' -o -name '_*.c' -o -name '_*.c.o' \
-    -o -name '_*.h' -o -name '_synapse_shared.h' \) -type f -delete 2>/dev/null || true
-# Limpiar __pycache__ recursivamente (mantener .venv excluido)
-find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" -name '__pycache__' \
-    -exec rm -rf {} + 2>/dev/null || true
-echo "✅ Artefactos limpiados"
+    -o -name '_*.h' -o -name '_synapse_shared.h' \) -type f 2>/dev/null)
+# __pycache__ no rastreados (excluyendo .venv y .git)
+while IFS= read -r d; do
+    [ -z "$d" ] && continue
+    if [ -z "$(git ls-files "$d" 2>/dev/null)" ]; then
+        rm -rf "$d" 2>/dev/null || true
+    fi
+done < <(find "$RAIZ" -type d -not -path "*/.venv/*" -not -path "*/.git/*" \
+    -name '__pycache__' 2>/dev/null)
+echo "✅ Artefactos no rastreados limpiados"
 
 # --- Higiene de código (migrado desde .pre-commit-config.yaml; solo archivos staged) ---
 # El marco 'pre-commit' NO está instalado (core.hooksPath apunta a este hook), así que
@@ -165,33 +178,52 @@ fi
 echo "✅ Alineación verificada: 0 brechas"
 
 # --- MTS (Metodo de Trabajo Seguro, docs/METODO_TRABAJO.md): gate contrastar ---
-echo "--- Gate MTS (auditoria/contrastar.py) ---"
+echo "── Gate MTS (auditoria/contrastar.py) ──"
+PROD_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
+    | grep -E '\.(c|h|py|syn|syq)$' \
+    | grep -vE '^(scripts/|tests/|auditoria/|docs/|benchmarks/|examples/|vscode-synapse/|.github/|.kilo/)' || true)
 PLAN_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null | grep -E '^docs/plan_ME_.*\.md$' || true)
+
+# REQUISITO: toda modificación productiva debe traer su plan_ME
+if [ -n "$PROD_FILES" ] && [ -z "$PLAN_FILES" ]; then
+    echo "  ❌ Archivos productivos modificados sin plan_ME_" >&2
+    echo "     $PROD_FILES" >&2
+    echo "     Crea docs/plan_ME_<id>.md citando Manual X §Y antes de commitear (regla MTS)." >&2
+    exit 1
+fi
+
 if [ -n "$PLAN_FILES" ]; then
     for pf in $PLAN_FILES; do
         echo "  Plan MTS detectado: $pf"
-        if ! (cd "$RAIZ" && $PYTHON auditoria/contrastar.py --plan "$pf"); then
-            echo "Error: MTS contrastar fallo para $pf -- commit bloqueado" >&2
-            echo "Cumple el MTS (docs/METODO_TRABAJO.md): cada requisito necesita oraculo," >&2
-            echo "cada archivo de produccion staged necesita '// cumple Manual X S Y'." >&2
-            exit 1
-        fi
     done
+    # Todos los planes staged se contrastan JUNTOS: el vínculo estricto
+    # archivo<->requisito se evalúa contra el conjunto (multi-ME).
+    ARGS_PLAN=""
+    for pf in $PLAN_FILES; do
+        ARGS_PLAN="$ARGS_PLAN --plan $pf"
+    done
+    if ! (cd "$RAIZ" && $PYTHON auditoria/contrastar.py $ARGS_PLAN); then
+        echo "Error: MTS contrastar fallo ($ARGS_PLAN) -- commit bloqueado" >&2
+        echo "Cumple el MTS (docs/METODO_TRABAJO.md): cada requisito necesita oraculo," >&2
+        echo "cada archivo de produccion staged necesita '// cumple Manual X §Y'." >&2
+        exit 1
+    fi
+    echo "  ✅ Gate MTS OK (oráculos ejecutados, vínculo plan<->código estricto)"
 else
-    echo "  Sin plan_ME en este commit (gate MTS no aplica)"
+    echo "  Sin cambios productivos ni plan_ME (gate MTS no aplica)"
 fi
 
 # --- Gate de alineación manual<->codigo (auditoria/alineacion.py) ---------
 # Control verificado: la lectura se prueba con CITAS TEXTUALES del manual y el
 # código con el comentario `cumple Manual X §Y` en la línea de evidencia.
-# Modo: incremental sobre lo staged; "warn" por defecto (no bloquea) hasta que
-# no queden brechas en el árbol. Activar bloqueo: ALINEACION_MODO=block.
-# Oráculos (se EJECUTAN, no se declaran) se corren aquí solo con
-# ALINEACION_ORACULOS=1; el CI los corre siempre.
+# Modo: BLOCK por defecto (bloquea en local y CI). Activar warn con ALINEACION_MODO=warn.
+# Oráculos (se EJECUTAN, no se declaran): ENDURECIMIENTO — por defecto corren
+# TAMBIÉN en el commit local (antes solo con ALINEACION_ORACULOS=1, que nada
+# establecía jamás: falso verde). Opt-out explícito con ALINEACION_ORACULOS=0.
 echo "── Gate de alineación manual↔código (auditoria/alineacion.py) ──"
-ALINEACION_MODO="${ALINEACION_MODO:-warn}"
-ALINEACION_FLAGS="--verificar --modo $ALINEACION_MODO"
-if [ "${ALINEACION_ORACULOS:-0}" != "1" ]; then
+ALINEACION_MODO="${ALINEACION_MODO:-block}"
+ALINEACION_FLAGS="--verificar --modo $ALINEACION_MODO --exigir-sello"
+if [ "${ALINEACION_ORACULOS:-1}" != "1" ]; then
     ALINEACION_FLAGS="$ALINEACION_FLAGS --sin-oraculos"
 fi
 if (cd "$RAIZ" && $PYTHON auditoria/alineacion.py $ALINEACION_FLAGS); then
@@ -205,6 +237,17 @@ else
     echo "  Documentación:       docs/gobernancia/CONTROL_ALINEACION.md" >&2
     exit 1
 fi
+
+# --- MTO: no puede citar secciones de manual inexistentes ni perder OBL ---
+echo "── Verificando MTO (auditoria/auditar_calidad_tests.py --solo-mto) ──"
+if ! (cd "$RAIZ" && $PYTHON auditoria/auditar_calidad_tests.py --solo-mto); then
+    echo "❌ MTO INVÁLIDO — commit bloqueado" >&2
+    echo "   El MTO no existe, carece de entradas OBL-*, o tiene entradas sin Manual §." >&2
+    echo "   Corrígelo en docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md (con aprobación" >&2
+    echo "   del Arquitecto: es un manual — regla 5)." >&2
+    exit 1
+fi
+echo "✅ MTO verificado"
 
 # --- Regla 1: gate de lectura previa de manuales (mapa_manuales.md) ---
 echo "── Gate de lectura previa (regla 1) ──"

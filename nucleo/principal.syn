@@ -709,6 +709,31 @@ funcion generar_etapa(ruta: cadena, salida: cadena) -> ResultadoEtapa:
         asm("fprintf(stderr, \"[Synapse] Compilacion nativa exitosa\\n\");")
     retornar etapa_ok()
 
+// ===========================================================================
+// Módulo 31.5: CI/CD Reporting (Manual 9 §6.2)
+// Genera reportes en formatos estándar para integración con CI/CD.
+// comando: synapse test --junit | --coverage | --json
+//
+// NOTA: generar_junit, generar_json, generar_coverage y estructura
+// ResultadoTest están definidas en nucleo/reports.syn (referencia/canónico).
+// principal.syn expone escribir_reporte (esta función es nueva, no existe en
+// reports.syn) para escribir cualquier reporte a disco.
+// ===========================================================================
+
+// cumple Manual 9 §6.2: escribir reporte a archivo (coverage.html, etc.)
+funcion escribir_reporte(ruta: texto, contenido: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        asm("FILE *f = fopen(ruta.datos, \"wb\");")
+        asm("if (!f) { fprintf(stderr, \"[Reportes] ERROR: no se pudo crear %s\\n\", ruta.datos); return 1; }")
+        asm("fwrite(contenido.datos, 1, contenido.longitud, f);")
+        asm("fclose(f);")
+        asm("fprintf(stderr, \"[Reportes] Reporte escrito: %s (%d bytes)\\n\", ruta.datos, (int)contenido.longitud);")
+    retornar 0
+
 funcion principal() -> entero:
     r = 0
     inseguro:

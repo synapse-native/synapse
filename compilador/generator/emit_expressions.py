@@ -697,6 +697,14 @@ def expr_a_c(ctx: GeneratorContext, nodo: Optional[Nodo]) -> str:
         # escuchar se pasa &(bool){0} (el idiom `== nulo` sigue siendo leniency).
         if getattr(ctx, '_escuchar_modo', False):
             _elem = _elemento_canal(ctx, nodo)
+            if _elem in ('texto', 'cadena', 'CadenaSegura'):
+                # F4-6 (fix): texto viaja por el canal como CadenaSegura POR
+                # VALOR (el emisor copia el struct al buffer, ver
+                # visitar_enviar_canal), no boxeado como void*. Antes el
+                # receive emitia `CadenaSegura mensaje = ({void* _m = ...;})`
+                # — initializer invalido en C (void* a struct).
+                return ("({ CadenaSegura _m = canal_recibir_texto(_canal, &_cerrado); "
+                        "if (_cerrado) break; _m; })")
             _unbox = {
                 'entero': "_synapse_unbox_int(_m)",
                 'decimal': "_synapse_unbox_float(_m)",

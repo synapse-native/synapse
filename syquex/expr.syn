@@ -1,5 +1,5 @@
 #lang: es
-# cumple Manual 1 5: nucleo del compilador Synapse
+# cumple Manual 2 §1.3: nucleo del compilador Synapse
 // ============================================================
 // syquex/expr.syn — Expresiones de Syquex (R87)
 // Precedencia compartida: Manual 2 §6; primarios/postfijos: Manual 3 §3.
@@ -167,12 +167,19 @@ funcion parse_mult_sq(est: ParserEst) -> entero:
             e_linea = token_linea(est, est.posicion)
             e_col = token_columna(est, est.posicion)
             token_avanzar(est)
-            der = parse_unario_sq(est)
+            der = parse_adit_sq(est)
             n = sq_nuevo(est, NODO_ENVIAR_CANAL, e_linea, e_col)
             inseguro:
                 asm("est->nodos[n].hijo_izq = izq")
                 asm("est->nodos[n].hijo_der = der")
             izq = n
+            // El envio es una SENTENCIA, no un operando: consume el resto de
+            // la expresion del valor y retorna ya. Antes parseaba el valor con
+            // parse_unario_sq y el '+' siguiente quedaba por consumir:
+            // `canal <- "Hilo " + id.texto() + " listo"` producía
+            // OpBinaria(izq=ENVIAR_CANAL, der=resto) -> C invalido
+            // (entero_a_texto sobre CadenaSegura).
+            retornar izq
         sino:
             si sq_es_op_mult(t) == 1:
                 token_avanzar(est)

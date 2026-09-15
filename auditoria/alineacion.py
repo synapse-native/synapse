@@ -388,7 +388,7 @@ def ejecutar_oraculo(ruta, modo="auto"):
 # Verificación
 # ---------------------------------------------------------------------------
 def verificar(archivos, desde=None, me=None, modo="block", con_oraculos=True,
-              ci=False):
+              ci=False, exigir_sello=False):
     """Corre todos los chequeos. Devuelve (errores, avisos, detalle)."""
     errores, avisos, detalle = [], [], {}
     prod = [f for f in archivos if es_produccion(f)]
@@ -441,17 +441,37 @@ def verificar(archivos, desde=None, me=None, modo="block", con_oraculos=True,
         errores.append("el expediente declara archivos que no están en el "
                        "cambio: " + ", ".join(sobran))
     if exp["cambio_hash"] and exp["cambio_hash"] != ch:
-        avisos.append(f"cambio_hash del expediente ({exp['cambio_hash']}) "
-                      f"no coincide con el actual ({ch}) — se reescribe al verificar")
+        # ENDURECIMIENTO (era solo aviso): la huella del expediente debe
+        # corresponder a ESTE contenido. Sin esto, un expediente verificado
+        # una vez quedaba "válido" aunque el código cambiara después — la
+        # evidencia quedaba desanclada del código real.
+        errores.append(
+            f"cambio_hash del expediente ({exp['cambio_hash']}) no coincide "
+            f"con el actual ({ch}) — re-ejecutá --verificar para re-sellar "
+            f"(la evidencia debe estar atada al contenido que se integra)")
 
-    # (2) sello de lectura previa
+    # (2) sello de lectura previa. Bloqueante SOLO en los gates reales
+    # (pre-commit pasa --exigir-sello); en modo diagnóstico queda como aviso
+    # para no romper usos herméticos. En CI la garantía equivalente es la
+    # evidencia comiteada (evidencia_ci_ok).
     if not ci:
         sello = SELLO_DIR / f"{elegido.stem}.antes.json"
         if not sello.exists():
-            avisos.append(
-                f"no hay sello de lectura previa ({sello.name}): la lectura "
-                "no puede probarse anterior al código. Ejecutá --leer antes "
-                "de codificar.")
+            msg = (f"no hay sello de lectura previa ({sello.name}): la lectura "
+                   "no puede probarse anterior al código. Ejecutá --leer antes "
+                   "de codificar.")
+            if exigir_sello:
+                errores.append(msg)
+            else:
+                avisos.append(msg)
+        else:
+            # Frescura del sello: siempre se valida si existe (expiración,
+            # fecha futura, sello emitido sobre código ya existente).
+            errores.extend(sello_previo_a_cambio(sello, prod))
+    else:
+        # CI: la evidencia del cambio (oráculos ejecutados, expediente, huella)
+        # debe estar COMITEADA en HEAD y corresponder a este cambio_hash.
+        errores.extend(evidencia_ci_ok(ch))
 
     # (3) citas muertas: `cumple Manual X §Y` cuya sección ya no existe.
     #        - si el diff toca los manuales -> revalida TODO el repo (la ley cambió)
@@ -615,6 +635,86 @@ def _decision_existe(codigo):
                                                       errors="replace"):
             return True
     return False
+
+
+def sello_previo_a_cambio(ruta_sello, archivos_prod):
+    """El sello debe ser ANTERIOR al código: expira al día siguiente de
+    emitirse y debe preceder a la mtime de los archivos del cambio.
+
+    Cierra el hueco del sello eterno: sin esto, un --leer de hace semanas
+    (o re-emitido post-hoc) "probaba" la lectura de código escrito después.
+    Devuelve lista de errores (vacía = sello creíble).
+    """
+    errores = []
+    try:
+        datos = json.loads(ruta_sello.read_text(encoding="utf-8",
+                                                errors="replace"))
+        fecha_sello = date.fromisoformat(str(datos.get("fecha", ""))[:10])
+    except Exception:
+        return [f"sello de lectura previa ILEGIBLE o corrupto: {ruta_sello.name}"]
+    hoy = date.today()
+    if (hoy - fecha_sello).days > 1:
+        errores.append(
+            f"sello de lectura previa EXPIRADO ({ruta_sello.name}, fecha "
+            f"{fecha_sello.isoformat()}): re-ejecutá --leer antes de codificar")
+    elif fecha_sello > hoy:
+        errores.append(
+            f"sello de lectura previa con fecha FUTURA ({ruta_sello.name}) — "
+            "no puede probar una lectura anterior")
+    else:
+        base = str(datos.get("base", "")).strip()
+        if base and len(base) >= 7:
+            out, rc = _run(["git", "show", "-s", "--format=%ct", base])
+            if rc == 0 and out.strip().isdigit():
+                t_base = int(out.strip())
+                mas_nuevo = None
+                for f in archivos_prod:
+                    p = RAIZ / f
+                    if p.exists():
+                        t_arch = int(p.stat().st_mtime)
+                        if t_arch < t_base and (mas_nuevo is None
+                                                or t_arch < mas_nuevo):
+                            mas_nuevo = t_arch
+                if mas_nuevo is not None:
+                    errores.append(
+                        f"sello emitido DESPUÉS de que el código existía "
+                        f"({ruta_sello.name} selló sobre base {base[:7]}, pero "
+                        "hay archivos del cambio más viejos que ese commit) — "
+                        "la lectura no puede probarse anterior al código")
+    return errores
+
+
+def evidencia_ci_ok(cambio_hash):
+    """En CI, la evidencia del cambio debe estar COMITEADA en HEAD.
+
+    Endurece la cadena contra --no-verify: el expediente ya se lee de HEAD
+    (--ci); aquí se exige además que auditoria/evidencia/<cambio_hash>.json
+    exista en HEAD, con el mismo cambio_hash, y sin oráculos fallidos.
+    """
+    if not cambio_hash:
+        return ["cambio_hash vacío: no se puede atar la evidencia del cambio"]
+    rel = f"auditoria/evidencia/{cambio_hash}.json"
+    out, rc = _run(["git", "show", f"HEAD:{rel}"])
+    if rc != 0:
+        return [
+            f"falta la evidencia COMITEADA del cambio: {rel} — "
+            "ejecutá --verificar en local (escribe la evidencia) y commiteala "
+            "con el PR"]
+    try:
+        ev = json.loads(out)
+    except json.JSONDecodeError:
+        return [f"evidencia comiteada ILEGIBLE: {rel}"]
+    errores = []
+    if ev.get("cambio_hash") != cambio_hash:
+        errores.append(
+            f"la evidencia comiteada ({rel}) corresponde a otro cambio_hash "
+            f"({ev.get('cambio_hash')}) — re-ejecutá --verificar y commiteala")
+    fallidos = [r for r, ok in (ev.get("oraculos") or {}).items() if not ok]
+    if fallidos:
+        errores.append(
+            f"la evidencia comiteada ({rel}) registra oráculos FALLIDOS: "
+            + ", ".join(fallidos))
+    return errores
 
 
 def citas_de_archivo(ruta):
@@ -794,7 +894,8 @@ def cmd_verificar(args):
         return 0
     errores, avisos, detalle = verificar(
         archivos, desde=args.desde, me=args.me, modo=args.modo,
-        con_oraculos=not args.sin_oraculos, ci=args.ci)
+        con_oraculos=not args.sin_oraculos, ci=args.ci,
+        exigir_sello=args.exigir_sello)
     for a in avisos:
         print(f"[aviso] {a}")
     if not detalle.get("archivos_produccion"):
@@ -867,6 +968,9 @@ def main():
                     help="lee expediente/evidencia desde HEAD (gate de servidor)")
     ap.add_argument("--sin-oraculos", action="store_true",
                     help="no ejecuta oráculos (solo diagnóstico)")
+    ap.add_argument("--exigir-sello", action="store_true",
+                    help="BLOQUEA si no hay sello de lectura previa (usado por el "
+                         "pre-commit para garantizar leer ANTES de codificar)")
     ap.add_argument("--forzar", action="store_true", help="regenera el expediente")
     args = ap.parse_args()
 

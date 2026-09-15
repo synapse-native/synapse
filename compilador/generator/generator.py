@@ -343,22 +343,28 @@ def _contar_escuchar_emision(
     total = [0]
 
     def _walk(nodo):
+        # F3-7 (fix): el conteo debe replicar el ORDEN de emision de visitar(),
+        # que SI recorre los cuerpos de las funciones. Antes _walk solo recursaba
+        # cuando el nodo YA era SentenciaEscuchar: un 'escuchar' dentro de una
+        # funcion nunca se contaba -> faltaba 'extern void _listener_N' ->
+        # "'_listener_1' undeclared" en C. Ahora recursa SIEMPRE por los mismos
+        # atributos que visita el generador (patron _prescan_dividir).
         if isinstance(nodo, SentenciaEscuchar):
             total[0] += 1
-            for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
-                         'expresion', 'objeto', 'condicion', 'accion_critica',
-                         'plan_b', 'inicializacion', 'incremento', 'casos',
-                         'valor', 'canal', 'funcion',
-                         'cuerpo_critico', 'cuerpo_atrapar'):
-                hijo = getattr(nodo, attr, None)
-                if hijo is None:
-                    continue
-                if isinstance(hijo, list):
-                    for h in hijo:
-                        if hasattr(h, '__dict__'):
-                            _walk(h)
-                elif hasattr(hijo, '__dict__'):
-                    _walk(hijo)
+        for attr in ('cuerpo', 'cuerpo_sino', 'sentencias', 'argumentos',
+                     'expresion', 'objeto', 'condicion', 'accion_critica',
+                     'plan_b', 'inicializacion', 'incremento', 'casos',
+                     'valor', 'canal', 'funcion',
+                     'cuerpo_critico', 'cuerpo_atrapar'):
+            hijo = getattr(nodo, attr, None)
+            if hijo is None:
+                continue
+            if isinstance(hijo, list):
+                for h in hijo:
+                    if hasattr(h, '__dict__'):
+                        _walk(h)
+            elif hasattr(hijo, '__dict__'):
+                _walk(hijo)
 
     funciones = sorted(
         [s for s in ctx.programa.sentencias if isinstance(s, DefinicionFuncion)],
@@ -444,6 +450,15 @@ def visitar(ctx: GeneratorContext, nodo: Nodo):
         ctx.dec_indent()
         ctx.write_line("}")
     elif isinstance(nodo, SentenciaExpr):
+        # R89/bridge fix: el puente canonico envuelve sentencias-expresion de
+        # canal en SentenciaExpr (plano_a_programa). Antes se degradaban a
+        # expr_a_c() -> "0;": el envio por canal NUNCA se emitia en la ruta .syq.
+        # Despachar al visitador real, igual que en el nivel de sentencia.
+        if isinstance(nodo.expr, (SentenciaEnviarCanal, SentenciaEscuchar,
+                                  SentenciaLanzar, SentenciaRecuperar,
+                                  SentenciaRetornar)):
+            visitar(ctx, nodo.expr)
+            return
         val = expr_a_c(ctx, nodo.expr)
         if isinstance(nodo.expr, ExprAsm):
             if nodo.expr.expr is not None:
@@ -577,7 +592,7 @@ def _emitir_error_defines(ctx: GeneratorContext):
             "ERR_SEM_ESTRUCTURA_NO_DEFINIDA": 20,
             "ERR_SEM_CAMPO_NO_EXISTE": 21,
             "ERR_SEM_VAR_MOVIDA": 22,
-            "ERR_MEM_USE_AFTER_MOVE": 23,  # cumple Manual 2 9 (canonico; era ACCESO_MEMORIA_MOVIDA=23)
+            "ERR_MEM_USE_AFTER_MOVE": 23,  # cumple Manual 2 §5.1 (error de movimiento)
             "ERR_SEM_RESULTADO_SIN_DESEMPAQUETAR": 24,
             "ERR_MANIFEST_NOT_FOUND": 25,
             "ERR_MODULE_STD_NOT_FOUND": 26,
@@ -912,6 +927,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "CanalConcurrencia* canal_crear(uint32_t capacidad)",
             "void canal_enviar(CanalConcurrencia* canal, void* paquete)",
             "void* canal_recibir(CanalConcurrencia* canal, bool* cerrado)",
+            "void canal_enviar_texto(CanalConcurrencia* canal, CadenaSegura t)",
+            "CadenaSegura canal_recibir_texto(CanalConcurrencia* canal, bool* cerrado)",
             "void canal_destruir(CanalConcurrencia* canal)",
             "void cerrar(CanalConcurrencia* canal)",
         ]:

@@ -1,4 +1,4 @@
-// cumple Manual 6 7: runtime de concurrencia
+// cumple Manual 5 §2: runtime de concurrencia
 // synapse_rt_concurrency.c �?" Concurrency module for Synapse runtime
 // Extracted from synapse_rt.c: channels, thread tracker (thread-safe console
 // I/O moved to runtime/core/io.c, F3-1)
@@ -154,6 +154,24 @@ static void _canal_parquear_emisor(CanalConcurrencia* canal, void* paquete) {
     pthread_mutex_unlock(&canal->mutex);
     _fibra_parquear();
     free(n);
+}
+
+// F4-6 (Manual 5 §3.4/§4.2): enviar un `texto` (CadenaSegura) por un canal.
+// CadenaSegura (16 bytes) NO cabe en un void* (8 en x64): se copia a heap y
+// viaja el puntero; canal_recibir_texto lo desreferencia y libera. Paridad
+// exacta con el par canal_enviar/canal_recibir del runtime.
+void canal_enviar_texto(CanalConcurrencia* canal, CadenaSegura t) {
+    if (!canal) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: canal nulo en canal_enviar_texto\n");
+        return;
+    }
+    CadenaSegura* copia = (CadenaSegura*)malloc(sizeof(CadenaSegura));
+    if (!copia) {
+        fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en canal_enviar_texto\n");
+        return;
+    }
+    *copia = t;
+    canal_enviar(canal, (void*)copia);
 }
 
 void canal_enviar(CanalConcurrencia* canal, void* paquete) {
@@ -336,6 +354,23 @@ void* canal_recibir(CanalConcurrencia* canal, bool* cerrado) {
         // Hilo OS: bloqueo pthread (comportamiento previo F3-6).
         pthread_cond_wait(&canal->no_vacio, &canal->mutex);
     }
+}
+
+// F4-6 (Manual 5 §3.4/§4.2): recibir un `texto` (CadenaSegura) de un canal.
+// El emisor envía el struct POR VALOR: si cabe en un void* (x64: 16 bytes > 8,
+// no cabe) se copia a heap y se envía el puntero; aquí se desreferencia y se
+// libera. CadenaSegura = { int longitud; const char* datos; } (Manual 2 §4.1).
+CadenaSegura canal_recibir_texto(CanalConcurrencia* canal, bool* cerrado) {
+    CadenaSegura vacio = { 0, NULL };
+    void* p = canal_recibir(canal, cerrado);
+    if (!p) {
+        if (cerrado && !*cerrado) *cerrado = true; // NULL real == cierre (F4-6)
+        return vacio;
+    }
+    // El paquete es un CadenaSegura* a heap (canal_enviar_texto) — por valor.
+    CadenaSegura t = *(CadenaSegura*)p;
+    free(p);
+    return t;
 }
 
 void cerrar(CanalConcurrencia* canal) {

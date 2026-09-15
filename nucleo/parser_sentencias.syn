@@ -1,6 +1,6 @@
 #lang: es
-// cumple Manual 1 3: parser
-# cumple Manual 8 4.1: compilador nativo S2
+// cumple Manual 2 §1.3: parser
+# cumple Manual 8 §4.1: compilador nativo S2
 // R29 (regla 13, modularizacion): sentencias de control de flujo extraidas de
 // nucleo/parser.syn (1,511 lineas -> parser.syn 486 + sentencias 553 +
 // declaraciones 420 + canales 52). Diagnostico FASE A (2026-08-07): parser.syn
@@ -79,44 +79,58 @@ funcion parsear_si(est: ParserEst) -> entero:
     ultimo_sino = 0
     si token_mirar(est) == T_SINO:
         token_avanzar(est)
-        si token_esperar(est, T_DOSPUNTOS) == 0:
-            retornar 0
-        si token_mirar(est) == T_NUEVALINEA:
-            token_avanzar(est)
-            mientras token_mirar(est) == T_NUEVALINEA:
-                token_avanzar(est)
-            si token_mirar(est) == T_INDENTAR:
-                token_avanzar(est)
-                mientras r == 1:
-                    t = token_mirar(est)
-                    si t == T_NUEVALINEA:
-                        token_avanzar(est)
-                        siguiente
-                    si t == T_DESINDENTAR:
-                        token_avanzar(est)
-                        r = 0
-                        romper
-                    si t == T_FIN:
-                        r = 0
-                        romper
-                    stmt = parsear_sentencia(est)
-                    si stmt != 0:
-                        si primero_sino == 0:
-                            primero_sino = stmt
-                        sino:
-                            inseguro:
-                                asm("est->nodos[ultimo_sino].hermano = stmt")
-                        ultimo_sino = stmt
-                    sino:
-                        // Anti-cuelgue (paridad A3.1)
-                        token_avanzar(est)
-                    siguiente
+        // cumple Manual 2 §3: T_SINO — 'sino si' (cadena else-if) es azucar de
+        // un si ANIDADO como cuerpo del sino: paridad exacta con el espejo
+        // _P_si (parser.c L1879-1883), donde el else simplemente anida el si
+        // siguiente (SentenciaSi.cuerpo_sino = [SentenciaSi anidado], Manual 2
+        // §L365). Antes T_SINO caia al parser_sinc_skip de parsear_sentencia
+        // (se comia el 'sino' en silencio) y el ':' siguiente producia
+        // 'Token inesperado COLON': NINGUN archivo con 'sino si' compilaba
+        // (nucleo/llvm_backend.syn, syquex/parser.syn, opensyn/, build/syq_frontend.syn).
+        si token_mirar(est) == T_SI:
+            stmt_sino_si = parsear_si(est)
+            si stmt_sino_si != 0:
+                primero_sino = stmt_sino_si
+                ultimo_sino = stmt_sino_si
         sino:
-            // FASE A (A4.5): cuerpo inline del sino (paridad _P_si).
-            stmt = parsear_sentencia(est)
-            si stmt != 0:
-                primero_sino = stmt
-                ultimo_sino = stmt
+            si token_esperar(est, T_DOSPUNTOS) == 0:
+                retornar 0
+            si token_mirar(est) == T_NUEVALINEA:
+                token_avanzar(est)
+                mientras token_mirar(est) == T_NUEVALINEA:
+                    token_avanzar(est)
+                si token_mirar(est) == T_INDENTAR:
+                    token_avanzar(est)
+                    mientras r == 1:
+                        t = token_mirar(est)
+                        si t == T_NUEVALINEA:
+                            token_avanzar(est)
+                            siguiente
+                        si t == T_DESINDENTAR:
+                            token_avanzar(est)
+                            r = 0
+                            romper
+                        si t == T_FIN:
+                            r = 0
+                            romper
+                        stmt = parsear_sentencia(est)
+                        si stmt != 0:
+                            si primero_sino == 0:
+                                primero_sino = stmt
+                            sino:
+                                inseguro:
+                                    asm("est->nodos[ultimo_sino].hermano = stmt")
+                            ultimo_sino = stmt
+                        sino:
+                            // Anti-cuelgue (paridad A3.1)
+                            token_avanzar(est)
+                        siguiente
+            sino:
+                // FASE A (A4.5): cuerpo inline del sino (paridad _P_si).
+                stmt = parsear_sentencia(est)
+                si stmt != 0:
+                    primero_sino = stmt
+                    ultimo_sino = stmt
     si primero_sino > 0:
         inseguro:
             asm("est->nodos[nodo].ptr_extra = primero_sino")

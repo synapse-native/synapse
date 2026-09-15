@@ -81,7 +81,9 @@ trabajando en este repositorio con opencode (Windows).
 4. Entrega el REPORTE DE MICRO-ENTREGABLE (formato exacto en GUIA_DE_GOBERNANZA).
 5. Commitea (hook automático: limpieza + verificador + gate de lectura + header ABI).
 6. Documenta DESPUÉS del commit con el hash real: fila en
-   `docs/AUDITORIA_ALINEACION_MANUALES.md` + reporte en `docs/reportes/R<N>.md`
+   `docs/auditorias/AUDITORIA_ALINEACION_MANUALES.md` (bitácora canónica;
+   las referencias históricas a la ruta sin la carpeta `auditorias/` son
+   previas a la migración) + reporte en `docs/reportes/R<N>.md`
    + actualiza `MEMORIA_PROYECTO.md` (fase en curso, hallazgos con resolución,
    lecciones).
 

@@ -1,5 +1,5 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
-# cumple Manual 8 4: toolchain de construcción
+# cumple Manual 2 §1.3: generación de código C para declaraciones Synapse
+# cumple Manual 8 §4: toolchain de construcción
 """
 Generación de código C para declaraciones: funciones, structs, variables,
 declaraciones externas, asignaciones de campo, envío de canales, etc.
@@ -434,12 +434,21 @@ def visitar_enviar_canal(ctx: GeneratorContext, nodo: SentenciaEnviarCanal):
         ctx.write_line(
             f"canal_enviar({canal}, {ctx.prim_float_to_ptr(valor)});"
         )
+    elif tipo_valor in ('texto', 'cadena', 'CadenaSegura'):
+        # F4-6 (Manual 5 §3.4/§4.2): CadenaSegura (16 bytes) no cabe en void*:
+        # el runtime provee el par canal_enviar_texto/canal_recibir_texto que
+        # copia el struct a heap y viaja el puntero. Antes el struct se
+        # reinterpretaba (void*)(struct) — al recibirlo se desreferenciaba
+        # el campo .datos como puntero (basura/segfault).
+        ctx.write_line(f"canal_enviar_texto({canal}, {valor});")
     else:
         ctx.write_line(f"canal_enviar({canal}, (void*)({valor}));")
     if (
         isinstance(nodo.valor, Identificador)
         and ctx._tipo_tiene_destructor(tipo_valor)
     ):
+        # Ownership transfer: el receptor libera (canal_recibir_texto hace
+        # free de la copia heap; el .datos lo libera el consumidor).
         ctx.write_line(f"{valor} = ({{0}});")
         ctx.unregister_var(nodo.valor.nombre)
 
@@ -831,15 +840,15 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
                     t_syn = st.tipo
                 else:
                     continue
-                decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+                decls.append((st.nombre, t_syn))
             elif isinstance(st, AsignacionVariable):
-                if st.nombre and not any(st.nombre in d for d in decls):
+                if st.nombre and not any(n == st.nombre for n, _ in decls):
                     t_syn = tipo_de_expr(ctx, st.expresion)
-                    decls.append(f"    {ctx.traducir_tipo_c(t_syn)} {st.nombre};")
+                    decls.append((st.nombre, t_syn))
             if hasattr(st, 'cuerpo') and isinstance(getattr(st, 'cuerpo'), list):
                 _scan_body(st.cuerpo)
     _scan_body(nodo.cuerpo)
-    decl_c = "\n".join(decls)
+    decl_c = "\n".join(f"    {ctx.traducir_tipo_c(t)} {n};" for n, t in decls)
     if decl_c:
         decl_c += "\n"
 
@@ -856,11 +865,27 @@ def visitar_escuchar(ctx: GeneratorContext, nodo: SentenciaEscuchar):
         f"void {listener_name}(void* arg) {{",
         f"    (void)arg;",
         f"    CanalConcurrencia* _canal = (CanalConcurrencia*)arg;",
-        f"    bool _cerrado;",
+        f"    bool _cerrado = false;",
     ] + body_parts + [
         f"}}",
     ]
     ctx._listener_funciones.append("\n".join(listener_lines))
+
+    # F3-7 (fix de vida util): el bloque del escuchar se emite en un BUFFER
+    # temporal con el MISMO ctx — visitar_declaracion registraba 'mensaje' en
+    # ctx._variables y en el scope actual de la funcion contenedora, y su
+    # destructor (_syn_texto_liberar) se emitia AL SALIR de la contenedora
+    # ("_syn_texto_liberar(mensaje)" en _principal_impl, variable inexistente
+    # alli). El listener es la unica dueña del ciclo de vida: al terminar el
+    # buffer, se retiran las variables del bloque del scope contenedor.
+    tocadas = []
+    for st in nodo.cuerpo:
+        if isinstance(st, DeclaracionVariable):
+            t_syn = st.tipo or (tipo_de_expr(ctx, st.expresion) if st.expresion else 'int')
+            tocadas.append((st.nombre, t_syn))
+    for nombre_v, _t in tocadas:
+        ctx.unregister_var(nombre_v)
+        ctx._variables.pop(nombre_v, None)
 
     ctx.write_line(
         f"fibra_crear("

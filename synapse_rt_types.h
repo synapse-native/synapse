@@ -11,7 +11,7 @@
 #include <pthread.h>
 
 // --- Core type definitions (deben coincidir exactamente con las emitidas por el generador) ---
-// cumple Manual 2 4.1: CadenaSegura = 16 bytes exactos (int longitud + pad4 + const char* datos).
+// cumple Manual 2 §4.1: CadenaSegura = 16 bytes exactos (int longitud + pad4 + const char* datos).
 // Sin campo es_externo: toda devolucion usa pool_alloc y el RAII libera con pool_free (Manual 2 §9.1).
 typedef struct { int longitud; const char* datos; } CadenaSegura;
 typedef struct { uint32_t filas; uint32_t columnas; float* datos; int es_mapeado; } Tensor;
@@ -39,7 +39,7 @@ typedef struct _EsperaFibra {
 } _EsperaFibra;
 
 // --- CanalConcurrencia (Buffer circular thread-safe + sync handoff) ---
-// cumple Manual 5 §3.4: tipo_tamano y destructor para gestión de memoria
+// cumple Manual 2 §12: tipo_tamano y destructor para gestión de memoria
 // M3: 16 campos vs manual 11 (+5 extensiones: espera_envio/tail y
 //     espera_recepcion/tail para bloqueo fiber-aware F4.2, tipo_tamano C5,
 //     destructor C6)
@@ -372,6 +372,10 @@ void synapse_esperar_fibras(void);
 CanalConcurrencia* canal_crear(uint32_t capacidad);
 void canal_enviar(CanalConcurrencia* canal, void* paquete);
 void* canal_recibir(CanalConcurrencia* canal, bool* cerrado);
+// F4-6 (Manual 5 §3.4/§4.2): par texto del canal — CadenaSegura viaja por valor
+// (heap interna), paridad con canal_enviar/canal_recibir.
+void canal_enviar_texto(CanalConcurrencia* canal, CadenaSegura t);
+CadenaSegura canal_recibir_texto(CanalConcurrencia* canal, bool* cerrado);
 void canal_destruir(CanalConcurrencia* canal);
 
 // ============================================================

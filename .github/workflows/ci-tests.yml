@@ -370,6 +370,9 @@ jobs:
           echo "Tests modificados a auditar:"
           echo "$CHANGED"
           python auditoria/auditar_calidad_tests.py --files "$CHANGED"
+          # Autenticación del MTO (bloqueante): entradas OBL con Manual § real
+          # y secciones no fabricadas (deuda visible como AVISO).
+          python auditoria/auditar_calidad_tests.py --solo-mto
 
   trazabilidad-codigo:
     # Cierre del bucle codigo<->manual para trabajo rutinario (no solo MTS):
@@ -404,7 +407,8 @@ jobs:
               *) continue ;;
             esac
             case "$f" in
-              *.c|*.h|*.py|*.syn) ;;
+              # .syq incluido: bindings y frontends Syquex son producción real
+              *.c|*.h|*.py|*.syn|*.syq) ;;
               *) continue ;;
             esac
             # Excluir paths no productivos (mirrors auditoria/registrar_lectura.py:es_produccion)
@@ -457,6 +461,10 @@ jobs:
     # brechas de trazabilidad (bitácora/reportes/hashes), deuda sin registrar,
     # código muerto en la raíz, módulos >1200 líneas sin registrar, ni funciones
     # nuevas sin requiere/garantiza (Manual 2 §12).
+    # ENDURECIMIENTO: este job define SU PROPIO paso 'id: base' (antes usaba
+    # steps.base sin definirlo => base vacía => git diff fallaba => 0 brechas
+    # FALSAS, el gate más fuerte del servidor estaba muerto) y falla por EXIT
+    # CODE del verificador (set -o pipefail), no por grep del log.
     runs-on: ubuntu-latest
     needs: lint-and-check
 
@@ -469,16 +477,78 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
+      - name: Calcular base para diff incremental
+        id: base
         run: |
-          python auditoria/verificar_alineacion.py 2>&1 | tee auditoria.log
-          echo ""
-          if grep -q "BRECHAS (errores de trazabilidad):" auditoria.log && \
-             grep -qE "^  \[!\]" auditoria.log; then
-            echo "❌ Brechas de alineación detectadas — resolver antes de mergear (regla 11)"
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar alineación con los manuales (auditoria/verificar_alineacion.py)
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+        run: |
+          set -o pipefail
+          python auditoria/verificar_alineacion.py --ci --base "$BASE_REF" 2>&1 | tee auditoria.log
+          # El verificador sale rc=1 con brechas; pipefail impide que el tee
+          # enmascare el código de salida. Sin brechas => rc=0 => gate verde.
+
+  mts-contraste:
+    # Gate MTS (docs/METODO_TRABAJO.md): exige plan_ME_*.md para toda modificación
+    # productiva y ejecuta contrastar.py (citación textual ↔ código ↔ oráculo).
+    # Así un commit con --no-verify no mergea: CI requiere plan + evidencia.
+    runs-on: ubuntu-latest
+    needs: lint-and-check
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Calcular base para diff incremental
+        id: base
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD~1)
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+
+      - name: Verificar plan_ME obligatorio para cambios productivos
+        run: |
+          BASE="${{ steps.base.outputs.ref }}"
+          # .syq incluido: bindings y frontends Syquex son producción real
+          PROD=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD -- '*.c' '*.h' '*.py' '*.syn' '*.syq' \
+                 | grep -vE '^(scripts/|tests/|auditoria/|docs/|benchmarks/|examples/|vscode-synapse/|.github/|.kilo/)' || true)
+          PLAN=$(git diff --name-only --diff-filter=ACM "$BASE" HEAD \
+                 | grep -E '^docs/plan_ME_.*\.md$' || true)
+          if [ -n "$PROD" ] && [ -z "$PLAN" ]; then
+            echo "❌ Cambios productivos sin docs/plan_ME_<id>.md:"
+            echo "$PROD"
             exit 1
           fi
-          echo "✅ Alineación verificada: 0 brechas"
+          if [ -z "$PLAN" ]; then
+            echo "Sin cambios productivos ni plan_ME (ok)"
+          fi
+
+      - name: Ejecutar contrastar.py sobre TODOS los plan_ME staged (multi-ME)
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+        run: |
+          # Todos los planes se contrastan JUNTOS: el vínculo estricto
+          # archivo<->requisito se evalúa contra el conjunto (multi-ME).
+          ARGS=""
+          for pf in $(git diff --name-only --diff-filter=ACM "$BASE_REF" HEAD | grep -E '^docs/plan_ME_.*\.md$' || true); do
+            echo "::group::Plan $pf"
+            ARGS="$ARGS --plan $pf"
+          done
+          if [ -n "$ARGS" ]; then
+            python auditoria/contrastar.py $ARGS --ci --base "$BASE_REF" || exit 1
+          else
+            echo "Sin planes staged (ok)"
+          fi
 
   alineacion:
     # Gate de alineación manual<->código (docs/gobernancia/CONTROL_ALINEACION.md).
@@ -486,7 +556,8 @@ jobs:
     # textuales del manual y evidencia ejecutada (auditoria/evidencia/<hash>.json),
     # atados a la huella de los archivos de producción de base...HEAD. Así un commit
     # hecho con --no-verify no mergea.
-    # Modo: ALINEACION_MODO=warn (informa) por defecto; poner 'block' para bloquear.
+    # Modo: ALINEACION_MODO=block (BLOQUEANTE) por defecto en CI; usar 'warn' solo para
+    # migraciones temporales.
     runs-on: ubuntu-latest
     needs: lint-and-check
 
@@ -507,9 +578,15 @@ jobs:
           echo "ref=$BASE" >> "$GITHUB_OUTPUT"
 
       - name: Verificar alineación manual<->código (alineacion.py)
-        run: |
-          python auditoria/alineacion.py --verificar \
-            --desde "${{ steps.base.outputs.ref }}" --ci --sin-oraculos \
-            --modo "${ALINEACION_MODO:-warn}"
         env:
-          ALINEACION_MODO: ${{ vars.ALINEACION_MODO || 'warn' }}
+          ALINEACION_MODO: ${{ vars.ALINEACION_MODO || 'block' }}
+          BASE_REF: ${{ steps.base.outputs.ref }}
+        run: |
+          # ENDURECIMIENTO: se ELIMINA --sin-oraculos. Los oráculos declarados
+          # en los expedientes SE EJECUTAN aquí en modo release (antes solo se
+          # declaraban en CI y no corrían en ninguna capa: falso verde).
+          # El expediente y su evidencia (auditoria/evidencia/<hash>.json) deben
+          # estar COMITEADOS en el PR: alineacion.py --ci los lee de HEAD.
+          python auditoria/alineacion.py --verificar \
+            --desde "$BASE_REF" --ci \
+            --modo "$ALINEACION_MODO"

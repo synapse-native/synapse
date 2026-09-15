@@ -204,34 +204,47 @@ _STOP = set(
 
 
 def vocab_comun(puntos, cita):
-    """True si --puntos comparte al menos un token significativo (>=4 letras, sin
-    stopwords) con el texto de la sección citada del manual. Anti-fabricación de
-    lecturas: el resumen debe usar vocabulario real de la sección, no texto genérico.
-    Si la sección no se resuelve, no bloquea (falla abierto)."""
+    """True si --puntos demuestra lectura REAL de la sección citada.
+
+    Anti-fabricación endurecida (el fallback antiguo aceptaba cualquier texto
+    de >=60 chars con >=5 tokens, p.ej. prosa genérica):
+      1. Solape directo: >=1 token significativo (>=4 letras, sin stopwords)
+         del resumen aparece en el texto de la sección citada.
+      2. Fallback estricto: si no hay solape con la sección (paráfrasis
+         legítima), el resumen debe ser sustancial (>=120 chars, >=8 tokens
+         significativos distintos) Y compartir >=2 tokens con el vocabulario
+         del manual citado COMPLETO (terminología de la ley, no de cualquier
+         texto).
+    Si la sección no se resuelve, no bloquea (falla abierto).
+    """
     try:
         secciones = parsear_cita(cita)
     except ValueError:
         return True
     texto_sec = ""
+    vocab_manuales = set()
     for num, secs in secciones:
         path = MANUALES_DIR / f"MANUAL {num}.md"
         if not path.exists():
             continue
         lineas = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        vocab_manuales |= set(re.findall(r"[a-záéíóúñ]{4,}",
+                                         sin_acentos(" ".join(lineas)).lower()))
         for i, linea in enumerate(lineas):
             mh = re.match(r"^#{2,4}\s*(\d+(?:\.\d+)?)[\.\:\s]", linea)
             if mh and mh.group(1) in secs:
                 texto_sec += " ".join(lineas[i:i + 6]) + " "
-    if not texto_sec.strip():
-        return True
     pal_p = set(re.findall(r"[a-záéíóúñ]{4,}", sin_acentos(puntos).lower()))
     pal_s = set(re.findall(r"[a-záéíóúñ]{4,}", sin_acentos(texto_sec).lower()))
     if len((pal_p & pal_s) - _STOP) >= 1:
         return True
-    # Fallback: un resumen detallado (>=60 chars y >=5 tokens significativos)
-    # se acepta aunque no solape vocabulario literal con la seccion (sinonimos).
+    if not texto_sec.strip():
+        return True
+    # Fallback estricto: paráfrasis sustancial con terminología del manual.
     tokens_p = [w for w in pal_p if w not in _STOP]
-    return len(puntos.strip()) >= 60 and len(set(tokens_p)) >= 5
+    solape_manual = len((pal_p & vocab_manuales) - _STOP)
+    return (len(puntos.strip()) >= 120 and len(set(tokens_p)) >= 8
+            and solape_manual >= 2)
 
 
 def entradas_hoy():
@@ -366,6 +379,25 @@ def cmd_registrar(args):
     return 0
 
 
+def vinculacion_archivos(reqs, entradas):
+    """Archivos requeridos SIN ninguna lectura que los liste explícitamente.
+
+    Cierra el hueco de cobertura global: bastaba con UNA lectura genérica del
+    día (o commiteada, en CI) para cubrir CUALQUIER archivo con la misma cita.
+    Ahora la cobertura de cita (cobertura) Y el vínculo explícito del archivo
+    en el registro (--archivos) deben cumplirse AMBOS. Los registros sin lista
+    de archivos (entradas manuales/editadas a mano) no cubren a nadie.
+    """
+    faltantes = []
+    for ruta in reqs:
+        vinculado = any(
+            ruta in (e.get("archivos") or []) for e in entradas
+        )
+        if not vinculado:
+            faltantes.append(ruta)
+    return sorted(faltantes)
+
+
 def cmd_verificar(_args, fallo_duro=True):
     mapa = cargar_mapa()
     cambiados = archivos_cambiados()
@@ -385,8 +417,20 @@ def cmd_verificar(_args, fallo_duro=True):
     entradas = entradas_hoy()
     ok, ruta, cita_faltante = cobertura(reqs, entradas)
     if ok:
+        sin_vinculo = vinculacion_archivos(reqs, entradas)
+        if sin_vinculo:
+            print("[FALTA] lecturas del día NO VINCULADAS a los archivos del cambio "
+                  "(la cita cubre, pero --archivos no lista el archivo):")
+            for r in sin_vinculo:
+                print(f"  - {r}")
+            print("")
+            print("Registra la lectura para ESTOS archivos:")
+            print('  python auditoria/registrar_lectura.py --registrar '
+                  '--archivos "<archivos>" --cita "<Manual N §S>" '
+                  '--puntos "<requisitos leidos>"')
+            return 1
         print(f"[OK] lectura previa verificada: {len(reqs)} archivo(s) "
-              f"cubierto(s) por {len(entradas)} registro(s) de hoy")
+              f"cubierto(s) y vinculado(s) por {len(entradas)} registro(s) de hoy")
         return 0
 
     print("[FALTA] lectura previa pendiente — regla 1 de gobernanza:")
@@ -429,8 +473,16 @@ def cmd_verificar_ci(args):
 
     ok, ruta, cita_faltante = cobertura(reqs, entradas)
     if ok:
+        sin_vinculo = vinculacion_archivos(reqs, entradas)
+        if sin_vinculo:
+            print("[FALTA] lecturas commiteadas NO VINCULADAS a los archivos del "
+                  "cambio (--archivos no los lista en ninguna entrada):")
+            for r in sin_vinculo:
+                print(f"  - {r}")
+            _ayuda_registro()
+            return 1
         print(f"[OK] lectura previa verificada en CI: {len(reqs)} archivo(s) "
-              f"cubierto(s) por {len(entradas)} registro(s) en lecturas.jsonl")
+              f"cubierto(s) y vinculado(s) en lecturas.jsonl")
         return 0
 
     print("[FALTA] lectura previa pendiente (regla 1) para producción modificada:")

@@ -28,7 +28,7 @@ int64_t str_eq(CadenaSegura a, CadenaSegura b) {
     return memcmp(a.datos, b.datos, (size_t)a.longitud) == 0;
 }
 
-// cumple Manual 2 9.1: concat usa pool_alloc (no malloc), RAII libera con pool_free
+// cumple Manual 2 §9.1: concat usa pool_alloc (no malloc), RAII libera con pool_free
 CadenaSegura concat(CadenaSegura a, CadenaSegura b) {
     int _tl = a.longitud + b.longitud;
     char* _buf = (char*)pool_alloc((size_t)(_tl + 1));
@@ -105,11 +105,13 @@ int _syn_ruta_en_directorio(CadenaSegura ruta, CadenaSegura dir) {
 
 // ============================================================
 // HERRAMIENTAS DEL AGENTE OPENSYN (Manual 7 §8 / §2.3)
+// cumple Manual 5 §1: estado mutable compartido prohibido — estas
+// funciones son puras/thread-safe (sin estado global mutable).
 // Lee el repositorio local sin telemetria: listar directorios y
 // capturar salida de comandos de solo lectura (git). pool_alloc.
 // ============================================================
 
-// cumple Manual 7 8: listar_directorio devuelve entradas "nombre/\n" (carpetas
+// cumple Manual 9 §5.7: listar_directorio devuelve entradas "nombre/\n" (carpetas
 // con "/") o "nombre\n" (archivos), separadas por '\n'. Vacía si la ruta no
 // existe o no es legible. Máx. 200 entradas / 16 KB (prompt del agente acotado).
 CadenaSegura _syn_listar_directorio(CadenaSegura ruta) {
@@ -168,7 +170,7 @@ CadenaSegura _syn_listar_directorio(CadenaSegura ruta) {
     return (CadenaSegura){ .longitud = used, .datos = pool };
 }
 
-// cumple Manual 7 8: capturar_comando ejecuta un comando de SOLO LECTURA
+// cumple Manual 9 §5.7: capturar_comando ejecuta un comando de SOLO LECTURA
 // (p.ej. git status/log) y devuelve su salida (máx 32 KB). El agente nunca
 // recibe ejecución arbitraria: el cliente fija el comando exacto.
 CadenaSegura _syn_capturar_comando(CadenaSegura cmd) {
@@ -177,7 +179,7 @@ CadenaSegura _syn_capturar_comando(CadenaSegura cmd) {
     char cmdbuf[4096];
     memcpy(cmdbuf, cmd.datos, (size_t)cmd.longitud);
     cmdbuf[cmd.longitud] = '\0';
-    // cumple Manual 7 8: capturar tambien stderr (git imprime "not a git repo"
+    // cumple Manual 9 §5.7: capturar tambien stderr (git imprime "not a git repo"
     // por stderr y no debe ensuciar el prompt del chat).
     char cmdfull[4200];
     snprintf(cmdfull, sizeof(cmdfull), "%s 2>&1", cmdbuf);

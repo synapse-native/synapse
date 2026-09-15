@@ -3,9 +3,10 @@
 // Texto byte-idéntico al original (CRLF preservado). Única edición (regla 11):
 // se eliminó la variable `total` (set-but-not-used) en _syn_http_get_archivo.
 //
-// Manual 8 §4.3-4.4 (gestor de paquetes Axon); path traversal protection
+// cumple Manual 8 §4.3-4.4: gestor de paquetes Axon; path traversal protection
 // en extracción TAR (regla 13 + canon D-9(d)). Consumido por nucleo/principal.syn
 // (asm blocks) y tests/*.c.
+// cumple Manual 6 §5: serialización binaria de canales remotos (Axon runtime)
 
 #include "synapse_rt_types.h"
 #include "runtime/core/network.h"  // _syn_socket/_syn_conectar/_syn_enviar/_syn_recibir/_syn_cerrar_socket (network.c)

@@ -761,16 +761,16 @@ int _syn_handshake_hello_verificar(const unsigned char* hello, int hello_len,
 }
 
 // ============================================================
-// 6. Aislamiento de Workspaces (Fase 31.1 — Manual 31 §2)
-// Manual 31 §2: Cada proyecto tiene su propio .axon/cache/ y axon.lock
-// cumple Manual 31 §2: aislamiento de workspaces con cache por proyecto
+// 6. Aislamiento de Workspaces (Fase 31.1 — Manual 8 §4.4)
+// Manual 8 §4.4: Cada proyecto tiene su propio .axon/cache/ y axon.lock
+// cumple Manual 8 §4.4: aislamiento de workspaces con cache por proyecto
 // ============================================================
 
 /* _syn_axon_workspace_cache_path: retorna la ruta del directorio de cache
  * para un proyecto dado. Formato: <ruta_proyecto>/.axon/cache/
  * Retorna: puntero a buffer estático (válido hasta la siguiente llamada),
  * o NULL en error.
- * cumple Manual 31 §2: cache por proyecto en .axon/cache/
+ * cumple Manual 8 §4.4: cache por proyecto en .axon/cache/
  */
 const char* _syn_axon_workspace_cache_path(const char* ruta_proyecto) {
     static char _ws_cache_buf[1024];

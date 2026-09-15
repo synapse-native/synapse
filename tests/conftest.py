@@ -186,12 +186,14 @@ _RT_BINARIOS_EXTRA = [
     ("test_mapa", "test_mapa.c", ["mapa.o", "lista.o"], []),
     # FASE 24: JSON parser + serializador (Manual 3 §12.2) — necesita json.o + memory.o (pool_alloc)
     ("test_json", "test_json.c", ["json.o", "synapse_rt_memory.o"], []),
-    # FASE 24: Math funciones (Manual 3 §12.1) — usa math.h (-lm ya en link flags)
-    ("test_math", "test_math.c", [], []),
-    # FASE 24: Texto manipulación (Manual 3 §12.1)
-    ("test_texto", "test_texto.c", [], []),
-    # FASE 24: Tiempo fecha/hora (Manual 3 §12.1)
-    ("test_tiempo", "test_tiempo.c", [], []),
+    # FASE 24: Math funciones (Manual 3 §12.1) — enlaza math.o (impl _syn_potencia/
+    # _syn_sqrt/_syn_sen/...); sin él, ld falla con undefined reference (TDD: el
+    # test C es la especificación y el runtime debe resolver sus símbolos).
+    ("test_math", "test_math.c", ["math.o"], []),
+    # FASE 24: Texto manipulación (Manual 3 §12.1) — enlaza texto.o (impl _syn_texto_*)
+    ("test_texto", "test_texto.c", ["texto.o"], []),
+    # FASE 24: Tiempo fecha/hora (Manual 3 §12.1) — enlaza tiempo.o (impl _syn_tiempo_*)
+    ("test_tiempo", "test_tiempo.c", ["tiempo.o"], []),
     # FASE 24: DB SQLite bundled (Manual 3 §12.1)
     # cumple Manual 3 12.1: enlazar db.o (impl _syn_db_*) + todo el runtime.
     # db.o depende de sqlite3.o y del resto del runtime; por eso objs=None
@@ -202,8 +204,8 @@ _RT_BINARIOS_EXTRA = [
     # D-1.2 (Manual 4 §5.2/§3.2/§3.3): emisión nativa del decremento al cierre
     # de scope (enlaza todo el runtime para resolver _syn_rc_*/_syn_arc_*).
     ("test_rc_scope_cleanup", "test_rc_scope_cleanup.c", None, []),
-    # FASE 24: Web HTTP server (Manual 3 §12.1)
-    ("test_web", "test_web.c", [], ["-lws2_32"]),
+    # FASE 24: Web HTTP server (Manual 3 §12.1) — enlaza web.o (impl _syn_web_*)
+    ("test_web", "test_web.c", ["web.o"], ["-lws2_32"]),
     # FASE 24.B: FFI Marshaling automático (Manual 4 §7)
     ("test_ffi_marshaling_auto", "test_ffi_marshaling_auto.c", ["ffi_marshaling.o", "synapse_rt_memory.o"], []),
     # ME_27_T4: Debugger time-travel (grabación) — M8 §5.2 / Manual 8 §3

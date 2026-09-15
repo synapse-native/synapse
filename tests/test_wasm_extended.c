@@ -228,6 +228,7 @@ int main(void) {
     emit("    call $console_log");
     emit("  )");
     emit(")");
+    printf("%s", emit_buf);
     CHECK(emit_contains("(import \"env\" \"console_log\""), "import console_log");
     CHECK(emit_contains("(import \"env\" \"read_i32\""), "import read_i32");
     CHECK(emit_contains("(export \"main\" (func $main))"), "export main");
@@ -249,6 +250,7 @@ int main(void) {
     emit("    return");
     emit("  )");
     emit(")");
+    printf("%s", emit_buf);
     CHECK(emit_contains("(global $counter (mut i32)"), "global mutable i32");
     CHECK(emit_contains("global.get $counter"), "global.get");
     CHECK(emit_contains("global.set $counter"), "global.set");
@@ -270,6 +272,7 @@ int main(void) {
     emit("  )");
     emit("  (export \"main\" (func $main))");
     emit(")");
+    printf("%s", emit_buf);
     CHECK(emit_contains("(import \"env\" \"js_alert\""), "import js_alert");
     CHECK(emit_contains("(import \"env\" \"js_get_element_by_id\""), "import js_get_element_by_id");
     CHECK(emit_contains("(import \"env\" \"js_set_text\""), "import js_set_text");

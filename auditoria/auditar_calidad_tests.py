@@ -5,16 +5,23 @@ auditoria/auditar_calidad_tests.py — Auditor de CALIDAD de tests (no de trazab
 Manual 7 §2.3 (los tests validan comportamiento real, no la presencia de texto en el
 artefacto generado) y Manual 3 §12.1 (estructura de módulos/tests).
 
-Detecta dos anti-patrones:
-  - SNIFF: un test afirma presencia de substring en el artefacto generado (c/syq/salida/...)
-           SIN compilarlo ni ejecutarlo (no es oráculo conductual).
+Anti-patrones detectados:
+  - SNIFF: un test afirma presencia de substring (literal o variable) en un
+           artefacto SIN compilarlo ni ejecutarlo (no es oráculo conductual).
   - SIN_CITA: un archivo test_*.py no cita ningún Manual (trazabilidad rota).
+  - SIN_OBL: un archivo test_*.py no cita ninguna entrada OBL-* del MTO
+             (gobernanza regla 5: toda prueba mapea a un oráculo obligatorio).
+             FATAL en modo incremental (--files/--base, el que usa CI);
+             AVISO en escaneo completo (--root) para no bloquear deuda heredada.
 
 Uso:
-  python auditoria/auditar_calidad_tests.py [--root tests] [--mto docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md]
+  python auditoria/auditar_calidad_tests.py [--root tests] [--files a.py,b.py] [--base <ref>]
+  python auditoria/auditar_calidad_tests.py --mto docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md
 
-Salida rc=0 si no hay problemas (y el MTO existe); rc=1 si hay problemas o falta el MTO.
-Esto lo hace apto como gate en CI: la suite no debe introducir sniff ni tests sin cita.
+Salida rc=0 si no hay problemas (y el MTO es válido); rc=1 si hay problemas o
+el MTO falta/carece de entradas OBL o cita secciones de manual inexistentes.
+Esto lo hace apto como gate en CI: la suite no debe introducir sniff ni tests
+sin cita ni sin mapeo OBL.
 """
 import argparse
 import os
@@ -24,12 +31,26 @@ import sys
 from pathlib import Path
 
 MAN_PAT = re.compile(r"Manual\s+\d+")
+OBL_PAT = re.compile(r"OBL-M[A-Z0-9]+-\d+")
 # assert ... in <artefacto generado>  (presencia de texto, no comportamiento)
 # Cada alternativa usa límites de palabra \b para evitar falsos positivos:
 #   - "c" como alias no debe capturar "canon" o "citas".
+# ENDURECIMIENTO: se añade un patrón GENÉRICO de assert-de-substring sobre
+# cualquier expresión (antes solo una lista fija de nombres de variable; los
+# sniff con otros nombres pasaban libres).
 SUBSTR_PAT = re.compile(
     r"assert\s+[^=]*\s+in\s+(?:syq|rag_c|src|codigo|salida|out|texto_generado|"
     r"\bcontent\b|\bcontenido\b|\bcontenido_archivo\b|\bc\b)",
+    re.IGNORECASE,
+)
+# ENDURECIMIENTO (patrón GENÉRICO, nivel AVISO salvo --estricto-sniff): assert
+# de literal sobre CUALQUIER variable. El patrón estrecho original deja pasar
+# los sniff con nombres fuera de su lista; este los hace visibles. Se reporta
+# como SNIFF_AMP (ampliado). La fataleidad exige decisión del Arquitecto
+# porque la deuda detectada incluye tests ya commiteados (inmutables sin
+# aprobación: gobernanza regla 5).
+SUBSTR_AMP_PAT = re.compile(
+    r"assert\s+(?:\"[^\"]*\"|'[^']*')\s+in\s+[A-Za-z_][A-Za-z0-9_\.\[\]\(\)]*",
     re.IGNORECASE,
 )
 # el test SÍ ejecuta/compila el artefacto -> no es sniff
@@ -50,18 +71,51 @@ def scan_file(path):
         return issues
     if not MAN_PAT.search(src):
         issues.append(("SIN_CITA", path, "archivo sin cita Manual"))
+    elif not OBL_PAT.search(src):
+        issues.append(("SIN_OBL", path,
+                       "cita Manual sin entrada OBL-* del MTO (regla 5: todo test "
+                       "mapea a un oráculo obligatorio)"))
     # dividir por funcion test_ (nivel modulo O metodo de clase) para analizar el cuerpo
     # cumple Manual 7 2.3: checks de codegen/exe en archivos con subprocess/gcc en nivel modulo
     blocks = re.split(r"(?m)^\s*def\s+test_", src)
     # El bloque 0 es el contenido antes del primer test_ (imports, helpers a nivel archivo)
     file_level = blocks[0]
     for blk in blocks[1:]:
-        if SUBSTR_PAT.search(blk) and not EXEC_PAT.search(blk) and not EXEC_PAT.search(file_level):
+        ejecuta = EXEC_PAT.search(blk) or EXEC_PAT.search(file_level)
+        if SUBSTR_PAT.search(blk) and not ejecuta:
             issues.append(("SNIFF", path, "assert substring en artefacto sin ejecutar/compilar"))
+        elif SUBSTR_AMP_PAT.search(blk) and not ejecuta:
+            issues.append(("SNIFF_AMP", path,
+                           "assert de literal sin compilar/ejecutar (patrón ampliado; "
+                           "reestructurar como oráculo conductual o ratificar Arquitecto)"))
     return issues
 
 
+def seccion_manual_existe(num, sec):
+    """True si §sec existe como encabezado en MANUAL <num>.md (anti-fabricación)."""
+    path = Path(__file__).resolve().parent.parent / "docs" / "manuales" / f"MANUAL {num}.md"
+    if not path.exists():
+        return False
+    texto = path.read_text(encoding="utf-8", errors="replace")
+    for linea in texto.splitlines():
+        m = re.match(r"^#{2,4}\s*(\d+(?:\.\d+)?)[\.\:\s]", linea)
+        if m and (m.group(1) == sec or m.group(1).startswith(sec + ".")):
+            return True
+    return False
+
+
 def check_mto(mto_path):
+    """Valida el MTO: existencia, entradas OBL con Manual §, secciones REALES
+    y trazabilidad de estados. Retorna (ok, mensaje).
+
+    Endurecimientos (el chequeo antiguo validaba solo formato):
+      - Toda sección de manual citada por una entrada OBL DEBE existir en el
+        manual vigente (cita fabricada => MTO inválido).
+      - Los estados se computan: entradas GREEN cuyo OBL no aparece citado por
+        ningún test del repo se listan como AVISO (deuda heredada, no bloquea
+        el gate pero queda visible; el CI incremental fata los tests nuevos
+        sin OBL, que es donde nace la deuda).
+    """
     if not os.path.exists(mto_path):
         return False, "MTO no encontrado"
     txt = open(mto_path, encoding="utf-8", errors="ignore").read()
@@ -72,10 +126,63 @@ def check_mto(mto_path):
     sin_man = [o for o in obl if not re.search(r"Manual\s+\d+\s+§", txt.split(o)[1].split("\n")[0])]
     if sin_man:
         return False, f"{len(sin_man)} entradas OBL sin Manual §"
-    return True, f"{len(obl)} entradas OBL validadas"
+
+    # (nuevo) secciones fabricadas en las entradas OBL: se reportan como AVISO.
+    # NO fatales aún: el MTO actual cita secciones renumeradas del Manual 7
+    # (§6/§7/§8) que ya no existen — es deuda de renumeración que solo el
+    # Arquitecto puede ratificar (el MTO es un manual; regla 5).
+    fabricadas = []
+    for line in txt.splitlines():
+        if "OBL-M" not in line:
+            continue
+        for m in re.finditer(r"Manual\s+(\d+)\s+§\s*(\d+(?:\.\d+)?)", line):
+            if not seccion_manual_existe(m.group(1), m.group(2)):
+                oid = re.search(r"OBL-M[A-Z0-9]+-[0-9]+", line)
+                fabricadas.append(
+                    f"{oid.group(0) if oid else '?'} -> Manual {m.group(1)} §{m.group(2)}")
+    msg = f"{len(obl)} entradas OBL validadas"
+    if fabricadas:
+        msg += (f"; AVISO: {len(fabricadas)} citas a secciones INEXISTENTES "
+                f"(deuda de renumeración, requiere ratificación del Arquitecto): "
+                + ", ".join(fabricadas[:5]))
+
+    # (nuevo) estados GREEN sin test que cite el OBL: deuda visible, no fatal
+    green_sin_test = []
+    raiz_tests = Path(__file__).resolve().parent.parent / "tests"
+    citados = set()
+    if raiz_tests.exists():
+        for p in raiz_tests.rglob("test_*.py"):
+            try:
+                citados |= set(OBL_PAT.findall(p.read_text(encoding="utf-8", errors="replace")))
+            except OSError:
+                continue
+    for line in txt.splitlines():
+        if "OBL-M" not in line or "GREEN" not in line:
+            continue
+        oid = re.search(r"OBL-M[A-Z0-9]+-[0-9]+", line)
+        if oid and oid.group(0) not in citados:
+            green_sin_test.append(oid.group(0))
+    if green_sin_test:
+        msg += (f"; AVISO: {len(green_sin_test)} entradas GREEN sin test que las "
+                f"cite (deuda heredada): {', '.join(green_sin_test[:5])}...")
+    return True, msg
 
 
 RAIZ = Path(__file__).resolve().parent.parent
+# cumple Manual 2 §12: el MTO por defecto se resuelve anclado al repo (RAIZ),
+# nunca al CWD del llamador — gates importables desde cualquier directorio.
+MTO_DEFECTO = RAIZ / "docs" / "manuales" / "MANUAL_TESTS_OBLIGATORIOS.md"
+
+
+def _resolver_mto(mto_arg):
+    """Devuelve la ruta del MTO a validar.
+
+    --mto explícito: respeta tal cual (si es relativo, relativo al CWD del
+    llamador). Sin --mto: usa el MTO del repo vía RAIZ, independiente del CWD.
+    """
+    if mto_arg and mto_arg != "docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md":
+        return mto_arg
+    return str(MTO_DEFECTO)
 
 
 def determinar_archivos(args):
@@ -119,22 +226,48 @@ def determinar_archivos(args):
 def main():
     ap = argparse.ArgumentParser(description="Auditor de calidad de tests")
     ap.add_argument("--root", default="tests")
-    ap.add_argument("--mto", default="docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md")
+    ap.add_argument("--mto", default="docs/manuales/MANUAL_TESTS_OBLIGATORIOS.md",
+                    help="ruta del MTO (por defecto: anclada al repo, no al CWD)")
     ap.add_argument("--files", default="",
                     help="lista de archivos a escanear (separados por coma/espacio/newline); ignora --root")
     ap.add_argument("--base", default="",
                     help="ref git: solo escanea test_*.py modificados en <base>...HEAD (modo incremental CI)")
+    ap.add_argument("--estricto-sniff", action="store_true",
+                    help="SNIFF_AMP (patrón ampliado) también FATAL — activar cuando "
+                         "el Arquitecto ratifique la deuda detectada")
+    ap.add_argument("--solo-mto", action="store_true",
+                    help="solo valida el MTO (sin escanear tests); usado por el pre-commit")
     args = ap.parse_args()
+
+    # Modo incremental (el que usa CI): el gate fata SIN_OBL porque todo test
+    # NUEVO/MODIFICADO debe mapear a su OBL. En escaneo completo queda en AVISO.
+    incremental = bool(args.files or args.base)
+
+    mto_path = _resolver_mto(args.mto)
+
+    if args.solo_mto:
+        mto_ok, mto_msg = check_mto(mto_path)
+        print(f"[MTO] {mto_msg}")
+        sys.exit(0 if mto_ok else 1)
 
     problems = []
     for path in determinar_archivos(args):
         if os.path.isfile(path):
-            problems += scan_file(path)
+            for issue in scan_file(path):
+                # SIN_OBL solo es fatal en modo incremental (CI): en escaneo
+                # completo es deuda heredada y no debe bloquear el gate.
+                if issue[0] == "SIN_OBL" and not incremental:
+                    continue
+                problems.append(issue)
 
-    mto_ok, mto_msg = check_mto(args.mto)
+    mto_ok, mto_msg = check_mto(mto_path)
 
     sin_cita = [p for p in problems if p[0] == "SIN_CITA"]
     sniff = [p for p in problems if p[0] == "SNIFF"]
+    sin_obl = [p for p in problems if p[0] == "SIN_OBL"]
+    amp = [p for p in problems if p[0] == "SNIFF_AMP"]
+    if amp and args.estricto_sniff:
+        problems = [p for p in problems if p[0] != "SNIFF_AMP"]  # ya fatales
 
     for kind, path, msg in problems:
         try:
@@ -142,7 +275,9 @@ def main():
         except ValueError:
             rel = os.path.abspath(path)
         print(f"[{kind}] {rel}: {msg}")
-    print(f"\nRESUMEN: {len(sin_cita)} SIN_CITA, {len(sniff)} SNIFF")
+    print(f"\nRESUMEN: {len(sin_cita)} SIN_CITA, {len(sniff)} SNIFF, "
+          f"{len(sin_obl)} SIN_OBL{' (fatales en modo incremental)' if sin_obl else ''}, "
+          f"{len(amp)} SNIFF_AMP{' (FATALES con --estricto-sniff)' if amp else ''}")
     print(f"[MTO] {mto_msg}")
 
     if problems or not mto_ok:

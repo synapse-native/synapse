@@ -1,5 +1,5 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
-# cumple Manual 8 4: toolchain de construcción
+# cumple Manual 2 §1.3: infraestructura Python del compilador Synapse
+# cumple Manual 8 §4: toolchain de construcción
 from typing import List, Optional
 
 from compilador.ast_nodes import (
@@ -36,7 +36,16 @@ class ParserControlMixin(ParserBase):
         cuerpo_sino = None
         if self._mirar().tipo == TokenID.SINO:
             self._avanzar()
-            if self._esperar(TokenID.COLON) is None:
+            if self._mirar().tipo == TokenID.SI:
+                # Manual 2 §L104/§L130: 'sino si' (cadena else-if) es azucar de
+                # un SI ANIDADO como cuerpo del sino — paridad con el espejo _P_si
+                # (parser.c L1879-1883), donde el else anida el si siguiente
+                # (SentenciaSi.cuerpo_sino = [SentenciaSi anidado], §L365).
+                # Antes se exigia COLON tras 'sino' y la sincronizacion se comia
+                # la cadena: ningun 'sino si' compilaba.
+                anidado = self._parsear_si()
+                cuerpo_sino = [anidado] if anidado is not None else []
+            elif self._esperar(TokenID.COLON) is None:
                 self._sincronizar(_SYNC_STMT)
             else:
                 if self._mirar().tipo == TokenID.NEWLINE:

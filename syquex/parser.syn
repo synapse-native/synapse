@@ -94,9 +94,18 @@ funcion sq_declaracion(est: ParserEst) -> entero:
         mientras token_mirar(est) == T_PUNTO:
             token_avanzar(est)
             sub = sq_id(est)
-            // Concatena nombre.sub al span del nodo
-            inseguro:
-                asm("{ const char* _punto = \".\"; int _np = est->nodos[nombre].ptr_str; int _nl = est->nodos[nombre].len_str; int _sp = est->nodos[sub].ptr_str; int _sl = est->nodos[sub].len_str; int _total = _nl + 1 + _sl; char* _buf = (char*)sq_arena_alloc(_total); memcpy(_buf, (const char*)(uintptr_t)_np, _nl); _buf[_nl] = '.'; memcpy(_buf + _nl + 1, (const char*)(uintptr_t)_sp, _sl); est->nodos[nombre].ptr_str = (int)(uintptr_t)_buf; est->nodos[nombre].len_str = _total; }")
+        // Concatena nombre.sub al span del nodo
+        // cumple Manual 2 §12: el blob anterior llamaba a sq_arena_alloc(),
+        // funcion INEXISTENTE (declaracion implicita = ERROR en GCC16) y
+        // dejaba el frontend Syquex sin enlazar (exe stale perpetuo). Ahora
+        // escribe en sbuf/str_pos del SqLexerBuffers (syquex/lexer.syn, 1 MiB,
+        // convencion del propio lexer en token_push_texto) — disponible en
+        // TODO contexto que incluya lexer+parser, incluido el combinado de
+        // tests/syquex/test_parser.py (que no enlaza traductor.syn ni su
+        // trad_arena). Reconstruye los punteros 64-bit con sq_tokens_hi (R88,
+        // paridad sq_copiar_nombre).
+        inseguro:
+            asm("{ struct SqLexerBuffers* _b_imp=(struct SqLexerBuffers*)sq_buffers(); int* _hi_imp=(int*)sq_tokens_hi(); int _nl=est->nodos[nombre].len_str; int _sl=est->nodos[sub].len_str; int _total=_nl+1+_sl; if (_b_imp && _b_imp->sbuf && _hi_imp && _nl>=0 && _sl>=0 && _b_imp->str_pos+_total<1048575) { char* _buf=(char*)_b_imp->sbuf+_b_imp->str_pos; uintptr_t _pn=((uintptr_t)(unsigned)_hi_imp[nombre]<<32)|(unsigned)est->nodos[nombre].ptr_str; uintptr_t _ps=((uintptr_t)(unsigned)_hi_imp[sub]<<32)|(unsigned)est->nodos[sub].ptr_str; memcpy(_buf,(const char*)_pn,_nl); _buf[_nl]='.'; memcpy(_buf+_nl+1,(const char*)_ps,_sl); _b_imp->str_pos+=_total; uintptr_t _p=(uintptr_t)_buf; est->nodos[nombre].ptr_str=(int)(_p&0xFFFFFFFFu); est->nodos[nombre].len_str=_total; _hi_imp[nombre]=(int)(_p>>32); } }")
         // M6: alias — importar mod.sub como alias (Manual 3 §3 L72)
         si token_mirar(est) == T_IDENTIFICADOR:
             // Verificar si el lexema es "como" (keyword contextual en import)
@@ -851,10 +860,12 @@ funcion sq_sentencia(est: ParserEst) -> entero:
         retornar n
     si t == T_ESCUCHAR:
         // L5: Manual 3 §3 — escuchar IDENTIFICADOR ":" NEWLINE INDENT bloque DEDENT
+        // El ':' lo consume sq_bloque (dentro de sq_cuerpo_bloque_sq), igual que
+        // en si/mientras/para: consumirlo AQUI también era un doble token_esperar
+        // que dejaba hay_error=true y abortaba la traduccion (SYQ_JSON_ERROR=-3)
+        // en TODO 'escuchar c:' con cuerpo.
         token_avanzar(est)
         nombre_esc = sq_id(est)
-        inseguro:
-            asm("token_esperar(est, T_DOSPUNTOS)")
         ch_escuchar = nombre_esc
         cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
         n = sq_nuevo(est, NODO_ESCUCHAR, linea, col)
@@ -971,6 +982,21 @@ funcion sq_para(est: ParserEst) -> entero:
         forma_en = 1
         token_avanzar(est)
         iterable = parse_expresion_sq(est)
+        // Manual 3 §3 L133: 'en' itera sobre LISTA o RANGO. El parser de
+        // expresiones no consume T_PUNTOPUNTO (SQ_EXPR_INESPERADA tipo=85):
+        // el rango '0..10' quedaba sin parsear y el frontend emitia
+        // SYQ_JSON_ERROR=-3 (nada con 'para x en a..b' compilaba via .syq).
+        // Si sigue '..' es RANGO: desagua al desugar MIENTRAS con paso 1
+        // (misma semantica que 'para i = a .. b', §L132). Cumple Manual 3 §3.
+        si token_mirar(est) == T_PUNTOPUNTO:
+            token_avanzar(est)
+            inicio_r = iterable
+            fin_r = parse_expresion_sq(est)
+            paso_r = sq_nuevo(est, NODO_NUMERO, linea, col)
+            inseguro:
+                asm("static const char _SQ_ONE_R[] = \"1\";")
+                asm("if (paso_r >= 0 && paso_r < est->total_nodos) { est->nodos[paso_r].ptr_str = (int)(uintptr_t)_SQ_ONE_R; est->nodos[paso_r].len_str = 1; }")
+            retornar sq_para_desugar(est, idv, inicio_r, fin_r, paso_r, linea, col)
         cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
         n = sq_nuevo(est, NODO_PARA_EN, linea, col)
         inseguro:
@@ -995,6 +1021,22 @@ funcion sq_para(est: ParserEst) -> entero:
         inseguro:
             asm("static const char _SQ_ONE[] = \"1\";")
             asm("if (expr_paso >= 0 && expr_paso < est->total_nodos) { est->nodos[expr_paso].ptr_str = (int)(uintptr_t)_SQ_ONE; est->nodos[expr_paso].len_str = 1; }")
+    // Desagua común (helper): evita duplicar la maquinaria entre la forma
+    // C-style y la forma rango 'en a..b' (Manual 3 §3 L132/L133).
+    retornar sq_para_desugar(est, idv, inicio, fin, expr_paso, linea, col)
+
+// Helper común de desugar de bucles para (Manual 3 §3 L132/L133):
+// init i = inicio; mientras i < fin: cuerpo ... i = i + paso.
+// Usado por 'para i = a .. b [paso p]' y por 'para i en a..b' (paso fijo 1).
+// cumple Manual 3 §3
+funcion sq_para_desugar(est: ParserEst, idv: entero, inicio: entero, fin: entero, expr_paso: entero, linea: entero, col: entero) -> entero:
+    requiere:
+        idv > 0
+        inicio > 0 y fin > 0 y expr_paso > 0
+        linea >= 0 y col >= 0
+    garantiza:
+        _resultado_ >= 0
+        _resultado_ != idv
     cuerpo = sq_cuerpo_bloque_sq(est, linea, col)
     // Desugar a MIENTRAS: init ASIG(i,inicio); cond i .. fin → BINARIA '<'
     // con lexema "<"; incremento i = i + paso dentro del cuerpo.
@@ -1102,7 +1144,9 @@ funcion sq_intentar(est: ParserEst) -> entero:
     token_avanzar(est)
     // M9: forma funcional — intentar expr atrapar expr (Manual 3 §3 L148)
     // Detectar si es forma funcional (expresión sin NEWLINE) o bloque (con NEWLINE)
-    si token_mirar(est) != T_NUEVALINEA:
+    // La forma bloque SIEMPRE abre con ':' inmediato (intentar:), que sq_cuerpo_bloque_sq
+    // consume; ':' jamás inicia una expresión, así que si lo hay es forma bloque.
+    si token_mirar(est) != T_NUEVALINEA y token_mirar(est) != T_DOSPUNTOS:
         try_expr = parse_expresion_sq(est)
         si token_mirar(est) == T_ATRAPAR:
             token_avanzar(est)

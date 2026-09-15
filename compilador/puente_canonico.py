@@ -15,10 +15,11 @@
 #
 # Nodos sin equivalente en el AST tipado actual levantan
 # PuenteError con el id y el nombre canónico (fail-fast, sin
-# pérdida silenciosa): INTENTO(54), LISTA_LIT(55), MAPA_LIT(56),
-# PARA_EN(57) — cableado backend pendiente, registrado como
-# hallazgo H-R90-1.
+# pérdida silenciosa):  LISTA_LIT(55),  MAPA_LIT(56) — backend
+# Fase 24. INTENTO(54) → SentenciaRecuperar (Manual 6 §1.3 L111);
+# PARA_EN(57) → SentenciaMientras (Manual 3 §3 L133).
 # ============================================================
+
 
 import json
 from typing import Optional
@@ -65,12 +66,12 @@ NOMBRE_NODO = {
 # - FUSIONADOS: manejados inline dentro de otro nodo (ej. CONTRATO en FUNCION)
 # - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
 # - PENDIENTE_BACKEND: feature futura del roadmap
-# cumple Manual 3 11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
+# cumple Manual 3 §11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
+# cumple Manual 6 §5: NODO_INTENTO(54) se traduce al AST tipado S1 (SentenciaRecuperar).
+# cumple Manual 2 §12: NODO_PARA_EN(57) se desugarea a SentenciaMientras.
 NO_SOPORTADOS = {
-    54: "INTENTO (backend pendiente, hallazgo H-R90-1)",
     55: "LISTA_LIT (backend Fase 24 lib/lista)",
     56: "MAPA_LIT (backend Fase 24 lib/mapa)",
-    57: "PARA_EN (backend pendiente, hallazgo H-R90-1)",
 }
 
 ELIMINADOS_POR_TRADUCTOR = {
@@ -543,11 +544,10 @@ class _Puente:
         if t == 43:   # RECIBIR_CANAL — canal ->
             return con(ExprRecibirCanal(
                 canal=self._nodo(izq)))
-        # 54 INTENTO / 55 LISTA_LIT / 57 PARA_EN: backend pendiente (H-R90-1,
-        # Manual 1 §3.1 — sin equivalente en el AST tipado S1). Se rechazan
-        # fail-fast en el chequeo NO_SOPORTADOS al final de _nodo.
-        if t in (54, 55, 57):
-            pass  # cae al chequeo NO_SOPORTADOS
+        if t == 54:
+            return self._nodo_intento(i)
+        if t == 57:
+            return self._nodo_para_en(i)
 
         if t in NO_SOPORTADOS:
             raise PuenteError(
@@ -571,6 +571,65 @@ class _Puente:
 
     def _nodo_opt(self, idx: int):
         return self._nodo(idx) if idx > 0 else None
+
+    def _desbloque(self, idx: int) -> int:
+        while idx > 0 and self.tipo(idx) == 58:
+            idx = self.nodos[idx][4]
+        return idx
+
+    def _nodo_intento(self, i: int):
+        n = self.nodos[i]
+        lin, col = n[1], n[2]
+        izq, der = n[4], n[5]
+        crit = self.cadena(self._desbloque(izq)) if izq > 0 else []
+        atap = self.cadena(self._desbloque(der)) if der > 0 else []
+        var_exc = self.txt(i)
+        nodo = SentenciaRecuperar(
+            cuerpo_critico=crit,
+            cuerpo_atrapar=atap,
+            variable_excepcion=var_exc)
+        nodo.linea = lin
+        nodo.columna = col
+        return nodo
+
+    def _nodo_para_en(self, i: int):
+        n = self.nodos[i]
+        lin, col = n[1], n[2]
+        izq, der, extra = n[4], n[5], n[7]
+        var_loop = self.txt(izq)
+        iterable = self._nodo(der)
+        cuerpo = self.cadena(self._desbloque(extra)) if extra > 0 else []
+        idx_var = "_paraind"
+        if isinstance(iterable, Identificador):
+            iterable_name = iterable.nombre
+            condicion = OpBinaria(
+                izquierdo=Identificador(idx_var),
+                operador="<",
+                derecho=LlamadaFuncion(
+                    nombre="len", argumentos=[Identificador(iterable_name)]))
+            elem = ExprIndice(
+                expr=Identificador(iterable_name),
+                indice=Identificador(idx_var))
+        else:
+            raise PuenteError(
+                f"para..en: iterable '{var_loop}' debe ser un identificador")
+        cuerpo_loop = ([DeclaracionVariable(
+                           nombre=var_loop, tipo="", expresion=elem)]
+                       + cuerpo
+                       + [AsignacionVariable(
+                           nombre=idx_var,
+                           expresion=OpBinaria(
+                               izquierdo=Identificador(idx_var),
+                               operador="+",
+                               derecho=LiteralNumero(1)))])
+        result = SentenciaMientras(
+            condicion=condicion,
+            cuerpo=[DeclaracionVariable(
+                        nombre=idx_var, tipo="", expresion=LiteralNumero(0))]
+                     + cuerpo_loop)
+        result.linea = lin
+        result.columna = col
+        return result
 
     def cadena_ids(self, idx: int):
         out = []

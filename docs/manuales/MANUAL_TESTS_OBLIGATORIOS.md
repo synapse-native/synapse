@@ -61,6 +61,12 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M8-07 | Manual 8 §4.2/§5/§7 | CLI run / debug / opensyn | TDD | GREEN (test_cli_run_debug.py 16/16 PASS, 2026-08-31)
 - OBL-M8-08 | Manual 8 §1.4 | completion_symbols real (gap FFI RAII) | TDD | GREEN (verificado 2026-08-31)
 - OBL-M8-09 | Manual 8 §6.3 / Manual 7 §6.3 | Bucle de validación integrado en LSP | integración | GREEN
+- OBL-M8-10 | Manual 6 §5 | Aislamiento de workspaces en Axon (.axon/cache/, lockfile SHA-256) | integración | GREEN
+- OBL-M8-11 | Manual 3 §12 | Framework de testing nativo lib/pruebas.syq (assert, test, suite) | integración | GREEN
+- OBL-M8-12 | Manual 2 §12 | Linter nativo nucleo/lint.syn (5 reglas WARN_LINT_*) | integración | GREEN
+- OBL-M8-13 | Manual 2 §12 | Formateador nativo nucleo/formatter.syn (reglas de estilo) | integración | GREEN
+- OBL-M8-14 | Manual 9 §6.2 | Reportes CI/CD: JUnit XML + JSON en nucleo/principal.syn | integración | GREEN
+- OBL-M8-15 | Manual 9 §6.2 | Reporte de cobertura HTML en nucleo/principal.syn | integración | GREEN
 
 ## M9 — Distribución / F29 / F30
 - OBL-M9-01 | Manual 9 §5.7 / F29 | Detección de hardware `std/os.syn` | TDD | GREEN (ME-1 commit acd7bf8, 5/5 PASS)
@@ -70,6 +76,14 @@ debe dejar en verde. Toda prueba (`test_*.py`) debe mapear a una entrada `OBL-*`
 - OBL-M9-05 | Manual 9 §9 / F30 | Makefile / build.py reproducible | TDD | RED ← ME_30_T2
 - OBL-M9-06 | Manual 9 §9 / F30 | Distribución final empaquetada y firmada | TDD | RED ← ME_30_T3
 - OBL-M9-07 | Manual 9 §9 / F30 / Hito 8 | Release unificado (lanzamiento público) | TDD | RED ← ME_30_T4
+
+---
+
+## MCTRL — Sistema de control de gobernanza (auditoría)
+- OBL-MCTRL-01 | Manual 7 §2.3 | El gate MTS ejecuta los oráculos del plan en modo release; SKIP/vacío/fallo no es evidencia (contrastar.py) | integración | GREEN
+- OBL-MCTRL-02 | Manual 2 §12 | Trazabilidad anti-fabricación: citas 'cumple Manual' a secciones reales y vinculadas al plan; D-9 cubre .syn/.py/.c; .syq es producción; base CI nunca vacía (verificar_alineacion.py) | integración | GREEN
+- OBL-MCTRL-03 | Manual 7 §2.3 | El MTO se autentica: entradas OBL con Manual § real, secciones fabricadas visibles, estados GREEN trazados (auditar_calidad_tests.py --solo-mto) | integración | GREEN
+- OBL-MCTRL-04 | Manual 6 §5 | La evidencia queda atada al contenido: cambio_hash bloqueante, sello de lectura con frescura, evidencia comiteada exigida en CI (alineacion.py) | integración | GREEN
 
 ---
 
