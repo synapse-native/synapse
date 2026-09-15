@@ -1,3 +1,4 @@
+# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 # cumple Manual 2 §1.3: infraestructura Python del compilador Synapse
 # cumple Manual 8 §4: toolchain de construcción
 from typing import List, Optional

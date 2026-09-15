@@ -1,3 +1,4 @@
+# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 import os
 import re
 

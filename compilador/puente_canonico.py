@@ -1,3 +1,4 @@
+# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 # ============================================================
 # puente_canonico.py — SemNodo[] plano → AST tipado del S1 (R90)
 # ============================================================
@@ -67,7 +68,7 @@ NOMBRE_NODO = {
 # - NO_PRODUCIDOS: el frontend SyQuex no genera estos tipos (runtime nativo sí)
 # - PENDIENTE_BACKEND: feature futura del roadmap
 # cumple Manual 3 §11.1: todos los NODO_* estan categorizados (sin nodo sin categoria)
-# cumple Manual 6 §5: NODO_INTENTO(54) se traduce al AST tipado S1 (SentenciaRecuperar).
+# cumple Manual 6 §5.1: NODO_INTENTO(54) se traduce al AST tipado S1 (SentenciaRecuperar).
 # cumple Manual 2 §12: NODO_PARA_EN(57) se desugarea a SentenciaMientras.
 NO_SOPORTADOS = {
     55: "LISTA_LIT (backend Fase 24 lib/lista)",

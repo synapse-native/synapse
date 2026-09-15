@@ -36,10 +36,10 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "nucleo/verificador_formal.syn": ["Manual 2 §5"],
   "nucleo/lifetimes.syn": ["Manual 4 §4"],
   "syquex/lexer.syn": ["Manual 3 §1"],
-  "syquex/parser.syn": ["Manual 3 §3"],
+  "syquex/parser.syn": ["Manual 3 §3", "Manual 1 §1.1", "Manual 1 §5.1"],
   "syquex/traductor.syn": ["Manual 6 §1"],
   "runtime/core/memory.c": ["Manual 4 §2"],
-  "runtime/core/concurrency.c": ["Manual 5 §2"],
+  "runtime/core/concurrency.c": ["Manual 5 §2.1"],
   "runtime/core/ollama.c": ["Manual 7 §2.2"],
   "runtime/core/tui.c": ["Manual 5 §1"],
   "runtime/core/lsp.c": ["Manual 8 §1"],
@@ -47,9 +47,18 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "nucleo/lint.syn": ["Manual 3 §12"],
   "nucleo/formatter.syn": ["Manual 3 §12"],
   "nucleo/reports.syn": ["Manual 3 §12"],
-  "axon/axon_rt.c": ["Manual 8 §4.3", "Manual 6 §5"],
-  "runtime/core/axon.c": ["Manual 8 §4.3", "Manual 6 §5"],
-  "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1"]
+  "axon/axon_rt.c": ["Manual 8 §4.3", "Manual 6 §5.1"],
+  "axon/axon_rt.h": ["Manual 6 §5.1"],
+  "runtime/core/axon.c": ["Manual 8 §4.3", "Manual 6 §5.1"],
+  "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1"],
+  "compilador/generator/emit_declarations.py": ["Manual 2 §1.3"],
+  "compilador/generator/emit_expressions.py": ["Manual 2 §12"],
+  "compilador/generator/generator.py": ["Manual 2 §5.1"],
+  "compilador/parser_control.py": ["Manual 2 §1.3"],
+  "compilador/puente_canonico.py": ["Manual 3 §11.1", "Manual 6 §5.1"],
+  "synapse_rt_types.h": ["Manual 2 §4.1"],
+  "nucleo/parser_sentencias.syn": ["Manual 2 §1.3"],
+  "syquex/expr.syn": ["Manual 3 §3"]
 }
 ```
 

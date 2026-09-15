@@ -1,5 +1,6 @@
 #lang: es
-# cumple Manual 1 5: nucleo del compilador Synapse
+# cumple Manual 1 §1.1: El ecosistema Synapse es una plataforma de desarrollo completa y unificada
+# cumple Manual 1 §5.1: nucleo del compilador Synapse
 // ============================================================
 // syquex/parser.syn — Parser de Syquex (R87, Manual 3 §3 EBNF)
 // Descenso recursivo sobre los tokens de syquex/lexer.syn.

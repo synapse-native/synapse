@@ -1,3 +1,4 @@
+// cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 // synapse_rt_types.h — Shared type definitions for modularized Synapse runtime
 // This header is included by synapse_rt.c, synapse_rt_memory.c, synapse_rt_concurrency.c
 #ifndef SYNAPSE_RT_TYPES_H

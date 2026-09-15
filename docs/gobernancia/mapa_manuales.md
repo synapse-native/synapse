@@ -59,7 +59,7 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
 ```json
 {
   "syquex/traductor.syn": ["Manual 6 §1.3", "Manual 3 §11"],
-  "syquex/parser.syn": ["Manual 3 §3"],
+  "syquex/parser.syn": ["Manual 3 §3", "Manual 1 §1.1", "Manual 1 §5.1"],
   "syquex/expr.syn": ["Manual 3 §3"],
   "syquex/lexer.syn": ["Manual 3 §1", "Manual 3 §4"],
   "syquex/analizador_alcance.syq": ["Manual 3 §5", "Manual 4"],
@@ -81,11 +81,11 @@ fallará con instrucción explícita si un archivo modificado no está mapeado.
   "runtime/core/debug.c": ["Manual 9 §1"],
   "runtime/core/quantum_runtime.h": ["Manual 9 §6"],
   "runtime/core/memory.c": ["Manual 4 §2"],
-  "runtime/core/concurrency.c": ["Manual 5 §2"],
-  "runtime/core/axon.c": ["Manual 6 §5"],
+  "runtime/core/concurrency.c": ["Manual 5 §2.1"],
+  "runtime/core/axon.c": ["Manual 6 §5.1"],
   "runtime/core/cache.c": ["Manual 5 §11"],
   "runtime/*": ["Manual 5"],
-  "axon/*": ["Manual 6 §5"],
+  "axon/*": ["Manual 6 §5.1"],
   "std/cluster*": ["Manual 5 §6"],
   "std/ai*": ["Manual 7"],
   "std/quantum*": ["Manual 9 §6"],

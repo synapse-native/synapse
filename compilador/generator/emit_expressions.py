@@ -1,8 +1,9 @@
+# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 """
 Generación de código C para expresiones y tipos.
 Contiene expr_a_c, tipo_de_expr, I/O builtins, log, formato.
 Los emisores de tensores están en emit_tensors.py.
-// cumple Manual 2 3 (tipos primitivos y struct por nombre)
+// cumple Manual 2 §3 (tipos primitivos y struct por nombre)
 """
 
 from typing import Optional

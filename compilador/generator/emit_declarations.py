@@ -1,3 +1,4 @@
+# cumple Manual 1 §1: Synapse es el lenguaje de programación nativo, compilado y de grado de sistemas
 # cumple Manual 2 §1.3: generación de código C para declaraciones Synapse
 # cumple Manual 8 §4: toolchain de construcción
 """

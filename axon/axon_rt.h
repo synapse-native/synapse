@@ -1,4 +1,4 @@
-// cumple Manual 6 §5: axon runtime + aislamiento de workspaces (Fase 31.1)
+// cumple Manual 6 §5.1: axon runtime + aislamiento de workspaces (Fase 31.1)
 // axón/axon_rt.h — Axon workspace isolation: declarations
 // D-9(d) corte 11: extraído de synapse_rt.c (modularización)
 // Fase 31.1: Workspace isolation — cache por proyecto en .axon/cache/
