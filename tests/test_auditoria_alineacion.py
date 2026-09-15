@@ -18,8 +18,9 @@ def test_limpiar_ref():
     assert va.limpiar_ref("a/b.py::metodo") == "a/b.py"
 
 
+# cumple Manual 8 §6.3: test verificable y reproducible
 def test_seccion_es_de_manual():
-    detalle = "cumple Manual 2 3 en el codigo"
+    detalle = "cumple Manual 2 §3 en el codigo"
     pos = detalle.index("§")
     assert va.seccion_es_de_manual(detalle, pos) is True
     detalle2 = "la seccion §3 del informe"

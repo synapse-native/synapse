@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# cumple Manual 2 §12: verificacion de alineacion de auditoria
 """Verificador mecánico de alineación de la auditoría.
 
 Comprueba de forma objetiva (no declarativa) la trazabilidad entre:
@@ -26,6 +27,7 @@ Uso:
     python auditoria/verificar_alineacion.py --json     # informe JSON
 """
 
+import argparse
 import json
 import re
 import subprocess
@@ -36,6 +38,16 @@ RAIZ = Path(__file__).resolve().parent.parent
 BITACORA = RAIZ / "docs" / "auditorias" / "AUDITORIA_ALINEACION_MANUALES.md"
 REPORTES_DIR = RAIZ / "docs" / "reportes"
 MANUALES_DIR = RAIZ / "docs" / "manuales"
+
+# Extensiones de producción y exclusiones (regla 8: stdlib only)
+# .syq incluido: es producción real (frontends Syquex, bindings) y antes
+# quedaba fuera del gate de citas (brecha H7 del plan de endurecimiento).
+PROD_EXTS = (".c", ".h", ".py", ".syn", ".syq")
+EXCLUIDOS_PREFIX = (
+    "docs/", "tests/", "auditoria/", "scripts/",
+    "benchmarks/", "examples/", "vscode-synapse/",
+    ".github/", ".kilo/", ".venv/",
+)
 
 # Campos obligatorios del protocolo de micro-entregable
 CAMPOS_PROTOCOLO = [
@@ -99,16 +111,32 @@ def hash_existe(h: str, hashes: set) -> bool:
     return out.returncode == 0
 
 
+def nonnull_base(base: str) -> str:
+    """Normaliza la ref base del modo CI.
+
+    Una base vacía (p.ej. un job que usa steps.base sin definir el paso
+    'id: base') producía `git diff "" HEAD` → diff nulo → 0 brechas por
+    comparar contra nada (fallo abierto). Con este guard la base vacía
+    degrada a HEAD~1: el gate nunca compara contra nada.
+    """
+    b = (base or "").strip()
+    return b if b else "HEAD~1"
+
+
 def extraer_filas_bitacora(texto: str) -> list:
     """Filas `| fecha | tarea | estado | detalle |`.
 
     Las celdas pueden contener `|` literales (p.ej. ADT `ok(T) | err(E)`),
     por lo que el estado se detecta por marcador (primer celda con ✅/⚠️/🔄/⬜
     o PENDIENTE) en vez de por posición fija.
+
+    El formato de fecha es completo (AAAA-MM-DD): el año NO va hardcodeado;
+    filtrar por '| 2026-' desactivaba silenciosamente el gate en años
+    posteriores (fallo abierto).
     """
     filas = []
     for linea in texto.splitlines():
-        if not linea.startswith("| 2026-"):
+        if not re.match(r"^\| \d{4}-\d{2}-\d{2}\s*\|", linea):
             continue
         celdas = [c.strip() for c in linea.strip("|").split("|")]
         if len(celdas) < 3:
@@ -258,8 +286,10 @@ def cargar_modulos_d9():
     mods = []
     if not path.exists():
         return mods
+    # .c incluido: el runtime C también está sujeto a la regla 13 (antes solo
+    # .syn/.py => módulos C gigantes invisibles al gate).
     for linea in path.read_text(encoding="utf-8").splitlines():
-        m = re.match(r"^\s*-\s*(\S+\.(?:syn|py))\s*$", linea)
+        m = re.match(r"^\s*-\s*(\S+\.(?:syn|py|c))\s*$", linea)
         if m:
             mods.append(m.group(1))
     return mods
@@ -378,6 +408,11 @@ def verificar_modularizacion():
     brechas, info = [], []
     MODULOS_D9 = cargar_modulos_d9()
     candidatos = sorted(RAIZ.glob("nucleo/*.syn")) + sorted(RAIZ.glob("compilador/generator/*.py"))
+    # Cobertura completa de la regla 13 (no solo nucleo/): el límite de líneas
+    # protege TODO el compilador, OpenSyn, Syquex y el runtime, no una carpeta.
+    candidatos += sorted(RAIZ.glob("opensyn/*.syn"))
+    candidatos += sorted(RAIZ.glob("syquex/*.syn"))
+    candidatos += sorted(RAIZ.glob("runtime/core/*.c"))
     for p in candidatos:
         if p.name == "generator.syn":
             continue
@@ -518,7 +553,134 @@ def _funciones_en_head() -> set:
     return nombres
 
 
+# ---------------------------------------------------------------------------
+# Manual 2 §12 + Control de calidad: todo archivo productivo modificado DEBE
+# contener un comentario 'cumple Manual X §Y' (cita textual greppable).
+# En pre-commit valida staged; en CI valida diff base..HEAD.
+# ---------------------------------------------------------------------------
+RE_CUMPLE = re.compile(r"cumple\s+Manual\s+(\d+)\s*(?:§\s*)?(\d+(?:\.\d+)?)", re.IGNORECASE)
+
+
+def _filenames_modified(ci: bool, base: str = "HEAD~1") -> list:
+    """Paths de archivos modificados (staged o diff base..HEAD)."""
+    if ci:
+        cmd = ["git", "-C", str(RAIZ), "diff", "--name-only", nonnull_base(base), "HEAD"]
+    else:
+        cmd = ["git", "-C", str(RAIZ), "diff", "--cached", "--name-only"]
+    out = subprocess.run(cmd, capture_output=True, text=True,
+                         encoding="utf-8", errors="replace").stdout
+    return [f.strip() for f in out.splitlines() if f.strip()]
+
+
+def _requisitos_de_mapa(f: str) -> list:
+    """Requisitos [(manual, seccion)] PUNTUALES que docs/gobernancia/mapa_alineacion.md
+    exige para el archivo. Reutiliza el motor del gate de alineación (misma
+    semántica de especificidad y cobertura); [] si el archivo no tiene entrada
+    puntual. Solo el mapa puntual se usa aquí: los catch-all del mapa legacy
+    ('nucleo/*' → 'Manual 2') son demasiado gruesos para exigir cobertura de
+    cita y generarían falsos positivos; para esos archivos valen las reglas
+    (a)/(b) y el expediente completo de auditoria/alineacion.py.
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import alineacion as al  # noqa: PLC0415 - import perezoso del gate hermano
+    except Exception:
+        return []
+    mapa_al = al.cargar_mapa(al.MAPA_ALINEACION)
+    if not mapa_al:
+        return []
+    return al.requisitos_archivo(f, mapa_al, {})
+
+
+def verificar_citas_productivas(ci: bool, base: str = "HEAD~1"):
+    """Brechas de trazabilidad por archivo productivo modificado:
+      (a) sin comentario 'cumple Manual X §Y' (Manual 2 §12);
+      (b) con citas a secciones INEXISTENTES del manual (fabrificación);
+      (c) AVISO (no brecha): citas cuyas secciones NO cubren el requisito que
+          el mapa puntual exige para ese archivo. Es informativo porque el
+          requisito por archivo se exige de forma BLOQUEANTE en
+          auditoria/alineacion.py (expediente con cita textual, evidencia y
+          oráculo, con DESVIACION ratificada como única salida); duplicarlo
+          como brecha aquí produciría falsos positivos contra desviaciones
+          ratificadas. Aquí sirve de señal temprana de cita decorativa.
+    """
+    brechas = []
+    info = []
+    files = _filenames_modified(ci, base)
+    for f in files:
+        if not any(f.endswith(e) for e in PROD_EXTS):
+            continue
+        if any(f.startswith(p) for p in EXCLUIDOS_PREFIX):
+            continue
+        if not (RAIZ / f).exists():
+            continue
+        texto = (RAIZ / f).read_text(encoding="utf-8", errors="replace")
+        citas = RE_CUMPLE.findall(texto)
+        if not citas:
+            brechas.append(
+                f"CTR[{f}] archivo productivo modificado sin comentario "
+                f"'// cumple Manual X §Y' (Manual 2 §12)"
+            )
+            continue
+        secciones_fabricadas = False
+        for m_num, s_num in citas:
+            if not seccion_existe_manual(int(m_num), s_num):
+                secciones_fabricadas = True
+                brechas.append(
+                    f"CTR[{f}] cita 'Manual {m_num} §{s_num}' referencia "
+                    f"sección inexistente en docs/manuales/MANUAL {m_num}.md (fabrificación)."
+                )
+        if secciones_fabricadas:
+            continue
+        # (c) la cita debe CUBRIR el requisito del mapa (no cualquier sección)
+        reqs = _requisitos_de_mapa(f)
+        if not reqs:
+            info.append(f"CTR[{f}] cita válida: " +
+                        ", ".join(f"Manual {m} §{s}" for m, s in citas))
+            continue
+
+        def _cubre(req, cit) -> bool:
+            m_num, s_num = cit
+            req_m, req_s = req
+            if req_m != m_num:
+                return False
+            if not req_s:
+                return bool(s_num)
+            return s_num == req_s or s_num.startswith(req_s + ".")
+
+        if any(_cubre(r, c) for r in reqs for c in citas):
+            info.append(f"CTR[{f}] cita válida y vinculada al requisito del mapa: "
+                        + ", ".join(f"Manual {m} §{s}" for m, s in citas))
+        else:
+            faltan = ", ".join(
+                f"Manual {m} §{s or '(manual entero)'}" for m, s in reqs)
+            info.append(
+                f"CTR[{f}] AVISO: ninguna cita 'cumple Manual' cubre el requisito "
+                f"puntual del mapa ({faltan}) — el gate de alineación (expediente) "
+                f"es quien lo exige de forma bloqueante"
+            )
+    return brechas, info
+
+
+def seccion_existe_manual(manual_num: int, sec: str) -> bool:
+    """True si §sec existe como encabezado numérico en MANUAL <num>.md."""
+    path = MANUALES_DIR / f"MANUAL {manual_num}.md"
+    if not path.exists():
+        return False
+    texto = path.read_text(encoding="utf-8", errors="replace")
+    for linea in texto.splitlines():
+        m = re.match(r"^#{2,4}\s+(\d+(?:\.\d+)?)[\.\:\s]", linea)
+        if m and (m.group(1) == sec or m.group(1).startswith(sec + ".")):
+            return True
+    return False
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Verificador mecánico de alineación")
+    parser.add_argument("--json", action="store_true", help="Salida en formato JSON")
+    parser.add_argument("--ci", action="store_true", help="Modo CI: valida diff base..HEAD")
+    parser.add_argument("--base", default="HEAD~1", help="Ref base para diff incremental en CI")
+    args = parser.parse_args()
     if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     resultado = {"ok": True, "brechas": [], "info": [], "resumen": {}}
@@ -561,6 +723,10 @@ def main():
     resultado["brechas"].extend(b)
     resultado["info"].extend(i)
 
+    b, i = verificar_citas_productivas(args.ci, nonnull_base(args.base))
+    resultado["brechas"].extend(b)
+    resultado["info"].extend(i)
+
     resultado["ok"] = not resultado["brechas"]
     resultado["resumen"] = {
         "filas_bitacora": len(filas),
@@ -570,7 +736,7 @@ def main():
         "notas_info": len(resultado["info"]),
     }
 
-    if "--json" in sys.argv:
+    if args.json:
         print(json.dumps(resultado, ensure_ascii=False, indent=2))
         sys.exit(0 if resultado["ok"] else 1)
 
@@ -596,6 +762,7 @@ def main():
         print("RESULTADO: BRECHAS DETECTADAS — verificar cada una (regla 11: resolver o registrar)")
     else:
         print("RESULTADO: SIN BRECHAS — trazabilidad verificada")
+        print("OK: auditoría de alineación completada sin brechas")
     sys.exit(0 if resultado["ok"] else 1)
 
 
