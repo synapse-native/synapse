@@ -189,7 +189,7 @@ funcion contiene(lista: Lista<texto>, valor: texto) -> booleano:
             retornar verdadero
     retornar falso
 
-funcion agregar(lista: Lista, valor: ) -> nulo:
+funcion agregar(lista: Lista<entero>, valor: entero) -> nulo:
     requiere:
         verdadero
     garantiza:

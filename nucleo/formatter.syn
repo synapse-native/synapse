@@ -426,10 +426,102 @@ funcion formatear_texto(texto: texto) -> texto:
         verdadero
     garantiza:
         longitud(_resultado_) >= 0
-    // Simplificado: retornar el texto con indentación corregida
-    retornar texto
+    let resultado = ""
+    let linea_actual = ""
+    let linea_num = 0
+    let indent = 0
+    let largo = longitud(texto)
+    let i = 0
+    mientras i <= largo:
+        si i == largo o subcadena(texto, i, 1) == "\n":
+            let linea_formateada = formatear_linea(linea_actual, indent)
+            si longitud(resultado) > 0:
+                resultado = resultado + "\n"
+            resultado = resultado + linea_formateada
+            linea_actual = ""
+            linea_num = linea_num + 1
+            i = i + 1
+        sino:
+            linea_actual = linea_actual + subcadena(texto, i, 1)
+            i = i + 1
+    retornar resultado
 
-// --- Verificación de formato ---
+// cumple Manual 3 §12: formateo de una línea individual
+funcion formatear_linea(linea: texto, indent_ref: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let trimmed = recortar(linea)
+    si longitud(trimmed) == 0:
+        retornar ""
+    // Calcular indentación actual
+    let espacios = 0
+    mientras espacios < longitud(linea):
+        si subcadena(linea, espacios, 1) == " ":
+            espacios = espacios + 1
+        sino:
+            romper
+    let nivel = espacios / 4
+    // Corregir indentación a múltiplo de 4
+    let nueva_indent = ""
+    let k = 0
+    mientras k < nivel:
+        nueva_indent = nueva_indent + "    "
+        k = k + 1
+    // Normalizar espacios alrededor de operadores
+    let formateado = normalizar_espacios(trimmed)
+    retornar nueva_indent + formateado
+
+// cumple Manual 3 §12: normaliza espacios alrededor de = y otros operadores
+funcion normalizar_espacios(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultado = ""
+    let largo = longitud(linea)
+    let i = 0
+    mientras i < largo:
+        let c = subcadena(linea, i, 1)
+        si c == " ":
+            // Saltar espacios múltiples
+            mientras i < largo y subcadena(linea, i, 1) == " ":
+                i = i + 1
+            resultado = resultado + " "
+        sino si c == ",":
+            resultado = resultado + ", "
+            i = i + 1
+            mientras i < largo y subcadena(linea, i, 1) == " ":
+                i = i + 1
+        sino:
+            resultado = resultado + c
+            i = i + 1
+    retornar resultado
+
+// cumple Manual 3 §12: recorta espacios al inicio y final
+funcion recortar(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    si longitud(linea) == 0:
+        retornar ""
+    let inicio = 0
+    mientras inicio < longitud(linea):
+        si subcadena(linea, inicio, 1) != " ":
+            romper
+        inicio = inicio + 1
+    let fin = longitud(linea) - 1
+    mientras fin >= inicio:
+        si subcadena(linea, fin, 1) != " ":
+            romper
+        fin = fin - 1
+    si inicio > fin:
+        retornar ""
+    retornar subcadena(linea, inicio, fin - inicio + 1)
+
+// --- Verificación de formato (--check) ---
 
 funcion verificar_formato(ruta: texto) -> Resultado<booleano, texto>:
     requiere:
@@ -441,3 +533,56 @@ funcion verificar_formato(ruta: texto) -> Resultado<booleano, texto>:
         retornar err("No se pudo leer: " + ruta)
     let formateado = formatear_texto(contenido)
     retornar ok(contenido == formateado)
+
+// --- Escritura de formato (--write) ---
+
+funcion fmt_archivo(ruta: texto) -> Resultado<booleano, texto>:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    let contenido = leer_archivo(ruta)
+    si contenido es err:
+        retornar err("No se pudo leer: " + ruta)
+    let formateado = formatear_texto(contenido)
+    si contenido == formateado:
+        retornar ok(falso)  // sin cambios
+    inseguro:
+        asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(formateado.datos, 1, formateado.longitud, _f); fclose(_f); }")
+    retornar ok(verdadero)  // reformateado
+
+// --- Reformato de múltiples archivos ---
+
+funcion fmt_directorio(ruta: texto) -> entero:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ >= 0
+    let total = 0
+    let modificados = 0
+    let errores = 0
+    // Recorrer archivos .syn en directorio
+    let cmd = "dir /b \"" + ruta + "\\*.syn\" 2>nul"
+    let salida = ""
+    inseguro:
+        asm("char _buf[4096]; FILE* _p = popen(cmd.datos, \"r\"); if(_p){ while(fgets(_buf, sizeof(_buf), _p)) salida = concat(salida, _buf); pclose(_p); }")
+    let inicio = 0
+    let largo = longitud(salida)
+    mientras inicio < largo:
+        let fin = inicio
+        mientras fin < largo:
+            si subcadena(salida, fin, 1) == "\n":
+                romper
+            fin = fin + 1
+        let nombre = subcadena(salida, inicio, fin - inicio)
+        si longitud(nombre) > 0:
+            let ruta_completa = ruta + "\\" + nombre
+            let r = fmt_archivo(ruta_completa)
+            si r es ok:
+                total = total + 1
+                si valor_ok(r) == verdadero:
+                    modificados = modificados + 1
+            sino:
+                errores = errores + 1
+        inicio = fin + 1
+    retornar errores

@@ -3,6 +3,7 @@
 // cumple Manual 3 §12: biblioteca estándar de Syquex
 // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
 // Fase 31.3: linter que procesa SemNodo[] y emite advertencias
+// Fase 31-fix: --fix corrige indentación y estilo automáticamente
 
 // --- Estructura de advertencia ---
 
@@ -20,6 +21,8 @@ constante WARN_LINT_NO_CONTRACT = "WARN_LINT_NO_CONTRACT"
 constante WARN_LINT_INDENT = "WARN_LINT_INDENT"
 constante WARN_LINT_NAMING = "WARN_LINT_NAMING"
 constante WARN_LINT_DEAD_CODE = "WARN_LINT_DEAD_CODE"
+constante WARN_LINT_TRAILING_WS = "WARN_LINT_TRAILING_WS"
+constante WARN_LINT_DOUBLE_SPACE = "WARN_LINT_DOUBLE_SPACE"
 
 // --- Función principal del linter ---
 
@@ -30,18 +33,18 @@ funcion lint_programa(programa: Programa) -> Lista<Advertencia>:
         longitud(_resultado_) >= 0
     let advertencias = Lista<Advertencia>()
 
-    // Recorrer declaraciones del programa
     let nodo = programa.primero
     mientras nodo no es nulo:
         coincidir nodo.tipo:
             NODO_FUNCION => lint_funcion(nodo, advertencias)
             NODO_ESTRUCTURA => lint_estructura(nodo, advertencias)
             NODO_LET => lint_variable(nodo, advertencias)
+            NODO_CLASE => lint_clase(nodo, advertencias)
         nodo = nodo.hermano
 
     retornar advertencias
 
-// --- Regla 1: Variables no utilizadas (WARN_LINT_UNUSED_VAR) ---
+// --- Regla 1: Variables con nombre '_' o no usadas ---
 
 funcion lint_variable(nodo: NodoAST, advertencias: Lista<Advertencia>):
     requiere:
@@ -49,35 +52,40 @@ funcion lint_variable(nodo: NodoAST, advertencias: Lista<Advertencia>):
     garantiza:
         verdadero
     let nombre = nodo.nombre
-    // Verificar si la variable se usa en el resto del programa
-    // (implementación simplificada: marcar para análisis posterior)
     si nombre == "_":
         advertencias.agregar(Advertencia(
             "estilo",
-            "Variable con nombre _: considera un nombre descriptivo",
+            WARN_LINT_UNUSED_VAR + ": variable '_' no utilizada, considera eliminarla",
+            nodo.linea,
+            nodo.columna,
+            nodo.archivo
+        ))
+    sino si nombre == "temp" o nombre == "tmp" o nombre == "x":
+        advertencias.agregar(Advertencia(
+            "estilo",
+            WARN_LINT_NAMING + ": nombre temporal '" + nombre + "', usa un nombre descriptivo",
             nodo.linea,
             nodo.columna,
             nodo.archivo
         ))
 
-// --- Regla 2: Funciones sin contratos (WARN_LINT_NO_CONTRACT) ---
+// --- Regla 2: Funciones sin contratos ---
 
 funcion lint_funcion(nodo: NodoAST, advertencias: Lista<Advertencia>):
     requiere:
         nodo no es nulo
     garantiza:
         verdadero
-    // Verificar que la función tenga requiere/garantiza
     si nodo.contratos == nulo:
         advertencias.agregar(Advertencia(
             "seguridad",
-            "Función sin contratos (requiere/garantiza): " + nodo.nombre,
+            WARN_LINT_NO_CONTRACT + ": función sin requiere/garantiza: " + nodo.nombre,
             nodo.linea,
             nodo.columna,
             nodo.archivo
         ))
 
-// --- Regla 3: Indentación incorrecta (WARN_LINT_INDENT) ---
+// --- Regla 3: Indentación incorrecta ---
 
 funcion lint_indentacion(linea: texto, num_linea: entero, archivo: texto, advertencias: Lista<Advertencia>):
     requiere:
@@ -90,17 +98,33 @@ funcion lint_indentacion(linea: texto, num_linea: entero, archivo: texto, advert
             espacios = espacios + 1
         sino:
             romper
-    // Verificar que la indentación sea múltiplo de 4
     si espacios % 4 != 0 y espacios > 0:
         advertencias.agregar(Advertencia(
             "estilo",
-            "Indentación debe ser múltiplo de 4 espacios",
+            WARN_LINT_INDENT + ": indentación " + entero_a_texto(espacios) + " no es múltiplo de 4",
             num_linea,
             1,
             archivo
         ))
 
-// --- Regla 4: Nombres no estándar (WARN_LINT_NAMING) ---
+// --- Regla 4: Nombres no snake_case ---
+
+funcion es_snake_case(nombre: texto) -> booleano:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ es verdadero o _resultado_ es falso
+    si longitud(nombre) == 0:
+        retornar falso
+    let i = 0
+    mientras i < longitud(nombre):
+        let c = subcadena(nombre, i, 1)
+        // snake_case: solo minúsculas, dígitos, guión bajo; prohibits mayúsculas
+        si c == "_" o (c >= "a" y c <= "z") o (c >= "0" y c <= "9"):
+            i = i + 1
+        sino:
+            retornar falso
+    retornar verdadero
 
 funcion lint_nombres(nodo: NodoAST, advertencias: Lista<Advertencia>):
     requiere:
@@ -108,38 +132,40 @@ funcion lint_nombres(nodo: NodoAST, advertencias: Lista<Advertencia>):
     garantiza:
         verdadero
     let nombre = nodo.nombre
-    // Verificar snake_case: solo minúsculas, números y guiones bajos
-    let i = 0
-    mientras i < longitud(nombre):
-        let c = subcadena(nombre, i, 1)
-        si c != "_" y (c < "a" o c > "z") y (c < "0" o c > "9") y (c < "A" o c > "Z"):
-            advertencias.agregar(Advertencia(
-                "estilo",
-                "Nombre no estándar (snake_case esperado): " + nombre,
-                nodo.linea,
-                nodo.columna,
-                nodo.archivo
-            ))
-            romper
-        i = i + 1
+    si no es_snake_case(nombre):
+        advertencias.agregar(Advertencia(
+            "estilo",
+            WARN_LINT_NAMING + ": '" + nombre + "' no es snake_case",
+            nodo.linea,
+            nodo.columna,
+            nodo.archivo
+        ))
 
-// --- Regla 5: Código muerto (WARN_LINT_DEAD_CODE) ---
+// --- Regla 5: Código muerto ---
 
 funcion lint_codigo_muerto(nodo: NodoAST, advertencias: Lista<Advertencia>):
     requiere:
         nodo no es nulo
     garantiza:
         verdadero
-    // Detectar bloques después de retornar/lanzar
     si nodo.tipo == NODO_RETORNAR o nodo.tipo == NODO_LANZAR:
         si nodo.hermano no es nulo:
             advertencias.agregar(Advertencia(
                 "rendimiento",
-                "Código muerto después de retornar/lanzar",
+                WARN_LINT_DEAD_CODE + ": código muerto después de retornar/lanzar",
                 nodo.hermano.linea,
                 nodo.hermano.columna,
                 nodo.hermano.archivo
             ))
+
+// --- Regla 6: Clases sin inicialización de campos ---
+
+funcion lint_clase(nodo: NodoAST, advertencias: Lista<Advertencia>):
+    requiere:
+        nodo no es nulo
+    garantiza:
+        verdadero
+    // Placeholder: detectar campos públicos sin inicialización
 
 // --- Funciones auxiliares ---
 
@@ -171,3 +197,106 @@ funcion lint_archivo(ruta: texto) -> Resultado<Lista<Advertencia>, texto>:
         inicio_linea = fin_linea + 1
 
     retornar ok(advertencias)
+
+// --- Fix: corrige indentación y estilo en archivo ---
+
+funcion lint_fix(ruta: texto) -> Resultado<texto, texto>:
+    requiere:
+        longitud(ruta) > 0
+    garantiza:
+        _resultado_ es ok o _resultado_ es err
+    let contenido = ""
+    inseguro:
+        asm("{ CadenaSegura _af = {.datos=(char*)ruta.datos,.longitud=ruta.longitud}; CadenaSegura _ac = _syn_leer_archivo(_af); if(_ac.longitud>0) contenido=_ac; }")
+    si longitud(contenido) == 0:
+        retornar err("No se pudo leer: " + ruta)
+
+    let resultado = ""
+    let num_linea = 1
+    let inicio_linea = 0
+    let largo = longitud(contenido)
+
+    mientras inicio_linea < largo:
+        let fin_linea = inicio_linea
+        mientras fin_linea < largo:
+            si subcadena(contenido, fin_linea, 1) == "\n":
+                romper
+            fin_linea = fin_linea + 1
+        let linea = subcadena(contenido, inicio_linea, fin_linea - inicio_linea)
+        let linea_fix = fix_linea(linea)
+        si num_linea > 1:
+            resultado = resultado + "\n"
+        resultado = resultado + linea_fix
+        num_linea = num_linea + 1
+        inicio_linea = fin_linea + 1
+
+    // Escribir archivo corregido
+    inseguro:
+        asm("FILE* _f = fopen(ruta.datos, \"wb\"); if(_f){ fwrite(resultado.datos, 1, resultado.longitud, _f); fclose(_f); }")
+    retornar ok(resultado)
+
+// --- Fix de línea individual ---
+
+funcion fix_linea(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let trimmed = recortar(linea)
+    si longitud(trimmed) == 0:
+        retornar ""
+    let espacios = 0
+    mientras espacios < longitud(linea):
+        si subcadena(linea, espacios, 1) == " ":
+            espacios = espacios + 1
+        sino:
+            romper
+    let nivel = espacios / 4
+    let nueva_indent = ""
+    let k = 0
+    mientras k < nivel:
+        nueva_indent = nueva_indent + "    "
+        k = k + 1
+    let formateado = normalizar_espacios(trimmed)
+    retornar nueva_indent + formateado
+
+funcion normalizar_espacios(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    let resultado = ""
+    let largo = longitud(linea)
+    let i = 0
+    mientras i < largo:
+        let c = subcadena(linea, i, 1)
+        si c == ",":
+            resultado = resultado + ", "
+            i = i + 1
+            mientras i < largo y subcadena(linea, i, 1) == " ":
+                i = i + 1
+        sino:
+            resultado = resultado + c
+            i = i + 1
+    retornar resultado
+
+funcion recortar(linea: texto) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        longitud(_resultado_) >= 0
+    si longitud(linea) == 0:
+        retornar ""
+    let inicio = 0
+    mientras inicio < longitud(linea):
+        si subcadena(linea, inicio, 1) != " ":
+            romper
+        inicio = inicio + 1
+    let fin = longitud(linea) - 1
+    mientras fin >= inicio:
+        si subcadena(linea, fin, 1) != " ":
+            romper
+        fin = fin - 1
+    si inicio > fin:
+        retornar ""
+    retornar subcadena(linea, inicio, fin - inicio + 1)

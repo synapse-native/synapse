@@ -737,7 +737,7 @@ funcion escribir_reporte(ruta: texto, contenido: texto) -> entero:
 funcion principal() -> entero:
     r = 0
     inseguro:
-        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
+        asm("if (_argc() < 2) { fprintf(stderr, \"Uso: %s <archivo.syn> [-o <salida.exe>]\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s axon fetch    - Leer y validar axon.toml\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s lint <arch>   - Linting con --fix\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s fmt <arch>    - Formatear con --check\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); fprintf(stderr, \"  %s test <arch>   - Ejecutar tests\\n\", _argc() > 0 ? _argv(0).datos : \"synapse\"); r = 1; return r; }")
     cmd = argv_str(1)
     // --- Subcomando: axon (single asm block to avoid ; between if/else) ---
     inseguro:
@@ -855,6 +855,34 @@ funcion principal() -> entero:
         asm("    _syn_axon_limpiar_toml((void*)&_rt); fprintf(stderr,\"[Axon] fetch completado\\n\"); free(_b); r=0; return r;")
         asm("}")
         asm("fprintf(stderr,\"Subcomando desconocido: '%%s'\\n\",_sub.datos); r=1; return r; }")
+    // --- Subcomando: lint (Fase 31.3) ---
+    inseguro:
+        asm("if(strcmp(cmd.datos,\"lint\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s lint <archivo.syn> [--fix]\\n\",_argv(0).datos); r=1; return r; }")
+        asm("CadenaSegura _lint_ruta=_argv(2); int _lint_fix=0;")
+        asm("for(int _li=3;_li<_argc();_li++){ CadenaSegura _la=_argv(_li); if(_la.longitud==5&&strcmp(_la.datos,\"--fix\")==0){ _lint_fix=1; break; } }")
+        asm("extern void* lint_archivo_c(const char*);")
+        asm("extern void* lint_fix_c(const char*);")
+        asm("if(_lint_fix){ fprintf(stderr,\"[Lint] Corrigiendo %%s...\\n\",_lint_ruta.datos); lint_fix_c(_lint_ruta.datos); fprintf(stderr,\"[Lint] Archivo corregido\\n\"); }")
+        asm("else{ void* _la=lint_archivo_c(_lint_ruta.datos); if(_la){ fprintf(stderr,\"[Lint] Advertencias encontradas\\n\"); }else{ fprintf(stderr,\"[Lint] Sin advertencias\\n\"); } }")
+        asm("r=0; return r; }")
+    // --- Subcomando: fmt (Fase 31.4) ---
+    inseguro:
+        asm("if(strcmp(cmd.datos,\"fmt\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s fmt <archivo.syn> [--check]\\n\",_argv(0).datos); r=1; return r; }")
+        asm("CadenaSegura _fmt_ruta=_argv(2); int _fmt_check=0;")
+        asm("for(int _fi=3;_fi<_argc();_fi++){ CadenaSegura _fa=_argv(_fi); if(_fa.longitud==7&&strcmp(_fa.datos,\"--check\")==0){ _fmt_check=1; break; } }")
+        asm("extern int fmt_check_c(const char*);")
+        asm("extern int fmt_write_c(const char*);")
+        asm("if(_fmt_check){ int _ok=fmt_check_c(_fmt_ruta.datos); fprintf(stderr,\"[Fmt] %%s\\n\",_ok?\"formato correcto\":\"formato incorrecto\"); r=_ok?0:1; }")
+        asm("else{ int _changed=fmt_write_c(_fmt_ruta.datos); fprintf(stderr,\"[Fmt] %%s\\n\",_changed?\"archivos reformateados\":\"sin cambios\"); r=0; }")
+        asm("return r; }")
+    // --- Subcomando: test (Fase 31.2) ---
+    inseguro:
+        asm("if(strcmp(cmd.datos,\"test\")==0){ if(_argc()<3){ fprintf(stderr,\"Uso: %%s test <archivo.syn> [--junit]\\n\",_argv(0).datos); r=1; return r; }")
+        asm("CadenaSegura _test_ruta=_argv(2);")
+        asm("extern int64_t ejecutar_pruebas(const char*);")
+        asm("int64_t _trc=ejecutar_pruebas(_test_ruta.datos);")
+        asm("fprintf(stderr,\"[Test] %%s\\n\",_trc==0?\"todos los tests pasaron\":\"tests fallidos\");")
+        asm("r=(int)_trc; return r; }")
     // --- Pipeline de compilacion normal ---
     ruta = argv_str(1)
     salida_ruta = argv_str(2)

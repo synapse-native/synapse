@@ -265,6 +265,8 @@ int _syn_tar_extraer(const char* tar_ruta, const char* salida_dir) {
 }
 
 // --- Axon Lock: verify downloaded package against axon.lock ---
+// cumple Manual 8 §4.3: axon.lock format (TOML)
+// cumple Manual 6 §5.1: serialización binaria para lockfiles
 // axon.lock format (TOML):
 //   [lock]
 //   "paquete" = { version = "1.0.0", hash = "sha256:9f86d..." }
@@ -296,11 +298,45 @@ int _syn_axon_verificar_lock(const char* paquete, const char* version, const cha
     fclose(f);
     content[fsz] = 0;
 
-    // Simple TOML parsing: find sha256:... hash for this package
-    char search_key[256];
-    snprintf(search_key, sizeof(search_key), "\"%s\"", paquete);
-    char* pkg_start = strstr(content, search_key);
-    if (!pkg_start) {
+    // Use TOML parser instead of strstr (Manual 8 §4.3: lockfile parsing)
+    CadenaSegura toml_input = { .longitud = (int)fsz, .datos = content };
+    NodoToml toml_root = _toml_parse(toml_input);
+    char expected_hash[65] = {0};
+    int found = 0;
+
+    if (toml_root.tipo >= 0 && toml_root.pares) {
+        // Find package key in root table
+        for (int i = 0; i < toml_root.longitud; i++) {
+            if (toml_root.pares[i].clave.datos &&
+                strcmp(toml_root.pares[i].clave.datos, paquete) == 0) {
+                // Found the package entry - it should be a nested table
+                NodoToml* pkg_val = (NodoToml*)toml_root.pares[i].valor;
+                if (pkg_val && pkg_val->tipo == 1 && pkg_val->pares) {
+                    for (int j = 0; j < pkg_val->longitud; j++) {
+                        if (pkg_val->pares[j].clave.datos &&
+                            strcmp(pkg_val->pares[j].clave.datos, "hash") == 0) {
+                            NodoToml* hash_val = (NodoToml*)pkg_val->pares[j].valor;
+                            if (hash_val && hash_val->tipo == 2 && hash_val->valor_str.datos) {
+                                // Extract sha256: prefix
+                                const char* h = hash_val->valor_str.datos;
+                                if (strncmp(h, "sha256:", 7) == 0) {
+                                    h += 7;
+                                }
+                                strncpy(expected_hash, h, 64);
+                                expected_hash[64] = 0;
+                                found = 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    _toml_nodo_liberar(toml_root);
+
+    if (!found) {
         // Package not in lock: append it
         free(content);
         CadenaSegura hash = _syn_sha256_archivo(archivo_ruta);
@@ -312,18 +348,6 @@ int _syn_axon_verificar_lock(const char* paquete, const char* version, const cha
         free((void*)hash.datos);
         return 0;
     }
-
-    // Find hash field
-    char* hash_field = strstr(pkg_start, "sha256:");
-    if (!hash_field) { free(content); return -1; }
-    hash_field += 7;  // skip "sha256:"
-    char expected_hash[65];
-    int hi = 0;
-    while (hi < 64 && hash_field[hi] && hash_field[hi] != '"' && hash_field[hi] != '}' && hash_field[hi] != ' ' && hash_field[hi] != '\n') {
-        expected_hash[hi] = hash_field[hi];
-        hi++;
-    }
-    expected_hash[hi] = 0;
     free(content);
 
     // 3. Compute actual hash of downloaded file

@@ -768,16 +768,19 @@ int _syn_handshake_hello_verificar(const unsigned char* hello, int hello_len,
 
 /* _syn_axon_workspace_cache_path: retorna la ruta del directorio de cache
  * para un proyecto dado. Formato: <ruta_proyecto>/.axon/cache/
- * Retorna: puntero a buffer estático (válido hasta la siguiente llamada),
+ * Retorna: puntero a buffer dinámico (el caller debe liberar con free()),
  * o NULL en error.
  * cumple Manual 8 §4.4: cache por proyecto en .axon/cache/
  */
 const char* _syn_axon_workspace_cache_path(const char* ruta_proyecto) {
-    static char _ws_cache_buf[1024];
     if (!ruta_proyecto) return NULL;
-    int written = snprintf(_ws_cache_buf, sizeof(_ws_cache_buf), "%s/.axon/cache/", ruta_proyecto);
-    if (written < 0 || (size_t)written >= sizeof(_ws_cache_buf)) return NULL;
-    return _ws_cache_buf;
+    // Use dynamic allocation for thread safety (was: static char[1024])
+    size_t needed = strlen(ruta_proyecto) + 16;  // "/.axon/cache/" + null
+    char* buf = (char*)malloc(needed);
+    if (!buf) return NULL;
+    int written = snprintf(buf, needed, "%s/.axon/cache/", ruta_proyecto);
+    if (written < 0 || (size_t)written >= needed) { free(buf); return NULL; }
+    return buf;  // caller must free()
 }
 
 /* _syn_axon_workspace_crear: crea la estructura de directorios para un
@@ -786,7 +789,7 @@ const char* _syn_axon_workspace_cache_path(const char* ruta_proyecto) {
  */
 int _syn_axon_workspace_crear(const char* ruta_proyecto) {
     if (!ruta_proyecto) return -1;
-    const char* cache_dir = _syn_axon_workspace_cache_path(ruta_proyecto);
+    char* cache_dir = (char*)_syn_axon_workspace_cache_path(ruta_proyecto);
     if (!cache_dir) return -1;
 
     char cmd[2048];
@@ -801,6 +804,7 @@ int _syn_axon_workspace_crear(const char* ruta_proyecto) {
     snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\" 2>/dev/null", cache_dir);
 #endif
     system(cmd);
+    free(cache_dir);
     return 0;
 }
 
@@ -835,7 +839,8 @@ int _syn_axon_workspace_resolver(const char* ruta_proyecto, const char* lock_pat
     _syn_axon_workspace_crear(ruta_proyecto);
 
     // 3. Parsear lockfile y verificar cada paquete en cache local
-    const char* cache_dir = _syn_axon_workspace_cache_path(ruta_proyecto);
+    char* cache_dir = (char*)_syn_axon_workspace_cache_path(ruta_proyecto);
+    if (!cache_dir) { free(content); return -1; }
 
     int resueltos = 0;
     char* p = content;
@@ -896,5 +901,6 @@ int _syn_axon_workspace_resolver(const char* ruta_proyecto, const char* lock_pat
     }
 
     free(content);
+    free(cache_dir);
     return resueltos;
 }
