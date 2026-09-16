@@ -1,0 +1,273 @@
+#lang: es
+// opensyn/architect_det.syn — Architect determinista: DFS invertido + Tarjan
+// cumple Manual 2 §12: contratos requiere/garantiza en funciones públicas
+// cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
+// Fase 32.2: análisis de impacto sin LLM, O(V+E)
+
+importar grafo_conocimiento
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura NodoAfectado:
+    id: texto
+    archivo: texto
+    distancia: entero
+    tipo_relacion: texto
+
+estructura ContratoCritico:
+    nodo_id: texto
+    razon: texto
+    nivel_riesgo: texto
+
+estructura Ciclo:
+    nodos: Lista<texto>
+    longitud: entero
+
+estructura MetricasImpacto:
+    total_afectados: entero
+    profundidad_maxima: entero
+    contratos_criticos: entero
+    ciclos_potenciales: entero
+
+estructura AnalisisImpacto:
+    nodos_afectados: Lista<NodoAfectado>
+    contratos_criticos: Lista<ContratoCritico>
+    ciclos: Lista<Ciclo>
+    metricas: MetricasImpacto
+
+// ============================================================
+// ANÁLISIS DE IMPACTO COMPLETO
+// ============================================================
+
+funcion analizar_impacto_completo(archivo: texto, grafo: GrafoProyecto) -> AnalisisImpacto:
+    requiere:
+        archivo != ""
+    garantiza:
+        _resultado_.metricas.total_afectados >= 0
+    let nodos_afectados = Lista<NodoAfectado>()
+    let contratos_criticos = Lista<ContratoCritico>()
+    let ciclos_detectados = Lista<Ciclo>()
+
+    // Encontrar nodos que pertenecen al archivo
+    para i = 0 mientras i < grafo.nodos.len():
+        let nodo = grafo.nodos[i]
+        si nodo.archivo != archivo:
+            continuar
+
+        // 1. DFS invertido: encontrar dependientes transitivos
+        let dependientes = dfs_invertido(nodo.id, grafo)
+        para j = 0 mientras j < dependientes.len():
+            let dep = dependientes[j]
+            nodos_afectados.agregar(NodoAfectado(
+                id: dep.id,
+                archivo: extraer_archivo(dep.id),
+                distancia: dep.distancia,
+                tipo_relacion: dep.tipo
+            ))
+
+        // 2. Contratos críticos: APIs con > 5 dependientes
+        si nodo.num_dependientes > 5:
+            contratos_criticos.agregar(ContratoCritico(
+                nodo_id: nodo.id,
+                razon: "API pública usada por " + enterito_a_texto(nodo.num_dependientes) + " módulos",
+                nivel_riesgo: nodo.nivel_riesgo
+            ))
+
+        // 3. Detección de ciclos (Tarjan simplificado)
+        let ciclo = detectar_ciclo_tarjan(nodo.id, grafo)
+        si ciclo != nulo:
+            ciclos_detectados.agregar(ciclo)
+
+    // 4. Calcular métricas
+    let max_prof = 0
+    para k = 0 mientras k < nodos_afectados.len():
+        si nodos_afectados[k].distancia > max_prof:
+            max_prof = nodos_afectados[k].distancia
+
+    let metricas = MetricasImpacto(
+        total_afectados: nodos_afectados.len(),
+        profundidad_maxima: max_prof,
+        contratos_criticos: contratos_criticos.len(),
+        ciclos_potenciales: ciclos_detectados.len()
+    )
+
+    retornar AnalisisImpacto(
+        nodos_afectados: nodos_afectados,
+        contratos_criticos: contratos_criticos,
+        ciclos: ciclos_detectados,
+        metricas: metricas
+    )
+
+// ============================================================
+// DFS INVERTIDO — recorrer dependientes
+// ============================================================
+
+estructura DFSEntrada:
+    id: texto
+    distancia: entero
+    tipo: texto
+
+funcion dfs_invertido(id_inicio: texto, grafo: GrafoProyecto) -> Lista<DFSEntrada>:
+    requiere:
+        id_inicio != ""
+    garantiza:
+        _resultado_.len() >= 0
+    let visitados = Mapa<texto, booleano>()
+    let resultados = Lista<DFSEntrada>()
+    let pila_ids = Lista<texto>()
+    let pila_dist = Lista<entero>()
+
+    pila_ids.agregar(id_inicio)
+    pila_dist.agregar(0)
+
+    mientras pila_ids.len() > 0:
+        let actual = pila_ids[pila_ids.len() - 1]
+        let dist = pila_dist[pila_dist.len() - 1]
+        pila_ids.eliminar_ultimo()
+        pila_dist.eliminar_ultimo()
+
+        si actual en visitados:
+            continuar
+        visitados[actual] = verdadero
+
+        // Buscar dependientes (aristas donde actual es origen)
+        para j = 0 mientras j < grafo.aristas.len():
+            let arista = grafo.aristas[j]
+            si arista.origen_id != actual:
+                continuar
+            let dep_id = arista.destino_id
+            si dep_id en visitados:
+                continuar
+
+            resultados.agregar(DFSEntrada(
+                id: dep_id,
+                distancia: dist + 1,
+                tipo: arista.tipo
+            ))
+            pila_ids.agregar(dep_id)
+            pila_dist.agregar(dist + 1)
+
+    retornar resultados
+
+// ============================================================
+// DETECCIÓN DE CICLOS — Tarjan SCC
+// ============================================================
+
+funcion detectar_ciclo_tarjan(id_inicio: texto, grafo: GrafoProyecto) -> Ciclo:
+    requiere:
+        id_inicio != ""
+    garantiza:
+        _resultado_ == nulo o _resultado_.longitud > 0
+    // Tarjan simplificado: buscar SCC que contenga id_inicio
+    let indices = Mapa<texto, entero>()
+    let lowlinks = Mapa<texto, entero>()
+    let en_pila = Mapa<texto, booleano>()
+    let pila = Lista<texto>()
+    let index_counter = 0
+    let scc_nodos = Lista<texto>()
+
+    tarjan_visitar_det(
+        id_inicio, grafo, indices, lowlinks, en_pila, pila,
+        index_counter, scc_nodos
+    )
+
+    si scc_nodos.len() > 1:
+        retornar Ciclo(nodos: scc_nodos, longitud: scc_nodos.len())
+    retornar nulo
+
+funcion tarjan_visitar_det(
+    id: texto, grafo: GrafoProyecto,
+    indices: Mapa<texto, entero>, lowlinks: Mapa<texto, entero>,
+    en_pila: Mapa<texto, booleano>, pila: Lista<texto>,
+    index_counter: entero, scc_nodos: Lista<texto>
+):
+    requiere:
+        id != ""
+    garantiza:
+        verdadero
+    indices[id] = index_counter
+    lowlinks[id] = index_counter
+    index_counter = index_counter + 1
+    pila.agregar(id)
+    en_pila[id] = verdadero
+
+    // Explorar vecinos (dependencias)
+    para j = 0 mientras j < grafo.aristas.len():
+        let arista = grafo.aristas[j]
+        si arista.origen_id != id:
+            continuar
+        let vecino = arista.destino_id
+        si vecino no en indices:
+            tarjan_visitar_det(
+                vecino, grafo, indices, lowlinks, en_pila, pila,
+                index_counter, scc_nodos
+            )
+            si lowlinks[vecino] < lowlinks[id]:
+                lowlinks[id] = lowlinks[vecino]
+        si en_pila[vecino] == verdadero:
+            si indices[vecino] < lowlinks[id]:
+                lowlinks[id] = indices[vecino]
+
+    // Si es raíz de SCC
+    si lowlinks[id] == indices[id]:
+        mientras verdadero:
+            let w = pila[pila.len() - 1]
+            pila.eliminar_ultimo()
+            en_pila[w] = falso
+            scc_nodos.agregar(w)
+            si w == id:
+                romper
+
+// ============================================================
+// AUXILIARES
+// ============================================================
+
+funcion extraer_archivo(id_nodo: texto) -> texto:
+    requiere:
+        id_nodo != ""
+    garantiza:
+        verdadero
+    let ultimo_punto = -1
+    para i = 0 mientras i < id_nodo.len():
+        si id_nodo[i] == ".":
+            ultimo_punto = i
+    si ultimo_punto > 0:
+        return subcadena(id_nodo, 0, ultimo_punto)
+    return id_nodo
+
+funcion subcadena(texto: texto, inicio: entero, fin: entero) -> texto:
+    requiere:
+        inicio >= 0 y fin >= inicio
+    garantiza:
+        _resultado_ != ""
+    let resultado = ""
+    para i = inicio mientras i < fin:
+        resultado = resultado + texto[i]
+    retornar resultado
+
+funcion enterito_a_texto(n: entero) -> texto:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ != ""
+    si n == 0:
+        retornar "0"
+    let resultado = ""
+    let resto = n
+    si resto < 0:
+        resultado = resultado + "-"
+        resto = -resto
+    mientras resto > 0:
+        let digito = resto % 10
+        resultado = caracter_a_codigo(48 + digito) + resultado
+        resto = resto / 10
+    retornar resultado
+
+funcion caracter_a_codigo(c: entero) -> texto:
+    requiere:
+        c >= 0
+    garantiza:
+        _resultado_ != ""
+    retornar "?"

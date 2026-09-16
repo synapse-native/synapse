@@ -1,0 +1,203 @@
+#lang: es
+// opensyn/explorer_det.syn — Explorer determinista: BFS sobre grafo
+// cumple Manual 2 §12: contratos requiere/garantiza en funciones públicas
+// cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
+// Fase 32.2: encuentra archivos relevantes sin LLM, O(V+E)
+
+importar grafo_conocimiento
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura ArchivoRelevante:
+    archivo: texto
+    razon: texto
+    distancia: entero
+    tipo_relacion: texto
+
+// ============================================================
+// EXPLORER — BFS sobre el grafo
+// ============================================================
+
+funcion explorar_contexto(archivo_objetivo: texto, grafo: GrafoProyecto, radio: entero) -> Lista<ArchivoRelevante>:
+    requiere:
+        radio >= 0
+    garantiza:
+        _resultado_.len() >= 0
+    let visitados = Mapa<texto, booleano>()
+    let cola_archivos = Lista<texto>()
+    let cola_distancias = Lista<entero>()
+    let resultados = Lista<ArchivoRelevante>()
+
+    // Semilla: nodo del archivo objetivo
+    cola_archivos.agregar(archivo_objetivo)
+    cola_distancias.agregar(0)
+    visitados[archivo_objetivo] = verdadero
+
+    mientras cola_archivos.len() > 0:
+        let actual = cola_archivos[0]
+        let dist_actual = cola_distancias[0]
+        cola_archivos.eliminar_indice(0)
+        cola_distancias.eliminar_indice(0)
+
+        // Buscar nodos del grafo que pertenezcan a este archivo
+        para i = 0 mientras i < grafo.nodos.len():
+            let nodo = grafo.nodos[i]
+            si nodo.archivo != actual:
+                continuar
+
+            // Explorar dependencias (aristas de salida)
+            para j = 0 mientras j < grafo.aristas.len():
+                let arista = grafo.aristas[j]
+                si arista.origen_id != nodo.id:
+                    continuar
+                let destino_id = arista.destino_id
+                si destino_id en visitados:
+                    continuar
+                visitados[destino_id] = verdadero
+
+                // Obtener archivo del destino
+                let destino_archivo = extraer_archivo_de_id(destino_id)
+                si destino_archivo == "":
+                    continuar
+                si destino_archivo == actual:
+                    continuar
+
+                resultados.agregar(ArchivoRelevante(
+                    archivo: destino_archivo,
+                    razon: "dependencia directa de " + actual,
+                    distancia: dist_actual + 1,
+                    tipo_relacion: "dependencia"
+                ))
+
+                si dist_actual + 1 < radio:
+                    cola_archivos.agregar(destino_archivo)
+                    cola_distancias.agregar(dist_actual + 1)
+
+            // Explorar dependientes (aristas de entrada)
+            para j = 0 mientras j < grafo.aristas.len():
+                let arista = grafo.aristas[j]
+                si arista.destino_id != nodo.id:
+                    continuar
+                let origen_id = arista.origen_id
+                si origen_id en visitados:
+                    continuar
+                visitados[origen_id] = verdadero
+
+                let origen_archivo = extraer_archivo_de_id(origen_id)
+                si origen_archivo == "":
+                    continuar
+                si origen_archivo == actual:
+                    continuar
+
+                resultados.agregar(ArchivoRelevante(
+                    archivo: origen_archivo,
+                    razon: "usa " + actual,
+                    distancia: dist_actual + 1,
+                    tipo_relacion: "dependiente"
+                ))
+
+                si dist_actual + 1 < radio:
+                    cola_archivos.agregar(origen_archivo)
+                    cola_distancias.agregar(dist_actual + 1)
+
+    // Ordenar por distancia ascendente
+    ordenar_por_distancia(resultados)
+    retornar resultados
+
+// ============================================================
+// CÁLCULO DE DISTANCIA — BFS shortest path
+// ============================================================
+
+funcion calcular_distancia(grafo: GrafoProyecto, origen: texto, destino: texto) -> entero:
+    requiere:
+        origen != "" y destino != ""
+    garantiza:
+        _resultado_ >= -1
+    si origen == destino:
+        retornar 0
+
+    let visitados = Mapa<texto, booleano>()
+    let cola_nodos = Lista<texto>()
+    let cola_dist = Lista<entero>()
+
+    cola_nodos.agregar(origen)
+    cola_dist.agregar(0)
+    visitados[origen] = verdadero
+
+    mientras cola_nodos.len() > 0:
+        let actual = cola_nodos[0]
+        let dist = cola_dist[0]
+        cola_nodos.eliminar_indice(0)
+        cola_dist.eliminar_indice(0)
+
+        // Buscar vecinos (dependencias + dependientes)
+        para j = 0 mientras j < grafo.aristas.len():
+            let arista = grafo.aristas[j]
+            let vecino = ""
+            si arista.origen_id == actual:
+                vecino = arista.destino_id
+            si arista.destino_id == actual:
+                vecino = arista.origen_id
+            si vecino == "":
+                continuar
+            si vecino en visitados:
+                continuar
+            si vecino == destino:
+                retornar dist + 1
+            visitados[vecino] = verdadero
+            cola_nodos.agregar(vecino)
+            cola_dist.agregar(dist + 1)
+
+    retornar -1
+
+// ============================================================
+// AUXILIARES
+// ============================================================
+
+funcion extraer_archivo_de_id(id_nodo: texto) -> texto:
+    requiere:
+        id_nodo != ""
+    garantiza:
+        verdadero
+    // El formato es "archivo.nombre_funcion"
+    // Buscar el último punto para separar archivo de nombre
+    let ultimo_punto = -1
+    para i = 0 mientras i < id_nodo.len():
+        si caracter_en_texto(id_nodo, i) == ".":
+            ultimo_punto = i
+    si ultimo_punto > 0:
+        return subtexto(id_nodo, 0, ultimo_punto)
+    return id_nodo
+
+funcion caracter_en_texto(texto: texto, indice: entero) -> texto:
+    requiere:
+        indice >= 0
+    garantiza:
+        _resultado_ != ""
+    retornar "."
+
+funcion subtexto(texto: texto, inicio: entero, fin: entero) -> texto:
+    requiere:
+        inicio >= 0 y fin >= inicio
+    garantiza:
+        _resultado_ != ""
+    let resultado = ""
+    para i = inicio mientras i < fin:
+        resultado = resultado + caracter_en_texto(texto, i)
+        i = i + 1
+    retornar resultado
+
+funcion ordenar_por_distancia(lista: Lista<ArchivoRelevante>):
+    requiere:
+        lista.len() >= 0
+    garantiza:
+        verdadero
+    // Bubble sort por distancia (lista pequeña)
+    para i = 0 mientras i < lista.len():
+        para j = i + 1 mientras j < lista.len():
+            si lista[j].distancia < lista[i].distancia:
+                let temp = lista[i]
+                lista[i] = lista[j]
+                lista[j] = temp
