@@ -1,0 +1,13 @@
+{
+ "cambio_hash": "5b7b87ef84b7b34d",
+ "expediente": "docs/alineacion/f32_4_pipeline_multiagente.md",
+ "fecha": "2026-09-16",
+ "archivos": [
+  "opensyn/pipeline_multiagente.syn"
+ ],
+ "oraculos": {
+  "tests/opensyn/test_pipeline_multiagente.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}
