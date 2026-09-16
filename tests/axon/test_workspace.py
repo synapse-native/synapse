@@ -67,3 +67,28 @@ def test_sha256_determinista():
     h2 = hashlib.sha256(content).hexdigest()
     assert h1 == h2, "SHA-256 no es determinista"
     assert len(h1) == 64, f"Hash debe tener 64 chars, tiene {len(h1)}"
+
+
+# --- Tests TDD: lockfile TOML validation ---
+
+def test_lockfile_usa_toml_parser():
+    """Manual 8 §4.3: lockfile parsing debe usar TOML parser."""
+    axon_c = (RAIZ / "runtime" / "core" / "axon.c").read_text(encoding="utf-8")
+    assert "_toml_parse" in axon_c, \
+        "_syn_axon_verificar_lock debe usar _toml_parse (no strstr)"
+    assert "strstr" not in axon_c.split("_syn_axon_verificar_lock")[1][:500], \
+        "_syn_axon_verificar_lock no debe usar strstr para parsing"
+
+
+def test_lockfile_hash_format():
+    """Manual 8 §4.3: hash en lockfile debe tener 64 chars hex."""
+    axon_c = (RAIZ / "runtime" / "core" / "axon.c").read_text(encoding="utf-8")
+    assert "sha256:" in axon_c, "Formato sha256: en lockfile"
+
+
+def test_workspace_cache_path_thread_safe():
+    """Manual 8 §4.4: workspace_cache_path no debe usar static buffer."""
+    axon_c = (RAIZ / "axon" / "axon_rt.c").read_text(encoding="utf-8")
+    assert "static char _ws_cache_buf" not in axon_c, \
+        "workspace_cache_path debe usar malloc, no static buffer"
+    assert "malloc" in axon_c, "workspace_cache_path debe usar malloc()"

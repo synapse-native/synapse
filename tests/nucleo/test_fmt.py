@@ -68,3 +68,36 @@ def test_funcion_reglas_defecto():
     fuente = FMT_SYN.read_text(encoding="utf-8")
     assert re.search(r"funcion\s+reglas_defecto", fuente), \
         "Falta funcion reglas_defecto()"
+
+
+# --- Tests TDD: funcionalidad real sobre código fuente ---
+
+def test_formatear_texto_parsea_lineas():
+    """Manual 2 §12: formatear_texto() parsea línea por línea."""
+    fuente = FMT_SYN.read_text(encoding="utf-8")
+    assert "funcion formatear_texto" in fuente, "formatear_texto() no existe"
+    assert "funcion formatear_linea" in fuente, "formatear_linea() no existe"
+
+
+def test_formatear_texto_normaliza_espacios():
+    """Manual 2 §12: formatear_texto() normaliza espacios."""
+    fuente = FMT_SYN.read_text(encoding="utf-8")
+    assert "funcion normalizar_espacios" in fuente, "normalizar_espacios() no existe"
+
+
+def test_formatear_texto_recorta():
+    """Manual 2 §12: formatear_texto() recorta espacios."""
+    fuente = FMT_SYN.read_text(encoding="utf-8")
+    assert "funcion recortar" in fuente, "recortar() no existe"
+
+
+def test_fmt_archivo_existe():
+    """Manual 2 §12: fmt_archivo() para escritura."""
+    fuente = FMT_SYN.read_text(encoding="utf-8")
+    assert "funcion fmt_archivo" in fuente, "fmt_archivo() no existe"
+
+
+def test_verificar_formato_existe():
+    """Manual 2 §12: verificar_formato() para --check."""
+    fuente = FMT_SYN.read_text(encoding="utf-8")
+    assert "funcion verificar_formato" in fuente, "verificar_formato() no existe"

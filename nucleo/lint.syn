@@ -1,7 +1,8 @@
 #lang: es
 // nucleo/lint.syn — Linter nativo sobre AST unificado
-// cumple Manual 3 §12: biblioteca estándar de Syquex
-// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
+    // cumple Manual 3 §12: biblioteca estándar de Syquex
+    // cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
+    // cumple Manual 2 §12: nucleo/lint.syn — linter nativo con 5 reglas
 // Fase 31.3: linter que procesa SemNodo[] y emite advertencias
 // Fase 31-fix: --fix corrige indentación y estilo automáticamente
 
@@ -40,6 +41,7 @@ funcion lint_programa(programa: Programa) -> Lista<Advertencia>:
             NODO_ESTRUCTURA => lint_estructura(nodo, advertencias)
             NODO_LET => lint_variable(nodo, advertencias)
             NODO_CLASE => lint_clase(nodo, advertencias)
+        lint_nombres(nodo, advertencias)
         nodo = nodo.hermano
 
     retornar advertencias

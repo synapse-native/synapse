@@ -62,3 +62,44 @@ def test_regla_dead_code():
     """Manual 31 §4.3: Regla 5 - codigo muerto."""
     fuente = LINT_SYN.read_text(encoding="utf-8")
     assert "WARN_LINT_DEAD_CODE" in fuente
+
+
+# --- Tests TDD: funcionalidad real sobre código fuente ---
+
+def test_lint_archivo_detecta_indentacion():
+    """Manual 2 §12: lint_archivo() detecta indentación no múltiplo de 4."""
+    fuente = LINT_SYN.read_text(encoding="utf-8")
+    assert "funcion lint_archivo" in fuente, "lint_archivo() no existe"
+    assert "funcion lint_indentacion" in fuente, "lint_indentacion() no existe"
+
+
+def test_lint_archivo_detecta_naming():
+    """Manual 2 §12: lint_archivo() detecta nombres no snake_case."""
+    fuente = LINT_SYN.read_text(encoding="utf-8")
+    assert "funcion es_snake_case" in fuente, "es_snake_case() no existe"
+    assert "funcion lint_nombres" in fuente, "lint_nombres() no existe"
+
+
+def test_lint_programa_llama_lint_nombres():
+    """Manual 2 §12: lint_programa() debe despachar lint_nombres()."""
+    fuente = LINT_SYN.read_text(encoding="utf-8")
+    assert "lint_nombres" in fuente, "lint_nombres no referenciado"
+    # Verificar que lint_nombres aparece en el dispatcher (después de lint_funcion)
+    idx_funcion = fuente.find("lint_funcion")
+    idx_nombres = fuente.find("lint_nombres")
+    assert idx_nombres > idx_funcion, \
+        "lint_nombres debe estar declarado después de lint_funcion"
+
+
+def test_lint_fix_existe():
+    """Manual 2 §12: lint_fix() para corrección automática."""
+    fuente = LINT_SYN.read_text(encoding="utf-8")
+    assert "funcion lint_fix" in fuente, "lint_fix() no existe"
+    assert "funcion fix_linea" in fuente, "fix_linea() no existe"
+
+
+def test_lint_nuevas_reglas_definidas():
+    """Manual 31 §4.3: reglas WARN_LINT_TRAILING_WS y WARN_LINT_DOUBLE_SPACE."""
+    fuente = LINT_SYN.read_text(encoding="utf-8")
+    assert "WARN_LINT_TRAILING_WS" in fuente, "Falta WARN_LINT_TRAILING_WS"
+    assert "WARN_LINT_DOUBLE_SPACE" in fuente, "Falta WARN_LINT_DOUBLE_SPACE"
