@@ -563,3 +563,5 @@
 {"fecha": "2026-09-15", "archivos": ["nucleo/reports.syn"], "cita": "Manual 3 §12", "puntos": "biblioteca estándar modular en lib/ con archivos .syq"}
 {"fecha": "2026-09-15", "archivos": ["nucleo/lint.syn"], "cita": "Manual 2 §12", "puntos": "Test Lexer multi-idioma pytest tests/unit/test_lexer.py -v 100% pass"}
 {"fecha": "2026-09-15", "archivos": ["nucleo/formatter.syn"], "cita": "Manual 2 §12", "puntos": "Test Lexer multi-idioma pytest tests/unit/test_lexer.py -v 100% pass"}
+{"fecha": "2026-09-16", "archivos": ["nucleo/analizador_semantico.syn nucleo/ast_abi.syn"], "cita": "Manual 6 §1.1", "puntos": "SemNodo[] AST canónico unificado backend compartido Cero duplicación compatibilidad binaria"}
+{"fecha": "2026-09-16", "archivos": ["nucleo/ast_abi.syn nucleo/analizador_semantico.syn"], "cita": "Manual 6 §1.1", "puntos": "SemNodo[] AST canónico unificado backend compartido Cero duplicación compatibilidad binaria"}
