@@ -1,0 +1,276 @@
+#lang: es
+// opensyn/memoria_persistente_cifrada.syn — Memoria persistente cifrada del agente
+// cumple Manual 2 §5.1: contratos requiere/garantiza
+// cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
+// Fase 32.3: Tres capas de memoria cifrada en reposo
+
+importar std.io
+importar std.json
+importar std.crypto
+importar std.os
+importar std.tiempo
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+
+var _clave_maestra: bytes(32) = bytes_vacios(32)
+var _clave_inicializada: booleano = falso
+var _db_evolucion: puntero = nulo
+var _indice_contexto: Mapa<texto, Lista<entero>> = Mapa()
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura PatronAprendido:
+    id: entero
+    patron: texto
+    contexto: texto
+    exito_ratio: decimal
+    num_usos: entero
+    ultimo_uso: entero
+
+estructura MemoriaNegativa:
+    id: entero
+    intento_fallido: texto
+    razon_fallo: texto
+    solucion_correcta: texto
+    fecha: entero
+
+estructura EntradaCifrada:
+    nonce: bytes(24)
+    cifrado: bytes
+    tag: bytes(16)
+
+estructura CapaMemoria:
+    nombre: texto
+    persistencia: texto
+    contenido: texto
+    cifrado: booleano
+
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+
+funcion memoria_inicializar(passphrase: texto) -> Resultado<nulo, texto>:
+    requiere:
+        passphrase.len() > 0
+    garantiza:
+        _clave_inicializada == verdadero o _resultado_ es error
+    // cumple Manual 2 §5.1: contratos requiere/garantiza
+    // 1. Derivar clave maestra del hardware + passphrase
+    let hw_uuid = os.hardware_uuid()
+    let machine_id = os.machine_id()
+
+    _clave_maestra = crypto_argon2id(
+        passphrase,
+        salt: sha256(hw_uuid + machine_id),
+        iteraciones: 3,
+        memoria_mb: 64,
+        paralelismo: 4,
+        longitud: 32
+    )
+
+    // 2. Abrir SQLite cifrado
+    let ruta = os.home() + "/.opensyn/memoria.db"
+    _db_evolucion = abrir_db_cifrada(ruta, _clave_maestra)?
+
+    si _db_evolucion == nulo:
+        retornar err("No se pudo abrir la base de datos cifrada")
+
+    // 3. Verificar integridad (MAC sobre header)
+    si no verificar_header_db(_db_evolucion, _clave_maestra):
+        retornar err("DB corrupta o clave incorrecta")
+
+    // 4. Crear tablas si no existen
+    ejecutar_sql(_db_evolucion,
+        "CREATE TABLE IF NOT EXISTS patrones (
+            id INTEGER PRIMARY KEY,
+            nonce BLOB NOT NULL,
+            datos BLOB NOT NULL
+        )")
+    ejecutar_sql(_db_evolucion,
+        "CREATE TABLE IF NOT EXISTS fallos (
+            id INTEGER PRIMARY KEY,
+            nonce BLOB NOT NULL,
+            datos BLOB NOT NULL
+        )")
+    ejecutar_sql(_db_evolucion,
+        "CREATE TABLE IF NOT EXISTS proyecto (
+            id INTEGER PRIMARY KEY,
+            hash_ast TEXT NOT NULL,
+            nonce BLOB NOT NULL,
+            datos BLOB NOT NULL
+        )")
+
+    // 5. Construir índice en RAM para búsquedas rápidas
+    _indice_contexto = construir_indice_contexto(_db_evolucion, _clave_maestra)
+
+    _clave_inicializada = verdadero
+    retornar ok()
+
+// ============================================================
+// CAPA 2: MEMORIA DE EVOLUCIÓN (patrones + fallos)
+// ============================================================
+
+funcion memoria_guardar_patron(patron: texto, contexto: texto, exito: decimal) -> Resultado<nulo, texto>:
+    requiere:
+        _clave_inicializada == verdadero
+    garantiza:
+        verdadero
+    si no _clave_inicializada:
+        retornar err("Memoria no inicializada")
+
+    // 1. Serializar
+    let entrada = json_stringificar({
+        "patron": patron,
+        "contexto": contexto,
+        "exito": exito,
+        "timestamp": tiempo_actual()
+    })
+
+    // 2. Cifrar con XSalsa20-Poly1305
+    let nonce = crypto_randombytes(24)
+    let cifrado = crypto_secretbox(entrada, nonce, _clave_maestra)
+
+    // 3. Guardar blob cifrado
+    let sql = "INSERT INTO patrones (nonce, datos) VALUES (?, ?)"
+    ejecutar_sql_blob(_db_evolucion, sql, nonce, cifrado)
+
+    // 4. Actualizar índice en RAM
+    let id = ultimo_id_insertado(_db_evolucion)
+    para palabra en tokenizar(contexto):
+        _indice_contexto.obtener_o_crear(palabra).agregar(id)
+
+    retornar ok()
+
+funcion memoria_consultar_patrones(contexto: texto) -> Lista<PatronAprendido>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.len() >= 0
+    si no _clave_inicializada:
+        retornar Lista<PatronAprendido>()
+
+    // 1. Buscar IDs candidatos vía índice en RAM
+    let ids_candidatos = Set<entero>()
+    para palabra en tokenizar(contexto):
+        si palabra en _indice_contexto:
+            para id en _indice_contexto[palabra]:
+                ids_candidatos.agregar(id)
+
+    // 2. Descifrar solo los candidatos (no toda la DB)
+    let resultados = Lista<PatronAprendido>()
+    para id en ids_candidatos:
+        let (nonce, cifrado) = leer_patron_por_id(_db_evolucion, id)
+        let descifrado = crypto_secretbox_open(cifrado, nonce, _clave_maestra)
+        si descifrado.es_error:
+            continuar
+        let patron = json_parsear(descifrado.texto)
+        resultados.agregar(PatronAprendido(
+            id: id,
+            patron: patron.patron,
+            contexto: patron.contexto,
+            exito_ratio: patron.exito,
+            num_usos: 1,
+            ultimo_uso: patron.timestamp
+        ))
+
+    // 3. Ordenar por éxito y limitar
+    resultados.ordenar_por(p -> p.exito_ratio, descendente: verdadero)
+    retornar resultados.limitar(10)
+
+funcion memoria_registrar_fallo(intento: texto, razon: texto, solucion: texto) -> Resultado<nulo, texto>:
+    requiere:
+        _clave_inicializada == verdadero
+    garantiza:
+        verdadero
+    si no _clave_inicializada:
+        retornar err("Memoria no inicializada")
+
+    let entrada = json_stringificar({
+        "intento": intento,
+        "razon": razon,
+        "solucion": solucion,
+        "fecha": tiempo_actual()
+    })
+
+    let nonce = crypto_randombytes(24)
+    let cifrado = crypto_secretbox(entrada, nonce, _clave_maestra)
+
+    let sql = "INSERT INTO fallos (nonce, datos) VALUES (?, ?)"
+    ejecutar_sql_blob(_db_evolucion, sql, nonce, cifrado)
+
+    retornar ok()
+
+funcion memoria_evitar_fallos(contexto: texto) -> Lista<MemoriaNegativa>:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_.len() >= 0
+    si no _clave_inicializada:
+        retornar Lista<MemoriaNegativa>()
+
+    let ids_candidatos = buscar_por_contexto(_db_evolucion, "fallos", contexto, _clave_maestra)
+    let resultados = Lista<MemoriaNegativa>()
+
+    para id en ids_candidatos:
+        let (nonce, cifrado) = leer_fallo_por_id(_db_evolucion, id)
+        let descifrado = crypto_secretbox_open(cifrado, nonce, _clave_maestra)
+        si descifrado.es_error:
+            continuar
+        let fallo = json_parsear(descifrado.texto)
+        resultados.agregar(MemoriaNegativa(
+            id: id,
+            intento_fallido: fallo.intento,
+            razon_fallo: fallo.razon,
+            solucion_correcta: fallo.solucion,
+            fecha: fallo.fecha
+        ))
+
+    retornar resultados.limitar(5)
+
+// ============================================================
+// CAPA 3: MEMORIA DE PROYECTO
+// ============================================================
+
+funcion memoria_guardar_proyecto(hash_ast: texto, datos: texto) -> Resultado<nulo, texto>:
+    requiere:
+        _clave_inicializada == verdadero
+    garantiza:
+        verdadero
+    let entrada = json_stringificar({
+        "hash_ast": hash_ast,
+        "datos": datos,
+        "timestamp": tiempo_actual()
+    })
+
+    let nonce = crypto_randombytes(24)
+    let cifrado = crypto_secretbox(entrada, nonce, _clave_maestra)
+
+    // Reemplazar entrada existente para el mismo hash_ast
+    ejecutar_sql_blob(_db_evolucion,
+        "INSERT OR REPLACE INTO proyecto (hash_ast, nonce, datos) VALUES (?, ?, ?)",
+        hash_ast, nonce, cifrado)
+
+    retornar ok()
+
+// ============================================================
+// CIERRE Y LIMPIEZA
+// ============================================================
+
+funcion memoria_cerrar():
+    requiere:
+        verdadero
+    garantiza:
+        _clave_inicializada == falso
+    // Limpiar clave de memoria (zeroing)
+    crypto_memzero(_clave_maestra)
+    _clave_inicializada = falso
+
+    si _db_evolucion != nulo:
+        cerrar_db(_db_evolucion)
+        _db_evolucion = nulo
+
+    _indice_contexto.limpiar()

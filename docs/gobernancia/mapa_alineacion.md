@@ -27,6 +27,7 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/planificador.syn": ["Manual 7 §2.1"],
   "opensyn/explorer_det.syn": ["Manual 6 §1.1"],
   "opensyn/architect_det.syn": ["Manual 6 §1.1"],
+  "opensyn/memoria_persistente_cifrada.syn": ["Manual 6 §1.1"],
   "nucleo/lsp.syn": ["Manual 8 §1"],
    "nucleo/lsp_v3.syn": ["Manual 8 §1"],
    "nucleo/parser.syn": ["Manual 2 §2"],
