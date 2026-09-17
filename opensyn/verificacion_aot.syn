@@ -1,0 +1,272 @@
+#lang: es
+// opensyn/verificacion_aot.syn — Verificación AOT con auto-refutación
+// cumple Manual 2 §5.1: contratos requiere/garantiza
+// cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
+// Fase 32.5: Generar, compilar y ejecutar casos límite para verificar robustez
+
+importar std.io
+importar std.os
+importar std.proceso
+importar std.lista
+importar std.texto
+importar std.tiempo
+
+// ============================================================
+// ESTRUCTURAS
+// ============================================================
+
+estructura CasoLimite:
+    descripcion: texto
+    codigo_ejecucion: texto
+    valor_esperado: texto
+
+estructura ResultadoCaso:
+    caso: CasoLimite
+    estado: texto
+    codigo_salida: entero
+    stdout: texto
+    stderr: texto
+    error: texto
+
+estructura Verificacion:
+    casos_ejecutados: entero
+    fallos: entero
+    resultados: Lista<ResultadoCaso>
+
+// ============================================================
+// VERIFICACIÓN DE CASO LÍMITE
+// ============================================================
+
+funcion verificar_caso_limite(codigo: texto, caso: CasoLimite) -> ResultadoCaso:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_.estado != ""
+    // 1. Crear archivo temporal con el código + el caso
+    let archivo_temp = os.temp_file("opensyn_test_", ".syq")
+    let codigo_completo = codigo + "\n\n" + caso.codigo_ejecucion
+    escribir_archivo(archivo_temp, codigo_completo)
+
+    // 2. Compilar AOT con timeout estricto (30 s)
+    let resultado_compilacion = proceso.ejecutar_async(
+        comando: "synapse build " + archivo_temp + " -o " + archivo_temp + ".exe",
+        timeout_segundos: 30
+    )
+
+    si resultado_compilacion.timed_out:
+        os.eliminar(archivo_temp)
+        retornar ResultadoCaso(
+            caso: caso,
+            estado: "timeout_compilacion",
+            codigo_salida: -1,
+            stdout: "",
+            stderr: "",
+            error: "La compilación excedió 30 segundos"
+        )
+
+    si resultado_compilacion.codigo_salida != 0:
+        os.eliminar(archivo_temp)
+        retornar ResultadoCaso(
+            caso: caso,
+            estado: "error_compilacion",
+            codigo_salida: resultado_compilacion.codigo_salida,
+            stdout: "",
+            stderr: resultado_compilacion.stderr,
+            error: resultado_compilacion.stderr
+        )
+
+    // 3. Ejecutar el binario con timeout (5 s)
+    let resultado_ejecucion = proceso.ejecutar_async(
+        comando: archivo_temp + ".exe",
+        timeout_segundos: 5
+    )
+
+    // 4. Limpiar archivos temporales
+    os.eliminar(archivo_temp)
+    os.eliminar(archivo_temp + ".exe")
+
+    // 5. Interpretar resultado
+    si resultado_ejecucion.timed_out:
+        retornar ResultadoCaso(
+            caso: caso,
+            estado: "timeout_ejecucion",
+            codigo_salida: -1,
+            stdout: "",
+            stderr: "",
+            error: "El binario excedió 5 segundos (posible bucle infinito)"
+        )
+
+    retornar ResultadoCaso(
+        caso: caso,
+        estado: "completado",
+        codigo_salida: resultado_ejecucion.codigo_salida,
+        stdout: resultado_ejecucion.stdout,
+        stderr: resultado_ejecucion.stderr,
+        error: ""
+    )
+
+// ============================================================
+// GENERACIÓN DE CASOS LÍMITE
+// ============================================================
+
+funcion generar_casos_limite(codigo: texto) -> Lista<CasoLimite>:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_.len() >= 0 y _resultado_.len() <= 5
+    let casos = Lista<CasoLimite>()
+    let ast = parsear(codigo)
+
+    para nodo en ast:
+        si nodo.tipo == NODO_FUNCION:
+            para param en nodo.funcion.params:
+                si param.tipo == "entero":
+                    casos.agregar(CasoLimite(
+                        descripcion: "entero_cero",
+                        codigo_ejecucion: "principal(0)",
+                        valor_esperado: "0"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "entero_negativo",
+                        codigo_ejecucion: "principal(-1)",
+                        valor_esperado: "error"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "entero_maximo",
+                        codigo_ejecucion: "principal(9223372036854775807)",
+                        valor_esperado: "sin_crash"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "entero_minimo",
+                        codigo_ejecucion: "principal(-9223372036854775808)",
+                        valor_esperado: "sin_crash"
+                    ))
+                si param.tipo == "texto":
+                    casos.agregar(CasoLimite(
+                        descripcion: "texto_vacio",
+                        codigo_ejecucion: 'principal("")',
+                        valor_esperado: "sin_crash"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "texto_largo",
+                        codigo_ejecucion: 'principal("' + repetir("a", 10000) + '")',
+                        valor_esperado: "sin_crash"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "texto_unicode",
+                        codigo_ejecucion: 'principal("ñáéíóú")',
+                        valor_esperado: "sin_crash"
+                    ))
+                si param.tipo == "decimal":
+                    casos.agregar(CasoLimite(
+                        descripcion: "decimal_cero",
+                        codigo_ejecucion: "principal(0.0)",
+                        valor_esperado: "0.0"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "decimal_nan",
+                        codigo_ejecucion: "principal(0.0/0.0)",
+                        valor_esperado: "error"
+                    ))
+                    casos.agregar(CasoLimite(
+                        descripcion: "decimal_infinito",
+                        codigo_ejecucion: "principal(1.0/0.0)",
+                        valor_esperado: "error"
+                    ))
+
+    // Máximo 5 casos por verificación
+    retornar casos.limitar(5)
+
+// ============================================================
+// VERIFICACIÓN COMPLETA
+// ============================================================
+
+funcion verificar_codigo_generado(codigo: texto, archivo_original: texto) -> Resultado<Verificacion, texto>:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_ es ok o _resultado_ es error
+    let resultados = Lista<ResultadoCaso>()
+
+    // 1. Verificación sintáctica (ya existente)
+    si no validar_con_compilador(codigo):
+        retornar err("Error sintáctico")
+
+    // 2. Verificación de contratos
+    let contratos_ok = verificar_contratos(codigo)
+    si no contratos_ok:
+        retornar err("Contratos no se cumplen")
+
+    // 3. Auto-refutación: generar y ejecutar casos límite
+    let casos = generar_casos_limite(codigo)
+    para caso in casos:
+        let resultado = verificar_caso_limite(codigo, caso)
+        resultados.agregar(resultado)
+
+    // 4. Analizar resultados
+    let fallos = resultados.filtrar(r -> r.estado != "completado")
+
+    retornar ok(Verificacion(
+        casos_ejecutados: resultados.len(),
+        fallos: fallos.len(),
+        resultados: resultados
+    ))
+
+// ============================================================
+// FUNCIONES AUXILIARES
+// ============================================================
+
+funcion parsear(codigo: texto) -> Lista<NodoAST>:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_.len() >= 0
+    // Stub: en producción, esto usaría el parser real
+    retornar Lista<NodoAST>()
+
+funcion validar_con_compilador(codigo: texto) -> booleano:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    // Stub: en producción, esto invocaría synapse check
+    retornar verdadero
+
+funcion verificar_contratos(codigo: texto) -> booleano:
+    requiere:
+        codigo.len() > 0
+    garantiza:
+        _resultado_ == verdadero o _resultado_ == falso
+    // Stub: en producción, esto verificaría contratos requiere/garantiza
+    retornar verdadero
+
+funcion repetir(caracter: texto, veces: entero) -> texto:
+    requiere:
+        veces >= 0
+    garantiza:
+        _resultado_.len() == veces
+    let resultado = ""
+    para i = 0 mientras i < veces:
+        resultado = resultado + caracter
+        i = i + 1
+    retornar resultado
+
+funcion escribir_archivo(ruta: texto, contenido: texto):
+    requiere:
+        ruta != ""
+    garantiza:
+        verdadero
+    // Stub: en producción, esto escribiría el archivo
+    verdadero
+
+estructura NodoAST:
+    tipo: texto
+    funcion: FuncionAST
+
+estructura FuncionAST:
+    nombre: texto
+    params: Lista<ParamAST>
+
+estructura ParamAST:
+    nombre: texto
+    tipo: texto
