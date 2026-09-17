@@ -265,6 +265,10 @@ Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
 **Exploración FFI y arquitectura del AST:**
 
 - Fase 32 completada (F32.1-F32.4). Próximo ME: Fase 32.5+ (puente FFI lista/mapa).
+- **ME F32.5 COMPLETADA** (commit `44b8acd`): puente FFI lista/mapa.
+  `nucleo/puente_ffi_lista_mapa.sin` con 12 funciones externo (5 lista, 7 mapa)
+  + 6 wrappers con inseguro/contratos. Runtime C ya existente (`lista.c`, `mapa.c`).
+  Tests 12/12 PASS. MTS completo (plan/expediente/verificación/oráculo 0 brechas).
 - `nucleo/grafo_conocimiento.syn` registrado en `docs/gobernancia/mapa_alineacion.md`
   → Manual 6 §1.1, Manual 2 §5.1.
 - SemNodo struct confirmado en `nucleo/analizador_semantico.syn:74` + `nucleo/ast_abi.syn`;
