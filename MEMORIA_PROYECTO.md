@@ -7,28 +7,27 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-10** (R145: terminar WIP cliente OpenAI-compatible en ollama.c + banner figlet)
+Última actualización: **2026-09-17** (Fase 32 completa: Agente de Codificación Avanzado + Memoria Persistente)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      FASE 31 HERRAMIENTAS NATIVAS — ME-1..ME-5 COMPLETADOS, Fase 31 COMPLETA
+Fase roadmap:      FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
+                   FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-                   Fase 29 COMPLETADA
-Estado:            ME-5 (reportes CI/CD) commit a7f0b3b. 111 tests GREEN.
-                   Fase 31 completa: workspace (d725f8e), testing (cf7c0ea), linter (6a041fa),
-                   formatter (19d5c74), reports (a7f0b3b).
-Commit fase:       a7f0b3b (ME-5 reports) sobre 19d5c74 (ME-4 formatter)
-Próximo ME:        Fase 31 completa — definir nueva fase del roadmap
-Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
-Últimos commits:    a7f0b3b (feat(nucleo): ME-5 — reportes CI/CD Fase 31.5)
-                    19d5c74 (feat(nucleo): ME-4 — formateador nativo Fase 31.4)
-                    6a041fa (feat(nucleo): ME-3 — linter nativo Fase 31.3)
-                    29b233c (fix(opensyn): ME-3 — 6 brechas corregidas, tests TDD funcionales)
-                    eee40f2 (feat(opensyn): ME-3 router-orquestador + comandos /next /fork (R3+R7))
-                    d3963ab (feat(opensyn): expandir catálogo APIs a 35 módulos std/ + tests completos)
+Estado:            Fase 32 completa: grafo_conocimiento (fa34825), explorer_det+architect_det (de7107c),
+                   memoria_cifrada (e0493bf), pipeline_multiagente (f3dab3f), verificacion_aot (20ba43f).
+                   72 tests GREEN en opensyn/. 5 expedientes de alineación. 5 planes MTS.
+Commit fase:       20ba43f (Fase 32.5 verificacion AOT) sobre f3dab3f (Fase 32.4 pipeline multiagente)
+Próximo ME:        Fase 33 (definir componentes)
+Próximo paso:      Definir Fase 33 del roadmap
+Últimos commits:    20ba43f (feat(opensyn): Fase 32.5 — verificacion AOT con auto-refutacion)
+                    f3dab3f (feat(opensyn): Fase 32.4 — pipeline multiagente optimizado)
+                    e0493bf (feat(opensyn): Fase 32.3 — memoria persistente cifrada)
+                    de7107c (feat(opensyn): Fase 32.2 — explorer_det + architect_det deterministas)
+                    fa34825 (feat(nucleo): Fase 32.1 — grafo de conocimiento)
 ```
 
 ### Cambios recientes esta sesión
@@ -190,7 +189,8 @@ Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
 
 **Fase completa:** F23 — Syquex auto-alojado (parche de bootstrap S1→S2→S3)
 **Fase completa:** F26 — Herramientas (S1 bootstrap toolchain)
-**Fase actual:** F27 — Herramientas de Desarrollo (LSP, VS Code, Debugger)
+**Fase completa:** F27 — Herramientas de Desarrollo (LSP, VS Code, Debugger)
+**Fase completa:** F32 — Agente de Codificación Avanzado y Memoria Persistente
 
 | Fase | Estado | Commit | Tests | Reporte |
 |------|--------|--------|-------|---------|
@@ -209,6 +209,7 @@ Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
 | F23 | ✅ | — | — | Syquex auto-alojado |
 | F26 | ✅ | — | — | Toolchain S1 |
 | F27 | ✅ (52/52) | 1aa62ba | 52/52 | — |
+| F32 | ✅ (72/72) | 20ba43f | 72/72 | — |
 
 ### Decisiones clave históricas
 - **D-F22-A (2026-08-10):** Frontends Syquex → Synapse (no .syq hasta completar fase). Justificado por Manual 1 §4 (auto-alojado) + paradoja de bootstrap.
@@ -265,10 +266,13 @@ Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
 **Exploración FFI y arquitectura del AST:**
 
 - Fase 32 completada (F32.1-F32.4). Próximo ME: Fase 32.5+ (puente FFI lista/mapa).
-- **ME F32.5 COMPLETADA** (commit `44b8acd`): puente FFI lista/mapa.
-  `nucleo/puente_ffi_lista_mapa.sin` con 12 funciones externo (5 lista, 7 mapa)
-  + 6 wrappers con inseguro/contratos. Runtime C ya existente (`lista.c`, `mapa.c`).
-  Tests 12/12 PASS. MTS completo (plan/expediente/verificación/oráculo 0 brechas).
+- **Fase 32 completada** (F32.1-F32.5, 72 tests GREEN):
+  - **F32.1 Grafo de Conocimiento** (fa34825): `nucleo/grafo_conocimiento.syn` (471 líneas, 22 funciones, 13 tests)
+  - **F32.2 Explorer + Architect Det.** (de7107c): `opensyn/explorer_det.syn` (BFS, `ArchivoRelevante`, 6 tests) + `opensyn/architect_det.syn` (DFS invertido + Tarjan, `AnalisisImpacto`, 11 tests)
+  - **F32.3 Memoria Persistente Cifrada** (e0493bf): `opensyn/memoria_persistente_cifrada.syn` (XSalsa20-Poly1305 + Argon2id, 14 tests)
+  - **F32.4 Pipeline Multi-Agente** (f3dab3f): `opensyn/pipeline_multiagente.syn` (5 fases, 5 modos, 15 tests)
+  - **F32.5 Verificación AOT** (20ba43f): `opensyn/verificacion_aot.syn` (auto-refutación, timeouts, 13 tests)
+  - Todos con plan MTS, expediente de alineación, lecturas registradas.
 - `nucleo/grafo_conocimiento.syn` registrado en `docs/gobernancia/mapa_alineacion.md`
   → Manual 6 §1.1, Manual 2 §5.1.
 - SemNodo struct confirmado en `nucleo/analizador_semantico.syn:74` + `nucleo/ast_abi.syn`;
@@ -277,3 +281,10 @@ Próximo paso:      Verificar alineación final de Fase 31 o avanzar a Fase 32
   `docs/fases/f32_exploracion_ffi.md`.
 
 **Archivo de referencia:** `docs/fases/f32_exploracion_ffi.md` (bitácora completa de la exploración).
+
+## 🚦 1. DASHBOARD — Actualización de sesión 2026-09-17
+
+**Fase 32 COMPLETADA — Agente de Codificación Avanzado y Memoria Persistente:**
+
+- Fase 32 completa (F32.1-F32.5). 72 tests GREEN, 5 expedientes, 5 planes MTS.
+- Próximo: definir Fase 33 del roadmap.
