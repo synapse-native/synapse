@@ -1,4 +1,5 @@
 ﻿// cumple Manual 6 3: mapa hash
+// cumple Manual 6 §3.1: externo funcion mapa del runtime C
 // runtime/core/mapa.c — Simple hash map for Syquex lib/mapa.syq
 // Manual 3 §5.2: Mapa<K,V> — diccionario hash
 // Implementación simple: array de pares con lineal probing
@@ -87,9 +88,9 @@ static int _mapa_buscar(MapaSyn* m, const char* clave) {
 
 // --- Operaciones ---
 
-int _syn_mapa_longitud(void* m) {
+int64_t _syn_mapa_longitud(void* m) {
     if (!m) return 0;
-    return ((MapaSyn*)m)->longitud;
+    return (int64_t)((MapaSyn*)m)->longitud;
 }
 
 void _syn_mapa_poner(void* m, const char* clave, int64_t valor) {
@@ -107,6 +108,7 @@ void _syn_mapa_poner(void* m, const char* clave, int64_t valor) {
         if (mp->pares[idx].estado == MAPA_VACIO ||
             mp->pares[idx].estado == MAPA_BORRADO) {
             mp->pares[idx].clave = strdup(clave);
+            if (!mp->pares[idx].clave) return;  // OOM safety
             mp->pares[idx].valor = valor;
             mp->pares[idx].estado = MAPA_OCUPADO;
             mp->longitud++;
@@ -127,7 +129,7 @@ int64_t _syn_mapa_obtener(void* m, const char* clave) {
     return ((MapaSyn*)m)->pares[idx].valor;
 }
 
-int _syn_mapa_contiene(void* m, const char* clave) {
+int64_t _syn_mapa_contiene(void* m, const char* clave) {
     if (!m || !clave) return 0;
     return _mapa_buscar((MapaSyn*)m, clave) >= 0 ? 1 : 0;
 }

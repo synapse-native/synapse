@@ -1,4 +1,5 @@
 ﻿// cumple Manual 6 3: lista enlazada
+// cumple Manual 6 §3.1: externo funcion lista del runtime C
 // runtime/core/lista.c — Dynamic list (vector) for Syquex lib/lista.syq
 // Manual 3 §5.2: Lista<T> — lista dinámica
 // Implementación simple: array dinámico con realloc
@@ -30,9 +31,9 @@ void* _syn_lista_crear(void) {
 
 // --- Operaciones básicas ---
 
-int _syn_lista_longitud(void* l) {
+int64_t _syn_lista_longitud(void* l) {
     if (!l) return 0;
-    return ((ListaSyn*)l)->longitud;
+    return (int64_t)((ListaSyn*)l)->longitud;
 }
 
 static void _lista_asegurar_capacidad(ListaSyn* l, int nueva_cap) {

@@ -58,6 +58,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "axon/axon_rt.h": ["Manual 6 §5.1"],
   "runtime/core/axon.c": ["Manual 8 §4.3", "Manual 6 §5.1"],
   "runtime/core/sistema.c": ["Manual 2 §9.1", "Manual 5 §1"],
+  "runtime/core/lista.c": ["Manual 6 §3.1"],
+  "runtime/core/mapa.c": ["Manual 6 §3.1"],
   "compilador/generator/emit_declarations.py": ["Manual 2 §1.3"],
   "compilador/generator/emit_expressions.py": ["Manual 2 §12"],
   "compilador/generator/generator.py": ["Manual 2 §5.1"],

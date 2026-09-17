@@ -44,6 +44,8 @@ externo funcion _syn_mapa_contiene(m: entero, k: texto) -> entero
 externo funcion _syn_mapa_eliminar(m: entero, k: texto) -> nulo
 externo funcion _syn_mapa_limpiar(m: entero) -> nulo
 externo funcion _syn_mapa_liberar(m: entero) -> nulo
+externo funcion _syn_mapa_claves(m: entero) -> entero
+externo funcion _syn_mapa_valores(m: entero) -> entero
 
 // --- Wrappers seguros con contratos (Manual 2 §5) ---
 // Las llamadas a FFI se consideran inseguras y deben encapsularse en `inseguro`
@@ -189,3 +191,19 @@ funcion mapa_liberar(m: entero) -> nulo:
     inseguro:
         _syn_mapa_liberar(m)
     retornar
+
+funcion mapa_claves(m: entero) -> entero:
+    requiere:
+        m >= 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_mapa_claves(m)
+
+funcion mapa_valores(m: entero) -> entero:
+    requiere:
+        m >= 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_mapa_valores(m)
