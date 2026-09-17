@@ -1,0 +1,191 @@
+#lang: es
+// cumple Manual 6 §1.1: SemNodo[] AST canónico unificado
+// cumple Manual 6 §3.1: externo funcion para declarar funciones C
+// cumple Manual 6 §3.2: FFI en bloque inseguro
+// cumple Manual 2 §5: contratos requiere/garantiza en funciones públicas
+//
+// ============================================================================
+// puente_ffi_lista_mapa.syn — Puente FFI para listas y mapas (Manual 6 §3)
+// ============================================================================
+// Declara las funciones externas (FFI) definidas en:
+// - runtime/core/lista.c — ListaSyn (array dinámico de int64_t)
+// - runtime/core/mapa.c — MapaSyn (hash map string→int64_t)
+//
+// Mapeo de tipos (Manual 6 §3.1):
+//   entero  ↔ int64_t  (handle opaco: void* casteado a int64_t)
+//   texto   ↔ CadenaSegura (struct {longitud, datos} — longitud + buffer)
+//   nulo    ↔ void     (funciones sin retorno)
+//
+// El handle `entero` es un puntero opaco (void*) reinterprettado como int64_t
+// por el codegen S1. El runtime C recibe void* y administra la memoria internamente.
+//
+// Referencia de calling convention: tests/fixtures/test_f24_lista_mapa.c:526-549
+// ============================================================================
+
+// --- Declaraciones FFI: Lista (Manual 6 §3.1) ---
+// cumple Manual 6 §3.1: externo funcion para listas del runtime C
+externo funcion _syn_lista_crear() -> entero
+externo funcion _syn_lista_longitud(l: entero) -> entero
+externo funcion _syn_lista_agregar(l: entero, v: entero) -> nulo
+externo funcion _syn_lista_obtener(l: entero, i: entero) -> entero
+externo funcion _syn_lista_establecer(l: entero, i: entero, v: entero) -> nulo
+externo funcion _syn_lista_eliminar(l: entero, i: entero) -> nulo
+externo funcion _syn_lista_limpiar(l: entero) -> nulo
+externo funcion _syn_lista_liberar(l: entero) -> nulo
+
+// --- Declaraciones FFI: Mapa (Manual 6 §3.1) ---
+// Las claves de mapa son `texto` (→ CadenaSegura en C), no `entero`.
+// cumple Manual 6 §3.1: externo funcion para mapas del runtime C
+externo funcion _syn_mapa_crear() -> entero
+externo funcion _syn_mapa_longitud(m: entero) -> entero
+externo funcion _syn_mapa_poner(m: entero, k: texto, v: entero) -> nulo
+externo funcion _syn_mapa_obtener(m: entero, k: texto) -> entero
+externo funcion _syn_mapa_contiene(m: entero, k: texto) -> entero
+externo funcion _syn_mapa_eliminar(m: entero, k: texto) -> nulo
+externo funcion _syn_mapa_limpiar(m: entero) -> nulo
+externo funcion _syn_mapa_liberar(m: entero) -> nulo
+
+// --- Wrappers seguros con contratos (Manual 2 §5) ---
+// Las llamadas a FFI se consideran inseguras y deben encapsularse en `inseguro`
+// (Manual 6 §3.2). Cada wrapper lleva contrato requiere/garantiza.
+
+// cumple Manual 2 §5.1: requiere se evalúa antes del cuerpo
+// cumple Manual 6 §3.2: FFI dentro de bloque inseguro
+funcion lista_crear() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_lista_crear()
+
+funcion lista_longitud(l: entero) -> entero:
+    requiere:
+        l >= 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_lista_longitud(l)
+
+funcion lista_agregar(l: entero, v: entero) -> nulo:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_lista_agregar(l, v)
+    retornar
+
+funcion lista_obtener(l: entero, i: entero) -> entero:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        retornar _syn_lista_obtener(l, i)
+
+funcion lista_establecer(l: entero, i: entero, v: entero) -> nulo:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_lista_establecer(l, i, v)
+    retornar
+
+funcion lista_eliminar(l: entero, i: entero) -> nulo:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_lista_eliminar(l, i)
+    retornar
+
+funcion lista_limpiar(l: entero) -> nulo:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_lista_limpiar(l)
+    retornar
+
+funcion lista_liberar(l: entero) -> nulo:
+    requiere:
+        l >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_lista_liberar(l)
+    retornar
+
+// cumple Manual 2 §5.1: requiere se evalúa antes del cuerpo
+// cumple Manual 6 §3.2: FFI dentro de bloque inseguro
+funcion mapa_crear() -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_mapa_crear()
+
+funcion mapa_longitud(m: entero) -> entero:
+    requiere:
+        m >= 0
+    garantiza:
+        _resultado_ >= 0
+    inseguro:
+        retornar _syn_mapa_longitud(m)
+
+funcion mapa_poner(m: entero, k: texto, v: entero) -> nulo:
+    requiere:
+        m >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_mapa_poner(m, k, v)
+    retornar
+
+funcion mapa_obtener(m: entero, k: texto) -> entero:
+    requiere:
+        m >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        retornar _syn_mapa_obtener(m, k)
+
+funcion mapa_contiene(m: entero, k: texto) -> entero:
+    requiere:
+        m >= 0
+    garantiza:
+        _resultado_ == 0 o _resultado_ == 1
+    inseguro:
+        retornar _syn_mapa_contiene(m, k)
+
+funcion mapa_eliminar(m: entero, k: texto) -> nulo:
+    requiere:
+        m >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_mapa_eliminar(m, k)
+    retornar
+
+funcion mapa_limpiar(m: entero) -> nulo:
+    requiere:
+        m >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_mapa_limpiar(m)
+    retornar
+
+funcion mapa_liberar(m: entero) -> nulo:
+    requiere:
+        m >= 0
+    garantiza:
+        verdadero
+    inseguro:
+        _syn_mapa_liberar(m)
+    retornar
