@@ -12,7 +12,8 @@
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
+Fase roadmap:      ME r149_reparacion COMPLETADO (d040500) — reparación de hallazgos R149
+                   FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
@@ -20,10 +21,10 @@ Fase roadmap:      FASE 32 COMPLETA — Agente de Codificación Avanzado + Memor
 Estado:            Fase 32 completa: grafo_conocimiento (fa34825), explorer_det+architect_det (de7107c),
                    memoria_cifrada (e0493bf), pipeline_multiagente (f3dab3f), verificacion_aot (20ba43f).
                    72 tests GREEN en opensyn/. 5 expedientes de alineación. 5 planes MTS.
-Commit fase:       20ba43f (Fase 32.5 verificacion AOT) sobre f3dab3f (Fase 32.4 pipeline multiagente)
-Próximo ME:        Fase 33 (definir componentes)
-Próximo paso:      Definir Fase 33 del roadmap
-Últimos commits:    20ba43f (feat(opensyn): Fase 32.5 — verificacion AOT con auto-refutacion)
+Commit fase:       d040500 (fix r149: std/, runtime tiempo, fuga RAII, OpenSyn, --check) sobre 86e89db
+Próximo ME:        Ratificar desviaciones restantes de R149 §5; definir Fase 33
+Próximo paso:      Arquitecto ratifica R149 §5 (stubs debugger/bindings/cluster, synapse_llvm/wasm sin cablear)
+Últimos commits:    d040500 (fix(r149): reparar hallazgos R149 — std/, runtime tiempo, fuga RAII, OpenSyn compilable, --check)
                     f3dab3f (feat(opensyn): Fase 32.4 — pipeline multiagente optimizado)
                     e0493bf (feat(opensyn): Fase 32.3 — memoria persistente cifrada)
                     de7107c (feat(opensyn): Fase 32.2 — explorer_det + architect_det deterministas)
