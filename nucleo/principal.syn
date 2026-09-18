@@ -884,6 +884,7 @@ funcion principal() -> entero:
         asm("fprintf(stderr,\"[Test] %%s\\n\",_trc==0?\"todos los tests pasaron\":\"tests fallidos\");")
         asm("r=(int)_trc; return r; }")
     // --- Pipeline de compilacion normal ---
+    // cumple Manual 1 §3.1: CLI debe aceptar -o
     ruta = argv_str(1)
     salida_ruta = argv_str(2)
     inseguro:

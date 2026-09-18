@@ -3,7 +3,8 @@
 // =====================================================================
 // lib/runtime_bindings.syq — Bindings automáticos del runtime C
 // Generado por opensyn/generate_runtime_bindings.py
-// Total: 91 funciones externas
+// cumple Manual 6 §3.1: declaraciones externo de funciones C
+// Total: 93 funciones externas
 // =====================================================================
 
 // ---------------------------------------------------------------------
@@ -49,7 +50,7 @@ externo funcion _syn_texto_repetir(t: entero, veces: entero) -> entero
 externo funcion _syn_texto_invertir(t: entero) -> entero
 
 // ---------------------------------------------------------------------
-// Manual 3 §12.3 — Fecha y hora (14 funciones)
+// Manual 3 §12.3 — Fecha y hora (16 funciones)
 // ---------------------------------------------------------------------
 
 // Bindings generados automáticamente desde runtime/core/tiempo.h
@@ -57,6 +58,8 @@ externo funcion _syn_texto_invertir(t: entero) -> entero
 
 externo funcion _syn_timestamp_unix() -> entero
 externo funcion _syn_timestamp_ms() -> entero
+externo funcion _syn_ahora_ms() -> entero
+externo funcion _syn_dormir_ms(ms: entero)
 externo funcion _syn_tiempo_anio() -> entero
 externo funcion _syn_tiempo_mes() -> entero
 externo funcion _syn_tiempo_dia() -> entero

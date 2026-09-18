@@ -1,7 +1,7 @@
 #lang: es
 // opensyn/permisos.syn — Matriz de permisos + sandbox (M7 §7.3)
-// cumple Manual 7 §7.3: "Sandboxing: El servidor de inferencia se ejecuta con permisos mínimos"
-// cumple Manual 7 §7.3: "Cero telemetría: Verificado con monitoreo de red"
+// cumple Manual 7 §1.1: sandboxing local — los TOOLS del agente solo acceden al workspace, sin red externa
+// cumple Manual 7 §1.1: "Cero telemetría: No envía datos a ningún servidor externo."
 
 importar std.io
 importar std.texto
@@ -29,7 +29,7 @@ estructura MatrizPermisos:
 // ============================================================
 
 // Retorna el nombre de la herramienta en el índice dado.
-// cumple Manual 7 §7.3: "permisos mínimos"
+// cumple Manual 7 §1.1: agente local con permisos mínimos, escrituras confinadas al workspace del usuario
 funcion nombre_herramienta(idx: entero) -> texto:
     requiere:
         idx >= 0 y idx < MAX_HERRAMIENTAS
@@ -50,7 +50,7 @@ funcion nombre_herramienta(idx: entero) -> texto:
 // ============================================================
 
 // Retorna el nivel (ALLOW/ASK/DENY) de la herramienta en el índice dado.
-// cumple Manual 7 §7.3: "permisos mínimos"
+// cumple Manual 7 §1.1: agente local con permisos mínimos, escrituras confinadas al workspace del usuario
 funcion nivel_permiso(idx: entero) -> entero:
     requiere:
         idx >= 0 y idx < MAX_HERRAMIENTAS
@@ -74,7 +74,7 @@ funcion nivel_permiso(idx: entero) -> entero:
 
 // Verifica si una herramienta está permitida.
 // Retorna PERMISO_ALLOW, PERMISO_ASK o PERMISO_DENY.
-// cumple Manual 7 §7.3: "El servidor se ejecuta con permisos mínimos"
+// cumple Manual 7 §1.1: el servidor local se ejecuta con los permisos mínimos del usuario
 funcion verificar_permiso_herramienta(matriz: MatrizPermisos, herramienta: texto) -> entero:
     requiere:
         matriz.cantidades > 0
@@ -95,7 +95,7 @@ funcion verificar_permiso_herramienta(matriz: MatrizPermisos, herramienta: texto
 
 // Verifica que una ruta está dentro del workspace (confinamiento).
 // Valida que el caracter post-prefijo sea separador o fin de cadena.
-// cumple Manual 7 §7.3: "writes confinados al workspace"
+// cumple Manual 7 §1.1: escrituras confinadas al workspace del usuario (sin rutas del sistema)
 funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
     requiere:
         longitud(ruta) > 0
@@ -114,8 +114,11 @@ funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
     // Validar separador post-prefijo (anti-bypass)
     si longitud_ruta == longitud_ws:
         retornar verdadero
-    siguiente = ruta[longitud_ws]
-    si siguiente == 47 o siguiente == 92:
+    // cumple Manual 7 §1.1: el sandbox valida rutas dentro del workspace del usuario (agente local, sin nube).
+    // cumple Manual 2 §3: 'siguiente' es palabra reservada (T_SIGUIENTE); se renombra el identificador.
+    // cumple Manual 7 §2.3: reglas de sintaxis estricta de Synapse en el agente (indexar texto produce texto; comparar contra caracter, no contra codigo ASCII).
+    car_sep = ruta[longitud_ws]
+    si car_sep == "/" o car_sep == "\\":
         retornar verdadero
     retornar falso
 
@@ -125,7 +128,7 @@ funcion es_ruta_en_workspace(ruta: texto, workspace: texto) -> booleano:
 
 // Verificación completa: herramienta + ruta en workspace (solo escritura).
 // Retorna PERMISO_ALLOW, PERMISO_ASK o PERMISO_DENY.
-// cumple Manual 7 §7.3: "Sandboxing: permisos mínimos + workspace only"
+// cumple Manual 7 §1.1: sandboxing local — permisos mínimos + workspace only
 funcion verificar_permiso_completo(matriz: MatrizPermisos, herramienta: texto, ruta: texto) -> entero:
     requiere:
         matriz.cantidades > 0
@@ -163,7 +166,7 @@ funcion verificar_permiso_completo(matriz: MatrizPermisos, herramienta: texto, r
 // ============================================================
 
 // Retorna el nombre legible de un nivel de permiso.
-// cumple Manual 7 §7.3: "feedback claro al usuario"
+// cumple Manual 7 §1.1: feedback claro al usuario cuando un TOOL es denegado por el sandbox
 funcion nombre_permiso(nivel: entero) -> texto:
     requiere:
         nivel >= PERMISO_ALLOW y nivel <= PERMISO_DENY
@@ -180,7 +183,7 @@ funcion nombre_permiso(nivel: entero) -> texto:
 // ============================================================
 
 // Crea la matriz de permisos por defecto.
-// cumple Manual 7 §7.3: "permisos mínimos"
+// cumple Manual 7 §1.1: agente local con permisos mínimos, escrituras confinadas al workspace del usuario
 funcion matriz_permisos_crear() -> MatrizPermisos:
     requiere:
         verdadero

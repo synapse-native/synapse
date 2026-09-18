@@ -22,7 +22,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "opensyn/installer.syn": ["Manual 7 §2.5", "Manual 9 §5.2", "Manual 9 §5.3", "Manual 9 §5.4"],
   "opensyn/chat.syn": ["Manual 7 §6.4"],
   "opensyn/validation_loop.syn": ["Manual 7 §6.3"],
-  "opensyn/permisos.syn": ["Manual 7 §7.3"],
+  "opensyn/permisos.syn": ["Manual 7 §1.1"],
+  "opensyn/generate_runtime_bindings.py": ["Manual 6 §3.1"],
   "opensyn/run_manager.syn": ["Manual 7 §4.3"],
   "opensyn/planificador.syn": ["Manual 7 §2.1"],
   "opensyn/explorer_det.syn": ["Manual 6 §1.1"],
@@ -67,7 +68,8 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "compilador/puente_canonico.py": ["Manual 3 §11.1", "Manual 6 §5.1"],
   "synapse_rt_types.h": ["Manual 2 §4.1"],
   "nucleo/parser_sentencias.syn": ["Manual 2 §1.3"],
-  "syquex/expr.syn": ["Manual 3 §3"]
+  "syquex/expr.syn": ["Manual 3 §3"],
+  "lib/runtime_bindings.syq": ["Manual 6 §3.1"]
 }
 ```
 

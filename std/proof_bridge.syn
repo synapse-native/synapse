@@ -1,5 +1,6 @@
 #lang: es
 // std.proof_bridge — Puente de Verificación Formal (Coq/Lean)
+// cumple Manual 2 §2: firmas de funcion en una sola linea (gramatica EBNF)
 // Integrante de la Biblioteca Estandar de Synapse.
 //
 // Conecta los contratos lógicos (requiere/garantiza) con asistentes
@@ -22,15 +23,12 @@
 // ============================================================
 
 // --- Ciclo de vida ---
-externo funcion _syn_pb_iniciar(formato: entero,
-    incluir_axiomas: entero, nombre_teoria: texto) -> puntero
+externo funcion _syn_pb_iniciar(formato: entero, incluir_axiomas: entero, nombre_teoria: texto) -> puntero
 externo funcion _syn_pb_cerrar(sesion: puntero) -> nulo
 
 // --- Gestión de funciones y contratos ---
-externo funcion _syn_pb_agregar_funcion(sesion: puntero,
-    nombre: texto, tipo_ret: texto, params: texto) -> entero
-externo funcion _syn_pb_agregar_contrato(sesion: puntero,
-    expr: texto, tipo: entero) -> entero
+externo funcion _syn_pb_agregar_funcion(sesion: puntero, nombre: texto, tipo_ret: texto, params: texto) -> entero
+externo funcion _syn_pb_agregar_contrato(sesion: puntero, expr: texto, tipo: entero) -> entero
 
 // --- Traducción a lógica formal ---
 externo funcion _syn_pb_traducir_a_coq(expr: texto) -> texto
@@ -42,8 +40,7 @@ externo funcion _syn_pb_generar_lean(sesion: puntero) -> entero
 externo funcion _syn_pb_exportar(sesion: puntero) -> entero
 
 // --- Certificados ---
-externo funcion _syn_pb_generar_certificado(sesion: puntero,
-    nombre_funcion: texto) -> entero
+externo funcion _syn_pb_generar_certificado(sesion: puntero, nombre_funcion: texto) -> entero
 
 // --- Persistencia ---
 externo funcion _syn_pb_guardar(sesion: puntero, ruta: texto) -> entero
@@ -54,8 +51,7 @@ externo funcion _syn_pb_cargar(sesion: puntero, ruta: texto) -> entero
 // ============================================================
 
 // Inicia una sesión del puente de verificación formal
-funcion pb_iniciar(formato: entero, incluir_axiomas: entero,
-    nombre_teoria: texto) -> puntero:
+funcion pb_iniciar(formato: entero, incluir_axiomas: entero, nombre_teoria: texto) -> puntero:
     retornar _syn_pb_iniciar(formato, incluir_axiomas, nombre_teoria)
 
 // Cierra la sesión y libera recursos
@@ -64,13 +60,11 @@ funcion pb_cerrar(sesion: puntero) -> nulo:
     retornar
 
 // Agrega una función con su firma para verificación
-funcion pb_agregar_funcion(sesion: puntero,
-    nombre: texto, tipo_ret: texto, params: texto) -> entero:
+funcion pb_agregar_funcion(sesion: puntero, nombre: texto, tipo_ret: texto, params: texto) -> entero:
     retornar _syn_pb_agregar_funcion(sesion, nombre, tipo_ret, params)
 
 // Agrega un contrato (requiere=0, garantiza=1) a la última función
-funcion pb_agregar_contrato(sesion: puntero,
-    expr: texto, tipo: entero) -> entero:
+funcion pb_agregar_contrato(sesion: puntero, expr: texto, tipo: entero) -> entero:
     retornar _syn_pb_agregar_contrato(sesion, expr, tipo)
 
 // Traduce expresión Synapse a término Coq
@@ -94,8 +88,7 @@ funcion pb_exportar(sesion: puntero) -> entero:
     retornar _syn_pb_exportar(sesion)
 
 // Genera certificado de verificación para una función
-funcion pb_generar_certificado(sesion: puntero,
-    nombre_funcion: texto) -> entero:
+funcion pb_generar_certificado(sesion: puntero, nombre_funcion: texto) -> entero:
     retornar _syn_pb_generar_certificado(sesion, nombre_funcion)
 
 // Guarda el estado de la sesión a archivo

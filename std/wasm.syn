@@ -2,6 +2,7 @@
 // cumple Manual 4 6: biblioteca estándar
 # =============================================================================
 # std/wasm.syn — Synapse WebAssembly WAT Backend Bindings (M12.1.2)
+# cumple Manual 2 §2: firmas de funcion en una sola linea (gramatica EBNF)
 #
 # Declaraciones externo funcion para la API WAT text emitter
 # implementada en synapse_wasm.c.
@@ -25,8 +26,7 @@ externo funcion WasmModuleEmitRuntimeDecls(mod: puntero) -> nulo
 # -------------------------------------------------------------------
 externo funcion WasmBuilderCreate(mod: puntero) -> puntero
 externo funcion WasmBuilderDispose(b: puntero) -> nulo
-externo funcion WasmBuilderBeginFunction(b: puntero, nombre: texto,
-    num_params: entero, num_results: entero) -> nulo
+externo funcion WasmBuilderBeginFunction(b: puntero, nombre: texto, num_params: entero, num_results: entero) -> nulo
 externo funcion WasmBuilderEndFunction(b: puntero) -> nulo
 
 # -------------------------------------------------------------------
@@ -62,17 +62,13 @@ externo funcion WasmEmitI32GtS(b: puntero) -> nulo
 # -------------------------------------------------------------------
 
 # Programa mínimo: define main que retorna una constante
-externo funcion WasmBuildMinimalProgram(nombre_modulo: texto,
-    valor_retorno: entero) -> texto
+externo funcion WasmBuildMinimalProgram(nombre_modulo: texto, valor_retorno: entero) -> texto
 
 # Programa aritmético: main() { return lhs <op> rhs; }
-externo funcion WasmBuildArithmeticProgram(nombre_modulo: texto,
-    op: entero, lhs: entero, rhs: entero) -> texto
+externo funcion WasmBuildArithmeticProgram(nombre_modulo: texto, op: entero, lhs: entero, rhs: entero) -> texto
 
 # Programa if-else: retorna 1 si a < b, sino 0
-externo funcion WasmBuildIfElseProgram(nombre_modulo: texto,
-    a: entero, b: entero) -> texto
+externo funcion WasmBuildIfElseProgram(nombre_modulo: texto, a: entero, b: entero) -> texto
 
 # Programa con llamada a función
-externo funcion WasmBuildCallProgram(nombre_modulo: texto,
-    a: entero, b: entero) -> texto
+externo funcion WasmBuildCallProgram(nombre_modulo: texto, a: entero, b: entero) -> texto

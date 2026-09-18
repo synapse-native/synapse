@@ -1,4 +1,4 @@
-﻿# cumple Manual 4 3: generador de bindings de runtime
+﻿# cumple Manual 6 §3.1: generador de declaraciones externo de bindings
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
@@ -60,6 +60,7 @@ def generate_all_bindings(output_path: str) -> int:
         f.write("// =====================================================================\n")
         f.write(f"// lib/runtime_bindings.syq — Bindings automáticos del runtime C\n")
         f.write(f"// Generado por opensyn/generate_runtime_bindings.py\n")
+        f.write(f"// cumple Manual 6 §3.1: declaraciones externo de funciones C\n")
         f.write(f"// Total: {total_funcs} funciones externas\n")
         f.write("// =====================================================================\n\n")
 

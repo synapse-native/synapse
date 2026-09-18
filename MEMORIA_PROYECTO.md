@@ -108,6 +108,65 @@ Próximo paso:      Definir Fase 33 del roadmap
 
 ---
 
+### Decisiones y hallazgos del ME r149_reparacion (2026-09-17)
+
+- **H-R149-WIP (RESUELTO en working tree, sesión 2026-09-17):** el WIP del ME
+  introdujo `var ultimo_tipo_tarea: entero = 0` a nivel de módulo en
+  `opensyn/principal.syn` alegando "patrón de memoria_persistente_cifrada.syn".
+  Verificado: (1) `var` NO existe en la gramática (Manual 2 §2 L134 solo define
+  `let`; parser.py:148) y el compilador lo rechaza; (2) Synapse nativo no define
+  globales mutables (semantic_checker.py:341-343 — `variable` es keyword de
+  SyQuex, Manual 3 §3); (3) `let` a nivel de módulo SÍ emite el global en el C
+  MONOLÍTICO pero NO en el MODULAR (queda como local sombra dentro de
+  `_principal_impl` — sondeado con probe en $TEMP); (4) el "patrón de
+  referencia" `memoria_persistente_cifrada.syn` usa `var` en fuente pero ni
+  siquiera compila aislado (header `#lang`). Fix definitivo: sin estado global —
+  `tui_agente()` retorna la clasificación (0..4), `tui_comando()` la recibe por
+  parámetro (mismo nombre → lectores /next sin tocar) y el estado es `let`
+  local en `chat_tui()` y `modo_oraculo()`. Exe fresco relinkado. Lección:
+  verificar que el patrón citado en un comentario realmente compila antes de
+  copiarlo; los comentarios de WIP no son evidencia.
+- **H-R149-2 (RESUELTO en working tree):** la autodetección de expedientes en
+  `alineacion.py --verificar` (sin `--me`, la que corre el hook) matchea por
+  INTERSECCIÓN de archivos y recorre `docs/alineacion/*.md` alfabéticamente:
+  expedientes históricos (ME-7, f31_*, f32_*) con anclas PENDIENTES y hash
+  vacío interceptaban cambios nuevos que tocaban los mismos archivos (ej.
+  `opensyn/principal.syn` está en ME-7 y en r149) → el gate validaba contra un
+  expediente muerto y bloqueaba. Fix: expedientes históricos archivados en
+  `docs/alineacion/archivo/` (el glob de autodetección no es recursivo); el
+  expediente activo r149_reparacion queda en la raíz. Los tests no dependen de
+  ellos (test_alineacion_control.py usa fixture ME-T).
+- **H-R149-EXP (RESUELTO en working tree):** el expediente
+  `docs/alineacion/f32_4b_cita_principal.md` era un borrador no verificable:
+  duplicaba anclas de `r149_reparacion.md` sobre el MISMO cambio_hash
+  (94c9b9fff045f0e2) con solo 1 de 12 archivos → "el expediente no tiene bloque
+  para: …". Además usaba clave `citation:` (el validador lee `cita:`) y apuntaba
+  a Manual 3 §12.1 que NO existe (Manual 3 termina en §12 sin subsecciones; la
+  cita literal vive en §12, línea 458). Consolidado: expediente borrado, su plan
+  apunta a r149_reparacion.md.
+- **D-R149-1 (RATIFICADA, con expresa aprobación del Arquitecto en sesión):** los
+  comentarios `// cumple Manual` DEBEN citar secciones que existan en el índice
+  de manuales (`docs/manuales/.indice.json`); NO pueden usarse secciones
+  "ilustrativas" ni "mentoras" (ej. `Manual 3 §12.1: CLI debe aceptar -o` o
+  `Manual 7 §8: capa de IA`). El requisito literal que el código implementa
+  (texto no indexado como prosa) queda registrado en el PLAN MTS y en el
+  EXPEDIENTE (bloque DESVIACION con `decision: D-R149-1`); el comentario en el
+  código se ancla a la sección REAL más próxima que especifica ese archivo.
+  Origen: 21 citas muertas heredadas en archivos del cambio; 14 re-ancladas a
+  secciones reales (cli.py/synapse_rt.c/tiempo.h→M1 §3.2, M8 §4.1, M4 §2,
+  M5 §2.6; opensyn/principal.syn→M7 §2.1/§2.3; permisos.syn→M7 §1.1), 7
+  declaradas en expediente.
+- **D-R149-2 (RATIFICADA, con expresa aprobación del Arquitecto en sesión):**
+  `docs/gobernancia/mapa_alineacion.md` entraba `opensyn/permisos.syn` a
+  `Manual 7 §7.3`, sección que NO existe en Manual 7 (que termina en §4.2).
+  Corregido el mapa a `Manual 7 §1.1` (asistente IA local: permisos mínimos,
+  cero telemetría, sin nube), que es la sección que realmente especifica el
+  sandbox de rutas del agente. Origen: DEUDA de alineación 2026-09-14.
+- **Nota técnica D-R149-3:** el formato del expediente de alineación permite
+  `decision: D-xxx` solo en bloques DESVIACION (alineacion.py:605-611); en
+  CUMPLE solo hay evidencia+oráculo. Los archivos sin prosa citable (cabeceras
+  nuevas) se anclan a la sección real que especifica el área.
+
 ## 💡 2. ERRORES RECURRENTES (patrones a evitar)
 
 1. **Encoding UTF-8 en `subprocess.run`** en Windows

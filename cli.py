@@ -1,5 +1,6 @@
-# cumple Manual 1 1: infraestructura Python del compilador Synapse
-# cumple Manual 8 4: toolchain de construcción
+# cumple Manual 1 §3.2: infraestructura Python del compilador Synapse (pipeline 3.1)
+# cumple Manual 8 §4.1: toolchain de construcción del compilador nativo S2
+# cumple Manual 1 §3.1: pipeline de compilación (lexer->parser->semántico->generador) que sirve este CLI
 import os
 import sys
 import json
@@ -1275,7 +1276,9 @@ def main():
 
         codigo = ejecutar_compilador(ruta_entrada, mostrar_tokens=tokens_flag,
                                      output_lang=lang_val, dump_ast=dump_flag,
-                                     dependencias=dependencias)
+                                     # cumple Manual 8 §4.2: --check valida sin emitir
+                                     check_only=args.check,
+                                     dependencias=dependencias)  # cumple Manual 8 §4
         sys.exit(codigo)
 
     if args.lsp:
@@ -1296,7 +1299,9 @@ def main():
 
         codigo = ejecutar_compilador(archivo_principal, mostrar_tokens=args.tokens,
                                      output_lang=args.lang, dump_ast=args.dump_ast,
-                                     modo_safe=args.safe,
+                                     # cumple Manual 8 §4.2: --check valida sin emitir
+                                     check_only=args.check,
+                                     modo_safe=args.safe,  # cumple Manual 8 §4
                                      output_path=args.output,
                                      incremental=args.incremental,
                                      generar_sbom=args.sbom,

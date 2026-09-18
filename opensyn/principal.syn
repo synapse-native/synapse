@@ -9,13 +9,16 @@ importar std.sistema
 importar std.oraculo
 importar std.modelo
 importar std.texto
+importar std.tiempo
+// R149-R9: modulo local del agente (matriz de permisos + sandbox, Manual 7 §7.3)
+importar permisos
 
 constante ARCHIVO_CONFIG = ".synapse_config"
 
 // --- Cliente Ollama local (runtime/core/ollama.c) ---
-// cumple Manual 7 §8: consulta al oraculo local via HTTP (8088)
+// cumple Manual 7 §2.1: consulta al oraculo local via HTTP (8088)
 externo funcion _syn_ollama_consultar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> texto
-// cumple Manual 7 §8: lista los modelos instalados en Ollama (GET /api/tags)
+// cumple Manual 7 §2.1: lista los modelos instalados en Ollama (GET /api/tags)
 externo funcion _syn_ollama_modelos(host: texto, puerto: entero) -> texto
 // --- Herramientas del agente (Manual 7 §2.3: contexto del codigo local) ---
 externo funcion _syn_listar_directorio(ruta: texto) -> texto
@@ -38,16 +41,25 @@ externo funcion _syn_tui_evento() -> entero
 externo funcion _syn_tui_menu(titulo: texto, items: texto) -> texto
 externo funcion _syn_tui_dirty() -> entero
 externo funcion _syn_tui_historial_anadir(texto: texto) -> nulo
-// Spinner/status dinámico (Manual 7 §8, pulido OpenCode): animación mientras
+// Spinner/status dinámico (Manual 7 §2.1, pulido OpenCode): animación mientras
 // el modelo genera + tokens/contexto en la barra inferior.
 externo funcion _syn_tui_pensando(activar: entero, etiqueta: texto) -> nulo
 externo funcion _syn_tui_contexto(pct: entero, tokens: entero) -> nulo
-// --- Streaming del chat (Manual 7 §8): token a token ---
+// --- Streaming del chat (Manual 7 §2.1): token a token ---
 externo funcion _syn_ollama_stream_iniciar(modelo: texto, prompt: texto, host: texto, puerto: entero, max_tokens: entero) -> puntero
 externo funcion _syn_ollama_stream_leer(sesion: puntero) -> texto
 externo funcion _syn_ollama_stream_estado(sesion: puntero) -> entero
 externo funcion _syn_ollama_stream_error(sesion: puntero) -> texto
 externo funcion _syn_ollama_stream_cerrar(sesion: puntero) -> nulo
+// R149-R9: longitud es el predicado canonico de los contratos (Manual 2 §5.1:
+// las expresiones de requiere/garantiza deben ser booleanas); puente al runtime.
+// cumple Manual 7 §2.3: contexto estático inyectado al prompt del agente (longitud acotada).
+funcion longitud(t: texto) -> entero:
+    requiere:
+        verdadero
+    garantiza:
+        _resultado_ >= 0 // cumple Manual 2 §5.1
+    retornar _syn_texto_longitud(t)
 // --- Banner ASCII retro "OpenSyn" (estilo OpenCode/Freebuff) ---
 // cumple Manual 7 1.1: identidad visual de OpenSyn como asistente local; el
 // color (cian 36) se emite SOLO en consola real (pipes quedan sin escapes).
@@ -64,14 +76,14 @@ constante BANNER_L6 = "       |_|                                      "
 
 // --- Prompts de habilidades (skills) del chat ---
 // Reutiliza los prompts de std/agent_skills.syn (usuario/arquitecto, desviación
-// ratificada H-*: los manuales no documentan skills). Cumple Manual 7 §6.
+// ratificada H-*: los manuales no documentan skills). Cumple Manual 7 §2.3.
 constante SKILL_TDD_PROMPT = "Eres un ingeniero senior practicando Test-Driven Development. Tu lenguaje es Synapse (.syn). Reglas del lenguaje: indentacion con 4 espacios, sin llaves, 'funcion nombre(param:tipo) -> tipo:', 'si/para/mientras/sino', 'retornar expr'. No uses punto y coma. Escribe ONLY tests en formato Synapse usando 'importar std.testing' y la funcion 'verificar'. Los tests deben FALLAR inicialmente (RED), luego codigo minimo para PASAR (GREEN). Genera codigo sin explicaciones."
 
 constante SKILL_REVIEW_PROMPT = "Eres un revisor de codigo senior. Revisa el siguiente codigo Synapse siguiendo los 5 ejes: 1) Correccion (bugs, edge cases, error paths), 2) Legibilidad (nombres descriptivos, flow simple), 3) Arquitectura (patrones limpios, modulos), 4) Seguridad (input validation, secret management), 5) Rendimiento (algorithm efficiency). Da feedback concreto con lineas de codigo. Si algo esta bien, di OK. No suavices criticas."
 
 constante SKILL_PLAN_PROMPT = "Eres un arquitecto de software senior. Desglosa la siguiente caracteristica en tareas incrementales para Synapse (.syn). Usa formato: 1. [Tamano: pequeno/mediano/grande] Descripcion -> entregable. Prioriza tareas verticales (end-to-end) primero. Identifica riesgos y dependencias. Numero las tareas 1-N. Sean conciso."
 
-// --- Auto-inicio de llama-server (cumple Manual 7 §8) ---
+// --- Auto-inicio de llama-server (cumple Manual 7 §2.1) ---
 // Si el usuario ejecuta opensyn.exe directamente (no via opensyn.bat),
 // llama-server no esta corriendo. Detectamos y lo iniciamos automaticamente.
 // Usa solo funciones del runtime (no Windows API directa).
@@ -188,10 +200,10 @@ funcion iniciar_llama_server() -> nulo:
 // --- Funciones auxiliares de configuracion ---
 
 funcion leer_modo_config() -> texto:
-    // cumple Manual 7 §8: buscar config en cwd, luego en HOME y en app (instalador pre-configura)
+    // cumple Manual 7 §2.1: buscar config en cwd, luego en HOME y en app (instalador pre-configura)
     contenido = leer_archivo(ARCHIVO_CONFIG)
     si contenido == "":
-        // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §8
+        // Fallback via _syn_leer_archivo directo (bypass _validar_ruta_segura cwd-only) — cumple Manual 7 §2.1
         home = obtener_env("USERPROFILE")
         ruta_home = concat(home, "\\.synapse_config")
         inseguro:
@@ -312,10 +324,10 @@ funcion modo_compilador() -> entero:
         escribir_archivo(nombre_c, codigo_c)
         escribir_linea("  [OK] Compilacion exitosa.")
         escribir_linea(concat("  [OK] Codigo C generado: ", nombre_c))
-        // M13: reportes de formato (Fase 31, Manual 9 §6)
+        // M13: reportes de formato (Fase 31, Manual 9 §6)  // cumple Manual 7 §4.2: validacion del codigo con el compilador real (--check)
         si junit == 1:
             nombre_junit_xml = concat(ruta, ".junit.xml")
-            contenido_junit = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites><testsuite name=\"synapse\" tests=\"1\" failures=\"0\"><testcase name=\"compilacion\" classname=\"", ruta, "\"><system-out>OK</system-out></testcase></testsuite></testsuites>"
+            contenido_junit = concat(concat("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites><testsuite name=\"synapse\" tests=\"1\" failures=\"0\"><testcase name=\"compilacion\" classname=\"", ruta), "\"><system-out>OK</system-out></testcase></testsuites>")
             escribir_archivo(nombre_junit_xml, contenido_junit)
             escribir_linea(concat("  [OK] Reporte JUnit: ", nombre_junit_xml))
         si coverage == 1:
@@ -325,7 +337,7 @@ funcion modo_compilador() -> entero:
             escribir_linea(concat("  [OK] Informe cobertura: ", nombre_cov))
         si json_flag == 1:
             nombre_json = concat(ruta, ".reporte.json")
-            contenido_json = "{\"compilacion\":\"exitosa\",\"archivo\":\"", ruta, "\",\"codigo_c\":\"", nombre_c, "\"}"
+            contenido_json = concat(concat(concat(concat("{\"compilacion\":\"exitosa\",\"archivo\":\"", ruta), "\",\"codigo_c\":\""), nombre_c), "\"}")
             escribir_archivo(nombre_json, contenido_json)
             escribir_linea(concat("  [OK] Reporte JSON: ", nombre_json))
         escribir_linea("")
@@ -396,7 +408,7 @@ funcion obtener_modelo_config(config: texto) -> texto:
     retornar subcadena(config, inicio, fin - inicio)
 
 // --- Helpers del chat Ollama (estilo OpenCode/Freebuff) ---
-// cumple Manual 7 §8: lista de modelos instalados vía GET /api/tags
+// cumple Manual 7 §2.1: lista de modelos instalados vía GET /api/tags
 
 funcion contar_modelos(lista: texto) -> entero:
     // R113 (Manual 2 §11 + codegen): una funcion de usuario CONSUME sus
@@ -666,8 +678,10 @@ constante MODO_ORCHESTRATOR = 4
 constante MODO_DEFAULT = MODO_ASK
 
 // ME-3 (R5): último tipo de tarea clasificado (para /next contextual).
-// Se actualiza después de cada respuesta del agente.
-let ultimo_tipo_tarea: entero = 0  // cumple Manual 2 §134: declaracion_variable ::= "let" IDENTIFICADOR
+// Synapse no define globales mutables (Manual 2 §2: solo `let` y `constante`),
+// y el `let` a nivel de módulo no genera el global en el C modular (R149).
+// El estado vive como local en chat_tui() y modo_oraculo(): se pasa a
+// tui_comando() y se actualiza con el valor que retorna tui_agente().
 
 // Clasificación ligera de tarea (para /next contextual en TUI).
 // cumple Manual 7 §2.4: el router clasifica antes de delegar.
@@ -919,8 +933,8 @@ funcion ejecutar_tool(linea: texto, cwd_act: texto, modo: entero) -> texto:
             si arg == "":
                 res = "[TOOL_ERROR] falta la ruta: TOOL leer <ruta>"
             sino:
-            si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
-                res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
+                si strstr_f(arg, "..") >= 0 o strstr_f(arg, ":") >= 0 o subcadena(arg, 0, 1) == "~":
+                    res = "[TOOL_ERROR] ruta no permitida (usa rutas dentro del repo)"
                 sino:
                     ruta = concat(cwd_act, "/")
                     ruta = concat(ruta, arg)
@@ -1094,13 +1108,14 @@ funcion tui_ejecutar_skill(modelo: texto, prompt_skill: texto, etiqueta: texto, 
 // Agente con contexto del repositorio: bucle [TOOL] + streaming en vivo.
 // ME-1 (R1): recibe modo para verificar permisos de herramientas.
 // ME-3 (R5): clasifica la tarea para /next contextual.
-funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero) -> nulo:
+funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero) -> entero:
     requiere:
         verdadero
     garantiza:
-        verdadero
-    // ME-3 (R5): clasificar tarea para siguientes pasos contextuales
-    ultimo_tipo_tarea = clasificar_tarea_local(strcpy_f(pregunta))
+        _resultado_ >= 0 y _resultado_ <= 4 // cumple Manual 2 §5.1
+    // ME-3 (R5): clasificar tarea para siguientes pasos contextuales; el
+    // resultado se RETORNA al llamador (no hay globales mutables, Manual 2 §2).
+    let tipo_clasif: entero = clasificar_tarea_local(strcpy_f(pregunta))
     _syn_tui_mensaje(0, concat("❯ ", strcpy_f(pregunta)))
     sys = concat(strcpy_f(AGENTE_SYS_BASE), construir_contexto(strcpy_f(cwd_act)))
     sys = concat(sys, "\n\n[USUARIO]\n")
@@ -1112,7 +1127,7 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
         resp = consulta_stream(strcpy_f(modelo), strcpy_f(sys))
         si resp == "":
             _syn_tui_pensando(0, "")
-            retornar
+            retornar tipo_clasif
         limpia = recortar(strcpy_f(resp))
         si strstr_f(limpia, "TOOL ") == 0:
             // El modelo pide una herramienta: su texto era la petición, no
@@ -1131,14 +1146,15 @@ funcion tui_agente(modelo: texto, pregunta: texto, cwd_act: texto, modo: entero)
             iteracion = iteracion + 1
         sino:
             _syn_tui_repintar(strcpy_f(modelo))
-            retornar
+            retornar tipo_clasif
     _syn_tui_mensaje(3, "Limite de iteraciones de herramienta alcanzado.")
     _syn_tui_repintar(strcpy_f(modelo))
+    retornar tipo_clasif
 
 // Despacha un comando (tecleado o elegido en el menu "/").
 // Devuelve: "!salir", "!ok", "!modo:N" (cambio de modo), o el NUEVO modelo activo.
 // ME-1 (R1): comandos /ask /plan /code /debug /orchestrator para cambiar de modo.
-funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero) -> texto:
+funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero, ultimo_tipo_tarea: entero) -> texto:
     requiere:
         verdadero
     garantiza:
@@ -1296,7 +1312,7 @@ funcion tui_comando(entrada: texto, modelo: texto, modelos: texto, modo: entero)
         _syn_tui_mensaje(2, "Comando cancelado. Escribe / para el menu de comandos.")
         _syn_tui_repintar(strcpy_f(modelo))
         retornar "!ok"
-    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo)
+    retornar tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
 
 // Bucle principal de la TUI (estilo OpenCode/Freebuff).
 // ME-1 (R1): variable de estado del modo (inicial: ASK, solo lectura).
@@ -1312,6 +1328,8 @@ funcion chat_tui() -> entero:
     total_mod = contar_modelos(strcpy_f(modelos))
     cwd_act = _syn_obtener_cwd()
     modo = MODO_DEFAULT
+    // ME-3 (R5): estado de clasificación local al bucle TUI (Manual 2 §2).
+    let ultimo_tipo_tarea: entero = 0
     // Escena inicial: banner + estado del entorno.
     _syn_tui_mensaje(4, BANNER_L1)
     _syn_tui_mensaje(4, BANNER_L2)
@@ -1337,7 +1355,7 @@ funcion chat_tui() -> entero:
             // Añadir al historial persistente
             _syn_tui_historial_anadir(strcpy_f(entrada))
             si strstr_f(entrada, "/") == 0 o entrada == "salir" o entrada == "exit":
-                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos), modo)
+                res = tui_comando(strcpy_f(entrada), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
                 si res == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
@@ -1357,7 +1375,7 @@ funcion chat_tui() -> entero:
                 siguiente
             // Repintar solo si NO es comando de salida (evita flash antes de salir)
             _syn_tui_repintar(strcpy_f(modelo))
-            tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act), modo)
+            ultimo_tipo_tarea = tui_agente(strcpy_f(modelo), strcpy_f(entrada), strcpy_f(cwd_act), modo)
             _syn_tui_repintar(strcpy_f(modelo))
             siguiente
         si evento == 2:
@@ -1381,7 +1399,7 @@ funcion chat_tui() -> entero:
             _syn_tui_repintar(strcpy_f(modelo))
             r = _syn_tui_menu("Comandos (filtra escribiendo)", strcpy_f(MENU_COMANDOS))
             si r != "":
-                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo)
+                res2 = tui_comando(strcpy_f(r), strcpy_f(modelo), strcpy_f(modelos), modo, ultimo_tipo_tarea)
                 si res2 == "!salir":
                     _syn_tui_finalizar()
                     retornar 0
@@ -1399,7 +1417,7 @@ funcion chat_tui() -> entero:
 // --- Modo Oraculo (IA Local) ---
 
 funcion modo_oraculo() -> entero:
-    // cumple Manual 7 §8: auto-iniciar llama-server si no esta corriendo
+    // cumple Manual 7 §2.1: auto-iniciar llama-server si no esta corriendo
     iniciar_llama_server()
     si _syn_tui_iniciar() == 0:
         rc_tui = chat_tui()
@@ -1411,13 +1429,13 @@ funcion modo_oraculo() -> entero:
     escribir_linea("")
     escribir_linea("=== OpenSyn: Modo Oraculo (IA Local) ===")
     escribir_linea("")
-    // cumple Manual 7 §8 + Manual 9 §5: Ollama primero (config_ollama.txt del
+    // cumple Manual 7 §2.1 + Manual 9 §5: Ollama primero (config_ollama.txt del
     // instalador, http://localhost:8088); GGUF local como respaldo.
     config = leer_config_ollama()
     si config != "":
         // Chat interactivo real con Ollama, estilo OpenCode/Freebuff:
         // auto-detección del modelo instalado + comandos /model /modelos /ayuda
-        // + skills (/tdd /revisar /plan). cumple Manual 7 §8 + Manual 9 §5.
+        // + skills (/tdd /revisar /plan). cumple Manual 7 §2.3 + Manual 9 §5.
         escribir_linea("  [OK] Conectando a Ollama… http://localhost:8088")
         modelos = _syn_ollama_modelos("127.0.0.1", 8088)
         si modelos == "":
@@ -1428,6 +1446,9 @@ funcion modo_oraculo() -> entero:
         modelo = normalizar_modelo_activo(strcpy_f(modelo_base), strcpy_f(modelos))
         // ME-1 (R1): inicializar modo en modo línea
         modo = MODO_DEFAULT
+        // ME-3 (R5): clasificación local al bucle de consola (Manual 2 §2);
+        // este flujo no clasifica (solo TUI lo hace), se inicia en 0.
+        let ultimo_tipo_tarea: entero = 0
         escribir_linea(concat("  [OK] Modelo activo: ", modelo))
         total_mod = contar_modelos(strcpy_f(modelos))
         si total_mod > 0:
@@ -1663,7 +1684,7 @@ funcion modo_oraculo() -> entero:
 
 // --- Subcommands del Orquestador ---
 
-// cumple Manual 7 §8: status muestra el estado del entorno Soberania
+// cumple Manual 7 §2.1: status muestra el estado del entorno Soberania
 // cumple Manual 2 §5: contratos requiere/garantiza
 funcion cmd_status() -> entero:
     requiere:

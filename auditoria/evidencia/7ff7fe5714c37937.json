@@ -1,0 +1,27 @@
+{
+ "cambio_hash": "7ff7fe5714c37937",
+ "expediente": "docs/alineacion/r149_reparacion.md",
+ "fecha": "2026-09-17",
+ "archivos": [
+  "cli.py",
+  "lib/runtime_bindings.syq",
+  "nucleo/principal.syn",
+  "opensyn/generate_runtime_bindings.py",
+  "opensyn/permisos.syn",
+  "opensyn/principal.syn",
+  "runtime/core/tiempo.c",
+  "runtime/core/tiempo.h",
+  "std/dist_orchestrator.syn",
+  "std/llvm.syn",
+  "std/proof_bridge.syn",
+  "std/surface_code.syn",
+  "std/wasm.syn",
+  "synapse_rt.c"
+ ],
+ "oraculos": {
+  "tests/auditoria/test_oraculos_r149.py": true,
+  "tests/nucleo/test_lint.py": true
+ },
+ "citas_muertas_repo": null,
+ "modo": "block"
+}

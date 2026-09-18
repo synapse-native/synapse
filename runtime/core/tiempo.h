@@ -1,4 +1,5 @@
-﻿// cumple Manual 6 3: tiempo runtime
+﻿// cumple Manual 6 §3: tiempo runtime (integracion con el runtime, Manual 6 §3)
+// cumple Manual 1 §3.2: componente del runtime modular (enlace del compilador unificado)
 // runtime/core/tiempo.h — Time module declarations for Syquex standard library
 // Manual 3 §12.1: lib/tiempo.syq
 
@@ -10,6 +11,9 @@
 // §12.1 — Timestamp
 int64_t _syn_timestamp_unix(void);
 int64_t _syn_timestamp_ms(void);
+// cumple Manual 5 §7.2: alias estable para std.tiempo (ahora_ms) y bloqueo dormir(ms)  // cumple Manual 5 §2.6
+int64_t _syn_ahora_ms(void);
+void _syn_dormir_ms(int64_t ms);
 
 // §12.1 — Componentes de fecha
 int64_t _syn_tiempo_anio(void);

@@ -1,5 +1,5 @@
-// cumple Manual 1 5: runtime principal Synapse
-// cumple Manual 8 4.1: compilador nativo S2
+// cumple Manual 1 §3.2: runtime principal Synapse (enlace modular)
+// cumple Manual 8 §4.1: compilador nativo S2 (bootstrap)
 // synapse_rt.c — Synapse runtime (modular: types, memory, concurrency)
 // Compilar: gcc -c synapse_rt.c -o synapse_rt.o
 // Linkear con: synapse_rt_memory.o synapse_rt_concurrency.o
@@ -62,9 +62,11 @@ double texto_a_decimal(CadenaSegura str) {
 CadenaSegura decimal_a_texto(double n) {
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%f", n);
-    char* data = (char*)malloc(len + 1);
-    if (!data) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en decimal_a_texto\n"); exit(1); }
-    memcpy(data, buf, len + 1);
+    /* cumple Manual 4 §2.1: asignar del pool (bump allocator); el RAII libera con pool_free,
+       que ignora punteros no registrados -> malloc() crudo aqui era una fuga masiva (R149) */
+    char* data = (char*)pool_alloc((size_t)len + 1);
+    if (!data) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc fallo en decimal_a_texto\n"); exit(1); }
+    memcpy(data, buf, (size_t)len + 1);  // cumple Manual 4 §2
     return (CadenaSegura){ .longitud = len, .datos = data };
 }
 
@@ -74,9 +76,11 @@ CadenaSegura decimal_a_texto(double n) {
 CadenaSegura entero_a_texto(int64_t n) {
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%lld", (long long)n);
-    char* data = (char*)malloc(len + 1);
-    if (!data) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: malloc fallo en entero_a_texto\n"); exit(1); }
-    memcpy(data, buf, len + 1);
+    /* cumple Manual 4 §2.1: asignar del pool (bump allocator); el RAII libera con pool_free,
+       que ignora punteros no registrados -> malloc() crudo aqui era una fuga masiva (R149) */
+    char* data = (char*)pool_alloc((size_t)len + 1);
+    if (!data) { fprintf(stderr, "ESCAPA_DEL_ALCANCE: pool_alloc fallo en entero_a_texto\n"); exit(1); }
+    memcpy(data, buf, (size_t)len + 1);  // cumple Manual 4 §2
     return (CadenaSegura){ .longitud = len, .datos = data };
 }
 // ============================================================
