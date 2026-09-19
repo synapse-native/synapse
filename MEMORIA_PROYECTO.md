@@ -7,28 +7,34 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-18** (ME r150_funcional en curso — oráculos y gates evaluados)
+Última actualización: **2026-09-19** (ME r150_funcional COMPLETADO — commit f36849c, documentación post-commit)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      ME r150_funcional EN CURSO (WIP sin commit) — cierre de hallazgos funcionales R149 (frontera std↔runtime)
+Fase roadmap:      ME r150_funcional COMPLETADO (f36849c) — cierre de hallazgos funcionales R149 (frontera std↔runtime)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            Plan MTS 12 bloques (docs/plan_ME_r150_funcional.md). Oráculo del ME
-                   tests/auditoria/test_oraculos_r150.py 14/14 GREEN (M2/M3d/M4 reparados).
-                   Matriz separada en test_matriz_compilacion.py: 29/35, 6 hallazgos
-                   std↔runtime activos. verificar_alineacion SIN BRECHAS. Expediente
-                   r150_funcional creado y VERIFICADO (evidencia f82eddaa76c1b58f.json).
-Commit fase:       8247564 (docs post-commit R150) sobre d040500 (fix r149)
-Próximo ME:        Cerrar los 4 hallazgos restantes de la matriz std↔runtime (31/35)
-Próximo paso:      Corregir parseo de `externo funcion` sin retorno + casts (Decimal)x
-                   (symbolic_exec/atp_engine/agent_skills) e inferencia TVar ambigua
-                   (quantum_err_corr); integrar la matriz en .github/workflows/ci-tests.yml
-Últimos commits:    8247564 (docs: post-commit R150 — reporte, bitácora y memoria)
+Estado:            Plan MTS completo (docs/plan_ME_r150_funcional.md). Oráculo del ME
+                   tests/auditoria/test_oraculos_r150.py 14/14 GREEN. Matriz
+                   tests/auditoria/test_matriz_compilacion.py 35/35 GREEN (6 hallazgos
+                   std↔runtime cerrados: parseo externo sin retorno, casts (Decimal)x,
+                   TVar ambiguos normalizados a §4.1, principal colisionante renombrado).
+                   Gates: verificar_alineacion SIN BRECHAS, contrastar PASA (14 req,
+                   12 archivos), expediente VERIFICADO. CI: job matriz-compilacion
+                   integrado en ci-tests.yml (D-R150-7). D-R150-9 RATIFICADA por el
+                   Arquitecto: línea canónica = tipos §4.1, capitalizados NO son aliases.
+Commit fase:       f36849c (fix(r150): matriz 35/35, CI, gates) sobre 8247564 (docs post-commit R150)
+Próximo ME:        Definir Fase 33 del roadmap (R150 cerrado; matriz 35/35 en CI)
+Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cablear,
+                   stubs debugger, axon_build.exe, 3 FFI std.cluster) y resolver los
+                   4 fallos de línea base (H-TEST-REPAIR ×2, TDD RED D-2, latencia
+                   llama-server) cuando el Arquitecto asigne el ME
+Últimos commits:    f36849c (fix(r150): cerrar hallazgos funcionales std↔runtime — matriz 35/35, CI, D-R150-9 ratificada)
+                    8247564 (docs: post-commit R150 — reporte, bitácora y memoria)
                     d040500 (fix(r149): reparar hallazgos R149 — std/, runtime tiempo, fuga RAII, OpenSyn compilable, --check)
                     f3dab3f (feat(opensyn): Fase 32.4 — pipeline multiagente optimizado)
                     e0493bf (feat(opensyn): Fase 32.3 — memoria persistente cifrada)
