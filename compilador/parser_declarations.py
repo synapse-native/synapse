@@ -47,57 +47,62 @@ class ParserDeclarationsMixin(ParserBase):
         if self._esperar(TokenID.RPAREN) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        if self._esperar(TokenID.ARROW) is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+        # Manual 2 §2 L56: declaracion_funcion ::= "funcion" IDENTIFICADOR "("
+        # [ parametros ] ")" [ "->" tipo ] [ contratos ] ":" ... — el tipo de
+        # retorno es OPCIONAL (funciones nulas: `funcion f(x: entero):`).
+        # Ausente -> 'nulo' (paridad con puente_canonico.py:343).
+        # # cumple Manual 2 §2
+        tipo_retorno = 'nulo'
         prefijo_retorno = ''
-        if self._mirar().tipo == TokenID.AMPERSAND:
+        if self._mirar().tipo == TokenID.ARROW:
             self._avanzar()
-            if (es_token_identificador(self._mirar())
-                    and (self._mirar().valor or '') == 'mut'):
+            # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+            if self._mirar().tipo == TokenID.AMPERSAND:
                 self._avanzar()
-                prefijo_retorno = '&mut '
-            else:
-                prefijo_retorno = '&'
-        tok_retorno = self._esperar_identificador()
-        if tok_retorno is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
-        # F1.2d: tipos genéricos en el retorno (-> arc<NodoLista> / -> debil<T>,
-        # Manual 2 §2 L151-153). Paridad con _parsear_tipo_parametro: se consumen
-        # los tokens hasta '>' (identificadores con valor; '<' inicial literal).
-        if self._mirar().tipo == TokenID.LESS:
-            self._avanzar()
-            partes = [tipo_retorno, '<']
-            profundidad = 0
-            while True:
-                t_actual = self._mirar()
-                if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
-                    break
-                if t_actual.tipo == TokenID.GREATER and profundidad == 0:
-                    break
-                t = self._avanzar()
-                # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
-                # Manual 2 §8.2): consumir '<'/'<' con profundidad y solo cerrar
-                # en el '>' de nivel 0.
-                if t.tipo == TokenID.LESS:
-                    profundidad += 1
-                    partes.append('<')
-                elif t.tipo == TokenID.GREATER:
-                    profundidad -= 1
-                    partes.append('>')
-                elif t.tipo == TokenID.COMMA:
-                    # D-2: el token COMMA no lleva valor -> conservar la coma para
-                    # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
-                    partes.append(',')
+                if (es_token_identificador(self._mirar())
+                        and (self._mirar().valor or '') == 'mut'):
+                    self._avanzar()
+                    prefijo_retorno = '&mut '
                 else:
-                    partes.append(t.valor or '')
-            if self._mirar().tipo == TokenID.GREATER:
+                    prefijo_retorno = '&'
+            tok_retorno = self._esperar_identificador()
+            if tok_retorno is None:
+                self._sincronizar(_SYNC_STMT)
+                return None
+            tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
+            # F1.2d: tipos genéricos en el retorno (-> arc<NodoLista> / -> debil<T>,
+            # Manual 2 §2 L151-153). Paridad con _parsear_tipo_parametro: se consumen
+            # los tokens hasta '>' (identificadores con valor; '<' inicial literal).
+            if self._mirar().tipo == TokenID.LESS:
                 self._avanzar()
-            partes.append('>')
-            tipo_retorno = ''.join(partes)
+                partes = [tipo_retorno, '<']
+                profundidad = 0
+                while True:
+                    t_actual = self._mirar()
+                    if t_actual.tipo in (TokenID.EOF, TokenID.NEWLINE, TokenID.RPAREN):
+                        break
+                    if t_actual.tipo == TokenID.GREATER and profundidad == 0:
+                        break
+                    t = self._avanzar()
+                    # R13: tipos ADT anidados (`Resultado<Resultado<entero,texto>,texto>`,
+                    # Manual 2 §8.2): consumir '<'/'<' con profundidad y solo cerrar
+                    # en el '>' de nivel 0.
+                    if t.tipo == TokenID.LESS:
+                        profundidad += 1
+                        partes.append('<')
+                    elif t.tipo == TokenID.GREATER:
+                        profundidad -= 1
+                        partes.append('>')
+                    elif t.tipo == TokenID.COMMA:
+                        # D-2: el token COMMA no lleva valor -> conservar la coma para
+                        # `Resultado<entero,texto>` (paridad con el span nativo S2/S3).
+                        partes.append(',')
+                    else:
+                        partes.append(t.valor or '')
+                if self._mirar().tipo == TokenID.GREATER:
+                    self._avanzar()
+                partes.append('>')
+                tipo_retorno = ''.join(partes)
         if self._esperar(TokenID.COLON) is None:
             self._sincronizar(_SYNC_STMT)
             return None
@@ -303,27 +308,32 @@ class ParserDeclarationsMixin(ParserBase):
         if self._esperar(TokenID.RPAREN) is None:
             self._sincronizar(_SYNC_STMT)
             return None
-        if self._esperar(TokenID.ARROW) is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
-        # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+        # Manual 2 §2 L56: el tipo de retorno es OPCIONAL también en la
+        # declaración externa (Manual 6 §3.1 muestra la forma con retorno;
+        # `externo funcion f(x: entero)` es válida y es nula). Ausente -> 'nulo'.
+        # # cumple Manual 2 §2
+        tipo_retorno = 'nulo'
         prefijo_retorno = ''
-        if self._mirar().tipo == TokenID.AMPERSAND:
+        if self._mirar().tipo == TokenID.ARROW:
             self._avanzar()
-            if (es_token_identificador(self._mirar())
-                    and (self._mirar().valor or '') == 'mut'):
+            # Manual 6 §3.1: &tipo for pointer return types (FFI compatibility)
+            if self._mirar().tipo == TokenID.AMPERSAND:
                 self._avanzar()
-                prefijo_retorno = '&mut '
-            else:
-                prefijo_retorno = '&'
-        tok_retorno = self._esperar_identificador()
-        if tok_retorno is None:
-            self._sincronizar(_SYNC_STMT)
-            return None
+                if (es_token_identificador(self._mirar())
+                        and (self._mirar().valor or '') == 'mut'):
+                    self._avanzar()
+                    prefijo_retorno = '&mut '
+                else:
+                    prefijo_retorno = '&'
+            tok_retorno = self._esperar_identificador()
+            if tok_retorno is None:
+                self._sincronizar(_SYNC_STMT)
+                return None
+            tipo_retorno = prefijo_retorno + nombre_de_token(tok_retorno)
         return DeclaracionExterna(
             nombre=tok_nombre.valor,
             parametros=params,
-            tipo_retorno=prefijo_retorno + nombre_de_token(tok_retorno),
+            tipo_retorno=tipo_retorno,
             kind='funcion',
             linea=tok_nombre.linea,
             columna=tok_nombre.columna,

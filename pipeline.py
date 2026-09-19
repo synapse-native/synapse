@@ -103,7 +103,26 @@ _RT_CORE_FUENTES = tuple(sorted(
     _glob.glob(_os.path.join(SYNAPSE_BIN, "runtime", "core", "*.c"))))
 _RT_FUENTES = (
     "synapse_rt.c",
+    # M1/R149 (D-R150-1): backends LLVM IR/WAT de texto (sin libLLVM/emcc).
+    # std/llvm.syn y std/wasm.syn declaran estas externas: sin enlace, todo
+    # programa que los importe falla al link.
+    # cumple Manual 1 §3.1
+    "synapse_llvm.c",
+    "synapse_wasm.c",
 ) + _RT_CORE_FUENTES + (
+    # D-R150-4: motores C del nucleo prescritos por Manual 1 §3
+    # (arbol del compilador: "verificador_formal.syn — Motor ATP y
+    # exportación a Coq/Lean"; proof_bridge.c listado como componente del
+    # runtime). std/atp_engine.syn, std/symbolic_exec.syn, std/proof_bridge.syn,
+    # std/quantum_err_corr.syn y std/dist_orchestrator.syn declaran sus
+    # _syn_*: sin enlace, todo importador falla al link.
+    # # cumple Manual 1 §3
+    "nucleo/atp_engine.c",
+    "nucleo/symbolic_exec.c",
+    "nucleo/proof_bridge.c",
+    "nucleo/quantum_err_corr.c",
+    "nucleo/dist_orchestrator.c",
+
     "axon/tweetnacl.c",
     "vendor/sqlite3/sqlite3.c",  # SQLite bundled (lib/db.syq)
 )

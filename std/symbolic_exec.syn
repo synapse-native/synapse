@@ -2,6 +2,8 @@
 
 // ============================================================
 //  std::symbolic_exec — Motor de Ejecución Simbólica (M15.3)
+//  cumple Manual 2 §4.1 — la coerción entero→decimal es implícita
+//  en la llamada FFI; el cast estilo C no existe en la gramática.
 // ============================================================
 //  Bindings para el motor de exploración de rutas simbólicas
 //  (symbolic_exec.c/h). Integra con ATP Engine y Proof Bridge
@@ -30,77 +32,78 @@ constante SE_EXPLORE_VIOLATIONS = 2
 //  Declaraciones externas C
 // ============================================================
 
-externo funcion _syn_se_iniciar(explore_mode: Entero, max_depth: Entero) -> Puntero
-externo funcion _syn_se_cerrar(engine: Puntero)
-externo funcion _syn_se_agregar_variable(engine: Puntero, nombre: Cadena, cota_inf: Decimal, cota_sup: Decimal, tipo_hint: Entero) -> Entero
-externo funcion _syn_se_agregar_restriccion(engine: Puntero, expr: Cadena, tipo: Entero) -> Entero
-externo funcion _syn_se_bifurcar(engine: Puntero, condicion: Cadena) -> Entero
-externo funcion _syn_se_verificar_alcanzabilidad(engine: Puntero) -> Entero
-externo funcion _syn_se_detectar_div_por_cero(engine: Puntero, divisor: Cadena) -> Entero
-externo funcion _syn_se_detectar_desbordamiento(engine: Puntero, expr: Cadena, lim_inf: Decimal, lim_sup: Decimal) -> Entero
-externo funcion _syn_se_detectar_fuera_limites(engine: Puntero, idx: Cadena, tamano: Entero) -> Entero
-externo funcion _syn_se_explorar(engine: Puntero) -> Entero
-externo funcion _syn_se_activar_ruta(engine: Puntero, idx: Entero) -> Entero
-externo funcion _syn_se_limpiar(engine: Puntero)
+externo funcion _syn_se_iniciar(explore_mode: entero, max_depth: entero) -> puntero
+externo funcion _syn_se_cerrar(engine: puntero)
+externo funcion _syn_se_agregar_variable(engine: puntero, nombre: cadena, cota_inf: decimal, cota_sup: decimal, tipo_hint: entero) -> entero
+externo funcion _syn_se_agregar_restriccion(engine: puntero, expr: cadena, tipo: entero) -> entero
+externo funcion _syn_se_bifurcar(engine: puntero, condicion: cadena) -> entero
+externo funcion _syn_se_verificar_alcanzabilidad(engine: puntero) -> entero
+externo funcion _syn_se_detectar_div_por_cero(engine: puntero, divisor: cadena) -> entero
+externo funcion _syn_se_detectar_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, lim_sup: decimal) -> entero
+externo funcion _syn_se_detectar_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> entero
+externo funcion _syn_se_explorar(engine: puntero) -> entero
+externo funcion _syn_se_activar_ruta(engine: puntero, idx: entero) -> entero
+externo funcion _syn_se_limpiar(engine: puntero)
 
 // ============================================================
 //  Wrappers públicos
 // ============================================================
 
 // Inicializa el motor de ejecución simbólica
-funcion se_iniciar(modo: Entero) -> Puntero:
+funcion se_iniciar(modo: entero) -> puntero:
     retornar _syn_se_iniciar(modo, 100)
 
 // Inicializa con profundidad máxima personalizada
-funcion se_iniciar_profundo(modo: Entero, profundidad: Entero) -> Puntero:
+funcion se_iniciar_profundo(modo: entero, profundidad: entero) -> puntero:
     retornar _syn_se_iniciar(modo, profundidad)
 
 // Cierra el motor
-funcion se_cerrar(engine: Puntero):
+funcion se_cerrar(engine: puntero):
     _syn_se_cerrar(engine)
 
 // Crea una variable simbólica
-funcion se_crear_variable(engine: Puntero, nombre: Cadena, cota_inf: Decimal, cota_sup: Decimal) -> Entero:
+funcion se_crear_variable(engine: puntero, nombre: cadena, cota_inf: decimal, cota_sup: decimal) -> entero:
     retornar _syn_se_agregar_variable(engine, nombre, cota_inf, cota_sup, 0)
 
 // Crea una variable simbólica entera
-funcion se_crear_entero(engine: Puntero, nombre: Cadena, cota_inf: Entero, cota_sup: Entero) -> Entero:
-    retornar _syn_se_agregar_variable(engine, nombre, (Decimal)cota_inf, (Decimal)cota_sup, 0)
+funcion se_crear_entero(engine: puntero, nombre: cadena, cota_inf: entero, cota_sup: entero) -> entero:
+    // cumple Manual 2 §4.1 — coerción implícita entero→decimal (D-R150-9)
+    retornar _syn_se_agregar_variable(engine, nombre, cota_inf, cota_sup, 0)
 
 // Agrega una restricción a la ruta activa
-funcion se_agregar_restriccion(engine: Puntero, expr: Cadena) -> Entero:
+funcion se_agregar_restriccion(engine: puntero, expr: cadena) -> entero:
     retornar _syn_se_agregar_restriccion(engine, expr, 0)
 
 // Bifurca la ruta activa
-funcion se_bifurcar(engine: Puntero, condicion: Cadena) -> Entero:
+funcion se_bifurcar(engine: puntero, condicion: cadena) -> entero:
     retornar _syn_se_bifurcar(engine, condicion)
 
 // Verifica si la ruta activa es alcanzable
-funcion se_es_alcanzable(engine: Puntero) -> Booleano:
+funcion se_es_alcanzable(engine: puntero) -> booleano:
     retornar _syn_se_verificar_alcanzabilidad(engine) == 1
 
 // Verifica si hay riesgo de división por cero
-funcion se_hay_div_por_cero(engine: Puntero, divisor: Cadena) -> Booleano:
+funcion se_hay_div_por_cero(engine: puntero, divisor: cadena) -> booleano:
     retornar _syn_se_detectar_div_por_cero(engine, divisor) == SE_VIOLATION_DIV_BY_ZERO
 
 // Verifica si hay riesgo de desbordamiento
-funcion se_hay_desbordamiento(engine: Puntero, expr: Cadena, lim_inf: Decimal, lim_sup: Decimal) -> Booleano:
+funcion se_hay_desbordamiento(engine: puntero, expr: cadena, lim_inf: decimal, lim_sup: decimal) -> booleano:
     retornar _syn_se_detectar_desbordamiento(engine, expr, lim_inf, lim_sup) == SE_VIOLATION_OVERFLOW
 
 // Verifica si hay acceso fuera de límites
-funcion se_hay_fuera_limites(engine: Puntero, idx: Cadena, tamano: Entero) -> Booleano:
+funcion se_hay_fuera_limites(engine: puntero, idx: cadena, tamano: entero) -> booleano:
     retornar _syn_se_detectar_fuera_limites(engine, idx, tamano) == SE_VIOLATION_BOUNDS
 
 // Explora todas las rutas factibles
-funcion se_explorar(engine: Puntero) -> Entero:
+funcion se_explorar(engine: puntero) -> entero:
     retornar _syn_se_explorar(engine)
 
 // Activa una ruta específica
-funcion se_activar_ruta(engine: Puntero, idx: Entero) -> Entero:
+funcion se_activar_ruta(engine: puntero, idx: entero) -> entero:
     retornar _syn_se_activar_ruta(engine, idx)
 
 // Limpia el motor
-funcion se_limpiar(engine: Puntero):
+funcion se_limpiar(engine: puntero):
     _syn_se_limpiar(engine)
 
 // ============================================================
@@ -108,7 +111,7 @@ funcion se_limpiar(engine: Puntero):
 // ============================================================
 
 // Verifica si una expresión es segura bajo las restricciones actuales
-funcion se_es_seguro(engine: Puntero, expr: Cadena) -> Booleano:
+funcion se_es_seguro(engine: puntero, expr: cadena) -> booleano:
     si se_hay_div_por_cero(engine, expr):
         retornar falso
     retornar verdadero

@@ -892,11 +892,15 @@ def _emitir_encabezado(ctx: GeneratorContext):
             "Canal abrir(CadenaSegura ruta, CadenaSegura modo)",
             "CadenaSegura leer(Canal canal)",
             "void cerrar_archivo(Canal canal)",
-            "Tensor crear_tensor(int filas, int columnas)",
+            # D-R150-8: `entero` es alias de int64_t (Manual 2 §4.1: "Entero
+            # con signo de 64 bits"); los prototipos hardcodeados con `int`
+            # provocaban "conflicting types for 'crear_tensor'/'reserva'" en
+            # _synapse_shared.h (hallazgo matriz R150). # cumple Manual 2 §4.1
+            "Tensor crear_tensor(int64_t filas, int64_t columnas)",
             "Tensor suma_tensor(Tensor a, Tensor b)",
             "Tensor producto_punto(Tensor a, Tensor b)",
             "Tensor relu(Tensor a)",
-            "Tensor reserva(int tamano)",
+            "Tensor reserva(int64_t tamano)",
             "void libera(Tensor bloque)",
             # H-R90-13b: 'suma'/'producto' Runtime Tensor NO se declaran como prototipo
             # global — funciones de usuario con esos nombres definen su propia versión.
@@ -1288,7 +1292,9 @@ class GeneradorC:
             ctx.inc_indent()
             ctx.write_line("(void)argc; (void)argv;")
             ctx.write_line("pool_init(POOL_BLOQUES, TAMANO_BLOQUE);")
-            ctx.write_line("_principal_impl();")
+            # D-R150-4: el stub de biblioteca sin entry point NO llama a
+            # _principal_impl (no existe cuando no hay 'funcion principal'):
+            # el link fallaba con undefined reference. Solo init/destroy pool.
             ctx.write_line("pool_destroy(); // TMS: liberar pool antes de report (Manual 6 §4.4)")
             ctx.write_line("synapse_esperar_hilos();")
             ctx.write_line("synapse_esperar_fibras();")

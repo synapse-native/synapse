@@ -148,6 +148,8 @@ test_lsp_bin
 *.egg-info/
 .venv/
 venv/
+.venv-1/
+keep/
 tests/probe_f46.c
 tests/probe_f46.syn.json
 

@@ -100,6 +100,12 @@ int cluster_detener_hilo_descubrimiento(void);
 int cluster_hilo_descubrimiento_activo(void);
 CadenaSegura cluster_multicast_info(void);
 
+// M2/R149: API work-stealing de std.cluster (Manual 5 §8.1).
+// // cumple Manual 5 §8.1: worker_ejecutar/robar/cola_vacia
+int worker_ejecutar(int worker_id);   // procesa la cola; n procesadas, -1 vacía
+int worker_robar(int worker_id);      // id de tarea robada, -1 si no hay
+int worker_cola_vacia(int worker_id); // 1 si la cola está vacía
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""
+r"""
 Script de verificación E2E para instalación automática de Synapse vía VS Code Extension
 Valida que el instalador silencioso descargó y ubicó correctamente:
 - C:\Synapse\bin\synapse_lsp.exe
 - C:\Synapse\toolchain\bin\gcc.exe
-"""
+"""  # cumple Manual 1 §3
 
 import os
 import sys

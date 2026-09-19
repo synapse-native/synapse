@@ -2344,3 +2344,53 @@ CadenaSegura cluster_multicast_info(void) {
     return (CadenaSegura){ .longitud = len, .datos = result };
 }
 
+
+// ============================================================
+// M2/R149: API work-stealing de std.cluster
+// cumple Manual 5 §8.1: worker_ejecutar/worker_robar/worker_cola_vacia
+// sobre la cola ws_* del runtime. Estructura Worker del manual: cola única real
+// del scheduler F4.1 (migración a colas por hilo = deuda del
+// scheduler, no de este wrapper).
+// ============================================================
+
+// worker_ejecutar — Procesa la cola del worker hasta vaciarla.
+// Retorna el número de tareas procesadas, o -1 si la cola estaba
+// vacía al iniciar (convención std.cluster M8.3: id >= 0 exito).
+// Las tareas desencoladas se descartan tras contarse: el valor real
+// de una tarea vive en su consumidor (ver worker_robar).
+int worker_ejecutar(int worker_id) {
+    (void)worker_id;  // cola única global (Manual 5 §8.1 Worker: 1 cola real hoy)
+    if (ws_profundidad() <= 0) return -1;
+    int procesadas = 0;
+    while (ws_profundidad() > 0) {
+        CadenaSegura tarea = ws_desencolar();
+        if (tarea.longitud <= 0) break;
+        procesadas++;
+    }
+    return procesadas;
+}
+
+// worker_robar — Roba (desencola) una tarea de la cola.
+// Retorna el ID de la tarea robada, o -1 si no hay nada que robar.
+// Formato de tarea en cola: "id:datos" (ws_desencolar).
+int worker_robar(int worker_id) {
+    (void)worker_id;  // cola única global
+    CadenaSegura tarea = ws_desencolar();
+    if (tarea.longitud <= 0 || !tarea.datos) return -1;
+    // Parsear id del prefijo "id:datos" (sin depender de texto_a_entero:
+    // cluster.c solo incluye synapse_rt_types.h)
+    int id = -1;
+    for (int i = 0; i < tarea.longitud; i++) {
+        char c = tarea.datos[i];
+        if (c == ':') { break; }
+        if (c < '0' || c > '9') { id = -1; break; }
+        id = (id < 0) ? (c - '0') : (id * 10 + (c - '0'));
+    }
+    return id;
+}
+
+// worker_cola_vacia — Retorna 1 si la cola del worker está vacía.
+int worker_cola_vacia(int worker_id) {
+    (void)worker_id;  // cola única global
+    return ws_profundidad() == 0 ? 1 : 0;
+}

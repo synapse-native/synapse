@@ -8,7 +8,8 @@ from compilador.ast_nodes import DefinicionFuncion
 
 
 def emitir_reserva(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    ctx.write_line("Tensor reserva(int tamano) {")
+    # D-R150-8: `entero` es alias de int64_t (Manual 2 §4.1). # cumple Manual 2 §4.1
+    ctx.write_line("Tensor reserva(int64_t tamano) {")
     ctx.inc_indent()
     ctx.write_line("Tensor _bloque;")
     ctx.write_line("_bloque.filas = tamano;")
@@ -93,7 +94,11 @@ def emitir_relu(ctx: GeneratorContext, nodo: DefinicionFuncion):
 
 
 def emitir_crear_tensor(ctx: GeneratorContext, nodo: DefinicionFuncion):
-    ctx.write_line("Tensor crear_tensor(int filas, int columnas) {")
+    # D-R150-8: `entero` es alias de int64_t (Manual 2 §4.1). Paridad con
+    # el C emitido por el compilador .syn (antes: conflicting types en el
+    # header compartido contra la definición real del módulo).
+    # # cumple Manual 2 §4.1
+    ctx.write_line("Tensor crear_tensor(int64_t filas, int64_t columnas) {")
     ctx.inc_indent()
     ctx.write_line("Tensor r; r.filas=filas; r.columnas=columnas;")
     ctx.write_line(f"r.datos={ctx.syn_pool_alloc('filas*columnas*sizeof(float)')};")

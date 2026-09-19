@@ -1,6 +1,8 @@
 #lang: es
 // std/quantum_err_corr.syn — Corrección de Errores Cuánticos (M16.2)
 // ==============================================================================
+// cumple Manual 9 §6.1 — compila sin errores: nodo matriz GREEN (D-R150-9)
+// cumple Manual 2 §4.1 — tipos canonicos minusculas; TVar ambiguo resuelto (D-R150-9)
 // Bindings para el subsistema de tolerancia a fallos cuánticos.
 // Implementa el código de Shor de 9 qubits para proteger 1 qubit lógico
 // contra errores de bit-flip y phase-flip.
@@ -18,32 +20,32 @@ constante QEC_ERROR_FASE_FLIP = 2
 // Declaraciones externas (bindings C)
 // ============================================================
 
-externo funcion _syn_qec_inicializar_estado_logico(sistema: Puntero, valor: Entero) -> Entero
-externo funcion _syn_qec_inyectar_bit_flip(sistema: Puntero, qubit: Entero) -> Entero
-externo funcion _syn_qec_inyectar_phase_flip(sistema: Puntero, qubit: Entero) -> Entero
-externo funcion _syn_qec_corregir_errores(sistema: Puntero) -> Entero
-externo funcion _syn_qec_verificar_estado_logico(sistema: Puntero, valor_esperado: Entero) -> Entero
+externo funcion _syn_qec_inicializar_estado_logico(sistema: puntero, valor: entero) -> entero
+externo funcion _syn_qec_inyectar_bit_flip(sistema: puntero, qubit: entero) -> entero
+externo funcion _syn_qec_inyectar_phase_flip(sistema: puntero, qubit: entero) -> entero
+externo funcion _syn_qec_corregir_errores(sistema: puntero) -> entero
+externo funcion _syn_qec_verificar_estado_logico(sistema: puntero, valor_esperado: entero) -> entero
 
 // ============================================================
 // API pública de alto nivel
 // ============================================================
 
-funcion inicializar_estado_logico(sistema: Puntero, valor: Entero) -> Entero:
+funcion inicializar_estado_logico(sistema: puntero, valor: entero) -> entero:
     retornar _syn_qec_inicializar_estado_logico(sistema, valor)
 
-funcion inyectar_bit_flip(sistema: Puntero, qubit: Entero) -> Entero:
+funcion inyectar_bit_flip(sistema: puntero, qubit: entero) -> entero:
     retornar _syn_qec_inyectar_bit_flip(sistema, qubit)
 
-funcion inyectar_phase_flip(sistema: Puntero, qubit: Entero) -> Entero:
+funcion inyectar_phase_flip(sistema: puntero, qubit: entero) -> entero:
     retornar _syn_qec_inyectar_phase_flip(sistema, qubit)
 
-funcion corregir_errores(sistema: Puntero) -> Entero:
+funcion corregir_errores(sistema: puntero) -> entero:
     retornar _syn_qec_corregir_errores(sistema)
 
-funcion verificar_estado_logico(sistema: Puntero, valor_esperado: Entero) -> Entero:
+funcion verificar_estado_logico(sistema: puntero, valor_esperado: entero) -> entero:
     retornar _syn_qec_verificar_estado_logico(sistema, valor_esperado)
 
-funcion proteger_y_verificar(sistema: Puntero, valor: Entero, inyectar_error: Logico, tipo_error: Entero, qubit_error: Entero) -> Entero:
+funcion proteger_y_verificar(sistema: puntero, valor: entero, inyectar_error: booleano, tipo_error: entero, qubit_error: entero) -> entero:
     rc = inicializar_estado_logico(sistema, valor)
     si rc != 0:
         retornar QEC_FALLO

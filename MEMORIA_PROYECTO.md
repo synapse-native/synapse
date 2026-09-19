@@ -7,24 +7,29 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-17** (Fase 32 completa: Agente de Codificación Avanzado + Memoria Persistente)
+Última actualización: **2026-09-18** (ME r150_funcional en curso — oráculos y gates evaluados)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      ME r149_reparacion COMPLETADO (d040500) — reparación de hallazgos R149
+Fase roadmap:      ME r150_funcional EN CURSO (WIP sin commit) — cierre de hallazgos funcionales R149 (frontera std↔runtime)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            Fase 32 completa: grafo_conocimiento (fa34825), explorer_det+architect_det (de7107c),
-                   memoria_cifrada (e0493bf), pipeline_multiagente (f3dab3f), verificacion_aot (20ba43f).
-                   72 tests GREEN en opensyn/. 5 expedientes de alineación. 5 planes MTS.
-Commit fase:       d040500 (fix r149: std/, runtime tiempo, fuga RAII, OpenSyn, --check) sobre 86e89db
-Próximo ME:        Ratificar desviaciones restantes de R149 §5; definir Fase 33
-Próximo paso:      Arquitecto ratifica R149 §5 (stubs debugger/bindings/cluster, synapse_llvm/wasm sin cablear)
-Últimos commits:    d040500 (fix(r149): reparar hallazgos R149 — std/, runtime tiempo, fuga RAII, OpenSyn compilable, --check)
+Estado:            Plan MTS 12 bloques (docs/plan_ME_r150_funcional.md). Oráculo del ME
+                   tests/auditoria/test_oraculos_r150.py 14/14 GREEN (M2/M3d/M4 reparados).
+                   Matriz separada en test_matriz_compilacion.py: 29/35, 6 hallazgos
+                   std↔runtime activos. verificar_alineacion SIN BRECHAS. Expediente
+                   r150_funcional creado y VERIFICADO (evidencia f82eddaa76c1b58f.json).
+Commit fase:       8247564 (docs post-commit R150) sobre d040500 (fix r149)
+Próximo ME:        Cerrar los 4 hallazgos restantes de la matriz std↔runtime (31/35)
+Próximo paso:      Corregir parseo de `externo funcion` sin retorno + casts (Decimal)x
+                   (symbolic_exec/atp_engine/agent_skills) e inferencia TVar ambigua
+                   (quantum_err_corr); integrar la matriz en .github/workflows/ci-tests.yml
+Últimos commits:    8247564 (docs: post-commit R150 — reporte, bitácora y memoria)
+                    d040500 (fix(r149): reparar hallazgos R149 — std/, runtime tiempo, fuga RAII, OpenSyn compilable, --check)
                     f3dab3f (feat(opensyn): Fase 32.4 — pipeline multiagente optimizado)
                     e0493bf (feat(opensyn): Fase 32.3 — memoria persistente cifrada)
                     de7107c (feat(opensyn): Fase 32.2 — explorer_det + architect_det deterministas)
@@ -348,3 +353,81 @@ Próximo paso:      Arquitecto ratifica R149 §5 (stubs debugger/bindings/cluste
 
 - Fase 32 completa (F32.1-F32.5). 72 tests GREEN, 5 expedientes, 5 planes MTS.
 - Próximo: definir Fase 33 del roadmap.
+
+## 🚦 1. DASHBOARD — Actualización de sesión 2026-09-18
+
+**ME r150_funcional EN CURSO — estado de oráculos y gates (WIP sin commit):**
+
+- Plan: `docs/plan_ME_r150_funcional.md` (12 bloques: M1 llvm/wasm a _RT_FUENTES,
+  M2 cluster worker_*, M3a-d CLI honesto, M4 construir eliminado (D-R150-2),
+  M6 versión única desde VERSION, M7 raw string, M13 .gitignore, M14 pytest-timeout,
+  M15 std/testing.verificar + oráculo matriz de compilación).
+- WIP (12 archivos): cli.py, pipeline.py, compilador/generator/generator.py,
+  runtime/core/cluster.{c,h}, std/testing.syn, scripts/verificar_e2e.py,
+  .gitignore, requirements.txt, ROADMAP.md + NUEVOS: plan, tests/auditoria/test_oraculos_r150.py.
+- ORÁCULOS R150 (sesión 2026-09-18, ronda 2): test_oraculos_r150.py **14/14 GREEN**.
+  - M2 RESUELTO: el probe C ahora enlaza la FRONTERA CANÓNICA del S1 (_RT_FUENTES:
+    synapse_rt + runtime/core/*.c + motores nucleo + tweetnacl + sqlite3 + cuánticos +
+    federated + IA, pipeline.py:828-850) — el harness anterior enlazaba solo
+    cluster.c+synapse_rt.c y el link reventaba con pool_alloc/sha256_*/crypto_*.
+    Lección: un probe que enlaza menos que el S1 no mide la frontera real.
+  - M3d RESUELTO (2 bugs reales en cli.py): (1) `_debug_cargar_traza` construía la
+    lista `eventos` pero nunca la incluía en `meta` → KeyError 'eventos' (D-R150-5);
+    (2) `--reverse` con semántica off-by-one: el cursor apunta al SIGUIENTE evento
+    de --step, retroceder debe mostrar _dbg_pos-2 (D-R150-6).
+  - M4 RESUELTO: `axon_build.exe` eliminado también de los comentarios de cli.py.
+  - MATRIZ (sesión 2026-09-18, ronda 3): **31/35**. math/mem RESUELTOS con D-R150-8:
+    los prototipos hardcodeados `Tensor crear_tensor(int,int)`/`Tensor reserva(int)`
+    en generator.py:893/emit_tensors.py contradecían las definiciones int64_t
+    emitidas desde std.math/std.mem (entero→int64_t desde 86e89db) → "conflicting
+    types" en _synapse_shared.h. Fix: int64_t en prototipos y emisores; el ancho
+    64-bit de entero está en Manual 2 §4.1 ("Alias de int64_t") — ancla real, sin
+    desviación. Regresión: 633 passed/4 failed línea base EXACTA.
+  - MATRIZ (sesión 2026-09-18, ronda 4): **35/35 GREEN — ME CERRADO**. Los 4 fallos
+    restantes resueltos con D-R150-9/D-R150-10:
+    (a) parseo: Manual 2 §2 L56 hace `[ "->" tipo ]` OPCIONAL en declaracion_funcion;
+        el parser lo exigía → retorno ausente normaliza a 'nulo' en
+        _parsear_def_funcion y _parsear_externo_funcion (+ UnboundLocalError de
+        tok_retorno en DeclaracionExterna corregido);
+    (b) casts `(Decimal)x`: no existen en la gramática; la coerción entero→decimal
+        en FFI es implícita (verificada por bisección, caso F) → eliminados de
+        symbolic_exec se_crear_entero;
+    (c) TVar ambiguo en quantum_err_corr: CAUSA RAÍZ = tipos capitalizados
+        (Entero/Decimal/Puntero/Cadena/Booleano) no son aliases de Manual 2 §4.1;
+        el generador los acepta pero el checker unifica TVar frescos por ocurrencia
+        (bisección: C3 capitalizado RED, canónico GREEN) → los 4 std normalizados a
+        los canónicos en minúsculas;
+    (d) agent_skills definía `principal` → colisión con el entry point del programa
+        importador → renombrado a demostrar_agent_skills() (los std son bibliotecas,
+        el patrón `principal() -> nulo` es solo de programa, M2 §13) + contrato
+        requiere (M2 §12, gate global).
+    Regresión final: 633 passed/4 failed = línea base EXACTA (0 regresiones).
+- Notas D-R150 (ronda 4): (9) los tipos capitalizados NO son aliases del manual:
+  los std y el runtime usan SOLO los canónicos §4.1 — el checker no los unifica y
+  produce TVar ambiguos; (10) una biblioteca std jamás define `principal`; (11) las
+  citas `cumple Manual` a secciones inexistentes (M7 §6 no existe) se re-anclan o se
+  documentan como D-R149-1 — el gate las trata como citas muertas bloqueantes.
+- GATES (ronda 2): `verificar_alineacion.py` **SIN BRECHAS**; `alineacion.py --verificar
+  --me r150_funcional` **OK** (6 archivos, citas textuales verificadas, oráculo ejecutado,
+  evidencia auditoria/evidencia/f82eddaa76c1b58f.json); lecturas previas registradas
+  (3 registros: M1 §3.1 ×3, M5 §8.1 ×2, M2 §2 ×1); mapa_alineacion gana
+  std/testing.syn → Manual 2 §2 (el requisito real del wrapper verificar es la
+  gramática, no M7 §2.3); `contrastar.py --plan` resuelve los 12 requisitos y ejecuta
+  los oráculos: el del ME pasa, la matriz sigue RED por diseño hasta cerrar los 6
+  hallazgos std↔runtime.
+- Notas D-R150: (5) meta['eventos'] debe viajar con la traza parseada; (6) semántica
+  de cursor del debugger documentada en cli.py; (7) el oráculo matriz vive en SU
+  propio archivo (job CI aparte) para que el oráculo del expediente sea ejecutable
+  en verde mientras la matriz expone hallazgos; (8) los prototipos de builtin en
+  generator.py y los emisores de emit_tensors.py deben mantener paridad de tipos
+  con el C emitido (entero=int64_t, Manual 2 §4.1) — el compilador y sus protos
+  son UNA sola frontera de tipos.
+- GOBERNANZA RESUELTA (sesión 2026-09-19, decisión del Arquitecto "alinea todo a lo
+  que indican los manuales"): (1) el oráculo matriz quedó integrado en
+  .github/workflows/ci-tests.yml como job aparte `matriz-compilacion` (ubuntu,
+  gcc, 90 min) y los jobs test/bootstrap lo excluyen con --ignore (D-R150-7); (2)
+  D-R150-9 RATIFICADA: Manual 2 §4.1 es la línea canónica — los tipos capitalizados
+  NO son aliases y los std se normalizan a §4.1; el parser NO acepta capitalizados.
+  Además el plan ganó los bloques M16/M17 (rondas 3-4) con citas M2 §2/§4.1 y el
+  gate MTS fase 4b contrastar.py pasa con 14 requisitos y 2 oráculos ejecutados en
+  release (docs/verificacion_ME_r150_funcional.md creado).

@@ -28,6 +28,91 @@ from pipeline import ejecutar_compilador, _cache_clean, _cache_stats, _cache_dir
 # AUDIT SANITIZERS (Manual 9 §9.5) — M0.3.8-FIX
 # ============================================================
 
+# ===========================================================================
+# M3d/R149: Debugger time-travel del CLI sobre trazas TRACE v1 REALES
+# (formato escrito por _syn_debug_finalizar_sesion, runtime/core/debug.c).
+# # cumple Manual 8 §3.4
+# ===========================================================================
+_DBG_TAGS = {
+    0: "ASIGNACION", 1: "LLAMADA", 2: "RETORNO", 3: "ERROR",
+    4: "RAMA", 6: "CAMBIO_VAR", 8: "TRACE",
+}
+_DBG_SESION = os.path.join(
+    os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.',
+    '.synapse', 'cache', 'debug_session.json')
+
+
+def _debug_cargar_traza(ruta: str):
+    """Parsea un archivo TRACE v1 (runtime/core/debug.c: 'TRACE v1',
+    cabeceras id=/programa=/eventos=/capacidad=, eventos
+    'tag|ts|funcion|archivo|linea|valor_entero|valor_decimal|valor_texto|variable').
+    Retorna dict con metadatos + eventos, o None si el formato no coincide."""
+    try:
+        with open(ruta, encoding="utf-8", errors="replace") as f:
+            lineas = f.read().splitlines()
+    except OSError:
+        return None
+    if not lineas or lineas[0].strip() != "TRACE v1":
+        return None
+    meta = {"id": "", "programa": "", "total": 0, "ruta": ruta}
+    eventos = []
+    for ln in lineas[1:]:
+        if ln.startswith("id="):
+            meta["id"] = ln[3:]
+        elif ln.startswith("programa="):
+            meta["programa"] = ln[9:]
+        elif ln.startswith("eventos="):
+            meta["total"] = int(ln[8:] or 0)
+        elif ln == "---":
+            continue
+        elif "|" in ln:
+            campos = ln.split("|", 8)
+            if len(campos) != 9:
+                continue
+            try:
+                tag, ts, linea_n = int(campos[0]), int(campos[1]), int(campos[4])
+                ve, vd = int(campos[5]), float(campos[6])
+            except ValueError:
+                continue
+            eventos.append({
+                "tag": tag, "tag_nombre": _DBG_TAGS.get(tag, f"TAG_{tag}"),
+                "ts": ts, "funcion": campos[2], "archivo": campos[3],
+                "linea": linea_n, "valor_entero": ve, "valor_decimal": vd,
+                "valor_texto": campos[7], "variable": campos[8],
+            })
+    if meta["total"] == 0 and not eventos:
+        return None
+    meta["eventos"] = eventos  # D-R150-5: la lista parseada viaja con la traza (KeyError en --step)
+    return meta
+
+
+def _debug_mostrar_evento(e, pos, prefijo="[DEBUG]"):
+    valor = e["valor_texto"] if e["valor_texto"] else (
+        str(e["valor_entero"]) if e["valor_entero"] or not e["valor_decimal"]
+        else f"{e['valor_decimal']:g}")
+    var = f" {e['variable']}=" if e["variable"] else " "
+    print(f"{prefijo} #{pos} [{e['tag_nombre']}] {e['funcion']} "
+          f"({e['archivo']}:{e['linea']}){var}{valor}")
+
+
+def _debug_estado_guardar(ruta, pos):
+    os.makedirs(os.path.dirname(_DBG_SESION), exist_ok=True)
+    with open(_DBG_SESION, "w", encoding="utf-8") as f:
+        json.dump({"ruta": ruta, "pos": pos}, f)
+
+
+def _debug_estado_cargar():
+    try:
+        with open(_DBG_SESION, encoding="utf-8") as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        return None
+    traza = _debug_cargar_traza(st.get("ruta", ""))
+    if traza is None:
+        return None
+    return traza, int(st.get("pos", 0))
+
+
 def _resolver_gcc() -> str:
     """Resuelve la ruta al GCC del toolchain interno.
 
@@ -730,7 +815,17 @@ def _cmd_axon_search(args: List[str]):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Synapse Compiler v5.0 - Poliglota", add_help=False)
+    # M6/R149: versión única desde el archivo VERSION (fuente canónica de la
+    # versión, alineada con ROADMAP); el literal anterior del banner fue
+    # eliminado por contradictorio.
+    # # cumple Manual 8 §4.1
+    _ver_banner = "8.1.0-industrial"
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "VERSION"), encoding="utf-8") as _vf:
+            _ver_banner = _vf.read().strip() or _ver_banner
+    except (OSError, ValueError):
+        pass
+    parser = argparse.ArgumentParser(description=f"Synapse Compiler {_ver_banner}", add_help=False)
     parser.add_argument("-h", "--help", action="store_true", help="Mostrar ayuda y salir")
     parser.add_argument("--version", action="store_true", help="Mostrar version y salir")
     parser.add_argument("--incremental", action="store_true", help="Habilitar compilación incremental con caché")
@@ -755,7 +850,8 @@ def main():
                         help="Pipeline completo: .py -> .syq -> .c -> .exe")
     parser.add_argument("--detect-hardware", action="store_true",
                         help="Detectar hardware y sugerir configuracion optima para IA")
-    parser.add_argument("construir", nargs="?", help=argparse.SUPPRESS)
+    # M4/R149 (D-R150-2): 'construir' eliminado — código muerto (el binario que
+    # requería no existe ni tiene receta). El build real: 'synapse build'/'synapse fetch'.
     # NO hay argumento posicional 'archivo' aquí - lo detectamos manualmente
     parser.add_argument("-o", "--output", type=str, default=None,
                         help="Ruta del ejecutable de salida")
@@ -954,12 +1050,25 @@ def main():
 
     # Manejar subcomando 'debug' (Manual 8 §3.4/§4.1: synapse debug <subcomando>)
     if subcommand == 'debug':
+        # D-R150-4: el valor de --load es una ruta, no un subcomando posicional;
+        # se salta para que no se interprete como comando desconocido.
         debug_subcmd = None
+        _dbg_skip_valor = False
         for arg in sys.argv[2:]:
+            if _dbg_skip_valor:
+                _dbg_skip_valor = False
+                continue
+            if arg == "--load":
+                _dbg_skip_valor = True
+                continue
             if not arg.startswith('-'):
                 debug_subcmd = arg
                 break
-        # Flags del debugger
+        # Flags del debugger (M3d/R149: operación REAL sobre el formato TRACE v1
+        # que escribe _syn_debug_finalizar_sesion en runtime/core/debug.c).
+        # Estado de sesión persistente (~/.synapse/cache/debug_session.json):
+        # --load abre la traza; --step/--reverse/--snapshots navegan los eventos.
+        # # cumple Manual 8 §3.4
         if "--load" in sys.argv:
             trace_file = None
             for i, arg in enumerate(sys.argv):
@@ -972,20 +1081,45 @@ def main():
             if not os.path.exists(trace_file):
                 print(f"ERROR: Traza '{trace_file}' no encontrada", file=sys.stderr)
                 sys.exit(1)
-            print(f"[DEBUG] Cargando traza: {trace_file}")
-            print("[DEBUG] Traza cargada correctamente")
-            sys.exit(0)
+            _dbg = _debug_cargar_traza(trace_file)
+            if _dbg is None:
+                print(f"ERROR: '{trace_file}' no es una traza TRACE v1 válida", file=sys.stderr)
+                sys.exit(1)
+            _debug_estado_guardar(trace_file, 0)
+            print(f"[DEBUG] Traza cargada: {_dbg['id']} "
+                  f"(programa={_dbg['programa']}, {_dbg['total']} eventos)")
+            _dbg_pos = 0
+        else:
+            _dbg_estado = _debug_estado_cargar()
+            if _dbg_estado is None:
+                print("ERROR: no hay traza cargada. Ejecuta primero: "
+                      "synapse debug --load <traza> (Manual 8 §3.4).", file=sys.stderr)
+                sys.exit(1)
+            _dbg, _dbg_pos = _dbg_estado
         if "--step" in sys.argv:
-            print("[DEBUG] Avanzando un paso...")
-            print("[DEBUG] Paso ejecutado")
+            if _dbg_pos >= _dbg["total"]:
+                print("[DEBUG] Fin de la traza (no hay más pasos hacia adelante).")
+                sys.exit(0)
+            _debug_mostrar_evento(_dbg["eventos"][_dbg_pos], _dbg_pos)
+            _debug_estado_guardar(_dbg["ruta"], _dbg_pos + 1)
             sys.exit(0)
         if "--reverse" in sys.argv:
-            print("[DEBUG] Retrocediendo un paso...")
-            print("[DEBUG] Retroceso ejecutado")
+            # D-R150-6: el cursor _dbg_pos apunta al SIGUIENTE evento de --step;
+            # el visor está en _dbg_pos-1. Retroceder = mostrar el evento
+            # anterior al visible (_dbg_pos-2) y dejar el cursor en _dbg_pos-1.
+            if _dbg_pos - 2 < 0:
+                print("[DEBUG] Inicio de la traza (no hay pasos hacia atrás).")
+                sys.exit(0)
+            _dbg_pos -= 1
+            _debug_mostrar_evento(_dbg["eventos"][_dbg_pos - 1], _dbg_pos - 1)
+            _debug_estado_guardar(_dbg["ruta"], _dbg_pos)
             sys.exit(0)
         if "--snapshots" in sys.argv:
-            print("[DEBUG] Mostrando snapshots de memoria...")
-            print("[DEBUG] No hay snapshots disponibles")
+            _snaps = [e for e in _dbg["eventos"] if e["variable"]]
+            if not _snaps:
+                print("[DEBUG] No hay snapshots de variables en esta traza.")
+            for i, e in enumerate(_snaps):
+                _debug_mostrar_evento(e, _dbg["eventos"].index(e), prefijo="[SNAPSHOT]")
             sys.exit(0)
         if not debug_subcmd or debug_subcmd == 'debug':
             print("Comandos del debugger:")
@@ -1017,10 +1151,70 @@ def main():
             print("Manual 8 §7 — Integración OpenSyn")
             sys.exit(0)
         if opensyn_subcmd == 'status':
-            print("[OPENSYN] Estado del orquestador:")
-            print("  Servidor: no disponible (offline)")
-            print("  Modelos locales: ninguno")
+            # M3b/R149: estado REAL del entorno OpenSyn (todo local, sin
+            # telemetría, Manual 7 §3); antes imprimía un estado fijo offline.
+            # # cumple Manual 7 §3
+            print("[OPENSYN] Estado del entorno (local):")
+            home = os.environ.get('USERPROFILE') or os.environ.get('HOME') or '.'
+            cfg = None
+            for c in (os.path.join(home, '.opensyn', 'config_ollama.txt'),
+                      os.path.join('config_ollama.txt')):
+                if os.path.exists(c):
+                    cfg = c
+                    break
+            if cfg:
+                try:
+                    with open(cfg, encoding="utf-8", errors="replace") as f:
+                        print(f"  Config: {cfg} ({f.read().strip() or 'vacía'})")
+                except OSError as e:
+                    print(f"  Config: {cfg} (ilegible: {e})")
+            else:
+                print("  Config: no encontrada (config_ollama.txt del instalador)")
+            # Servidor de inferencia local (Ollama/llama-server en :8088)
+            servidor_ok = False
+            try:
+                from urllib import request as _rq
+                import json as _json
+                with _rq.urlopen("http://127.0.0.1:8088/v1/models", timeout=2) as r:
+                    datos = _json.loads(r.read().decode("utf-8", "replace"))
+                    nombres = [m.get("id", "?") for m in datos.get("data", [])]
+                    print(f"  Servidor: http://127.0.0.1:8088 ACTIVO")
+                    for n in nombres:
+                        print(f"    - {n}")
+                    servidor_ok = True
+            except Exception:
+                print("  Servidor: http://127.0.0.1:8088 no responde (¿ollama serve o llama-server?)")
+            # Modelos locales en disco
+            total = 0
+            for base in (os.path.join(home, '.ollama', 'models', 'manifests'),
+                         os.path.join(home, '.synapse', 'models')):
+                if os.path.isdir(base):
+                    for _r, _d, fich in os.walk(base):
+                        total += len(fich)
+            print(f"  Modelos locales en disco: {total} archivo(s)")
+            if not servidor_ok and total == 0:
+                print("  [!] Sin servidor ni modelos: ejecuta el instalador de OpenSyn "
+                      "(Manual 9 §5) o 'ollama pull <modelo>'.")
             sys.exit(0)
+        if opensyn_subcmd in ('download', 'finetune'):
+            # M3c/R149: honesto — la provisión de modelos/fine-tuning requiere el
+            # servicio local; sin él, error claro (antes caían a "Subcomando
+            # desconocido" o imprimían [OK] sin hacer nada).
+            # # cumple Manual 7 §3
+            try:
+                from urllib import request as _rq
+                _rq.urlopen("http://127.0.0.1:8088/v1/models", timeout=2)
+            except Exception:
+                print(f"ERROR: 'opensyn {opensyn_subcmd}' requiere el servidor de "
+                      "inferencia local activo en http://127.0.0.1:8088 "
+                      "(ollama serve o llama-server). Instalación de modelos: "
+                      "instalador de OpenSyn (Manual 9 §5) u 'ollama pull <modelo>'.",
+                      file=sys.stderr)
+                sys.exit(1)
+            print(f"ERROR: 'opensyn {opensyn_subcmd}' vía CLI aún no está soportado "
+                  "con el servicio activo; usa el instalador de OpenSyn (Manual 9 §5) "
+                  "u 'ollama pull <modelo>' (100% local, sin telemetría).", file=sys.stderr)
+            sys.exit(1)
         if opensyn_subcmd == 'transpile':
             py_file = None
             for arg in sys.argv[3:]:
@@ -1045,9 +1239,17 @@ def main():
                 print("ERROR: Módulo opensyn.transpiler no disponible", file=sys.stderr)
                 sys.exit(1)
         if opensyn_subcmd == 'bindings':
-            print("[OPENSYN] Generando bindings...")
-            print("[OK] Bindings generados")
-            sys.exit(0)
+            # M3a/R149: regenera lib/runtime_bindings.syq REAL (93 externo)
+            # via opensyn/generate_runtime_bindings.py; antes imprimía
+            # "[OK] Bindings generados" sin hacer nada.
+            # # cumple Manual 7 §1
+            gen = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "opensyn", "generate_runtime_bindings.py")
+            if not os.path.exists(gen):
+                print(f"ERROR: generador no encontrado: {gen}", file=sys.stderr)
+                sys.exit(1)
+            rc_gen = subprocess.run([sys.executable, gen]).returncode
+            sys.exit(rc_gen)
         print(f"Subcomando OpenSyn desconocido: {opensyn_subcmd}", file=sys.stderr)
         sys.exit(1)
 
@@ -1201,85 +1403,11 @@ def main():
 
         sys.exit(codigo)
 
-    if args.construir == "construir":
-        tokens_flag = "--tokens" in sys.argv
-        dump_flag = "--dump-ast" in sys.argv
-        lang_val = None
-        for i, a in enumerate(sys.argv):
-            if a == "--lang" and i + 1 < len(sys.argv):
-                lang_val = sys.argv[i + 1]
-
-        axon_exe = os.path.join(os.path.dirname(__file__), "axon_build.exe")
-        if not os.path.exists(axon_exe):
-            print(f"ERROR: '{axon_exe}' no encontrado. Compilar con: gcc -o axon_build.exe axon_build.c", file=sys.stderr)
-            sys.exit(1)
-
-        out_path = os.path.join(os.environ.get('TEMP', '.'), f"axon_out_{os.getpid()}.txt")
-        cmd = axon_exe + ' "' + os.getcwd() + '" > "' + out_path + '"'
-        ret = os.system(cmd)
-
-        if ret != 0:
-            try:
-                with open(out_path, 'r') as f:
-                    err_line = f.read().strip()
-                os.remove(out_path)
-            except (FileNotFoundError, OSError):
-                err_line = ""
-
-            if ret == 1:
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_MANIFEST_NOT_FOUND, Token(TokenID.EOF, 0, 0))
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            elif ret == 3:
-                print(f"ERROR: El manifiesto axon.toml debe tener '[paquete]' con clave 'punto_entrada' (Manual 8 §4.3)", file=sys.stderr)
-                sys.exit(1)
-            elif ret == 4:
-                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_GIT_FAILURE, Token(TokenID.EOF, 0, 0), modulo=dep_name)
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            elif ret == 5:
-                dep_name = err_line.split(':')[-1] if ':' in err_line else "desconocida"
-                diag = DiagnosticManager()
-                diag.reportar(ErrorCodes.ERR_LOCK_HASH_MISMATCH, Token(TokenID.EOF, 0, 0), modulo=dep_name)
-                print(diag.resumen(), file=sys.stderr)
-                sys.exit(diag.codigo_salida())
-            else:
-                print(f"ERROR: Fallo en construccion (codigo {ret})", file=sys.stderr)
-                sys.exit(1)
-
-        lineas = []
-        try:
-            with open(out_path, 'r') as f:
-                lineas = [l.strip() for l in f if l.strip()]
-            os.remove(out_path)
-        except (FileNotFoundError, OSError):
-            pass
-
-        punto_entrada = ""
-        dependencias: Dict[str, Any] = {}
-        for ln in lineas:
-            if ln.startswith("punto_entrada="):
-                punto_entrada = ln.split("=", 1)[1]
-            else:
-                dependencias[ln] = True
-
-        ruta_entrada = os.path.normpath(os.path.join(os.getcwd(), punto_entrada))
-        if not os.path.exists(ruta_entrada):
-            diag = DiagnosticManager()
-            diag.reportar(ErrorCodes.ERR_FILE_NOT_FOUND,
-                          Token(TokenID.EOF, 0, 0), archivo=ruta_entrada)
-            print(diag.resumen(), file=sys.stderr)
-            sys.exit(diag.codigo_salida())
-
-        codigo = ejecutar_compilador(ruta_entrada, mostrar_tokens=tokens_flag,
-                                     output_lang=lang_val, dump_ast=dump_flag,
-                                     # cumple Manual 8 §4.2: --check valida sin emitir
-                                     check_only=args.check,
-                                     dependencias=dependencias)  # cumple Manual 8 §4
-        sys.exit(codigo)
+    # M4/R149 (D-R150-2): el subcomando oculto 'construir' fue eliminado (regla 12,
+    # código muerto): requería un binario del proyecto Axon que no existe ni tiene
+    # receta de build. El flujo Axon real vive en 'synapse axon
+    # init/publish/verify/search' y el build de proyecto en 'synapse build' y
+    # 'synapse fetch' (Manual 8 §4.3/§4.4).
 
     if args.lsp:
         from synapse_lsp.server import iniciar

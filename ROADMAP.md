@@ -1,6 +1,6 @@
 # ROADMAP DE IMPLEMENTACIÓN DEL ECOSISTEMA SYNAPSE + SYQUEX + OPENSYN
 
-**Versión:** 8.3.0-industrial  
+**Versión:** 8.1.0-industrial  
 **Fecha:** 2026-09-12  
 **Propósito:** Guía de ejecución definitiva para la implementación completa del ecosistema desde cero. Este documento describe todas las fases, hitos, entregables, dependencias, riesgos y criterios de aceptación necesarios para construir Synapse, Syquex, OpenSyn, las herramientas nativas (Fase 31) y el agente de codificación avanzado (Fase 32) como una plataforma unificada. No contiene marcas de estado previo, ya que está diseñado para iniciar desde una carpeta vacía.
 

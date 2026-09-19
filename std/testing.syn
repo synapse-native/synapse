@@ -42,3 +42,10 @@ funcion assert_diferente(actual: entero, esperado: entero, nombre: texto) -> ent
         retornar 0
     escribir_linea(concat(concat("  [FAIL] ", nombre), " — no debía ser igual"))
     retornar 1
+
+// M15/R149: verificar() — envuelta de assert_verdadero. El prompt TDD de OpenSyn
+// (SKILL_TDD_PROMPT, Manual 7 §2.3) genera tests con verificar(...); antes esa
+// función no existía y el código generado por la skill no compilaba.
+// cumple Manual 2 §2: firma de función en una línea, tipos booleano/texto
+funcion verificar(condicion: booleano, nombre: texto) -> entero:
+    retornar assert_verdadero(condicion, nombre)

@@ -415,14 +415,26 @@ def verificar(archivos, desde=None, me=None, modo="block", con_oraculos=True,
         if texto.strip():
             elegido, contenido = cand, texto
     else:
+        # ENDURECIMIENTO (H-R150-SELLO): elegir el expediente por huella EXACTA
+        # primero; si ninguna coincide, el de MAYOR solapamiento con el cambio.
+        # Antes: el primer .md alfabético con 1 archivo compartido elegía el
+        # expediente de un ME anterior (r149 compartía cli.py con r150) y el
+        # gate acusaba brechas del expediente equivocado → bloqueo falso del hook.
+        candidatas = []
         for cand in sorted(EXPEDIENTES_DIR.glob("*.md")):
             if cand.name == "DEUDA.md":
                 continue
             texto = leer_expediente(cand, desde_commit=ci)
             exp = parsear_expediente(texto)
-            if exp["cambio_hash"] == ch or set(prod) & set(exp["archivos"]):
+            if exp["cambio_hash"] == ch:
                 elegido, contenido = cand, texto
                 break
+            interseccion = len(set(prod) & set(exp["archivos"]))
+            if interseccion > 0:
+                candidatas.append((interseccion, cand, texto))
+        if elegido is None and candidatas:
+            candidatas.sort(key=lambda t: (-t[0], t[1].name))
+            _, elegido, contenido = candidatas[0]
     if elegido is None:
         errores.append(
             "falta el expediente de alineación para este cambio "

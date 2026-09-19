@@ -226,6 +226,16 @@ ALINEACION_FLAGS="--verificar --modo $ALINEACION_MODO --exigir-sello"
 if [ "${ALINEACION_ORACULOS:-1}" != "1" ]; then
     ALINEACION_FLAGS="$ALINEACION_FLAGS --sin-oraculos"
 fi
+# ENDURECIMIENTO (H-R150-SELLO): si hay exactamente UN plan_ME staged, ese es
+# el ME activo y su expediente se verifica EXPLÍCITO (--me) — evita que la
+# autodetección elija el expediente de un ME anterior por solapamiento parcial.
+ME_ID=""
+PLAN_ACTIVO=$(echo "$PLAN_FILES" | head -1)
+if [ -n "$PLAN_ACTIVO" ]; then
+    ME_ID=$(basename "$PLAN_ACTIVO" .md | sed 's/^plan_ME_//')
+    echo "  ME activo: $ME_ID (expediente docs/alineacion/$ME_ID.md)"
+    ALINEACION_FLAGS="$ALINEACION_FLAGS --me $ME_ID"
+fi
 if (cd "$RAIZ" && $PYTHON auditoria/alineacion.py $ALINEACION_FLAGS); then
     echo "✅ Alineación manual↔código verificada (modo $ALINEACION_MODO)"
 else

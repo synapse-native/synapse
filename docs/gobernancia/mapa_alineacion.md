@@ -64,12 +64,19 @@ en `docs/alineacion/<ME>.md` con la **cita textual literal** de esa sección.
   "compilador/generator/emit_declarations.py": ["Manual 2 §1.3"],
   "compilador/generator/emit_expressions.py": ["Manual 2 §12"],
   "compilador/generator/generator.py": ["Manual 2 §5.1"],
+  "compilador/generator/emit_tensors.py": ["Manual 2 §4.1"],
+  "compilador/parser_declarations.py": ["Manual 2 §2"],
+  "std/agent_skills.syn": ["Manual 2 §4.1"],
+  "std/atp_engine.syn": ["Manual 2 §4.1"],
+  "std/quantum_err_corr.syn": ["Manual 2 §4.1"],
+  "std/symbolic_exec.syn": ["Manual 2 §4.1"],
   "compilador/parser_control.py": ["Manual 2 §1.3"],
   "compilador/puente_canonico.py": ["Manual 3 §11.1", "Manual 6 §5.1"],
   "synapse_rt_types.h": ["Manual 2 §4.1"],
   "nucleo/parser_sentencias.syn": ["Manual 2 §1.3"],
   "syquex/expr.syn": ["Manual 3 §3"],
-  "lib/runtime_bindings.syq": ["Manual 6 §3.1"]
+  "lib/runtime_bindings.syq": ["Manual 6 §3.1"],
+  "std/testing.syn": ["Manual 2 §2"]
 }
 ```
 
