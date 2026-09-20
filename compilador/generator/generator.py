@@ -654,6 +654,8 @@ def _emitir_encabezado(ctx: GeneratorContext):
         ctx.write_line("#include <pthread.h>")
         ctx.write_line("#include <string.h>")
         ctx.write_line("#include <assert.h>")
+        # cumple Manual 1 §6: cli_test mide el tiempo real del test con clock()
+        ctx.write_line("#include <time.h>")
         # F3-15: escaneo de runtime/core/ en generar_etapa (sin hardcoding) —
         # _findfirst (Windows) / opendir (POSIX), guardados por plataforma.
         ctx.write_line("#ifdef _WIN32")
@@ -1180,6 +1182,14 @@ class GeneradorC:
             ctx.write_line("char _G_lanzar_wrappers[8][4096];")
             ctx.write_line("int _G_lanzar_wrappers_count;")
             ctx.write_line("int _G_lanzar_count;")
+            ctx.write_line("")
+            # F5-1: garantiza globals del codegen (definidos
+            # aqui, usados via asm() en funciones.syn/nodos_flujo.syn).
+            # cumple Manual 2 §5.1: los contratos garantiza usan el par F5-1.
+            # cumple Manual 1 §6: paridad con el bloque 'modulo' tiene_principal
+            # y con nucleo/generator.syn:4006 — sin esto el unity no enlaza (H-R151-3).
+            ctx.write_line("void* _G_fn_garantizas_actuales = 0;")
+            ctx.write_line("char _G_fn_ret_tipo_c[64];")
             ctx.write_line("")
             # ME-F1.2b: alias de tipo declarados (paridad orquestador nativo)
             ctx.write_line("char _G_tipo_aliases[128][64];")
