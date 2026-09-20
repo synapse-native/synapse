@@ -7,37 +7,39 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-19** (ME r150_funcional COMPLETADO — commit f36849c, documentación post-commit)
+Última actualización: **2026-09-20** (ME r151_linea_base + ME r152_bootstrap_link COMPLETADOS — commits 5db1dab/dbb9717, bootstrap restaurado)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      ME r150_funcional COMPLETADO (f36849c) — cierre de hallazgos funcionales R149 (frontera std↔runtime)
+Fase roadmap:      ME r151_linea_base COMPLETADO (5db1dab) + ME r152_bootstrap_link COMPLETADO (dbb9717) — H-R151-3 RESUELTA: bootstrap S1/S2 vuelve a ENLAZAR (Manual 1 §6)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            Plan MTS completo (docs/plan_ME_r150_funcional.md). Oráculo del ME
-                   tests/auditoria/test_oraculos_r150.py 14/14 GREEN. Matriz
-                   tests/auditoria/test_matriz_compilacion.py 35/35 GREEN (6 hallazgos
-                   std↔runtime cerrados: parseo externo sin retorno, casts (Decimal)x,
-                   TVar ambiguos normalizados a §4.1, principal colisionante renombrado).
-                   Gates: verificar_alineacion SIN BRECHAS, contrastar PASA (14 req,
-                   12 archivos), expediente VERIFICADO. CI: job matriz-compilacion
-                   integrado en ci-tests.yml (D-R150-7). D-R150-9 RATIFICADA por el
-                   Arquitecto: línea canónica = tipos §4.1, capitalizados NO son aliases.
-Commit fase:       f36849c (fix(r150): matriz 35/35, CI, gates) sobre 8247564 (docs post-commit R150)
-Próximo ME:        Definir Fase 33 del roadmap (R150 cerrado; matriz 35/35 en CI)
-Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cablear,
-                   stubs debugger, axon_build.exe, 3 FFI std.cluster) y resolver los
-                   4 fallos de línea base (H-TEST-REPAIR ×2, TDD RED D-2, latencia
-                   llama-server) cuando el Arquitecto asigne el ME
-Últimos commits:    f36849c (fix(r150): cerrar hallazgos funcionales std↔runtime — matriz 35/35, CI, D-R150-9 ratificada)
+Estado:            r151: 4 fallos de línea base alineados con MTO/TDD (solo tests, ratificado
+                   2026-09-19): puente_canonico R1/R2, S1 on-demand R3, cita real M7 §2.2 R4.
+                   r152 (ratificado 2026-09-20 "repara y ajusta todo, MTS/MTO, tests TDD"):
+                   causa raíz H-R151-3 = par F5-1 sin definición en ruta unity + 5 externs
+                   fantasma (lint/fmt/test) de ba2c5ee. Fix: R1 par F5-1 en _emit_cabecera_comun;
+                   R2 backend real cli_lint/cli_fmt/cli_test con contratos (C embebido; H-R152-4:
+                   lint/formatter/reports .syn NO compilables por S1 → referencia canónica).
+                   S1 rc=0, S2 rc=0 (comando CI); test_r3_param_adt GREEN (TDD RED→GREEN);
+                   lint/fmt/test E2E verificados (junit/json reales Manual 9 §6.2).
+                   Gates: contrastar PASA ambos planes; verificar_alineacion SIN BRECHAS;
+                   expediente r152 verificado (evidencia f2e821fa9002a898); matriz 35/35.
+Commit fase:       dbb9717 (fix(r152): bootstrap restaurado) sobre 5db1dab (test(r151): línea base MTO/TDD)
+Próximo ME:        Definir Fase 33 del roadmap
+Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cablear, stubs
+                   debugger, axon_build.exe, 3 FFI std.cluster); decidir ME para H-R152-4
+                   (soporte de métodos/genéricos en S1 o reescritura de lint/formatter/reports
+                   .syn) y para H-R152-1 (--coverage con instrumentación de aristas)
+Últimos commits:    dbb9717 (fix(r152): restaurar el enlace del bootstrap S1 — R1 par F5-1, R2 backend lint/fmt/test)
+                    5db1dab (test(r151): alinear línea base MTO/TDD — bootstrap on-demand, cita real M7 §2.2)
+                    f36849c (fix(r150): cerrar hallazgos funcionales std↔runtime — matriz 35/35, CI, D-R150-9 ratificada)
                     8247564 (docs: post-commit R150 — reporte, bitácora y memoria)
                     d040500 (fix(r149): reparar hallazgos R149 — std/, runtime tiempo, fuga RAII, OpenSyn compilable, --check)
-                    f3dab3f (feat(opensyn): Fase 32.4 — pipeline multiagente optimizado)
-                    e0493bf (feat(opensyn): Fase 32.3 — memoria persistente cifrada)
                     de7107c (feat(opensyn): Fase 32.2 — explorer_det + architect_det deterministas)
                     fa34825 (feat(nucleo): Fase 32.1 — grafo de conocimiento)
 ```
@@ -45,6 +47,8 @@ Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cab
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `dbb9717` | R153/ME r152_bootstrap_link: bootstrap S1 restaurado (H-R151-3, Manual 1 §6) — R1: par F5-1 emitido en _emit_cabecera_comun (paridad con bloque 'modulo'); R2: subcomandos lint/fmt/test con backend real cli_lint/cli_fmt/cli_test (contratos Manual 2 §5.1; C embebido por H-R152-4), 5 externs fantasma eliminados; junit/json reales (Manual 9 §6.2); --coverage honesto rc=1 (H-R152-1). S1/S2 rc=0 con comando CI; test_r3_param_adt GREEN (TDD); oráculo r152 8/8; matriz 35/35; expediente verificado |
+| `5db1dab` | R152/ME r151_linea_base: 4 fallos de línea base alineados con MTO/TDD (solo tests) — puente_canonico 54/57 traducidos (R1/R2), S1 on-demand (R3, destapó H-R151-3), cita fabricada "M7 §7.2" eliminada + skip honesto + benchmark real /v1/chat/completions (R4, H-R151-1); oráculo r151 3 GREEN (anti-fabricación) |
 | `d9c498a` | F30-b: chat OpenSyn real (Ollama) + consola UTF-8 + LSP multi-mensaje + instalador 8.1.0 revisado | opensyn/principal.syn chat interactivo; runtime/core/ollama.c nuevo; io.c/string_utils.c UTF-8 y stdin pipes; lsp_v3.syn dispatch tolerante a espacios; synapse.iss sin [Run] roto, model=qwen-coder, PATH sin duplicados, Excludes; vsix repack. LSP 36/36, instalador 11/11, 0 brechas |
 | `de901bb` | ME_30_T8: Docs/Packaging | README.md con instrucciones completas, 5 tests GREEN |
 | `f3e5ad3` | ME_30_T7: Auto-actualización | auto_actualizar.py con verificar_version, 5 tests GREEN |
@@ -215,6 +219,20 @@ Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cab
    - ❌ `diff.splitlines()` → `AttributeError: 'NoneType'`
    - ✅ Siempre `diff = out.stdout or ""`
 
+9. **Escaping de `%` en asm() dentro de .syn**
+   - ❌ El emisor Python pasa `%` VERBATIM al C (no hace sustitución) → usar `%%s` produce literal "%%s" en pantalla
+   - ✅ Usar `%s`/`%d` simple (convención de principal.syn:91); `%%` solo si el asm pasa por la ruta nativa gen_emitir_linea (synapse_unity.c:7719 duplica)
+   - Doble validación: el C generado (_principal.c) debe compilar; un error de escaping en UN asm mata el link completo (H-R151-3: 12 símbolos "undefined" que SÍ estaban definidos)
+
+10. **Sintaxis NO compilable por el pipeline Python S1 (H-R152-4)**
+   - ❌ `obj.metodo(...)` (postfijo . seguido de llamada no se parsea), `para x en ...`, `Lista<T>()` como constructor, `es ok/es err`, `valor_ok()` (inexistente)
+   - ✅ Desenvolver Resultado<T,E> con `coincidir ... ok(x) => ... err(m) => ...`; contratos con acceso a campo (`ruta.longitud > 0`) — el orquestador NATIVO no emite definición ni extern de `longitud()`
+   - nucleo/lint.syn, formatter.syn y reports.syn usan esa sintaxis → NO importarlos al bootstrap (referencia canónica); backend real = C embebido en principal.syn (cli_lint/cli_fmt/cli_test)
+
+11. **`system()` de cmd.exe se come las comillas extremas**
+   - ❌ `system("\"ruta con espacios.exe\"")` → cmd interpreta `"ruta` como comando → rc=1 con "no se reconoce"
+   - ✅ Duplicar comillas exteriores: `"\"\"exe\"\""` (workaround documentado de cmd /c)
+
 ---
 
 ## 📚 3. LECCIONES CLAVE
@@ -230,6 +248,8 @@ Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cab
 - **Timeout builds ≥ 900s** (`python main.py` toma 2-5 min)
 - **Verificar timestamp del exe** después de build (no asumir por log)
 - **`nucleo/generator.syn` es UNITY regenerado** → `_rebuild_generator.py` después de editar `nucleo/generador/`
+- **R152 (lección H-R151-3):** un fallo de COMPILACIÓN en un solo módulo del link modular (= _principal.c no compiló por un error de escaping) produce docenas de "undefined reference" ENGAÑOSAS a símbolos que sí existen; diagnosticar el PRIMER error de compilación antes de perseguir los undefined del linker
+- **R152:** el link modular usa el venv tdm64 gcc10 (rc=0 en compilación C != válido para AVisar errores de la ruta unity); los fallos del unity generan [FALLBACK] silencioso → SIEMPRE grep 'error:' del log y verificar el exe con `ls -la`
 
 ### Codificación / Patrones
 - **Parámetros de salida:** funciones C no pueden devolver `CadenaSegura` por valor → usar buffers por puntero
