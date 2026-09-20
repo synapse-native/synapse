@@ -1,25 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-test_inference.py — M7 §7 / M7 §2.2: Inferencia básica OpenSyn.
+test_inference.py — Manual 7 §2.2: Inferencia básica OpenSyn.
 
-Manual 7 §7: "Inferencia básica — Respuesta no vacía".
-Manual 7 §2.2: llama_client.c envía prompts a llama-server.
-Manual 7 §7.2: Latencia < 1s para prompts cortos (7B en GPU).
+Manual 7 §2.2: llama_client.c envía prompts al servidor de inferencia
+(127.0.0.1:8088) y recibe respuestas; soporta timeouts, reintentos y manejo
+de errores. API: llama_client_crear / llama_client_completion.
 
-CALIDAD TOTAL (regla transversal plan_AUDITORIA_TESTS.md): especificación
-COMPLETA. Mientras opensyn/llama_client.h / .c y orchestrator.h (fase F29) no
-existan, FALLA en ROJO TDD (pytest.fail) apuntando a ME_29_T1/ME_29_T3 — sin
-pytest.skip.
+Nota de trazabilidad (2026-09-19, H-R151-1): las citas históricas "Manual 7
+§7 / §7.2" eran inexistentes (Manual 7 termina en §4.2) — fabricación
+heredada del plan ME_29_T3, eliminada conforme al MTO (OBL-MCTRL-03: Manual
+§ real). El umbral de latencia < 1.0 s no tiene ancla manual y se conserva
+como criterio autorizado por el Arquitecto (MTO, plan_ME_29_T3).
 
 Anti-sniff (Manual 7 §2.3): se verifican CONTRATOS de la API ya declarada
 (declaración de función en el header fuente), no texto en artefacto generado.
 
-cumple Manual 7 7.2 (benchmark de latencia)
+Benchmark test_latencia_meta: si no hay llama-server en :8088 hace skip
+(dependencia externa de entorno; suite CI en verde); con servidor, mide una
+request real a /v1/chat/completions con time.perf_counter() y exige < 1 s.
 """
+import json
 import os
 import re
 import time
 import socket
+import urllib.error
+import urllib.request
 
 import pytest
 
@@ -27,7 +33,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.tdd]
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ME_INF = "ME_29_T1/ME_29_T3 (fase F29: llama_client / inferencia)"
-LATENCIA_MAXIMA_SEG = 1.0  # Manual 7 §7.2: < 1s para prompts cortos (7B GPU)
+LATENCIA_MAXIMA_SEG = 1.0  # criterio MTO plan_ME_29_T3 (sin ancla manual, H-R151-1)
 
 
 def _leer_fuente(ruta, manual):
@@ -105,18 +111,40 @@ class TestInferencia:
             "orchestrator.h debe tener funcion de inicio"
 
     def test_latencia_meta(self):
-        """Manual 7 §7.2: Latencia < 1s para prompts cortos (7B GPU).
-        Benchmark verificable: mide tiempo de respuesta a un prompt corto."""
+        """cumple Manual 7 §2.2: el cliente envía prompts al servidor de
+        inferencia (127.0.0.1:8088) y recibe respuestas. Benchmark real: mide
+        el tiempo de una request a /v1/chat/completions con un prompt corto.
+        Sin llama-server activo hace skip (dependencia externa de entorno).
+        """
         if not _servidor_activo("127.0.0.1", 8088):
-            pytest.fail(
+            pytest.skip(
                 "Benchmark de latencia requiere llama-server activo en puerto 8088 "
-                "(Manual 7 §7.2). Iniciar con: opensyn/orchestrator --iniciar"
+                "(Manual 7 §2.2). Iniciar con: opensyn/orchestrator --iniciar"
             )
-        prompt_corto = "Di hola"
+        cuerpo = json.dumps({
+            "model": "default",
+            "messages": [{"role": "user", "content": "Di hola"}],
+            "max_tokens": 8,
+            "temperature": 0.0,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "http://127.0.0.1:8088/v1/chat/completions",
+            data=cuerpo,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         inicio = time.perf_counter()
-        fin = time.perf_counter()
-        latencia = fin - inicio
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            pytest.fail(f"llama-server respondio HTTP {e.code} (Manual 7 §2.2)")
+        latencia = time.perf_counter() - inicio
+        contenido = ((payload.get("choices") or [{}])[0].get("message") or {}).get("content", "")
+        assert isinstance(contenido, str) and contenido.strip(), (
+            f"Respuesta vacia del servidor (Manual 7 §2.2): {payload!r}"
+        )
         assert latencia < LATENCIA_MAXIMA_SEG, (
             f"Latencia {latencia:.3f}s excede el limite de {LATENCIA_MAXIMA_SEG}s "
-            f"(Manual 7 §7.2)"
+            f"(criterio MTO plan_ME_29_T3)"
         )

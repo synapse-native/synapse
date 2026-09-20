@@ -116,17 +116,24 @@ def test_coincidir_casos_patron_span():
 
 
 def test_no_soportados_fallan_rapido():
-    for tid in (54, 55, 56, 57):
+    """cumple Manual 6 §1.3: solo los nodos SIN equivalente en el AST tipado
+    fallan rápido (PuenteError). INTENTO(54) y PARA_EN(57) YA se traducen
+    (puente_canonico.py:548-550: Intento→SentenciaRecuperar; Manual 3 §3 L133
+    bucle_para_rango→SentenciaMientras), así que quedan solo LISTA_LIT(55) y
+    MAPA_LIT(56) (backend Fase 24)."""
+    for tid in (55, 56):
         nodos = [_reg(1, izq=1), _reg(tid)]
         with pytest.raises(PuenteError):
             plano_a_programa(_flat(nodos))
 
 
 def test_categorization_completa_de_nodos():
-    """Auditoría F2: todos los 58 NODO_* deben estar en NOMBRE_NODO
-    y clasificados en alguna categoría (mapeado, NO_SOPORTADOS, ELIMINADOS,
-    FUSIONADOS, NO_PRODUCIDOS, o PENDIENTE_BACKEND). Ningún tipo debe caer
-    en el error genérico 'id {t}'."""
+    """Auditoría F2 (cumple Manual 3 §11.1): todos los 58 NODO_* deben estar
+    en NOMBRE_NODO y clasificados en alguna categoría (mapeado, NO_SOPORTADOS,
+    ELIMINADOS, FUSIONADOS, NO_PRODUCIDOS, o PENDIENTE_BACKEND). Ningún tipo
+    debe caer en el error genérico 'id {t}'. INTENTO(54) y PARA_EN(57) tienen
+    handler explícito en el puente (Manual 6 §1.3: Intento→Resultado/?;
+    Manual 3 §3 L133: bucle_para_rango)."""
     from compilador.puente_canonico import (
         NOMBRE_NODO, NO_SOPORTADOS, ELIMINADOS_POR_TRADUCTOR,
         FUSIONADOS, NO_PRODUCIDOS, PENDIENTE_BACKEND,
@@ -134,7 +141,7 @@ def test_categorization_completa_de_nodos():
     todos = set(range(1, 59))
     # Tipos con handler explícito en _nodo()
     explicitos = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,
-                  26,29,30,31,34,36,38,39,47,48,49,50,51,52,53}
+                  26,29,30,31,34,36,38,39,47,48,49,50,51,52,53,54,57}
     categorizados = set(NO_SOPORTADOS.keys()) | set(ELIMINADOS_POR_TRADUCTOR.keys()) | \
                     set(FUSIONADOS.keys()) | set(NO_PRODUCIDOS.keys()) | \
                     set(PENDIENTE_BACKEND.keys())

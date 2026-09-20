@@ -1,16 +1,24 @@
-"""R3 — codegen parámetros ADT (deuda D-2, expansión estática).
+"""R3 — codegen parámetros ADT (deuda D-2 CERRADA: monomorfización A5,
+CANON_DEUDAS.md; test_r3_param_adt_s2 PASA desde su implementación).
 
 Verifica que el codegen emite el struct C especializado para parámetros de
 función con tipos ADT instanciados (ej. `r: Resultado<entero, texto>` →
-`Resultado_entero_texto r`), en vez del placeholder `Resultado_T` (tipo
-indefinido que causaba rc=5 GCC).
+`Resultado_entero_texto r`), en vez del placeholder `Resultado_T`.
+
+Los binarios bootstrap S1/S2 son artefactos efímeros (el hook pre-commit
+limpia `synapse_stage1.exe`; Manual 9 §5 nota de caché: los artefactos de
+build del repositorio son efímeros). Este test los construye ON-DEMAND con
+el mismo comando del job bootstrap del CI y de scripts/bootstrap_d12.ps1:
+- S1 (etapa 0→1): `.venv python main.py nucleo/principal.syn -o synapse_stage1.exe`
+- S2 (etapa 1→2): `synapse_stage1.exe nucleo/principal.syn -o synapse_stage2.exe`
 
 Validación:
 - S1: compilación rc=0, ejecución correcta.
 - S2: compilación rc=0, ejecución correcta.
 - Paridad S1 vs S2 en el C generado (mismo struct instanciado).
 
-Referencia: Manual 2 §4.2 L279-280 (ADT genéricos), Manual 9 §9.1 (bootstrap).
+Referencia: Manual 2 §4.2 L279-280 (ADT genéricos), Manual 1 §6 (Regla de
+hierro del bootstrap), Manual 9 §5 (artefactos efímeros).
 """
 
 import subprocess
@@ -64,27 +72,45 @@ def _compilar_s2(fuente: str, salida: Path) -> int:
     return p.returncode
 
 
-def _requiere_stage(stage_exe: Path, etiqueta: str):
-    """ROJO TDD (deuda D-2): el codegen de parámetros ADT no está implementado
-    y los compiladores bootstrap S1/S2 no se construyen en este árbol (F29).
-    Falla con mensaje claro y grep-eable en vez de un críptico FileNotFoundError."""
-    if not stage_exe.exists():
+def _construir_si_falta(stage_exe: Path, cmd: list, etiqueta: str):
+    """cumple Manual 1 §6 (bootstrap): si el exe de la etapa falta (artefacto
+    efímero limpiado por el hook pre-commit), se construye on-demand con el
+    mismo comando del CI (Manual 9 §5). Falla con mensaje claro si el
+    bootstrap falla — la Regla de hierro es que ninguna característica rompa
+    el bootstrap."""
+    if stage_exe.exists():
+        return
+    try:
+        p = subprocess.run(cmd, cwd=str(RAIZ), capture_output=True, text=True,
+                           timeout=600)
+    except FileNotFoundError as e:
         pytest.fail(
-            f"ADT param codegen NO implementado (deuda D-2, Manual 2 §4.2 L279-280): "
-            f"{etiqueta} ({stage_exe.name}) no construido (F29 bootstrap/OpenSyn). "
-            f"Hoy el codegen emite el placeholder Resultado_T, que provoca rc=5 en GCC. "
-            f"Test en ROJO TDD — feature sin código y artifact de bootstrap ausente."
+            f"Bootstrap {etiqueta}: ejecutable de la etapa previa ausente "
+            f"({e}). Construir primero synapse_stage1.exe."
+        )
+    if p.returncode != 0 or not stage_exe.exists():
+        pytest.fail(
+            f"Bootstrap {etiqueta} falló (Manual 1 §6, Regla de hierro): "
+            f"rc={p.returncode}, cmd={' '.join(cmd)}\n"
+            f"stdout={p.stdout[-1500:]}\nstderr={p.stderr[-1500:]}"
         )
 
 
+# Etapa 0→1: compilador Python → S1 (mismo comando del job bootstrap del CI)
+S1_CMD = [sys.executable, "main.py", "nucleo/principal.syn", "-o", "synapse_stage1.exe"]
+# Etapa 1→2: S1 compila su propia fuente (bootstrap, scripts/bootstrap_d12.ps1)
+S2_CMD = [str(STAGE1), "nucleo/principal.syn", "-o", "synapse_stage2.exe"]
+
+
+@pytest.mark.timeout(900)
 def test_r3_param_adt_s1():
-    _requiere_stage(STAGE1, "S1")
+    _construir_si_falta(STAGE1, S1_CMD, "S1")
     tmp = TESTS / "fixtures" / "tmp_r3_s1.syn"
     exe = TESTS / "fixtures" / "tmp_r3_s1.exe"
     tmp.write_text(_PROG, encoding="utf-8")
     rc = _compilar_s1(str(tmp), exe)
     if rc != 0:
-        pytest.fail(f"ADT param codegen no implementado (deuda D-2): S1 rc={rc} "
+        pytest.fail(f"ADT param codegen: S1 rc={rc} "
                     f"(se espera struct instanciado Resultado_entero_texto, no placeholder Resultado_T)")
     out = subprocess.check_output([str(exe)], text=True, timeout=30).strip()
     assert out == "42", f"S1 execution output: {out!r}"
@@ -94,14 +120,15 @@ def test_r3_param_adt_s1():
         tmp.unlink()
 
 
+@pytest.mark.timeout(900)
 def test_r3_param_adt_s2():
-    _requiere_stage(STAGE2, "S2")
+    _construir_si_falta(STAGE2, S2_CMD, "S2")
     tmp = TESTS / "fixtures" / "tmp_r3_s2.syn"
     exe = TESTS / "fixtures" / "tmp_r3_s2.exe"
     tmp.write_text(_PROG, encoding="utf-8")
     rc = _compilar_s2(str(tmp), exe)
     if rc != 0:
-        pytest.fail(f"ADT param codegen no implementado (deuda D-2): S2 rc={rc} "
+        pytest.fail(f"ADT param codegen: S2 rc={rc} "
                     f"(se espera struct instanciado Resultado_entero_texto, no placeholder Resultado_T)")
     out = subprocess.check_output([str(exe)], text=True, timeout=30).strip()
     assert out == "42", f"S2 execution output: {out!r}"
