@@ -759,3 +759,194 @@ El plan está estructurado para minimizar riesgos mediante la construcción incr
 **El diferenciador real está en la capa de contexto y confianza:** ningún competidor puede replicar nuestro grafo de conocimiento porque ninguno controla el AST del compilador. Esa es nuestra ventaja estructural.
 
 **Estado:** Listo para ejecución.
+
+---
+
+# ANEXO — FASE 33: PARIDAD DEL COMPILADOR AUTO-ALOJADO Y CIERRE DE DEUDA DE GOBERNANZA
+
+> Añadido el 2026-09-25 (sesión post-commit R154/ME r153, commit 7bb4880). Esta fase se
+> define DESPUÉS de la Fase 32 (agente de codificación avanzado, 5/5 ME completados) y
+> consolida los ME de reparación r149-r153. No abre frentes nuevos: cierra la brecha
+> entre el compilador Python (S1) y el compilador nativo auto-alojado (S2), y liquida
+> la deuda de gobernanza registrada en `MEMORIA_PROYECTO.md` con resolución asignada.
+
+---
+
+## 33.0 VISIÓN Y ALCANCE
+
+- **Objetivo:** Que las herramientas nativas (`synapse lint/fmt/test`) y el compilador
+  auto-alojado soporten TODO el subconjunto del lenguaje que el propio ecosistema usa,
+  sin rutas duales (C embebido vs módulos .syn) ni desviaciones registradas sin oráculo.
+- **Contexto:** El ME r153 (Opción A de H-R152-4) implementó métodos, genéricos
+  (Lista/Mapa) y for-en en S1+S2 y flipó el backend de lint/fmt/test a los módulos
+  `.syn`. La paridad es MÍNIMA (H-R153-3): solo el subconjunto que ejercitan los 3
+  módulos. Esta fase la lleva a paridad plena y verificable.
+- **Principio rector (Manual 1 §6, Regla de hierro):** Ninguna característica nueva
+  puede romper el bootstrap (etapas 0→1→2→3 con diff binario 0). Cada ME cierra con
+  bootstrap S1→S2 verde, matriz de compilación sin regresiones y expediente de
+  alineación verificado.
+
+---
+
+## 33.1 ACTUALIZACIÓN DEL MANUAL Y PARIDAD DE NODOS (H-R153-NODE)
+
+- **Objetivo:** Alinear la tabla canónica `Manual 2 §7.2` con los nodos que el código
+  ya emite, y blindar la paridad S1↔nativo de nodos y tokens.
+- **Entregables:**
+  - `docs/manuales/MANUAL 2.md` §7.2: añadir filas `NODO_PARA_EN=57` (bucle para-en) y
+    `NODO_METODO=59` (método postfijo) — tarea del Arquitecto, los manuales no se
+    auto-editan (H-R153-NODE, ratificada 2026-09-25).
+  - `scripts/gen_ast_nodos_h.py`: emisión determinista de las nuevas constantes a
+    `runtime/core/ast_nodos.h` (ya sincronizado con 132 constantes; añadir guard de
+    paridad S1↔nativo al oráculo del ME).
+  - `tests/auditoria/test_paridad_nodos.py` (NUEVO): oráculo que compara los NODO_*/T_*
+    del S1 (`compilador/ast_nodes.py`) contra `nucleo/parser_constantes.syn` y
+    `runtime/core/ast_nodos.h` — cualquier divergencia futura rompe el test.
+- **Criterios de Aceptación:**
+  - Tabla §7.2 incluye 57 y 59 con su descripción.
+  - Oráculo de paridad GREEN: 0 divergencias S1↔nativo.
+  - Bootstrap S2==S3 byte-idéntico (el cambio es documental + guard, no de emisión).
+- **Dependencias:** ME r153 (completado).
+- **Riesgos y Mitigaciones:**
+  - Riesgo: editar un manual sin citar secciones existentes dispara el gate de alineación.
+    Mitigación: re-indexar `.indice.json` tras la edición y correr `verificar_alineacion.py`.
+- **Duración Estimada:** 0.5 ME (semana).
+
+---
+
+## 33.2 COBERTURA DE ARISTAS REAL EN `synapse test --coverage` (H-R152-1)
+
+- **Objetivo:** Reemplazar la respuesta honesta-but-fallida (rc=1, H-R152-1) por
+  instrumentación de aristas (edge coverage) generada por el compilador, en ambas capas.
+- **Entregables:**
+  - `nucleo/coverage.syn` (NUEVO): módulo que consume la lista de aristas instrumentadas
+    (archivo:línea origen→destino) y genera el informe HTML de cobertura con % de
+    aristas cubiertas por función y archivo (extiende `generar_coverage` de reports.syn,
+    que hoy solo recibe contadores).
+  - `compilador/generator/emit_control.py` + `nucleo/generator.syn`: bandera de
+    compilación `--coverage` que inserta un registro de arista en cada salto de control
+    (si/sino, mientras, para/para-en, coincidir, intentar) tras la evaluación de la
+    condición — paridad S1+nativo, mismo formato de volcado.
+  - `runtime/core/coverage.c` (NUEVO): buffer de aristas en memoria + volcado a JSON al
+    salir de `principal()` (atexit) — patrón conocido del runtime (trazas del debugger,
+    Manual 9 §6.2 para el informe).
+  - `nucleo/principal.syn`: `cli_test --coverage` consume el JSON de aristas y produce
+    el HTML; rc=0 cuando la instrumentación se generó y ejecutó (fin del rc=1 honesto).
+  - `tests/auditoria/test_oraculos_coverage.py` (NUEVO): oráculo que compila un probe
+    con ramas cubiertas y no cubiertas, ejecuta con el probe que dispara ambas ramas y
+    verifica: (a) el HTML reporta el % esperado; (b) las aristas no ejecutadas aparecen
+    listadas; (c) rc=0.
+- **Criterios de Aceptación:**
+  - `synapse test --coverage` rc=0 con informe HTML de aristas reales (no contador de
+    líneas ni placeholder).
+  - Una rama si-ejecutada y una no-ejecutada se distinguen en el informe (oráculo).
+  - Bootstrap verde; matriz de compilación sin regresiones.
+- **Dependencias:** 33.1 (oráculo de paridad de nodos, para no romper S1↔nativo al
+  insertar la instrumentación).
+- **Riesgos y Mitigaciones:**
+  - Riesgo: la instrumentación perturba el determinismo del bootstrap.
+    Mitigación: la bandera es OFF por defecto; el bootstrap compila sin `--coverage`
+    y el diff binario 0 se re-verifica en el oráculo de este ME.
+  - Riesgo: atexit no corre en caminos de error del runtime.
+    Mitigación: volcado también en los manejadores de error que ya existen (patrón
+    ESCAPA_DEL_ALCANCE de verificacion_aot).
+- **Duración Estimada:** 1 ME.
+
+---
+
+## 33.3 RATIFICACIÓN Y CIERRE DE DESVIACIONES R149 §5
+
+- **Objetivo:** Liquidar la deuda de gobernanza más antigua: las desviaciones restantes
+  de R149 que siguen sin ratificación del Arquitecto.
+- **Entregables:**
+  - Inventario verificado de las 4 desviaciones R149 §5 (llvm/wasm sin cablear en el
+    pipeline, stubs del debugger, `axon_build.exe`, 3 FFI de std.cluster): para cada
+    una, evidencia del estado real (probe o grep), opción de resolución (implementar /
+    ratificar como límite de alcance / eliminar código muerto) y decisión del
+    Arquitecto documentada.
+  - `docs/decisiones/DESVIACIONES_R149.md` (NUEVO): expediente único con las 4
+    decisiones D-R149-*, citando Manual X §Y por cada una (Manual 7 §4 para llvm/wasm,
+    Manual 8 §2 para debugger, Manual 2 §13 para axon_build).
+  - Si el Arquitecto decide "eliminar": los símbolos muertos se borran (cero deuda sin
+    seguimiento) y los tests estructurales que los citaban se ajustan con aprobación
+    previa (tests inmutables, regla 5).
+- **Criterios de Aceptación:**
+  - 0 desviaciones R149 §5 sin resolución en `MEMORIA_PROYECTO.md`.
+  - Cada decisión tiene expediente con cita real de manual y grep de evidencia.
+  - `verificar_alineacion.py` SIN BRECHAS tras el cierre.
+- **Dependencias:** Ninguna (puede ejecutarse en paralelo con 33.1).
+- **Riesgos y Mitigaciones:**
+  - Riesgo: ratificar sin evidencia = fabricación (regla 3).
+    Mitigación: cada decisión lleva su grep/probe ejecutado en la sesión de ratificación.
+- **Duración Estimada:** 0.5 ME (sesión de Arquitecto + documentación).
+
+---
+
+## 33.4 EXTENSIÓN DEL SUBCONJUNTO PARITARIO (cierre de H-R153-3)
+
+- **Objetivo:** Llevar la paridad nativa del subconjunto mínimo (r153) a las
+  construcciones que el ecosistema usa y los módulos nativos necesitan, priorizando
+  lo que los std y nucleo ya emplean en fuente .syn.
+- **Entregables:**
+  - Paridad de `mapa<K,V>[clave]` (indexado) y `lista<T>[i]` en nativo (S1 ya lo emite
+    vía R1/R3 de r153; cerrar la nota técnica de r152: el orquestador nativo no emite
+    definición ni extern de `longitud()` — los contratos deben usar acceso a campo).
+  - Paridad de iteración sobre mapa (`para k en mapa` con par ordenado) en S1+nativo.
+  - Genéricos definidos por el usuario: instanciación de estructuras genéricas propias
+    (no solo Lista/Mapa builtin) en ambas capas.
+  - Ampliar `tests/nucleo/test_modulos_compilan.py` con un módulo .syn de prueba que
+    ejerza las tres extensiones (TDD RED→GREEN).
+- **Criterios de Aceptación:**
+  - Los 3 módulos lint/formatter/reports compilan sin restricciones de sintaxis
+    remanentes (0 comentarios "limitación de paridad").
+  - Bootstrap verde; matriz 35/35; test_r3_param_adt GREEN (inmutable).
+- **Dependencias:** 33.1 (oráculo de paridad), 33.2 (bandera --coverage no rompe emisión).
+- **Riesgos y Mitigaciones:**
+  - Riesgo: cada extensión del parser nativo puede desalinear la emisión del unity.
+    Mitigación: regenerar `nucleo/generator.syn` (UNITY) tras cada cambio en
+    `nucleo/generador/*` (`_rebuild_generator.py`) y correr el oráculo de paridad.
+- **Duración Estimada:** 2 ME.
+
+---
+
+## 33.5 CERTIFICACIÓN DE LA FASE 33
+
+- **Objetivo:** Validar que el compilador auto-alojado y sus herramientas nativas
+  compilan y ejecutan el subconjunto completo del ecosistema sin rutas duales.
+- **Entregables:**
+  - Suite de regresión completa (unit + integration + nucleo + opensyn + auditoria).
+  - Bootstrap 0→1→2→3 con diff binario 0 verificado y sellado en CI (job bootstrap).
+  - Matriz de compilación extendida (más allá de 35/35: incluir los std que ejercitan
+    métodos/genéricos/for-en).
+  - Reporte final `docs/reportes/FASE_33_CERTIFICACION.md`.
+- **Criterios de Aceptación:**
+  - Todos los tests GREEN (excepto skips legítimos documentados: llama-server ausente).
+  - S2==S3 byte-idéntico en CI.
+  - 0 desviaciones activas sin resolución en `MEMORIA_PROYECTO.md`.
+  - El job CI `auditoria` (gate de bitácora) y `matriz-compilacion` pasan en release.
+- **Dependencias:** 33.1-33.4.
+- **Duración Estimada:** 0.5 ME.
+
+---
+
+## RESUMEN DE DEPENDENCIAS Y DURACIONES (Fase 33)
+
+| Sub-fase | Contenido | Duración | Dependencias |
+|----------|-----------|----------|--------------|
+| 33.1 | Tabla M2 §7.2 + oráculo de paridad de nodos (H-R153-NODE) | 0.5 ME | r153 |
+| 33.2 | --coverage con instrumentación de aristas (H-R152-1) | 1 ME | 33.1 |
+| 33.3 | Ratificación de desviaciones R149 §5 | 0.5 ME | — (paralelo) |
+| 33.4 | Extensión del subconjunto paritario (H-R153-3) | 2 ME | 33.1, 33.2 |
+| 33.5 | Certificación | 0.5 ME | 33.1-33.4 |
+
+**Total estimado:** 4.5 meses-persona (3.5 ME si 33.3 corre en paralelo).
+
+---
+
+## CRITERIO DE APERTURA
+
+La Fase 33 se considera ABIERTA cuando el Arquitecto ratifique este anexo en sesión y
+se seleccione el primer ME (33.1 o 33.3, ambas de baja duración y sin dependencias
+cruzadas). Los ME se ejecutan con MTS/MTO completos: plan `docs/plan_ME_<id>.md` con
+bloques requisito/texto/implementacion/oráculo, expediente de alineación, reporte con
+hash real, fila en bitácora canónica y memoria actualizada.

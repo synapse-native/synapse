@@ -31,11 +31,16 @@ Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 built
                    3 DESVIACION ratificadas H-R153-NODE).
                    r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
 Commit fase:       d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2) sobre dbb9717 (fix(r152): bootstrap restaurado)
-Próximo ME:        Definir Fase 33 del roadmap
-Próximo paso:      Actualizar tabla M2 §7.2 con NODO_PARA_EN=57/NODO_METODO=59 (H-R153-NODE,
-                   tarea del Arquitecto); ratificar desviaciones restantes R149 §5 (llvm/wasm
-                   sin cablear, stubs debugger, axon_build.exe, 3 FFI std.cluster); decidir ME
-                   para H-R152-1 (--coverage con instrumentación de aristas)
+Próximo ME:        Fase 33 DEFINIDA — anexo en ROADMAP.md (2026-09-25, sesion post-commit
+                   R154): ratificar el anexo y abrir ME 33.1 (tabla M2 §7.2 + oráculo de
+                   paridad de nodos) o 33.3 (desviaciones R149 §5), ambas sin dependencias
+                   cruzadas
+Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza tabla M2 §7.2
+                   con NODO_PARA_EN=57/NODO_METODO=59 (H-R153-NODE, tarea del Arquitecto);
+                   33.2 cierra H-R152-1 (--coverage con instrumentación de aristas);
+                   33.3 ratifica desviaciones R149 §5 (llvm/wasm sin cablear, stubs
+                   debugger, axon_build.exe, 3 FFI std.cluster); 33.4 extiende el
+                   subconjunto paritario (H-R153-3); 33.5 certificación
 Últimos commits:    d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2 — flip backend lint/fmt/test a los módulos .syn)
                     dbb9717 (fix(r152): restaurar el enlace del bootstrap S1 — R1 par F5-1, R2 backend lint/fmt/test)
                     5db1dab (test(r151): alinear línea base MTO/TDD — bootstrap on-demand, cita real M7 §2.2)
