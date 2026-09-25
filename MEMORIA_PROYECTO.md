@@ -7,35 +7,37 @@
 > - 📜 **Sección 4 — Historico detallado (F1–F27)** — conserva el conocimiento profundo del proyecto.
 > - 📋 **Sección 5 — Checklist de verificación** (validar antes de commitear).
 >
-Última actualización: **2026-09-20** (ME r151_linea_base + ME r152_bootstrap_link COMPLETADOS — commits 5db1dab/dbb9717, bootstrap restaurado)
+Última actualización: **2026-09-25** (ME r153_s1_metodos_genericos COMPLETADO — commit d9e842c, H-R152-4 cerrada por Opción A)
 
 ---
 
 ## 🚦 1. DASHBOARD ACTUAL```yaml
-Fase roadmap:      ME r151_linea_base COMPLETADO (5db1dab) + ME r152_bootstrap_link COMPLETADO (dbb9717) — H-R151-3 RESUELTA: bootstrap S1/S2 vuelve a ENLAZAR (Manual 1 §6)
+Fase roadmap:      ME r153_s1_metodos_genericos COMPLETADO (d9e842c) — H-R152-4 CERRADA por Opción A: métodos/genéricos/for-en en S1+S2 y backend lint/fmt/test flipped a los módulos .syn
+                   ME r151_linea_base COMPLETADO (5db1dab) + ME r152_bootstrap_link COMPLETADO (dbb9717) — H-R151-3 RESUELTA: bootstrap S1/S2 vuelve a ENLAZAR (Manual 1 §6)
                    FASE 32 COMPLETA — Agente de Codificación Avanzado + Memoria Persistente (5/5 ME)
                    FASE 31 COMPLETADA — Herramientas Nativas (ME-1..ME-5)
                    FASE 30-c ME_opensyn_best — ME-1..ME-6 TODOS COMPLETADOS
                    FASE 30-b HARDENING — OpenSyn TUI + IA local (R141/R142/R143) COMPLETADA
                    FASE 30 COMPLETADA — Instalación Unificada y Distribución Final
-Estado:            r151: 4 fallos de línea base alineados con MTO/TDD (solo tests, ratificado
-                   2026-09-19): puente_canonico R1/R2, S1 on-demand R3, cita real M7 §2.2 R4.
-                   r152 (ratificado 2026-09-20 "repara y ajusta todo, MTS/MTO, tests TDD"):
-                   causa raíz H-R151-3 = par F5-1 sin definición en ruta unity + 5 externs
-                   fantasma (lint/fmt/test) de ba2c5ee. Fix: R1 par F5-1 en _emit_cabecera_comun;
-                   R2 backend real cli_lint/cli_fmt/cli_test con contratos (C embebido; H-R152-4:
-                   lint/formatter/reports .syn NO compilables por S1 → referencia canónica).
-                   S1 rc=0, S2 rc=0 (comando CI); test_r3_param_adt GREEN (TDD RED→GREEN);
-                   lint/fmt/test E2E verificados (junit/json reales Manual 9 §6.2).
-                   Gates: contrastar PASA ambos planes; verificar_alineacion SIN BRECHAS;
-                   expediente r152 verificado (evidencia f2e821fa9002a898); matriz 35/35.
-Commit fase:       dbb9717 (fix(r152): bootstrap restaurado) sobre 5db1dab (test(r151): línea base MTO/TDD)
+Estado:            r153 (Opción A de H-R152-4, ratificada 2026-09-20): R1 builtins Lista/Mapa/
+                   longitud delegando en runtime/core lista.c/mapa.c (ME f325 consumido);
+                   R2 para-en paridad S1+nativo (T_EN, NODO_PARA_EN=57); R3 métodos postfijo
+                   metodo:<tipo>:<nombre> (NODO_METODO=59); R4 cli_lint/fmt/test delegan en
+                   lint/formatter/reports.syn importados; R6 RAII de retorno (temporal ANTES de
+                   destructores, clase H-R146-1/H-R113); R5 bootstrap S1→S2 verde con módulos
+                   importados. Oráculos r153 8/8; TDD módulos 3 GREEN; test_r3_param_adt GREEN;
+                   matriz 35/35. Gates: contrastar PASA; verificar_alineacion SIN BRECHAS;
+                   expediente r153 verificado (evidencia d5fb40c8d7530258; 40 CUMPLE +
+                   3 DESVIACION ratificadas H-R153-NODE).
+                   r151/r152: bootstrap restaurado (ver histórico de sesión 2026-09-20).
+Commit fase:       d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2) sobre dbb9717 (fix(r152): bootstrap restaurado)
 Próximo ME:        Definir Fase 33 del roadmap
-Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cablear, stubs
-                   debugger, axon_build.exe, 3 FFI std.cluster); decidir ME para H-R152-4
-                   (soporte de métodos/genéricos en S1 o reescritura de lint/formatter/reports
-                   .syn) y para H-R152-1 (--coverage con instrumentación de aristas)
-Últimos commits:    dbb9717 (fix(r152): restaurar el enlace del bootstrap S1 — R1 par F5-1, R2 backend lint/fmt/test)
+Próximo paso:      Actualizar tabla M2 §7.2 con NODO_PARA_EN=57/NODO_METODO=59 (H-R153-NODE,
+                   tarea del Arquitecto); ratificar desviaciones restantes R149 §5 (llvm/wasm
+                   sin cablear, stubs debugger, axon_build.exe, 3 FFI std.cluster); decidir ME
+                   para H-R152-1 (--coverage con instrumentación de aristas)
+Últimos commits:    d9e842c (feat(r153): métodos, genéricos y for-en en S1+S2 — flip backend lint/fmt/test a los módulos .syn)
+                    dbb9717 (fix(r152): restaurar el enlace del bootstrap S1 — R1 par F5-1, R2 backend lint/fmt/test)
                     5db1dab (test(r151): alinear línea base MTO/TDD — bootstrap on-demand, cita real M7 §2.2)
                     f36849c (fix(r150): cerrar hallazgos funcionales std↔runtime — matriz 35/35, CI, D-R150-9 ratificada)
                     8247564 (docs: post-commit R150 — reporte, bitácora y memoria)
@@ -47,6 +49,7 @@ Próximo paso:      Ratificar desviaciones restantes R149 §5 (llvm/wasm sin cab
 ### Cambios recientes esta sesión
 | Commit | Descripción | Impacto |
 |--------|-------------|---------|
+| `d9e842c` | R154/ME r153_s1_metodos_genericos: métodos, genéricos y for-en en S1+S2 — flip del backend lint/fmt/test a los módulos .syn (Opción A de H-R152-4) — R1 builtins Lista/Mapa/longitud (lista.c/mapa.c, encajonado por dirección, Manual 2 §4.3); R2 para-en S1+nativo (NODO_PARA_EN=57, Manual 3 §3); R3 métodos postfijo metodo:<tipo>:<nombre> (NODO_METODO=59); R4 principal.syn importa lint/formatter/reports (Manual 8 §4.1); R6 RAII de retorno (M2 §9.1); R5 bootstrap S1→S2 verde. H-R153-NODE ratificada (tabla M2 §7.2 por actualizar — Arquitecto). Oráculos 8/8, TDD módulos 3, matriz 35/35, expediente verificado (evidencia d5fb40c8d7530258) |
 | `dbb9717` | R153/ME r152_bootstrap_link: bootstrap S1 restaurado (H-R151-3, Manual 1 §6) — R1: par F5-1 emitido en _emit_cabecera_comun (paridad con bloque 'modulo'); R2: subcomandos lint/fmt/test con backend real cli_lint/cli_fmt/cli_test (contratos Manual 2 §5.1; C embebido por H-R152-4), 5 externs fantasma eliminados; junit/json reales (Manual 9 §6.2); --coverage honesto rc=1 (H-R152-1). S1/S2 rc=0 con comando CI; test_r3_param_adt GREEN (TDD); oráculo r152 8/8; matriz 35/35; expediente verificado |
 | `5db1dab` | R152/ME r151_linea_base: 4 fallos de línea base alineados con MTO/TDD (solo tests) — puente_canonico 54/57 traducidos (R1/R2), S1 on-demand (R3, destapó H-R151-3), cita fabricada "M7 §7.2" eliminada + skip honesto + benchmark real /v1/chat/completions (R4, H-R151-1); oráculo r151 3 GREEN (anti-fabricación) |
 | `d9c498a` | F30-b: chat OpenSyn real (Ollama) + consola UTF-8 + LSP multi-mensaje + instalador 8.1.0 revisado | opensyn/principal.syn chat interactivo; runtime/core/ollama.c nuevo; io.c/string_utils.c UTF-8 y stdin pipes; lsp_v3.syn dispatch tolerante a espacios; synapse.iss sin [Run] roto, model=qwen-coder, PATH sin duplicados, Excludes; vsix repack. LSP 36/36, instalador 11/11, 0 brechas |
