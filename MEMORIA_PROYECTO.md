@@ -123,6 +123,32 @@ Próximo paso:      Ejecutar el anexo Fase 33 de ROADMAP.md — 33.1 actualiza t
 - **H-R146-1 (RESUELTO, df8ff5f):** el contexto inyectado al modelo no era determinista — el listado de la raíz incluía artefactos de build que cambian en cada compilación (_*.c/_*.o/synapse_bootstrap.exe generados por S1 en la raíz) y el modelo 1.3B repetía el listado multilinea en bucle agotando max_tokens (las respuestas variaban según la basura del momento). Fix: filtrar_listado() en principal.syn excluye artefactos por convención del repo (prefijo _, .c.o/.o/.syn.json/.exe) y comprime a UNA línea acotada a 2400 chars, aplicado a TOOL listar y al contexto estático. Respuestas deterministas y con contenido real verificado x2.
 - **Lección R146 (producto instalado = producto validado):** (1) al corregir binarios, reconstruir el instalador y reinstalar de inmediato — y verificar sha256 de lo instalado contra lo validado — para que la prueba interactiva del usuario ejerza el mismo binario que pasaron los oráculos; (2) los prompts de los oráculos no deben contener números literales ("nombra 3"): un modelo pequeño los copy-pastea como respuesta literal (determinista con temperature:0); (3) los artefactos que el propio build genera en la raíz contaminan cualquier listado inyectado a un agente — filtrar por convención, no limpiar a mano.
 
+### Hallazgos de la auditoría de operatividad OpenSyn (2026-09-25, AUDITORIA-OP-OPENSYN)
+
+- **H-AUD-OP-1 (NUEVO, ALTO — resolución asignada):** el chat en modo oráculo NO
+  termina ante EOF de stdin: si el pipe se cierra sin enviar "salir",
+  `chat_tui` (opensyn/principal.syn) re-imprime "Tu>" en bucle infinito. Evidencia:
+  `echo "status" | timeout 12 dist/bin/opensyn.exe` → rc=124 y log de 21 MB
+  (~210.000 prompts). Los oráculos no lo detectan porque siempre envían "salir".
+  Resolución: ME futuro — la lectura de línea debe distinguir EOF de línea vacía y
+  romper el bucle; añadir oráculo de stdin cerrado sin "salir" (rc=0 exigido).
+- **H-AUD-OP-2 (NUEVO, MEDIO):** `dist/bin/opensyn.exe` (17-sep 21:11) es STALE —
+  anterior a la última edición de `opensyn/principal.syn` (17-sep 22:19, fix
+  H-R149-WIP). Compilación fresca del fuente actual: rc=0 y smoke idéntico (sin
+  defecto de usuario observable). Resolución: regenerar dist/bin en el próximo ME +
+  verificación de frescura fuente→exe en el release (lección R144/R146).
+- **H-AUD-OP-3 (NUEVO, MENOR):** marker `@pytest.mark.tdd` sin registrar en
+  `pytest.ini` → 8 PytestUnknownMarkWarning en tests/opensyn. Cambio de CONFIG de
+  tests (no de tests, regla 5 intacta): añadir `tdd:` a markers.
+- **H-R144-3 (PROPUESTA DE CIERRE):** `opensyn/modelos.toml` actual tiene URLs
+  HuggingFace LFS reales + SHA-256 reales, 0 placeholders (grep 2026-09-25) —
+  ratificar cierre el Arquitecto.
+- Verificado sano: pytest tests/opensyn 122 passed/1 skipped; oráculos
+  historial/autocomplete/banner/ia_gguf GREEN (agente RED por entorno, sin backend IA);
+  LSP responde initialize JSON-RPC; 13 comandos TUI presentes; sandbox M7 §1.1 activo.
+  Informe completo: docs/auditorias/AUDITORIA_OPENSYN_OPERATIVIDAD.md (fila en
+  bitácora canónica: AUDITORIA-OP-OPENSYN).
+
 ### Decisiones y hallazgos del ME r153_s1_metodos_genericos (2026-09-25)
 
 - **H-R153-NODE (RATIFICADO, sesión 2026-09-25):** el Manual 2 §7.2 (tabla
